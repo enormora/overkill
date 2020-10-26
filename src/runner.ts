@@ -1,11 +1,16 @@
 export type TestResultStatus = 'failure' | 'success';
 
-export interface FailureTestResult {
+interface BaseTestResult {
+  status: TestResultStatus;
+  duration: number;
+}
+
+export interface FailureTestResult extends BaseTestResult {
   status: 'failure';
   reason: string;
 }
 
-export interface SuccessTestResult {
+export interface SuccessTestResult extends BaseTestResult {
   status: 'success';
 }
 
@@ -21,17 +26,40 @@ function extractErrorMessage(error: unknown): string {
   return 'Unknown error';
 }
 
-export function runTest(testFn: TestFn): TestResult {
-  try {
-    testFn();
+export interface RunnerDependencies {
+  timingApi: Performance;
+}
 
-    return {
-      status: 'success',
-    };
-  } catch (error: unknown) {
-    return {
-      status: 'failure',
-      reason: extractErrorMessage(error),
-    };
+export interface Runner {
+  runTest(testFn: TestFn): TestResult;
+}
+
+export function createRunner(dependencies: RunnerDependencies): Runner {
+  const { timingApi } = dependencies;
+
+  function calculateDuration(startTime: number): number {
+    const endTime = timingApi.now();
+    return endTime - startTime;
   }
+
+  return {
+    runTest(testFn) {
+      const startTime = timingApi.now();
+
+      try {
+        testFn();
+
+        return {
+          status: 'success',
+          duration: calculateDuration(startTime),
+        };
+      } catch (error: unknown) {
+        return {
+          status: 'failure',
+          duration: calculateDuration(startTime),
+          reason: extractErrorMessage(error),
+        };
+      }
+    },
+  };
 }
