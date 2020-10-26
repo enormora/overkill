@@ -1,65 +1,52 @@
-export type TestResultStatus = 'failure' | 'success';
+import { TestCase, TestCaseDetails } from './testCase';
+import { TestCaseExecutor, TestResult } from './testCaseExecutor';
 
-interface BaseTestResult {
-  status: TestResultStatus;
-  duration: number;
+interface TestCaseResult {
+  testCaseDetails: TestCaseDetails;
+  result: TestResult;
 }
 
-export interface FailureTestResult extends BaseTestResult {
-  status: 'failure';
-  reason: string;
-}
-
-export interface SuccessTestResult extends BaseTestResult {
-  status: 'success';
-}
-
-export type TestResult = FailureTestResult | SuccessTestResult;
-
-export type TestFn = () => void;
-
-function extractErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return 'Unknown error';
+interface SuiteResult {
+  progress: 'pending' | 'completed';
+  testCaseResults: readonly TestCaseResult[];
 }
 
 export interface RunnerDependencies {
-  timingApi: Performance;
+  testCaseExecutor: TestCaseExecutor;
 }
 
 export interface Runner {
-  runTest(testFn: TestFn): TestResult;
+  addTestCase(testCase: TestCase): void;
+  runAll(): SuiteResult;
 }
 
 export function createRunner(dependencies: RunnerDependencies): Runner {
-  const { timingApi } = dependencies;
+  const { testCaseExecutor } = dependencies;
+  const testCases: TestCase[] = [];
 
-  function calculateDuration(startTime: number): number {
-    const endTime = timingApi.now();
-    return endTime - startTime;
+  function runTest(testCase: TestCase): TestCaseResult {
+    const { testFn, ...testCaseDetails } = testCase;
+    const result = testCaseExecutor.execute(testFn);
+
+    return {
+      testCaseDetails,
+      result,
+    };
   }
 
   return {
-    runTest(testFn) {
-      const startTime = timingApi.now();
+    addTestCase(testCase) {
+      testCases.push(testCase);
+    },
 
-      try {
-        testFn();
+    runAll() {
+      const testCaseResults = testCases.map(runTest);
 
-        return {
-          status: 'success',
-          duration: calculateDuration(startTime),
-        };
-      } catch (error: unknown) {
-        return {
-          status: 'failure',
-          duration: calculateDuration(startTime),
-          reason: extractErrorMessage(error),
-        };
-      }
+      return {
+        progress: 'completed',
+        totalCount: testCases.length,
+        testCaseResults,
+      };
     },
   };
 }
