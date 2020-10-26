@@ -26,6 +26,9 @@
     "lint": "eslint src test --ext '.ts'",
     "test:unit": "uvu -r ts-node/register 'test'"
   },
+  "dependencies": {
+    "tslib": "1.14.1"
+  },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "4.5.0",
     "@typescript-eslint/parser": "4.5.0",
