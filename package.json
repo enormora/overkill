@@ -24,18 +24,20 @@
   "scripts": {
     "compile": "tsc --build",
     "lint": "eslint src test --ext '.ts'",
-    "test:unit": "uvu -r ts-node/register 'test'"
+    "test:unit": "TS_NODE_PROJECT=test/unit/tsconfig.json uvu -r ts-node/register 'test'"
   },
   "dependencies": {
     "tslib": "2.0.3"
   },
   "devDependencies": {
+    "@types/sinon": "9.0.8",
     "@typescript-eslint/eslint-plugin": "4.5.0",
     "@typescript-eslint/parser": "4.5.0",
     "eslint": "7.12.0",
     "eslint-config-prettier": "6.14.0",
     "eslint-plugin-prettier": "3.1.4",
     "prettier": "2.1.2",
+    "sinon": "9.2.0",
     "ts-node": "9.0.0",
     "typescript": "4.0.3",
     "uvu": "0.3.4"
