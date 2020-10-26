@@ -1,69 +1,78 @@
 import { test } from 'uvu';
 import * as assert from 'uvu/assert';
-import sinon, { SinonStub } from 'sinon';
+import sinon, { SinonSpy } from 'sinon';
 import { createRunner, RunnerDependencies } from '../../src/runner';
 
-function successTestFn() {}
-
-function errorTestFn() {
-  throw new Error('failed with error');
-}
-
-function nonErrorFailureTestFn() {
-  throw 'not-an-error';
-}
+function noop() {}
 
 interface Overrides {
-  now?: SinonStub;
+  execute?: SinonSpy;
 }
 
 function runnerFactory(overrides: Overrides = {}) {
-  const { now = sinon.fake.returns(0) } = overrides;
+  const { execute = sinon.fake.returns({}) } = overrides;
 
   const fakeDependencies = ({
-    timingApi: {
-      now,
+    testCaseExecutor: {
+      execute,
     },
   } as unknown) as RunnerDependencies;
 
   return createRunner(fakeDependencies);
 }
 
-test('returns "success" when the given test function doesn’t throw', () => {
-  const runner = runnerFactory();
-  const result = runner.runTest(successTestFn);
+test('executes all tests that have been added so far', () => {
+  const execute = sinon.fake();
+  const runner = runnerFactory({ execute });
 
-  assert.equal(result, { status: 'success', duration: 0 });
+  runner.addTestCase({ title: 'foo', testFn: noop });
+  runner.addTestCase({ title: 'bar', testFn: noop });
+  runner.runAll();
+
+  assert.is(execute.callCount, 2);
+  assert.equal(execute.firstCall.args, [noop]);
+  assert.equal(execute.secondCall.args, [noop]);
 });
 
-test('returns "failure" when the given test function throws an error', () => {
-  const runner = runnerFactory();
-  const result = runner.runTest(errorTestFn);
+test('when calling runAll() a second time it executes all tests that have been added before and after the first run', () => {
+  const execute = sinon.fake();
+  const runner = runnerFactory({ execute });
 
-  assert.equal(result, { status: 'failure', reason: 'failed with error', duration: 0 });
+  runner.addTestCase({ title: 'foo', testFn: noop });
+  runner.runAll();
+  runner.addTestCase({ title: 'bar', testFn: noop });
+  runner.runAll();
+
+  assert.is(execute.callCount, 3);
 });
 
-test('returns "failure" when the given test function throws a non error', () => {
-  const runner = runnerFactory();
-  const result = runner.runTest(nonErrorFailureTestFn);
+test('returns the aggregated result of all test cases', () => {
+  const execute = sinon
+    .stub()
+    .onFirstCall()
+    .returns({ status: 'success', duration: 21 })
+    .onSecondCall()
+    .returns({ status: 'success', duration: 42 });
+  const runner = runnerFactory({ execute });
 
-  assert.equal(result, { status: 'failure', reason: 'Unknown error', duration: 0 });
-});
+  runner.addTestCase({ title: 'foo', testFn: noop });
+  runner.addTestCase({ title: 'bar', testFn: noop });
+  const result = runner.runAll();
 
-test('returns the correct duration when a test was successful', () => {
-  const now = sinon.stub().onFirstCall().returns(10).onSecondCall().returns(30);
-  const runner = runnerFactory({ now });
-  const result = runner.runTest(successTestFn);
-
-  assert.equal(result, { status: 'success', duration: 20 });
-});
-
-test('returns the correct duration when a test failed', () => {
-  const now = sinon.stub().onFirstCall().returns(10).onSecondCall().returns(30);
-  const runner = runnerFactory({ now });
-  const result = runner.runTest(errorTestFn);
-
-  assert.equal(result, { status: 'failure', reason: 'failed with error', duration: 20 });
+  assert.equal(result, {
+    progress: 'completed',
+    totalCount: 2,
+    testCaseResults: [
+      {
+        testCaseDetails: { title: 'foo' },
+        result: { status: 'success', duration: 21 },
+      },
+      {
+        testCaseDetails: { title: 'bar' },
+        result: { status: 'success', duration: 42 },
+      },
+    ],
+  });
 });
 
 test.run();
