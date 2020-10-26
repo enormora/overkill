@@ -6,8 +6,17 @@ interface TestCaseResult {
   result: TestResult;
 }
 
+interface ResultSummary {
+  failedCount: number;
+  successCount: number;
+  totalCount: number;
+  completedCount: number;
+  pendingCount: number;
+}
+
 interface SuiteResult {
   progress: 'pending' | 'completed';
+  summary: ResultSummary;
   testCaseResults: readonly TestCaseResult[];
 }
 
@@ -18,6 +27,36 @@ export interface RunnerDependencies {
 export interface Runner {
   addTestCase(testCase: TestCase): void;
   runAll(): SuiteResult;
+}
+
+function addResultToSummary(summary: ResultSummary, testCaseResult: TestCaseResult): ResultSummary {
+  let { failedCount, successCount } = summary;
+
+  if (testCaseResult.result.status === 'failure') {
+    failedCount += 1;
+  } else {
+    successCount += 1;
+  }
+
+  return {
+    failedCount,
+    successCount,
+    totalCount: summary.totalCount,
+    completedCount: summary.completedCount,
+    pendingCount: summary.pendingCount,
+  };
+}
+
+function calculateSummary(results: TestCaseResult[]): ResultSummary {
+  const initialSummary: ResultSummary = {
+    failedCount: 0,
+    successCount: 0,
+    totalCount: results.length,
+    completedCount: results.length,
+    pendingCount: 0,
+  };
+
+  return results.reduce(addResultToSummary, initialSummary);
 }
 
 export function createRunner(dependencies: RunnerDependencies): Runner {
@@ -44,7 +83,7 @@ export function createRunner(dependencies: RunnerDependencies): Runner {
 
       return {
         progress: 'completed',
-        totalCount: testCases.length,
+        summary: calculateSummary(testCaseResults),
         testCaseResults,
       };
     },
