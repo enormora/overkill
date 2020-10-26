@@ -22,7 +22,7 @@
   },
   "homepage": "https://github.com/screendriver/overkill#readme",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "compile": "tsc --build"
   },
   "devDependencies": {
     "prettier": "2.1.2",
