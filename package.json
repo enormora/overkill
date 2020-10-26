@@ -1,0 +1,27 @@
+{
+  "name": "overkill",
+  "version": "0.0.1",
+  "description": "Simple, easy and fast test framework",
+  "main": "target/src/index.js",
+  "bin": {
+    "overkill": "target/src/bin.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/screendriver/overkill.git"
+  },
+  "keywords": [
+    "test",
+    "tests",
+    "tdd"
+  ],
+  "author": "Christian Rackerseder <git@echooff.de>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/screendriver/overkill/issues"
+  },
+  "homepage": "https://github.com/screendriver/overkill#readme",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
