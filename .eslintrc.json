@@ -24,11 +24,11 @@
     "@typescript-eslint/no-implicit-any-catch": "error"
   },
   "overrides": [
-      {
-          "files": [ "test/**/*.test.ts" ],
-          "rules": {
-              "@typescript-eslint/no-empty-function": "off"
-          }
+    {
+      "files": ["test/**/*.test.ts"],
+      "rules": {
+        "@typescript-eslint/no-empty-function": "off"
       }
+    }
   ]
 }
