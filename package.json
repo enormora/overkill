@@ -23,8 +23,10 @@
   "homepage": "https://github.com/screendriver/overkill#readme",
   "scripts": {
     "compile": "tsc --build",
+    "eslint": "eslint src test --ext '.js,.ts'",
     "prettier": "prettier '**/*.(yml|json|yaml|md)'",
-    "lint": "eslint src test --ext '.ts' && npm run prettier -- --check",
+    "lint": "npm run eslint && npm run prettier -- --check",
+    "lint:fix": "npm run eslint -- --fix && npm run prettier -- --write",
     "test:unit": "TS_NODE_PROJECT=test/unit/tsconfig.json uvu -r ts-node/register 'test'"
   },
   "dependencies": {
