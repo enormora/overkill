@@ -1,7 +1,8 @@
-import { TestCase, TestCaseDetails } from './testCase';
+import { Reporter } from './reporter/reporter';
+import { TestCase, TestCaseInput, TestCaseDetails } from './testCase';
 import { TestCaseExecutor, TestResult } from './testCaseExecutor';
 
-interface TestCaseResult {
+export interface TestCaseResult {
   testCaseDetails: TestCaseDetails;
   result: TestResult;
 }
@@ -14,7 +15,7 @@ interface ResultSummary {
   pendingCount: number;
 }
 
-interface SuiteResult {
+export interface SuiteResult {
   progress: 'pending' | 'completed';
   summary: ResultSummary;
   testCaseResults: readonly TestCaseResult[];
@@ -22,11 +23,12 @@ interface SuiteResult {
 
 export interface RunnerDependencies {
   testCaseExecutor: TestCaseExecutor;
+  reporter: Reporter;
 }
 
 export interface Runner {
-  addTestCase(testCase: TestCase): void;
-  runAll(): SuiteResult;
+  addTestCase(testCaseInput: TestCaseInput): void;
+  runAll(): Promise<SuiteResult>;
 }
 
 function addResultToSummary(summary: ResultSummary, testCaseResult: TestCaseResult): ResultSummary {
@@ -47,43 +49,66 @@ function addResultToSummary(summary: ResultSummary, testCaseResult: TestCaseResu
   };
 }
 
-function calculateSummary(results: TestCaseResult[]): ResultSummary {
+function calculateSummary(results: TestCaseResult[], totalCount: number): ResultSummary {
+  const completedCount = results.length;
   const initialSummary: ResultSummary = {
     failedCount: 0,
     successCount: 0,
-    totalCount: results.length,
-    completedCount: results.length,
-    pendingCount: 0,
+    totalCount,
+    completedCount,
+    pendingCount: totalCount - completedCount,
   };
 
   return results.reduce(addResultToSummary, initialSummary);
 }
 
-export function createRunner(dependencies: RunnerDependencies): Runner {
-  const { testCaseExecutor } = dependencies;
-  const testCases: TestCase[] = [];
+function updateSuiteResult(suiteResult: SuiteResult, testResult: TestCaseResult, totalCount: number): SuiteResult {
+  const testCaseResults = [...suiteResult.testCaseResults, testResult];
 
-  function runTest(testCase: TestCase): TestCaseResult {
+  return {
+    progress: suiteResult.progress,
+    summary: calculateSummary(testCaseResults, totalCount),
+    testCaseResults,
+  };
+}
+
+export function createRunner(dependencies: RunnerDependencies): Runner {
+  const { testCaseExecutor, reporter } = dependencies;
+  const testCases: TestCase[] = [];
+  let currentSuiteResult: SuiteResult = {
+    progress: 'pending',
+    summary: calculateSummary([], 0),
+    testCaseResults: [],
+  };
+
+  async function runTest(testCase: TestCase): Promise<TestCaseResult> {
     const { testFn, ...testCaseDetails } = testCase;
     const result = testCaseExecutor.execute(testFn);
+    const testCaseResult = { testCaseDetails, result };
 
-    return {
-      testCaseDetails,
-      result,
-    };
+    currentSuiteResult = updateSuiteResult(currentSuiteResult, testCaseResult, testCases.length);
+    await reporter.update(currentSuiteResult);
+
+    return testCaseResult;
   }
 
   return {
-    addTestCase(testCase) {
+    addTestCase({ title, testFn }) {
+      const testCase = {
+        title,
+        index: testCases.length,
+        testFn,
+      };
+
       testCases.push(testCase);
     },
 
-    runAll() {
-      const testCaseResults = testCases.map(runTest);
+    async runAll() {
+      const testCaseResults = await Promise.all(testCases.map(runTest));
 
       return {
         progress: 'completed',
-        summary: calculateSummary(testCaseResults),
+        summary: calculateSummary(testCaseResults, testCases.length),
         testCaseResults,
       };
     },
