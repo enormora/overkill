@@ -13,14 +13,14 @@ interface Overrides {
 function runnerFactory(overrides: Overrides = {}) {
     const { execute = sinon.fake.returns({}), update = sinon.fake.resolves(undefined) } = overrides;
 
-    const fakeDependencies = ({
+    const fakeDependencies = {
         testCaseExecutor: {
             execute,
         },
         reporter: {
             update,
         },
-    } as unknown) as RunnerDependencies;
+    } as unknown as RunnerDependencies;
 
     return createRunner(fakeDependencies);
 }
