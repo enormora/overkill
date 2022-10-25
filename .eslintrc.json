@@ -1,46 +1,46 @@
 {
-  "parser": "@typescript-eslint/parser",
-  "parserOptions": {
-    "sourceType": "module",
-    "ecmaVersion": 2018,
-    "project": "./tsconfig.eslint.json"
-  },
-  "extends": [
-    "eslint:recommended",
-    "prettier",
-    "plugin:@typescript-eslint/eslint-recommended",
-    "plugin:@typescript-eslint/recommended",
-    "plugin:@typescript-eslint/recommended-requiring-type-checking",
-    "plugin:prettier/recommended"
-  ],
-  "plugins": ["@typescript-eslint", "functional"],
-  "env": {
-    "node": true
-  },
-  "rules": {
-    "require-atomic-updates": "off",
-    "@typescript-eslint/explicit-function-return-type": "off",
-    "@typescript-eslint/camelcase": "off",
-    "@typescript-eslint/no-implicit-any-catch": "error",
-    "@typescript-eslint/require-await": "off",
-    "functional/prefer-readonly-type": [
-      "error",
-      {
-        "allowLocalMutation": true,
-        "allowMutableReturnType": false,
-        "checkImplicit": false,
-        "ignoreClass": false,
-        "ignoreInterface": false,
-        "ignoreCollections": false
-      }
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+        "sourceType": "module",
+        "ecmaVersion": 2018,
+        "project": "./tsconfig.eslint.json"
+    },
+    "extends": [
+        "eslint:recommended",
+        "prettier",
+        "plugin:@typescript-eslint/eslint-recommended",
+        "plugin:@typescript-eslint/recommended",
+        "plugin:@typescript-eslint/recommended-requiring-type-checking",
+        "plugin:prettier/recommended"
+    ],
+    "plugins": ["@typescript-eslint", "functional"],
+    "env": {
+        "node": true
+    },
+    "rules": {
+        "require-atomic-updates": "off",
+        "@typescript-eslint/explicit-function-return-type": "off",
+        "@typescript-eslint/camelcase": "off",
+        "@typescript-eslint/no-implicit-any-catch": "error",
+        "@typescript-eslint/require-await": "off",
+        "functional/prefer-readonly-type": [
+            "error",
+            {
+                "allowLocalMutation": true,
+                "allowMutableReturnType": false,
+                "checkImplicit": false,
+                "ignoreClass": false,
+                "ignoreInterface": false,
+                "ignoreCollections": false
+            }
+        ]
+    },
+    "overrides": [
+        {
+            "files": ["test/**/*.test.ts"],
+            "rules": {
+                "@typescript-eslint/no-empty-function": "off"
+            }
+        }
     ]
-  },
-  "overrides": [
-    {
-      "files": ["test/**/*.test.ts"],
-      "rules": {
-        "@typescript-eslint/no-empty-function": "off"
-      }
-    }
-  ]
 }

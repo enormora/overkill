@@ -1,4 +1,4 @@
 {
-  "files": [],
-  "references": [{ "path": "./src" }, { "path": "./test/unit" }]
+    "files": [],
+    "references": [{ "path": "./src" }, { "path": "./test/unit" }]
 }
