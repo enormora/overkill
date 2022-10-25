@@ -2,8 +2,12 @@ export type TestFn = () => void;
 
 export interface TestCaseDetails {
   title: string;
+  index: number;
 }
 
-export interface TestCase extends TestCaseDetails {
+export interface TestCaseInput {
+  title: string;
   testFn: TestFn;
 }
+
+export type TestCase = TestCaseDetails & TestCaseInput;
