@@ -1,5 +1,5 @@
 ls:
-    src:
+    source:
         .dir: kebab-case
         .ts: kebab-case
     test:
