@@ -2,17 +2,17 @@ import { TestFn } from './testCase';
 export type TestResultStatus = 'failure' | 'success';
 
 interface BaseTestResult {
-  status: TestResultStatus;
-  duration: number;
+  readonly status: TestResultStatus;
+  readonly duration: number;
 }
 
 export interface FailureTestResult extends BaseTestResult {
-  status: 'failure';
-  reason: string;
+  readonly status: 'failure';
+  readonly reason: string;
 }
 
 export interface SuccessTestResult extends BaseTestResult {
-  status: 'success';
+  readonly status: 'success';
 }
 
 export type TestResult = FailureTestResult | SuccessTestResult;
@@ -26,7 +26,7 @@ function extractErrorMessage(error: unknown): string {
 }
 
 export interface TestCaseExecutorDependencies {
-  timingApi: Performance;
+  readonly timingApi: Performance;
 }
 
 export interface TestCaseExecutor {
