@@ -25,7 +25,7 @@
         "compile": "tsc --build",
         "eslint": "eslint src test --ext '.js,.ts'",
         "prettier": "prettier '**/*.(yml|json|yaml|md)'",
-        "lint": "npm run eslint && npm run prettier -- --check",
+        "lint": "npm run eslint && npm run prettier -- --check && ls-lint",
         "lint:fix": "npm run eslint -- --fix && npm run prettier -- --write",
         "test:unit": "TS_NODE_PROJECT=test/unit/tsconfig.json uvu -r ts-node/register 'test/unit' '.*\\.test\\.ts$'"
     },
