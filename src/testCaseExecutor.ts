@@ -2,63 +2,63 @@ import { TestFn } from './testCase';
 export type TestResultStatus = 'failure' | 'success';
 
 interface BaseTestResult {
-  readonly status: TestResultStatus;
-  readonly duration: number;
+    readonly status: TestResultStatus;
+    readonly duration: number;
 }
 
 export interface FailureTestResult extends BaseTestResult {
-  readonly status: 'failure';
-  readonly reason: string;
+    readonly status: 'failure';
+    readonly reason: string;
 }
 
 export interface SuccessTestResult extends BaseTestResult {
-  readonly status: 'success';
+    readonly status: 'success';
 }
 
 export type TestResult = FailureTestResult | SuccessTestResult;
 
 function extractErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
+    if (error instanceof Error) {
+        return error.message;
+    }
 
-  return 'Unknown error';
+    return 'Unknown error';
 }
 
 export interface TestCaseExecutorDependencies {
-  readonly timingApi: Performance;
+    readonly timingApi: Performance;
 }
 
 export interface TestCaseExecutor {
-  execute(testFn: TestFn): TestResult;
+    execute(testFn: TestFn): TestResult;
 }
 
 export function createTestCaseExecutor(dependencies: TestCaseExecutorDependencies): TestCaseExecutor {
-  const { timingApi } = dependencies;
+    const { timingApi } = dependencies;
 
-  function calculateDuration(startTime: number): number {
-    const endTime = timingApi.now();
-    return endTime - startTime;
-  }
+    function calculateDuration(startTime: number): number {
+        const endTime = timingApi.now();
+        return endTime - startTime;
+    }
 
-  return {
-    execute(testFn) {
-      const startTime = timingApi.now();
+    return {
+        execute(testFn) {
+            const startTime = timingApi.now();
 
-      try {
-        testFn();
+            try {
+                testFn();
 
-        return {
-          status: 'success',
-          duration: calculateDuration(startTime),
-        };
-      } catch (error: unknown) {
-        return {
-          status: 'failure',
-          duration: calculateDuration(startTime),
-          reason: extractErrorMessage(error),
-        };
-      }
-    },
-  };
+                return {
+                    status: 'success',
+                    duration: calculateDuration(startTime),
+                };
+            } catch (error: unknown) {
+                return {
+                    status: 'failure',
+                    duration: calculateDuration(startTime),
+                    reason: extractErrorMessage(error),
+                };
+            }
+        },
+    };
 }
