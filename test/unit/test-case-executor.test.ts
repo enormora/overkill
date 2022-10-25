@@ -20,11 +20,11 @@ interface Overrides {
 function executorFactory(overrides: Overrides = {}) {
     const { now = sinon.fake.returns(0) } = overrides;
 
-    const fakeDependencies = ({
+    const fakeDependencies = {
         timingApi: {
             now,
         },
-    } as unknown) as TestCaseExecutorDependencies;
+    } as unknown as TestCaseExecutorDependencies;
 
     return createTestCaseExecutor(fakeDependencies);
 }
