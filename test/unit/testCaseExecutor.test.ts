@@ -14,7 +14,7 @@ function nonErrorFailureTestFn() {
 }
 
 interface Overrides {
-  now?: SinonStub;
+  readonly now?: SinonStub;
 }
 
 function executorFactory(overrides: Overrides = {}) {

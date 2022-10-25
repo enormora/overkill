@@ -6,8 +6,8 @@ import { createRunner, RunnerDependencies } from '../../src/runner';
 function noop() {}
 
 interface Overrides {
-  execute?: SinonSpy;
-  update?: SinonSpy;
+  readonly execute?: SinonSpy;
+  readonly update?: SinonSpy;
 }
 
 function runnerFactory(overrides: Overrides = {}) {

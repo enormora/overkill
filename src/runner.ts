@@ -3,27 +3,27 @@ import { TestCase, TestCaseInput, TestCaseDetails } from './testCase';
 import { TestCaseExecutor, TestResult } from './testCaseExecutor';
 
 export interface TestCaseResult {
-  testCaseDetails: TestCaseDetails;
-  result: TestResult;
+  readonly testCaseDetails: TestCaseDetails;
+  readonly result: TestResult;
 }
 
 interface ResultSummary {
-  failedCount: number;
-  successCount: number;
-  totalCount: number;
-  completedCount: number;
-  pendingCount: number;
+  readonly failedCount: number;
+  readonly successCount: number;
+  readonly totalCount: number;
+  readonly completedCount: number;
+  readonly pendingCount: number;
 }
 
 export interface SuiteResult {
-  progress: 'pending' | 'completed';
-  summary: ResultSummary;
-  testCaseResults: readonly TestCaseResult[];
+  readonly progress: 'pending' | 'completed';
+  readonly summary: ResultSummary;
+  readonly testCaseResults: readonly TestCaseResult[];
 }
 
 export interface RunnerDependencies {
-  testCaseExecutor: TestCaseExecutor;
-  reporter: Reporter;
+  readonly testCaseExecutor: TestCaseExecutor;
+  readonly reporter: Reporter;
 }
 
 export interface Runner {
@@ -49,7 +49,7 @@ function addResultToSummary(summary: ResultSummary, testCaseResult: TestCaseResu
   };
 }
 
-function calculateSummary(results: TestCaseResult[], totalCount: number): ResultSummary {
+function calculateSummary(results: readonly TestCaseResult[], totalCount: number): ResultSummary {
   const completedCount = results.length;
   const initialSummary: ResultSummary = {
     failedCount: 0,
