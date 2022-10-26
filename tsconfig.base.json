@@ -16,6 +16,7 @@
         "esModuleInterop": true,
         "noUncheckedIndexedAccess": true,
         "exactOptionalPropertyTypes": true,
+        "useUnknownInCatchVariables": true,
         "outDir": "./target/build"
     }
 }
