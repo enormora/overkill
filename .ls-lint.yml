@@ -2,7 +2,4 @@ ls:
     source:
         .dir: kebab-case
         .ts: kebab-case
-    test:
-        .dir: kebab-case
-        .ts: kebab-case
         .test.ts: kebab-case

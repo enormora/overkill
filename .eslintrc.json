@@ -3,7 +3,7 @@
     "parserOptions": {
         "sourceType": "module",
         "ecmaVersion": 2018,
-        "project": "./tsconfig.eslint.json"
+        "project": "./tsconfig.all.json"
     },
     "extends": [
         "eslint:recommended",
@@ -37,7 +37,7 @@
     },
     "overrides": [
         {
-            "files": ["test/**/*.test.ts"],
+            "files": ["**/*.test.ts"],
             "rules": {
                 "@typescript-eslint/no-empty-function": "off"
             }

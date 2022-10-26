@@ -1,7 +1,4 @@
 {
-    "extends": "../tsconfig.base.json",
-    "compilerOptions": {
-        "outDir": "../target/source",
-        "rootDir": "."
-    }
+    "files": [],
+    "references": [{ "path": "tsconfig.sources.json" }, { "path": "tsconfig.unit-tests.json" }]
 }
