@@ -1,4 +1,4 @@
-import { TestFn } from './test-case';
+import type { TestFn } from './test-case';
 export type TestResultStatus = 'failure' | 'success';
 
 interface BaseTestResult {
