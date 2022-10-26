@@ -1,4 +1,4 @@
-import type { TestFn } from './test-case';
+import type { TestCaseDetails, TestFn } from './test-case';
 export type TestResultStatus = 'failure' | 'success';
 
 interface BaseTestResult {
@@ -13,9 +13,15 @@ export interface FailureTestResult extends BaseTestResult {
 
 export interface SuccessTestResult extends BaseTestResult {
     readonly status: 'success';
+    readonly reason?: undefined;
 }
 
 export type TestResult = FailureTestResult | SuccessTestResult;
+
+export interface TestCaseResult {
+    readonly testCaseDetails: TestCaseDetails;
+    readonly result: TestResult;
+}
 
 function extractErrorMessage(error: unknown): string {
     if (error instanceof Error) {
