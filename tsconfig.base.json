@@ -14,6 +14,7 @@
         "noFallthroughCasesInSwitch": true,
         "allowSyntheticDefaultImports": true,
         "esModuleInterop": true,
+        "noUncheckedIndexedAccess": true,
         "outDir": "./target/build"
     }
 }
