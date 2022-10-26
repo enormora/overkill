@@ -1,6 +1,6 @@
-import { Reporter } from './reporter/reporter';
-import { TestCase, TestCaseInput, TestCaseDetails } from './test-case';
-import { TestCaseExecutor, TestResult } from './test-case-executor';
+import type { Reporter } from './reporter/reporter';
+import type { TestCase, TestCaseInput, TestCaseDetails } from './test-case';
+import type { TestCaseExecutor, TestResult } from './test-case-executor';
 
 export interface TestCaseResult {
     readonly testCaseDetails: TestCaseDetails;

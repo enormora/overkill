@@ -1,4 +1,4 @@
-import { SuiteResult } from '../runner';
+import type { SuiteResult } from '../runner';
 
 export interface Reporter {
     update(currentResult: SuiteResult): Promise<void>;
