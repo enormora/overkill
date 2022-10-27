@@ -2,10 +2,14 @@
     "name": "overkill",
     "version": "0.0.1",
     "description": "Simple, easy and fast test framework",
-    "main": "target/source/index.js",
     "type": "module",
+    "exports": {
+        ".": {
+            "import": "./target/build/source/index.js"
+        }
+    },
     "bin": {
-        "overkill": "target/source/bin.js"
+        "overkill": "target/build/source/bin.js"
     },
     "repository": {
         "type": "git",
