@@ -11,11 +11,18 @@
         "plugin:@typescript-eslint/eslint-recommended",
         "plugin:@typescript-eslint/recommended",
         "plugin:@typescript-eslint/recommended-requiring-type-checking",
-        "plugin:prettier/recommended"
+        "plugin:prettier/recommended",
+        "plugin:import/typescript"
     ],
-    "plugins": ["@typescript-eslint", "functional"],
+    "plugins": ["@typescript-eslint", "functional", "import"],
     "env": {
         "node": true
+    },
+    "settings": {
+        "import/resolver": {
+            "typescript": true,
+            "node": true
+        }
     },
     "rules": {
         "require-atomic-updates": "off",
@@ -35,7 +42,8 @@
                 "ignoreInterface": false,
                 "ignoreCollections": false
             }
-        ]
+        ],
+        "import/no-default-export": "error"
     },
     "overrides": [
         {
