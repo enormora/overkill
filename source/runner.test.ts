@@ -1,7 +1,7 @@
 import { test } from 'uvu';
 import * as assert from 'uvu/assert';
 import sinon, { type SinonSpy } from 'sinon';
-import { createRunner, type RunnerDependencies } from './runner';
+import { createRunner, type RunnerDependencies } from './runner.js';
 
 function noop() {}
 
