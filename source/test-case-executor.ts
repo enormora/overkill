@@ -37,7 +37,7 @@ export interface TestCaseExecutorDependencies {
 }
 
 export interface TestCaseExecutor {
-    execute(testFn: TestFn): TestResult;
+    execute(testFn: TestFn): Promise<TestResult>;
 }
 
 export function createTestCaseExecutor(dependencies: TestCaseExecutorDependencies): TestCaseExecutor {
@@ -49,11 +49,15 @@ export function createTestCaseExecutor(dependencies: TestCaseExecutorDependencie
     }
 
     return {
-        execute(testFn) {
+        async execute(testFn) {
             const startTime = timingApi.now();
 
             try {
-                testFn();
+                const promise = testFn();
+
+                if (typeof promise !== 'undefined') {
+                    await promise;
+                }
 
                 return {
                     status: 'success',

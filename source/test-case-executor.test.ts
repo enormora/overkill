@@ -29,39 +29,55 @@ function executorFactory(overrides: Overrides = {}) {
     return createTestCaseExecutor(fakeDependencies);
 }
 
-test('returns "success" when the given test function doesn’t throw', () => {
+test('returns "success" when the given test function doesn’t throw', async () => {
     const executor = executorFactory();
-    const result = executor.execute(successTestFn);
+    const result = await executor.execute(successTestFn);
 
     assert.equal(result, { status: 'success', duration: 0 });
 });
 
-test('returns "failure" when the given test function throws an error', () => {
+test('returns "success" when the given async test function doesn’t reject', async () => {
     const executor = executorFactory();
-    const result = executor.execute(errorTestFn);
+    const result = await executor.execute(async () => {});
+
+    assert.equal(result, { status: 'success', duration: 0 });
+});
+
+test('returns "failure" when the given test function throws an error', async () => {
+    const executor = executorFactory();
+    const result = await executor.execute(errorTestFn);
 
     assert.equal(result, { status: 'failure', reason: 'failed with error', duration: 0 });
 });
 
-test('returns "failure" when the given test function throws a non error', () => {
+test('returns "failure" when the given test function throws a non error', async () => {
     const executor = executorFactory();
-    const result = executor.execute(nonErrorFailureTestFn);
+    const result = await executor.execute(nonErrorFailureTestFn);
 
     assert.equal(result, { status: 'failure', reason: 'Unknown error', duration: 0 });
 });
 
-test('returns the correct duration when a test was successful', () => {
+test('returns "failure" when the given async test function rejects an error', async () => {
+    const executor = executorFactory();
+    const result = await executor.execute(async () => {
+        throw new Error('async error');
+    });
+
+    assert.equal(result, { status: 'failure', reason: 'async error', duration: 0 });
+});
+
+test('returns the correct duration when a test was successful', async () => {
     const now = sinon.stub().onFirstCall().returns(10).onSecondCall().returns(30);
     const executor = executorFactory({ now });
-    const result = executor.execute(successTestFn);
+    const result = await executor.execute(successTestFn);
 
     assert.equal(result, { status: 'success', duration: 20 });
 });
 
-test('returns the correct duration when a test failed', () => {
+test('returns the correct duration when a test failed', async () => {
     const now = sinon.stub().onFirstCall().returns(10).onSecondCall().returns(30);
     const executor = executorFactory({ now });
-    const result = executor.execute(errorTestFn);
+    const result = await executor.execute(errorTestFn);
 
     assert.equal(result, { status: 'failure', reason: 'failed with error', duration: 20 });
 });
