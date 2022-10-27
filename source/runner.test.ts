@@ -5,151 +5,129 @@ import { createRunner, type RunnerDependencies } from './runner';
 
 function noop() {}
 
+interface FakeTestRunSessionOverrides {
+    readonly start?: SinonSpy;
+    readonly runSingleTestCase?: SinonSpy;
+    readonly done?: SinonSpy;
+}
+
+function createFakeTestRunSession(overrides: FakeTestRunSessionOverrides = {}): SinonSpy {
+    const {
+        start = sinon.fake.resolves(undefined),
+        runSingleTestCase = sinon.fake.resolves(undefined),
+        done = sinon.fake.resolves(undefined),
+    } = overrides;
+
+    return sinon.fake.returns({ start, runSingleTestCase, done });
+}
+
 interface Overrides {
-    readonly execute?: SinonSpy;
-    readonly update?: SinonSpy;
+    readonly createTestRunSession?: SinonSpy;
 }
 
 function runnerFactory(overrides: Overrides = {}) {
-    const { execute = sinon.fake.returns({}), update = sinon.fake.resolves(undefined) } = overrides;
+    const { createTestRunSession = createFakeTestRunSession() } = overrides;
 
     const fakeDependencies = {
-        testCaseExecutor: {
-            execute,
-        },
-        reporter: {
-            update,
+        testRunSessionProvider: {
+            createTestRunSession,
         },
     } as unknown as RunnerDependencies;
 
     return createRunner(fakeDependencies);
 }
 
-test('executes all tests that have been added so far', async () => {
-    const execute = sinon.fake.returns({});
-    const runner = runnerFactory({ execute });
+test('runs all tests that have been added so far', async () => {
+    const runSingleTestCase = sinon.fake.resolves(undefined);
+    const createTestRunSession = createFakeTestRunSession({ runSingleTestCase });
+    const runner = runnerFactory({ createTestRunSession });
 
     runner.addTestCase({ title: 'foo', testFn: noop });
     runner.addTestCase({ title: 'bar', testFn: noop });
     await runner.runAll();
 
-    assert.is(execute.callCount, 2);
-    assert.equal(execute.firstCall.args, [noop]);
-    assert.equal(execute.secondCall.args, [noop]);
+    assert.is(runSingleTestCase.callCount, 2);
+    assert.equal(runSingleTestCase.firstCall.firstArg, { title: 'foo', index: 0, testFn: noop });
+    assert.equal(runSingleTestCase.secondCall.firstArg, { title: 'bar', index: 1, testFn: noop });
 });
 
-test('when calling runAll() a second time it executes all tests that have been added before and after the first run', async () => {
-    const execute = sinon.fake.returns({});
-    const runner = runnerFactory({ execute });
+test('when calling runAll() a second time it runs all tests that have been added before and after the first run', async () => {
+    const runSingleTestCase = sinon.fake.resolves(undefined);
+    const createTestRunSession = createFakeTestRunSession({ runSingleTestCase });
+    const runner = runnerFactory({ createTestRunSession });
 
     runner.addTestCase({ title: 'foo', testFn: noop });
     await runner.runAll();
     runner.addTestCase({ title: 'bar', testFn: noop });
     await runner.runAll();
 
-    assert.is(execute.callCount, 3);
+    assert.is(runSingleTestCase.callCount, 3);
 });
 
-test('returns the aggregated result of all test cases', async () => {
-    const execute = sinon
+test('when calling runAll() it creates a new test-run session with a new id', async () => {
+    const runSingleTestCase = sinon.fake.resolves(undefined);
+    const createTestRunSession = createFakeTestRunSession({ runSingleTestCase });
+    const runner = runnerFactory({ createTestRunSession });
+
+    runner.addTestCase({ title: 'foo', testFn: noop });
+    await Promise.all([runner.runAll(), runner.runAll()]);
+
+    assert.is(createTestRunSession.callCount, 2);
+    assert.equal(createTestRunSession.firstCall.args, [0, 1]);
+    assert.equal(createTestRunSession.secondCall.args, [1, 1]);
+    assert.is(runSingleTestCase.callCount, 2);
+});
+
+test('when calling runAll() a new test-run session is created with the exact amount of registred test cases', async () => {
+    const createTestRunSession = createFakeTestRunSession();
+    const runner = runnerFactory({ createTestRunSession });
+
+    runner.addTestCase({ title: 'foo', testFn: noop });
+    runner.addTestCase({ title: 'bar', testFn: noop });
+    runner.addTestCase({ title: 'baz', testFn: noop });
+    await runner.runAll();
+
+    assert.is(createTestRunSession.callCount, 1);
+    assert.equal(createTestRunSession.firstCall.args, [0, 3]);
+});
+
+test('when calling runAll() the start method of the session is called', async () => {
+    const start = sinon.fake.resolves(undefined);
+    const createTestRunSession = createFakeTestRunSession({ start });
+    const runner = runnerFactory({ createTestRunSession });
+
+    await runner.runAll();
+
+    assert.is(start.callCount, 1);
+});
+
+test('when calling runAll() the done method of the session is called with all test-case results', async () => {
+    const runSingleTestCase = sinon
         .stub()
         .onFirstCall()
-        .returns({ status: 'success', duration: 21 })
+        .resolves('first-result')
         .onSecondCall()
-        .returns({ status: 'success', duration: 42 });
-    const runner = runnerFactory({ execute });
-
-    runner.addTestCase({ title: 'foo', testFn: noop });
-    runner.addTestCase({ title: 'bar', testFn: noop });
-    const result = await runner.runAll();
-
-    assert.equal(result, {
-        progress: 'completed',
-        summary: {
-            totalCount: 2,
-            failedCount: 0,
-            successCount: 2,
-            completedCount: 2,
-            pendingCount: 0,
-        },
-        testCaseResults: [
-            {
-                testCaseDetails: { title: 'foo', index: 0 },
-                result: { status: 'success', duration: 21 },
-            },
-            {
-                testCaseDetails: { title: 'bar', index: 1 },
-                result: { status: 'success', duration: 42 },
-            },
-        ],
-    });
-});
-
-test('calculates the correct amount of failed tests', async () => {
-    const execute = sinon
-        .stub()
-        .onFirstCall()
-        .returns({ status: 'success', duration: 21 })
-        .onSecondCall()
-        .returns({ status: 'failure', duration: 42 });
-    const runner = runnerFactory({ execute });
-
-    runner.addTestCase({ title: 'foo', testFn: noop });
-    runner.addTestCase({ title: 'bar', testFn: noop });
-    const result = await runner.runAll();
-
-    assert.equal(result.summary, {
-        totalCount: 2,
-        failedCount: 1,
-        successCount: 1,
-        completedCount: 2,
-        pendingCount: 0,
-    });
-});
-
-test('updates the given reporter with the current result', async () => {
-    const execute = sinon
-        .stub()
-        .onFirstCall()
-        .returns({ status: 'success', duration: 21 })
-        .onSecondCall()
-        .returns({ status: 'failure', duration: 42 });
-    const update = sinon.fake.resolves(undefined);
-    const runner = runnerFactory({ execute, update });
+        .resolves('second-result');
+    const done = sinon.fake.resolves(undefined);
+    const createTestRunSession = createFakeTestRunSession({ runSingleTestCase, done });
+    const runner = runnerFactory({ createTestRunSession });
 
     runner.addTestCase({ title: 'foo', testFn: noop });
     runner.addTestCase({ title: 'bar', testFn: noop });
     await runner.runAll();
 
-    assert.is(update.callCount, 2);
-    assert.equal(update.firstCall.args, [
-        {
-            progress: 'pending',
-            summary: { failedCount: 0, successCount: 1, totalCount: 2, completedCount: 1, pendingCount: 1 },
-            testCaseResults: [
-                {
-                    testCaseDetails: { title: 'foo', index: 0 },
-                    result: { status: 'success', duration: 21 },
-                },
-            ],
-        },
-    ]);
-    assert.equal(update.secondCall.args, [
-        {
-            progress: 'pending',
-            summary: { failedCount: 1, successCount: 1, totalCount: 2, completedCount: 2, pendingCount: 0 },
-            testCaseResults: [
-                {
-                    testCaseDetails: { title: 'foo', index: 0 },
-                    result: { status: 'success', duration: 21 },
-                },
-                {
-                    testCaseDetails: { title: 'bar', index: 1 },
-                    result: { status: 'failure', duration: 42 },
-                },
-            ],
-        },
-    ]);
+    assert.is(done.callCount, 1);
+    assert.equal(done.firstCall.args, [['first-result', 'second-result']]);
+});
+
+test('runAll() returns the final result calculated by done()', async () => {
+    const done = sinon.fake.resolves('the-final-result');
+    const createTestRunSession = createFakeTestRunSession({ done });
+    const runner = runnerFactory({ createTestRunSession });
+
+    const finalResult = await runner.runAll();
+
+    assert.equal(finalResult, 'the-final-result');
 });
 
 test.run();
