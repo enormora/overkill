@@ -3,6 +3,7 @@
     "version": "0.0.1",
     "description": "Simple, easy and fast test framework",
     "main": "target/source/index.js",
+    "type": "module",
     "bin": {
         "overkill": "target/source/bin.js"
     },
