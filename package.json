@@ -28,7 +28,7 @@
         "prettier": "prettier '**/*.(yml|json|yaml|md)'",
         "lint": "npm run eslint && npm run prettier -- --check && ls-lint",
         "lint:fix": "npm run eslint -- --fix && npm run prettier -- --write",
-        "test:unit": "TS_NODE_PROJECT=source/tsconfig.unit-tests.json uvu -r ts-node/register 'source' '.*\\.test\\.ts$'"
+        "test:unit": "NODE_OPTIONS='--loader ts-node/esm --no-warnings' TS_NODE_PROJECT=source/tsconfig.unit-tests.json uvu 'source' '.*\\.test\\.ts$'"
     },
     "dependencies": {
         "tslib": "2.4.0"
