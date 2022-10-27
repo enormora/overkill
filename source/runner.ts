@@ -1,6 +1,6 @@
-import type { SuiteResult } from './suite';
-import type { TestCase, TestCaseInput } from './test-case';
-import type { TestRunSessionProvider } from './test-run-session';
+import type { SuiteResult } from './suite.js';
+import type { TestCase, TestCaseInput } from './test-case.js';
+import type { TestRunSessionProvider } from './test-run-session.js';
 
 export interface RunnerDependencies {
     readonly testRunSessionProvider: TestRunSessionProvider;

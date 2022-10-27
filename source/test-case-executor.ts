@@ -1,4 +1,5 @@
-import type { TestCaseDetails, TestFn } from './test-case';
+import type { TestCaseDetails, TestFn } from './test-case.js';
+
 export type TestResultStatus = 'failure' | 'success';
 
 interface BaseTestResult {

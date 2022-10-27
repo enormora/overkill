@@ -1,5 +1,5 @@
-import type { SuiteResult } from '../suite';
-import type { TestCaseResult } from '../test-case-executor';
+import type { SuiteResult } from '../suite.js';
+import type { TestCaseResult } from '../test-case-executor.js';
 
 interface RealTimeReportingSession {
     start(currentSuiteResult: SuiteResult): Promise<void>;

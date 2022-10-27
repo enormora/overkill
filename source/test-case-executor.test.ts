@@ -1,7 +1,7 @@
 import { test } from 'uvu';
 import * as assert from 'uvu/assert';
 import sinon, { type SinonStub } from 'sinon';
-import { createTestCaseExecutor, type TestCaseExecutorDependencies } from './test-case-executor';
+import { createTestCaseExecutor, type TestCaseExecutorDependencies } from './test-case-executor.js';
 
 function successTestFn() {}
 
