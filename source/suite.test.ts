@@ -1,5 +1,5 @@
 import { test } from 'uvu';
-import { calculateSummary, updateSuiteResult } from './suite';
+import { calculateSummary, updateSuiteResult } from './suite.js';
 import * as assert from 'uvu/assert';
 
 test('calculateSummary() returns the correct result when there are no results', () => {

@@ -1,4 +1,4 @@
-import type { TestCaseResult } from './test-case-executor';
+import type { TestCaseResult } from './test-case-executor.js';
 
 interface ResultSummary {
     readonly failedCount: number;

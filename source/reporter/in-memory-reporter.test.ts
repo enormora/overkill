@@ -1,6 +1,6 @@
 import { test } from 'uvu';
 import * as assert from 'uvu/assert';
-import { createInMemoryRealTimeReporter, createInMemoryFinalResultReporter } from './in-memory-reporter';
+import { createInMemoryRealTimeReporter, createInMemoryFinalResultReporter } from './in-memory-reporter.js';
 
 const suiteResult = {
     progress: 'pending',

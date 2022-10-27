@@ -1,6 +1,6 @@
-import type { SuiteResult } from '../suite';
-import type { TestCaseResult } from '../test-case-executor';
-import type { RealTimeReporter, FinalResultReporter } from './reporter';
+import type { SuiteResult } from '../suite.js';
+import type { TestCaseResult } from '../test-case-executor.js';
+import type { RealTimeReporter, FinalResultReporter } from './reporter.js';
 
 interface RecordedReportEntry {
     readonly sessionId: number;

@@ -1,9 +1,9 @@
-import type { Reporter } from './reporter/reporter';
-import { isRealTimeReportingSession } from './reporter/reporter';
-import type { SuiteResult } from './suite';
-import { updateSuiteResult, calculateSummary } from './suite';
-import type { TestCase } from './test-case';
-import type { TestCaseExecutor, TestCaseResult } from './test-case-executor';
+import type { Reporter } from './reporter/reporter.js';
+import { isRealTimeReportingSession } from './reporter/reporter.js';
+import type { SuiteResult } from './suite.js';
+import { updateSuiteResult, calculateSummary } from './suite.js';
+import type { TestCase } from './test-case.js';
+import type { TestCaseExecutor, TestCaseResult } from './test-case-executor.js';
 
 export interface TestRunSessionProviderDependencies {
     readonly testCaseExecutor: TestCaseExecutor;
