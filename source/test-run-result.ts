@@ -1,6 +1,6 @@
 import type { TestCaseResult } from './test-case-executor.js';
 
-interface ResultSummary {
+interface TestRunResultSummary {
     readonly failedCount: number;
     readonly successCount: number;
     readonly totalCount: number;
@@ -8,13 +8,13 @@ interface ResultSummary {
     readonly pendingCount: number;
 }
 
-export interface SuiteResult {
+export interface TestRunResult {
     readonly progress: 'pending' | 'completed';
-    readonly summary: ResultSummary;
+    readonly summary: TestRunResultSummary;
     readonly testCaseResults: readonly TestCaseResult[];
 }
 
-function addResultToSummary(summary: ResultSummary, testCaseResult: TestCaseResult): ResultSummary {
+function addResultToSummary(summary: TestRunResultSummary, testCaseResult: TestCaseResult): TestRunResultSummary {
     let { failedCount, successCount } = summary;
 
     if (testCaseResult.result.status === 'failure') {
@@ -32,9 +32,9 @@ function addResultToSummary(summary: ResultSummary, testCaseResult: TestCaseResu
     };
 }
 
-export function calculateSummary(results: readonly TestCaseResult[], totalCount: number): ResultSummary {
+export function calculateSummary(results: readonly TestCaseResult[], totalCount: number): TestRunResultSummary {
     const completedCount = results.length;
-    const initialSummary: ResultSummary = {
+    const initialSummary: TestRunResultSummary = {
         failedCount: 0,
         successCount: 0,
         totalCount,
@@ -45,15 +45,15 @@ export function calculateSummary(results: readonly TestCaseResult[], totalCount:
     return results.reduce(addResultToSummary, initialSummary);
 }
 
-export function updateSuiteResult(
-    suiteResult: SuiteResult,
+export function updateTestRunResult(
+    testRunResult: TestRunResult,
     testResult: TestCaseResult,
     totalCount: number,
-): SuiteResult {
-    const testCaseResults = [...suiteResult.testCaseResults, testResult];
+): TestRunResult {
+    const testCaseResults = [...testRunResult.testCaseResults, testResult];
 
     return {
-        progress: suiteResult.progress,
+        progress: testRunResult.progress,
         summary: calculateSummary(testCaseResults, totalCount),
         testCaseResults,
     };

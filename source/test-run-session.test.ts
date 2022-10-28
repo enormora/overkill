@@ -50,7 +50,7 @@ test('runSingleTestCase() reports the progress to the current reporter when it i
         {
             sessionId: 42,
             type: 'progress',
-            suiteResult: {
+            testRunResult: {
                 progress: 'pending',
                 summary: {
                     failedCount: 0,
@@ -85,7 +85,7 @@ test('runSingleTestCase() doesn’t report the progress to the current reporter 
     assert.equal(reporter.getRecordedEntries(), []);
 });
 
-test('runSingleTestCase() updates the current suite result when multiple tests are executed and sends it to the reporter when it is a real-time reporter', async () => {
+test('runSingleTestCase() updates the current test-run result when multiple tests are executed and sends it to the reporter when it is a real-time reporter', async () => {
     const execute = sinon
         .stub()
         .onFirstCall()
@@ -103,7 +103,7 @@ test('runSingleTestCase() updates the current suite result when multiple tests a
         {
             sessionId: 42,
             type: 'progress',
-            suiteResult: {
+            testRunResult: {
                 progress: 'pending',
                 summary: { failedCount: 0, successCount: 1, totalCount: 2, completedCount: 1, pendingCount: 1 },
                 testCaseResults: [
@@ -121,7 +121,7 @@ test('runSingleTestCase() updates the current suite result when multiple tests a
         {
             sessionId: 42,
             type: 'progress',
-            suiteResult: {
+            testRunResult: {
                 progress: 'pending',
                 summary: { failedCount: 1, successCount: 1, totalCount: 2, completedCount: 2, pendingCount: 0 },
                 testCaseResults: [
@@ -143,7 +143,7 @@ test('runSingleTestCase() updates the current suite result when multiple tests a
     ]);
 });
 
-test('start() reports the initial suite result to the current reporter when it is a real-time reporter', async () => {
+test('start() reports the initial test-run result to the current reporter when it is a real-time reporter', async () => {
     const reporter = createInMemoryRealTimeReporter();
     const provider = testRunSessionProviderFactory({ reporter });
     const session = provider.createTestRunSession(42, 21);
@@ -154,7 +154,7 @@ test('start() reports the initial suite result to the current reporter when it i
         {
             sessionId: 42,
             type: 'start',
-            suiteResult: {
+            testRunResult: {
                 progress: 'pending',
                 summary: {
                     failedCount: 0,
@@ -230,7 +230,7 @@ test('done() reports the aggregated result the the current reporter when it is a
         {
             sessionId: 42,
             type: 'done',
-            suiteResult: {
+            testRunResult: {
                 progress: 'completed',
                 summary: {
                     totalCount: 2,
@@ -271,7 +271,7 @@ test('done() reports the aggregated result the the current reporter when it is N
         {
             sessionId: 42,
             type: 'done',
-            suiteResult: {
+            testRunResult: {
                 progress: 'completed',
                 summary: {
                     totalCount: 2,
@@ -308,7 +308,7 @@ test('multiple messages are sent to the real-time reporter', async () => {
         {
             sessionId: 42,
             type: 'start',
-            suiteResult: {
+            testRunResult: {
                 progress: 'pending',
                 summary: { failedCount: 0, successCount: 0, totalCount: 21, completedCount: 0, pendingCount: 21 },
                 testCaseResults: [],
@@ -317,7 +317,7 @@ test('multiple messages are sent to the real-time reporter', async () => {
         {
             sessionId: 42,
             type: 'progress',
-            suiteResult: {
+            testRunResult: {
                 progress: 'pending',
                 summary: { failedCount: 0, successCount: 1, totalCount: 21, completedCount: 1, pendingCount: 20 },
                 testCaseResults: [
@@ -347,7 +347,7 @@ test('multiple messages are sent to the reporter but separated by session when r
         {
             sessionId: 1,
             type: 'start',
-            suiteResult: {
+            testRunResult: {
                 progress: 'pending',
                 summary: { failedCount: 0, successCount: 0, totalCount: 21, completedCount: 0, pendingCount: 21 },
                 testCaseResults: [],
@@ -356,7 +356,7 @@ test('multiple messages are sent to the reporter but separated by session when r
         {
             sessionId: 2,
             type: 'start',
-            suiteResult: {
+            testRunResult: {
                 progress: 'pending',
                 summary: { failedCount: 0, successCount: 0, totalCount: 21, completedCount: 0, pendingCount: 21 },
                 testCaseResults: [],

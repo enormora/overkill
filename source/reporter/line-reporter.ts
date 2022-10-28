@@ -25,15 +25,15 @@ export function createLineReporter(dependencies: LineReporterDependencies): Real
     return {
         createSession() {
             return {
-                async start(currentSuiteResult) {
-                    const { summary } = currentSuiteResult;
+                async start(currentTestRunResult) {
+                    const { summary } = currentTestRunResult;
                     stdoutConsole.log(
                         infoSymbol,
                         `Test run started (${summary.completedCount} / ${summary.totalCount})`,
                     );
                 },
 
-                async progress(_currentSuiteResult, testCaseResult) {
+                async progress(_currentTestRunResult, testCaseResult) {
                     stdoutConsole.log(formatTestResult(testCaseResult));
                 },
 

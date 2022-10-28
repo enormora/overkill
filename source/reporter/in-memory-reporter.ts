@@ -1,11 +1,11 @@
-import type { SuiteResult } from '../suite.js';
+import type { TestRunResult } from '../test-run-result.js';
 import type { TestCaseResult } from '../test-case-executor.js';
 import type { RealTimeReporter, FinalResultReporter } from './reporter.js';
 
 interface RecordedReportEntry {
     readonly sessionId: number;
     readonly type: 'start' | 'progress' | 'done';
-    readonly suiteResult: SuiteResult;
+    readonly testRunResult: TestRunResult;
     readonly testCaseResult?: TestCaseResult;
 }
 
@@ -19,16 +19,16 @@ export function createInMemoryRealTimeReporter(): InMemoryRealTimeReporter {
     return {
         createSession(sessionId) {
             return {
-                async start(suiteResult) {
-                    recordedEntries.push({ sessionId, type: 'start', suiteResult });
+                async start(testRunResult) {
+                    recordedEntries.push({ sessionId, type: 'start', testRunResult });
                 },
 
-                async progress(suiteResult, testCaseResult) {
-                    recordedEntries.push({ sessionId, type: 'progress', suiteResult, testCaseResult });
+                async progress(testRunResult, testCaseResult) {
+                    recordedEntries.push({ sessionId, type: 'progress', testRunResult, testCaseResult });
                 },
 
-                async done(suiteResult) {
-                    recordedEntries.push({ sessionId, type: 'done', suiteResult });
+                async done(testRunResult) {
+                    recordedEntries.push({ sessionId, type: 'done', testRunResult });
                 },
             };
         },
@@ -49,8 +49,8 @@ export function createInMemoryFinalResultReporter(): InMemoryFinalResultReporter
     return {
         createSession(sessionId) {
             return {
-                async report(suiteResult) {
-                    recordedEntries.push({ sessionId, type: 'done', suiteResult });
+                async report(testRunResult) {
+                    recordedEntries.push({ sessionId, type: 'done', testRunResult });
                 },
             };
         },

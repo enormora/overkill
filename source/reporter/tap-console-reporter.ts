@@ -1,4 +1,4 @@
-import type { SuiteResult } from '../suite.js';
+import type { TestRunResult } from '../test-run-result.js';
 import type { TestCaseResult } from '../test-case-executor.js';
 import type { FinalResultReporter } from './reporter.js';
 
@@ -19,10 +19,10 @@ function formatTestCaseResultAsTapTestPoint(testCaseResult: TestCaseResult): str
     return `${status} ${index + 1} - ${title}${yamlDiagnostics}`;
 }
 
-function formatResultAsTap(suiteResult: SuiteResult): string {
+function formatResultAsTap(testRunResult: TestRunResult): string {
     const version = 'TAP version 14';
-    const plan = `1..${suiteResult.summary.totalCount}`;
-    const testPoints = suiteResult.testCaseResults.map(formatTestCaseResultAsTapTestPoint);
+    const plan = `1..${testRunResult.summary.totalCount}`;
+    const testPoints = testRunResult.testCaseResults.map(formatTestCaseResultAsTapTestPoint);
 
     return `${version}\n${plan}\n${testPoints.join('\n')}\n`;
 }
@@ -33,8 +33,8 @@ export function createTapConsoleReporter(dependencies: TapConsoleReporterDepende
     return {
         createSession() {
             return {
-                async report(currentSuiteResult) {
-                    stdoutConsole.log(formatResultAsTap(currentSuiteResult));
+                async report(currentTestRunResult) {
+                    stdoutConsole.log(formatResultAsTap(currentTestRunResult));
                 },
             };
         },

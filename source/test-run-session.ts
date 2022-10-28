@@ -1,7 +1,7 @@
 import type { Reporter } from './reporter/reporter.js';
 import { isRealTimeReportingSession } from './reporter/reporter.js';
-import type { SuiteResult } from './suite.js';
-import { updateSuiteResult, calculateSummary } from './suite.js';
+import type { TestRunResult } from './test-run-result.js';
+import { updateTestRunResult, calculateSummary } from './test-run-result.js';
 import type { TestCase } from './test-case.js';
 import type { TestCaseExecutor, TestCaseResult } from './test-case-executor.js';
 
@@ -13,7 +13,7 @@ export interface TestRunSessionProviderDependencies {
 interface TestRunSession {
     start(): Promise<void>;
     runSingleTestCase(testCase: TestCase): Promise<TestCaseResult>;
-    done(testCaseResults: readonly TestCaseResult[]): Promise<SuiteResult>;
+    done(testCaseResults: readonly TestCaseResult[]): Promise<TestRunResult>;
 }
 
 export interface TestRunSessionProvider {
@@ -25,7 +25,7 @@ export function createTestRunSessionProvider(dependencies: TestRunSessionProvide
 
     return {
         createTestRunSession(sessionId, totalCount) {
-            let currentSuiteResult: SuiteResult = {
+            let currentTestRunResult: TestRunResult = {
                 progress: 'pending',
                 summary: calculateSummary([], totalCount),
                 testCaseResults: [],
@@ -35,7 +35,7 @@ export function createTestRunSessionProvider(dependencies: TestRunSessionProvide
             return {
                 async start() {
                     if (isRealTimeReportingSession(reportingSession)) {
-                        await reportingSession.start(currentSuiteResult);
+                        await reportingSession.start(currentTestRunResult);
                     }
                 },
 
@@ -44,16 +44,16 @@ export function createTestRunSessionProvider(dependencies: TestRunSessionProvide
                     const result = await testCaseExecutor.execute(testFn);
                     const testCaseResult = { testCaseDetails, result };
 
-                    currentSuiteResult = updateSuiteResult(currentSuiteResult, testCaseResult, totalCount);
+                    currentTestRunResult = updateTestRunResult(currentTestRunResult, testCaseResult, totalCount);
                     if (isRealTimeReportingSession(reportingSession)) {
-                        await reportingSession.progress(currentSuiteResult, testCaseResult);
+                        await reportingSession.progress(currentTestRunResult, testCaseResult);
                     }
 
                     return testCaseResult;
                 },
 
                 async done(testCaseResults) {
-                    const finalResult: SuiteResult = {
+                    const finalResult: TestRunResult = {
                         progress: 'completed',
                         summary: calculateSummary(testCaseResults, totalCount),
                         testCaseResults,

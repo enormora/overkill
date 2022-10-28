@@ -1,10 +1,10 @@
-import type { SuiteResult } from '../suite.js';
+import type { TestRunResult } from '../test-run-result.js';
 import type { TestCaseResult } from '../test-case-executor.js';
 
 interface RealTimeReportingSession {
-    start(currentSuiteResult: SuiteResult): Promise<void>;
-    progress(currentSuiteResult: SuiteResult, testCaseResult: TestCaseResult): Promise<void>;
-    done(finalResult: SuiteResult): Promise<void>;
+    start(currentTestRunResult: TestRunResult): Promise<void>;
+    progress(currentTestRunResult: TestRunResult, testCaseResult: TestCaseResult): Promise<void>;
+    done(finalResult: TestRunResult): Promise<void>;
     readonly report?: undefined;
 }
 
@@ -12,7 +12,7 @@ interface FinalResultReportingSession {
     readonly start?: undefined;
     readonly progress?: undefined;
     readonly done?: undefined;
-    report(finalResult: SuiteResult): Promise<void>;
+    report(finalResult: TestRunResult): Promise<void>;
 }
 
 export type ReportingSession = RealTimeReportingSession | FinalResultReportingSession;
