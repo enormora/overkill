@@ -1,4 +1,4 @@
-import type { SuiteResult } from './suite.js';
+import type { TestRunResult } from './test-run-result.js';
 import type { TestCase, TestCaseInput } from './test-case.js';
 import type { TestRunSessionProvider } from './test-run-session.js';
 
@@ -8,7 +8,7 @@ export interface RunnerDependencies {
 
 export interface Runner {
     addTestCase(testCaseInput: TestCaseInput): void;
-    runAll(): Promise<SuiteResult>;
+    runAll(): Promise<TestRunResult>;
 }
 
 export function createRunner(dependencies: RunnerDependencies): Runner {

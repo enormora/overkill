@@ -1,5 +1,5 @@
 import { test } from 'uvu';
-import { calculateSummary, updateSuiteResult } from './suite.js';
+import { calculateSummary, updateTestRunResult } from './test-run-result.js';
 import * as assert from 'uvu/assert';
 
 test('calculateSummary() returns the correct result when there are no results', () => {
@@ -73,8 +73,8 @@ test('calculateSummary() returns the correct when there is one failed and one su
     });
 });
 
-test('updateSuiteResult() updates a given SuiteResult by adding the information of the given TestCaseResult', () => {
-    const currentSuiteResult = {
+test('updateTestRunResult() updates a given TestRunResult by adding the information of the given TestCaseResult', () => {
+    const currentTestRunResult = {
         progress: 'pending',
         summary: {
             failedCount: 0,
@@ -95,7 +95,7 @@ test('updateSuiteResult() updates a given SuiteResult by adding the information 
         result: { status: 'failure', reason: 'the-reason', duration: 50 },
     } as const;
 
-    const updatedResult = updateSuiteResult(currentSuiteResult, newTestCaseResult, 42);
+    const updatedResult = updateTestRunResult(currentTestRunResult, newTestCaseResult, 42);
 
     assert.equal(updatedResult, {
         progress: 'pending',

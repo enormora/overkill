@@ -2,7 +2,7 @@ import { test } from 'uvu';
 import * as assert from 'uvu/assert';
 import { createInMemoryRealTimeReporter, createInMemoryFinalResultReporter } from './in-memory-reporter.js';
 
-const suiteResult = {
+const testRunResult = {
     progress: 'pending',
     summary: { failedCount: 0, totalCount: 0, successCount: 0, completedCount: 0, pendingCount: 0 },
     testCaseResults: [],
@@ -12,9 +12,9 @@ test('in-memory real-time reporter reports a session start', async () => {
     const reporter = createInMemoryRealTimeReporter();
     const session = reporter.createSession(42);
 
-    await session.start(suiteResult);
+    await session.start(testRunResult);
 
-    assert.equal(reporter.getRecordedEntries(), [{ sessionId: 42, type: 'start', suiteResult }]);
+    assert.equal(reporter.getRecordedEntries(), [{ sessionId: 42, type: 'start', testRunResult }]);
 });
 
 test('in-memory real-time reporter reports progress', async () => {
@@ -25,18 +25,18 @@ test('in-memory real-time reporter reports progress', async () => {
         result: { status: 'success', duration: 100 },
     } as const;
 
-    await session.progress(suiteResult, testCaseResult);
+    await session.progress(testRunResult, testCaseResult);
 
-    assert.equal(reporter.getRecordedEntries(), [{ sessionId: 42, type: 'progress', suiteResult, testCaseResult }]);
+    assert.equal(reporter.getRecordedEntries(), [{ sessionId: 42, type: 'progress', testRunResult, testCaseResult }]);
 });
 
 test('in-memory real-time reporter reports when the session finished', async () => {
     const reporter = createInMemoryRealTimeReporter();
     const session = reporter.createSession(42);
 
-    await session.done(suiteResult);
+    await session.done(testRunResult);
 
-    assert.equal(reporter.getRecordedEntries(), [{ sessionId: 42, type: 'done', suiteResult }]);
+    assert.equal(reporter.getRecordedEntries(), [{ sessionId: 42, type: 'done', testRunResult }]);
 });
 
 test('in-memory real-time reporter collects reports from multiple sessions', async () => {
@@ -44,12 +44,12 @@ test('in-memory real-time reporter collects reports from multiple sessions', asy
     const firstSession = reporter.createSession(1);
     const secondSession = reporter.createSession(2);
 
-    await firstSession.start(suiteResult);
-    await secondSession.start(suiteResult);
+    await firstSession.start(testRunResult);
+    await secondSession.start(testRunResult);
 
     assert.equal(reporter.getRecordedEntries(), [
-        { sessionId: 1, type: 'start', suiteResult },
-        { sessionId: 2, type: 'start', suiteResult },
+        { sessionId: 1, type: 'start', testRunResult },
+        { sessionId: 2, type: 'start', testRunResult },
     ]);
 });
 
@@ -57,12 +57,12 @@ test('in-memory real-time reporter collects multiple reports for one session', a
     const reporter = createInMemoryRealTimeReporter();
     const session = reporter.createSession(42);
 
-    await session.start(suiteResult);
-    await session.done(suiteResult);
+    await session.start(testRunResult);
+    await session.done(testRunResult);
 
     assert.equal(reporter.getRecordedEntries(), [
-        { sessionId: 42, type: 'start', suiteResult },
-        { sessionId: 42, type: 'done', suiteResult },
+        { sessionId: 42, type: 'start', testRunResult },
+        { sessionId: 42, type: 'done', testRunResult },
     ]);
 });
 
@@ -70,9 +70,9 @@ test('in-memory final-result reporter reports when the session finished', async 
     const reporter = createInMemoryFinalResultReporter();
     const session = reporter.createSession(42);
 
-    await session.report(suiteResult);
+    await session.report(testRunResult);
 
-    assert.equal(reporter.getRecordedEntries(), [{ sessionId: 42, type: 'done', suiteResult }]);
+    assert.equal(reporter.getRecordedEntries(), [{ sessionId: 42, type: 'done', testRunResult }]);
 });
 
 test('in-memory final-result reporter collects reports from multiple sessions', async () => {
@@ -80,12 +80,12 @@ test('in-memory final-result reporter collects reports from multiple sessions', 
     const firstSession = reporter.createSession(1);
     const secondSession = reporter.createSession(2);
 
-    await firstSession.report(suiteResult);
-    await secondSession.report(suiteResult);
+    await firstSession.report(testRunResult);
+    await secondSession.report(testRunResult);
 
     assert.equal(reporter.getRecordedEntries(), [
-        { sessionId: 1, type: 'done', suiteResult },
-        { sessionId: 2, type: 'done', suiteResult },
+        { sessionId: 1, type: 'done', testRunResult },
+        { sessionId: 2, type: 'done', testRunResult },
     ]);
 });
 
