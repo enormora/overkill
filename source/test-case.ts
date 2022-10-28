@@ -1,4 +1,4 @@
-export type TestFn = () => void;
+export type TestFn = () => void | Promise<void>;
 
 export interface TestCaseDetails {
     readonly title: string;

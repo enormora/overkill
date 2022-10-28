@@ -41,7 +41,7 @@ export function createTestRunSessionProvider(dependencies: TestRunSessionProvide
 
                 async runSingleTestCase(testCase) {
                     const { testFn, ...testCaseDetails } = testCase;
-                    const result = testCaseExecutor.execute(testFn);
+                    const result = await testCaseExecutor.execute(testFn);
                     const testCaseResult = { testCaseDetails, result };
 
                     currentSuiteResult = updateSuiteResult(currentSuiteResult, testCaseResult, totalCount);
