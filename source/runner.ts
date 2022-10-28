@@ -17,11 +17,11 @@ export function createRunner(dependencies: RunnerDependencies): Runner {
     let runCount = -1;
 
     return {
-        addTestCase({ title, testFn }) {
+        addTestCase({ title, testFunction }) {
             const testCase = {
                 title,
                 index: testCases.length,
-                testFn,
+                testFunction,
             };
 
             testCases.push(testCase);

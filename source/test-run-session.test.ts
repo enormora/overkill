@@ -32,7 +32,7 @@ test('runSingleTestCase() executes the given test case', async () => {
     const provider = testRunSessionProviderFactory({ execute });
     const session = provider.createTestRunSession(42, 21);
 
-    await session.runSingleTestCase({ title: 'foo', testFn: noop, index: 0 });
+    await session.runSingleTestCase({ title: 'foo', testFunction: noop, index: 0 });
 
     assert.is(execute.callCount, 1);
     assert.equal(execute.firstCall.args, [noop]);
@@ -44,7 +44,7 @@ test('runSingleTestCase() reports the progress to the current reporter when it i
     const provider = testRunSessionProviderFactory({ execute, reporter });
     const session = provider.createTestRunSession(42, 21);
 
-    await session.runSingleTestCase({ title: 'foo', testFn: noop, index: 0 });
+    await session.runSingleTestCase({ title: 'foo', testFunction: noop, index: 0 });
 
     assert.equal(reporter.getRecordedEntries(), [
         {
@@ -80,7 +80,7 @@ test('runSingleTestCase() doesn’t report the progress to the current reporter 
     const provider = testRunSessionProviderFactory({ execute, reporter });
     const session = provider.createTestRunSession(42, 21);
 
-    await session.runSingleTestCase({ title: 'foo', testFn: noop, index: 0 });
+    await session.runSingleTestCase({ title: 'foo', testFunction: noop, index: 0 });
 
     assert.equal(reporter.getRecordedEntries(), []);
 });
@@ -96,8 +96,8 @@ test('runSingleTestCase() updates the current suite result when multiple tests a
     const provider = testRunSessionProviderFactory({ execute, reporter });
     const session = provider.createTestRunSession(42, 2);
 
-    await session.runSingleTestCase({ title: 'foo', testFn: noop, index: 0 });
-    await session.runSingleTestCase({ title: 'bar', testFn: noop, index: 1 });
+    await session.runSingleTestCase({ title: 'foo', testFunction: noop, index: 0 });
+    await session.runSingleTestCase({ title: 'bar', testFunction: noop, index: 1 });
 
     assert.equal(reporter.getRecordedEntries(), [
         {
@@ -302,7 +302,7 @@ test('multiple messages are sent to the real-time reporter', async () => {
     const session = provider.createTestRunSession(42, 21);
 
     await session.start();
-    await session.runSingleTestCase({ title: 'foo', testFn: noop, index: 0 });
+    await session.runSingleTestCase({ title: 'foo', testFunction: noop, index: 0 });
 
     assert.equal(reporter.getRecordedEntries(), [
         {

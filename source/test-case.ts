@@ -1,4 +1,4 @@
-export type TestFn = () => void | Promise<void>;
+export type TestFunction = () => void | Promise<void>;
 
 export interface TestCaseDetails {
     readonly title: string;
@@ -7,7 +7,7 @@ export interface TestCaseDetails {
 
 export interface TestCaseInput {
     readonly title: string;
-    readonly testFn: TestFn;
+    readonly testFunction: TestFunction;
 }
 
 export type TestCase = TestCaseDetails & TestCaseInput;
