@@ -1,4 +1,4 @@
-import type { TestCaseDetails, TestFn } from './test-case.js';
+import type { TestCaseDetails, TestFunction } from './test-case.js';
 
 export type TestResultStatus = 'failure' | 'success';
 
@@ -37,7 +37,7 @@ export interface TestCaseExecutorDependencies {
 }
 
 export interface TestCaseExecutor {
-    execute(testFn: TestFn): Promise<TestResult>;
+    execute(testFunction: TestFunction): Promise<TestResult>;
 }
 
 export function createTestCaseExecutor(dependencies: TestCaseExecutorDependencies): TestCaseExecutor {
@@ -49,11 +49,11 @@ export function createTestCaseExecutor(dependencies: TestCaseExecutorDependencie
     }
 
     return {
-        async execute(testFn) {
+        async execute(testFunction) {
             const startTime = timingApi.now();
 
             try {
-                const promise = testFn();
+                const promise = testFunction();
 
                 if (typeof promise !== 'undefined') {
                     await promise;
