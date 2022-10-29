@@ -54,9 +54,12 @@ test('reports the final result with succeeded and failed test cases formatted as
             pendingCount: 0,
         },
         testCaseResults: [
-            { testCaseDetails: { title: 'foo', index: 0 }, result: { status: 'success', duration: 10 } },
             {
-                testCaseDetails: { title: 'bar', index: 1 },
+                testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
+                result: { status: 'success', duration: 10 },
+            },
+            {
+                testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'the-suite' },
                 result: { status: 'failure', reason: 'the-reason', duration: 20 },
             },
         ],

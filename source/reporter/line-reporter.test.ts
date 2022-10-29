@@ -57,7 +57,7 @@ test('prints a line when the test run progresses with a failed test', async () =
             testCaseResults: [],
         },
         {
-            testCaseDetails: { title: 'foo', index: 0 },
+            testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'bar' },
             result: { status: 'failure', reason: 'the-reason', duration: 100 },
         },
     );
@@ -84,7 +84,7 @@ test('prints a line when the test run progresses with a succeeded test', async (
             testCaseResults: [],
         },
         {
-            testCaseDetails: { title: 'foo', index: 0 },
+            testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'bar' },
             result: { status: 'success', duration: 100 },
         },
     );

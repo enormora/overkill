@@ -12,7 +12,7 @@ export interface TestRunSessionProviderDependencies {
 
 interface TestRunSession {
     start(): Promise<void>;
-    runSingleTestCase(testCase: TestCase): Promise<TestCaseResult>;
+    runSingleTestCase(testCase: TestCase, index: number): Promise<TestCaseResult>;
     done(testCaseResults: readonly TestCaseResult[]): Promise<TestRunResult>;
 }
 
@@ -39,10 +39,10 @@ export function createTestRunSessionProvider(dependencies: TestRunSessionProvide
                     }
                 },
 
-                async runSingleTestCase(testCase) {
-                    const { testFunction, ...testCaseDetails } = testCase;
+                async runSingleTestCase(testCase, index) {
+                    const { testFunction, title, suiteTitle } = testCase;
                     const result = await testCaseExecutor.execute(testFunction);
-                    const testCaseResult = { testCaseDetails, result };
+                    const testCaseResult = { testCaseDetails: { title, suiteTitle, index }, result };
 
                     currentTestRunResult = updateTestRunResult(currentTestRunResult, testCaseResult, totalCount);
                     if (isRealTimeReportingSession(reportingSession)) {

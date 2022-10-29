@@ -21,7 +21,7 @@ test('in-memory real-time reporter reports progress', async () => {
     const reporter = createInMemoryRealTimeReporter();
     const session = reporter.createSession(42);
     const testCaseResult = {
-        testCaseDetails: { title: 'foo', index: 42 },
+        testCaseDetails: { title: 'foo', index: 42, suiteTitle: 'bar' },
         result: { status: 'success', duration: 100 },
     } as const;
 
