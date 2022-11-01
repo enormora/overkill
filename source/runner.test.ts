@@ -2,6 +2,7 @@ import { test } from 'uvu';
 import * as assert from 'uvu/assert';
 import sinon, { type SinonSpy } from 'sinon';
 import { createRunner, type RunnerDependencies } from './runner.js';
+import { createSuite } from './suite.js';
 
 function noop() {}
 
@@ -42,13 +43,25 @@ test('runs all tests that have been added so far', async () => {
     const createTestRunSession = createFakeTestRunSession({ runSingleTestCase });
     const runner = runnerFactory({ createTestRunSession });
 
-    runner.addTestCase({ title: 'foo', testFunction: noop });
-    runner.addTestCase({ title: 'bar', testFunction: noop });
+    runner.addSuite(
+        createSuite('the-suite', [
+            { title: 'foo', testFunction: noop },
+            { title: 'bar', testFunction: noop },
+        ]),
+    );
     await runner.runAll();
 
     assert.is(runSingleTestCase.callCount, 2);
-    assert.equal(runSingleTestCase.firstCall.firstArg, { title: 'foo', index: 0, testFunction: noop });
-    assert.equal(runSingleTestCase.secondCall.firstArg, { title: 'bar', index: 1, testFunction: noop });
+    assert.equal(runSingleTestCase.firstCall.firstArg, {
+        title: 'foo',
+        testFunction: noop,
+        suiteTitle: 'the-suite',
+    });
+    assert.equal(runSingleTestCase.secondCall.firstArg, {
+        title: 'bar',
+        testFunction: noop,
+        suiteTitle: 'the-suite',
+    });
 });
 
 test('when calling runAll() a second time it runs all tests that have been added before and after the first run', async () => {
@@ -56,9 +69,9 @@ test('when calling runAll() a second time it runs all tests that have been added
     const createTestRunSession = createFakeTestRunSession({ runSingleTestCase });
     const runner = runnerFactory({ createTestRunSession });
 
-    runner.addTestCase({ title: 'foo', testFunction: noop });
+    runner.addSuite(createSuite('suite-1', [{ title: 'foo', testFunction: noop }]));
     await runner.runAll();
-    runner.addTestCase({ title: 'bar', testFunction: noop });
+    runner.addSuite(createSuite('suite-2', [{ title: 'bar', testFunction: noop }]));
     await runner.runAll();
 
     assert.is(runSingleTestCase.callCount, 3);
@@ -69,7 +82,7 @@ test('when calling runAll() it creates a new test-run session with a new id', as
     const createTestRunSession = createFakeTestRunSession({ runSingleTestCase });
     const runner = runnerFactory({ createTestRunSession });
 
-    runner.addTestCase({ title: 'foo', testFunction: noop });
+    runner.addSuite(createSuite('the-suite', [{ title: 'foo', testFunction: noop }]));
     await Promise.all([runner.runAll(), runner.runAll()]);
 
     assert.is(createTestRunSession.callCount, 2);
@@ -82,9 +95,13 @@ test('when calling runAll() a new test-run session is created with the exact amo
     const createTestRunSession = createFakeTestRunSession();
     const runner = runnerFactory({ createTestRunSession });
 
-    runner.addTestCase({ title: 'foo', testFunction: noop });
-    runner.addTestCase({ title: 'bar', testFunction: noop });
-    runner.addTestCase({ title: 'baz', testFunction: noop });
+    runner.addSuite(
+        createSuite('the-suite', [
+            { title: 'foo', testFunction: noop },
+            { title: 'bar', testFunction: noop },
+            { title: 'baz', testFunction: noop },
+        ]),
+    );
     await runner.runAll();
 
     assert.is(createTestRunSession.callCount, 1);
@@ -112,8 +129,12 @@ test('when calling runAll() the done method of the session is called with all te
     const createTestRunSession = createFakeTestRunSession({ runSingleTestCase, done });
     const runner = runnerFactory({ createTestRunSession });
 
-    runner.addTestCase({ title: 'foo', testFunction: noop });
-    runner.addTestCase({ title: 'bar', testFunction: noop });
+    runner.addSuite(
+        createSuite('the-suite', [
+            { title: 'foo', testFunction: noop },
+            { title: 'bar', testFunction: noop },
+        ]),
+    );
     await runner.runAll();
 
     assert.is(done.callCount, 1);

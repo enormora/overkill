@@ -2,6 +2,7 @@ export type TestFunction = () => void | Promise<void>;
 
 export interface TestCaseDetails {
     readonly title: string;
+    readonly suiteTitle: string;
     readonly index: number;
 }
 
@@ -10,4 +11,4 @@ export interface TestCaseInput {
     readonly testFunction: TestFunction;
 }
 
-export type TestCase = TestCaseDetails & TestCaseInput;
+export type TestCase = TestCaseInput & Omit<TestCaseDetails, 'index'>;

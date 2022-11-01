@@ -16,7 +16,12 @@ test('calculateSummary() returns the correct result when there are no results', 
 
 test('calculateSummary() returns the correct when there is one success result', () => {
     const result = calculateSummary(
-        [{ testCaseDetails: { title: 'foo', index: 0 }, result: { status: 'success', duration: 100 } }],
+        [
+            {
+                testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
+                result: { status: 'success', duration: 100 },
+            },
+        ],
         42,
     );
 
@@ -33,7 +38,7 @@ test('calculateSummary() returns the correct when there is one failed result', (
     const result = calculateSummary(
         [
             {
-                testCaseDetails: { title: 'foo', index: 0 },
+                testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
                 result: { status: 'failure', reason: 'the-reason', duration: 100 },
             },
         ],
@@ -53,11 +58,11 @@ test('calculateSummary() returns the correct when there is one failed and one su
     const result = calculateSummary(
         [
             {
-                testCaseDetails: { title: 'foo', index: 0 },
+                testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
                 result: { status: 'failure', reason: 'the-reason', duration: 100 },
             },
             {
-                testCaseDetails: { title: 'bar', index: 1 },
+                testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'the-suite' },
                 result: { status: 'success', duration: 100 },
             },
         ],
@@ -85,13 +90,13 @@ test('updateTestRunResult() updates a given TestRunResult by adding the informat
         },
         testCaseResults: [
             {
-                testCaseDetails: { title: 'foo', index: 0 },
+                testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
                 result: { status: 'success', duration: 100 },
             },
         ],
     } as const;
     const newTestCaseResult = {
-        testCaseDetails: { title: 'bar', index: 1 },
+        testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'the-suite' },
         result: { status: 'failure', reason: 'the-reason', duration: 50 },
     } as const;
 
@@ -108,11 +113,11 @@ test('updateTestRunResult() updates a given TestRunResult by adding the informat
         },
         testCaseResults: [
             {
-                testCaseDetails: { title: 'foo', index: 0 },
+                testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
                 result: { status: 'success', duration: 100 },
             },
             {
-                testCaseDetails: { title: 'bar', index: 1 },
+                testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'the-suite' },
                 result: { status: 'failure', reason: 'the-reason', duration: 50 },
             },
         ],
