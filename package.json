@@ -37,7 +37,7 @@
     "dependencies": {
         "figures": "5.0.0",
         "kleur": "4.1.5",
-        "tslib": "2.5.0"
+        "tslib": "2.5.1"
     },
     "devDependencies": {
         "@ls-lint/ls-lint": "1.11.2",
