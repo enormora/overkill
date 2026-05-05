@@ -14,19 +14,19 @@ The existing codebase already points toward several important concepts:
 -   ESM-first package metadata
 -   small composable source modules
 
-Relevant files:
+Relevant files (repo-relative):
 
--   [package.json](/Users/mschreck/projects/overkill/package.json)
--   [source/runner.ts](/Users/mschreck/projects/overkill/source/runner.ts)
--   [source/test-run-session.ts](/Users/mschreck/projects/overkill/source/test-run-session.ts)
--   [source/reporter/reporter.ts](/Users/mschreck/projects/overkill/source/reporter/reporter.ts)
+-   [`package.json`](../../package.json)
+-   [`source/runner.ts`](../../source/runner.ts)
+-   [`source/test-run-session.ts`](../../source/test-run-session.ts)
+-   [`source/reporter/reporter.ts`](../../source/reporter/reporter.ts)
 
 ## Notable Inconsistencies In The Current State
 
 The repo also shows where the original effort stopped mid-feature:
 
 -   `package.json` exposes package and binary entrypoints that do not yet exist in `source/`
--   there is no `README.md` or concept documentation yet
+-   the project-root `README.md` is not yet written; the concept docs in this folder are the current product narrative
 -   the checked-in implementation is small and coherent, but not yet a complete product story
 -   some current tests depend on terminal color assumptions that do not hold in the present environment
 

@@ -1,31 +1,87 @@
 # Overkill Concept Docs
 
-This folder captures the product concept for `overkill` before runtime implementation resumes.
+This folder captures the product concept for `overkill` before runtime
+implementation resumes. The documents in `documentation/concept/` are the
+current product narrative; they will eventually be condensed into a
+project-level `README.md` and design RFCs.
 
-Recommended reading order:
+## Recommended Reading Order
 
-1. [Overview](./overview.md)
-2. [Principles](./principles.md)
-3. [Testing Models](./testing-models.md)
-4. [Package Architecture](./package-architecture.md)
-5. [Microtests And Capabilities](./microtests-and-capabilities.md)
-6. [Baselines And Snapshots](./baselines-and-snapshots.md)
-7. [Benchmarking](./benchmarking.md)
-8. [Research Landscape](./research-landscape.md)
-9. [Open Questions](./open-questions.md)
+For a first read, follow this path:
 
-Supporting docs:
+1. [Overview](./overview.md) — what Overkill is, who it's for, product shape
+2. [Principles](./principles.md) — the design rules that drive every
+   decision
+3. [Glossary](./glossary.md) — canonical definitions of microtest, macro,
+   profile, sink, baseline subtype, verdict, witness, etc.
+4. [Testing Models](./testing-models.md) — the test categories Overkill
+   recognises
+5. [Fast Feedback Loops](./fast-feedback-loops.md) — the engineering
+   commitments behind sub-second startup
+6. [Package Architecture](./package-architecture.md) — package families,
+   ownership boundaries, builder layer
+7. [Microtests And Capabilities](./microtests-and-capabilities.md) — the
+   capability-restricted default
+8. [Results, Not Exceptions](./results-not-exceptions.md) — assertions as
+   returned values
+9. [Tests As Values](./tests-as-values.md) — exporting suite trees instead
+   of side-effecting registration
+10. [Capability Handles](./capability-handles.md) — the alternative to
+    mocking
+11. [Runtime Behavior](./runtime-behavior.md) — console capture, exit
+    codes, signals, parallelism, sharding, monorepo, CI
+12. [Baselines And Snapshots](./baselines-and-snapshots.md)
+13. [Benchmarking](./benchmarking.md)
+14. [Research Landscape](./research-landscape.md)
+15. [Open Questions](./open-questions.md)
 
--   [Candidate Libraries](./candidate-libraries.md)
--   [Assertions And Results](./assertions-and-results.md)
+## Architecture And Cross-Cutting Concepts
+
+-   [Package Architecture](./package-architecture.md)
 -   [Artifact Identity](./artifact-identity.md)
+-   [Assertions And Results](./assertions-and-results.md)
+-   [Capability Handles](./capability-handles.md)
 -   [Doubles](./doubles.md)
+-   [Environments And Fixtures](./environments-and-fixtures.md)
 -   [Extensions And Plugins](./extensions-and-plugins.md)
 -   [Failure Artifacts](./failure-artifacts.md)
--   [Ideas And Future Directions](./ideas-and-future-directions.md)
+-   [Fast Feedback Loops](./fast-feedback-loops.md)
+-   [Glossary](./glossary.md)
 -   [Metadata And Selection](./metadata-and-selection.md)
--   [Platform-First Implementation Notes](./platform-first-implementation-notes.md)
 -   [Reproducibility](./reproducibility.md)
--   [Environments And Fixtures](./environments-and-fixtures.md)
+-   [Results, Not Exceptions](./results-not-exceptions.md)
+-   [Runtime Behavior](./runtime-behavior.md)
+-   [Tests As Values](./tests-as-values.md)
+
+## Distribution And Platform
+
 -   [Bundles And Distribution](./bundles-and-distribution.md)
+-   [Candidate Libraries](./candidate-libraries.md)
+-   [Platform-First Implementation Notes](./platform-first-implementation-notes.md)
+
+## Forward-Looking And Research
+
+-   [Deterministic Simulation](./deterministic-simulation.md)
+-   [Ideas And Future Directions](./ideas-and-future-directions.md)
+-   [Novel Techniques](./novel-techniques.md)
+-   [Research Landscape](./research-landscape.md)
+
+## Repo State
+
 -   [Current Repo Notes](./current-repo-notes.md)
+
+## How To Contribute To These Docs
+
+The docs aim to be:
+
+-   normative where decisions are settled (the recommended answers in
+    `open-questions.md` are the tracking source)
+-   speculative where decisions are not (clearly marked as future
+    directions, future package families, or open items)
+-   cross-linked rather than redundant (each concept has one canonical
+    home; other docs reference it)
+
+When adding a new concept, prefer extending an existing doc over
+introducing a new one unless the new concept is genuinely cross-cutting.
+The glossary is the right place for one-line definitions; deeper
+treatment lives in the relevant architectural doc.
