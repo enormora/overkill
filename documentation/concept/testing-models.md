@@ -1,0 +1,111 @@
+# Testing Models
+
+## Purpose
+
+Overkill should define test categories clearly enough that package boundaries and defaults make sense.
+
+## Microtests
+
+Microtests are:
+
+-   small in scope
+-   deterministic
+-   local in dependencies
+-   side-effect-restricted by default
+
+Typical use:
+
+-   pure logic
+-   parser behavior
+-   data transformation
+-   local state transitions
+
+Microtests should not casually depend on:
+
+-   filesystem I/O
+-   network I/O
+-   subprocesses
+-   worker orchestration
+-   mutable global environment
+
+## Integration Tests
+
+Integration tests verify that multiple components cooperate correctly. They may legitimately use:
+
+-   filesystem state
+-   HTTP or IPC
+-   generated fixtures
+-   snapshots or baselines
+-   external services started locally
+
+They need stronger environment and orchestration support than microtests.
+
+Integration-style runs may also legitimately use:
+
+-   retries
+-   richer failure artifacts
+-   quarantined or stability-marked tests
+
+Those should remain visible runner concepts rather than hidden defaults.
+
+## Browser and Workflow Tests
+
+These tests validate UI, CLI, or multi-step workflows. The central model is environment-driven execution, often with:
+
+-   matrixed environments
+-   screenshots or structural snapshots
+-   process or browser lifecycle
+-   richer diagnostics
+
+## Baseline-Driven Tests
+
+Some tests compare current output against checked-in baseline artifacts.
+
+Subtypes:
+
+-   serialized content snapshots
+-   accessibility or structural snapshots
+-   terminal rendering baselines
+-   screenshot baselines
+
+These are usually better suited to integration-oriented packages than to the microtest default.
+
+## Benchmarks
+
+Benchmarks model workflow performance under controlled workloads. Their output is not just pass/fail correctness but measured behavior relative to budgets, baselines, and policies.
+
+Benchmarks may measure:
+
+-   runtime
+-   throughput
+-   latency percentiles
+-   responsiveness
+-   domain-specific metrics captured during execution
+
+## Type Tests
+
+Type tests verify type-level behavior rather than runtime behavior.
+
+They are a real test family for a TypeScript-first ecosystem, but Overkill should support them through adapter or integration layers rather than implementing its own type-test engine.
+
+Typical concerns:
+
+-   inference behavior
+-   overload selection
+-   conditional and mapped type behavior
+-   public declaration ergonomics
+
+They should be able to participate in run planning, reporting, and selection even if the underlying checking engine is external.
+
+## Property-Based and Model-Based Tests
+
+These are future first-class directions rather than default microtest behavior. They fit Overkill’s philosophy because they are explicit and programmatic, but they require different primitives:
+
+-   generators
+-   shrinkers
+-   model state
+-   classification and coverage of generated cases
+
+## Why The Separation Matters
+
+Overkill should not pretend that one API shape is the perfect surface for all of these. The shared core should unify execution and reporting contracts; higher-level packages should specialize the authoring model and defaults.

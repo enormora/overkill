@@ -1,0 +1,222 @@
+# Package Architecture
+
+## Architectural Rule
+
+Fine-grained packages are the source of truth. Bundles may exist, but they should compose packages rather than replace the model.
+
+This is intentionally closer to the real modularity of Buster and the framework-builder ambition of Folio than to a single monolithic runner with private internals.
+
+## Core
+
+`@overkill/engine` should define the stable contracts for:
+
+-   test definitions
+-   execution plans
+-   execution requirements and scheduling constraints
+-   run sessions
+-   structured events
+-   structured results
+-   reporter adapters
+-   programmatic integrations
+
+It should not assume one assertion library, one snapshot format, or one benchmark model.
+
+## Default Test Authoring
+
+`@overkill/test` should be the default first-party DSL. It should favor:
+
+-   flat tests
+-   explicit grouping only where needed
+-   test macros and parameterized helpers
+-   typed context
+-   async support
+-   no hook-centric lifecycle model
+
+## Assertions
+
+`@overkill/assert` should be optional but deeply integrable. It is the likely place for:
+
+-   `plan()`-style guarantees
+-   assertion count tracking
+-   richer mismatch reporting
+-   serializer hooks for baseline systems
+
+## Doubles
+
+`@overkill/doubles` should be a separate first-party package rather than an assertion side feature.
+
+It should favor:
+
+-   one primary concept such as `testDouble()`
+-   explicit dependency injection rather than patching object methods or modules
+-   TypeScript-first function signatures
+-   call history and result inspection with strong direct instance introspection
+-   simple behavior configuration for common cases
+-   rule-based or answer-based behavior for advanced cases
+
+It should avoid:
+
+-   object or module replacement as the design center
+-   mandatory sandboxes or restore registries
+-   Sinon-style category sprawl where users must choose between multiple overlapping concepts
+
+The likely conceptual split is:
+
+-   `@overkill/doubles` owns programmable function doubles
+-   `@overkill/assert` owns assertions over recorded calls, results, and expectations
+
+This keeps the creation of doubles separate from how tests assert on them.
+
+## Environments
+
+`@overkill/resources` should own:
+
+-   typed context composition
+-   typed resource composition
+-   environment matrices
+-   explicit setup and teardown patterns
+-   execution-affecting requirements such as isolation, sharing, and lifecycle scope
+-   reusable environment factories
+
+`@overkill/resources` should be generic enough to serve multiple higher-level families:
+
+-   `@overkill/test` for ordinary test context
+-   `@overkill/bench` for temp dirs, registries, calibration resources, PTYs, and external processes
+-   future browser packages for browser servers, contexts, pages, and device matrices
+
+## Orchestration
+
+`@overkill/run` should own:
+
+-   file discovery
+-   filtering
+-   seed handling
+-   runner profiles
+-   update modes for baselines
+-   process-level orchestration
+-   worker-pool management
+-   resolution of execution strategy from package-provided constraints
+-   supervision policies for isolated workers or subprocesses
+-   selection and metadata-aware run planning
+-   watch-mode orchestration where explicit runner behavior is needed beyond raw Node `--watch`
+
+This is also the logical layer for choosing microtest vs integration vs benchmark profiles.
+
+Execution strategy should be modeled as resolved planning, not a fixed trait of one package. Different packages may influence:
+
+-   maximum concurrency
+-   preferred worker count
+-   process vs in-process execution
+-   file-level or case-level isolation
+-   environment sharing boundaries
+-   serialization requirements for measurement reliability
+
+Supervision and termination policy should also be execution-strategy-dependent:
+
+-   in-process runs may support leak diagnostics and cooperative timeouts
+-   supervised disposable microtest runs may support crash-only recovery
+-   isolated worker or subprocess runs may support hard termination by a supervisor
+
+The engine should not pretend that all timeout behavior is equally enforceable in every execution mode.
+
+## Reporters
+
+Reporter support should be modeled as a package family rather than one catch-all package.
+
+Examples:
+
+-   `@overkill/reporter-line`
+-   `@overkill/reporter-tap`
+-   `@overkill/reporter-json`
+-   `@overkill/reporter-html`
+-   benchmark- or browser-specific reporters as separate packages
+
+Multiple reporters should be attachable to one run.
+
+The core should expose the reporter contract; individual reporters should live in separate packages so projects can depend only on what they use.
+
+The reporter contract should preserve enough structured detail that different reporters can make different presentation choices for the same failure or error.
+
+The reporter contract should preserve two reporter lifecycles:
+
+-   real-time reporters that receive start, progress, and done events
+-   final-result reporters that only receive the finished result
+
+This split already exists in the current source tree and should remain part of the concept because it maps cleanly to terminal reporters versus artifact-producing reporters such as HTML reports.
+
+The orchestration layer should also understand reporter sinks. At the concept level it should be able to detect or mediate obvious conflicts such as multiple reporters trying to write competing human-facing output to stdout.
+
+## Baselines
+
+`@overkill/baselines` should define the common concepts for:
+
+-   locating baseline artifacts
+-   collecting current output
+-   comparing against stored expectations
+-   explicit update workflows
+-   stale artifact detection
+
+It should support subtype-specific adapters rather than forcing all baselines into plain string equality.
+
+## Metadata, Identity, And Extensions
+
+Cross-cutting concepts such as metadata, stable identity, and extension contracts should be shared across the package family rather than reinvented independently in each layer.
+
+This is especially important for:
+
+-   selection and filtering
+-   artifact naming
+-   stale-baseline detection
+-   reproducibility
+-   config-driven extensions such as reporters or baseline adapters
+
+## Planned Integrations
+
+Some integrations are not optional future ideas. They should shape the architecture from the start even if they are not engine features.
+
+The clearest current example is:
+
+-   type-test adapters or integrations rather than a built-in type-test engine
+-   a first-party Stryker integration
+-   an easy-to-enable coverage story based on explicit tooling rather than built-in default behavior
+-   watch-mode support that reuses Node's built-in behavior where possible
+-   easy third-party IDE or MCP integration through stable machine-readable APIs
+-   remote execution as an architectural consideration for future browser and integration-heavy workloads
+
+What this means conceptually:
+
+-   the engine should preserve stable identities, structured results, and machine-readable execution events
+-   orchestration should make focused test selection and reruns possible
+-   orchestration should make coverage enablement explicit rather than silently always-on
+-   the architecture should allow external type-checking engines to participate in selection and reporting
+-   Node's built-in watch behavior should be reused instead of reinvented by default
+-   machine-consumable APIs should be stable enough for editors, MCP servers, and remote workers
+-   the integration should live above the engine rather than turning mutation testing into a core runner concern
+
+## Benchmarking
+
+`@overkill/bench` should be a distinct package family. It likely needs its own subpackages for:
+
+-   workload definitions
+-   measurement engines
+-   policies and budgets
+-   calibration
+-   process and PTY execution
+-   benchmark reporters
+
+## Builder Layer
+
+Overkill should preserve an explicit builder-oriented layer for higher-level packages. This is where the Folio influence matters most: first-party and third-party packages should be able to assemble specialized test APIs from lower-level execution, environment, and reporting contracts rather than forking the whole runner.
+
+Conceptually this layer sits above `@overkill/engine` and below finished user-facing bundles or DSL packages.
+
+## Bundles
+
+Bundle examples that conceptually make sense:
+
+-   `@overkill/micro`: engine + test + assert + selected reporters + microtest profile helpers
+-   `@overkill/default`: engine + test + assert + resources + selected reporters + run + baselines
+-   `@overkill/integration`: default bundle plus integration-oriented baseline and process features
+-   `@overkill/all`: convenience meta-package for adoption or evaluation
+
+Bundles should never be the only documented entrypoint.
