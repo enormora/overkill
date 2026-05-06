@@ -233,13 +233,21 @@ worker (only available in supervised profiles).
 
 Defaults per profile:
 
-| Profile             | Soft timeout | Hard timeout                                                               |
-| ------------------- | ------------ | -------------------------------------------------------------------------- |
-| `microtest`         | 2 s          | not available (in-process; no hard recovery from CPU-bound hangs)          |
-| `microtest-supervised` | 2 s       | 10 s (subprocess kill; partial state is discarded)                         |
-| `integration-local` | 30 s         | 60 s (worker terminate)                                                    |
-| `benchmark`         | per-workload | 5 × workload budget, capped at 5 min (single-worker-serial)                |
-| `simulation`        | adapter-declared | adapter-declared                                                       |
+| Profile                | Soft timeout     | Hard timeout                                                                |
+| ---------------------- | ---------------- | --------------------------------------------------------------------------- |
+| `microtest`            | 0.5 s            | not available (in-process; no hard recovery from CPU-bound hangs)           |
+| `microtest-supervised` | 0.5 s            | 1 s (subprocess kill; partial state is discarded)                           |
+| `integration-local`    | 5 s              | 7 s (worker terminate)                                                      |
+| `benchmark`            | per-workload     | 1.5 × workload budget, capped at 60 s (single-worker-serial)                |
+| `simulation`           | adapter-declared | adapter-declared                                                            |
+
+Rationale for the tight numbers: tests should be categorised
+correctly. A microtest that needs more than 500 ms is misclassified;
+an integration-local test that needs more than 5 s is doing real
+network I/O it should not be doing. The hard timeouts on supervised
+profiles give just enough headroom (~30–40% of soft) for
+`AbortSignal`-aware cleanup to actually run before the watchdog kills
+the worker.
 
 Override surfaces:
 
