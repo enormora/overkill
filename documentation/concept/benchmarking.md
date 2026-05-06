@@ -34,67 +34,19 @@ It does **not** mean "any numeric scoring problem." For example:
 are outside the intended first-party benchmark scope unless they are clearly
 framed as performance/resource benchmarks.
 
-## Lessons From Real Project Benchmarks
+## Benchmark Design Consequences
 
-### `eslint-plugin-mocha`
+Practical benchmark suites show that many important benchmark needs are not
+"microbench library" problems at all.
 
-The local benchmark suite in `../eslint-plugin-mocha/benchmarks` is a useful
-real-world reminder that many practical benchmark needs are not "microbench
-library" problems at all.
-
-It currently benchmarks:
-
--   cold startup/import time of the plugin
--   memory growth during repeated fresh imports
--   real runtime of linting many files with the full recommended ruleset
--   checked-in budgets enforced with ordinary assertions
--   CPU-speed normalization through a simple local calibration factor
-
-This shows several concrete needs Overkill should support directly:
+The concept needs to support:
 
 -   **cold-start benchmarking** as a first-class shape, not only hot loops
 -   **memory budgets** alongside time budgets
--   **real workflow benchmarking** (`lintManyFilesWithAllRecommendedRules`)
-    rather than just function timing
+-   **real workflow benchmarking** rather than just function timing
 -   **checked-in budgets** that are reviewable and enforced in CI
 -   **machine normalization** as an explicit concept
 -   **fresh import / cold module state** helpers as part of the harness
-
-It also exposes the current gaps of an ad hoc benchmark helper:
-
--   only median is reported; percentile policy is missing
--   the CPU normalization model is project-local rather than a harness
-    primitive
--   startup and runtime benchmarks are manually shaped as ordinary tests
--   memory is sampled only as RSS deltas, with no richer diagnoser model
--   no benchmark-specific reporting or artifact output exists
-
-That is strong evidence for Overkill's existing direction: benchmark suites
-need a dedicated package family, not just "tests with a timer."
-
-### `packatory`
-
-The `../packtory/benchmarks` suite adds several very strong benchmark-design
-signals.
-
-It models:
-
--   checked-in `workloads.json` and `thresholds.json`
--   explicit workload sizes (`small`, `medium`, `large`)
--   benchmark-specific types for throughput and CLI responsiveness
--   a local normalization workload with a threshold multiplier
--   external-process and registry setup for realistic publishing workflows
--   PTY-based CLI responsiveness measurement
--   secondary metrics such as:
-    -   p99 frame gap
-    -   max frame gap
-    -   event-loop histogram p99
-    -   event-loop histogram max
-    -   sampled max event-loop block
--   retained sample counts from the underlying timing engine
-
-This is especially important because it shows a real project already wants:
-
 -   **named workload files**
 -   **checked-in threshold files**
 -   **benchmark-specific metric schemas**
@@ -102,9 +54,21 @@ This is especially important because it shows a real project already wants:
 -   **CLI responsiveness as a first-class benchmark kind**
 -   **secondary metrics that are not reducible to one median runtime**
 
+This also implies a few non-goals for an ad hoc benchmark helper:
+
+-   median-only reporting is not enough
+-   project-local normalization logic should become a harness concern
+-   startup and runtime benchmarks should not have to masquerade as ordinary
+    tests
+-   memory should not be limited to one simplistic RSS delta metric
+-   benchmark-specific reporting and artifact output should exist
+
+That is strong evidence for Overkill's direction: benchmark suites need a
+dedicated package family, not just "tests with a timer."
+
 It also confirms that Overkill should support:
 
--   benchmark registries / service handles as resources
+-   benchmark registries or service handles as resources
 -   PTY-aware process benchmarking
 -   explicit metric-specific policies
 -   normalization as a first-class harness concern

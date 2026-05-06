@@ -67,8 +67,8 @@ honesty and future traceability.
     -   benchmark jobs and diagnoser-style metric collection
 -   **hyperfine**
     -   external-process benchmarking as a primary workflow
--   **packtory and eslint-plugin-mocha local benchmark suites**
-    -   practical evidence that real projects need workload files, checked-in
+-   **real-world benchmark suites**
+    -   practical evidence that projects need workload files, checked-in
         thresholds, PTY-aware CLI benchmarks, and richer metrics than runtime
         alone
 

@@ -2,9 +2,8 @@
 
 ## Purpose
 
-This document captures the small set of first-party ergonomics mechanics that
-survived the repo scan across `packtory`, `misterspex-storefront`, `player`,
-and `pr-log`.
+This document captures the small set of first-party ergonomics mechanics
+that are justified by repeated testing pain rather than by novelty.
 
 The goal is not to make long tests fashionable. The goal is to remove the
 repeated choreography that makes ordinary tests longer than they need to be.
@@ -36,21 +35,21 @@ Users can still choose other parameter names locally.
 Ergonomics helpers should exist only when they remove choreography that
 repeats across many real tests.
 
-The repo scan strongly supports these areas:
+The strongest candidates are:
 
 -   dependency-injected test harnesses
 -   interaction transcripts
 -   generated-case macros
 -   small async-control helpers
 
-The scan does **not** justify a broad step/scenario DSL for ordinary
+This does **not** justify a broad step/scenario DSL for ordinary
 first-party tests.
 
 ## Harnesses
 
-The strongest repeated pattern across the repos is dependency-harness
-boilerplate: default doubles, sparse overrides, and a returned system under
-test plus assertion handles.
+The strongest repeated pattern is dependency-harness boilerplate: default
+doubles, sparse overrides, and a returned system under test plus assertion
+handles.
 
 Overkill should support a first-party `defineHarness(...)` concept.
 
@@ -65,7 +64,7 @@ const runnerHarness = defineHarness({
     return {
         subject: createCommandLineInterfaceRunner({
             configLoader: { load: parts.loadConfig },
-            packtory: { buildAndPublishAll: parts.buildAndPublishAll },
+            publisher: { buildAndPublishAll: parts.buildAndPublishAll },
             log: parts.log,
         }),
         ...parts,
@@ -87,7 +86,7 @@ test('passes dry-run by default', async (case) => {
 
 ### Why A Harness Mechanic Is Justified
 
-This exact pattern recurs across all four reference repos:
+This pattern is common enough to justify first-party support:
 
 -   default doubles
 -   sparse override support
@@ -192,8 +191,8 @@ The concept should be:
 
 ## Generated-Case Macros
 
-Overkill already prefers macros. The repo scan suggests one useful extension:
-macros that intentionally expand into multiple concrete test cases at once.
+Overkill already prefers macros. One useful extension is macros that expand
+into multiple concrete test cases at once.
 
 This is especially justified for:
 
@@ -222,13 +221,13 @@ That means:
 -   the first-party concept should care about stack quality, not only about
     case expansion
 
-The existing schema-validation helpers in the reference repos validate this
-need strongly.
+This matters especially for schema, parser, and law-style generated cases,
+where failures must still point back to the meaningful authored callsite.
 
 ## Async-Control Helpers
 
-The repo scan does not justify a huge concurrency toolkit. It does justify a
-small set of queue-control helpers.
+This does not justify a huge concurrency toolkit. It does justify a small
+set of queue-control helpers.
 
 Recommended helpers:
 
@@ -269,7 +268,7 @@ This helper should stay narrowly scoped and clearly documented as advanced.
 
 ## What Overkill Should Not Add Here
 
-The repo scan does **not** justify:
+Overkill should **not** add:
 
 -   a large first-party step/scenario DSL
 -   a broad fake-time abstraction that assumes production-side clock handles
@@ -289,4 +288,4 @@ The current concept should preserve room for:
 -   `flushAsync()` / `microtasks()` / `immediate()`
 -   `inFlight(...)`
 
-These are the ergonomics helpers that survived the broader repo scan.
+These are the ergonomics helpers that belong in the first-party concept.

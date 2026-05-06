@@ -28,7 +28,7 @@ That means it should be able to model:
 -   runtime matrices
 -   execution requirements that affect scheduling or isolation
 
-The higher-layer reference projects show the concrete shapes this must cover:
+The concrete shapes this must cover include:
 
 -   deterministic local services that yield a base URL and scenario metadata
 -   temporary registries or other external-process fixtures
@@ -74,7 +74,7 @@ The concept should support running one test suite against multiple runtimes:
 
 This belongs in first-party runtime packages, not in the core execution contract.
 
-The reference projects make the dimensions concrete:
+Typical dimensions include:
 
 -   browser name
 -   resolution
@@ -98,8 +98,7 @@ Those requirements should flow into orchestration, where they are resolved toget
 
 ## Higher-Layer Takeaway
 
-The higher test layers in the reference projects reinforce a simple design
-rule:
+The higher test layers reinforce a simple design rule:
 
 -   microtests want cheap, local case context
 -   integration and browser tests want typed runtime factories with owned

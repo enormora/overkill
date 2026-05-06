@@ -150,8 +150,7 @@ states and failures. They also improve artifact identity and replay:
 Deterministic simulation should not be limited to in-process fake clocks or
 mocked modules.
 
-The `misterspex-storefront` deterministic server is a good example of a more
-realistic pattern:
+A more realistic pattern is:
 
 -   spawn a local deterministic server
 -   point the app at it by swapping the base URL

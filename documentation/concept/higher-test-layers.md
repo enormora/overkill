@@ -2,28 +2,18 @@
 
 ## Purpose
 
-This document records what the non-unit layers in the reference projects
-actually need, so Overkill can support those workflows deliberately instead
-of accidentally inheriting unit-test assumptions.
+This document defines what higher test layers need, so Overkill can support
+those workflows deliberately instead of accidentally inheriting microtest
+assumptions.
 
-The four projects are useful because they span different higher-level shapes:
+The relevant families are:
 
--   `packtory`
-    -   local-service integration tests
-    -   property tests
-    -   workflow and publish benchmarks
--   `misterspex-storefront`
-    -   deterministic-server-backed app integration
-    -   browser behavior tests
-    -   accessibility checks
-    -   visual regression
--   `player`
-    -   Playwright-driven browser integration
-    -   event-collector verification through real browser requests
-    -   visual regression
--   `pr-log`
-    -   effectively no distinct higher layer, which is useful as a control
-        case
+-   integration tests against local services
+-   browser behavior tests
+-   accessibility and compliance checks
+-   visual regression
+-   workflow and publish benchmarks
+-   property-based tests
 
 ## Main Patterns
 
@@ -33,17 +23,13 @@ The most repeated higher-layer pattern is not another assertion style. It is
 an owned runtime or fixture wrapper that controls setup, teardown, and the
 API exposed to the test.
 
-Representative examples:
+Typical examples:
 
--   `misterspex-storefront`
-    -   `withServer(...)` starts a deterministic app server, yields a base
-        URL, and always stops it
--   `packtory`
-    -   `checkWithRegistry(...)` starts a temporary Verdaccio instance,
-        yields auth and URL details, and cleans up storage afterwards
--   `player`
-    -   Playwright fixtures create a page-object layer and validate the
-        session after the test
+-   start a deterministic app server, yield a base URL, and always stop it
+-   start a temporary registry, yield auth and URL details, and clean up
+    storage afterwards
+-   create a browser page-object layer and validate the session after the
+    test
 
 What Overkill should support:
 
@@ -61,9 +47,9 @@ local services with deterministic behavior.
 
 Examples:
 
--   deterministic app server scenarios in `misterspex-storefront`
--   temporary local registry in `packtory`
--   browser test servers in `player`
+-   deterministic app server scenarios
+-   temporary local registries
+-   browser test servers
 
 What matters is not only “server lifecycle”. It is:
 
@@ -82,11 +68,9 @@ a transport-level interaction log.
 
 Examples:
 
--   `player` captures real browser requests and interprets them as event
-    collector payload transcripts
--   `misterspex-storefront` browser fixtures attach accessibility-scan JSON
-    artifacts
--   integration tests assert status codes, response bodies, and emitted
+-   browser requests interpreted as domain-event transcripts
+-   accessibility-scan JSON attached by a browser fixture
+-   integration tests asserting status codes, response bodies, and emitted
     payload sequences
 
 This means Overkill should think in terms of **interaction transcripts** more
@@ -101,12 +85,9 @@ The primitive should stay generic, with adapters layered on top.
 
 ### Page Objects And Domain Handles
 
-The browser-heavy projects do not expose raw Playwright `page` as the main
-test API. They wrap it in higher-level objects:
-
--   `player` has `playerPage`
--   `misterspex-storefront` has many page objects such as `homepage`,
-    `productDetailPage`, `basket`, and `loginPage`
+Browser-heavy tests often do not expose a raw page handle as the main test
+API. They wrap it in higher-level objects such as page objects or domain
+handles.
 
 The repeated lesson is:
 
@@ -157,9 +138,8 @@ This reinforces the earlier runtime-identity decision:
 
 ### Property Tests As A Distinct Higher Layer
 
-`packtory` uses `fast-check` heavily. Those tests are neither plain
-microtests nor integration tests. They are a separate authoring family with
-different needs:
+Property-based tests are neither plain microtests nor integration tests.
+They are a separate authoring family with different needs:
 
 -   seed control
 -   shrinking
@@ -237,7 +217,7 @@ without resorting to hidden global interception.
 
 ### 5. Browser-Specific Support Should Stay Adapter-Driven
 
-The browser-heavy repos show that page objects, screenshots, and request
+Browser-heavy workflows show that page objects, screenshots, and request
 transcripts are important, but they do not justify pushing browser semantics
 into the engine.
 
@@ -252,8 +232,8 @@ The right split is:
 
 ### 6. Visual Regression Is A Baseline Family, Not A Special Runner
 
-Both `misterspex-storefront` and `player` validate checked-in screenshots
-across runtime variants.
+Visual-regression suites often validate checked-in screenshots across runtime
+variants.
 
 This reinforces:
 
@@ -264,8 +244,7 @@ This reinforces:
 
 ### 7. Accessibility And Compliance Checks Are Good Plugin Shapes
 
-The `misterspex-storefront` browser-behavior layer and the `player`
-Playwright setup both show cross-cutting compliance validation:
+Browser behavior suites often need cross-cutting compliance validation:
 
 -   accessibility analysis
 -   post-test session validation
@@ -289,8 +268,7 @@ These are strong examples of extension points that should be:
 
 ## Practical Synthesis
 
-The reference projects suggest that Overkill becomes more useful for higher
-layers when it provides:
+Overkill becomes more useful for higher layers when it provides:
 
 -   typed resource/runtime factories
 -   deterministic service scenarios

@@ -109,9 +109,8 @@ Sinon has useful power, but its surface teaches too many overlapping nouns and t
 
 For Overkill, that is the wrong shape. The package should expose one main concept and a few composable rule helpers.
 
-The repo scan across `packtory`, `misterspex-storefront`, `player`, and
-`pr-log` reinforces this. Most real-world Sinon usage in those codebases is
-already concentrated in a narrow subset:
+Most real-world Sinon usage that matters here is already concentrated in a
+narrow subset:
 
 -   `fake()`
 -   `stub()`

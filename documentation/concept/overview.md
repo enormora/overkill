@@ -72,9 +72,9 @@ Likely future families:
 -   property-based testing
 -   remote execution and distributed orchestration helpers
 
-The reference projects reinforce that browser and visual testing should be
-adapter-driven on top of the shared runtime, baseline, and artifact model
-rather than growing special engine semantics.
+Browser and visual testing should stay adapter-driven on top of the shared
+runtime, baseline, and artifact model rather than growing special engine
+semantics.
 
 ## Testing Modes
 

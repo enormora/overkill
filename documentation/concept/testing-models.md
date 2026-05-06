@@ -40,8 +40,8 @@ Integration tests verify that multiple components cooperate correctly. They may 
 
 They need stronger environment and orchestration support than microtests.
 
-In the reference projects, the most repeated integration pattern is an owned
-fixture or runtime wrapper such as:
+The most repeated integration pattern is an owned fixture or runtime wrapper
+such as:
 
 -   start a deterministic app server, yield a base URL, then stop it
 -   start a temporary registry, yield auth details, then clean up storage
@@ -68,7 +68,7 @@ These tests validate UI, CLI, or multi-step workflows. The central model is envi
 -   process or browser lifecycle
 -   richer diagnostics
 
-The reference projects add a few concrete browser-layer needs:
+Concrete browser-layer needs include:
 
 -   page objects as the main test-facing handles
 -   transport-level request and event transcripts
@@ -127,9 +127,8 @@ These are future first-class directions rather than default microtest behavior. 
 -   model state
 -   classification and coverage of generated cases
 
-The reference projects confirm that property tests should be treated as a
-real higher-layer family, not just a microtest variant with a helper
-library. They need:
+Property tests should be treated as a real higher-layer family, not just a
+microtest variant with a helper library. They need:
 
 -   seeds
 -   shrinking

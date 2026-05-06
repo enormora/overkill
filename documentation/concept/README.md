@@ -29,13 +29,12 @@ For a first read, follow this path:
 10. [Tests As Values](./tests-as-values.md) — first-class value-oriented
     authoring mode with direct-file execution
 11. [Test Ergonomics](./test-ergonomics.md) — the small set of
-    first-party DX helpers that survived the repo scan
+    first-party DX helpers worth keeping
 12. [Configuration](./configuration.md) — low-surface config philosophy
 13. [Capability Handles](./capability-handles.md) — the alternative to
     mocking
-14. [Higher Test Layers](./higher-test-layers.md) — what the reference
-    integration, browser, visual, and property-test layers imply for
-    Overkill
+14. [Higher Test Layers](./higher-test-layers.md) — what integration,
+    browser, visual, and property-test layers imply for Overkill
 15. [Runtime Behavior](./runtime-behavior.md) — console capture, exit
     codes, signals, parallelism, sharding, monorepo, CI
 16. [Baselines And Snapshots](./baselines-and-snapshots.md)

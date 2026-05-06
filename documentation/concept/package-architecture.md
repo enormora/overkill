@@ -109,8 +109,7 @@ Related first-party ergonomics above the doubles layer may include:
 -   `@overkill/bench` for temp dirs, registries, calibration resources, PTYs, and external processes
 -   future browser packages for browser servers, contexts, pages, and device matrices
 
-The reference projects suggest that this package family is the main place for
-supporting:
+This package family is the main place for supporting:
 
 -   deterministic local service fixtures
 -   temporary registries and external-process harnesses
