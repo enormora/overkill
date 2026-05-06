@@ -266,8 +266,12 @@ Soft-timeout mechanics:
 -   a test body that does not respect the signal continues running
     until the hard timeout fires (when available) or the worker is
     abandoned at run completion
--   a test that completes after the soft timeout is recorded as a
-    `runner-error` with subtype `soft-timeout`
+-   a test that exceeds the soft deadline is a **test failure**, not a
+    runner error: the outcome is `fail` with a synthetic `FailedCheck`
+    summarising `"exceeded soft timeout <deadline>"`. CI gates
+    uniformly on test failures (exit code 1). The runner is never the
+    culprit for a slow test — using a slow endpoint or doing extensive
+    I/O in a profile that should not is a test-author error.
 
 Hard-timeout mechanics:
 
