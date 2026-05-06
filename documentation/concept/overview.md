@@ -19,7 +19,7 @@ Most TypeScript test runners optimize for convenience by adding hidden behavior:
 
 -   module interception and mocking shortcuts
 -   global APIs
--   implicit environment setup
+-   implicit runtime setup
 -   process models that are fixed too early
 -   snapshot and reporter behavior that is hard to reason about
 
@@ -47,7 +47,7 @@ Core package families:
 -   `@overkill/test`: default first-party authoring layer built on top of the engine
 -   `@overkill/assert`: first-party assertion protocol and helpers, primarily consumed through injected `assert` / `require` in `@overkill/test`
 -   `@overkill/doubles`: explicit, function-first test doubles centered on a single `testDouble()` concept
--   `@overkill/resources`: typed environments, resource composition, and execution requirements
+-   `@overkill/resources`: typed runtimes, resource composition, and execution requirements
 -   higher-layer runtime patterns for deterministic services, browser page
     objects, explicit attachments, and runtime scenarios
 -   small advanced ergonomics in `@overkill/test`, such as harnesses,
@@ -111,7 +111,7 @@ Its assertion model should be explicit:
 
 ### Integration-Style Tests
 
-Integration-style tests are allowed to use richer environments, I/O, snapshots, and external processes. They need stronger orchestration, more expressive fixtures, and often more than one reporter.
+Integration-style tests are allowed to use richer runtimes, I/O, snapshots, and external processes. They need stronger orchestration, more expressive fixtures, and often more than one reporter.
 
 In practice, the main first-party support here should be:
 
@@ -124,7 +124,7 @@ They may also justify controlled retries, quarantine markers, and richer failure
 
 ### Benchmarks
 
-Benchmarks are not “tests with a timer.” They model workloads, fixtures, setup, controlled environments, additional metrics, and checked-in budgets. They deserve their own package family.
+Benchmarks are not “tests with a timer.” They model workloads, fixtures, setup, controlled runtimes, additional metrics, and checked-in budgets. They deserve their own package family.
 
 ### Type Tests
 
@@ -144,7 +144,7 @@ Execution strategy should not be hard-coded by any one package. Different layers
 -   `@overkill/resources` may introduce resource-sharing or isolation requirements
 -   `@overkill/doubles` should remain cheap enough for in-process microtests and should not force isolation by itself
 -   `@overkill/bench` may want strict single-worker execution for measurement stability
--   future browser or integration packages may prefer worker pools, file-level isolation, or one-process-per-environment strategies
+-   future browser or integration packages may prefer worker pools, file-level isolation, or one-process-per-runtime strategies
 
 The concept should therefore treat execution strategy as a negotiated run plan built from package-provided requirements and constraints, with orchestration resolving the final plan.
 
@@ -214,7 +214,7 @@ That includes:
 
 -   tags and traits for selection
 -   stable test and case identities
--   environment and workload identities
+-   runtime and workload identities
 -   artifact identities derived from those parts
 
 These concepts connect selection, reproducibility, reporting, baselines, and benchmark policies.
@@ -253,7 +253,7 @@ The concept currently assumes:
 
 Overkill takes ideas from many systems without copying their whole world:
 
--   Playwright fixtures show that typed environment composition can scale
+-   Playwright fixtures show that typed runtime composition can scale
 -   Deno shows direct module-based registration can stay simple
 -   Bun validates seeded randomization as a normal runner feature
 -   Go shows the enduring value of flat, table-driven testing

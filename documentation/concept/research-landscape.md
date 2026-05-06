@@ -37,7 +37,7 @@ Useful lessons:
 Costs:
 
 -   globals and legacy shape in Mocha
--   incomplete modern story around typed environments, reporters, and orchestration
+-   incomplete modern story around typed runtimes, reporters, and orchestration
 -   dormant ecosystem risk in very small tools
 
 ### node:test, Deno, and Bun
@@ -218,7 +218,7 @@ Folio is the Playwright-team predecessor you were referring to. It described its
 Its most important lessons for Overkill are:
 
 -   the framework should expose a builder layer, not only a finished DSL
--   fixture and environment composition can produce a custom exported test API
+-   fixture and runtime composition can produce a custom exported test API
 -   higher-level packages can be built from a reusable lower-level engine
 
 That maps closely to Overkill’s desired split between `@overkill/engine`, first-party DSLs, and resource packages.

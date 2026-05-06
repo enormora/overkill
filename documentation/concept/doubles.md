@@ -257,7 +257,7 @@ Examples:
 
 -   a resource can provide a double-backed client
 -   a test macro can accept doubles as parameters
--   environment factories can wire doubles into constructed systems
+-   runtime factories can wire doubles into constructed systems
 
 This is a better fit for Overkill than APIs that replace methods on already-created objects.
 
