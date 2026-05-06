@@ -320,8 +320,7 @@ This document is the runtime counterpart to several others. Cross-links:
 -   `failure-artifacts.md` — output capture, runner-error vs test-failure
     distinction
 -   `metadata-and-selection.md` — selection rules sharding composes with
--   `fast-feedback-loops.md` — watch mode dependency graph and CI cache
-    behavior
+-   `fast-feedback-loops.md` — watch mode and cache behavior
 -   `platform-first-implementation-notes.md` — `AbortSignal`, source maps,
     `AsyncLocalStorage`
 -   `package-architecture.md` — execution strategy decisions live in

@@ -142,8 +142,8 @@ The replacement for `.only`:
 -   `--file source/auth/login.test.ts` runs only that file
 -   `--id <stable-id>` runs the exact case (IDE integration emits this)
 -   `--last-failed` runs tests that failed in the previous run
--   `--changed` runs tests affected by since-`main` git changes (uses
-    the dependency graph from `fast-feedback-loops.md`)
+-   `--changed` runs tests in files changed since `main` (path-level only;
+    Overkill does not track a dependency graph)
 -   `--watch` reruns on file change (closure-aware by default)
 
 These are CLI conveniences over the same selection grammar. None modify

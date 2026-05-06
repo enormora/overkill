@@ -254,29 +254,7 @@ Notes:
     direction, the diff producer never runs unless a result is observed. The
     runner can short-circuit fully when a filter excludes a test.
 
-## 11. Module graph caching without Vite
-
-Vitest gets its incremental test selection by reading Vite’s already-existing
-module graph. There is no equivalent in Node core. Building one in Overkill
-requires four pieces:
-
-1.  **Loader instrumentation.** `module.registerHooks#load` records every
-    `(parent, child)` edge encountered. This is essentially free; the resolver
-    already computes those URLs.
-2.  **Persistence.** Serialize the graph keyed by content hash of the test
-    entry points and merge across runs. A SQLite or compact JSON file in the
-    runner cache directory is enough.
-3.  **Invalidation.** On change, walk the inverted graph to compute the closure
-    of affected entry points. Use content hashes, not mtimes.
-4.  **Re-spawn or re-evaluate.** Default to re-spawn for clean isolation;
-    expose an opt-in `--isolation=none` mode for re-evaluation when the user
-    accepts the risk of stale state.
-
-Combined with `--experimental-transform-types` for files that require it, the
-graph captures the same set of edges Vitest tracks via Vite, with strictly
-zero bundler dependency.
-
-## 12. Out-of-the-box ideas for fast startup
+## 11. Out-of-the-box ideas for fast startup
 
 The optimization target is **cold start**, not warm reuse. A persistent
 runner daemon would speed up incremental edits but adds complexity (long-
@@ -316,7 +294,7 @@ keeping the cold path short and not requiring a hot daemon to feel fast.
     larger graphs; this cache keeps warm runs effectively zero.
 -   **Inotify-driven run targeting.** When the watcher fires, classify the
     change (test file / source file / config / fixture) and run only the
-    relevant subset. Combine with the module graph from section 11.
+    relevant subset.
 -   **No transitive plugin imports at startup.** Plugin manifests register
     capabilities lazily; their implementation modules import only when a test
     actually uses them. The runner core imports nothing per-plugin until the
@@ -346,8 +324,6 @@ keeping the cold path short and not requiring a hot daemon to feel fast.
 -   [Sebastian Staffa — A look at native TypeScript performance (Feb 2025)](https://sebastian-staffa.eu/posts/nodejs-native-ts-benchmark/)
 -   [PkgPulse — tsx vs ts-node vs Bun (2026)](https://www.pkgpulse.com/blog/tsx-vs-ts-node-vs-bun-2026)
 -   [Bolder Apps — Node.js vs Bun vs Deno performance showdown (2026)](https://www.bolderapps.com/blog-posts/node-js-vs-bun-vs-deno-the-ultimate-runtime-performance-showdown)
--   [Vitest — Features Guide (module graph rerun)](https://vitest.dev/guide/features)
--   [Vitest API — Advanced (module graph reuse)](https://vitest.dev/api/advanced/vitest)
 -   [Visual Studio Magazine — TypeScript 5.9 RC: Import Defer](https://visualstudiomagazine.com/articles/2025/07/25/typescript-59-rc-brings-deferred-imports-nodejs-20-module-target.aspx)
 -   [The Dev Newsletter — State of TypeScript 2026](https://devnewsletter.com/p/state-of-typescript-2026/)
 -   [Bolder Apps — Node.js in 2026: The "Native-First" Revolution](https://www.bolderapps.com/blog-posts/node-js-in-2026-the-native-first-revolution-and-the-end-of-dependency-hell)
