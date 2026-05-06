@@ -55,6 +55,70 @@ Important distinction:
 -   arbitrary raw `process.stdout.write(...)` observation still requires
     stronger interception if a profile wants it
 
+## CLI Surface
+
+This section enumerates the CLI commands and flags the concept docs
+reference. It is a reading aid, not a contract; the canonical
+behavior of each option lives in the relevant domain doc and is
+linked here.
+
+### Subcommands
+
+| Command                              | Purpose                                                     | Reference                                                      |
+| ------------------------------------ | ----------------------------------------------------------- | -------------------------------------------------------------- |
+| `overkill run [paths...]`            | Default run mode — discover, plan, and execute.             | this doc                                                       |
+| `overkill list [paths...]`           | Print the resolved test plan without running it.            | `tests-as-values.md`                                           |
+| `overkill replay <run-id>`           | Replay a recorded run from `.overkill/runs/<id>.json`.      | `reproducibility.md` § Replay                                  |
+| `overkill replay-witness <path>`     | Replay a single property/simulation failure from a witness. | `failure-artifacts.md` § Witnesses And Replay Artifacts        |
+
+### Selection And Iteration
+
+| Flag                          | Behavior                                                                    | Reference                                                  |
+| ----------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `--filter '<expr>'`           | Filter tests by metadata expression (tags, kind, runtime, owner, …).        | `metadata-and-selection.md` § Filter Expression Grammar    |
+| `--name '<text>'`             | Name substring or quoted exact match.                                       | `metadata-and-selection.md` § Local Iteration Workflow     |
+| `--file <path>`               | Restrict the run to a single file.                                          | same                                                       |
+| `--id <stable-id>`            | Restrict the run to a single case identity (IDE integration).               | same                                                       |
+| `--last-failed`               | Run only tests that failed in the previous run.                             | same                                                       |
+| `--changed`                   | Run tests in files changed since `main`. Path-level only; no graph.         | same                                                       |
+| `--watch`                     | Rerun the selected suite on file change. Uses Node's built-in watcher.      | this doc § Watch-Mode Targeting                            |
+| `--shard <i>/<n>`             | Select shard `i` of `n` from the filtered set.                              | this doc § Sharding                                        |
+
+### Capability And Execution
+
+| Flag                          | Behavior                                                                    | Reference                                                  |
+| ----------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `--profile <name>`            | Select a runner profile (e.g. `microtest`, `integration`, `benchmark`).     | `microtests-and-capabilities.md`                           |
+| `--mode <strategy>`           | Override the resolved execution strategy (serial, worker-pool, …).          | this doc § Parallelism Semantics                           |
+| `--workers <n>`               | Override default worker count for worker-pool modes.                        | this doc § Parallelism Semantics                           |
+
+### Baselines
+
+| Flag                          | Behavior                                                                    | Reference                                                  |
+| ----------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `--update-baselines`          | Allow baselines to be updated during this run. Off by default in CI.        | `baselines-and-snapshots.md`                               |
+| `--no-update-baselines`       | Force baseline-update mode off (already the default in CI).                 | this doc § CI Auto-Detection                               |
+
+### Output And Reporters
+
+| Flag                          | Behavior                                                                    | Reference                                                  |
+| ----------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `--reporter <name>`           | Select a reporter; may be specified multiple times.                         | `package-architecture.md` § Reporters                      |
+| `--no-capture`                | Pass stdout/stderr through live instead of buffering.                       | this doc § Console Output Capture                          |
+
+### Lifecycle And Edge Cases
+
+| Flag                          | Behavior                                                                    | Reference                                                  |
+| ----------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `--allow-empty`               | Treat zero-test runs as success instead of failure.                         | this doc § Zero-Test Runs                                  |
+| `--ci`                        | Force CI defaults on a developer host.                                      | this doc § CI Auto-Detection                               |
+| `--no-ci`                     | Force developer-mode defaults on a CI host.                                 | same                                                       |
+| `--seed <n>`                  | Override the run seed (for reproducible randomization).                     | `reproducibility.md`                                       |
+
+This list intentionally omits flags that are still under design (e.g.
+`--coverage`, `--since <ref>`, `--shuffle`); when those land, this
+table is the place they should be registered.
+
 ## Exit Codes And `process.exit`
 
 Default exit codes for the `overkill` CLI:
