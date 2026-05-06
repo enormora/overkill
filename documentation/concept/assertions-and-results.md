@@ -280,7 +280,7 @@ For the product concept:
     `return assert.done()`
 -   low-level protocol name: `AssertionNode`
 -   low-level constructor namespace: `assertion.*`
--   zero-assertion detection: failure by default, with explicit overrides
+-   zero-assertion detection: failure, no opt-out
 -   `plan(n)` is the assertion-count contract; no `atMost`, no `atLeast`,
     and `n > 0`
 -   diff data is structured, not stack-mined
