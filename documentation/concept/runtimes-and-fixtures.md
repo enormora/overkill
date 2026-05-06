@@ -28,6 +28,14 @@ That means it should be able to model:
 -   runtime matrices
 -   execution requirements that affect scheduling or isolation
 
+The higher-layer reference projects show the concrete shapes this must cover:
+
+-   deterministic local services that yield a base URL and scenario metadata
+-   temporary registries or other external-process fixtures
+-   browser pages plus page-object wrappers
+-   browser-side compliance or accessibility helpers
+-   fixture-owned validation or cleanup after the test body returns
+
 ## Why This Over Hooks
 
 Hooks tend to hide:
@@ -40,6 +48,12 @@ Hooks tend to hide:
 Runtime composition is clearer when setup is attached to an explicit runtime factory or wrapper rather than ambient lifecycle callbacks.
 
 This matters even more if the same runtime system must support benchmarks, browser tests, and integration workflows.
+
+The important pattern is not “before/after hooks”. It is:
+
+-   create a runtime
+-   yield a typed handle
+-   let the runtime own teardown and optional post-test validation
 
 ## Influence
 
@@ -60,6 +74,15 @@ The concept should support running one test suite against multiple runtimes:
 
 This belongs in first-party runtime packages, not in the core execution contract.
 
+The reference projects make the dimensions concrete:
+
+-   browser name
+-   resolution
+-   mobile emulation
+-   deterministic scenario
+-   client bundle type
+-   legacy vs modern mode
+
 ## Execution Requirements
 
 Runtimes should be able to contribute execution requirements without owning the final scheduling decision.
@@ -72,3 +95,15 @@ Examples:
 -   a local integration runtime may allow shared setup across many cases
 
 Those requirements should flow into orchestration, where they are resolved together with the needs of the test family and runner profile.
+
+## Higher-Layer Takeaway
+
+The higher test layers in the reference projects reinforce a simple design
+rule:
+
+-   microtests want cheap, local case context
+-   integration and browser tests want typed runtime factories with owned
+    lifecycle
+
+Overkill should therefore scale upward by composing richer runtimes, not by
+adding more hooks or magical globals.

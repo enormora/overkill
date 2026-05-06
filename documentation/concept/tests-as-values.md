@@ -38,19 +38,19 @@ layer, not as a discarded side experiment.
 import { runIfMain, suite, table, test } from '@overkill/test';
 
 const spec = suite('users', [
-    test('build', ({ assert }) => {
-        assert.equal(buildUser('Ada').name, 'Ada');
-        return assert.done();
+    test('build', (case) => {
+        case.assert.equal(buildUser('Ada').name, 'Ada');
+        return case.assert.done();
     }),
 
-    test('validates', ({ assert }) => {
-        assert.fail(buildUser(''), 'empty name');
-        return assert.done();
+    test('validates', (case) => {
+        case.assert.fail(buildUser(''), 'empty name');
+        return case.assert.done();
     }),
 
-    table('round-trip', cases, ({ input, expected }, { assert }) => {
-        assert.equal(parse(serialize(input)), expected);
-        return assert.done();
+    table('round-trip', cases, ({ input, expected }, case) => {
+        case.assert.equal(parse(serialize(input)), expected);
+        return case.assert.done();
     }),
 ]);
 
@@ -102,9 +102,9 @@ import { skippedTest, suite, test } from '@overkill/test';
 
 const unameCase =
     process.platform === 'linux'
-        ? test('uname', ({ assert }) => {
-              assert.equal(runUname(), 'Linux');
-              return assert.done();
+        ? test('uname', (case) => {
+              case.assert.equal(runUname(), 'Linux');
+              return case.assert.done();
           })
         : skippedTest('uname', 'not linux');
 
@@ -208,14 +208,14 @@ import { suite, test } from '@overkill/test';
 
 function lawsOfMonoid<T>({ name, empty, concat, gen, eq }: MonoidLaws<T>): TestNode {
     return suite(`monoid laws: ${name}`, [
-        test('left identity', ({ forall, assert }) => {
-            return forall(gen, (x) => assertion.equal(eq(concat(empty, x), x), true));
+        test('left identity', (case) => {
+            return case.forall(gen, (x) => assertion.equal(eq(concat(empty, x), x), true));
         }),
-        test('right identity', ({ forall, assert }) => {
-            return forall(gen, (x) => assertion.equal(eq(concat(x, empty), x), true));
+        test('right identity', (case) => {
+            return case.forall(gen, (x) => assertion.equal(eq(concat(x, empty), x), true));
         }),
-        test('associativity', ({ forall, assert }) => {
-            return forall([gen, gen, gen], ([a, b, c]) =>
+        test('associativity', (case) => {
+            return case.forall([gen, gen, gen], ([a, b, c]) =>
                 assertion.equal(eq(concat(concat(a, b), c), concat(a, concat(b, c))), true),
             );
         }),
@@ -256,9 +256,9 @@ not be evaluated until first access. Combined with tests-as-values:
 import defer * as heavy from './heavy-module.ts';
 
 export default suite('heavy', [
-    test('uses heavy', ({ assert }) => {
-        assert.equal(heavy.compute(), 42);
-        return assert.done();
+    test('uses heavy', (case) => {
+        case.assert.equal(heavy.compute(), 42);
+        return case.assert.done();
     }),
 ]);
 ```
@@ -325,13 +325,13 @@ an explicit constant inside the suite construction:
 const fixtures = loadFixtures(); // executes at module load — visible
 
 export default suite('users', [
-    test('a', ({ assert }) => {
-        assert.equal(buildUser(fixtures.a).id, '1');
-        return assert.done();
+    test('a', (case) => {
+        case.assert.equal(buildUser(fixtures.a).id, '1');
+        return case.assert.done();
     }),
-    test('b', ({ assert }) => {
-        assert.equal(buildUser(fixtures.b).id, '2');
-        return assert.done();
+    test('b', (case) => {
+        case.assert.equal(buildUser(fixtures.b).id, '2');
+        return case.assert.done();
     }),
 ]);
 ```

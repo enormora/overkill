@@ -1,0 +1,292 @@
+# Test Ergonomics
+
+## Purpose
+
+This document captures the small set of first-party ergonomics mechanics that
+survived the repo scan across `packtory`, `misterspex-storefront`, `player`,
+and `pr-log`.
+
+The goal is not to make long tests fashionable. The goal is to remove the
+repeated choreography that makes ordinary tests longer than they need to be.
+
+## Naming In Examples
+
+The documentation examples should prefer `case` as the injected test context
+parameter:
+
+```ts
+test('loads user', async (case) => {
+    case.require.defined(loadUser);
+    case.assert.equal(await loadUser('42'), 'Ada');
+    return case.assert.done();
+});
+```
+
+Why `case`:
+
+-   more meaningful than `t`
+-   shorter than `testContext`
+-   does not require inline destructuring by default
+-   avoids awkward names like `test.test`
+
+Users can still choose other parameter names locally.
+
+## Design Rule
+
+Ergonomics helpers should exist only when they remove choreography that
+repeats across many real tests.
+
+The repo scan strongly supports these areas:
+
+-   dependency-injected test harnesses
+-   interaction transcripts
+-   generated-case macros
+-   small async-control helpers
+
+The scan does **not** justify a broad step/scenario DSL for ordinary
+first-party tests.
+
+## Harnesses
+
+The strongest repeated pattern across the repos is dependency-harness
+boilerplate: default doubles, sparse overrides, and a returned system under
+test plus assertion handles.
+
+Overkill should support a first-party `defineHarness(...)` concept.
+
+### Basic Shape
+
+```ts
+const runnerHarness = defineHarness({
+    loadConfig: () => testDouble().resolves('the-config'),
+    buildAndPublishAll: () => testDouble().resolves(Result.ok([])),
+    log: () => testDouble(),
+}, (parts) => {
+    return {
+        subject: createCommandLineInterfaceRunner({
+            configLoader: { load: parts.loadConfig },
+            packtory: { buildAndPublishAll: parts.buildAndPublishAll },
+            log: parts.log,
+        }),
+        ...parts,
+    };
+});
+
+test('passes dry-run by default', async (case) => {
+    const harness = runnerHarness.create();
+
+    await harness.subject.run(['publish']);
+
+    case.assert.equal(harness.buildAndPublishAll.callCount, 1);
+    case.assert.deepEqual(harness.buildAndPublishAll.firstCall.args[1], {
+        dryRun: true,
+    });
+    return case.assert.done();
+});
+```
+
+### Why A Harness Mechanic Is Justified
+
+This exact pattern recurs across all four reference repos:
+
+-   default doubles
+-   sparse override support
+-   returned subject plus handles
+-   interaction assertions on the handles
+
+That is broad enough to be a first-party concept rather than a local style.
+
+### Advanced Shape
+
+`defineHarness(...)` should also support function-based harnesses for cases
+that need richer setup, React render helpers, or async assembly.
+
+Example direction:
+
+```ts
+const renderAccountPage = defineHarness(async (overrides) => {
+    const loadAccount = overrides.loadAccount ?? testDouble().resolves(account);
+    const rendered = await render(<AccountPage loadAccount={loadAccount} />);
+
+    return {
+        rendered,
+        loadAccount,
+    };
+});
+```
+
+The important part is not the exact overload list. The important part is:
+
+-   object form for common dependency harnesses
+-   function form for advanced or async harnesses
+-   no hidden container behavior
+
+## Interaction Transcripts
+
+Another repeated pattern is flattening calls or emitted events into ordered
+tuples and asserting the resulting transcript.
+
+Overkill should support generic transcript recording rather than
+framework-specific emitter helpers only.
+
+### Function Recording
+
+```ts
+const log = recordCalls(writeLine);
+
+writeLine('hello');
+writeLine('world');
+
+case.assert.deepEqual(log.entries, [
+    ['hello'],
+    ['world'],
+]);
+```
+
+### Generic Subscription Recording
+
+```ts
+const states = recordSink((record) => {
+    return store.subscribe((state) => {
+        record('state', state);
+    });
+});
+```
+
+### Node-Style Event Emitter
+
+```ts
+const events = recordEvents(emitter, {
+    subscribe(record) {
+        const onStart = () => record('start');
+        const onDone = (payload) => record('done', payload);
+
+        emitter.on('start', onStart);
+        emitter.on('done', onDone);
+
+        return () => {
+            emitter.off('start', onStart);
+            emitter.off('done', onDone);
+        };
+    },
+});
+```
+
+### DOM EventTarget
+
+```ts
+const events = recordEvents(button, {
+    subscribe(record) {
+        const onClick = (event) => record(event.type);
+        button.addEventListener('click', onClick);
+        return () => button.removeEventListener('click', onClick);
+    },
+});
+```
+
+The concept should be:
+
+-   one transcript model
+-   multiple adapters
+-   no assumption that every source is a Node `EventEmitter`
+
+## Generated-Case Macros
+
+Overkill already prefers macros. The repo scan suggests one useful extension:
+macros that intentionally expand into multiple concrete test cases at once.
+
+This is especially justified for:
+
+-   schema field matrices
+-   parser cases
+-   reusable law or contract checks
+
+Example direction:
+
+```ts
+generatedCases('user schema', [missingField('name'), undefinedField('name'), wrongType('age', 'number')]);
+```
+
+This should still be a macro-oriented model, not a competing parameterization
+philosophy.
+
+### Stack Traces Matter
+
+Generated cases should preserve meaningful failure locations and names.
+
+That means:
+
+-   generated tests must have strong explicit names
+-   helper failures should point back to the user-authored macro callsite
+    where practical
+-   the first-party concept should care about stack quality, not only about
+    case expansion
+
+The existing schema-validation helpers in the reference repos validate this
+need strongly.
+
+## Async-Control Helpers
+
+The repo scan does not justify a huge concurrency toolkit. It does justify a
+small set of queue-control helpers.
+
+Recommended helpers:
+
+-   `case.flushAsync()`
+-   `case.microtasks()`
+-   `case.immediate()`
+
+These are useful because they do **not** require global time monkey
+patching or a mandatory production-side clock abstraction.
+
+They solve the repeated “yield just enough to observe the intermediate state”
+dance found in controller, state-machine, and lock tests.
+
+## `inFlight(...)`
+
+The spawned-async pattern is real, but it should stay small and advanced.
+
+Recommended direction:
+
+```ts
+test('logs fire-and-forget rejection', async (case) => {
+    const run = case.inFlight(() => executor.execute(asyncFunction));
+
+    await run.rejects({ message: 'error' });
+
+    case.assert.equal(logger.error.callCount, 1);
+    return case.assert.done();
+});
+```
+
+The important promise:
+
+-   start now
+-   inspect or assert later
+-   avoid manual promise temp-variable choreography
+
+This helper should stay narrowly scoped and clearly documented as advanced.
+
+## What Overkill Should Not Add Here
+
+The repo scan does **not** justify:
+
+-   a large first-party step/scenario DSL
+-   a broad fake-time abstraction that assumes production-side clock handles
+-   generic snapshot ergonomics for microtests
+-   one-off helpers for every local testing idiom found in one codebase
+
+The ergonomics surface should stay small and only cover patterns that repeat
+across many tests.
+
+## Settled Direction
+
+The current concept should preserve room for:
+
+-   `defineHarness(...)`
+-   transcript recording with generic subscription adapters
+-   generated-case macros
+-   `flushAsync()` / `microtasks()` / `immediate()`
+-   `inFlight(...)`
+
+These are the ergonomics helpers that survived the broader repo scan.

@@ -52,6 +52,27 @@ If an alternative is worth supporting, it should usually either:
 -   be treated as explicit sugar over the same model
 -   or be left open for third parties
 
+## Low API Surface
+
+Overkill should keep the visible first-party API surface small.
+
+This is not the same as keeping the implementation simple. The internal
+architecture can stay layered and powerful while the user-facing surface
+stays narrow.
+
+That means:
+
+-   common paths should use a small number of obvious entrypoints
+-   advanced mechanics should stay opt-in and documented as advanced
+-   first-party packages should resist adding a second noun when one
+    concept can cover the job
+-   helper APIs should earn their place by removing repeated choreography
+    across real tests, not by making every local pattern framework-shaped
+
+The documentation strategy should reinforce this principle: show the common
+path first, keep advanced topics discoverable, and avoid presenting the full
+surface as mandatory knowledge for new users.
+
 ## Opinionated First Party, Open Ecosystem
 
 Overkill should be opinionated in its own first-party packages while still

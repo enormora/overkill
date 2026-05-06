@@ -37,8 +37,11 @@ authoring layer. It should favor:
 -   explicit grouping only where needed
 -   test macros as the primary reuse model
 -   typed context
+-   `case` as the preferred documentation name for the injected test context
 -   async support
 -   no hook-centric lifecycle model
+-   a small advanced ergonomics layer for harnesses, interaction recording,
+    generated-case macros, and async queue helpers
 
 Tables or parameterized-case helpers may still exist, but they should be
 framed as specialized helpers built on the macro/value model rather than as
@@ -52,6 +55,8 @@ a second competing first-party reuse philosophy.
 -   assertion count tracking
 -   richer mismatch reporting
 -   serializer hooks for baseline systems
+-   custom assertion registration for domain-specific assertion vocabularies
+    such as `Result` / `Maybe`
 
 ## Doubles
 
@@ -65,6 +70,7 @@ It should favor:
 -   call history and result inspection with strong direct instance introspection
 -   simple behavior configuration for common cases
 -   rule-based or answer-based behavior for advanced cases
+-   config-object-driven advanced behavior rather than a second fluent API
 
 It should avoid:
 
@@ -79,6 +85,11 @@ The likely conceptual split is:
 
 This keeps the creation of doubles separate from how tests assert on them.
 
+Related first-party ergonomics above the doubles layer may include:
+
+-   generic interaction transcript recording
+-   harness helpers for dependency-heavy units
+
 ## Environments
 
 `@overkill/resources` should own:
@@ -89,12 +100,23 @@ This keeps the creation of doubles separate from how tests assert on them.
 -   explicit setup and teardown patterns
 -   execution-affecting requirements such as isolation, sharing, and lifecycle scope
 -   reusable environment factories
+-   explicit artifact attachment from resources or runtimes
+-   deterministic service and browser runtime composition
 
 `@overkill/resources` should be generic enough to serve multiple higher-level families:
 
 -   `@overkill/test` for ordinary test context
 -   `@overkill/bench` for temp dirs, registries, calibration resources, PTYs, and external processes
 -   future browser packages for browser servers, contexts, pages, and device matrices
+
+The reference projects suggest that this package family is the main place for
+supporting:
+
+-   deterministic local service fixtures
+-   temporary registries and external-process harnesses
+-   page-object-oriented browser fixtures
+-   accessibility or compliance helpers that attach artifacts
+-   runtime scenarios and dimensions
 
 Capability-handle or “world” style architecture remains compatible with this
 package family, but Overkill should not ship a first-class production-facing
@@ -118,6 +140,13 @@ code should not need Overkill dependencies.
 -   watch-mode orchestration where explicit runner behavior is needed beyond raw Node `--watch`
 
 This is also the logical layer for choosing microtest vs integration vs benchmark profiles.
+
+It is also the likely home for first-party configuration-file loading and
+`defineConfig(...)` support.
+
+It should also understand first-class runtime and resource factories as run
+inputs, not just file discovery. Higher layers often construct their real
+environment through these factories before the case body runs.
 
 Execution strategy should be modeled as resolved planning, not a fixed trait of one package. Different packages may influence:
 
@@ -186,6 +215,29 @@ This is especially important for:
 -   stale-baseline detection
 -   reproducibility
 -   config-driven extensions such as reporters or baseline adapters
+
+## Configuration
+
+Configuration belongs above the engine.
+
+The conceptual split is:
+
+-   `@overkill/engine`
+    -   programmatic options only
+-   `@overkill/run`
+    -   optional config files, discovery, orchestration defaults
+-   high-level packages
+    -   package-specific programmatic registration surfaces
+
+Config should stay low-surface and orchestration-focused. It should be
+able to wire in:
+
+-   reporters
+-   baseline adapters
+-   custom assertions
+-   mutation integrations
+-   type-test adapters
+-   browser or benchmark backends
 
 ## Planned Integrations
 

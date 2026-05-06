@@ -109,6 +109,28 @@ Sinon has useful power, but its surface teaches too many overlapping nouns and t
 
 For Overkill, that is the wrong shape. The package should expose one main concept and a few composable rule helpers.
 
+The repo scan across `packtory`, `misterspex-storefront`, `player`, and
+`pr-log` reinforces this. Most real-world Sinon usage in those codebases is
+already concentrated in a narrow subset:
+
+-   `fake()`
+-   `stub()`
+-   `spy()`
+-   `.returns(...)`
+-   `.resolves(...)`
+-   `.rejects(...)`
+-   `.throws(...)`
+-   `.callsFake(...)`
+-   `callCount`
+-   `firstCall.args`
+-   `secondCall.args`
+-   `lastCall.args`
+-   `getCall(n)`
+-   `calledBefore` / `calledAfter`
+
+That is a much smaller surface than Sinon as a whole, and it supports the
+Overkill direction of one main doubles concept instead of category sprawl.
+
 ## Suggested Core Pieces
 
 The minimal shape worth exploring is:
@@ -140,6 +162,20 @@ const authorize = testDouble<(user: string, scope: string) => boolean>({
         if (call.args[1] === 'read') return true;
         return false;
     },
+});
+```
+
+The advanced path should stay in the config object too. It should not require
+users to switch to a second primary fluent API:
+
+```ts
+const read = testDouble<(path: string) => Promise<string>>({
+    rules: [
+        onCall(1, resolves('first')),
+        onCall(2, resolves('second')),
+        when('/missing', rejects(new Error('not found'))),
+    ],
+    fallback: rejects(new Error('unexpected call')),
 });
 ```
 
@@ -261,6 +297,8 @@ Recommended direction:
 -   strong direct introspection on each instance, such as `callCount`, `firstCall`, `lastCall`, and typed call/result records
 -   advanced escape hatch: `answer(call)` or `calls(fn)`
 -   common-case sugar: `returns`, `resolves`, `rejects`, `throws`, `sequence`
+-   advanced-path behavior still configured through `rules`, `fallback`, and
+    `answer` on the config object
 -   no object-method replacement API in the first-party concept
 -   no module replacement API in the first-party concept
 

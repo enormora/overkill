@@ -40,6 +40,40 @@ constructs values. The TypeScript type system is the only "macro engine."
 
 Source: `tests-as-values.md`.
 
+## Generated-Case Macro
+
+A macro whose main purpose is to expand into multiple concrete test cases at
+once.
+
+Typical uses:
+
+-   schema field matrices
+-   parser cases
+-   reusable law or contract checks
+
+Generated-case macros are still macros, not a separate parameterization
+philosophy. The important extra requirement is that generated failures keep
+meaningful names and useful stack traces.
+
+Source: `test-ergonomics.md`.
+
+## Case Context
+
+The injected context object passed to a first-party `@overkill/test` test
+body. The documentation examples prefer the local variable name `case`.
+
+The case context may expose:
+
+-   `assert`
+-   `require`
+-   `plan`
+-   advanced helpers such as `flushAsync()`, `microtasks()`, `immediate()`,
+    or `inFlight(...)`
+
+Users may still choose different local variable names.
+
+Source: `assertions-and-results.md`, `test-ergonomics.md`.
+
 ## Test Kind
 
 A closed enumeration that classifies the testing mode of a `TestNode`. The
@@ -191,6 +225,35 @@ implementations, the test runtime from deterministic or recording variants.
 Capability handles are one promising alternative to mocking.
 
 Source: `capability-handles.md`.
+
+## Harness
+
+A reusable test-side constructor that assembles a subject under test plus the
+parts needed to observe or override it. Harnesses usually provide:
+
+-   default doubles or fixtures
+-   sparse override support
+-   the constructed subject
+-   direct access to the interaction handles used in assertions
+
+Harnesses are test-only ergonomics. They do not imply production-side
+framework coupling.
+
+Source: `test-ergonomics.md`.
+
+## Interaction Transcript
+
+A recorded ordered log of interactions such as:
+
+-   function calls
+-   emitted events
+-   subscription callbacks
+-   state notifications
+
+The important abstraction is the ordered transcript, not a specific event
+emitter type.
+
+Source: `test-ergonomics.md`.
 
 ## Recording Handle
 

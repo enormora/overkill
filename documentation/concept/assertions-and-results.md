@@ -73,13 +73,13 @@ to implement.
 `plan` declares the expected number of leaf assertions in a test:
 
 ```ts
-test('parses three rows', ({ assert, plan }) => {
-    plan(3);
+test('parses three rows', (case) => {
+    case.plan(3);
     const rows = parse(input);
-    assert.length(rows, 3);
-    assert.equal(rows[0].id, 1);
-    assert.equal(rows[1].id, 2);
-    return assert.done();
+    case.assert.length(rows, 3);
+    case.assert.equal(rows[0].id, 1);
+    case.assert.equal(rows[1].id, 2);
+    return case.assert.done();
 });
 ```
 
@@ -101,10 +101,10 @@ The low-level protocol remains `AssertionNode`, but the primary authoring DX
 is the injected builder API:
 
 ```ts
-test('user shape', ({ assert, require }) => {
-    require.defined(user);
-    assert.equal(user.name, 'Ada');
-    return assert.done();
+test('user shape', (case) => {
+    case.require.defined(user);
+    case.assert.equal(user.name, 'Ada');
+    return case.assert.done();
 });
 ```
 
@@ -154,17 +154,17 @@ at the top of the test body still applies; `assert.done()` at the end
 finalizes the recorded log.
 
 ```ts
-test('saves and re-reads', async ({ assert, require, plan }) => {
-    plan(3);
+test('saves and re-reads', async (case) => {
+    case.plan(3);
 
     const id = await store.save({ name: 'Ada' });
-    assert.string(id);
+    case.assert.string(id);
 
     const fetched = await store.read(id);
-    require.defined(fetched);
-    assert.equal(fetched.name, 'Ada');
+    case.require.defined(fetched);
+    case.assert.equal(fetched.name, 'Ada');
 
-    return assert.done();
+    return case.assert.done();
 });
 ```
 
@@ -186,10 +186,36 @@ Throwing mode is still supported, but explicitly in the test API shape:
 ```ts
 import { throwingTest as test } from '@overkill/test';
 
-test('legacy flow', ({ assert }) => {
-    assert.equal(add(2, 3), 5);
+test('legacy flow', (case) => {
+    case.assert.equal(add(2, 3), 5);
 });
 ```
+
+## Custom Assertions
+
+`@overkill/assert` should support explicit extension with domain-specific
+assertion vocabularies.
+
+This is especially useful for ecosystems that repeatedly work with wrappers
+such as `Result` or `Maybe`.
+
+Example direction:
+
+```ts
+test('returns a successful result', (case) => {
+    case.assert.resultOk(result);
+    return case.assert.done();
+});
+```
+
+These assertions should remain:
+
+-   explicit
+-   typed
+-   registered through package wiring or JS/TS config
+
+They should extend the first-party assertion system, not replace it with an
+entirely separate assertion library.
 
 This keeps large throwing-style suites ergonomic without introducing global
 mode flags.

@@ -15,6 +15,7 @@ The most important extension types are:
 -   reporters
 -   baseline adapters
 -   serializer adapters
+-   custom assertions
 -   resource and environment factories
 -   benchmark metric collectors
 -   benchmark policy adapters
@@ -53,6 +54,7 @@ Typical cases:
 -   reporters selected by config
 -   baseline adapters
 -   benchmark metric collectors
+-   custom assertions selected by config
 
 The same openness should make it straightforward for third parties to build:
 
@@ -61,6 +63,10 @@ The same openness should make it straightforward for third parties to build:
 -   remote execution coordinators
 -   type-test adapters
 -   mutation-testing adapters
+-   browser-runtime adapters
+-   accessibility or compliance fixtures
+-   interaction-transcript collectors for transports such as HTTP or browser
+    requests
 
 The concept should therefore allow both:
 

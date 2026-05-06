@@ -48,6 +48,10 @@ Core package families:
 -   `@overkill/assert`: first-party assertion protocol and helpers, primarily consumed through injected `assert` / `require` in `@overkill/test`
 -   `@overkill/doubles`: explicit, function-first test doubles centered on a single `testDouble()` concept
 -   `@overkill/resources`: typed environments, resource composition, and execution requirements
+-   higher-layer runtime patterns for deterministic services, browser page
+    objects, explicit attachments, and runtime scenarios
+-   small advanced ergonomics in `@overkill/test`, such as harnesses,
+    interaction transcripts, generated-case macros, and async queue helpers
 -   reporter packages such as `@overkill/reporter-line`, `@overkill/reporter-tap`, `@overkill/reporter-json`, and `@overkill/reporter-html`
 -   `@overkill/run`: orchestration for discovery, filtering, seeds, and terminal workflows
 -   `@overkill/baselines`: shared baseline model for snapshots and performance expectations
@@ -60,12 +64,17 @@ Planned early integrations:
 -   coverage should be easy to enable from the beginning, even though it is not part of the default run mode
 -   watch mode should work through Node's built-in `--watch` behavior wherever that is sufficient
 -   machine-readable APIs should keep IDE and MCP implementations easy for third parties
+-   optional JS/TS config files should stay small and orchestration-focused
 
 Likely future families:
 
 -   browser and visual testing
 -   property-based testing
 -   remote execution and distributed orchestration helpers
+
+The reference projects reinforce that browser and visual testing should be
+adapter-driven on top of the shared runtime, baseline, and artifact model
+rather than growing special engine semantics.
 
 ## Testing Modes
 
@@ -97,10 +106,19 @@ Its assertion model should be explicit:
 -   `require` for gating assertions that short-circuit and support TypeScript
     narrowing
 -   explicit `return assert.done()` in builder mode
+-   optional custom assertions for domain-specific types such as `Result` or
+    `Maybe`
 
 ### Integration-Style Tests
 
 Integration-style tests are allowed to use richer environments, I/O, snapshots, and external processes. They need stronger orchestration, more expressive fixtures, and often more than one reporter.
+
+In practice, the main first-party support here should be:
+
+-   typed runtime/resource factories
+-   deterministic local service scenarios
+-   explicit attachments and transcripts
+-   runtime dimensions that feed identity and baselines
 
 They may also justify controlled retries, quarantine markers, and richer failure artifacts in ways that microtests should not.
 

@@ -194,7 +194,7 @@ export function buildUser(name: string) {
 }
 
 if (import.meta.test) {
-    test('strips whitespace', ({ assert }) => assert.equal(buildUser('  Ada  ').name, 'Ada'));
+    test('strips whitespace', (case) => case.assert.equal(buildUser('  Ada  ').name, 'Ada'));
 }
 ```
 

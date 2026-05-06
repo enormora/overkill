@@ -32,6 +32,8 @@ Remaining speculative work belongs in:
 -   Direct-file execution should work through a small helper such as
     `runIfMain(import.meta, spec)`.
 -   Test macros are the primary first-party reuse model.
+-   Generated-case macros are acceptable as an extension of the macro model,
+    not as a separate reuse philosophy.
 -   Tables or parameterized helpers are acceptable only as specialized
     helpers built on the same model, not as a competing first-party reuse
     philosophy.
@@ -39,6 +41,7 @@ Remaining speculative work belongs in:
     suite/group naming.
 -   Inline `.skip` / `.only` are not part of the core default concept.
 -   True in-source tests are rejected for the planned default concept.
+-   Documentation examples should prefer `case` as the injected context name.
 
 ## Assertions
 
@@ -57,6 +60,8 @@ Remaining speculative work belongs in:
     `throwingTest`.
 -   The low-level assertion protocol is `AssertionNode`.
 -   Low-level constructors live under `assertion.*`.
+-   Custom assertions are explicitly supported as extensions of the
+    first-party assertion system.
 
 ## Doubles
 
@@ -67,15 +72,34 @@ Remaining speculative work belongs in:
 -   Rich direct introspection is first-class.
 -   Advanced behavior uses ordered rules plus an answer-function escape hatch.
 -   Arg-based behavior starts with exact typed `when(...)` matching.
+-   The advanced path stays config-object-driven (`rules`, `fallback`,
+    `answer`) rather than introducing a second fluent API.
 -   Object-method replacement and module replacement are out of scope for the
     first-party concept.
+
+## Test Ergonomics
+
+-   Overkill should support a first-party harness concept for dependency-heavy
+    unit tests.
+-   Overkill should support generic interaction transcripts rather than
+    framework-specific emitter helpers only.
+-   Overkill should support small async queue helpers such as `flushAsync()`,
+    `microtasks()`, and `immediate()`.
+-   An advanced `inFlight(...)` helper is acceptable as a small opt-in
+    mechanic.
+-   Overkill should not add a broad first-party step/scenario DSL just to
+    make long tests feel more structured.
 
 ## Resources And Execution
 
 -   `@overkill/resources` is a generic resource and context composition
     layer.
+-   It is the main first-party primitive for integration and browser-style
+    test layers.
 -   It supports per-run, per-file, per-suite, per-case, shared, and
     exclusive scopes.
+-   It should support deterministic local services, temporary registries,
+    browser page-object fixtures, and explicit resource-owned attachments.
 -   Resources may contribute explicit execution requirements and preferences.
 -   `@overkill/run` resolves the final execution plan.
 -   Execution constraints include both hard requirements and soft
@@ -138,12 +162,19 @@ Remaining speculative work belongs in:
     equivalence across machines.
 -   Overkill does not need a heavy plugin runtime; stable package contracts
     are the main extension surface.
+-   The higher-level stack may support optional JS/TS config files.
+-   The engine remains programmatic-only.
+-   Config should stay low-surface and orchestration-focused.
 
 ## Planned Integration Direction
 
 -   Browser support should become first-class soon after the default
     microtest stack is coherent.
+-   Browser support should stay adapter-driven above the shared runtime,
+    baseline, and artifact model.
 -   Property-based testing should follow browser/integration support.
+-   Property-based tests are a real higher-layer family with seed,
+    shrinking, and witness needs.
 -   Stryker integration is planned from the beginning.
 -   Coverage is planned from the beginning, but stays explicit and off by
     default.

@@ -40,6 +40,17 @@ Integration tests verify that multiple components cooperate correctly. They may 
 
 They need stronger environment and orchestration support than microtests.
 
+In the reference projects, the most repeated integration pattern is an owned
+fixture or runtime wrapper such as:
+
+-   start a deterministic app server, yield a base URL, then stop it
+-   start a temporary registry, yield auth details, then clean up storage
+-   create a page-object runtime and validate it after the test
+
+That means Overkill should treat typed resource and runtime composition as
+the main integration primitive rather than trying to stretch microtest
+helpers upward.
+
 Integration-style runs may also legitimately use:
 
 -   retries
@@ -56,6 +67,16 @@ These tests validate UI, CLI, or multi-step workflows. The central model is envi
 -   screenshots or structural snapshots
 -   process or browser lifecycle
 -   richer diagnostics
+
+The reference projects add a few concrete browser-layer needs:
+
+-   page objects as the main test-facing handles
+-   transport-level request and event transcripts
+-   explicit attachments such as accessibility scan JSON
+-   visual baselines across browser and resolution matrices
+
+These should be modeled above the engine through browser-oriented runtimes,
+fixtures, and baseline adapters.
 
 ## Baseline-Driven Tests
 
@@ -105,6 +126,15 @@ These are future first-class directions rather than default microtest behavior. 
 -   shrinkers
 -   model state
 -   classification and coverage of generated cases
+
+The reference projects confirm that property tests should be treated as a
+real higher-layer family, not just a microtest variant with a helper
+library. They need:
+
+-   seeds
+-   shrinking
+-   reproducible failing inputs
+-   meaningful generated-case names and artifacts
 
 ## Why The Separation Matters
 
