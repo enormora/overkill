@@ -176,7 +176,7 @@ is **single-process, in-order**. Other modes are explicitly opt-in:
 Selection rules:
 
 -   the runner profile names a default mode
--   resource execution requirements (`environments-and-fixtures.md`) can
+-   resource execution requirements (`runtimes-and-fixtures.md`) can
     upgrade the mode (e.g. exclusive resource forces serialization within
     its scope)
 -   `--mode` overrides at the CLI

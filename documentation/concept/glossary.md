@@ -98,7 +98,7 @@ process model, worker count, isolation grain, scheduling policy. Examples:
 -   `single-worker-serial` — single worker thread, no concurrency
 
 An execution strategy is resolved by `@overkill/run` from package-provided
-constraints (resources, benchmarks, browser environments) and runner
+constraints (resources, benchmarks, browser runtimes) and runner
 configuration. It is distinct from a capability profile.
 
 A given run uses one execution strategy at a time, but different parts of
@@ -316,13 +316,13 @@ Resolution rules:
     errors
 -   soft preferences are reconciled by deterministic priority order
 
-Source: `environments-and-fixtures.md`, `package-architecture.md`,
+Source: `runtimes-and-fixtures.md`, `package-architecture.md`,
 `architecture-decisions.md`.
 
 ## Run Result
 
 The final structured outcome of a run: per-test verdicts, per-test
-captured artifacts, run-level summary, runner errors, environment
+captured artifacts, run-level summary, runner errors, runtime
 metadata, seed, total wall-time, plan identity. Final-result reporters
 consume this value; real-time reporters consume the events that produce
 it.

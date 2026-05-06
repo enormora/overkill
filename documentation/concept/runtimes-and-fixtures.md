@@ -1,8 +1,8 @@
-# Environments And Fixtures
+# Runtimes And Fixtures
 
 ## Goal
 
-Overkill needs a fixture and environment model powerful enough for integration work but explicit enough to avoid pytest-style magic.
+Overkill needs a fixture and runtime model powerful enough for integration work but explicit enough to avoid pytest-style magic.
 
 It also needs to be generic enough to work across multiple product families rather than being tied to one DSL or one runner mode.
 
@@ -15,7 +15,7 @@ Properties:
 -   explicit in the test signature
 -   type-safe
 -   reusable across test families
--   able to represent matrices of environments
+-   able to represent matrices of runtimes
 -   not dependent on hidden global lookup by name
 
 `@overkill/resources` should be understood as a resource and context composition layer, not merely a fixture helper for `@overkill/test`.
@@ -25,7 +25,7 @@ That means it should be able to model:
 -   ordinary test context
 -   shared or isolated resources
 -   per-run, per-file, per-suite, or per-case lifecycle scopes
--   environment matrices
+-   runtime matrices
 -   execution requirements that affect scheduling or isolation
 
 ## Why This Over Hooks
@@ -37,9 +37,9 @@ Hooks tend to hide:
 -   fixture lifetime
 -   cleanup responsibility
 
-Environment composition is clearer when setup is attached to an explicit environment factory or wrapper rather than ambient lifecycle callbacks.
+Runtime composition is clearer when setup is attached to an explicit runtime factory or wrapper rather than ambient lifecycle callbacks.
 
-This matters even more if the same environment system must support benchmarks, browser tests, and integration workflows.
+This matters even more if the same runtime system must support benchmarks, browser tests, and integration workflows.
 
 ## Influence
 
@@ -49,26 +49,26 @@ Source:
 
 -   <https://playwright.dev/docs/test-fixtures>
 
-## Environment Matrices
+## Runtime Matrices
 
-The concept should support running one test suite against multiple environments:
+The concept should support running one test suite against multiple runtimes:
 
 -   browser variants
 -   OS or runtime variants
 -   local vs remote service targets
 -   configuration profiles
 
-This belongs in first-party environment packages, not in the core execution contract.
+This belongs in first-party runtime packages, not in the core execution contract.
 
 ## Execution Requirements
 
-Environments should be able to contribute execution requirements without owning the final scheduling decision.
+Runtimes should be able to contribute execution requirements without owning the final scheduling decision.
 
 Examples:
 
--   an environment may require exclusive access to a shared resource
--   a benchmark environment may request single-worker execution
--   a browser environment may request process or worker isolation
--   a local integration environment may allow shared setup across many cases
+-   a runtime may require exclusive access to a shared resource
+-   a benchmark runtime may request single-worker execution
+-   a browser runtime may request process or worker isolation
+-   a local integration runtime may allow shared setup across many cases
 
 Those requirements should flow into orchestration, where they are resolved together with the needs of the test family and runner profile.

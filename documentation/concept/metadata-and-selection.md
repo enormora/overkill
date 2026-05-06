@@ -15,7 +15,7 @@ Likely metadata categories:
 
 -   **tags** — free-form labels (`'fast'`, `'flaky'`, `'auth'`)
 -   **kind** — closed enumeration (see `glossary.md` § Test Kind)
--   **environments** — declared environment matrix entries
+-   **runtimes** — declared runtime matrix entries
 -   **capabilities** — required capability profile
 -   **baselines** — baseline subtypes the test consumes
 -   **ownership** — domain or team labels (`'@auth-team'`)
@@ -28,7 +28,7 @@ Likely metadata categories:
 type Metadata = {
     readonly tags?: ReadonlySet<string>;
     readonly kind?: TestKind;
-    readonly environments?: ReadonlyArray<string>;
+    readonly runtimes?: ReadonlyArray<string>;
     readonly capabilities?: ReadonlyArray<Capability>;
     readonly baselines?: ReadonlyArray<BaselineSubtype>;
     readonly ownership?: ReadonlyArray<string>;
@@ -49,7 +49,7 @@ Metadata cascades from suite to test, with override semantics:
 2.  a parent `Suite`'s metadata applies to all children
 3.  a child's metadata overrides the parent on a per-key basis
 4.  set-valued fields (`tags`) merge by union with the parent
-5.  array-valued fields (`environments`) merge unless the child sets
+5.  array-valued fields (`runtimes`) merge unless the child sets
     `replace: true` (rare)
 6.  enum fields (`kind`, `stability`, `priority`) replace
 
@@ -83,7 +83,7 @@ Filterable dimensions:
 -   file path (glob)
 -   tag set (`--tag fast`, `--tag '!flaky'`)
 -   metadata fields (`--kind microtest`, `--owner '@auth-team'`)
--   environment (`--env 'browser-*'`)
+-   runtime (`--runtime 'browser-*'`)
 -   workload (`--workload large`)
 -   stability (`--stability stable`)
 
@@ -102,7 +102,7 @@ term     := dimension '=' value          # equality
          |  '(' expr ')'
          |  expr '|' expr                # OR (lower precedence than space-AND)
 value    := identifier | quoted-string
-dimension := 'tag' | 'kind' | 'env' | 'owner' | 'stability'
+dimension := 'tag' | 'kind' | 'runtime' | 'owner' | 'stability'
           |  'file' | 'name' | 'suite' | 'params'
 ```
 

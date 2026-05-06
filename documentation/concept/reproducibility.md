@@ -7,7 +7,7 @@ This document defines what Overkill should mean by a reproducible run.
 ## Position
 
 Reproducibility is not only about random seeds. It is about whether a run
-can be re-created with meaningfully the same inputs, ordering, environments,
+can be re-created with meaningfully the same inputs, ordering, runtimes,
 and artifact expectations.
 
 The strongest form Overkill commits to is **reproducible run intent and
@@ -22,7 +22,7 @@ A reproducible run captures, at minimum:
 -   the run seed
 -   the resolved selection (filter expression and the resulting set of
     `CaseId`s after expansion)
--   the resolved environment matrix (each `EnvId` actually used)
+-   the resolved runtime matrix (each `RuntimeId` actually used)
 -   the resolved execution strategy (process model, worker count,
     serialisation rules)
 -   the resolved capability profile per worker
@@ -44,7 +44,7 @@ type RunRecord = {
     readonly seed: bigint;
     readonly plan: RunPlan;
     readonly identities: ReadonlyArray<CaseId>;
-    readonly environment: ResolvedEnvironment;
+    readonly runtime: ResolvedRuntime;
     readonly versions: { engine: string; node: string; packages: ReadonlyMap<string, string> };
     readonly startedAt: string; // ISO 8601
     readonly result?: RunResult; // populated when the run completes
@@ -63,7 +63,7 @@ That implies:
 -   reproducible seed handling (single run seed; per-test seeds derived
     deterministically from `(runSeed, CaseId)`)
 -   stable test identities (`artifact-identity.md`)
--   deterministic expansion of parameterized and environment-driven cases
+-   deterministic expansion of parameterized and runtime-driven cases
 
 The default ordering is alphabetic by `CaseId` for stability. Randomized
 ordering is opt-in (`--shuffle`) and reports the seed prominently in the
@@ -125,8 +125,8 @@ machine class X."
 -   restores the seed
 -   restores the selection (no re-collection from disk; the recorded
     identity set is used directly)
--   restores the environment matrix where local environments are
-    available; reports inconclusive for environments not available
+-   restores the runtime matrix where local runtimes are
+    available; reports inconclusive for runtimes not available
 -   restores the execution strategy
 -   restores the loader configuration
 
