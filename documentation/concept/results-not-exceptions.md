@@ -53,6 +53,9 @@ Overkill's structured outcome model avoids that at the architectural level.
 The engine should treat structured outcomes as canonical:
 
 ```ts
+// engine-level outcome; reporter-facing verdicts (xfail, xpass,
+// crashed) are derived from outcome + metadata + runner-error state
+// — see `glossary.md` § Test Outcome / Test Verdict.
 type TestOutcome = Pass | Fail | Skip | Inconclusive;
 
 type Pass = { kind: 'pass' };

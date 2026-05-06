@@ -223,7 +223,7 @@ Mainstream JS runners model verdicts as `pass | fail | skip`. JUnit5 / pytest
 
 -   `xfail` — expected to fail; passes when it _does_ fail; flips to a
     `xpass` regression if it unexpectedly passes
--   `inconclusive` — environment unhealthy; not the test's verdict
+-   `inconclusive` — runtime unhealthy; not the test's verdict
 -   `not-applicable` — precondition not met; distinct from skip
 -   `flaky-detected` — passed only after retry
 -   `quarantined` — known-flaky, allowed to fail without gating
@@ -232,8 +232,12 @@ TAP supports `# SKIP` and `# TODO` directives natively. Overkill should
 expose first-class verdicts so CI consumers (and humans) distinguish "this
 is broken" from "we couldn't tell" from "we expect this until #4123 lands."
 
-The returned-value outcome model from `results-not-exceptions.md` makes this
-trivial: the verdict ADT just gains constructors.
+The split between engine `TestOutcome` (`pass | fail | skip |
+inconclusive`) and reporter-facing verdicts is settled (see `glossary.md`
+§ Test Outcome / Test Verdict): engine outcomes stay narrow; richer
+verdicts are derived by orchestration from `(outcome, metadata,
+runner-error?)`. Adding a new verdict means adding a derivation rule, not
+a new engine constructor.
 
 ## Test Impact Analysis (TIA)
 

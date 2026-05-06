@@ -175,25 +175,42 @@ may itself return a table when parameterization is the right representation.
 
 Source: `tests-as-values.md`.
 
-## Test Verdict
+## Test Outcome
 
-The outcome category of a test run. Overkill uses a richer ADT than
-`pass | fail | skip`:
+The engine-level outcome of a test run. The `TestOutcome` ADT (see
+`results-not-exceptions.md`) has four cases:
 
 -   `pass` — assertions held
 -   `fail` — assertions did not hold (specific failed checks reported)
 -   `skip` — explicitly skipped with a reason
--   `inconclusive` — the runner could not observe the test (environment
+-   `inconclusive` — the runner could not observe the test (runtime
     unhealthy, missing precondition)
--   `expected-fail` (xfail) — the test failed and was expected to
--   `unexpected-pass` (xpass) — the test passed despite being marked xfail
--   `crashed` — the worker process died during the test (runner-error
-    sub-kind)
 
-Each verdict has a payload: a list of failed checks for `fail`, a reason
+Each outcome has a payload: a list of failed checks for `fail`, a reason
 string for `skip`/`inconclusive`, etc.
 
-Source: `results-not-exceptions.md`, `novel-techniques.md`.
+Source: `results-not-exceptions.md`.
+
+## Test Verdict
+
+The reporter-facing category for a test run. A verdict is derived from
+the engine `TestOutcome` plus metadata available at orchestration time.
+Three additional verdicts beyond the four outcomes:
+
+-   `expected-fail` (xfail) — outcome was `fail` and the test carried
+    xfail metadata; reported as success-equivalent
+-   `unexpected-pass` (xpass) — outcome was `pass` despite xfail
+    metadata; reported as a failure of the xfail expectation
+-   `crashed` — the worker process died during the test; the engine
+    never produced a `TestOutcome`. Reported as a runner-error sub-kind
+    (see `failure-artifacts.md`)
+
+Verdicts are a presentation concept owned by orchestration and
+reporters, not by `@overkill/engine`. The engine returns outcomes;
+verdicts come from `(outcome, metadata, runner-error?)`.
+
+Source: `results-not-exceptions.md`, `failure-artifacts.md`,
+`novel-techniques.md`.
 
 ## AssertionNode
 
