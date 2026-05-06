@@ -339,26 +339,30 @@ If Overkill commits to incorporating these in priority order:
     that follows, ~150 LoC of core
 3.  **Witness-replay artifacts** — slot directly into existing baselines /
     failure-artifacts model
-4.  **In-source tests** — leans into Node type stripping and the
-    fast-feedback story
-5.  **TIA with persistent dynamic call graph** — `fast-feedback-loops.md`
-    sets the technical direction; this doc commits to the user-facing
-    surface
-6.  **Stage-1 deterministic simulation** (virtual clock + scheduler) —
+4.  **TIA with persistent dynamic call graph** — open research (see
+    Test Impact Analysis section); the user-facing surface is sketched
+    but not committed
+5.  **Stage-1 deterministic simulation** (virtual clock + scheduler) —
     replaces 80% of fake-timer usage with deterministic equivalents
-7.  **`relation()` primitive** — metamorphic testing as a first-class
+6.  **`relation()` primitive** — metamorphic testing as a first-class
     shape
-8.  **Hyperproperties** — niche but unique
-9.  **Differential testing** — small package, big win for projects with
+7.  **Hyperproperties** — niche but unique
+8.  **Differential testing** — small package, big win for projects with
     parallel implementations
-10. **Coverage-guided fuzzing** — defer until coverage is stable
-11. **Linearisability checker** — defer until concurrent-JS users
+9.  **Coverage-guided fuzzing** — defer until coverage is stable
+10. **Linearisability checker** — defer until concurrent-JS users
     materialise
-12. **Approval-test workflow** — defer; covered by baselines
+11. **Approval-test workflow** — defer; covered by baselines
 
-Items 1, 4, 5 are essentially free given decisions already made. Items 2, 3,
-6 are the big architectural commitments. 7-12 are package-by-package
-extensions.
+In-source tests are intentionally **not** in this list: the settled
+concept rejects them as the default authoring model (see
+`architecture-decisions.md` § Default Authoring Model and
+`microtests-and-capabilities.md`). They remain a possible future
+research item only.
+
+Item 1 is essentially free given decisions already made. Items 2, 3, 5
+are the big architectural commitments. Item 4 (TIA) is open research.
+Items 6–11 are package-by-package extensions.
 
 ## Sources
 
