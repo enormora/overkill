@@ -106,10 +106,10 @@ This generalizes Buster's `extends` and pytest's session fixtures into one ortho
 Three independent layers:
 
 1.  **workers** — per-machine processes (`workers: 4`)
-2.  **fullyParallel** — distributes individual *tests* to workers, not files; without it, file is the scheduling unit
+2.  **fullyParallel** — distributes individual _tests_ to workers, not files; without it, file is the scheduling unit
 3.  **shards** — `--shard=1/3` deterministic partition across machines; `blob` reporter + `merge-reports` post-hoc
 
-The interaction with worker-scoped fixtures: worker fixtures setup *once per worker process*, not per shard. A 4-shard × 4-worker run pays setup cost 16 times. Worker reuse across files happens only when worker-fixture parameters match — implicit invalidation rules that surprise users.
+The interaction with worker-scoped fixtures: worker fixtures setup _once per worker process_, not per shard. A 4-shard × 4-worker run pays setup cost 16 times. Worker reuse across files happens only when worker-fixture parameters match — implicit invalidation rules that surprise users.
 
 `describe.configure({ mode: 'serial' })` collapses retry semantics: a serial group retries together. This is the only way to express "these tests share mutable state and must run in order."
 
@@ -117,7 +117,7 @@ Overkill direction: name the three axes explicitly (workers × fullyParallel × 
 
 #### Auto-Waiting / Polled Assertions
 
-`expect(locator).toBeVisible()` is **not** a point-in-time check. It polls the live DOM until the predicate passes or the assertion timeout elapses. This makes the assertion *temporal*: "this becomes true within N ms," not "this is true now."
+`expect(locator).toBeVisible()` is **not** a point-in-time check. It polls the live DOM until the predicate passes or the assertion timeout elapses. This makes the assertion _temporal_: "this becomes true within N ms," not "this is true now."
 
 `expect.poll(fn).toBe(value)` and `expect(async () => { ... }).toPass()` generalize the pattern outside UI testing.
 
@@ -148,14 +148,25 @@ await expect.soft(page.getByTestId('eta')).toHaveText('1 day');
 
 Failing soft assertions accumulate on `testInfo.errors` rather than throwing. The whole test runs; the test ends failed with N errors.
 
-Caveat: soft is bolted on as a flag on the matcher chain, not a different type. Overkill's "results not exceptions" model should make every assertion produce a `Check` value first, and only an outer combinator decides whether to throw. **That gives soft as the default mode**, not a special suffix. See `results-not-exceptions.md`.
+Caveat: soft is bolted on as a flag on the matcher chain, not a different
+type. Overkill should make aggregation explicit rather than a hidden matcher
+suffix. The chosen direction is:
+
+-   builder-style `assert.*` for recorded non-gating assertions
+-   builder-style `require.*` for gating assertions and narrowing
+-   explicit aggregation blocks such as `assert.all(() => { ... })` when a
+    suite wants "run all" semantics
+
+That keeps the richer result protocol without making soft or non-fail-fast
+behavior the invisible default. See `assertions-and-results.md` and
+`results-not-exceptions.md`.
 
 #### Annotations And Verdict Modifiers
 
 ```ts
-test.fail('not yet ready', body);     // xfail — runs; warns if it passes
-test.fixme('to be fixed', body);      // skip with intent
-test.slow(condition, 'reason');       // 3× timeout multiplier
+test.fail('not yet ready', body); // xfail — runs; warns if it passes
+test.fixme('to be fixed', body); // skip with intent
+test.slow(condition, 'reason'); // 3× timeout multiplier
 test.info().annotations.push({ type: 'issue', description: 'ABC-123' });
 ```
 
@@ -167,7 +178,9 @@ Overkill direction: verdict modifiers belong on the test descriptor as fields, n
 
 ```ts
 test('checkout', async ({ page }, testInfo) => {
-    await test.step('login', async () => { /* ... */ });
+    await test.step('login', async () => {
+        /* ... */
+    });
     await test.step('add to cart', async (step) => {
         await step.attach('cart', { body: ss, contentType: 'image/png' });
     });
@@ -247,7 +260,7 @@ Named groups, each with an `environment`, `libs`/`sources`/`tests`/`resources`, 
 
 `autoRun: false` plus explicit `buster.run()` lets the test author gate the start of the run — useful when AMD modules are still loading, when async setup must complete, when a service worker must register. The runner doesn't auto-start; the bootstrapper says "go."
 
-For ESM with `await import()` and dynamic registration, the explicit-start pattern is more honest than today's "tests fire on load" assumption. Overkill's tests-as-values shape (see `tests-as-values.md`) takes this further: the file *exports* the suite, the runner starts walking when ready.
+For ESM with `await import()` and dynamic registration, the explicit-start pattern is more honest than today's "tests fire on load" assumption. Overkill's tests-as-values shape (see `tests-as-values.md`) takes this further: the file _exports_ the suite, the runner starts walking when ready.
 
 #### Static Browser Runs
 
@@ -287,6 +300,42 @@ Sources:
 
 ## Cross-Language Testing Models
 
+### DSL Shapes Are More Diverse Than TDD vs BDD
+
+The biggest DSL lesson from outside mainstream JS is that the interesting
+design axis is usually **not** whether the surface says `describe()` or
+`context()` or `it()`. The deeper choices are:
+
+-   how tests are discovered
+-   whether tests are side effects or values
+-   whether examples, properties, models, and docs are separate families
+-   whether setup is hidden lifecycle machinery or ordinary composable code
+
+Across ecosystems, at least these distinct DSL families show up:
+
+-   **function or attribute discovery**
+    -   Rust `#[test]`
+    -   Go `TestXxx`, `BenchmarkXxx`, `FuzzXxx`, `ExampleXxx`
+    -   JUnit `@Test`, `@ParameterizedTest`, `@TestFactory`
+-   **registration DSLs**
+    -   Jest, Vitest, Mocha, ExUnit
+-   **tests-as-values / tree DSLs**
+    -   Haskell `tasty`
+    -   RackUnit suites as values
+-   **submodule-based colocated tests**
+    -   Racket `module+ test`
+-   **documentation/example DSLs**
+    -   Go `ExampleXxx`
+    -   Rust doctests
+-   **property / model / relation DSLs**
+    -   QuickCheck-style properties
+    -   model-based testing DSLs
+    -   metamorphic relations
+
+Overkill should therefore avoid treating TDD/BDD trees as the only serious
+shape. The architecture should be able to host multiple authoring families
+that lower into one engine model.
+
 ### Go
 
 Go’s table-driven style remains one of the clearest examples of low-magic testing. The `Run` model shows that parameterized or grouped execution does not require a large hierarchy system.
@@ -294,6 +343,17 @@ Go’s table-driven style remains one of the clearest examples of low-magic test
 Source:
 
 -   <https://go.dev/blog/subtests>
+
+Go also demonstrates a more radical idea that JS frameworks often underuse:
+
+-   tests
+-   benchmarks
+-   fuzz targets
+-   executable examples
+
+are separate top-level DSL families, not just modifiers on one universal
+`test()` primitive. That separation gives clearer execution policy and
+clearer user intent.
 
 ### Rust
 
@@ -309,6 +369,85 @@ Sources:
 -   <https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html>
 -   <https://doc.rust-lang.org/nightly/unstable-book/language-features/custom-test-frameworks.html>
 
+Rust doctests are another important reminder that documentation examples are
+their own DSL family with their own tradeoffs. They should not be modeled as
+ordinary unit tests by default.
+
+Source:
+
+-   <https://doc.rust-lang.org/rustdoc/write-documentation/documentation-tests.html>
+
+### Racket and RackUnit
+
+Racket contributes two especially relevant ideas.
+
+#### `module+ test`
+
+Racket's `module+ test` submodule is a colocated-but-not-runtime-loaded test
+model. Importing a module normally does not run its tests. `raco test`
+discovers and runs the `test` submodule instead.
+
+This is one of the cleanest answers to "how can tests live near the code
+without polluting the runtime loading story?" It is a much more disciplined
+shape than true in-source test blocks.
+
+For Overkill, the lesson is not "copy `module+` syntax". The lesson is that
+**colocation and runtime separation can coexist** if the module system owns
+the distinction.
+
+Sources:
+
+-   <https://docs.racket-lang.org/guide/Module_Syntax.html>
+-   <https://docs.racket-lang.org/raco/test.html>
+
+#### RackUnit Suites As Values
+
+RackUnit also validates tests-as-values directly. A test suite is a value,
+and the API explicitly distinguishes between syntax forms that run checks
+immediately and suite values that are built and later executed.
+
+This is very close to the direction documented in
+`tests-as-values.md`.
+
+Source:
+
+-   <https://docs.racket-lang.org/rackunit/api.html>
+
+### Haskell `tasty`
+
+`tasty` is the strongest mainstream precedent for explicit test trees.
+
+The important type is:
+
+-   `TestTree`
+
+and providers such as `tasty-hunit`, `tasty-quickcheck`, and others lift
+their specific tests into that tree.
+
+Conceptually the tree looks like:
+
+```hs
+testGroup "users"
+  [ testCase "build" ...
+  , testCase "validate" ...
+  , testProperty "round-trip" ...
+  ]
+```
+
+So the structure is:
+
+-   named groups
+-   leaf tests from different providers
+-   one compositional tree consumed by the runner
+
+This is exactly the kind of lower-level unification Overkill should preserve:
+different authoring families can still lower into one execution tree.
+
+Sources:
+
+-   <https://hackage.haskell.org/package/tasty-0.6/docs/Test-Tasty.html>
+-   <https://hackage-content.haskell.org/package/tasty-hunit-0.10.2/docs/Test-Tasty-HUnit.html>
+
 ### Swift Testing
 
 Swift Testing is interesting because it combines:
@@ -322,6 +461,34 @@ The main transferable idea is trait-based test customization. The main non-trans
 Source:
 
 -   <https://developer.apple.com/xcode/swift-testing/>
+
+Swift Testing also proves that macro-based DSLs can make metadata and
+parameterization feel lightweight without requiring a registration-tree API.
+That is a distinct DSL family from both Jest-style registration and
+tests-as-values.
+
+### JUnit 5 and pytest
+
+JUnit 5 and pytest both show that a framework can center on reflection,
+attributes, decorators, and factory hooks instead of nested BDD trees.
+
+Important ideas:
+
+-   JUnit `@TestFactory` dynamic tests are produced by factory methods, not
+    only by fixed annotations
+-   pytest parametrization and `pytest_generate_tests` push test expansion
+    into decorators and collection hooks
+-   both frameworks make metadata and generation first-class without needing
+    `describe()` as the universal grouping concept
+
+This matters for Overkill because it suggests the DSL space is broader than
+"tree of imperative registration calls" versus "flat test functions". There
+is also a serious **factory / generation** axis.
+
+Sources:
+
+-   <https://docs.junit.org/5.10.1/user-guide/index.html>
+-   <https://pytest.org/en/8.1.x/how-to/parametrize.html>
 
 ### ZIO Test
 
@@ -393,6 +560,8 @@ Important lessons:
 -   properties are executable specifications
 -   generators and shrinking are core user experience, not add-ons
 -   model-based testing can express workflow validity better than brittle examples
+-   metamorphic relations are a real alternative to example-by-example
+    oracle assertions
 -   testing code itself can be wrong, so richer structure sometimes matters
 
 These ideas should shape future Overkill package families even if they do not enter the first default DSL.
@@ -402,6 +571,8 @@ Sources:
 -   Foundational Property-Based Testing: <https://lemonidas.github.io/pdf/Foundational.pdf>
 -   Property-based testing of web services from business-rule models: <https://link.springer.com/article/10.1007/s10270-017-0647-0>
 -   Improved semantics and implementation through property-based testing with QuickCheck: <https://kar.kent.ac.uk/42307/>
+-   Software Testing with QuickCheck: <https://www.researchgate.net/publication/225219256_Software_Testing_with_QuickCheck>
+-   DSL Composition for model-based test generation: <https://eceasst.org/index.php/eceasst/article/view/1579>
 
 ## Node Capability Model
 
@@ -426,9 +597,13 @@ Sources:
 The main conclusions for Overkill are:
 
 -   keep the core small and event-driven
+-   do not assume TDD/BDD registration trees are the only serious DSL shape
+-   support multiple authoring families that lower into one engine model
 -   let microtests and integration tests have different default capability models
 -   prefer explicit typed context over hidden fixture lookup
 -   adopt a first-class modifier or trait model for cross-cutting behavior
 -   treat baselines as a broader concept than string snapshots
 -   treat benchmarking as its own package family
+-   keep room for tests-as-values, property DSLs, model/state-machine DSLs,
+    and documentation/example test DSLs
 -   explore future DSLs and package families without forcing them into the first default runner

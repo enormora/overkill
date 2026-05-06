@@ -15,11 +15,11 @@ expected to be deterministic and locally scoped, and is optimized for the
 fastest feedback loop.
 
 "Microtest" is **not** synonymous with "small" or "fast" or "unit." Size and
-speed are *consequences* of the capability boundary; the boundary is the
+speed are _consequences_ of the capability boundary; the boundary is the
 defining property.
 
-A test is a microtest if and only if it runs in a microtest *capability
-profile*. Two tests with identical bodies but different profiles are
+A test is a microtest if and only if it runs in a microtest _capability
+profile_. Two tests with identical bodies but different profiles are
 different tests.
 
 Source: `microtests-and-capabilities.md`.
@@ -80,14 +80,14 @@ Standard profiles:
 -   `benchmark-process` — integration-local plus single-worker
     serialization
 
-A capability profile is a *permission* concept. It is distinct from
+A capability profile is a _permission_ concept. It is distinct from
 execution strategy.
 
 Source: `microtests-and-capabilities.md`.
 
 ## Execution Strategy
 
-A resolved decision about how the runner *executes* a set of tests:
+A resolved decision about how the runner _executes_ a set of tests:
 process model, worker count, isolation grain, scheduling policy. Examples:
 
 -   `serial` — one test at a time in a single process
@@ -136,8 +136,8 @@ Source: `tests-as-values.md`, `package-architecture.md`.
 
 A `TestNode` that pairs a single test body with a list of cases. Each case
 becomes a distinct expanded test in the run plan. Tables are the
-recommended replacement for `it.each` / `test.each` patterns and produce
-stable per-case identities.
+parameterized-test shape. Macros remain the primary reuse mechanism; a macro
+may itself return a table when parameterization is the right representation.
 
 Source: `tests-as-values.md`.
 
@@ -153,40 +153,42 @@ The outcome category of a test run. Overkill uses a richer ADT than
     unhealthy, missing precondition)
 -   `expected-fail` (xfail) — the test failed and was expected to
 -   `unexpected-pass` (xpass) — the test passed despite being marked xfail
--   `quarantined` — known-flaky, allowed to fail without gating
 -   `crashed` — the worker process died during the test (runner-error
     sub-kind)
 
 Each verdict has a payload: a list of failed checks for `fail`, a reason
-string for `skip`/`inconclusive`/`quarantined`, etc.
+string for `skip`/`inconclusive`, etc.
 
 Source: `results-not-exceptions.md`, `novel-techniques.md`.
 
-## Check
+## AssertionNode
 
-A typed value produced by an assertion, with kind `'pass'` or `'fail'`. A
-test body returns a check (or a tree of checks). The runner reads the
-result; assertions do not throw.
+A typed low-level value produced by assertion constructors such as
+`assertion.equal(...)`. Builder APIs may record these nodes implicitly and
+return them through `assert.done()`. The engine consumes structured assertion
+results; ordinary users usually interact with injected `assert` / `require`
+instead of raw nodes.
 
-Source: `results-not-exceptions.md`.
+Source: `assertions-and-results.md`, `results-not-exceptions.md`.
 
 ## Plan
 
-A declared assertion-count contract on a test. `plan(3, check)` requires
-the wrapped composite check to contain exactly three leaf checks. A test
-that runs more or fewer leaves is a `fail`. Plans are decorators on
-returned check values, not mutable global counters.
+A declared assertion-count contract on a test. `plan(3)` requires the test to
+record exactly three leaf assertions before completion. A test that runs more
+or fewer leaves is a `fail`. Plans are explicit test-local state, not hidden
+global counters, and they work with both builder-style assertions and the
+explicit throwing mode.
 
 Source: `assertions-and-results.md`, `results-not-exceptions.md`.
 
 ## Capability Handle
 
 A typed value implementing an effect interface (`Clock`, `Random`,
-`FileSystem`, `HttpClient`, `Logger`, ...). Tests receive a `World` of
-capability handles; the production world is built from real
-implementations, the test world from deterministic recorders.
+`FileSystem`, `HttpClient`, `Logger`, ...). Tests may receive a runtime
+object composed from capability handles; the production runtime is built from real
+implementations, the test runtime from deterministic or recording variants.
 
-Capability handles are the canonical alternative to mocking.
+Capability handles are one promising alternative to mocking.
 
 Source: `capability-handles.md`.
 
@@ -204,7 +206,7 @@ An opaque branded value that grants permission for a runner-owned
 operation (writing coverage artifacts, updating baselines, collecting
 snapshots). User code cannot forge a token; the runner constructs and
 passes them. Distinct from capability handles in that authority tokens
-gate *runner* operations, not *effect* operations.
+gate _runner_ operations, not _effect_ operations.
 
 Source: `capability-handles.md`.
 
@@ -236,21 +238,22 @@ Source: `baselines-and-snapshots.md`.
 ## Witness
 
 A serialised reproduction artifact produced by failing property tests and
-deterministic-simulation tests. Contains the seed, shrink path, captured
-world snapshot, fault configuration, and library version. Loading the
+deterministic-simulation tests. Contains the seed, shrink path,
+runtime/simulation metadata, captured snapshot when available, fault
+configuration, and library version. Loading the
 witness reproduces the failure bit-for-bit without re-shrinking.
 
 Source: `novel-techniques.md`, `deterministic-simulation.md`.
 
 ## Artifact Identity
 
-A stable structured identifier for a test, case, environment, workload, or
-artifact. Composed from file/module origin, suite name, test name,
-parameterization key, environment key, workload key, and artifact subtype.
-Used for selection, baseline lookup, stale detection, reproducibility,
-benchmark policies, and reporter output.
+A stable structured identifier for a test, case, runtime, workload, or
+artifact. The engine-level identity stays generic; higher-level packages such
+as `@overkill/test` may derive richer identity parts from file/module origin,
+suite name, test name, parameterization key, runtime metadata, and workload
+metadata.
 
-The identity is a value, not a path. The path is a derivation of the
+The identity is a value, not a path. The path is a readable derivation of the
 identity.
 
 Source: `artifact-identity.md`.
@@ -314,7 +317,7 @@ Resolution rules:
 -   soft preferences are reconciled by deterministic priority order
 
 Source: `environments-and-fixtures.md`, `package-architecture.md`,
-`open-questions.md`.
+`architecture-decisions.md`.
 
 ## Run Result
 
@@ -330,19 +333,24 @@ Source: `failure-artifacts.md`, `package-architecture.md`.
 
 A typed bag of capability handles passed to a test as part of its context.
 The production world is built from real implementations; the test world
-is built from deterministic recorders. Tests receive a `World` (or a
-narrower subset) and perform all effects through it.
+is built from test-specific implementations. This is one possible pattern
+for explicit dependency injection, not an Overkill requirement or official
+package shape.
 
 Source: `capability-handles.md`.
 
-## Quarantine
+## Scenario
 
-A metadata flag on a test indicating it is known-flaky and allowed to
-fail without gating the overall run. Quarantined failures are reported
-distinctly from non-quarantined failures and from passes. Quarantine is
-visible to filters, reporters, and CI gates.
+A stable, speaking preset of simulation or runtime behavior. A scenario may
+bundle fixture data, authentication state, seeded defaults, service responses,
+latency behavior, or fault modes under one reviewed key such as `default`,
+`logged-in`, or `payments-500`.
 
-Source: `metadata-and-selection.md`, `runtime-behavior.md`.
+Scenarios are especially useful for deterministic local services and other
+simulation-aware runtimes because they give failures and replay artifacts a
+shared vocabulary beyond raw flags.
+
+Source: `deterministic-simulation.md`.
 
 ## Stale Baseline
 
@@ -361,16 +369,6 @@ deterministic given the same tree and filter expression. Composes with
 sharding (sharding partitions the result of selection).
 
 Source: `metadata-and-selection.md`.
-
-## In-Source Test
-
-A test whose source lives inside a non-test source file, gated by
-`if (import.meta.test) { ... }` or an equivalent sentinel. The runner's
-loader registers the inner suite when in test mode and strips the block
-in production builds.
-
-Source: `microtests-and-capabilities.md`, `novel-techniques.md`,
-`fast-feedback-loops.md`.
 
 ## Microtask vs Macrotask Scheduling
 

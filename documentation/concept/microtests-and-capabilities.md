@@ -7,12 +7,12 @@ default, is expected to be deterministic and locally scoped, and is
 optimized for the fastest feedback loop.
 
 The defining property is the capability boundary, not size or speed. Size
-and speed are *consequences* of the boundary: a test denied filesystem
+and speed are _consequences_ of the boundary: a test denied filesystem
 writes, network access, child processes, and addons cannot accidentally
 become an integration test or a slow test.
 
-A test is a microtest if and only if it runs in a microtest *capability
-profile*. Two tests with identical bodies but different profiles are
+A test is a microtest if and only if it runs in a microtest _capability
+profile_. Two tests with identical bodies but different profiles are
 different tests.
 
 See `glossary.md` for the canonical term definitions.
@@ -38,7 +38,7 @@ Out of scope for the microtest capability model:
 
 In scope:
 
--   prevention of *accidental* I/O, network access, and process spawning
+-   prevention of _accidental_ I/O, network access, and process spawning
 -   detection of accidental impurity early enough to remediate
 -   keeping a hostile dependency from being able to silently change the
     test's observable behavior through environmental side effects
@@ -58,6 +58,8 @@ Strict microtest mode denies, by default:
 -   worker threads unless explicitly required by the runner
 -   addons, WASI, and similar escape hatches
 -   `process.exit` (treated as a runner error if the test calls it)
+-   `console.*` usage (reported as a microtest violation when strict console
+    diagnostics are enabled)
 
 The first enforcement mechanism is Node's permission model:
 
@@ -69,6 +71,14 @@ The first enforcement mechanism is Node's permission model:
 -   `--allow-worker`
 
 Source: <https://nodejs.org/api/permissions.html>
+
+Important nuance:
+
+-   Node permissions can strongly deny filesystem, network, process, and
+    worker capabilities
+-   `console.*` is not covered by the permission model
+-   strict microtest handling of `console.*` therefore relies on runtime
+    observability, not on the permission flags themselves
 
 ## Important Limitation
 
@@ -108,24 +118,24 @@ This means:
 -   the orchestrator routes tests by their declared capabilities; tests
     with incompatible declarations are scheduled to separate workers
 
-Capability declarations are *intersected* down the suite tree (a child
+Capability declarations are _intersected_ down the suite tree (a child
 cannot extend the parent's permissions; it can only narrow them).
 
 ## Capability Handles As The Language-Level Boundary
 
 The Node permission model is the OS-level seat belt. The
 `capability-handles.md` pattern adds a language-level boundary: a
-microtest's `World` is a typed bag of effect handles, and the test cannot
+microtest's runtime object is a typed bag of effect handles, and the test cannot
 perform effects whose handles it did not receive.
 
 Two layers of defense, complementary:
 
--   Node permission model — denies the *low-level* OS access
--   Handle composition — denies the *typed* effect surface
+-   Node permission model — denies the _low-level_ OS access
+-   Handle composition — denies the _typed_ effect surface
 
-A microtest written against `@overkill/world` and asking only for
-`{ clock, random }` literally cannot perform other effects, because the
-language types do not let it.
+A microtest written against a narrow injected runtime such as
+`{ clock, random }` literally cannot perform other effects through that
+runtime, because the language types do not let it.
 
 ## Coverage Exception
 
@@ -150,7 +160,7 @@ Sources:
 Standard capability profiles (see `glossary.md`):
 
 -   `micro-strict` — denies almost everything; the default microtest
-    profile
+    profile, and fails on observed `console.*` usage
 -   `micro-supervised` — same denials, plus subprocess supervision for
     crash-only recovery
 -   `micro-with-coverage` — micro-strict with a narrow exception for
@@ -163,10 +173,19 @@ Standard capability profiles (see `glossary.md`):
 These are conceptual profiles. Implementation details (exact flag set,
 exact temp-dir layout) are runner-internal.
 
+Modern Node diagnostics channels provide built-in `console.log`,
+`console.info`, `console.debug`, `console.warn`, and `console.error`
+observability. That makes strict console policy plausible without directly
+patching `console.*` itself. It is still a form of instrumentation and may
+carry some overhead, so profiles should keep it explicit.
+
 ## In-Source Microtests
 
-Microtests can live inside production source files, gated by
-`if (import.meta.test) { ... }` or an equivalent sentinel:
+True in-source microtests are **rejected in the current concept**.
+
+They are attractive because they keep the test physically next to the code,
+and because very small local checks often read well inline. A possible shape
+would be a sentinel such as `if (import.meta.test) { ... }`:
 
 ```ts
 // source/users.ts
@@ -175,23 +194,27 @@ export function buildUser(name: string) {
 }
 
 if (import.meta.test) {
-    test('strips whitespace', ({ assert }) =>
-        assert.equal(buildUser('  Ada  ').name, 'Ada'));
+    test('strips whitespace', ({ assert }) => assert.equal(buildUser('  Ada  ').name, 'Ada'));
 }
 ```
 
-The runner's loader strips the `if (import.meta.test) { ... }` block in
-production builds and registers the inner tests when in test mode. Native
-Node type stripping makes this nearly free; combined with tests-as-values
-the tests are exported alongside production code as inert data when test
-mode is off.
+The reasons for rejection are straightforward:
 
-Native Node 25 already supports `import.meta.main` for self-running
-source files; Overkill's loader extends the convention with
-`import.meta.test` for the test-mode sentinel.
+-   many tools still classify tests by file patterns rather than by semantic
+    in-file detection
+-   production shipping gets harder if stripping requires custom transforms
+-   the concept conflicts with the goal of leaning on Node built-ins rather
+    than custom loader pipelines
 
-In-source microtests inherit the file's profile by default. They can also
-declare metadata like any other test.
+So the current concept stance is:
+
+-   colocated separate test files are the default and safest pattern
+-   true in-source tests are rejected in the current concept
+-   Overkill should not promise automatic stripping or loader magic
+
+Native Node 26 already supports `import.meta.main` for self-running source
+files. That is useful on its own, even if Overkill never standardizes true
+in-source tests.
 
 ## Hang Detection And Forced Termination
 
@@ -220,8 +243,8 @@ Concept direction:
 -   in-process microtests: allow soft timeouts and optional resource-leak
     diagnostics, but do not promise hard recovery from CPU-bound hangs
 -   supervised microtests: allow crash-only supervision, where a watchdog
-    may kill the disposable test process or worker if it wedges. *This
-    requires subprocess isolation*, since worker threads inherit the
+    may kill the disposable test process or worker if it wedges. _This
+    requires subprocess isolation_, since worker threads inherit the
     parent's permissions and can be CPU-stuck without parent recourse.
 -   isolated integration, browser, or benchmark modes: allow a supervisor
     to terminate a stuck worker or process

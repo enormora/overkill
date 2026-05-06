@@ -175,3 +175,30 @@ Current recommendation:
 
 -   treat clocks as an adjacent idea, not a committed Overkill package
 -   only pull it under the umbrella later if multiple Overkill packages genuinely need the same abstraction
+
+## Rejected For Now: `@overkill/world`
+
+The idea of a first-class `@overkill/world` package remains attractive.
+There is real value in:
+
+-   explicit capability boundaries
+-   typed recording handles
+-   deterministic testing helpers for effectful collaborators
+-   reusable recorder and snapshot helpers
+
+But it is rejected for the current concept for one important reason:
+
+-   consumer production code should not need to import Overkill packages
+
+If `@overkill/world` became the canonical way to define application handles,
+it would quickly turn into a production-facing architecture dependency. That
+crosses a boundary the current concept should not cross yet.
+
+Current stance:
+
+-   keep capability handles as a documented architectural pattern
+-   make Overkill’s testing APIs work well with user-owned interfaces
+-   do not ship a first-class world package in the current concept
+
+This may be revisited later if the boundary changes or if Overkill develops a
+test-only helper layer that avoids production-code dependency.

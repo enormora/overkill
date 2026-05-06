@@ -10,6 +10,8 @@ The core idea is simple:
 -   make composition first-class
 -   avoid normalizing bad testing habits
 -   keep the core small enough that other tools can build on it cleanly
+-   pick one first-party answer per layer instead of shipping overlapping
+    first-party styles
 
 ## Why It Exists
 
@@ -42,8 +44,8 @@ Overkill is a monorepo with fine-grained packages as the architectural truth.
 Core package families:
 
 -   `@overkill/engine`: runner contracts, test definitions, events, results, reporter integration points
--   `@overkill/test`: default microtest-oriented DSL with explicit support for test macros
--   `@overkill/assert`: optional assertion package with count-tracking and richer failure semantics
+-   `@overkill/test`: default first-party authoring layer built on top of the engine
+-   `@overkill/assert`: first-party assertion protocol and helpers, primarily consumed through injected `assert` / `require` in `@overkill/test`
 -   `@overkill/doubles`: explicit, function-first test doubles centered on a single `testDouble()` concept
 -   `@overkill/resources`: typed environments, resource composition, and execution requirements
 -   reporter packages such as `@overkill/reporter-line`, `@overkill/reporter-tap`, `@overkill/reporter-json`, and `@overkill/reporter-html`
@@ -75,7 +77,26 @@ Microtests are small, local, and side-effect-restricted by default. In the first
 
 The intent is not security isolation. The intent is catching accidental impurity early and keeping microtests fast and predictable.
 
-The default DSL should still support strong reuse through test macros and parameterized cases so users do not fall back to hooks or hidden shared setup just to avoid repetition.
+The default DSL should still support strong reuse through test macros, with
+parameterized helpers only as specialized tools built on the same model, so
+users do not fall back to hooks or hidden shared setup just to avoid
+repetition.
+
+The preferred first-party authoring shape should be tests-as-values:
+
+-   exported suite trees
+-   direct `node foo.test.ts` execution through a tiny self-run helper
+-   trivial machine-readable discovery
+
+Module-load registration DSLs are still valid ideas, but they should not be
+co-equal first-party answers at the same layer.
+
+Its assertion model should be explicit:
+
+-   `assert` for ordinary assertions recorded into the test result
+-   `require` for gating assertions that short-circuit and support TypeScript
+    narrowing
+-   explicit `return assert.done()` in builder mode
 
 ### Integration-Style Tests
 
@@ -198,7 +219,7 @@ The engine and orchestration layers should preserve the machine-readable data th
 
 The concept currently assumes:
 
--   modern Node, with Node 25 as the preferred baseline
+-   modern Node, with Node 26 as the preferred baseline
 -   ESM-first package shape
 -   TypeScript focus rather than general JavaScript coverage
 -   single-process deterministic execution by default

@@ -10,7 +10,7 @@ identifies the kernels Overkill should preserve as future package families
 or first-class test kinds.
 
 The goal is not to ship all of these. It is to ensure the architecture stays
-*open* to them, with the engine, identity, baseline, and reporter contracts
+_open_ to them, with the engine, identity, baseline, and reporter contracts
 strong enough that adding any one is a matter of writing a package.
 
 Companion to `ideas-and-future-directions.md` (broader product directions),
@@ -22,8 +22,7 @@ Companion to `ideas-and-future-directions.md` (broader product directions),
 Overkill should treat property-based testing as more than "random inputs +
 shrink." Concrete commitments worth making explicit:
 
--   **Integrated shrinking** — generators yield rose trees `{ value,
-    shrinks: () => Iterable<Tree<T>> }`, not separate `shrink` functions.
+-   **Integrated shrinking** — generators yield rose trees `{ value, shrinks: () => Iterable<Tree<T>> }`, not separate `shrink` functions.
     Hedgehog-style. Avoids fast-check's invariant-breaking shrinking
     pitfalls.
 -   **Splittable PRNGs** — see `capability-handles.md`. Each generator
@@ -69,8 +68,7 @@ ship `relation()` as a first-class primitive:
 
 ```ts
 test('round trip', ({ relation, gen }) =>
-    relation('parse∘serialize = id', gen.user, (u) =>
-        deepEqual(parse(serialize(u)), u)));
+    relation('parse∘serialize = id', gen.user, (u) => deepEqual(parse(serialize(u)), u)));
 ```
 
 The relation, the transformation, and the input distribution are all
@@ -78,7 +76,7 @@ recorded. Shrinking is automatic via the underlying PBT layer.
 
 ## Approval / Golden / Characterization Testing
 
-Approval testing is a *workflow* for legacy code: print whatever the system
+Approval testing is a _workflow_ for legacy code: print whatever the system
 observes, save it, manually approve once, and the saved file becomes the
 spec. Different in spirit from snapshots: snapshots are convenience;
 approvals are a deliberate ratchet.
@@ -185,8 +183,8 @@ the only correctness check that matters.
 Most chaos tooling targets integration scope (Toxiproxy, Chaos Mesh).
 Application-level unit-scope chaos is a wide-open area: inject clock skew
 via fake timers, dropped messages via virtual transport, OOM via allocator
-hooks, partial writes via virtual fs. The arXiv survey *Chaos Engineering
-in the Wild* (2025) found application-level faults are only 3% of chaos
+hooks, partial writes via virtual fs. The arXiv survey _Chaos Engineering
+in the Wild_ (2025) found application-level faults are only 3% of chaos
 tooling.
 
 Composes naturally with the deterministic simulation layer: a "chaos
@@ -199,34 +197,31 @@ real test environment.
 Already covered partly in `fast-feedback-loops.md`. Worth promoting as a
 recognized testing pattern:
 
-```ts
-// source/users.ts
-export function buildUser(name: string) { /* ... */ }
+In-source tests are still worth tracking as a novel direction, but they are
+currently rejected from the planned default concept.
 
-if (import.meta.test) {
-    test('buildUser strips whitespace', ({ assert }) =>
-        assert.equal(buildUser('  Ada  ').name, 'Ada'));
-}
-```
+Why they are attractive:
 
-A loader strips the `if (import.meta.test) { ... }` block in production. In
-test mode, the runner registers the inner suite. Aligns with Rust's
-`#[cfg(test)] mod tests`, Zig's `test {}` blocks, and Vitest's
-`import.meta.vitest`.
+-   the test lives directly next to the code it explains
+-   tiny local invariants can be documented with very low friction
+-   languages like Rust and Zig prove the general shape can work well
 
-Native Node type stripping makes this nearly free. Combined with
-tests-as-values, the in-source tests are exported alongside the production
-code as inert data when test mode is off.
+Why they are still unresolved for Overkill:
 
-Likely belongs as a section in `microtests-and-capabilities.md` and a flag
-on the loader pipeline.
+-   much of the JS tooling ecosystem still treats tests as file-pattern-based
+-   production stripping becomes a serious concern
+-   a custom loader or transform story would fight the current
+    Node-builtins-first direction
+
+So the concept should keep the idea alive, but only as a researched option
+until the shipping and tooling story is convincingly clear.
 
 ## Out-Of-Band Verdicts
 
 Mainstream JS runners model verdicts as `pass | fail | skip`. JUnit5 / pytest
 / TestNG model far more:
 
--   `xfail` — expected to fail; passes when it *does* fail; flips to a
+-   `xfail` — expected to fail; passes when it _does_ fail; flips to a
     `xpass` regression if it unexpectedly passes
 -   `inconclusive` — environment unhealthy; not the test's verdict
 -   `not-applicable` — precondition not met; distinct from skip
@@ -248,7 +243,7 @@ code→test bidirectional map; on commit, run only affected tests.
 
 `fast-feedback-loops.md` already covers the implementation
 (`module.registerHooks` instrumentation, persisted graph, content-hash
-invalidation). What this doc adds is the *user-facing* commitment:
+invalidation). What this doc adds is the _user-facing_ commitment:
 
 -   `overkill --since main` runs only tests affected by changes since
     `main`
@@ -264,8 +259,7 @@ Bake p99 budgets into tests, not just into benchmarks. `perf_hooks.Histogram`
 gives percentile-stable measurement.
 
 ```ts
-test('parse is fast', ({ slo }) =>
-    slo({ p99: '5ms', samples: 1000 }, () => parseLargeJson(fixture)));
+test('parse is fast', ({ slo }) => slo({ p99: '5ms', samples: 1000 }, () => parseLargeJson(fixture)));
 ```
 
 Different from benchmarks (which are workload-shaped, calibrated, and
@@ -294,7 +288,7 @@ extension surface ensures editor-driven AI tooling can plug in.
 A test runner that captures every test as a re-playable trace catches
 heisenbugs that only appear once.
 
-For Overkill: don't compete with `replay.io` on browser recording. *Do*
+For Overkill: don't compete with `replay.io` on browser recording. _Do_
 guarantee that any failing test in the deterministic-simulation profile is
 reproducible from the recorded seed alone. The witness format from
 `deterministic-simulation.md` is already the trace; an external viewer can
@@ -307,7 +301,8 @@ Pointers, not deep dives — for future audits:
 -   `@playwright/test` — sharding model and trace viewer worth borrowing
 -   `Effection v3` — structured concurrency, useful for the simulation
     scheduler
--   `effect-ts` — full effect system; idea donor for `@overkill/world`
+-   `effect-ts` — full effect system; idea donor for explicit
+    capability/runtime design
 -   `@hyperjump/json-schema-test` — schema-driven test runner
 -   `@japa/runner` — interesting plugin model
 -   `riteway` — five-question test design philosophy

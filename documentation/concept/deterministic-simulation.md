@@ -2,281 +2,305 @@
 
 ## Position
 
-Deterministic simulation testing (DST) is the most ambitious testing
-technique Overkill should keep within architectural reach. It is the only
-known way to make distributed-systems and stateful-async bugs reliably cheap
-to reproduce: every failure ships with a seed that re-derives the bug
-exactly, and time is dilated so days of execution fit in seconds.
+Deterministic simulation testing should remain a first-class Overkill concept,
+but not as an Overkill-owned application architecture.
 
-Overkill is not a hypervisor and cannot be Antithesis. But the *kernel* of
-DST is fully realisable in process-local TypeScript: virtualize every
-non-deterministic primitive, drive the system from a single seed, and replay
-the witness on failure. This doc captures what a JS-test-runner-shaped DST
-layer looks like.
+Overkill should not prescribe one dependency-injection style, one runtime
+object shape, or one simulator implementation. Instead, it should provide first-class
+support for **simulation-aware runtimes**:
 
-## Background
+-   tests may declare that they run under a specific simulation adapter
+-   adapters declare execution requirements and replay metadata
+-   failures capture seeds, scenarios, and witnesses in a standard shape
+-   the same simulator can also be used outside tests for manual or
+    exploratory runs
 
-Pioneered by FoundationDB's Flow simulator (2010s); the public exemplar
-today is TigerBeetle's `vopr` ("Viewstamped Operation Replicator"), which
-runs ~2 millennia of distributed-system runtime per day in CI. Antithesis
-sells the same idea as a deterministic hypervisor built on FreeBSD `bhyve`.
-WarpStream applied it to a full SaaS Kafka clone in 2025. Resonate,
-RisingWave, S2.dev, and CockroachLabs all run their own variants.
+This is the important distinction. The simulator belongs to the application or
+an adapter package. Overkill owns the _testing integration_ around it.
 
-The technique applies far below distributed systems. Any code with
-concurrency, time, randomness, or external I/O benefits. JS code with
-`async/await`, Promises, microtask scheduling, timers, workers, and
-`SharedArrayBuffer` qualifies.
+## Why This Matters
 
-## What "Virtualize Everything" Means
+Deterministic simulation is one of the few techniques that makes
+time-sensitive, stateful, or distributed bugs reliably reproducible. A single
+seed can reproduce:
 
-A DST layer replaces all non-deterministic primitives with deterministic
-simulators driven by a single seed:
+-   timing-sensitive logic bugs
+-   races and ordering bugs
+-   random-input dependent failures
+-   flaky third-party-service behavior
+-   state-machine bugs that only appear after long sequences of events
 
--   **Time** — `Date.now`, `performance.now`, `setTimeout`, `setInterval`,
-    `process.hrtime`, `queueMicrotask`, `process.nextTick`. All return
-    values from a logical clock that advances when the simulator decides.
--   **Randomness** — `Math.random`, `crypto.getRandomValues`,
-    `crypto.randomUUID`. Reseeded from the run seed; results are
-    deterministic.
--   **Scheduling** — Promise microtask order, async task ordering, worker
-    message order. The simulator owns the queue and chooses the next task
-    using a seeded policy.
--   **Filesystem** — `fs.read`, `fs.write`, etc. backed by an in-memory
-    image with deterministic ordering of concurrent operations.
--   **Network** — `fetch`, `http.request`, sockets, replaced by an
-    in-memory transport with controllable latency and partitions.
--   **Crypto** — hashes, signatures: real algorithms, fed deterministic
-    randomness when needed.
+This does not require a fully virtualized universe or a hypervisor. In many
+real TypeScript systems, the most useful deterministic simulation is much more
+pragmatic:
 
-This is exactly the capability-handle pattern from `capability-handles.md`,
-generalised to every effect a test might encounter.
+-   a virtual clock
+-   seeded randomness
+-   one or more deterministic local services
+-   named scenario presets
+-   explicit replay metadata
 
-## What "Single Seed" Means
+## Important Constraint
 
-The whole world is parameterised by one `bigint` seed. From that seed:
+Overkill cannot force an application to be simulation-friendly.
 
--   the splittable PRNG is initialised
--   per-component PRNGs are split off the parent
--   scheduling decisions consult the PRNG
--   network latency and partition events consult the PRNG
--   fault injections (dropped messages, slow disks) consult the PRNG
+Deterministic simulation only works when the system under test already has some
+seam where the runtime can be swapped:
 
-Two runs of the same test with the same seed produce bit-for-bit identical
-behaviour. A failing run records its seed; replaying with the same seed
-reproduces the failure.
+-   explicit dependency injection
+-   configurable base URLs
+-   runtime factories
+-   adapter registration
+-   environment bootstrapping
 
-## What A Test Looks Like
+If a codebase hardcodes globals, ambient services, and production-only network
+destinations everywhere, Overkill cannot make that code deterministically
+simulatable by itself.
+
+## What Overkill Should Own
+
+Overkill should own the runner-facing integration surface:
+
+-   simulation-aware execution profiles
+-   structured seed handling
+-   witness capture and replay metadata
+-   scenario identity and reporting
+-   execution requirements contributed by simulation adapters
+
+Overkill should _not_ own:
+
+-   a mandatory `World` pattern
+-   predefined app-level service handles
+-   one official simulator implementation for all apps
+-   hidden monkey-patching as the default strategy
+
+## Simulation Adapters, Not Built-In Worlds
+
+The clean concept is a generic simulation adapter contract.
+
+An adapter declares:
+
+-   how to install the simulation runtime
+-   what execution strategy it needs
+-   what seed and scenario metadata it uses
+-   how to capture witness or replay information
+-   how to expose manual or exploratory launch modes when relevant
+
+Illustrative shape:
 
 ```ts
-import { simulate } from '@overkill/sim';
+type SimulationAdapter = {
+    readonly name: string;
+    readonly executionRequirements?: ExecutionRequirement[];
+    start(options: { seed?: bigint; scenario?: string; signal: AbortSignal }): Promise<SimulationSession>;
+};
 
-test('queue stays consistent under partitions', simulate({
-    seed: 'auto',          // or pin a specific bigint
-    timeBudget: '10s',     // logical time to simulate
-    faults: { dropRate: 0.1, partitionProb: 0.05, clockSkewMs: 50 },
-}, async ({ world, world: { net, fs, log }, model }) => {
-    const cluster = await startCluster(world, { nodes: 5 });
-    await cluster.put('a', '1');
-    await world.advance('1s');                  // logical-time fast-forward
-    net.partition([0, 1], [2, 3, 4]);          // cause a partition
-    await cluster.put('a', '2', { from: 0 });
-    await world.advance('5s');
-    net.heal();
-    await world.advance('2s');
-    const value = await cluster.get('a', { from: 4 });
-    return assert.equal(value, '2');
-}));
+type SimulationSession = {
+    readonly runtimeMetadata: {
+        seed?: bigint;
+        scenario?: string;
+        endpoint?: URL;
+    };
+    witness?(): Promise<unknown>;
+    stop(): Promise<void>;
+};
 ```
 
-Properties:
+This keeps Overkill DI-agnostic. A simulator may be:
 
--   no real time elapses
--   no real network is involved
--   the test runs in milliseconds even though it simulates seconds
--   the same seed produces the same outcome every time
--   a failing seed is a complete reproduction
+-   in-process with injected handles
+-   a spawned local HTTP service
+-   a worker-hosted state machine
+-   a browser or multi-process harness
 
-## Where DST Sits In The Architecture
+Overkill only needs the generic contract.
 
-Likely package home: `@overkill/sim` — a separate first-party family,
-roughly parallel to `@overkill/bench`. It depends on `@overkill/world`
-(capability handles) for the standard handle interfaces and on
-`@overkill/random` for splittable PRNG.
+## Scenarios As First-Class Presets
 
-DST is not a microtest concern by default. It is closer in spirit to a
-benchmark or property-test family: dedicated authoring shape, dedicated
-execution profile, dedicated reporter integration.
+Many deterministic systems benefit from named **scenarios**: stable, speaking
+presets of multiple simulation options.
 
-For the runner contract:
+Examples:
 
--   a simulated test contributes the same `TestNode` shape (it is just a
-    test), but its `run` function expects a simulated world rather than the
-    ordinary one
--   execution requirements include single-process and serial execution to
-    avoid contaminating measurements with real-time scheduling jitter
--   on failure, the seed and the recorded transcript become a structured
-    failure artifact (witness)
+-   `default`
+-   `error`
+-   `logged-in`
+-   `empty-basket`
+-   `slow-upstream`
+-   `payments-500`
 
-## What Needs To Be Built
+A scenario is not just one flag. It is a reviewed preset that may bundle:
 
-Concrete pieces, in dependency order:
+-   seed defaults
+-   fixture data
+-   service behavior
+-   latency/fault behavior
+-   authentication/session state
+-   third-party API responses
 
-1.  **Splittable PRNG** — SplitMix-style. ~150 lines of TS. Single source of
-    truth for all randomness in the simulation.
-2.  **Logical clock** — monotonic, advances only when `world.advance(n)` is
-    called or when the scheduler runs all due timers. Implements `now`,
-    `monotonic`, `sleep`, `setTimeout`, `setInterval`, `queueMicrotask`,
-    `process.nextTick`.
-3.  **Scheduler** — owns the microtask and macrotask queues. On each step,
-    consults the PRNG for ordering decisions; runs one task; advances
-    logical time as needed. This is the hard part.
-4.  **Virtual filesystem** — in-memory image; supports the subset of `fs`
-    methods Overkill agrees to support; deterministic ordering of
-    concurrent ops.
-5.  **Virtual network** — in-memory transport with explicit latency model,
-    drop probability, partition control, and Fetch / `http.request` shim.
-6.  **Fault injection layer** — stochastic policies driven by the PRNG;
-    `world.faults.dropRate(0.1)` etc.
-7.  **Witness format** — a JSON shape with `{ seed, time-budget, faults,
-    eventLog, finalSnapshot }` that re-runs the same outcome.
-8.  **Reporter integration** — failure artifacts include the witness,
-    pretty-printed event log, and a recommended replay command.
+Scenarios are valuable because they give teams a shared vocabulary for common
+states and failures. They also improve artifact identity and replay:
 
-## The Hard Part: Scheduling
+-   failing run: `checkout > uses fallback totals [scenario=payments-500]`
+-   witness includes both `seed` and `scenario`
+-   manual reproduction can launch the same scenario directly
 
-JavaScript's microtask queue is ordinarily V8-managed. Inside a simulation
-the runner needs to control it.
+## External Deterministic Services Are A Real Simulation Pattern
 
-Strategies:
+Deterministic simulation should not be limited to in-process fake clocks or
+mocked modules.
 
--   **Async hooks taming**: `node:async_hooks` lets the simulator observe
-    every async resource creation. Combined with a custom scheduler
-    function that resolves Promises in a controlled order, the simulator
-    owns scheduling for code that runs inside a marked context.
--   **Continuation-style transformation**: write tested code on top of a
-    structured-concurrency primitive (e.g. `Effection` v3) whose runtime
-    is the scheduler. Tests run the same code with the simulation
-    runtime swapped in. This is heavy, but elegant — and aligns with
-    "platform-first" if structured concurrency standardises further.
--   **Explicit yield-point API**: code under test calls `await
-    world.yield()` at key points; the simulator decides what runs next.
-    This is simple but invasive.
--   **`AsyncLocalStorage` context with patched timers**: the simulator
-    installs its own `setTimeout` / `setInterval` / `queueMicrotask` /
-    `Promise` resolvers within an `AsyncLocalStorage` scope; calls outside
-    the scope use the real platform. Pragmatic; what most JS test fakers
-    already do for timers.
+The `misterspex-storefront` deterministic server is a good example of a more
+realistic pattern:
 
-The recommendation is the AsyncLocalStorage-scoped approach for the first
-iteration: it works with arbitrary code, requires no rewrite of the SUT,
-and aligns with the platform-first stance. The yield-point or
-structured-concurrency variants stay open as future directions for tighter
-control.
+-   spawn a local deterministic server
+-   point the app at it by swapping the base URL
+-   route real HTTP requests through that server
+-   choose behavior through a scenario key such as `default` or `error`
 
-## What DST Catches That Property Tests Don't
+The same broad idea also applies to other protocols and service shapes:
 
-Plain property tests randomise *inputs*. DST randomises *the universe*.
-Bugs that DST has historically caught:
+-   local WebSocket services
+-   deterministic queue consumers or publishers
+-   spawned worker or process harnesses
+-   protocol-specific simulators that are not HTTP at all
 
--   message reordering between distributed nodes
--   clock skew triggering tie-break races
--   dropped writes during partition heal
--   GC pause coinciding with a deadline
--   concurrent retries causing duplicate side effects
--   out-of-order disk writes corrupting recovery
--   timeout scaling on slow CI machines
+That model has several advantages:
 
-Most of these are invisible to example or property tests because they
-require *interleavings*, not just *inputs*. DST explores interleavings.
+-   it exercises real service boundaries
+-   it avoids module interception
+-   it works well for integration and browser-style tests
+-   it can often be used for manual exploratory runs too
 
-## Connection To Other Concepts
+Overkill should therefore treat **simulation via deterministic local
+services** as a first-class pattern, not as an edge case.
 
--   `capability-handles.md` — DST is "all handles, all the time". The
-    standard recording handles in `@overkill/world` are the entry point;
-    DST adds the scheduler and fault layers on top.
--   `tests-as-values.md` — a DST test is a `TestNode` with a `run` function
-    that takes the simulated world. No special engine support needed.
--   `results-not-exceptions.md` — DST shines when the test returns a
-    structured outcome including the recorded event log, because diffs
-    against expected logs are the most useful failure mode.
--   `reproducibility.md` — DST is the strongest possible form of
-    reproducibility: not just deterministic ordering, but deterministic
-    everything. The witness format extends `reproducibility.md`'s
-    "reproducible run intent" to "reproducible run".
--   `failure-artifacts.md` — witnesses are first-class artifacts; the
-    failure-artifact identity model already accommodates them.
--   `microtests-and-capabilities.md` — DST is *not* a microtest profile.
-    Microtests stay cheap; DST tests are an opt-in heavier mode.
--   `benchmarking.md` — DST and benchmarks share the "single-worker, serial
-    execution, isolated process" needs but are otherwise distinct.
+## What A Test Might Look Like
 
-## Connection To Property-Based Testing
+In-process style:
 
-DST is not the same as property-based testing, but they compose:
+```ts
+test(
+    'queue stays consistent under the deterministic runtime',
+    withRuntime(simulation(myAppSim, { seed: 42n, scenario: 'default' }), async ({ t }) => {
+        // ...
+    }),
+);
+```
 
--   property test: "for all inputs, P(f(input))"
--   DST test: "for all interleavings, the system stays consistent"
--   DST + property test: "for all inputs and all interleavings, P holds"
+Local-service style:
 
-The natural shape is `forall` over inputs *and* `simulate` over schedules.
-Both consume seeds; both produce witnesses. Overkill should treat them as
-two coordinates of the same family.
+```ts
+test(
+    'checkout handles upstream 500s',
+    withRuntime(simulation(deterministicApi, { scenario: 'payments-500' }), async ({ t, runtime }) => {
+        const baseUrl = runtime.endpoint;
+        // App under test talks to the deterministic service over real HTTP.
+    }),
+);
+```
 
-## Reasonable Scope For The First Iteration
+The common idea is not the exact helper name. The important thing is that the
+runtime is explicitly declared, and Overkill sees enough metadata to plan,
+report, and replay it.
 
-DST in full generality is an enormous project. A staged plan that delivers
-incremental value:
+## Manual And Exploratory Simulation
 
-1.  Stage 1 — virtual clock and scheduler that supports `setTimeout`,
-    `setInterval`, `queueMicrotask`, `process.nextTick`, plus seeded
-    `Math.random` / `crypto.randomUUID`. This alone replaces 80% of "fake
-    timers" usage and makes time-sensitive tests deterministic.
-2.  Stage 2 — virtual filesystem and HTTP transport. Useful for the large
-    majority of test suites that touch FS/HTTP.
-3.  Stage 3 — fault injection over the virtual transports.
-4.  Stage 4 — witness/replay artifacts and reporter integration.
-5.  Stage 5 — explicit interleaving exploration (random schedule
-    enumeration) and partition / clock-skew primitives.
+Simulation should not be test-only.
 
-Stages 1 and 2 are accessible enough to ship without massive investment and
-already deliver a step-change improvement over `vi.useFakeTimers` + `nock`.
+If a deterministic runtime is genuinely useful, teams should also be able to
+launch it manually for exploratory work:
 
-## Risks And Caveats
+-   open the app against a deterministic local backend
+-   reproduce a bug from a captured seed and scenario
+-   inspect logs, traces, and state transitions interactively
 
--   **Native code escapes the simulation.** Code that calls into native
-    addons (`better-sqlite3`, `node-pty`, etc.) bypasses the virtual
-    layer. Document this clearly. DST tests should consume the database
-    via a handle, not directly.
--   **Scheduler completeness is hard.** The first iteration will not catch
-    every interleaving. That is fine: it should still be strictly better
-    than today's tests, and improvements ship incrementally.
--   **`AsyncLocalStorage` has overhead.** Not enough to matter for tests,
-    but worth measuring against the fast-feedback budget.
--   **Performance is bounded by simulation cost.** A 10-second logical
-    simulation may take 100ms or 5s of real time depending on event
-    density. Always faster than waiting for real time, often slower than a
-    pure unit test. Position DST as an integration-replacement, not a
-    microtest.
--   **No security claim.** As with `microtests-and-capabilities.md`, this
-    is a correctness tool, not a sandbox.
+That is another reason Overkill should not own the simulator itself. The
+simulator should be usable outside the test runner; Overkill then integrates
+with that runtime for automation, reporting, and replay.
 
-## Influences
+## Seeds, Witnesses, And Replays
 
--   FoundationDB Flow simulator
--   TigerBeetle `vopr` and `Vörtex`
--   Antithesis deterministic hypervisor
--   WarpStream's deterministic SaaS testing
--   Hermit (Meta) and rr (Linux) — Linux-only but close cousins
--   Hypothesis Stateful (Python) — small-scale DST-like model checking
+When a simulation-aware run fails, Overkill should capture structured replay
+metadata when the adapter provides it.
 
-## Sources
+Minimum useful metadata:
 
--   [TigerBeetle — VOPR docs](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/internals/vopr.md)
--   [TigerBeetle — Tale of Four Fuzzers (Nov 2025)](https://tigerbeetle.com/blog/2025-11-28-tale-of-four-fuzzers/)
--   [Antithesis — How It Works](https://antithesis.com/product/how_antithesis_works/)
--   [WarpStream — Deterministic Simulation Testing for our entire SaaS](https://www.warpstream.com/blog/deterministic-simulation-testing-for-our-entire-saas)
--   [Building open-source Antithesis](https://databases.systems/posts/open-source-antithesis-p1)
--   [Hermit (Meta)](https://github.com/facebookexperimental/hermit)
--   [rr — record/replay debugger](https://rr-project.org/)
--   [Effection v3 — structured concurrency for JavaScript](https://github.com/thefrontside/effection)
+-   adapter name
+-   scenario key
+-   seed
+-   runtime version
+-   adapter-specific witness payload
+
+Not every simulator will use the same witness format. Overkill should
+standardize the envelope, not the internals of every simulator.
+
+## Execution Requirements
+
+Simulation adapters may contribute execution requirements just like other
+runtime layers.
+
+Typical needs:
+
+-   serial execution
+-   one worker per spawned service
+-   fixed ports or port-allocation coordination
+-   artifact directories
+-   longer startup or shutdown budgets
+
+The runner should not guess these rules. The adapter declares them; Overkill
+resolves them alongside the rest of the run plan.
+
+## Relationship To Capability Handles
+
+Capability handles remain one valid implementation style for simulation, but
+they are not the only one and must not be mandatory.
+
+Possible implementations:
+
+-   DI + capability handles
+-   configurable service factories
+-   local deterministic services behind HTTP, WebSocket, or another protocol
+-   custom framework runtime adapters
+
+So the right relationship is:
+
+-   capability handles are one useful simulation-friendly pattern
+-   simulation support in Overkill must stay broader than capability handles
+
+## What This Catches
+
+Even without a full virtualized universe, simulation-aware runtimes can catch
+bugs that plain example tests miss:
+
+-   error-path handling against third-party APIs
+-   session-state and workflow bugs
+-   timing-sensitive logic around retries or deadlines
+-   randomness-dependent behavior
+-   failures that only show up when several runtime knobs move together
+
+The scenario concept is especially useful here because many real teams do not
+need infinite random universes first. They need a small, explicit library of
+reproducible operational situations.
+
+## Reasonable Scope
+
+The concept should stay ambitious but grounded.
+
+Strong near-term direction:
+
+1.  simulation-aware runtime adapter contract
+2.  scenario-aware artifact identity and reporting
+3.  seed/witness/replay envelope
+4.  support for local deterministic services and base-URL swapping
+5.  optional in-process simulation helpers where they fit
+
+More speculative territory:
+
+-   a fully virtualized scheduler
+-   virtual filesystems and transports as first-party packages
+-   exhaustive interleaving exploration
+-   a universal Overkill simulation runtime
+
+Overkill should stay open to those ideas without pretending they are required
+for the first serious version of deterministic simulation support.

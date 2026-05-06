@@ -21,16 +21,28 @@ This is intentionally closer to the real modularity of Buster and the framework-
 
 It should not assume one assertion library, one snapshot format, or one benchmark model.
 
+For tiny projects, this layer should already be usable directly. A single
+file should be able to build tests with engine-level primitives such as
+`createSuite(...)`, `createTestCase(...)`, and a direct `run(...)` call
+without pulling in the higher-level DSL.
+
 ## Default Test Authoring
 
-`@overkill/test` should be the default first-party DSL. It should favor:
+`@overkill/test` should be the single preferred first-party high-level
+authoring layer. It should favor:
 
+-   exported suite values
+-   direct-file execution through a tiny helper such as `runIfMain`
 -   flat tests
 -   explicit grouping only where needed
--   test macros and parameterized helpers
+-   test macros as the primary reuse model
 -   typed context
 -   async support
 -   no hook-centric lifecycle model
+
+Tables or parameterized-case helpers may still exist, but they should be
+framed as specialized helpers built on the macro/value model rather than as
+a second competing first-party reuse philosophy.
 
 ## Assertions
 
@@ -83,6 +95,11 @@ This keeps the creation of doubles separate from how tests assert on them.
 -   `@overkill/test` for ordinary test context
 -   `@overkill/bench` for temp dirs, registries, calibration resources, PTYs, and external processes
 -   future browser packages for browser servers, contexts, pages, and device matrices
+
+Capability-handle or “world” style architecture remains compatible with this
+package family, but Overkill should not ship a first-class production-facing
+`@overkill/world` package in the current concept because consumer production
+code should not need Overkill dependencies.
 
 ## Orchestration
 
@@ -208,7 +225,12 @@ What this means conceptually:
 
 Overkill should preserve an explicit builder-oriented layer for higher-level packages. This is where the Folio influence matters most: first-party and third-party packages should be able to assemble specialized test APIs from lower-level execution, environment, and reporting contracts rather than forking the whole runner.
 
-Conceptually this layer sits above `@overkill/engine` and below finished user-facing bundles or DSL packages.
+Conceptually this layer sits above `@overkill/engine` and below finished
+user-facing bundles or DSL packages.
+
+The important constraint is that Overkill should not ship multiple
+first-party DSLs at the same level. The builder layer exists so third
+parties can do that if they want to.
 
 ## Bundles
 

@@ -8,8 +8,8 @@ before running 500 tests in under a second is the wrong shape. The user will, in
 practice, run the suite less often, lose trust in the inner loop, and stop relying on
 tests as a thinking tool.
 
-This document captures the concrete engineering knobs available in Node 25 (May 2026)
-that a test runner can pull *today* to keep the cold path short and the hot path
+This document captures the concrete engineering knobs available in modern Node 26-era runtimes (May 2026)
+that a test runner can pull _today_ to keep the cold path short and the hot path
 sharable. Companion to `platform-first-implementation-notes.md` and
 `bundles-and-distribution.md`.
 
@@ -17,7 +17,7 @@ The investigation is structured around twelve technical areas; each section is
 deliberately concrete so it can be turned into an issue or RFC without further
 research.
 
-## 1. Node native type stripping (Node 25.x)
+## 1. Node native type stripping (Node 26-era baseline)
 
 Status as of May 2026:
 
@@ -32,7 +32,7 @@ Status as of May 2026:
 -   Decorators are TC39 Stage 3, not yet implemented in V8, and currently a parser
     error in Node’s type stripper. Node will not transform them until the runtime
     natively supports decorators.
--   Files inside `node_modules` are *not* stripped by default. Only the top-level
+-   Files inside `node_modules` are _not_ stripped by default. Only the top-level
     application graph is.
 -   Node intentionally ignores `tsconfig.json` at runtime. There is no path to
     configure TS semantics through Node.
@@ -48,8 +48,7 @@ Performance characteristics:
     erasable syntax.
 -   Node v24+ ships a **module compile cache** (`require(esm)` related work) that
     caches V8 bytecode. It does **not** cache the strip output. A test runner can
-    layer its own per-file strip cache keyed by `(absolute path, mtime, size,
-    amaro version)` to avoid repeating the WASM call on warm runs.
+    layer its own per-file strip cache keyed by `(absolute path, mtime, size, amaro version)` to avoid repeating the WASM call on warm runs.
 
 Practical bottom line for Overkill:
 
@@ -60,47 +59,34 @@ Practical bottom line for Overkill:
     a transform path. Most modern TS code is already erasable, especially after
     the `--erasableSyntaxOnly` tsc check landed in TS 5.8.
 
-## 2. amaro as a library
+## 2. Node Built-Ins First
 
-`amaro` (npm package, maintained under the `nodejs` org) is the same module Node
-uses internally and is freely usable from userland.
+The current concept should stay conservative here:
 
-API surface (1.x):
+-   prefer Node’s native type stripping
+-   prefer Node’s native watch mode
+-   avoid custom loader hooks in the default story
+-   avoid building a bespoke module graph or runner daemon as part of the
+    core feedback-loop promise
 
--   `transformSync(source, { mode: "strip-only" | "transform" }) -> { code, map? }`
-    — synchronous, deterministic, no I/O.
--   `amaro/strip` — entry point that registers a synchronous loader hook
-    performing strip-only transformation, suitable for use with
-    `module.register("amaro/strip", import.meta.url)`.
--   `amaro/transform` — same shape, but using transform mode (enums, param
-    properties, etc.) and producing source maps. Pair with
-    `--enable-source-maps`.
--   When loaded via `module.register`, amaro **does** transform files inside
-    `node_modules`. This is the principal advantage over Node’s built-in path:
-    monorepos with TS sources behind workspace symlinks just work.
--   The package exposes the loader pipeline so a runner can wrap or chain it
-    (e.g. add coverage, capability instrumentation, in-source test extraction)
-    without re-implementing TS stripping.
-
-Implication for Overkill: ship a thin `@overkill/loader` that composes amaro’s
-strip hook with Overkill’s own resolver. Don’t fork or re-implement strip
-behaviour.
+External tools may still matter for edge cases, but the baseline concept
+should not assume an Overkill-owned loader pipeline.
 
 ## 3. TS execution alternatives — concrete startup numbers
 
 Approximate cold-start of a single trivial `.ts` file (2026 measurements, modern
 laptop, no network):
 
-| Runner                                  | Startup       | Notes                                                |
-| --------------------------------------- | ------------- | ---------------------------------------------------- |
-| `bun ./foo.test.ts`                     | ~8–15 ms      | JavaScriptCore, full TS (enums, decorators, JSX).   |
-| `deno test foo.test.ts`                 | ~30–60 ms     | V8 + native TS, full syntax.                         |
-| `node ./foo.test.ts` (native strip)     | ~40–60 ms     | Erasable syntax only.                                |
-| `tsx ./foo.test.ts`                     | ~60–80 ms     | esbuild transform on top of Node startup.            |
-| `node --import @swc-node/register foo.ts` | ~80–100 ms  | SWC native binary.                                   |
-| `ts-node --swc foo.ts`                  | ~150–200 ms   | SWC + ts-node bookkeeping.                           |
-| `ts-node --transpileOnly foo.ts`        | ~250–400 ms   | TypeScript compiler, no checking.                   |
-| `ts-node foo.ts`                        | ~600–1500 ms  | Full type checking.                                  |
+| Runner                                    | Startup      | Notes                                             |
+| ----------------------------------------- | ------------ | ------------------------------------------------- |
+| `bun ./foo.test.ts`                       | ~8–15 ms     | JavaScriptCore, full TS (enums, decorators, JSX). |
+| `deno test foo.test.ts`                   | ~30–60 ms    | V8 + native TS, full syntax.                      |
+| `node ./foo.test.ts` (native strip)       | ~40–60 ms    | Erasable syntax only.                             |
+| `tsx ./foo.test.ts`                       | ~60–80 ms    | esbuild transform on top of Node startup.         |
+| `node --import @swc-node/register foo.ts` | ~80–100 ms   | SWC native binary.                                |
+| `ts-node --swc foo.ts`                    | ~150–200 ms  | SWC + ts-node bookkeeping.                        |
+| `ts-node --transpileOnly foo.ts`          | ~250–400 ms  | TypeScript compiler, no checking.                 |
+| `ts-node foo.ts`                          | ~600–1500 ms | Full type checking.                               |
 
 Two consequences:
 
@@ -133,39 +119,13 @@ Inside a single Node process:
 Recommendation: ship a strip cache + a thin V8 code-cache layer for ESM module
 records. The combination eliminates almost all repeat parse cost.
 
-## 5. Loader hooks: `module.register` vs `module.registerHooks`
+## 5. Loader Hooks
 
-Node has two loader-hook APIs:
+Overkill should not rely on loader hooks in the default concept.
 
--   `module.register(specifier, parentURL, options)` — async hooks, executed on a
-    dedicated worker thread. Each `resolve`/`load` round-trip costs an
-    inter-thread message. For a graph of 200 modules, no-op hooks on this API
-    add roughly 300–400 ms to startup on typical hardware (well documented in
-    `nodejs/node` discussion #51661 and the “ESM Loader Hooks Can Quietly Wreck
-    Startup” analysis from March 2026). This is exactly the kind of overhead
-    Overkill must avoid.
--   `module.registerHooks(options)` — synchronous hooks, executed in the same
-    thread as the module being loaded. Introduced in Node 23.5.0 (Dec 2024) and
-    progressively adopted by Node internals (`require.resolve` was rewired
-    through it in v24.x). Documented in `node:module`. Returns a handle with a
-    `.deregister()` method. Universal across CJS and ESM.
-
-Practical guidance for Overkill:
-
--   Default to `registerHooks`. It is the only hook API fast enough for a
-    test runner that runs cold.
--   Reserve `module.register` for cases where the hook genuinely needs async
-    behaviour (network, dynamic config). For amaro-style strip transforms, the
-    work is fully synchronous; the worker hop is pure overhead.
--   Keep the hook body trivial: no per-import JSON parsing, no walks up the
-    `node_modules` tree to look for config files, no regex sweeps over source.
-    Pre-compute everything at runner startup.
--   Load the hook with `--import` from the CLI, not via a bootstrap `.mjs`,
-    unless an explicit two-stage initialization is needed.
-
-Pitfall: hook chains run LIFO and each hook must call `nextResolve` /
-`nextLoad`. Forgetting to forward breaks every other registered hook in the
-process.
+They remain worth understanding for advanced integrations, but the project
+should not build its core DX around them. Cold-start performance and
+predictability matter more than clever loader-time behavior.
 
 ## 6. `import.meta.main`
 
@@ -173,23 +133,22 @@ process.
 `import.meta.dirname`, `import.meta.filename`, `import.meta.url`. It returns
 `true` when the current module is the entry point.
 
-Useful for in-source tests and self-running test files:
+Useful for self-running test files:
 
 ```ts
-export function add(a: number, b: number): number { return a + b }
+export function add(a: number, b: number): number {
+    return a + b;
+}
 
 if (import.meta.main) {
-  // run an ad-hoc smoke test when this file is invoked directly
-  console.assert(add(1, 2) === 3)
+    // run an ad-hoc smoke test when this file is invoked directly
+    console.assert(add(1, 2) === 3);
 }
 ```
 
-For Overkill the more interesting application is **microtests** (see
-`microtests-and-capabilities.md`). A `.ts` file can declare in-source tests
-guarded by `import.meta.main`, runnable both via `node foo.ts` and as part of a
-larger Overkill suite. The runner can also register an alternative entrypoint
-sentinel that flips when invoked through Overkill, so files don’t self-execute
-when imported by the runner.
+For Overkill, `import.meta.main` is mainly useful for direct-file workflows and
+ad-hoc self-running source files. It should not be taken as proof that full
+in-source test support is already solved.
 
 ## 7. Watch and reload
 
@@ -203,30 +162,10 @@ Node’s built-in `--watch` is parent-process based. On change:
     Node cannot un-register an already-evaluated module.
 -   `--watch` itself is filtered out of the flag forwarding to children.
 
-Affected-test rerun is *not* part of Node’s built-in behaviour. There is no
-dependency graph in core. To approximate Vitest’s “only re-run tests that
-imported the changed file” experience without depending on Vite, Overkill
-needs:
-
-1.  A homemade module dependency graph, captured during the previous run by
-    instrumenting the loader hook (record `importer -> imported` edges).
-2.  Persist the graph between runs (keyed by run id and source set).
-3.  On file change, walk the inverted graph to find affected test files; spawn
-    only those.
-
-This is exactly what Vitest does on top of Vite’s graph. With
-`module.registerHooks` in place, Overkill can compute the same information
-from Node’s native loader without a Vite dependency. The graph is also useful
-for impact analysis in CI (only run tests whose closure intersects the diff).
-
-Operational refinements:
-
--   Maintain a long-lived watcher process that pre-warms the runner state
-    (resolved file lists, snapshot stores, plugin registry) and forks workers
-    on demand. This is the “persistent runner daemon” pattern described in
-    section 12.
--   Be careful with content hashing rather than mtime alone: editor save tools
-    sometimes update mtime without changing content; we can short-circuit those.
+Affected-test rerun is _not_ part of Node’s built-in behavior, and Overkill
+should not promise a custom dependency-graph-based watch mode in the core
+concept. The default story stays simple: use Node `--watch` and rerun the
+selected suite.
 
 ## 8. V8 startup snapshots and the `<50 ms cold start` target
 
@@ -237,8 +176,7 @@ V8 snapshot tooling available today:
 -   `node --snapshot-blob out.blob` launches a process pre-initialized from the
     snapshot. Reported context-creation cost drops from ~40 ms to <2 ms on
     desktop, ~270 ms to ~10 ms on phones (V8 blog).
--   `v8.startupSnapshot.{addSerializeCallback, addDeserializeCallback,
-    setDeserializeMainFunction, isBuildingSnapshot}` lets the snapshotted code
+-   `v8.startupSnapshot.{addSerializeCallback, addDeserializeCallback, setDeserializeMainFunction, isBuildingSnapshot}` lets the snapshotted code
     rehydrate state on launch.
 -   ESM code cache for SEA (single-executable apps) landed in 2026 (commit
     `966b700`).
@@ -271,7 +209,7 @@ series documents the exact set.
 
 ## 9. Single-file `.ts` execution today
 
-The minimum invocation in Node 25:
+The minimum invocation in a Node 26-era baseline:
 
 ```bash
 node ./foo.test.ts
@@ -279,8 +217,7 @@ node ./foo.test.ts
 
 That’s it. No flag, no `--experimental-*`, no loader. Caveats:
 
--   Files must use erasable syntax. Otherwise: `node --experimental-transform-types
-    ./foo.test.ts`.
+-   Files must use erasable syntax. Otherwise: `node --experimental-transform-types ./foo.test.ts`.
 -   ESM extensions: `.ts` is treated as ESM by default if the nearest
     `package.json` has `"type": "module"`, otherwise as CJS. This mirrors `.js`
     behaviour. `.mts` is always ESM, `.cts` always CJS, regardless of
@@ -367,8 +304,7 @@ is independently implementable.
     Node ships native `import defer`, Overkill can simulate the effect by
     keeping each test in its own module and lazy-importing on demand.
 -   **Type-test compile server.** Type tests (`expect-type`, `assert-type`)
-    require a real `tsc`. Run a single `tsc --watch --pretty false --noEmit
-    --incremental` in the background; query it for diagnostics over the same
+    require a real `tsc`. Run a single `tsc --watch --pretty false --noEmit --incremental` in the background; query it for diagnostics over the same
     daemon socket. This keeps the type-test feedback loop independent of the
     runtime test loop.
 -   **Pre-resolved file lists.** Save the result of glob expansion (and gitignore

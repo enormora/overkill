@@ -234,18 +234,18 @@ logger) passed explicitly into code, with recording variants used in tests.
 
 The two packages serve different shapes:
 
--   `@overkill/world` (or whatever name the capability-handle family
-    settles on) ships standard *recording handles* for full effect
-    interfaces — `Clock` with `now`/`sleep`/`monotonic`, `HttpClient`
-    with `request`/`fetch`, etc.
+-   a capability-handle helper package, if Overkill ever ships one, would
+    provide _recording handles_ for full effect interfaces — `Clock` with
+    `now`/`sleep`/`monotonic`, `HttpClient` with `request`/`fetch`, etc.
 -   `@overkill/doubles` ships function-level doubles for one-off
     collaborators that are not part of the standard handle set —
     application-specific service interfaces, callback parameters,
     higher-order function arguments
 
 They compose: a handle's method can be a `testDouble()` for fine-grained
-per-call control. A test typically uses a `World` for standard effects and
-`testDouble()` for application-specific function-shaped collaborators.
+per-call control. A test might use an injected runtime object for standard
+effects and `testDouble()` for application-specific function-shaped
+collaborators.
 
 Both refuse module-graph patching. Both prefer explicit injection. The
 boundary is "is this an effect on the standard list or a domain-specific

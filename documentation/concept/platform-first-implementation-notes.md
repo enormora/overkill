@@ -30,7 +30,7 @@ The architectural idea is simple:
 
 Current baseline assumption:
 
--   Overkill may target Node 25 as the preferred minimum runtime baseline in order to lean more aggressively on current platform capabilities
+-   Overkill may target Node 26 as the preferred minimum runtime baseline in order to lean more aggressively on current platform capabilities
 
 ## Decision Rule
 
@@ -172,6 +172,38 @@ Architectural implication:
 Source:
 
 -   <https://nodejs.org/api/async_context.html>
+
+### `node:diagnostics_channel`
+
+Node diagnostics channels are relevant to Overkill because they provide
+platform-native observability hooks for some categories of runtime behavior.
+
+Especially relevant built-in channels include:
+
+-   `console.log`
+-   `console.info`
+-   `console.debug`
+-   `console.warn`
+-   `console.error`
+-   HTTP lifecycle channels
+-   worker and child-process channels
+
+Architectural implication:
+
+-   Overkill should prefer diagnostics-channel-based observability where it
+    exists before introducing direct monkey-patching
+-   this is especially useful for strict console policies in microtests and
+    opt-in diagnostic capture modes
+
+Important caveat:
+
+-   diagnostics channels do not solve general filesystem capture
+-   they do not automatically observe every raw stdout write path
+-   built-in channels still need to be evaluated for stability and overhead
+
+Source:
+
+-   <https://nodejs.org/download/release/latest-jod/docs/api/diagnostics_channel.html>
 
 ### `node:test` and `node:assert`
 
@@ -442,7 +474,7 @@ Before adopting a polyfill, Overkill should also ask:
 Today, the strongest platform-first leanings are:
 
 -   use Node type stripping first for the simplest direct `.ts` execution path
--   assume a Node 25-era platform baseline where that materially simplifies the architecture
+-   assume a Node 26-era platform baseline where that materially simplifies the architecture
 -   use Node watch mode first before adding a custom watcher stack
 -   use Node globbing first before adding `glob`
 -   use `AbortController` / `AbortSignal` as the default cancellation primitive

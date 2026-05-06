@@ -2,9 +2,12 @@
 
 ## Position
 
+Tests-as-values should be the **preferred first-party high-level authoring
+mode** in Overkill.
+
 Most JS test runners — Jest, Vitest, Mocha, AVA, `node:test` — treat the act
-of calling `describe(...)` and `test(...)` as a side effect of *loading the
-module*. The runner imports the file; the imported file mutates a hidden
+of calling `describe(...)` and `test(...)` as a side effect of _loading the
+module_. The runner imports the file; the imported file mutates a hidden
 registry; later the runner walks the registry. The test definitions are not
 addressable until the file has been evaluated.
 
@@ -22,24 +25,37 @@ the source of several recurring problems:
 -   parallel collection from many files races over the same global registry
 
 The alternative, validated by `elm-test`, Haskell `tasty`, ZIO Test, and
-ScalaCheck: **tests are values**. A test file *exports* a value describing
+ScalaCheck: **tests are values**. A test file _exports_ a value describing
 its tests. The runner imports the module, walks the value, and decides what
 to execute.
+
+This should be treated as the first-party answer at the high-level authoring
+layer, not as a discarded side experiment.
 
 ## What It Looks Like
 
 ```ts
-import { suite, test, table } from '@overkill/test';
+import { runIfMain, suite, table, test } from '@overkill/test';
 
-export default suite('users', [
-    test('build', ({ assert }) => assert.equal(buildUser('Ada').name, 'Ada')),
+const spec = suite('users', [
+    test('build', ({ assert }) => {
+        assert.equal(buildUser('Ada').name, 'Ada');
+        return assert.done();
+    }),
 
-    test('validates', ({ assert }) => assert.fail(buildUser(''), 'empty name')),
+    test('validates', ({ assert }) => {
+        assert.fail(buildUser(''), 'empty name');
+        return assert.done();
+    }),
 
     table('round-trip', cases, ({ input, expected }, { assert }) => {
-        return assert.equal(parse(serialize(input)), expected);
+        assert.equal(parse(serialize(input)), expected);
+        return assert.done();
     }),
 ]);
+
+export default spec;
+await runIfMain(import.meta, spec);
 ```
 
 The default export is a `Suite` — a plain data tree. The runner does:
@@ -51,8 +67,18 @@ const plan = orchestrate(tree, filter, profile);
 const result = await run(plan);
 ```
 
-That's it. No registry, no module-load side effects, no order dependence on
-when `test()` happens to be called.
+That's it. No registry, no hidden cross-file module-load side effects, no
+order dependence on when `test()` happens to be called.
+
+`runIfMain(import.meta, spec)` is the bridge that keeps direct execution
+simple. A user should be able to run:
+
+```bash
+node source/users.test.ts
+```
+
+and get the same execution semantics without giving up the exported value for
+tooling.
 
 ## Why This Is Better
 
@@ -72,9 +98,19 @@ re-running with a `--list` flag that re-imports everything.
 ### Conditional registration is visible
 
 ```ts
+import { skippedTest, suite, test } from '@overkill/test';
+
+const unameCase =
+    process.platform === 'linux'
+        ? test('uname', ({ assert }) => {
+              assert.equal(runUname(), 'Linux');
+              return assert.done();
+          })
+        : skippedTest('uname', 'not linux');
+
 export default suite('platform', [
     test('linux', linuxOnly, ...),
-    world.platform === 'linux' ? test('uname', ...) : test.skip('uname', 'not linux'),
+    unameCase,
 ]);
 ```
 
@@ -117,10 +153,7 @@ output if module evaluation has any non-determinism.
 Sketch of the data model:
 
 ```ts
-type TestNode =
-    | TestCase
-    | Suite
-    | Table;
+type TestNode = TestCase | Suite | Table;
 
 type TestCase = {
     readonly kind: 'test';
@@ -151,56 +184,45 @@ type Table = {
 walks the tree, applies filters by metadata, expands tables into individual
 cases, and produces an execution plan.
 
-## Imperative Sugar Is Allowed
+## Relationship To Other DSLs
 
-Many users will prefer the familiar imperative style. Overkill should
-provide it as a thin layer that builds the same value:
+Other DSLs may still be built on top of the same engine and tree model.
 
-```ts
-import { describe, test, run } from '@overkill/test/imperative';
+But the first-party stance should stay strict:
 
-describe('users', () => {
-    test('build', ({ assert }) => assert.equal(buildUser('Ada').name, 'Ada'));
-});
-
-export default run.collected();
-```
-
-`describe` / `test` push into a local builder. `run.collected()` finalises
-into the same `Suite` value. The runner sees the same data structure
-regardless of authoring style.
-
-There are two important rules:
-
-1.  The imperative builder is *file-local*. It does not write to any
-    cross-file global. Two test files using the imperative API never share
-    state.
-2.  The builder requires the file to export the result. Forgetting the
-    `export default run.collected()` is a clear error, not a silent "no
-    tests collected".
+-   tests-as-values is the chosen first-party high-level authoring model
+-   alternative registration DSLs are valid third-party directions
+-   Overkill should not ship several co-equal first-party DSLs at the same
+    level
 
 ## Macros And Parameterized Tests
 
 A "macro" in Overkill is a function that takes parameters and returns a
-`TestNode` (typically a `Suite` or a `Table`). It is the recommended reuse
-mechanism for cross-cutting test patterns and the principal anti-hook tool.
+`TestNode` (typically a `Suite` or a specialized case-expansion helper). It
+is the recommended reuse mechanism for cross-cutting test patterns and the
+principal anti-hook tool.
 
 ```ts
+import { assertion } from '@overkill/assert';
+import { suite, test } from '@overkill/test';
+
 function lawsOfMonoid<T>({ name, empty, concat, gen, eq }: MonoidLaws<T>): TestNode {
     return suite(`monoid laws: ${name}`, [
-        test('left identity', ({ forall, assert }) =>
-            forall(gen, (x) => assert(eq(concat(empty, x), x)))),
-        test('right identity', ({ forall, assert }) =>
-            forall(gen, (x) => assert(eq(concat(x, empty), x)))),
-        test('associativity', ({ forall, assert }) =>
-            forall([gen, gen, gen], ([a, b, c]) =>
-                assert(eq(concat(concat(a, b), c), concat(a, concat(b, c)))))),
+        test('left identity', ({ forall, assert }) => {
+            return forall(gen, (x) => assertion.equal(eq(concat(empty, x), x), true));
+        }),
+        test('right identity', ({ forall, assert }) => {
+            return forall(gen, (x) => assertion.equal(eq(concat(x, empty), x), true));
+        }),
+        test('associativity', ({ forall, assert }) => {
+            return forall([gen, gen, gen], ([a, b, c]) =>
+                assertion.equal(eq(concat(concat(a, b), c), concat(a, concat(b, c))), true),
+            );
+        }),
     ]);
 }
 
-export default suite('string concat', [
-    lawsOfMonoid({ name: 'string', empty: '', concat: (a, b) => a + b, gen, eq }),
-]);
+export default suite('string concat', [lawsOfMonoid({ name: 'string', empty: '', concat: (a, b) => a + b, gen, eq })]);
 ```
 
 Three properties for free, no boilerplate, fully typed. This is borrowed
@@ -235,12 +257,13 @@ import defer * as heavy from './heavy-module.ts';
 
 export default suite('heavy', [
     test('uses heavy', ({ assert }) => {
-        return assert.equal(heavy.compute(), 42);
+        assert.equal(heavy.compute(), 42);
+        return assert.done();
     }),
 ]);
 ```
 
-The import graph for `heavy-module.ts` is *not* evaluated when the test file
+The import graph for `heavy-module.ts` is _not_ evaluated when the test file
 is imported for listing. It only evaluates when the test body runs. Until V8
 ships native support, Overkill can simulate this by keeping each test in its
 own module and lazy-importing on demand from the runner. Tests-as-values
@@ -258,7 +281,18 @@ the test lifecycle are pure data:
 
 The runner's job is `(SuiteTree, Filter, Profile) -> Promise<RunResult>` —
 a function from data to data. No global registry, no thrown exceptions on
-the success path, no module-load side effects.
+the success path, no hidden cross-file registration state.
+
+## Current Product Stance
+
+Overkill should make the value-oriented path strong enough that it does not
+need a co-equal first-party registration DSL at the same layer.
+
+The design goal is:
+
+-   engine primitives for very small direct use
+-   one preferred first-party value-oriented authoring layer
+-   third-party freedom to build alternate DSLs on top of the same engine
 
 This is the cleanest form of the "API-First" principle the overview names.
 
@@ -268,14 +302,14 @@ Tests-as-values + capability handles + recording variants give a fully
 deterministic test as a function:
 
 ```ts
-type TestRun = (input: { world: World; seed: bigint }) => Promise<{
+type TestRun = (input: { runtime: RuntimeHandles; seed: bigint }) => Promise<{
     outcome: TestOutcome;
     effects: ReadonlyArray<RecordedEvent>;
-    snapshot: WorldSnapshot;
+    snapshot: RuntimeSnapshot;
 }>;
 ```
 
-Replaying a test means running this function with the same world snapshot
+Replaying a test means running this function with the same runtime snapshot
 and seed. Recording means saving the resulting snapshot. Determinism comes
 out for free because every input is explicit.
 
@@ -284,15 +318,21 @@ out for free because every input is explicit.
 ### "Where do I put a one-off setup statement?"
 
 Some legitimate setup is genuinely one-time and shared across the file. The
-answer is *not* a `before(...)` hook. It is a fixture scoped to the suite, or
+answer is _not_ a `before(...)` hook. It is a fixture scoped to the suite, or
 an explicit constant inside the suite construction:
 
 ```ts
-const fixtures = loadFixtures();   // executes at module load — visible
+const fixtures = loadFixtures(); // executes at module load — visible
 
 export default suite('users', [
-    test('a', ({ assert }) => assert.equal(buildUser(fixtures.a).id, '1')),
-    test('b', ({ assert }) => assert.equal(buildUser(fixtures.b).id, '2')),
+    test('a', ({ assert }) => {
+        assert.equal(buildUser(fixtures.a).id, '1');
+        return assert.done();
+    }),
+    test('b', ({ assert }) => {
+        assert.equal(buildUser(fixtures.b).id, '2');
+        return assert.done();
+    }),
 ]);
 ```
 
@@ -329,9 +369,9 @@ Because the test definitions are values, an external tool can:
     parameterization) without parsing source code
 -   diff two runs by comparing tree shapes
 
-This makes Overkill's machine-readable surface (named in `extensions-and-
-plugins.md` and `open-questions.md` 10.3d) genuinely free, rather than a
-reporter-output parser kludge.
+This makes Overkill's machine-readable surface (named in
+`extensions-and-plugins.md` and `architecture-decisions.md`) genuinely
+free, rather than a reporter-output parser kludge.
 
 ## Influences
 

@@ -22,23 +22,25 @@ For a first read, follow this path:
    ownership boundaries, builder layer
 7. [Microtests And Capabilities](./microtests-and-capabilities.md) — the
    capability-restricted default
-8. [Results, Not Exceptions](./results-not-exceptions.md) — assertions as
-   returned values
-9. [Tests As Values](./tests-as-values.md) — exporting suite trees instead
-   of side-effecting registration
-10. [Capability Handles](./capability-handles.md) — the alternative to
+8. [Architecture Decisions](./architecture-decisions.md) — compact summary
+   of the now-settled design choices
+9. [Results, Not Exceptions](./results-not-exceptions.md) — protocol-layer
+   rationale behind the assertion model
+10. [Tests As Values](./tests-as-values.md) — first-class value-oriented
+    authoring mode with direct-file execution
+11. [Capability Handles](./capability-handles.md) — the alternative to
     mocking
-11. [Runtime Behavior](./runtime-behavior.md) — console capture, exit
+12. [Runtime Behavior](./runtime-behavior.md) — console capture, exit
     codes, signals, parallelism, sharding, monorepo, CI
-12. [Baselines And Snapshots](./baselines-and-snapshots.md)
-13. [Benchmarking](./benchmarking.md)
-14. [Research Landscape](./research-landscape.md)
-15. [Open Questions](./open-questions.md)
+13. [Baselines And Snapshots](./baselines-and-snapshots.md)
+14. [Benchmarking](./benchmarking.md)
+15. [Research Landscape](./research-landscape.md)
 
 ## Architecture And Cross-Cutting Concepts
 
 -   [Package Architecture](./package-architecture.md)
 -   [Artifact Identity](./artifact-identity.md)
+-   [Architecture Decisions](./architecture-decisions.md)
 -   [Assertions And Results](./assertions-and-results.md)
 -   [Capability Handles](./capability-handles.md)
 -   [Doubles](./doubles.md)
@@ -74,8 +76,8 @@ For a first read, follow this path:
 
 The docs aim to be:
 
--   normative where decisions are settled (the recommended answers in
-    `open-questions.md` are the tracking source)
+-   normative where decisions are settled (the canonical docs and
+    `architecture-decisions.md` are the source of truth)
 -   speculative where decisions are not (clearly marked as future
     directions, future package families, or open items)
 -   cross-linked rather than redundant (each concept has one canonical

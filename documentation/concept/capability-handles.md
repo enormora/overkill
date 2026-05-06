@@ -8,9 +8,17 @@ module-graph patches that conflict with capability-restricted microtests, and
 produces tests that look pure but secretly mutate global registries between
 runs.
 
-This doc proposes the canonical replacement: **capability handles** — typed
-bags of effect-performing services passed explicitly into code, with
+This doc proposes one promising replacement pattern: **capability handles**
+— typed bags of effect-performing services passed explicitly into code, with
 recording variants used in tests.
+
+Important boundary: this is a user-architecture pattern Overkill should
+support well, not a required Overkill programming model.
+
+Another important boundary: consumer production code should not need to
+import Overkill packages. So even though this document describes the
+pattern, it does **not** imply a first-class `@overkill/world` package in
+the current concept.
 
 It is heavily influenced by Haskell's `IO` separation, ZIO's `R` environment,
 PureScript's `Effect`/`Aff`, Elm's `Cmd`/`Sub` model, and ports of those ideas
@@ -22,7 +30,7 @@ to Scala (cats-effect, ZIO), F# (Eff), and TypeScript (`effect`, `fp-ts`,
 Effects are not implicit globals. They are typed values passed in:
 
 ```ts
-type World = {
+type AppRuntime = {
     readonly clock: Clock;
     readonly random: Random;
     readonly fs: FileSystem;
@@ -30,34 +38,34 @@ type World = {
     readonly log: Logger;
 };
 
-async function saveUser(world: World, input: UserInput): Promise<Saved> {
-    const id = await world.random.uuid();
-    const at = world.clock.now();
-    await world.fs.write(`users/${id}.json`, JSON.stringify({ ...input, id, at }));
-    world.log.info(`saved ${id}`);
+async function saveUser(runtime: AppRuntime, input: UserInput): Promise<Saved> {
+    const id = await runtime.random.uuid();
+    const at = runtime.clock.now();
+    await runtime.fs.write(`users/${id}.json`, JSON.stringify({ ...input, id, at }));
+    runtime.log.info(`saved ${id}`);
     return { id, at };
 }
 ```
 
 The function is testable without mocking, monkey patching, or module-graph
-intervention. To test, pass a different `World`.
+intervention. To test, pass a different runtime object.
 
 ## Recording Handles As The Canonical Test Variant
 
-Instead of mocks, Overkill supplies *recording* implementations of the
-standard handles:
+Instead of mocks, tests can use _recording_ implementations of the relevant
+handles:
 
 ```ts
-const world = recordingWorld({
+const runtime = recordingRuntime({
     clock: virtualClock('2026-01-01T00:00:00Z'),
     random: seededRandom(0xc0ffee),
     fs: memoryFs({ 'users/_template.json': '{}' }),
     http: stubHttp({ 'GET /users/1': { status: 200, body: { id: 1 } } }),
 });
 
-const saved = await saveUser(world, { name: 'Ada' });
+const saved = await saveUser(runtime, { name: 'Ada' });
 
-return assert.equal(world.recorded(), [
+return assert.equal(runtime.recorded(), [
     { kind: 'random.uuid' },
     { kind: 'clock.now' },
     { kind: 'fs.write', path: 'users/<uuid>.json', body: '...' },
@@ -71,7 +79,7 @@ Key properties:
 -   the recording is structured data, asserted with normal equality
 -   determinism is built in: `virtualClock` and `seededRandom` reproduce
     bit-for-bit
--   the test reads as a transcript: input + world → output + effect log
+-   the test reads as a transcript: input + runtime → output + effect log
 -   no `jest.mock`, no `vi.spyOn`, no patching, no restore registry
 
 ## Why This Is Better Than Mocking
@@ -89,16 +97,17 @@ object per test by construction. There is no shared mutable mock registry.
 
 ### Capability boundaries become visible
 
-A function that takes `World` declares its effect surface in its signature. A
+A function that takes an explicit runtime object declares its effect surface in
+its signature. A
 function that mutates implicit globals does not. Code review reads better,
 and refactors that drop a no-longer-needed effect remove a parameter rather
 than orphaning a module mock.
 
 ### Composes with capability-restricted microtests
 
-Microtests run with no filesystem or network access. A `World` whose handles
+Microtests run with no filesystem or network access. A runtime object whose handles
 are in-memory simulators satisfies that constraint. Module-mocking patterns
-*require* the runner to allow `node:fs` access (to load the original) and
+_require_ the runner to allow `node:fs` access (to load the original) and
 some form of patch hook into the loader. Handles work even under
 `--permission`.
 
@@ -138,24 +147,16 @@ These are interfaces, not classes. Production builds them from
 `performance.now()`, `crypto.randomUUID()`, `pino`, etc. Tests build them
 from virtual clocks, seeded PRNGs, and recording loggers.
 
-The standard set Overkill should ship in `@overkill/world` (or a similar
-package family):
+This does **not** mean Overkill must ship a first-party world package or
+predefined application runtime.
+The current concept direction is:
 
--   `Clock` — wall and monotonic time, `sleep`
--   `Random` — UUIDs, integers, bytes, picks; backed by a SplitMix-style
-    splittable PRNG so parallel and tree-shaped generation stay
-    deterministic
--   `Logger` — structured logging with capture
--   `FileSystem` — `read`, `write`, `stat`, `glob`; in-memory variant for
-    tests
--   `HttpClient` — Fetch-shaped; recording and stubbing variants
--   `Process` — `env`, `argv`, `exit`, signals
--   `Crypto` — hash, sign, verify, random bytes
--   `Database` — minimal query/exec; per-test in-memory variant when
-    feasible
+-   document the pattern clearly
+-   make custom handles easy to author
+-   keep Overkill itself on the testing side of the production/test boundary
 
-This is *not* a service-locator. There is no global lookup. The handles are
-parameters. A test in microtest profile can construct a `World` with only
+This is _not_ a service-locator. There is no global lookup. The handles are
+parameters. A test in microtest profile can construct a runtime with only
 `Clock` and `Random` and refuse to provide the others.
 
 ## Recording Variants
@@ -173,16 +174,16 @@ type RecordedEvent =
     | { kind: 'log.info'; msg: string; fields?: Fields }
     | { kind: 'http.request'; method: string; url: string; bodyHash?: string };
 
-type RecordingWorld = World & {
+type RecordingRuntime = AppRuntime & {
     recorded(): ReadonlyArray<RecordedEvent>;
-    snapshot(): WorldSnapshot;
-    restore(snapshot: WorldSnapshot): void;
+    snapshot(): RuntimeSnapshot;
+    restore(snapshot: RuntimeSnapshot): void;
 };
 ```
 
 Tests assert on `recorded()` directly. Reporters can attach the recording to
 a failed test as a structured artifact. Replays use `snapshot`/`restore` to
-reproduce a world state.
+reproduce a runtime state.
 
 ## Splittable Random For Determinism Under Parallelism
 
@@ -210,13 +211,10 @@ This becomes the foundation for the property-testing package family later.
 
 ## Capabilities Beyond Effects: Authority Tokens
 
-Some "capabilities" are not effect-performing handles but *authority tokens*
+Some "capabilities" are not effect-performing handles but _authority tokens_
 the runner grants. Examples:
 
 -   `CoverageWriter` — permits writing to the coverage artifact directory
--   `BaselineUpdater` — permits updating baselines (only present in update
-    mode)
--   `SnapshotCollector` — permits collecting snapshot output
 
 Tokens are opaque branded types. Owning the token is the only way to access
 the operation. The runner constructs and passes them; user code cannot forge
@@ -234,25 +232,24 @@ function doubles. Capability handles complement it:
 -   they compose: a handle's method can be a `testDouble()` for fine-grained
     per-call control
 
-Recommendation: `@overkill/doubles` should remain the package for
-function-level doubles. `@overkill/world` (or whatever the family becomes)
-ships standard recording handles. Both refuse module-graph patching as a
-matter of policy.
+Recommendation: `@overkill/doubles` should remain the primary Overkill
+concept for test doubles. Capability handles, if they become part of the
+ecosystem, should complement `testDouble()` rather than compete with it.
 
 ## Connection To Microtest Capabilities
 
 Capability-restricted microtests deny FS, network, and child-process access
 at the Node permission level. Capability handles complement this at the
 language level: the microtest cannot construct a real `HttpClient` because
-its `World` only contains the handles it asked for.
+its injected runtime only contains the handles it asked for.
 
 Two layers of defense:
 
--   Node permission model — denies the *low-level* OS access
--   Handle composition — denies the *typed* effect surface
+-   Node permission model — denies the _low-level_ OS access
+-   Handle composition — denies the _typed_ effect surface
 
-A microtest that imports `@overkill/world/recording-only` and asks for
-`{ clock, random }` literally cannot perform other effects, because the
+A microtest that constructs a narrow runtime object such as `{ clock, random }`
+literally cannot perform other effects through that object, because the
 language types do not let it.
 
 ## Connection To `assertions-and-results.md` And `results-not-exceptions.md`
@@ -261,18 +258,17 @@ A test that uses recording handles produces a structured effect log. The
 returned-value assertion model lets the test assert on that log directly:
 
 ```ts
-return assert.equal(world.recorded(), expected);
+return assert.equal(runtime.recorded(), expected);
 ```
 
-There is nothing to throw. The whole test reads as `(input, world) ->
-(output, effects, outcome)` — pure data, deterministic, machine-readable.
+There is nothing to throw. The whole test reads as `(input, runtime) -> (output, effects, outcome)` — pure data, deterministic, machine-readable.
 
 ## Connection To Reproducibility
 
-A `WorldSnapshot` captures the random seed, virtual clock state, FS image,
+A `RuntimeSnapshot` captures the random seed, virtual clock state, FS image,
 and HTTP stub set. A failing run can serialize the snapshot as a failure
 artifact. The next run loads the snapshot and replays the test under
-identical world state.
+identical runtime state.
 
 This is concrete reproducibility: not just "the same seed", but "the same
 universe". Combine with the witness-replay pattern from property tests
@@ -281,11 +277,11 @@ reproducible.
 
 ## Anti-Pattern Caveats
 
-Capability handles are not a religion. The following are *not* required:
+Capability handles are not a religion. The following are _not_ required:
 
 -   you do not need to wrap pure data structures in handles — `lodash`-like
     utilities should remain ordinary functions
--   you do not need to pass `World` through every function — most internals
+-   you do not need to pass a runtime object through every function — most internals
     can stay pure and only the effect-performing edges take a handle
 -   you do not need a global "register a capability" container — that is
     exactly the service-locator pattern this doc rejects
@@ -305,24 +301,24 @@ manage a per-test patch state, and tear down between tests — handles are
 strictly cheaper at runtime. They also keep the loader hooks discussed in
 `fast-feedback-loops.md` simple.
 
-## Open Questions
+## Current Stance
 
--   should `@overkill/world` ship standard recording variants or only the
-    interfaces, leaving recording to a separate package?
--   should the `recorded()` log be eagerly populated or lazily materialized?
-    eager is simpler; lazy avoids cost in passing tests
--   how aggressively should Overkill push handles for *production* code? the
-    pattern is more useful in tests, but it is most beneficial when the
-    code itself is structured around handles to begin with — should
-    Overkill ship companion guidance for production code, or stay a test
-    library?
--   how do handles integrate with `AsyncLocalStorage`? a single ALS slot for
-    the current world is one option; explicit parameter passing is the
-    other; the recommendation is explicit passing for microtests and ALS
-    for legacy code that cannot be threaded
--   when should virtualized `setTimeout` / microtask scheduling be part of
-    the standard `Clock` handle, vs a separate `Scheduler` handle? probably
-    separate, because most code does not need scheduler control
+The current concept is intentionally narrow:
+
+-   Overkill documents capability handles as a valid and often good
+    architecture pattern.
+-   Overkill does **not** currently ship a first-class `@overkill/world`
+    package or first-party production-facing handle helpers.
+-   `testDouble()` remains the main official first-party tool for
+    dependency replacement in tests.
+-   Explicit parameter passing is the preferred integration shape for
+    microtests and deterministic simulation.
+-   `AsyncLocalStorage` may still be useful for legacy adapters or
+    attribution, but it is not the primary capability-handle story.
+
+Questions such as eager versus lazy recording, reusable scheduler handles,
+or first-party helper packages are future design topics only if the concept
+later reopens the “no Overkill in consumer production code” rule.
 
 ## Influences
 

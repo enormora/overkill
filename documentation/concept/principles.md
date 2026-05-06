@@ -24,6 +24,65 @@ It does not mean “no convenience.” It means convenience must be explainable 
 
 If a test depends on an environment, a capability, or a baseline artifact, that dependency should be visible in the code or runner configuration. Overkill prefers one more explicit line over a surprising hidden behavior.
 
+## One First-Party Path Per Layer
+
+Overkill should not offer multiple first-party ways to solve the same
+problem at the same architectural layer.
+
+This does **not** mean every layer has only one API surface. It means:
+
+-   the engine may expose low-level building blocks
+-   a higher layer may expose one opinionated first-party authoring model on
+    top
+-   a third layer may expose orchestration or CLI conveniences
+
+But at any one layer, Overkill should choose one first-party answer instead
+of shipping several overlapping styles and making users arbitrate between
+them.
+
+Examples:
+
+-   one primary first-party high-level test DSL
+-   one primary first-party reuse model
+-   one primary first-party doubles model
+
+If an alternative is worth supporting, it should usually either:
+
+-   live at a lower layer as a primitive
+-   be treated as explicit sugar over the same model
+-   or be left open for third parties
+
+## Opinionated First Party, Open Ecosystem
+
+Overkill should be opinionated in its own first-party packages while still
+staying open for third parties to build different approaches on the same
+core contracts.
+
+That means:
+
+-   first-party packages pick one preferred model
+-   the engine and integration contracts stay open enough for others to build
+    different DSLs, reporters, assertion styles, or authoring systems
+-   Overkill should not block experimentation just because it declines to
+    bless multiple first-party solutions itself
+
+## Keep Production Code Clean
+
+Consumer production code should not need to import Overkill packages.
+
+At least for now, Overkill should stay on the testing side of the boundary:
+
+-   test authoring
+-   orchestration
+-   assertions
+-   doubles
+-   reporters
+-   integrations
+
+Overkill may encourage certain production-code patterns, but it should not
+become a required runtime dependency of consumer application code just to make
+that code testable.
+
 ## Do Not Normalize Bad Patterns
 
 Overkill should avoid encouraging:

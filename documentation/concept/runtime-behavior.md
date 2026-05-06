@@ -9,8 +9,9 @@ monorepo discovery, CI behavior, terminal capability detection,
 configuration layering, watch-mode targeting.
 
 It is meant to be normative rather than aspirational. Each section states
-the default, names the override surface where one exists, and leaves
-genuinely-unsettled items to `open-questions.md`.
+the default, names the override surface where one exists, and pushes
+speculative alternatives into the dedicated future-facing docs instead of
+leaving them implicit here.
 
 ## Console Output Capture
 
@@ -19,11 +20,12 @@ The runner must decide what happens to that output.
 
 Default policy:
 
--   stdout and stderr writes from inside a test body are **captured** by
-    the runner during execution and attributed to the running test
+-   owned-boundary runs may capture stdout and stderr writes from inside a
+    test body and attribute them to the running test
+-   same-process runs should not promise universal transparent capture of
+    every stdout/stderr write path
 -   captured output is preserved as a structured failure artifact (see
-    `failure-artifacts.md`) — typed as `{ stream: 'stdout' | 'stderr',
-    chunks: ReadonlyArray<{ at: bigint; bytes: Uint8Array }> }`
+    `failure-artifacts.md`) — typed as `{ stream: 'stdout' | 'stderr', chunks: ReadonlyArray<{ at: bigint; bytes: Uint8Array }> }`
 -   in the default reporter, captured output is **suppressed** for passing
     tests and **printed** for failing tests immediately after the failure
     summary
@@ -34,6 +36,8 @@ Override surfaces:
 
 -   `--no-capture` — pass everything through live (useful for debugging,
     `console.log` driven exploration)
+-   instrumented profiles may observe `console.*` through Node diagnostics
+    channels even in same-process runs
 -   per-test metadata `{ capture: 'live' }` — opt out for one test
 -   reporter-level config — choose to print captured output for passing
     tests as well
@@ -42,18 +46,27 @@ Capture must respect orderings within a test. Captured chunks are timestamped
 at capture time so reporters can render them interleaved with assertion
 events.
 
+Important distinction:
+
+-   boundary capture is the preferred default when the runner owns the worker
+    or subprocess
+-   same-process console observability may use Node diagnostics channels in
+    modern Node
+-   arbitrary raw `process.stdout.write(...)` observation still requires
+    stronger interception if a profile wants it
+
 ## Exit Codes And `process.exit`
 
 Default exit codes for the `overkill` CLI:
 
-| Outcome                                  | Exit code |
-| ---------------------------------------- | --------- |
-| All tests pass and no runner errors       | 0         |
-| At least one test failed (assertion)      | 1         |
-| At least one runner error                 | 2         |
-| Configuration / argument error            | 3         |
-| No tests collected                        | 4 (configurable, see below) |
-| Runner crashed (internal bug)             | 70        |
+| Outcome                              | Exit code                   |
+| ------------------------------------ | --------------------------- |
+| All tests pass and no runner errors  | 0                           |
+| At least one test failed (assertion) | 1                           |
+| At least one runner error            | 2                           |
+| Configuration / argument error       | 3                           |
+| No tests collected                   | 4 (configurable, see below) |
+| Runner crashed (internal bug)        | 70                          |
 
 Test code calling `process.exit(code)` is treated as a runner-level error
 and attributed to the currently-running test. The default policy is to
@@ -86,8 +99,8 @@ Async failures are messy. The runner's policy:
     completes is attributed to the run itself
 -   any such error from the runner's own machinery is a runner crash
 
-Detection uses `process.on('unhandledRejection')` and `process.on(
-'uncaughtException')` plus a per-test correlation via
+Detection uses `process.on('unhandledRejection')` and
+`process.on('uncaughtException')` plus a per-test correlation via
 `AsyncLocalStorage` (see `platform-first-implementation-notes.md`). The
 correlation is best-effort: an async leak that escapes the test's logical
 window may be attributed to a sibling test. The runner should warn on
@@ -140,7 +153,7 @@ Detection:
     as resource-leak diagnostics
 -   AsyncLocalStorage-instrumented Promise tracking flags Promises whose
     parent test has completed but which are not yet settled
--   the diagnostic is a *warning* by default and a *failure* in strict
+-   the diagnostic is a _warning_ by default and a _failure_ in strict
     profiles
 
 This is the leak-vs-hang split named in `microtests-and-capabilities.md`.
@@ -150,16 +163,15 @@ unless policy elevates them.
 ## Parallelism Semantics
 
 Parallelism happens at multiple grains. The default for `@overkill/test`
-is **single-process, in-order** (per `open-questions.md` 5.4). Other modes
-are explicitly opt-in:
+is **single-process, in-order**. Other modes are explicitly opt-in:
 
-| Mode                            | Description                                                              | When useful                                            |
-| ------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------ |
-| `serial`                        | One test at a time, single process                                       | default for microtests                                 |
-| `concurrent-in-process`         | Multiple tests' async work interleaves in one process                    | I/O-bound integration suites                           |
-| `worker-pool`                   | N worker threads, file-level distribution                                | CPU-bound suites, big monorepos                        |
-| `process-per-file`              | Subprocess per test file                                                 | strong isolation, capability resets, native crashes    |
-| `single-worker-serial`          | Single worker thread, no concurrency                                     | benchmarks, deterministic-simulation                   |
+| Mode                    | Description                                           | When useful                                         |
+| ----------------------- | ----------------------------------------------------- | --------------------------------------------------- |
+| `serial`                | One test at a time, single process                    | default for microtests                              |
+| `concurrent-in-process` | Multiple tests' async work interleaves in one process | I/O-bound integration suites                        |
+| `worker-pool`           | N worker threads, file-level distribution             | CPU-bound suites, big monorepos                     |
+| `process-per-file`      | Subprocess per test file                              | strong isolation, capability resets, native crashes |
+| `single-worker-serial`  | Single worker thread, no concurrency                  | benchmarks, deterministic-simulation                |
 
 Selection rules:
 
@@ -220,6 +232,7 @@ or one of the well-known per-provider env vars):
 -   zero-test runs: failure (no `--allow-empty` unless explicit)
 -   timeouts: tighter defaults; longer execution budget for benchmarks
 -   `console.log` capture: stricter (kept always, not only on failure)
+    where the active profile actually captures console events
 -   exit code 4 (zero-test) treated identically to exit code 1 unless
     overridden
 
@@ -261,31 +274,21 @@ property).
 
 ## Watch-Mode Targeting
 
-Watch mode (`--watch`) reuses Node `--watch` for file events, with
-Overkill-specific logic for selective rerun:
+Watch mode should stay simple by default and lean on Node `--watch`.
 
--   on file change, classify: test file / source file / config / fixture
--   compute the closure of affected tests using the persisted module
-    dependency graph (see `fast-feedback-loops.md` § module graph)
--   re-run only affected tests
--   debounce: collapse rapid edits within 50 ms
+Default behavior:
 
-Overrides:
+-   a watched rerun reruns the selected suite again
+-   no custom module-graph logic is assumed in the default concept
 
--   `--watch=all` — always run the full suite on change
--   `--watch=changed` — run only tests in changed files (no closure)
--   `--watch=related` (default) — closure-based rerun
+If Overkill later adds smarter related-test reruns, that should be treated as
+an optional enhancement rather than the baseline promise.
 
 ## Source Maps In Failure Stacks
 
-Default: `--enable-source-maps` is on for the runner process. Failure
-stacks are walked once on first failure to map back to TS source.
-
-Frames inside Overkill packages are filtered from default stack output;
-`--show-runner-frames` opts back in for runner debugging.
-
-When a test runs successfully, no stack walking happens. The success path
-never imports `source-map-support` or its replacements.
+With Node's built-in type stripping, ordinary TypeScript source locations
+should already be good enough in the common path. Overkill should not assume a
+custom source-map story unless a specific transform path requires it.
 
 ## Encoding And Locale
 
@@ -324,15 +327,20 @@ This document is the runtime counterpart to several others. Cross-links:
 -   `package-architecture.md` — execution strategy decisions live in
     `@overkill/run`; this doc names the resulting runtime defaults
 
-## Open Items
+## Resolved Edge Policies
 
--   exact attribution rules for unhandled rejections that escape the test
-    window (currently best-effort)
--   how strict-profile leak detection elevates a leak to a failure
-    (default policy mentioned; precise rule deferred)
--   monorepo cross-package fixture sharing (likely follows resource scope
-    rules; needs a worked example)
--   sharding determinism in the presence of dynamic test generation —
-    the partition uses identities at collection time; a generator that
-    produces different cases on different shards breaks the model. Likely
-    answer: collect once, partition the result; do not collect twice.
+-   unhandled async errors are attributed to the originating test when the
+    runner can correlate them through owned task or async-resource context;
+    otherwise they are run-level runner errors labeled as unattributed async
+    leaks. The runner should not guess and blame a sibling test by timing
+    alone.
+-   strict microtest profiles elevate leaked resources to failures by
+    default. Integration and benchmark-oriented profiles report leaks as
+    runner diagnostics by default, with policy able to escalate them.
+-   monorepo cross-package fixture sharing is only valid through explicit
+    run-scope or shared resource definitions. It is never inferred from
+    package layout or discovery.
+-   sharding for dynamic test generation works by collecting once, freezing
+    the resolved identities, and partitioning that collected set. Overkill
+    should not independently recollect dynamic test trees on each shard and
+    hope they match.

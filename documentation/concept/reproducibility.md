@@ -40,14 +40,14 @@ Together these form a `RunPlan` value preserved as part of the run record.
 
 ```ts
 type RunRecord = {
-    readonly id: string;            // ULID or content hash of the plan
+    readonly id: string; // ULID or content hash of the plan
     readonly seed: bigint;
     readonly plan: RunPlan;
     readonly identities: ReadonlyArray<CaseId>;
     readonly environment: ResolvedEnvironment;
     readonly versions: { engine: string; node: string; packages: ReadonlyMap<string, string> };
-    readonly startedAt: string;     // ISO 8601
-    readonly result?: RunResult;    // populated when the run completes
+    readonly startedAt: string; // ISO 8601
+    readonly result?: RunResult; // populated when the run completes
 };
 ```
 
@@ -106,7 +106,7 @@ Some metrics inherently vary across machines. Overkill's policy:
     declared tolerances (anti-aliasing variations, font rendering). The
     baseline subtype's adapter declares the tolerance; differences within
     tolerance pass.
--   **Performance baselines** explicitly do *not* require exact
+-   **Performance baselines** explicitly do _not_ require exact
     reproducibility. Calibration normalises against a reference workload
     on the current machine; baselines are stored as
     machine-class-stratified (e.g. `linux-x64-ci-shared` vs

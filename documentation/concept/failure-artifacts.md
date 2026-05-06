@@ -10,6 +10,23 @@ updates, or diagnostic runs.
 Overkill treats failure artifacts as first-class outputs of a run, not as
 reporter-specific accidents.
 
+This does **not** imply monkey patching runtime globals as the default
+mechanism. The preferred model is explicit runner-owned boundaries,
+structured results, and opt-in capture where the runner already controls the
+process or worker.
+
+Overkill should distinguish three artifact sources:
+
+-   **native artifacts** — produced directly by the engine or assertion
+    system, such as diffs, plan mismatches, witnesses, retry metadata, and
+    benchmark metrics
+-   **boundary-captured artifacts** — captured because the runner owns a
+    subprocess or worker boundary, such as stdout/stderr, exit signals, and
+    crash metadata
+-   **instrumented artifacts** — captured through explicit observability or
+    interception, such as same-process console events or selected protocol
+    traces
+
 Examples:
 
 -   captured stdout / stderr (see `runtime-behavior.md` § console capture)
@@ -20,6 +37,12 @@ Examples:
 -   property-test witnesses
 -   deterministic-simulation witnesses
 -   future browser screenshots or traces
+
+Modern Node also provides some platform-native observability. For example,
+diagnostics channels expose built-in `console.*` events, which makes strict
+console policy and console-related artifacts possible without directly
+patching `console.*`. This does **not** imply a general same-process capture
+story for arbitrary filesystem or raw stdout behavior.
 
 ## Core Rule
 
@@ -40,13 +63,19 @@ Examples:
 -   a JSON reporter wants structured payloads
 -   an HTML reporter may want attached artifacts and richer navigation
 
+The runner should also preserve provenance:
+
+-   whether an artifact is native, boundary-captured, or instrumented
+-   whether capture was always-on or opt-in
+-   whether the data is complete or best-effort
+
 ## Test Failures Versus Runner Errors
 
 A clear conceptual distinction:
 
 -   **test failure** — the test ran and reported unmet expectations. The
-    test produced a `Check` with `kind: 'fail'` (or threw a recognised
-    assertion error through the throwing adapter).
+    test produced a failed `AssertionNode` result (or threw a recognised
+    assertion failure through the throwing adapter).
 -   **runner or infrastructure error** — the system could not execute or
     observe the test correctly. Examples: fixture setup threw, a worker
     crashed, an unhandled rejection escaped the test window, a Node
@@ -71,9 +100,10 @@ attribution policy:
     as a top-level diagnostic
 
 Attribution is best-effort and uses `AsyncLocalStorage` to correlate async
-work with the originating test. If the runner detects attribution drift
-(an async chain escaped its test window), it warns rather than silently
-mis-blaming a sibling test.
+work with the originating test. `AsyncLocalStorage` is for attribution, not
+for observing arbitrary side effects by itself. If the runner detects
+attribution drift (an async chain escaped its test window), it warns rather
+than silently mis-blaming a sibling test.
 
 Tests that intend to test rejection paths use the assertion library's
 explicit support (`assert.rejects(promise, expected)`) rather than relying
@@ -108,8 +138,7 @@ directories:
 -   `.overkill/witnesses/` — replay witnesses (gitignored by default; can
     be promoted into the repo when valuable)
 -   `.overkill/corpus/` — fuzzing/property regression corpus
--   `.overkill/runs/` — run records (kept for the last N runs, default
-    20)
+-   `.overkill/runs/` — run records (kept for the last N runs, default 20)
 
 Per-run artifacts are garbage-collected: the runner keeps the most recent
 N successful runs (default 5) and all failing runs from the last
@@ -128,8 +157,8 @@ All caps are configurable per profile.
 ## Witnesses And Replay Artifacts
 
 Failing property tests and deterministic-simulation tests produce witnesses:
-serialised, replayable artifacts containing the seed, shrink path, world
-snapshot, fault configuration, and library version. See
+serialised, replayable artifacts containing the seed, shrink path, runtime
+snapshot when available, fault configuration, and library version. See
 `reproducibility.md` § replay witnesses.
 
 A witness is also a failure artifact — it attaches to the failing case via
@@ -143,14 +172,28 @@ Witnesses are first-class enough that the runner records them even when
 the failure is reproducible by other means. Their cost is small (a few
 KB) and their value when triaging flakes is high.
 
+Real examples:
+
+-   a property-test witness may contain the shrunk counterexample input plus
+    the seed needed to derive it again
+-   a deterministic-simulation witness may contain the adapter name,
+    scenario key, seed, and adapter-specific replay payload
+
 ## Captured Output
 
 Default policy (covered in `runtime-behavior.md`):
 
--   captured per test, attributed via `AsyncLocalStorage` correlation
--   suppressed in default reporter for passing tests
--   printed for failing tests inline with the failure summary
--   preserved in JSON event stream regardless of terminal rendering
+-   owned-boundary runs may capture stdout/stderr per test and attribute it
+    via `AsyncLocalStorage` correlation plus worker/process ownership
+-   same-process runs should not promise universal ambient stdout capture by
+    default
+-   `console.*` usage may be observed through Node diagnostics channels in
+    modern Node and attached as instrumented artifacts when the profile
+    enables it
+-   captured output is suppressed in default reporter for passing tests and
+    printed for failing tests inline with the failure summary
+-   captured data is preserved in the JSON event stream regardless of
+    terminal rendering
 
 ## Diff Artifacts
 

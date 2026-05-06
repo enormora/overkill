@@ -19,7 +19,7 @@ Likely metadata categories:
 -   **capabilities** — required capability profile
 -   **baselines** — baseline subtypes the test consumes
 -   **ownership** — domain or team labels (`'@auth-team'`)
--   **stability** — `'stable' | 'flaky' | 'quarantined' | 'experimental'`
+-   **stability** — `'stable' | 'flaky' | 'experimental'`
 -   **priority** — `'critical' | 'standard' | 'optional'`
 
 ## Concrete Type Sketch
@@ -32,9 +32,9 @@ type Metadata = {
     readonly capabilities?: ReadonlyArray<Capability>;
     readonly baselines?: ReadonlyArray<BaselineSubtype>;
     readonly ownership?: ReadonlyArray<string>;
-    readonly stability?: 'stable' | 'flaky' | 'quarantined' | 'experimental';
+    readonly stability?: 'stable' | 'flaky' | 'experimental';
     readonly priority?: 'critical' | 'standard' | 'optional';
-    readonly extra?: ReadonlyMap<string, unknown>;  // open-ended
+    readonly extra?: ReadonlyMap<string, unknown>; // open-ended
 };
 ```
 
@@ -57,10 +57,11 @@ Example:
 
 ```ts
 export default suite('users', { tags: ['auth'], ownership: ['@auth'] }, [
-    test('login', { tags: ['critical'] }, body),    // tags = {auth, critical}
-    test('logout', body),                            // tags = {auth}
-    suite('admin', { tags: ['admin'] }, [            // tags = {auth, admin}
-        test('promote', body),                       // tags = {auth, admin}
+    test('login', { tags: ['critical'] }, body), // tags = {auth, critical}
+    test('logout', body), // tags = {auth}
+    suite('admin', { tags: ['admin'] }, [
+        // tags = {auth, admin}
+        test('promote', body), // tags = {auth, admin}
     ]),
 ]);
 ```
@@ -73,8 +74,8 @@ identity (which uses only file/suite/name structure — see
 ## Selection Model
 
 Selection belongs to orchestration, not to hidden inline controls inside
-the test file. Filters apply at run planning, before sharding, before
-expansion of tables and environment matrices.
+the test file. Filters apply at run planning, before sharding, before worker
+assignment, and before expansion of tables and runtime matrices.
 
 Filterable dimensions:
 
@@ -156,7 +157,7 @@ The metadata is:
 -   serializable
 -   visible to reporters
 -   visible to run planning
--   visible to artifact identity *for selection only*
+-   visible to artifact identity _for selection only_
 -   stable enough to participate in identity hashing
 
 ## Stability Markers
@@ -164,58 +165,34 @@ The metadata is:
 Overkill distinguishes between:
 
 -   `stable` (default) — failures gate
--   `flaky` — failures gate, but failure-rate metrics flag the test in
-    reports
--   `quarantined` — failures do **not** gate the run; reported distinctly
--   `experimental` — alpha tests; failures gate by default but can be
-    demoted
+-   `flaky` — the test is suspected to be unstable; this is metadata, not
+    absolution
+-   `experimental` — alpha tests still under development
 
 Microtests should not normalize retries or flaky markers. If a microtest is
-flaky, that is a design failure, not an expected state. Stability markers
-are intended for integration-style tests where genuine non-determinism may
-be acceptable temporarily.
-
-## Quarantine Workflow
-
-Quarantine is a deliberate, revocable mechanism for known-flaky tests:
-
-1.  a test is marked `{ stability: 'quarantined' }` with `extra: {
-    quarantineReason: 'pending-fix-#1234', quarantineDate: '2026-05-01' }`
-2.  CI reports quarantined failures distinctly (`Q` symbol, separate
-    section in reports)
-3.  CI exit code 0 if the only failures are quarantined (configurable per
-    project)
-4.  a quarantined test that *passes* for N consecutive runs (configurable,
-    default 20) generates a "ready to un-quarantine" hint in reports
-5.  quarantined tests that fail to *fail* their original failure mode
-    require explicit un-quarantine; the runner does not silently
-    promote them
-6.  a periodic CI job (`overkill quarantine audit`) lists all quarantined
-    tests, their age, their reason, and their pass rate; teams use this
-    for regular cleanup
-
-This generalises ad-hoc "skip with TODO" patterns into a first-class
-workflow with reporting hooks.
+flaky, that is a design failure, not an expected state. For integration-style
+tests, a flaky marker may still be useful as reporting metadata, but the
+current concept does not endorse a full quarantine workflow.
 
 ## Capability Propagation
 
 Capability declarations cascade like metadata, but with stricter rules:
 
 -   parent capabilities are intersected with child capabilities (children
-    can only declare a *subset* of the parent's permitted capabilities,
+    can only declare a _subset_ of the parent's permitted capabilities,
     not extend)
 -   the runner enforces the intersection when starting a worker; tests in
     the same worker share the worker's capability set
 -   tests with incompatible capabilities cannot share a worker; they are
     routed to separate workers or processes
 
-Per-test capabilities are a *runner-level* concern: Node permissions are
+Per-test capabilities are a _runner-level_ concern: Node permissions are
 process-wide. To run two tests with different capabilities, they must be
 in different processes. The runner schedules accordingly.
 
 ## Composition With Sharding
 
-Sharding partitions the *filtered* test set. Filters apply first; sharding
+Sharding partitions the _filtered_ test set. Filters apply first; sharding
 operates on the result. This means:
 
 -   `--filter '...' --shard 1/4` shards the filtered subset
@@ -229,11 +206,7 @@ Embedders (IDEs, MCP servers, CI tools) construct filters programmatically:
 ```ts
 import { tag, not, kind, file, all, any } from '@overkill/run/filters';
 
-const filter = all([
-    tag('fast'),
-    not(tag('flaky')),
-    any([file('source/auth/**'), file('source/users/**')]),
-]);
+const filter = all([tag('fast'), not(tag('flaky')), any([file('source/auth/**'), file('source/users/**')])]);
 
 await runner.run({ filter });
 ```

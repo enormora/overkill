@@ -11,22 +11,15 @@ Overkill needs a result model that is:
 
 ## Baseline Outcome Contract
 
-The core accepts at least two broad styles:
+The core accepts two first-party styles:
 
--   **returned structured outcome** — recommended; see
-    `results-not-exceptions.md` for the full argument
--   **throw or reject** — supported via a thin adapter (`adapt.throwing`)
-    so existing assertion libraries (`node:assert`, `chai`, `expect`)
-    keep working
+-   **builder/result mode** — the primary concept; tests receive injected
+    `assert`, `require`, and `plan`, and must explicitly return
+    `assert.done()`
+-   **throwing mode** — an explicit alternate test API such as
+    `throwingTest`; tests may return `void`
 
-Both produce the same internal `TestOutcome` value. Reporters never see a
-thrown failure on the success path; the runner converts thrown errors at
-the adapter boundary.
-
-This follows the broad lesson from Rust and similar systems that "failure
-as exception" and "failure as returned result" can coexist, and from
-`elm-test`, `tasty`, and ZIO Test that the returned-value shape scales
-better.
+Both produce the same internal `TestOutcome` value.
 
 Sources:
 
@@ -44,7 +37,14 @@ A first-party assertion package offers a clean place to provide:
 -   rich diffs and mismatch metadata
 -   baseline-aware serializers
 
-It remains optional so the core stays open to other authoring styles.
+Most tests should not need to import `@overkill/assert` directly. The main
+user-facing API comes from `@overkill/test` context injection. The package
+still makes sense as the home of:
+
+-   the `AssertionNode` protocol
+-   low-level `assertion.*` constructors for advanced composition
+-   diffing and serializer logic
+-   implementation shared between `@overkill/assert` and `@overkill/test`
 
 ## Zero-Assertion Detection As Default Failure
 
@@ -55,13 +55,12 @@ or a placeholder. Treating it as a pass quietly hides defects.
 
 Default policy:
 
--   if a test body returns no `Check` (and uses no throwing assertions
-    either), the runner reports it as `fail` with reason `no-assertions`
--   `plan(0, ...)` is the explicit opt-out for tests that intentionally
-    assert nothing (extremely rare; usually the right answer is to delete
-    the test)
+-   if a test body records no assertion at all, the runner reports it as
+    `fail` with reason `no-assertions`
+-   there is no `plan(0, ...)` escape hatch in the current concept; plans
+    should describe a positive number of checks
 -   tests that perform side-effect-only work and assert via the recorded
-    effect log are *not* zero-assertion: the equality check on the
+    effect log are _not_ zero-assertion: the equality check on the
     recorded log is itself an assertion
 
 Override surfaces:
@@ -73,54 +72,94 @@ Override surfaces:
 This is one of the smallest changes that materially raises the floor on
 test quality, and it costs nothing to implement.
 
-## `plan(n, ...)` Definition
+## `plan(n)` Definition
 
-`plan` declares the expected number of leaf checks in a test outcome. The
-recommended shape returns a wrapped check:
+`plan` declares the expected number of leaf assertions in a test:
 
 ```ts
 test('parses three rows', ({ assert, plan }) => {
+    plan(3);
     const rows = parse(input);
-    return plan(3, assert.all([
-        assert.length(rows, 3),
-        assert.equal(rows[0].id, 1),
-        assert.equal(rows[1].id, 2),
-    ]));
+    assert.length(rows, 3);
+    assert.equal(rows[0].id, 1);
+    assert.equal(rows[1].id, 2);
+    return assert.done();
 });
 ```
 
 Semantics:
 
--   `plan(n, check)` requires the wrapped composite to contain exactly
-    `n` leaf checks. Both more and fewer fail.
--   `plan.atLeast(n, check)` requires at least `n` (rare, useful for
-    parameterized macros where the count is bounded below)
--   `plan.atMost(n, check)` requires at most `n` (rarely useful in
-    practice; included for symmetry)
+-   `n` must be greater than `0`
+-   the test must record exactly `n` leaf assertions before completion
+-   both more and fewer fail
+-   if the test never returns, timeout or crash handling applies instead
 
-`plan` is not a global mutable counter. It is a decorator on a returned
-check value. There is no `t.plan(n)` followed by separate assertions; the
-plan and the checks are one composed value.
-
-The corollary: a test that uses `plan(n, ...)` cannot accidentally hit
-zero-assertion-fail because the plan itself is an assertion about the
-check tree.
+This is explicit context injection, not hidden global mutable state.
 
 ## Connection To `results-not-exceptions.md`
 
-The recommended assertion shape is to *return* checks rather than throw.
-`@overkill/assert` exposes:
+The low-level protocol remains `AssertionNode`, but the primary authoring DX
+is the injected builder API:
 
--   value-vs-value comparisons returning `Check`: `assert.equal`,
-    `assert.deepEqual`, `assert.length`, `assert.includes`,
-    `assert.matches`, `assert.is`, `assert.ok`
--   composers: `assert.all([...])`, `assert.any([...])`, `assert.not(check)`
--   async: `assert.resolves(promise, value?)`, `assert.rejects(promise,
-    expected?)`
--   throwing-adapter: `adapt.throwing(fn)` to wrap legacy code
+```ts
+test('user shape', ({ assert, require }) => {
+    require.defined(user);
+    assert.equal(user.name, 'Ada');
+    return assert.done();
+});
+```
 
-A throwing assertion library remains usable; it just runs through the
-adapter and produces the same `Check` shape.
+Key distinction:
+
+-   `assert.*` records ordinary assertions
+-   `require.*` records gating assertions and short-circuits on failure
+
+`require` exists because TypeScript narrowing matters. A test framework that
+never allows gating assertions cannot support ergonomic narrowing in
+straight-line TypeScript tests.
+
+The low-level `@overkill/assert` package can still expose:
+
+-   `assertion.equal(...) -> AssertionNode`
+-   `assertion.all(...) -> AssertionNode`
+-   other low-level node constructors for advanced composition
+
+But that is not the primary end-user style.
+
+## `assert` Versus `require`
+
+This split should be explicit in the docs.
+
+`assert`:
+
+-   records an assertion
+-   returns `void` in the builder API
+-   is suitable for the ordinary “check and continue” path
+
+`require`:
+
+-   records a gating assertion
+-   supports narrowing-style APIs such as
+    `require.defined(value): asserts value is NonNullable<T>`
+-   short-circuits the current flow on failure
+
+This is inspired in part by Swift Testing’s split between expectation-style
+and require-style checks.
+
+## Throwing Mode
+
+Throwing mode is still supported, but explicitly in the test API shape:
+
+```ts
+import { throwingTest as test } from '@overkill/test';
+
+test('legacy flow', ({ assert }) => {
+    assert.equal(add(2, 3), 5);
+});
+```
+
+This keeps large throwing-style suites ergonomic without introducing global
+mode flags.
 
 ## Diff And Diagnostic Shape
 
@@ -155,9 +194,9 @@ data preserved in the JSON event stream regardless of terminal truncation.
 
 The architecture should preserve room for future exploration of:
 
--   assertions-as-effects: `Check` produced and accumulated on a per-test
-    effect bus rather than returned (more amenable to highly-async test
-    bodies)
+-   assertions-as-effects: `AssertionNode` produced and accumulated on a
+    per-test effect bus rather than returned (more amenable to highly-async
+    test bodies)
 -   richer relational checks: `relation()` for metamorphic testing (see
     `novel-techniques.md`)
 -   semantic baseline comparisons via subtype-specific adapters (see
@@ -170,30 +209,36 @@ Source:
 
 -   <https://vitest.dev/guide/snapshot.html>
 
-## Current Concept Leaning
+## Settled Direction
 
 For the product concept:
 
--   core supports throw/reject and explicit result shapes
--   first-party assertions live in `@overkill/assert`
--   recommended authoring shape: returned `Check` values composed via
-    `assert.all` / `assert.any`
+-   core supports structured assertion results and explicit throwing-mode
+    tests
+-   first-party assertions live in `@overkill/assert`, but ordinary tests
+    primarily consume them through injected `assert` / `require`
+-   primary authoring shape: builder/context API with explicit
+    `return assert.done()`
+-   low-level protocol name: `AssertionNode`
+-   low-level constructor namespace: `assertion.*`
 -   zero-assertion detection: failure by default, with explicit overrides
--   `plan(n, check)` is the assertion-count contract; no global mutable
-    counter
+-   `plan(n)` is the assertion-count contract; no `atMost`, no `atLeast`,
+    and `n > 0`
 -   diff data is structured, not stack-mined
--   richer semantics layer on top of the core rather than being forced
-    into every test
+-   ordinary async/app errors remain distinct from assertion failures
+-   `require` exists because narrowing and straight-line ergonomics matter
+-   aggregate “run all” semantics should be explicit rather than the silent
+    default
 
 ## Influences
 
 -   AVA — zero-assertion detection as default failure
--   `node-tap` — `t.plan()` precedent (Overkill's `plan` differs in being
-    a decorator on a returned value, not a side-effecting setter)
--   `elm-test` — the cleanest existing realisation of returned-value
-    assertions
+-   `node-tap` — `t.plan()` precedent
+-   `elm-test` — returned-value expectations as inspiration for the protocol
+    layer
 -   ZIO Test — `Assertion` as a value
 -   ScalaCheck — `Prop` as a value
+-   Swift Testing — explicit split between non-gating and gating checks
 
 ## Sources
 

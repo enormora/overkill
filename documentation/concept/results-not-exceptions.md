@@ -1,410 +1,188 @@
 # Results, Not Exceptions
 
-## Why This Doc Exists
+## Purpose
 
-Almost every JavaScript test runner in 2026 treats a failing assertion as a thrown
-exception. Jest, Vitest, Mocha, AVA, Bun, `node:test` all share the same shape:
+This document is no longer the primary place to learn Overkill's assertion
+API. That role belongs to [`assertions-and-results.md`](./assertions-and-results.md).
 
--   `expect(...)` throws `JestAssertionError` (or equivalent) on mismatch
--   the runner wraps the test body in `try/catch`
--   the caught error is formatted, possibly re-thrown, possibly attached to a
-    result object
--   the stack trace is mined for the original `expect` call site
+This file now has one narrower job:
 
-This is so universal that most people stop noticing it is a *choice*. It is not
-the only choice, and it is not the best choice for Overkill's stated values:
-determinism, no magic, explicit over implicit, fast feedback, machine-readable
-results.
+-   explain **why** Overkill still cares about returned structured outcomes
+-   explain what that means for the **engine and protocol layer**
+-   preserve the rationale for supporting value-oriented authoring modes such
+    as [`tests-as-values.md`](./tests-as-values.md)
 
-This document argues that the canonical Overkill outcome model should be a
-**returned result value**, not a thrown exception, and sketches what that looks
-like end-to-end.
+## Position
 
-## The Problem With Throwing
+Overkill's primary end-user DX is the injected builder API:
 
-Throwing-based assertions are popular because they are convenient: they exit
-the test body at the first mismatch and they piggy-back on the stack trace for
-location data. The convenience hides several real costs.
+-   `assert`
+-   `require`
+-   `plan()`
+-   explicit `return assert.done()`
 
-### Control-flow surprise
+That decision is settled.
 
-The test body looks like ordinary code, but any single `expect` can abort the
-function. Refactoring is fragile: an `await` rearrangement, a wrapping
-`try/catch`, a Promise chain tail can quietly swallow the failure. Async
-iteration, parallel `Promise.all`, and `using` resource teardown all interact
-badly with mid-function throws.
+Underneath that API, Overkill still benefits from a result-oriented protocol:
 
-### Catching is mandatory machinery
+-   low-level assertions can be represented as `AssertionNode` values
+-   the engine can normalize both builder mode and `throwingTest` into one
+    structured `TestOutcome`
+-   reporters, IDEs, MCP servers, and remote executors consume structured
+    data instead of parsing prose
 
-The runner needs a `try { await body() } catch (e) { record(e) }` wrapper at
-some level. That wrapper has to make decisions: which errors are assertion
-failures, which are runner bugs, which are programmer mistakes? The Jest
-codebase has hundreds of lines dedicated to this disambiguation. It is one of
-the largest sources of "magic" in mainstream runners — exactly what Overkill's
-principles forbid.
+So "results, not exceptions" is now the **protocol-layer principle**, not
+the main user-facing syntax.
 
-### Stack walking and source maps
+## Why The Protocol Matters
 
-To turn a thrown error into a useful diff, the runner reads the stack, drops
-its own frames, locates the user's `expect` call, opens the source map,
-re-reads the source, and reconstructs context. Every one of those steps is a
-source of slowness, fragility, and platform-specific heuristics.
+Mainstream JS runners usually treat assertion failure as the normal
+exception path. That has several costs:
 
-### Hostile interaction with structured concurrency
+-   the success path still depends on exception-oriented machinery
+-   stack walking becomes part of ordinary failure rendering
+-   machine-readable integrations must reconstruct meaning from error objects
+    and strings
+-   "test failed" and "runner could not execute the test correctly" are easy
+    to muddle together
 
-When tests run inside `AbortController` cancellation, `using` disposers, and
-async iteration, exceptions become entangled with cancellation paths. Distinguishing
-"the test failed" from "the test was cancelled" from "a teardown threw" turns
-into ad-hoc reasoning.
+Overkill's structured outcome model avoids that at the architectural level.
 
-### Multiple failures lost
+## The Protocol Shape
 
-A throw exits at the first failure. Tests that want to record several
-mismatches in one body — which is exactly the right shape for property tests,
-table-driven tests, and approval tests — are forced into a loop-and-collect
-pattern that the runner does not natively understand.
-
-### Hard to make machine-readable
-
-Thrown errors are objects with prose `.message` strings. Reporters and IDE
-plugins then re-parse those strings. A returned value can carry typed,
-schema-stable data without any string parsing.
-
-## The Alternative: Tests Return A Result
-
-The Overkill direction:
-
--   a test body returns (or resolves to) a `TestOutcome` value
--   assertions return `Check` values that compose into the outcome
--   the runner does not need a `try/catch` for assertion failures (it still
-    catches programmer bugs, see below)
--   reporters and integrations consume the structured outcome directly
-
-The shape can be as small as:
+The engine should treat structured outcomes as canonical:
 
 ```ts
-type Pass = { kind: 'pass' };
-type Fail = { kind: 'fail'; checks: ReadonlyArray<FailedCheck> };
-type Skip = { kind: 'skip'; reason: string };
-type Inconclusive = { kind: 'inconclusive'; reason: string };
-
 type TestOutcome = Pass | Fail | Skip | Inconclusive;
 
-type FailedCheck = {
-    readonly id: string;
-    readonly summary: string;
-    readonly expected: unknown;
-    readonly actual: unknown;
-    readonly path: ReadonlyArray<string | number>;
-    readonly location: SourceLocation;
+type Pass = { kind: 'pass' };
+
+type Fail = {
+    kind: 'fail';
+    assertions: ReadonlyArray<FailedAssertion>;
+};
+
+type Skip = {
+    kind: 'skip';
+    reason: string;
+};
+
+type Inconclusive = {
+    kind: 'inconclusive';
+    reason: string;
 };
 ```
 
-A simple test then reads:
+Low-level assertion constructors return `AssertionNode` values that can be
+combined into those outcomes. Builder-style tests record those nodes
+implicitly and finalize them through `assert.done()`.
+
+That gives Overkill one canonical internal representation even though the
+surface authoring styles differ.
+
+## Relationship To Builder Mode
+
+Builder mode remains the preferred surface because it solves practical
+TypeScript problems:
+
+-   `require.*` can narrow types
+-   straight-line async code stays ergonomic
+-   `plan()` and zero-assertion detection are explicit test-local state
+-   common tests do not need to manually assemble assertion trees
+
+The key architectural point is that builder mode does **not** invalidate the
+underlying result-oriented protocol. It is simply a friendlier way to
+produce it.
+
+## Relationship To Throwing Mode
+
+`throwingTest` is still supported, but it should normalize into the same
+structured result shape.
+
+That means:
+
+-   the engine still exposes one machine-readable `TestOutcome` model
+-   reporters still consume one structured failure shape
+-   throwing mode is an alternate authoring style, not a second reporting
+    system
+
+## Where Returned Values Still Matter Directly
+
+There are still cases where explicit returned values are a strong fit:
+
+-   tests-as-values
+-   property-based or relational checks
+-   reusable low-level assertion combinators
+-   future experimental assertion DSLs
+
+Example:
 
 ```ts
-import { test, check } from '@overkill/test';
+import { assertion } from '@overkill/assert';
 
-test('add', ({ assert }) => {
-    return assert.equal(add(2, 3), 5);
-});
-```
-
-`assert.equal` does *not* throw. It returns a `Check` whose `kind` is `'pass'`
-or `'fail'`. The test returns the check. The runner reads the result.
-
-Multiple checks compose:
-
-```ts
-test('user shape', ({ assert }) => {
-    const u = build();
-    return assert.all([
-        assert.equal(u.id, '42'),
-        assert.equal(u.name, 'Ada'),
-        assert.length(u.roles, 2),
-    ]);
-});
-```
-
-`assert.all` reports every failed check, not just the first.
-
-For property and table-driven tests, the natural shape is a fold:
-
-```ts
-test('round-trip', ({ forall, assert }) => {
-    return forall(arbitrary.user, (u) => assert.equal(parse(serialize(u)), u));
-});
-```
-
-`forall` returns a `Check` that includes the full counterexample trail when it
-fails — no string parsing, no re-throw.
-
-## The Async Case
-
-Tests are async. A returned `Promise<TestOutcome>` is the natural shape:
-
-```ts
-test('reads file', async ({ assert, world }) => {
-    const content = await world.fs.read('fixture.txt');
-    return assert.equal(content, 'expected');
-});
-```
-
-The runner awaits the returned value. There is no `try/catch` around the
-assertion. If `world.fs.read` rejects, that rejection *is* a programmer error
-or test-environment error — different from an assertion failure. Overkill
-handles it via the rejection path described in the next section.
-
-## What About Real Errors?
-
-Test code still has bugs. A typo can throw `TypeError`. A missing fixture can
-reject. Overkill does not pretend these don't happen. The model:
-
--   **Assertion failure** — `kind: 'fail'`, returned by the test body. No
-    exception.
--   **Runner error** — caught by the runner around the test body, attributed
-    explicitly. The reporter shows it as "the runner could not observe this
-    test" rather than "the test failed".
-
-The two categories are reported separately, which solves a long-standing
-muddle in JS runners (see `failure-artifacts.md`'s "Test Failures Versus
-Errors").
-
-The runner still wraps the body in `try/catch`. The difference is that the
-catch path is no longer the *normal* failure flow; it is reserved for
-unexpected exceptions. That gives the catch handler a single, narrow job:
-classify and report runner-level errors.
-
-## Throwing Adapters Are Allowed
-
-Overkill should not refuse to support throwing assertions. Many users will
-import `node:assert` or a third-party assertion library. The runner can wrap
-any callback with a thin adapter:
-
-```ts
-test('legacy', adapt.throwing((t) => {
-    nodeAssert.equal(add(2, 3), 5);
-}));
-```
-
-`adapt.throwing` runs the body, catches any `AssertionError` it knows about,
-turns it into a `Fail`, and returns the result. The runner core never sees a
-thrown failure; the adapter is the conversion point.
-
-This preserves compatibility for users who want to migrate from existing
-runners, without polluting the canonical model.
-
-## Composition Over Combination Helpers
-
-Because every check is a value, composition is structural:
-
-```ts
-function isValidUser(u: User, { assert }: Context) {
-    return assert.all([
-        assert.string(u.id),
-        assert.string(u.name),
-        assert.array(u.roles),
-    ]);
+function validUser(user: User) {
+    return assertion.all([assertion.string(user.id), assertion.string(user.name), assertion.array(user.roles)]);
 }
-
-test('fetch returns valid user', async ({ assert, ...c }) => {
-    const u = await fetchUser('42');
-    return isValidUser(u, c);
-});
 ```
 
-Reusable checks become reusable functions returning `Check`. There is no
-"helper that internally throws", no shared mutable assertion counter, no
-hidden ordering. Reuse looks like ordinary value composition.
+This is not the default day-to-day style, but it is a valuable capability to
+preserve.
 
-## Plan Without Globals
+## Error Separation
 
-`plan(n)` becomes a check decorator rather than a side-effecting setter:
+The protocol model also sharpens an important distinction:
 
-```ts
-test('parses three rows', ({ assert, plan }) => {
-    const rows = parse(input);
-    return plan(3, assert.all([
-        assert.length(rows, 3),
-        assert.equal(rows[0].id, 1),
-        assert.equal(rows[1].id, 2),
-    ]));
-});
-```
+-   **assertion failure** — structured test outcome
+-   **runner error** — unexpected exception, rejection, crash, permission
+    denial, or environment failure
 
-`plan(3, check)` requires the wrapped composite check to contain exactly three
-leaf checks. No mutable counter, no global state, no after-the-fact
-verification.
+This separation is part of the core concept. Assertion failures should not
+need to travel through the same path as infrastructure errors.
 
-## Skip, Inconclusive, And Expected Failure As First-Class Verdicts
+See:
 
-Returning a value lets Overkill expose richer verdicts without parsing prose:
+-   [`failure-artifacts.md`](./failure-artifacts.md)
+-   [`runtime-behavior.md`](./runtime-behavior.md)
 
-```ts
-test('only on linux', ({ skip, assert, world }) => {
-    if (world.platform !== 'linux') return skip('not on linux');
-    return assert.equal(world.uname(), 'Linux');
-});
+## Why This Still Fits The Engine
 
-test('flaky waiting on #4711', ({ assert, expectFail }) => {
-    return expectFail(assert.equal(call(), expected), 'pending fix in #4711');
-});
+The narrow `@overkill/engine` should stay flexible enough to support:
 
-test('depends on docker', ({ inconclusive, world }) => {
-    if (!world.docker.available) return inconclusive('docker not available');
-    // ...
-});
-```
+-   builder/context authoring
+-   explicit throwing mode
+-   value-oriented suite trees and test nodes
+-   future packages that need compositional result values
 
-`pass`, `fail`, `skip`, `expected-fail` (xfail), `unexpected-pass` (xpass), and
-`inconclusive` are all members of the same algebraic verdict type. Reporters,
-CI gates, and IDE views all see structured kinds rather than guessing from
-strings.
+That is why the engine should continue to "speak" structured outcomes
+natively, even though the default human-facing authoring experience is no
+longer pure returned-value assertions.
 
-This connects directly to the "out-of-band test verdicts" gap identified in
-the audit and is one of the cheapest wins from the broader returned-value
-model.
+## Current Role In The Concept
 
-## Effects Are Logged, Not Mocked
+The settled split is:
 
-Returned-value tests pair naturally with the capability-handle pattern:
+-   [`assertions-and-results.md`](./assertions-and-results.md)
+    -   canonical user-facing assertion model
+    -   `assert` / `require` / `plan()`
+    -   `AssertionNode`
+    -   `throwingTest`
+-   [`results-not-exceptions.md`](./results-not-exceptions.md)
+    -   protocol-layer rationale
+    -   structured outcome motivation
+    -   why the engine should preserve value-oriented semantics internally
 
-```ts
-test('saves user', async ({ assert, world }) => {
-    const result = await saveUser(world, { id: '42', name: 'Ada' });
-    return assert.all([
-        assert.ok(result.ok),
-        assert.equal(world.recorded(), [
-            { kind: 'http.post', url: '/users', body: { id: '42', name: 'Ada' } },
-            { kind: 'log.info', msg: 'saved 42' },
-        ]),
-    ]);
-});
-```
-
-`world` is a typed bag of capability handles (`http`, `log`, `clock`,
-`random`, `fs`). Test variants of those handles record their calls. The test
-asserts on the recorded effect log, not on patched globals. The whole system
-is a function from `(input, world)` to `(output, effects, outcome)` —
-deterministic, replayable, no monkey patching anywhere.
-
-This is the kernel idea exported from Haskell `IO` separation, ZIO Test
-environments, and Elm's `Cmd` model. It only works cleanly when assertions
-themselves are returned values.
-
-## Why The Engine Should Speak This Natively
-
-The narrow `@overkill/engine` already promises to support both throw-style and
-return-style outcomes (open question 1.2). The recommendation here is
-stronger: the engine's *internal* representation of a test result should be
-the structured `TestOutcome`, and `adapt.throwing` should be a layer on top.
-
-Practical consequences:
-
--   reporters never need to read `Error.stack` to format a diff
--   the JSON event stream payload is the same shape as the in-memory result
--   IDEs and MCP servers consume one schema, not two
--   the V8 startup snapshot (see `fast-feedback-loops.md`) does not need
-    `Error` machinery loaded for the success path
--   stack walking only happens on real exceptions, which are rare in well-
-    written tests
-
-This concretely speeds up the success path. A test that passes never
-constructs an `Error`, never walks a stack, never parses a source map.
-
-## Multiple Failed Checks Per Test
-
-Returning a tree of checks means the runner can report several failures from
-one test without rerunning the body:
-
-```
-✗ user shape
-  ✗ id should equal "42" but was "43"
-    at user.test.ts:14
-  ✗ length of roles should be 2 but was 1
-    at user.test.ts:16
-```
-
-In a thrown model, the second failure is invisible until the first is fixed.
-This is exactly the behavior that makes large suites painful to migrate.
-
-## Where Throwing Still Makes Sense
-
-The runner does not pretend exceptions don't exist. The following stay
-exception-shaped:
-
--   programmer errors (`TypeError`, `ReferenceError`)
--   capability violations (Node permission denials)
--   resource construction failures (fixture setup throwing)
--   `AbortError` on cancellation
--   subprocess crash signals
-
-These are all *runner errors*, classified separately from the test verdict.
-Overkill catches them, attributes them to the most specific identity it can
-(test, file, run), and surfaces them as runner-level diagnostics with their
-own reporter rendering.
-
-## Comparison To Prior Art
-
--   **Elm `elm-test`**: tests are values of a `Test` ADT and return `Expect`
-    values; no throws involved. The closest existing model in any popular
-    ecosystem.
--   **Haskell `tasty`**: a test is a `TestTree` value; results are typed
-    outcomes; ingredients (reporters) consume the tree.
--   **Rust `#[test]` with `Result`**: the `Result<(), E>` test signature is
-    the supported alternative to panic-based tests. Rust shows that both
-    coexisting in one runner is realistic.
--   **ZIO Test**: tests return `Spec[R, E]`; the runner walks the value.
--   **ScalaCheck `Prop`**: properties are values, not assertions.
-
-Across all of these, the same observation holds: returning a value scales
-better than throwing, especially as the testing surface grows beyond simple
-example tests.
-
-## Migration Story
-
-The transition from a throwing baseline is gentle:
-
-1.  Ship the structured outcome as the canonical engine type.
-2.  Ship `adapt.throwing` so existing test bodies keep working.
-3.  Ship `assert.*` returning `Check` values as the recommended new style.
-4.  Document the throwing path as legacy compatibility, not the recommended
-    style.
-5.  Reporters consume the structured outcome regardless of which path the
-    test author took.
-
-No user is forced to rewrite their tests. The internal shape is uniform.
-
-## Relationship To Other Docs
-
--   `assertions-and-results.md` — this doc replaces the loose "alternatives
-    worth preserving" bullet with a concrete recommendation. The two should
-    be read together.
--   `failure-artifacts.md` — the runner-error vs test-failure distinction is
-    crisp here: assertion failures never travel through the catch path.
--   `microtests-and-capabilities.md` — pairs naturally with capability
-    handles and the recording-handle pattern.
--   `package-architecture.md` — `@overkill/engine` should expose
-    `TestOutcome` as a stable type; `@overkill/assert` should produce
-    `Check` values; `@overkill/test` should make returning the outcome the
-    default.
--   `fast-feedback-loops.md` — the success path does not allocate `Error`
-    objects, does not walk stacks, does not lazy-load `pretty-format` until a
-    real failure happens.
+That is the intended consolidation boundary.
 
 ## Influences
 
--   `elm-test`'s `Test` and `Expect` types
--   Haskell `tasty`'s tree-of-tests model
--   Rust's `Result<(), E>` test signature
--   ZIO Test's value-based assertions
--   ScalaCheck's `Prop`
--   Elm Architecture's effect descriptions vs runtime executors
+-   `elm-test` — expectations as values
+-   ZIO Test — assertions as values
+-   ScalaCheck — properties as values
+-   Rust — coexistence of alternate test-result styles
 
 ## Sources
 
--   [elm-test — `Expect` documentation](https://package.elm-lang.org/packages/elm-explorations/test/latest/Expect)
--   [Haskell `tasty` README](https://github.com/UnkindPartition/tasty)
--   [Rust by Example — Unit testing with `Result`](https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html)
+-   [elm-test — `Expect`](https://package.elm-lang.org/packages/elm-explorations/test/latest/Expect)
 -   [ZIO Test — Why ZIO Test](https://zio.dev/reference/test/why-zio-test/)
 -   [ScalaCheck — Properties](https://scalacheck.org/documentation.html)
+-   [Rust by Example — Unit testing with `Result`](https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html)
