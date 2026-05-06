@@ -85,6 +85,9 @@ test('parses three rows', ({ assert, plan }) => {
 
 Semantics:
 
+-   `plan(n)` must be the first call in the test body. Calling it after any
+    `assert.*` or `require.*` invocation, or calling it more than once, is a
+    test error
 -   `n` must be greater than `0`
 -   the test must record exactly `n` leaf assertions before completion
 -   both more and fewer fail
