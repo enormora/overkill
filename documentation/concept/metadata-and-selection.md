@@ -144,7 +144,8 @@ The replacement for `.only`:
 -   `--last-failed` runs tests that failed in the previous run
 -   `--changed` runs tests in files changed since `main` (path-level only;
     Overkill does not track a dependency graph)
--   `--watch` reruns on file change (closure-aware by default)
+-   `--watch` reruns the selected suite on file change (uses Node's
+    built-in watcher; see `runtime-behavior.md` § Watch-Mode Targeting)
 
 These are CLI conveniences over the same selection grammar. None modify
 the test source.
