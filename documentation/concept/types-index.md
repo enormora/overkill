@@ -1,0 +1,373 @@
+# Types Index
+
+## Purpose
+
+A canonical sketch of every TypeScript type referenced from more than one
+concept doc, plus the placeholder types used in illustrative code samples.
+
+This file exists so reviewers do not have to chase types across the doc
+set, and so authoring docs can cite a single source instead of re-stating
+fields.
+
+The shapes here are concept-level sketches, not contracts. The actual
+package types may add fields. If a type's canonical definition lives in a
+domain doc, that doc is named under the sketch.
+
+## Status
+
+Open: this index is best-effort. Some types named in the docs (`Capability`,
+`Fields`, `User`, `UserInput`) are still placeholders or open questions.
+Those are marked explicitly below.
+
+## Identity
+
+```ts
+type TestId = {
+    readonly file: string; // canonical source file path, repo-relative
+    readonly suite?: ReadonlyArray<string>; // ordered suite names, root → leaf
+    readonly name: string; // test name within its parent
+};
+
+type CaseId = TestId & {
+    readonly params?: string; // canonical case key for parameterized tests
+};
+
+type RuntimeId = {
+    readonly name: string; // 'chromium', 'node', 'deterministic-api', ...
+    readonly dimensions?: Record<string, string>;
+};
+
+type WorkloadId = {
+    readonly name: string;
+    readonly params?: Record<string, string>;
+};
+
+type AttemptId = { readonly index: number }; // 0-indexed
+
+type ArtifactSubtype =
+    | 'content-snapshot'
+    | 'visual-snapshot'
+    | 'terminal-snapshot'
+    | 'performance-baseline'
+    | 'witness'
+    | 'log-capture'
+    | 'trace';
+
+type ArtifactId = {
+    readonly case: CaseId;
+    readonly runtime?: RuntimeId;
+    readonly workload?: WorkloadId;
+    readonly attempt?: AttemptId;
+    readonly subtype: ArtifactSubtype;
+};
+```
+
+Canonical: `artifact-identity.md`.
+
+## Test Tree And Metadata
+
+```ts
+type TestNode = TestCase | Suite | Table;
+
+type TestCase = {
+    readonly kind: 'test';
+    readonly name: string;
+    readonly metadata?: Metadata;
+    readonly body: TestBody; // signature varies by DSL
+};
+
+type Suite = {
+    readonly kind: 'suite';
+    readonly name: string;
+    readonly metadata?: Metadata;
+    readonly children: ReadonlyArray<TestNode>;
+};
+
+type Table = {
+    readonly kind: 'table';
+    readonly name: string;
+    readonly metadata?: Metadata;
+    readonly cases: ReadonlyArray<{ params: Record<string, unknown>; body: TestBody }>;
+};
+
+type Metadata = {
+    readonly tags?: ReadonlySet<string>;
+    readonly kind?: TestKind;
+    readonly runtimes?: ReadonlyArray<string>;
+    readonly capabilities?: ReadonlyArray<Capability>;
+    readonly baselines?: ReadonlyArray<BaselineSubtype>;
+    readonly ownership?: ReadonlyArray<string>;
+    readonly stability?: 'stable' | 'flaky' | 'experimental';
+    readonly priority?: 'critical' | 'standard' | 'optional';
+    readonly extra?: ReadonlyMap<string, unknown>;
+};
+
+type TestKind =
+    | 'microtest'
+    | 'integration'
+    | 'browser'
+    | 'benchmark'
+    | 'type-test'
+    | 'property'
+    | 'simulation'
+    | 'approval';
+
+type BaselineSubtype =
+    | 'content-snapshot'
+    | 'visual-snapshot'
+    | 'terminal-snapshot'
+    | 'performance-baseline';
+
+// Open: Capability is currently a placeholder for the closed enumeration
+// described in microtests-and-capabilities.md. The concrete shape is not
+// yet settled (string literal union vs. branded token).
+type Capability = string;
+```
+
+Canonical: `tests-as-values.md` for `TestNode`/`TestCase`/`Suite`/`Table`,
+`metadata-and-selection.md` for `Metadata`, `glossary.md` for the
+enumerations.
+
+## Outcomes And Verdicts
+
+```ts
+type TestOutcome = Pass | Fail | Skip | Inconclusive;
+
+type Pass = { kind: 'pass' };
+
+type Fail = {
+    kind: 'fail';
+    checks: ReadonlyArray<FailedCheck>;
+};
+
+type Skip = { kind: 'skip'; reason: string };
+
+type Inconclusive = { kind: 'inconclusive'; reason: string };
+
+type FailedCheck = {
+    readonly id: string;
+    readonly summary: string;
+    readonly expected: unknown;
+    readonly actual: unknown;
+    readonly path: ReadonlyArray<string | number>;
+    readonly location: SourceLocation;
+    readonly diff?: Diff;
+};
+
+type Diff =
+    | { kind: 'value'; expected: SerializedValue; actual: SerializedValue }
+    | { kind: 'string'; expected: string; actual: string; hunks: ReadonlyArray<Hunk> }
+    | { kind: 'object'; ops: ReadonlyArray<DiffOp> }
+    | { kind: 'array'; ops: ReadonlyArray<DiffOp> };
+
+type DiffOp =
+    | { op: 'add'; path: ReadonlyArray<string | number>; value: SerializedValue }
+    | { op: 'remove'; path: ReadonlyArray<string | number>; value: SerializedValue }
+    | { op: 'replace'; path: ReadonlyArray<string | number>; from: SerializedValue; to: SerializedValue };
+
+type Hunk = {
+    readonly line: number;
+    readonly removed: ReadonlyArray<string>;
+    readonly added: ReadonlyArray<string>;
+};
+
+type SerializedValue = unknown; // post-serializer JSON-compatible value
+
+type SourceLocation = {
+    readonly file: string;
+    readonly line: number;
+    readonly column?: number;
+};
+```
+
+Canonical: `results-not-exceptions.md` for `TestOutcome`,
+`assertions-and-results.md` for `FailedCheck`/`Diff`/`DiffOp`/`Hunk`. The
+`TestVerdict` reporter category is derived from outcome + metadata; see
+`glossary.md` § Test Verdict.
+
+## Run Record
+
+```ts
+type RunPlan = {
+    readonly seed: bigint;
+    readonly identities: ReadonlyArray<CaseId>;
+    readonly runtimes: ReadonlyArray<ResolvedRuntime>;
+    readonly executionStrategy: string; // see runtime-behavior.md
+    readonly capabilityProfile: string;
+    readonly baselineUpdateMode: 'off' | 'update' | 'review';
+    readonly metadataResolved: ReadonlyMap<string, Metadata>;
+    readonly loaderConfig: { stripMode: 'strip-only' | 'transform'; sourceMaps: boolean };
+    readonly versions: { engine: string; node: string; packages: ReadonlyMap<string, string> };
+};
+
+type ResolvedRuntime = {
+    readonly id: RuntimeId;
+    readonly nodeVersion?: string;
+    readonly os?: string;
+    readonly machineClass?: string;
+    readonly adapters: ReadonlyArray<{ name: string; version: string }>;
+};
+
+type RunRecord = {
+    readonly id: string; // ULID or content hash of the plan
+    readonly seed: bigint;
+    readonly plan: RunPlan;
+    readonly identities: ReadonlyArray<CaseId>;
+    readonly runtime: ResolvedRuntime;
+    readonly versions: { engine: string; node: string; packages: ReadonlyMap<string, string> };
+    readonly startedAt: string; // ISO 8601
+    readonly result?: RunResult;
+};
+
+type RunResult = {
+    readonly summary: { passed: number; failed: number; skipped: number; inconclusive: number };
+    readonly perTest: ReadonlyArray<{ id: CaseId; outcome: TestOutcome; verdict: string }>;
+    readonly runnerErrors: ReadonlyArray<RunnerError>;
+    readonly artifacts: ReadonlyArray<ArtifactId>;
+    readonly wallTimeMs: number;
+};
+
+type RunnerError = {
+    readonly subtype: 'fixture' | 'crash' | 'unhandled-rejection' | 'permission' | 'loader' | 'attribution-drift';
+    readonly attributedTo?: CaseId; // missing when run-level
+    readonly message: string;
+    readonly cause?: unknown;
+};
+```
+
+Canonical: `reproducibility.md` for `RunPlan` and `RunRecord`,
+`failure-artifacts.md` for `RunnerError`.
+
+## Capability Handles (illustrative)
+
+```ts
+type AppRuntime = {
+    readonly clock: Clock;
+    readonly random: Random;
+    readonly fs: FileSystem;
+    readonly http: HttpClient;
+    readonly log: Logger;
+};
+
+type Clock = {
+    now(): Date;
+    monotonic(): bigint;
+    sleep(ms: number, signal?: AbortSignal): Promise<void>;
+};
+
+type Random = {
+    uuid(): string;
+    integer(min: number, max: number): number;
+    bytes(length: number): Uint8Array;
+    pick<T>(xs: ReadonlyArray<T>): T;
+    split(): readonly [Random, Random];
+};
+
+type Logger = {
+    debug(msg: string, fields?: Fields): void;
+    info(msg: string, fields?: Fields): void;
+    warn(msg: string, fields?: Fields): void;
+    error(msg: string, fields?: Fields): void;
+};
+
+// Open: Fields is a structured-log placeholder. Concrete shape depends
+// on the production logger; tests typically use Record<string, unknown>.
+type Fields = Record<string, unknown>;
+
+type FileSystem = unknown; // placeholder; out of concept scope
+type HttpClient = unknown; // placeholder; out of concept scope
+
+type RecordedEvent =
+    | { kind: 'clock.now'; at: bigint }
+    | { kind: 'random.uuid'; produced: string }
+    | { kind: 'fs.write'; path: string; bytes: number; contentHash: string }
+    | { kind: 'log.info'; msg: string; fields?: Fields }
+    | { kind: 'http.request'; method: string; url: string; bodyHash?: string };
+
+type RuntimeSnapshot = unknown; // adapter-specific replay payload
+```
+
+Canonical: `capability-handles.md`. These are illustrative architecture
+patterns, not contracts owned by `@overkill/engine`.
+
+## Failure Artifacts
+
+```ts
+type DiffArtifact = {
+    readonly kind: 'value' | 'string' | 'object' | 'array';
+    readonly expected: SerializedValue;
+    readonly actual: SerializedValue;
+    readonly ops?: ReadonlyArray<DiffOp>;
+    readonly hunks?: ReadonlyArray<Hunk>;
+};
+
+type WorkerCrash = {
+    readonly timestamp: string; // ISO 8601
+    readonly signal: string; // 'SIGSEGV', 'SIGABRT', ...
+    readonly workerId: string; // PID or pool index
+    readonly activeCase?: CaseId;
+    readonly nodeVersion?: string;
+    readonly nativeAddons?: ReadonlyArray<string>;
+};
+
+// see failure-artifacts.md § Witnesses And Replay Artifacts
+type WitnessFile = {
+    readonly version: 1;
+    readonly producedBy: { library: string; libraryVersion: string };
+    readonly case: CaseId;
+    readonly kind: 'property' | 'simulation';
+    readonly seed: bigint;
+    readonly shrinkPath?: ReadonlyArray<unknown>;
+    readonly counterexample?: unknown;
+    readonly adapter?: { name: string; payload: unknown };
+    readonly scenario?: string;
+    readonly runtimeSnapshot?: RuntimeSnapshot;
+    readonly faultConfiguration?: unknown;
+};
+```
+
+Canonical: `failure-artifacts.md`.
+
+## Simulation Adapters
+
+```ts
+type SimulationAdapter = {
+    readonly name: string;
+    readonly executionRequirements?: ReadonlyArray<ExecutionRequirement>;
+    start(options: { seed?: bigint; scenario?: string; signal: AbortSignal }): Promise<SimulationSession>;
+};
+
+type SimulationSession = {
+    readonly runtimeMetadata: {
+        seed?: bigint;
+        scenario?: string;
+        endpoint?: URL;
+    };
+    witness?(): Promise<unknown>;
+    stop(): Promise<void>;
+};
+
+type ExecutionRequirement =
+    | { kind: 'serial' }
+    | { kind: 'single-worker' }
+    | { kind: 'exclusive-resource'; name: string }
+    | { kind: 'startup-budget-ms'; min: number };
+```
+
+Canonical: `deterministic-simulation.md`.
+
+## Placeholders Without Domain Definitions
+
+These names appear in code samples to keep the example readable. They are
+not part of the Overkill API surface; treat them as `unknown` unless the
+sample explicitly defines them.
+
+-   `User`, `UserInput`, `Saved` — appear in `capability-handles.md`'s
+    illustrative `saveUser` example
+-   `arbitrary.user`, `arbitrary.bytes`, `gen.user` — placeholder generator
+    references in property-test snippets
+-   `forall`, `relation`, `differential`, `hyperproperty`, `slo`, `fuzz`,
+    `baseline()` — proposed primitives in `novel-techniques.md`; not part
+    of the settled concept
+-   `withRuntime`, `simulation(...)` — illustrative test helpers in
+    `deterministic-simulation.md`; signatures are not committed

@@ -64,6 +64,7 @@ For a first read, follow this path:
 -   [Runtime Behavior](./runtime-behavior.md)
 -   [Tests As Values](./tests-as-values.md)
 -   [Test Ergonomics](./test-ergonomics.md)
+-   [Types Index](./types-index.md)
 
 ## Distribution And Platform
 
