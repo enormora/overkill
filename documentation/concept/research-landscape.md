@@ -524,9 +524,77 @@ Sources:
 
 JMH’s main lesson is humility: benchmarking requires harness support, controlled setup, and protection against measurement traps. It is not just a loop around a function.
 
+The most important JMH concepts for Overkill are:
+
+-   **forks** as an explicit isolation boundary
+-   **warmup** versus **measurement** iterations
+-   parameterized benchmarks
+-   distinct run strategies for cold-start versus steady-state questions
+
+JMH is also strong evidence that a benchmark DSL should make execution policy
+part of the definition, not an afterthought.
+
 Source:
 
 -   <https://github.com/openjdk/jmh>
+
+### Criterion.rs
+
+Criterion.rs matters because it shows a modern benchmark harness can be both
+ergonomic and statistically serious.
+
+The most important concepts are:
+
+-   benchmark groups
+-   benchmark IDs and parameterized cases
+-   throughput annotations
+-   custom measurement backends
+
+The custom measurement story is especially relevant to Overkill because it
+points toward a benchmark API that is not hard-wired to wall-clock timing.
+
+Sources:
+
+-   <https://bheisler.github.io/criterion.rs/book/user_guide/advanced_configuration.html>
+-   <https://bheisler.github.io/criterion.rs/book/user_guide/custom_measurements.html>
+
+### BenchmarkDotNet
+
+BenchmarkDotNet contributes a concept Overkill should likely steal directly:
+**jobs** as named execution profiles.
+
+Its useful ideas include:
+
+-   `Throughput`, `ColdStart`, and `Monitoring` run strategies
+-   explicit launch, warmup, and iteration counts
+-   diagnosers and exporters
+-   environment comparison as a first-class concern
+
+That maps well to Overkill's distinction between benchmark shape, execution
+constraints, and reporting.
+
+Sources:
+
+-   <https://benchmarkdotnet.org/articles/configs/jobs.html>
+-   <https://benchmarkdotnet.org/articles/configs/configs.html>
+
+### pytest-benchmark
+
+pytest-benchmark is valuable less for raw timing and more for its surrounding
+workflow:
+
+-   pedantic mode
+-   compare mode
+-   histograms
+-   machine-info hooks
+-   structured result export
+
+This is strong support for Overkill's position that benchmarking needs
+comparison/reporting/policy features, not just a timer.
+
+Source:
+
+-   <https://pytest-benchmark.readthedocs.io/en/latest/>
 
 ### BenchmarkTools.jl
 
@@ -542,6 +610,78 @@ It also explicitly discusses environmental noise and CPU shielding, which suppor
 Source:
 
 -   <https://juliaci.github.io/BenchmarkTools.jl/stable/manual/>
+
+### Hyperfine
+
+Hyperfine is important because it treats **external command benchmarking** as
+the primary use case rather than as an awkward edge case.
+
+Its most relevant concepts are:
+
+-   `--warmup`
+-   `--setup`
+-   `--prepare`
+-   `--conclude`
+-   `--cleanup`
+-   parameter scans
+-   easy machine-readable exports
+
+These map directly onto Overkill's desired external-process benchmark story.
+
+Source:
+
+-   <https://github.com/sharkdp/hyperfine>
+
+### Google Benchmark
+
+Google Benchmark is useful as a reference for:
+
+-   fixture benchmarks
+-   counters and rates
+-   benchmark-context metadata
+
+The counter model is especially relevant because it shows how secondary
+metrics can be first-class reporting citizens rather than comments attached
+to runtime numbers.
+
+Source:
+
+-   <https://github.com/google/benchmark/blob/main/docs/user_guide.md>
+
+### Browser Performance Tooling
+
+Browser performance tooling is relevant to Overkill benchmarking because many
+real frontend teams care about:
+
+-   frame pacing and jank
+-   paint timing
+-   responsiveness
+-   event-loop blocking
+-   bundle-size budgets
+
+The key lesson is that these are still benchmark problems, just with a
+browser runtime and richer metric sources.
+
+Two especially relevant influences:
+
+-   **WebDriver BiDi**
+    -   important long-term cross-browser automation/control direction
+    -   good fit for portable event-driven browser benchmarking
+    -   not obviously sufficient on its own yet for the deepest
+        engine-specific performance/tracing metrics
+-   **Chrome DevTools Protocol**
+    -   exposes performance metrics programmatically
+    -   useful for browser-oriented benchmark adapters
+-   **Lighthouse / DevTools performance workflows**
+    -   validate the idea of user-flow and timespan performance analysis
+    -   support the broader concept of workflow benchmarks rather than only
+        single-step microbenchmarks
+
+Sources:
+
+-   <https://www.w3.org/TR/webdriver-bidi/>
+-   <https://chromedevtools.github.io/devtools-protocol/tot/Performance/>
+-   <https://developer.chrome.com/docs/devtools/performance/overview>
 
 ### Tinybench
 
@@ -604,6 +744,13 @@ The main conclusions for Overkill are:
 -   adopt a first-class modifier or trait model for cross-cutting behavior
 -   treat baselines as a broader concept than string snapshots
 -   treat benchmarking as its own package family
+-   absorb benchmark concepts such as benchmark groups, warmup, forks,
+    diagnosers, parameter scans, setup/prepare/cleanup phases, and custom
+    measurements rather than exposing only a timer loop
+-   treat browser performance metrics and bundle-size budgets as natural
+    extensions of the benchmark family
+-   keep browser benchmark collection backend-agnostic: BiDi where possible,
+    CDP/Lighthouse where deeper metric access is required
 -   keep room for tests-as-values, property DSLs, model/state-machine DSLs,
     and documentation/example test DSLs
 -   explore future DSLs and package families without forcing them into the first default runner

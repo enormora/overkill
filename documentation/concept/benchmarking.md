@@ -12,6 +12,104 @@ The core reason is that benchmark suites need a richer model:
 -   calibration
 -   policies and budgets
 
+The benchmark family should stay focused on **performance and
+resource-consumption** questions.
+
+That includes:
+
+-   runtime
+-   throughput
+-   latency percentiles
+-   responsiveness / jank
+-   memory and resource usage
+-   startup and cold-load cost
+-   bundle-size and artifact-size budgets
+
+It does **not** mean "any numeric scoring problem." For example:
+
+-   model accuracy benchmarks
+-   business KPI scoreboards
+-   quality or relevance leaderboards
+
+are outside the intended first-party benchmark scope unless they are clearly
+framed as performance/resource benchmarks.
+
+## Lessons From Real Project Benchmarks
+
+### `eslint-plugin-mocha`
+
+The local benchmark suite in `../eslint-plugin-mocha/benchmarks` is a useful
+real-world reminder that many practical benchmark needs are not "microbench
+library" problems at all.
+
+It currently benchmarks:
+
+-   cold startup/import time of the plugin
+-   memory growth during repeated fresh imports
+-   real runtime of linting many files with the full recommended ruleset
+-   checked-in budgets enforced with ordinary assertions
+-   CPU-speed normalization through a simple local calibration factor
+
+This shows several concrete needs Overkill should support directly:
+
+-   **cold-start benchmarking** as a first-class shape, not only hot loops
+-   **memory budgets** alongside time budgets
+-   **real workflow benchmarking** (`lintManyFilesWithAllRecommendedRules`)
+    rather than just function timing
+-   **checked-in budgets** that are reviewable and enforced in CI
+-   **machine normalization** as an explicit concept
+-   **fresh import / cold module state** helpers as part of the harness
+
+It also exposes the current gaps of an ad hoc benchmark helper:
+
+-   only median is reported; percentile policy is missing
+-   the CPU normalization model is project-local rather than a harness
+    primitive
+-   startup and runtime benchmarks are manually shaped as ordinary tests
+-   memory is sampled only as RSS deltas, with no richer diagnoser model
+-   no benchmark-specific reporting or artifact output exists
+
+That is strong evidence for Overkill's existing direction: benchmark suites
+need a dedicated package family, not just "tests with a timer."
+
+### `packatory`
+
+The `../packtory/benchmarks` suite adds several very strong benchmark-design
+signals.
+
+It models:
+
+-   checked-in `workloads.json` and `thresholds.json`
+-   explicit workload sizes (`small`, `medium`, `large`)
+-   benchmark-specific types for throughput and CLI responsiveness
+-   a local normalization workload with a threshold multiplier
+-   external-process and registry setup for realistic publishing workflows
+-   PTY-based CLI responsiveness measurement
+-   secondary metrics such as:
+    -   p99 frame gap
+    -   max frame gap
+    -   event-loop histogram p99
+    -   event-loop histogram max
+    -   sampled max event-loop block
+-   retained sample counts from the underlying timing engine
+
+This is especially important because it shows a real project already wants:
+
+-   **named workload files**
+-   **checked-in threshold files**
+-   **benchmark-specific metric schemas**
+-   **real local service lifecycle**
+-   **CLI responsiveness as a first-class benchmark kind**
+-   **secondary metrics that are not reducible to one median runtime**
+
+It also confirms that Overkill should support:
+
+-   benchmark registries / service handles as resources
+-   PTY-aware process benchmarking
+-   explicit metric-specific policies
+-   normalization as a first-class harness concern
+-   benchmark-specific artifact output and diagnostics
+
 ## Benchmark Definition Model
 
 The conceptual unit should be a **workload-oriented benchmark**, not just “function X.”
@@ -23,6 +121,12 @@ A benchmark definition should be able to describe:
 -   validation of generated fixtures
 -   suite-level setup and teardown
 -   case-level setup and teardown
+-   warmup policy
+-   measurement policy
+-   benchmark-specific setup that is excluded from timing
+-   benchmark-specific cleanup that runs between or after samples
+-   benchmark kind metadata such as `throughput`, `responsiveness`,
+    `startup`, `bundle-size`, or `browser-performance`
 
 This is closer to BenchmarkTools benchmark groups and to real workflow benchmarking than to a simple timing loop.
 
@@ -35,9 +139,19 @@ Source:
 The measurement engine should support:
 
 -   runtime and throughput
+-   memory and allocation-oriented measurements where available
 -   percentiles
 -   event timelines
 -   custom secondary metrics per sample
+-   browser-facing performance metrics where a browser runtime exposes them
+-   artifact-size measurements for bundle and output budgets
+
+It should also leave room for multiple measurement backends:
+
+-   simple wall-clock timing
+-   custom counters
+-   external diagnosers
+-   process-level measurements for external command benchmarks
 
 Tinybench is a useful reference for statistics APIs and event hooks, but it only solves part of the problem.
 
@@ -52,9 +166,13 @@ Overkill should separate measurement from policy.
 Policy examples:
 
 -   median must remain below a checked-in budget
+-   p50/p95/p99 must stay within explicit bounds
 -   p99 latency may regress only within tolerance
 -   responsiveness metrics must remain within a calibrated range
 -   results may be normalized relative to a calibration workload
+-   cold-start and steady-state benchmarks may use different policies
+-   bundle output must stay below a checked-in size budget
+-   browser paint / interactivity metrics must stay within explicit limits
 
 This policy layer is where CI gating semantics belong. Reporters explain the outcome; policy decides what counts as failure.
 
@@ -68,6 +186,21 @@ Typical benchmark preferences may include:
 -   preventing unrelated workloads from running concurrently
 -   isolating process state between workloads
 -   reusing expensive setup only where it does not contaminate measurements
+-   forking fresh processes for cold-start benchmarks
+-   preserving one warmed process for steady-state measurement
+-   launching a browser with a controlled runtime profile
+-   isolating browser benchmark runs from unrelated system noise where
+    possible
+
+Overkill should therefore distinguish benchmark shapes such as:
+
+-   cold-start
+-   steady-state
+-   external-process
+-   throughput-oriented
+-   latency-oriented
+-   browser-performance
+-   bundle-size
 
 These should be modeled as execution constraints contributed to orchestration, not as ad hoc benchmark-only hacks.
 
@@ -79,6 +212,12 @@ Some benchmark suites need hardware normalization. The concept should therefore 
 -   scaling rules
 -   explicit reporting of raw and normalized numbers
 -   reviewable checked-in budget metadata
+-   recorded machine metadata
+-   explicit distinction between comparable and non-comparable runs
+
+The ESLint benchmark suite's `cpuSpeed` factor is a minimal version of this
+idea. Overkill should turn that from a hand-written local trick into a
+first-class benchmark-harness concept.
 
 ## External Process Benchmarking
 
@@ -89,8 +228,57 @@ Benchmarking external processes should be first-class:
 -   environment control
 -   stdout and stderr capture
 -   PTY-aware execution for CLI workflows
+-   prepare/setup/cleanup commands that are not part of the timing window
+-   command-parameter scans and workload matrices
+-   repeated fresh-process execution for cold-start measurements
 
 This is critical for real tool benchmarking and should not require ad hoc custom harnesses.
+
+## Browser And Frontend Performance Benchmarks
+
+Browser-facing performance benchmarks should be considered an important
+extension of the benchmark family, not a separate unrelated product.
+
+Examples:
+
+-   frame pacing / jank
+-   FPS-related rendering smoothness
+-   first paint / first contentful paint style metrics
+-   interaction responsiveness
+-   event-loop blocking during UI workflows
+-   bundle or output size budgets that influence page performance
+
+The likely implementation direction is:
+
+-   a browser-oriented benchmark layer on top of `@overkill/bench`
+-   driven by Playwright or another browser controller
+-   with metric collection via browser APIs, WebDriver BiDi where it is
+    sufficient, DevTools Protocol surfaces where deeper engine-specific
+    metrics are needed, or Lighthouse-style analysis where appropriate
+
+The benchmark layer should therefore be **backend-agnostic** at the concept
+level:
+
+-   BiDi-first where portable browser automation and event streams are enough
+-   CDP where richer Chromium-specific performance metrics or tracing are
+    required
+-   Lighthouse-style adapters where page-flow auditing is the better fit
+
+The important conceptual point is that these are still **performance and
+resource-consumption** benchmarks. They belong in the benchmark family.
+
+Relevant platform/tooling influences:
+
+-   WebDriver BiDi
+-   Chrome DevTools Protocol performance metrics
+-   Chrome DevTools performance analysis workflows
+-   Lighthouse user-flow / timespan style page-performance measurement
+
+Sources:
+
+-   <https://www.w3.org/TR/webdriver-bidi/>
+-   <https://chromedevtools.github.io/devtools-protocol/tot/Performance/>
+-   <https://developer.chrome.com/docs/devtools/performance/overview>
 
 ## Baselines
 
@@ -104,6 +292,10 @@ Useful stored data may include:
 -   calibration context
 -   exact metadata expectations
 -   range-based budget semantics
+-   benchmark shape (`cold-start`, `steady-state`, `external-process`, etc.)
+-   measurement backend identity
+-   browser/runtime metadata for frontend benchmarks
+-   bundle-size budget metadata
 
 ## Reporting
 
@@ -112,6 +304,39 @@ Benchmark reports should be:
 -   readable in CI
 -   machine-readable for automation
 -   specific about the failing benchmark, workload, metric, and threshold
+-   explicit about whether results are raw, normalized, or not comparable
+-   clear about warmup, sample count, and process model
+
+## Strong External Influences
+
+The strongest reusable benchmark concepts from other ecosystems are:
+
+-   **Criterion.rs**
+    -   benchmark groups
+    -   parameterized inputs
+    -   throughput annotations
+    -   custom measurement backends
+-   **JMH**
+    -   forks, warmup, measurement iterations, and cold-start awareness
+-   **BenchmarkDotNet**
+    -   jobs as explicit execution profiles
+    -   diagnosers
+    -   multiple run strategies such as `Throughput` and `ColdStart`
+-   **pytest-benchmark**
+    -   compare mode
+    -   pedantic/manual control mode
+    -   benchmark-result JSON with machine metadata
+-   **hyperfine**
+    -   process benchmarking as a first-class use case
+    -   setup / prepare / conclude / cleanup phases
+    -   parameter scans
+-   **Google Benchmark**
+    -   counters and rates
+    -   fixture benchmarks
+    -   benchmark context metadata
+
+Overkill should not copy all of these tools, but it should absorb their best
+ideas into one coherent benchmark model.
 
 ## Influence
 
