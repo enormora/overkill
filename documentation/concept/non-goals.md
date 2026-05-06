@@ -255,13 +255,18 @@ attribution-preserving artifacts. Microtests do not.
 Overkill does not ship a "known-flaky, allow to fail without gating"
 mode.
 
-Why: quarantine normalises flake; investigations stop happening.
+Why: a test that gives two answers at once does not just fail to
+provide information — it provides actively harmful information. It
+signals that a red test is acceptable, that tests are unreliable, that
+the test suite does not stand for safety. Once that signal is in the
+system, the suite stops being a contract. Quarantine offers an exit
+ramp from that signal; we want there to be no exit ramp.
 
 Where: `metadata-and-selection.md` § Stability Markers (Quarantine
 glossary entry was removed in the same direction).
 
 Alternative: stability markers as reporting metadata only; CI gates use
-verdict, not quarantine.
+verdict, not quarantine. A flaky test is fixed or deleted, not parked.
 
 ## Plugin And Extension Surface
 
