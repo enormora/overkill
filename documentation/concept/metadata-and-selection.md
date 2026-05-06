@@ -177,19 +177,11 @@ current concept does not endorse a full quarantine workflow.
 
 ## Capability Propagation
 
-Capability declarations cascade like metadata, but with stricter rules:
-
--   parent capabilities are intersected with child capabilities (children
-    can only declare a _subset_ of the parent's permitted capabilities,
-    not extend)
--   the runner enforces the intersection when starting a worker; tests in
-    the same worker share the worker's capability set
--   tests with incompatible capabilities cannot share a worker; they are
-    routed to separate workers or processes
-
-Per-test capabilities are a _runner-level_ concern: Node permissions are
-process-wide. To run two tests with different capabilities, they must be
-in different processes. The runner schedules accordingly.
+Capability declarations cascade like metadata but with stricter
+intersection-only rules. The canonical specification lives in
+[`microtests-and-capabilities.md`](./microtests-and-capabilities.md);
+the short form here is that children narrow parents but never widen
+them, and tests with incompatible capabilities cannot share a worker.
 
 ## Composition With Sharding
 
