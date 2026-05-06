@@ -103,21 +103,22 @@ Inside a single Node process:
 -   Node’s ESM loader already caches modules by canonical URL. Once a `.ts` file
     is stripped and compiled, importing it again from another test module is
     free: same module record, same exports, no re-parse.
--   The strip output itself is not cached across processes by default. A runner
-    can persist `(file id) -> stripped code` in `~/.cache/overkill/strip/` keyed
-    by `(absolute path, mtime, size, amaro version, node version)`.
--   V8 bytecode caching is available via:
-    -   `vm.Script#createCachedData()` for classic scripts
-    -   `vm.SourceTextModule#createCachedData()` for ESM source text
-    -   the Node module compile cache (stable since 24.x) which Node manages on
-        the user’s behalf for `require()` and `import` of `.js`.
+-   Across processes, Node's module compile cache (stable since 24.x) handles
+    bytecode reuse on the user's behalf for `require()` and `import` of `.js`.
+    The cache directory can be steered via `NODE_COMPILE_CACHE`. Lower-level
+    `vm.Script#createCachedData()` and `vm.SourceTextModule#createCachedData()`
+    exist for advanced cases but are not needed in the common path.
+-   The strip output itself is not cached across processes by Node. The
+    per-file strip cost is single-digit milliseconds; in practice the compile
+    cache plus in-memory module cache cover the common case.
 -   Detecting that strip-only failed is straightforward: `amaro.transformSync`
     throws a structured parser error indicating non-erasable syntax. The runner
     can catch, fall through to transform mode, and surface a one-time hint
     (“this file uses enums; switching to transform”).
 
-Recommendation: ship a strip cache + a thin V8 code-cache layer for ESM module
-records. The combination eliminates almost all repeat parse cost.
+Recommendation: lean on Node's compile cache. Overkill should not ship its
+own strip or bytecode cache by default; consider one only if measurement on a
+real workload shows the strip cost actually dominates a run.
 
 ## 5. Loader Hooks
 
