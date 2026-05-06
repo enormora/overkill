@@ -12,8 +12,8 @@ Why off by default:
     matters per-iteration
 -   line coverage is a weak quality signal that should not be
     incentivised by being free
--   coverage tooling is a fast-moving area; reusing existing tools
-    (V8, Istanbul) avoids reinventing a moving target
+-   coverage tooling is a fast-moving area; reusing the platform's
+    own coverage support avoids reinventing it
 
 Why a first-class concept anyway:
 
@@ -39,27 +39,23 @@ Why a first-class concept anyway:
 
 ## Engine Choice
 
-Two viable instrumentation engines:
+Coverage uses **V8 native instrumentation only** (`NODE_V8_COVERAGE`
+plus `node --experimental-test-coverage` style hooks where they
+apply). No source rewriting, no Babel/Istanbul instrumenter, no
+transform step. Native speed wins; the cost of carrying a second
+engine is not justified.
 
--   **V8 / Node `--experimental-coverage`** — preferred default. No
-    source rewriting, runs at native speed, integrates with Node's
-    built-in TypeScript stripping without source-map dance. Output
-    is V8 JSON; tools like `c8` post-process it into Istanbul or
-    LCOV.
--   **Istanbul (`nyc`, `babel-plugin-istanbul`)** — alternative for
-    teams that already standardise on Istanbul-style reports or need
-    branch-precision coverage that V8 does not yet provide.
-
-Concept direction: V8-first, with Istanbul as a documented
-alternative. Reusable through `c8` for converting the V8 output to
-Istanbul/LCOV when needed.
+V8 native coverage in 2026 produces line, function, and block
+coverage with source-map–accurate locations. `c8` is used purely as a
+post-processor to emit LCOV, JSON, or HTML reports from the raw V8
+output — Overkill orchestrates the engine; `c8` formats the output.
 
 ## CLI Surface
 
 Single flag at the run level:
 
 ```
-overkill run --coverage [--coverage-format <v8|lcov|istanbul|json>]
+overkill run --coverage [--coverage-format <v8|lcov|json|html>]
 ```
 
 Defaults:
@@ -82,11 +78,12 @@ output stream.
 
 The runner is responsible for:
 
--   starting workers/subprocesses with `--experimental-coverage` (or
-    the chosen instrumenter's hook) when `--coverage` is set
+-   starting workers/subprocesses with `NODE_V8_COVERAGE` set to a
+    per-worker directory under the run record when `--coverage` is on
 -   passing each worker a `CoverageWriter` token scoped to its slice
     of the artifact directory
--   merging slices into one report after the run completes
+-   merging V8 slices into one report after the run completes (via
+    `c8` or equivalent)
 
 Tests do not interact with coverage instrumentation directly.
 
@@ -117,10 +114,8 @@ result.
 
 -   not a coverage *quality* recommendation (Overkill takes no
     position on what counts as enough coverage)
--   not a guarantee that V8 coverage will track every branch the way
-    Istanbul does
--   not a built-in instrumenter; the runner orchestrates existing
-    tools rather than ship its own
+-   not a built-in instrumenter; the runner orchestrates V8's native
+    coverage rather than ship its own
 
 ## Open Items
 
