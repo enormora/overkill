@@ -278,20 +278,15 @@ zero bundler dependency.
 
 ## 12. Out-of-the-box ideas for fast startup
 
-A consolidated list of design moves consistent with the principles above. Each
-is independently implementable.
+The optimization target is **cold start**, not warm reuse. A persistent
+runner daemon would speed up incremental edits but adds complexity (long-
+lived state, socket protocol, lifecycle management) that conflicts with the
+"just `node ./foo.test.ts`" principle. Every idea below is consistent with
+keeping the cold path short and not requiring a hot daemon to feel fast.
 
--   **Persistent runner daemon, Bazel-style.** `overkill daemon` is a long-
-    lived process that listens on a Unix domain socket
-    (`$XDG_RUNTIME_DIR/overkill.sock`). `overkill run foo.test.ts` is a thin
-    client that sends a JSON or length-prefixed framed request and pipes results
-    back. The daemon keeps the runner core, plugin registry, snapshot store and
-    module graph hot. First test result hits the terminal in single-digit
-    milliseconds for incremental edits. Bazel uses stdin/stdout protobuf
-    workers; for a developer-facing runner a Unix socket is more pleasant.
 -   **V8 startup snapshot of the runner.** As described in section 8, ship a
-    pre-warmed engine snapshot for the runner itself. Cold-start without the
-    daemon under 50 ms is realistic.
+    pre-warmed engine snapshot for the runner itself. Cold start under
+    50 ms is realistic.
 -   **eval-free, no-bundler, no-source-map-rewrite microtest path.** For
     microtests embedded in source files, run directly with native strip and a
     sentinel; never write a temporary file, never call `vm.runInThisContext`.
@@ -353,8 +348,6 @@ is independently implementable.
 -   [Bolder Apps — Node.js vs Bun vs Deno performance showdown (2026)](https://www.bolderapps.com/blog-posts/node-js-vs-bun-vs-deno-the-ultimate-runtime-performance-showdown)
 -   [Vitest — Features Guide (module graph rerun)](https://vitest.dev/guide/features)
 -   [Vitest API — Advanced (module graph reuse)](https://vitest.dev/api/advanced/vitest)
--   [Bazel — Persistent Workers](https://bazel.build/remote/persistent)
--   [@bazel/worker on npm](https://www.npmjs.com/package/@bazel/worker)
 -   [Visual Studio Magazine — TypeScript 5.9 RC: Import Defer](https://visualstudiomagazine.com/articles/2025/07/25/typescript-59-rc-brings-deferred-imports-nodejs-20-module-target.aspx)
 -   [The Dev Newsletter — State of TypeScript 2026](https://devnewsletter.com/p/state-of-typescript-2026/)
 -   [Bolder Apps — Node.js in 2026: The "Native-First" Revolution](https://www.bolderapps.com/blog-posts/node-js-in-2026-the-native-first-revolution-and-the-end-of-dependency-hell)
