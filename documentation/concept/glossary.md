@@ -317,13 +317,14 @@ Source: `baselines-and-snapshots.md`.
 
 ## Witness
 
-A serialised reproduction artifact produced by failing property tests and
-deterministic-simulation tests. Contains the seed, shrink path,
-runtime/simulation metadata, captured snapshot when available, fault
-configuration, and library version. Loading the
-witness reproduces the failure bit-for-bit without re-shrinking.
+A serialised reproduction artifact produced by failing property tests
+and deterministic-simulation tests. Loading the witness reproduces the
+failure without re-running shrinking. The canonical schema
+(`WitnessFile`) is defined in `failure-artifacts.md` § Witnesses And
+Replay Artifacts.
 
-Source: `novel-techniques.md`, `deterministic-simulation.md`.
+Source: `failure-artifacts.md`, `novel-techniques.md`,
+`deterministic-simulation.md`.
 
 ## Artifact Identity
 

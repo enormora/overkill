@@ -31,9 +31,10 @@ shrink." Concrete commitments worth making explicit:
 -   **Coverage / Classify / Label** — generators report distribution; a
     property fails not only on a counterexample but also when its input
     distribution drifts (`cover 30 isSorted`).
--   **Witness-replay artifacts** — `*.witness.json` per failing property,
-    containing seed, shrink path, library version, captured world
-    snapshot. Reruns load the witness and reproduce bit-for-bit.
+-   **Witness-replay artifacts** — `*.witness.json` per failing
+    property; reruns load the witness and reproduce bit-for-bit. See
+    `failure-artifacts.md` § Witnesses And Replay Artifacts for the
+    schema.
 -   **Persistent regression corpus** — every failing example is added to a
     per-test corpus replayed eagerly on the next run. Hypothesis (Python)
     and AFL-style fuzzers do this; JS PBT tools mostly do not.

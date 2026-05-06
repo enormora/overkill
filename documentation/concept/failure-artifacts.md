@@ -156,28 +156,43 @@ All caps are configurable per profile.
 
 ## Witnesses And Replay Artifacts
 
-Failing property tests and deterministic-simulation tests produce witnesses:
-serialised, replayable artifacts containing the seed, shrink path, runtime
-snapshot when available, fault configuration, and library version. See
-`reproducibility.md` § replay witnesses.
+Failing property tests and deterministic-simulation tests produce
+witnesses: serialised, replayable artifacts that reproduce the
+failure without re-running shrinking. This is the canonical witness
+schema; other docs reference it rather than restating fields.
 
-A witness is also a failure artifact — it attaches to the failing case via
-`ArtifactId` and is rendered by reporters as a "replay command" line:
+```ts
+type WitnessFile = {
+    readonly version: 1;
+    readonly producedBy: { library: string; libraryVersion: string };
+    readonly case: CaseId;
+    readonly kind: 'property' | 'simulation';
+    readonly seed: bigint;
+    // present for property tests
+    readonly shrinkPath?: ReadonlyArray<unknown>;
+    readonly counterexample?: unknown;
+    // present for deterministic-simulation tests
+    readonly adapter?: { name: string; payload: unknown };
+    readonly scenario?: string;
+    // present when the runtime supports it
+    readonly runtimeSnapshot?: unknown;
+    readonly faultConfiguration?: unknown;
+};
+```
+
+A witness is also a failure artifact — it attaches to the failing
+case via `ArtifactId` and is rendered by reporters as a "replay
+command" line:
 
 ```
 overkill replay-witness .overkill/witnesses/users__round-trip__c0ffee.witness.json
 ```
 
-Witnesses are first-class enough that the runner records them even when
-the failure is reproducible by other means. Their cost is small (a few
-KB) and their value when triaging flakes is high.
-
-Real examples:
-
--   a property-test witness may contain the shrunk counterexample input plus
-    the seed needed to derive it again
--   a deterministic-simulation witness may contain the adapter name,
-    scenario key, seed, and adapter-specific replay payload
+Witnesses are first-class enough that the runner records them even
+when the failure is reproducible by other means. Their cost is small
+(a few KB) and their value when triaging flakes is high. An
+incompatible `version` causes the reader to fail fast rather than run
+with subtly-different shrinking semantics.
 
 ## Captured Output
 
