@@ -49,6 +49,7 @@ For a first read, follow this path:
 -   [Assertions And Results](./assertions-and-results.md)
 -   [Capability Handles](./capability-handles.md)
 -   [Configuration](./configuration.md)
+-   [Coverage](./coverage.md)
 -   [Credits](./credits.md)
 -   [Documentation Strategy](./documentation-strategy.md)
 -   [Doubles](./doubles.md)
