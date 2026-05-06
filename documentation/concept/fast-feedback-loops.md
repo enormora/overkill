@@ -303,10 +303,12 @@ is independently implementable.
     runner can avoid evaluating the import graph of unselected tests. Until
     Node ships native `import defer`, Overkill can simulate the effect by
     keeping each test in its own module and lazy-importing on demand.
--   **Type-test compile server.** Type tests (`expect-type`, `assert-type`)
-    require a real `tsc`. Run a single `tsc --watch --pretty false --noEmit --incremental` in the background; query it for diagnostics over the same
-    daemon socket. This keeps the type-test feedback loop independent of the
-    runtime test loop.
+-   **Type-test integration via tstyche.** Type tests need a real `tsc`.
+    Overkill should not reimplement that loop. Integrate with
+    [tstyche](https://tstyche.org/), which already runs type tests with its
+    own incremental cache, and surface its results through the Overkill
+    reporter pipeline. The runtime test loop and the type-test loop stay
+    independent without Overkill owning a compile server.
 -   **Pre-resolved file lists.** Save the result of glob expansion (and gitignore
     application) between runs. Re-validate via inotify/FSEvents or a short
     `git status` rather than rewalking the tree.
