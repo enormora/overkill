@@ -229,12 +229,13 @@ or one of the well-known per-provider env vars):
 -   `--no-update-baselines` enforced; baseline updates require explicit
     intent
 -   stale-baseline detection: any stale baseline fails the run
--   zero-test runs: failure (no `--allow-empty` unless explicit)
+-   zero-test runs: failure (no `--allow-empty` unless explicit). The
+    exit code stays distinct (4); CI consumers that prefer to gate on
+    a single non-zero value should treat any non-zero exit as failure
+    rather than relying on the runner to remap codes.
 -   timeouts: tighter defaults; longer execution budget for benchmarks
 -   `console.log` capture: stricter (kept always, not only on failure)
     where the active profile actually captures console events
--   exit code 4 (zero-test) treated identically to exit code 1 unless
-    overridden
 
 Override: `--no-ci` forces dev-mode behavior on a CI host; `--ci` forces
 CI behavior on a dev host.
