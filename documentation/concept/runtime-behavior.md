@@ -224,6 +224,56 @@ This is the leak-vs-hang split named in `microtests-and-capabilities.md`.
 The runner reports leaks as structured diagnostics, not as test failures
 unless policy elevates them.
 
+## Timeouts
+
+Tests have two timeout layers: a **soft timeout** that the test body
+sees as an aborted `AbortSignal` (cooperative cancellation), and a
+**hard timeout** that the runner uses to kill or abandon a wedged
+worker (only available in supervised profiles).
+
+Defaults per profile:
+
+| Profile             | Soft timeout | Hard timeout                                                               |
+| ------------------- | ------------ | -------------------------------------------------------------------------- |
+| `microtest`         | 2 s          | not available (in-process; no hard recovery from CPU-bound hangs)          |
+| `microtest-supervised` | 2 s       | 10 s (subprocess kill; partial state is discarded)                         |
+| `integration-local` | 30 s         | 60 s (worker terminate)                                                    |
+| `benchmark`         | per-workload | 5 × workload budget, capped at 5 min (single-worker-serial)                |
+| `simulation`        | adapter-declared | adapter-declared                                                       |
+
+Override surfaces:
+
+-   per-test metadata: `{ timeout: '500ms' }` shortens the soft
+    timeout for one test (cannot extend past the profile's hard
+    timeout)
+-   `--timeout <duration>` at the CLI overrides the soft default for
+    the whole run
+-   profile config overrides for both soft and hard
+
+Soft-timeout mechanics:
+
+-   the test receives an `AbortSignal` linked to the run scope plus a
+    per-test deadline; firing the signal is the runner's first
+    cancellation step
+-   a test body that does not respect the signal continues running
+    until the hard timeout fires (when available) or the worker is
+    abandoned at run completion
+-   a test that completes after the soft timeout is recorded as a
+    `runner-error` with subtype `soft-timeout`
+
+Hard-timeout mechanics:
+
+-   only available in profiles that own a worker or subprocess
+    boundary (supervised microtests, integration-local with workers,
+    benchmark, simulation)
+-   the watchdog terminates the worker after the hard timeout; the
+    test is recorded as `crashed`
+-   crash-budget rules (`Process Crash Handling`) apply
+
+In-process modes intentionally lack hard termination — see
+`microtests-and-capabilities.md` § Hang Detection And Crash-Only
+Supervision for the rationale and supervised-profile alternative.
+
 ## Parallelism Semantics
 
 Parallelism happens at multiple grains. The default for `@overkill/test`
