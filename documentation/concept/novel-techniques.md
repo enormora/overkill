@@ -241,17 +241,24 @@ Microsoft's TIA at scale; Wallaby's per-keystroke variant; Bazel's runfile
 graph; Vitest's Vite-graph-based selective rerun. The kernel: maintain a
 code→test bidirectional map; on commit, run only affected tests.
 
-`fast-feedback-loops.md` already covers the implementation
-(`module.registerHooks` instrumentation, persisted graph, content-hash
-invalidation). What this doc adds is the _user-facing_ commitment:
+**Status: open research.** The current concept does not commit to
+shipping a dependency graph. Path-level change detection (`--changed`
+in `metadata-and-selection.md`) is the baseline; `--watch` reuses
+Node's built-in watcher. True TIA would require:
 
--   `overkill --since main` runs only tests affected by changes since
-    `main`
--   `overkill --watch` runs only affected tests on each save, not all
-    tests
+-   per-test reverse-import tracking (e.g. via `module.registerHooks`)
+-   a persisted, content-hash-keyed graph
+-   invalidation on source change
+
+If pursued later, the user-facing commitments would be:
+
+-   `overkill --since <ref>` runs only tests affected by changes since
+    `<ref>`
+-   `overkill --watch` runs only affected tests on each save
 -   the dependency graph is a public artifact for CI to query
 
-This is one of the highest-leverage user-facing wins available.
+This is one of the highest-leverage potential user-facing wins, but
+not part of the settled concept.
 
 ## SLO / Latency-Sensitive Testing
 
