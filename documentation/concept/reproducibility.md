@@ -44,7 +44,7 @@ type RunRecord = {
     readonly seed: bigint;
     readonly plan: RunPlan;
     readonly identities: ReadonlyArray<CaseId>;
-    readonly runtime: ResolvedRuntime;
+    readonly runtime: ResolvedRuntime; // see types-index.md
     readonly versions: { engine: string; node: string; packages: ReadonlyMap<string, string> };
     readonly startedAt: string; // ISO 8601
     readonly result?: RunResult; // populated when the run completes

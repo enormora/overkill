@@ -176,6 +176,12 @@ services** as a first-class pattern, not as an edge case.
 
 ## What A Test Might Look Like
 
+The `withRuntime` and `simulation` helpers shown below are illustrative
+sketches; they are listed as placeholders in `types-index.md`.
+`SimulationAdapter` and `SimulationSession` *are* canonical (see the
+section above and the types index).
+
+
 In-process style:
 
 ```ts

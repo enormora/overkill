@@ -27,7 +27,10 @@ to Scala (cats-effect, ZIO), F# (Eff), and TypeScript (`effect`, `fp-ts`,
 
 ## The Core Idea
 
-Effects are not implicit globals. They are typed values passed in:
+Effects are not implicit globals. They are typed values passed in. The
+illustrative `User`, `UserInput`, `Saved` types are placeholders for an
+application's own domain types; the handle types (`Clock`, `Random`,
+`FileSystem`, `HttpClient`, `Logger`) are sketched in `types-index.md`.
 
 ```ts
 type AppRuntime = {

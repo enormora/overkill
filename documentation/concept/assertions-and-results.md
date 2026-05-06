@@ -222,7 +222,9 @@ mode flags.
 
 ## Diff And Diagnostic Shape
 
-Failed checks carry structured diff data:
+Failed checks carry structured diff data. The sketched types
+(`Diff`, `DiffOp`, `Hunk`, `SerializedValue`, `SourceLocation`) are
+collected in `types-index.md` § Outcomes And Verdicts.
 
 ```ts
 type FailedCheck = {

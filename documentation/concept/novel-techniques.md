@@ -17,6 +17,13 @@ Companion to `ideas-and-future-directions.md` (broader product directions),
 `research-landscape.md` (prior art), `deterministic-simulation.md`, and
 `capability-handles.md`.
 
+> **Note on code samples.** The snippets below use illustrative
+> primitives such as `forall`, `gen.user`, `arbitrary.bytes`,
+> `relation()`, `differential()`, `hyperproperty()`, `slo()`, `fuzz()`,
+> and `baseline()`. These are *proposed future-package syntax*, not
+> committed APIs. They are listed as placeholders in
+> `types-index.md` § Placeholders Without Domain Definitions.
+
 ## Property-Based Testing — What It Should Mean Specifically
 
 Overkill should treat property-based testing as more than "random inputs +
