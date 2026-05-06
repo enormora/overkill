@@ -145,6 +145,40 @@ This split should be explicit in the docs.
 This is inspired in part by Swift Testing’s split between expectation-style
 and require-style checks.
 
+## Async Tests
+
+Tests are async by default and may interleave assertions with awaited work.
+Each `assert.*` or `require.*` call records into the test's assertion log
+immediately, regardless of whether more `await`s follow. The plan declared
+at the top of the test body still applies; `assert.done()` at the end
+finalizes the recorded log.
+
+```ts
+test('saves and re-reads', async ({ assert, require, plan }) => {
+    plan(3);
+
+    const id = await store.save({ name: 'Ada' });
+    assert.string(id);
+
+    const fetched = await store.read(id);
+    require.defined(fetched);
+    assert.equal(fetched.name, 'Ada');
+
+    return assert.done();
+});
+```
+
+Key points:
+
+-   `assert` between awaits is fine; the test body keeps running on success
+-   `require` between awaits short-circuits on failure: subsequent awaits
+    and assertions never run, the recorded log up to that point is reported
+-   if an awaited operation rejects, that rejection is a runner error
+    (see `failure-artifacts.md`), not an assertion failure; the test
+    is recorded as such and the plan's expected count does not apply
+-   the plan count covers only `assert.*` and `require.*` invocations;
+    awaits do not count
+
 ## Throwing Mode
 
 Throwing mode is still supported, but explicitly in the test API shape:
