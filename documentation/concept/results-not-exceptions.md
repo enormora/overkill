@@ -62,7 +62,7 @@ type Pass = { kind: 'pass' };
 
 type Fail = {
     kind: 'fail';
-    assertions: ReadonlyArray<FailedAssertion>;
+    checks: ReadonlyArray<FailedCheck>;
 };
 
 type Skip = {
