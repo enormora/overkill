@@ -63,14 +63,10 @@ Default policy:
     effect log are _not_ zero-assertion: the equality check on the
     recorded log is itself an assertion
 
-Override surfaces:
-
--   per-test metadata `{ allowEmpty: true }` for the rare legitimate case
--   global config `assertions: { allowEmpty: 'warn' | 'fail' }` —
-    default `fail` in CI, default `warn` in dev iteration
-
-This is one of the smallest changes that materially raises the floor on
-test quality, and it costs nothing to implement.
+There is no opt-out. A test that asserts nothing is broken; the
+default policy is the only policy. This is one of the smallest changes
+that materially raises the floor on test quality, and it costs nothing
+to implement.
 
 ## `plan(n)` Definition
 
