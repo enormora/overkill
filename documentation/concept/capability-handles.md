@@ -186,7 +186,10 @@ type RecordingRuntime = AppRuntime & {
 
 Tests assert on `recorded()` directly. Reporters can attach the recording to
 a failed test as a structured artifact. Replays use `snapshot`/`restore` to
-reproduce a runtime state.
+reproduce a runtime state. Test debug mode (see `runtime-behavior.md`
+§ Test Debug Mode) aggregates `RecordedEvent` arrays into the
+per-test debug artifact so the same data is available for any test —
+not only failing ones — when the mode is on.
 
 ## Splittable Random For Determinism Under Parallelism
 

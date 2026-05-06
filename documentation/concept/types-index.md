@@ -310,6 +310,46 @@ type WorkerCrash = {
     readonly nativeAddons?: ReadonlyArray<string>;
 };
 
+// see runtime-behavior.md § Test Debug Mode
+type TestDebugArtifact = {
+    readonly case: CaseId;
+    readonly outcome: TestOutcome['kind'];
+    readonly wallTimeMs: number;
+    readonly cpuTimeMs: number;
+    readonly timeline: ReadonlyArray<TimelineEntry>;
+    readonly handleEvents?: ReadonlyArray<RecordedEvent>;
+    readonly moduleLoads: ReadonlyArray<{
+        readonly specifier: string;
+        readonly cachedHit: boolean;
+        readonly resolveMs: number;
+    }>;
+    readonly heap: { beforeBytes: number; afterBytes: number; peakBytes: number };
+    readonly activeHandlesDelta: number;
+    readonly plan?: { declared: number; recorded: number };
+    readonly stats: DebugStats;
+};
+
+// Discriminated union; mirrors RecordedEvent's pattern.
+type TimelineEntry =
+    | { readonly kind: 'body-start'; readonly at: bigint }
+    | { readonly kind: 'assert'; readonly at: bigint; readonly label?: string; readonly location?: SourceLocation }
+    | { readonly kind: 'require'; readonly at: bigint; readonly label?: string; readonly location?: SourceLocation }
+    | { readonly kind: 'plan'; readonly at: bigint; readonly declared: number }
+    | { readonly kind: 'body-end'; readonly at: bigint }
+    | { readonly kind: 'rejection'; readonly at: bigint; readonly reason: unknown };
+
+type DebugStats = {
+    readonly assertCount: number;
+    readonly requireCount: number;
+    readonly handleCallCount: number;
+    readonly moduleLoadCount: number;
+    readonly uncachedModuleLoadCount: number;
+    readonly unaccountedGapMs: number;
+    readonly heapGrowthBytes: number;
+    readonly handleLeakCount: number;
+    readonly softTimeoutHeadroomMs: number;
+};
+
 // see failure-artifacts.md § Witnesses And Replay Artifacts
 type WitnessFile = {
     readonly version: 1;

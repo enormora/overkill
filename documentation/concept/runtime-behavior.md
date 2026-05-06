@@ -114,6 +114,7 @@ linked here.
 | `--ci`                        | Force CI defaults on a developer host.                                      | this doc § CI Auto-Detection                               |
 | `--no-ci`                     | Force developer-mode defaults on a CI host.                                 | same                                                       |
 | `--seed <n>`                  | Override the run seed (for reproducible randomization).                     | `reproducibility.md`                                       |
+| `--debug`                     | Emit a structured debug artifact for every test in the resolved set.        | this doc § Test Debug Mode                                 |
 
 This list intentionally omits flags that are still under design (e.g.
 `--coverage`, `--since <ref>`, `--shuffle`); when those land, this
