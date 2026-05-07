@@ -118,13 +118,18 @@ type BaselineSubtype =
     | 'terminal-snapshot'
     | 'performance-baseline';
 
-// Open: Capability is currently a placeholder for the closed
-// enumeration described in microtests-and-capabilities.md. The
-// concrete shape is not yet settled (string literal union vs.
-// closed enum). Capabilities are permission categories (FS write,
-// network, child process, …) — they are not branded authority
-// tokens.
-type Capability = string;
+// Closed enumeration; see microtests-and-capabilities.md §
+// Capability Defaults for the canonical definition. New capabilities
+// require an explicit addition.
+type Capability =
+    | 'fs-read'
+    | 'fs-write'
+    | 'net'
+    | 'child-process'
+    | 'worker'
+    | 'addon'
+    | 'wasi'
+    | 'process-exit';
 ```
 
 Canonical: `tests-as-values.md` for `TestNode`/`TestCase`/`Suite`/`Table`,

@@ -49,17 +49,44 @@ microtest profile.
 
 ## Capability Defaults
 
+The closed enumeration of capabilities Overkill recognises:
+
+```ts
+type Capability =
+    | 'fs-read'        // filesystem reads
+    | 'fs-write'       // filesystem writes
+    | 'net'            // any network access
+    | 'child-process'  // spawning subprocesses
+    | 'worker'         // creating worker threads
+    | 'addon'          // loading native addons
+    | 'wasi'           // WASI imports
+    | 'process-exit';  // calling process.exit
+```
+
+This is the type used in `Metadata.capabilities` (see
+`metadata-and-selection.md`) and across the doc set. New capabilities
+require an explicit addition to this enumeration; the runner does not
+recognise free-form strings.
+
 Strict microtest mode denies, by default:
 
 -   filesystem reads outside what Node needs to load the test program
--   filesystem writes (except runner-owned escape hatches; see below)
--   network access
--   child processes
--   worker threads unless explicitly required by the runner
--   addons, WASI, and similar escape hatches
--   `process.exit` (treated as a runner error if the test calls it)
--   `console.*` usage (reported as a microtest violation when strict console
-    diagnostics are enabled)
+    (`fs-read` denied except for the loader's needs)
+-   filesystem writes (`fs-write` denied except for runner-owned
+    escape hatches; see below)
+-   network access (`net` denied)
+-   child processes (`child-process` denied)
+-   worker threads unless explicitly required by the runner (`worker`
+    denied)
+-   addons (`addon` denied), WASI (`wasi` denied), and similar escape
+    hatches
+-   `process.exit` (treated as a runner error if the test calls it;
+    `process-exit` capability denied)
+-   `console.*` usage is reported as a microtest violation when
+    strict console diagnostics are enabled. `console.*` is **not**
+    listed as a capability above because Node's permission model does
+    not cover it; the boundary is enforced through runtime
+    observability, not permission flags.
 
 The first enforcement mechanism is Node's permission model:
 
