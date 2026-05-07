@@ -157,9 +157,11 @@ case identities. Default policy:
     apply cleanly
 -   merge two stale-but-similar baselines into one (no fuzzy rename
     inference)
--   delete baselines that match a different identity-form variant
-    (e.g. the same test under a different runtime) without an
-    explicit `=clean` mode
+-   cross-delete baselines that belong to a different identity-form
+    variant (e.g. the same test under a different runtime) — stale
+    detection is scoped to identities present in the current run,
+    so a baseline for a runtime not selected this run is *not*
+    treated as stale and is *not* removed
 
 These are framed as non-goals to keep the update story honest about
 what is and is not automatic.
