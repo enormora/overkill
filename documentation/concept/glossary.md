@@ -280,14 +280,6 @@ directly; this replaces `expect(mock).toHaveBeenCalledWith(...)` patterns.
 
 Source: `capability-handles.md`.
 
-## Authority Token
-
-An opaque branded value that grants permission for a runner-owned
-operation (writing coverage artifacts, updating baselines, collecting
-snapshots). User code cannot forge a token; the runner constructs and
-passes them. Distinct from capability handles in that authority tokens
-gate _runner_ operations, not _effect_ operations.
-
 Source: `capability-handles.md`.
 
 ## Baseline

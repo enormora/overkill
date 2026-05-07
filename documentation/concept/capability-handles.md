@@ -215,19 +215,6 @@ under 200 lines.
 
 This becomes the foundation for the property-testing package family later.
 
-## Capabilities Beyond Effects: Authority Tokens
-
-Some "capabilities" are not effect-performing handles but _authority tokens_
-the runner grants. Examples:
-
--   `CoverageWriter` — permits writing to the coverage artifact directory
-
-Tokens are opaque branded types. Owning the token is the only way to access
-the operation. The runner constructs and passes them; user code cannot forge
-one. This is the "ocap" pattern — object capabilities — applied to the test
-runner. It dovetails with the Node permission model (the seat belt) but adds
-runner-level granularity that Node permissions cannot express.
-
 ## Connection To `@overkill/doubles`
 
 The current doubles concept (see `doubles.md`) centers on `testDouble()` for
@@ -334,7 +321,6 @@ later reopens the “no Overkill in consumer production code” rule.
 -   Elm `Cmd` / `Sub` — programs return effect descriptions
 -   `effect-ts` (TypeScript) — current state of the art for TS effect
     systems; useful idea donor even if Overkill prefers a lighter shape
--   Mark Miller's "object capabilities" — authority tokens
 -   `splitmix` (Haskell) — splittable PRNGs
 
 ## Sources
@@ -343,5 +329,4 @@ later reopens the “no Overkill in consumer production code” rule.
 -   [Effect-TS — documentation](https://effect.website)
 -   [ZIO Test — Why ZIO Test](https://zio.dev/reference/test/why-zio-test/)
 -   [The Elm Architecture](https://guide.elm-lang.org/architecture/)
--   [Mark Miller — Robust Composition (object capabilities)](http://www.erights.org/talks/thesis/markm-thesis.pdf)
 -   [PureScript — Effect and Aff documentation](https://pursuit.purescript.org/packages/purescript-effect)

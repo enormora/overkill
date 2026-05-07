@@ -118,9 +118,12 @@ type BaselineSubtype =
     | 'terminal-snapshot'
     | 'performance-baseline';
 
-// Open: Capability is currently a placeholder for the closed enumeration
-// described in microtests-and-capabilities.md. The concrete shape is not
-// yet settled (string literal union vs. branded token).
+// Open: Capability is currently a placeholder for the closed
+// enumeration described in microtests-and-capabilities.md. The
+// concrete shape is not yet settled (string literal union vs.
+// closed enum). Capabilities are permission categories (FS write,
+// network, child process, …) — they are not branded authority
+// tokens.
 type Capability = string;
 ```
 

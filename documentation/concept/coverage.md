@@ -30,10 +30,9 @@ Why a first-class concept anyway:
     default mode in any first-party profile.
 -   Overkill does not ship its own instrumenter or coverage reporter
     package — it integrates with existing tools.
--   The runner-side surface is a single CLI flag plus a
-    `CoverageWriter` authority token (see `capability-handles.md`)
-    that grants the right to write into the coverage artifact
-    directory.
+-   The runner-side surface is a single CLI flag plus a Node
+    permission grant scoping filesystem writes to the coverage
+    artifact directory; no Overkill-specific authority abstraction.
 -   Coverage data lives under `.overkill/runs/<run-id>/coverage/` by
     default and is garbage-collected with the rest of the run record.
 
@@ -80,27 +79,22 @@ The runner is responsible for:
 
 -   starting workers/subprocesses with `NODE_V8_COVERAGE` set to a
     per-worker directory under the run record when `--coverage` is on
--   passing each worker a `CoverageWriter` token scoped to its slice
-    of the artifact directory
+-   adding `--allow-fs-write=<run-coverage-dir>` to the worker's Node
+    permission flags so the V8 coverage writer can persist its output
+    despite the microtest profile's blanket FS-write denial
 -   merging V8 slices into one report after the run completes (via
     `c8` or equivalent)
 
 Tests do not interact with coverage instrumentation directly.
 
-## Authority Token
+## Permission Surface
 
-`CoverageWriter` is the only first-party use of the authority-token
-pattern named in `capability-handles.md`:
-
-```ts
-type CoverageWriter = unknown & { readonly __brand: 'CoverageWriter' };
-```
-
-Owning the token grants the right to write into the run-scoped
-coverage artifact directory. The runner constructs and passes it;
-user code cannot forge one. Microtest profiles deny filesystem
-writes by default; the `micro-with-coverage` profile is the narrow
-exception that grants the write capability via the token.
+Microtest profiles deny filesystem writes by default. The
+`micro-with-coverage` profile is the narrow exception: it adds
+`--allow-fs-write=.overkill/runs/<run-id>/coverage/` to the Node
+permission flags it starts the worker with. The grant is path-scoped
+by the OS-level Node permission model; no Overkill-specific
+abstraction layers on top.
 
 ## Reporter Interaction
 
