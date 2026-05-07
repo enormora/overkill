@@ -6,7 +6,7 @@ The stable center of Overkill is the programmatic API, not the CLI. A user shoul
 
 ## TypeScript-First
 
-Overkill is optimized for TypeScript rather than trying to be equally ideal for every JS runtime and authoring style. Types are part of the product experience, especially for environments, reporters, and extension APIs.
+Overkill is optimized for TypeScript rather than trying to be equally ideal for every JS runtime and authoring style. Types are part of the product experience, especially for runtimes, reporters, and extension APIs.
 
 ## No Magic
 
@@ -22,7 +22,7 @@ It does not mean “no convenience.” It means convenience must be explainable 
 
 ## Explicit Over Implicit
 
-If a test depends on an environment, a capability, or a baseline artifact, that dependency should be visible in the code or runner configuration. Overkill prefers one more explicit line over a surprising hidden behavior.
+If a test depends on a runtime, a capability, or a baseline artifact, that dependency should be visible in the code or runner configuration. Overkill prefers one more explicit line over a surprising hidden behavior.
 
 ## One First-Party Path Per Layer
 
@@ -125,7 +125,7 @@ The core should own only the abstractions that truly need to be shared:
 -   results
 -   reporter and integration contracts
 
-Assertions, environments, snapshots, benchmarks, and bundles can be first-party without being core primitives unless research shows they cannot be built cleanly on top.
+Assertions, runtimes, snapshots, benchmarks, and bundles can be first-party without being core primitives unless research shows they cannot be built cleanly on top.
 
 ## Platform First
 

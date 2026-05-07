@@ -51,7 +51,7 @@ seam where the runtime can be swapped:
 -   configurable base URLs
 -   runtime factories
 -   adapter registration
--   environment bootstrapping
+-   runtime bootstrapping
 
 If a codebase hardcodes globals, ambient services, and production-only network
 destinations everywhere, Overkill cannot make that code deterministically

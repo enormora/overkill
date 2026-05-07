@@ -266,10 +266,10 @@ keeping the cold path short and not requiring a hot daemon to feel fast.
 -   **V8 startup snapshot of the runner.** As described in section 8, ship a
     pre-warmed engine snapshot for the runner itself. Cold start under
     50 ms is realistic.
--   **eval-free, no-bundler, no-source-map-rewrite microtest path.** For
-    microtests embedded in source files, run directly with native strip and a
-    sentinel; never write a temporary file, never call `vm.runInThisContext`.
-    The simplest path is also the fastest.
+-   **Eval-free, no-bundler, no-source-map-rewrite microtest path.** Run
+    test files directly through Node's native type stripping; never emit a
+    temporary file, never call `vm.runInThisContext`. The simplest path is
+    also the fastest.
 -   **Tests-as-values + lazy-shake.** Tests are described as data structures
     rather than registered side-effectfully via `it()`. Combined with
     `import defer` (TC39 Stage 3, supported syntactically by TypeScript 5.9 and

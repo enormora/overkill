@@ -198,31 +198,38 @@ tooling.
 Composes naturally with the deterministic simulation layer: a "chaos
 profile" is a virtual world configured with a fault distribution. Code that
 explicitly handles failure (retries, circuit breakers, OOM defenses) gets a
-real test environment.
+real test runtime.
 
 ## In-Source / Colocated Tests
 
-Already covered partly in `fast-feedback-loops.md`. Worth promoting as a
-recognized testing pattern:
+In-source tests live alongside production code (Rust's
+`#[cfg(test)]`, Zig's `test "name" {}`). The current Overkill concept
+**rejects them as the default authoring model** — see
+`non-goals.md` § No in-source tests as the default authoring model
+and `microtests-and-capabilities.md` § In-Source Microtests for the
+canonical rejection.
 
-In-source tests are still worth tracking as a novel direction, but they are
-currently rejected from the planned default concept.
+This entry stays here only as background research, not on the
+adoption path.
 
-Why they are attractive:
+What is genuinely interesting:
 
--   the test lives directly next to the code it explains
--   tiny local invariants can be documented with very low friction
--   languages like Rust and Zig prove the general shape can work well
+-   the test-next-to-the-code argument has merit
+-   Rust and Zig prove the general shape can work in compiled
+    languages
 
-Why they are still unresolved for Overkill:
+What blocks adoption for Overkill:
 
--   much of the JS tooling ecosystem still treats tests as file-pattern-based
--   production stripping becomes a serious concern
--   a custom loader or transform story would fight the current
+-   the JS tooling ecosystem treats tests as file-pattern-based
+-   production stripping requires a compiler step Overkill does not
+    own — a custom loader or transform fights the
     Node-builtins-first direction
+-   a sentinel-based approach (`if (import.meta.test)`) puts an
+    Overkill-aware import in production code, breaking the "consumer
+    production code does not import Overkill" rule
 
-So the concept should keep the idea alive, but only as a researched option
-until the shipping and tooling story is convincingly clear.
+The shipping and tooling story would need to change materially
+before this is reopened.
 
 ## Out-Of-Band Verdicts
 

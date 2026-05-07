@@ -38,7 +38,7 @@ Integration tests verify that multiple components cooperate correctly. They may 
 -   snapshots or baselines
 -   external services started locally
 
-They need stronger environment and orchestration support than microtests.
+They need stronger runtime and orchestration support than microtests.
 
 The most repeated integration pattern is an owned fixture or runtime wrapper
 such as:
@@ -55,15 +55,15 @@ Integration-style runs may also legitimately use:
 
 -   retries
 -   richer failure artifacts
--   quarantined or stability-marked tests
+-   stability-marked tests
 
 Those should remain visible runner concepts rather than hidden defaults.
 
 ## Browser and Workflow Tests
 
-These tests validate UI, CLI, or multi-step workflows. The central model is environment-driven execution, often with:
+These tests validate UI, CLI, or multi-step workflows. The central model is runtime-driven execution, often with:
 
--   matrixed environments
+-   matrixed runtimes
 -   screenshots or structural snapshots
 -   process or browser lifecycle
 -   richer diagnostics

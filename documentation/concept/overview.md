@@ -120,7 +120,7 @@ In practice, the main first-party support here should be:
 -   explicit attachments and transcripts
 -   runtime dimensions that feed identity and baselines
 
-They may also justify controlled retries, quarantine markers, and richer failure artifacts in ways that microtests should not.
+They may also justify controlled retries and richer failure artifacts in ways that microtests should not.
 
 ### Benchmarks
 

@@ -33,7 +33,7 @@ Contract tests fit Overkill surprisingly well because they often need:
 -   stable artifact identity
 -   reviewable baselines
 -   structured diffs
--   environment-aware execution
+-   runtime-aware execution
 -   machine-readable reporting
 
 They also overlap naturally with browser, integration, and baseline-oriented packages.

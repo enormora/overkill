@@ -137,7 +137,7 @@ The protocol model also sharpens an important distinction:
 
 -   **assertion failure** — structured test outcome
 -   **runner error** — unexpected exception, rejection, crash, permission
-    denial, or environment failure
+    denial, or runtime failure
 
 This separation is part of the core concept. Assertion failures should not
 need to travel through the same path as infrastructure errors.
