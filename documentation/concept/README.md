@@ -56,6 +56,7 @@ For a first read, follow this path:
 -   [Runtimes And Fixtures](./runtimes-and-fixtures.md)
 -   [Extensions And Plugins](./extensions-and-plugins.md)
 -   [Failure Artifacts](./failure-artifacts.md)
+-   [Failure Walkthrough](./failure-walkthrough.md)
 -   [Fast Feedback Loops](./fast-feedback-loops.md)
 -   [Glossary](./glossary.md)
 -   [Higher Test Layers](./higher-test-layers.md)
