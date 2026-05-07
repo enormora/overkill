@@ -79,29 +79,34 @@ Explicit update runs:
 
 ## Update Workflow
 
-The CLI surface for baseline updates is one flag with three modes:
+The CLI surface for baseline updates is one flag:
 
 ```
-overkill run --update-baselines [<mode>]
+overkill run --update-baselines [=<mode>]
 ```
 
-Modes:
+Default behaviour and modes:
 
--   `--update-baselines` (no mode, equivalent to `=missing`) —
-    create artifacts that don't yet exist; do **not** overwrite
-    existing artifacts. Safest mode; cannot accidentally accept a
-    regression.
--   `--update-baselines=changed` — overwrite existing artifacts that
-    differ from the run output, create missing ones. Stale artifacts
-    are reported but not removed.
--   `--update-baselines=clean` — `=changed` plus removal of stale
-    artifacts (no corresponding collected test). The most invasive
-    mode; explicit on purpose.
+-   `--update-baselines` (no mode) — **full update**: create
+    missing baselines, overwrite changed ones, **and remove stale
+    ones**. This is the default because committing to update means
+    committing to make the on-disk state correct. Leaving stale
+    baselines around makes the workspace ambiguous (which tests do
+    these belong to?) and can make subsequent runs less
+    predictable.
+-   `--update-baselines=changed` — create missing and overwrite
+    changed, but **leave stale baselines alone**. Escape hatch for
+    cases where stale entries belong to in-progress renames you are
+    not ready to finalise in the same commit.
+-   `--update-baselines=missing` — only create baselines that don't
+    exist yet; do not touch existing baselines, do not remove stale
+    ones. Useful when bootstrapping a brand-new test suite where
+    everything is missing by definition.
 
-The default in CI is `--no-update-baselines` (any update flag is
-rejected unless an environment variable explicitly opts in). The
-default in dev is also `off`; updates only happen when the developer
-asks.
+When `--update-baselines` is **not** passed, no updates of any kind
+happen — comparison-only is the day-to-day mode. CI rejects the flag
+entirely (any update flag is rejected unless an environment variable
+explicitly opts in).
 
 Per `runtime-behavior.md` § CI Auto-Detection, baseline updates are
 gated behind explicit intent in CI to prevent accidental rubber-
@@ -116,9 +121,11 @@ The intended developer loop:
     Diagnostic Shape).
 2.  Inspect the diff in the reporter or in the JSON event stream.
     Decide whether the change is intended.
-3.  Re-run with `--update-baselines=changed` (or `=missing` for new
-    tests). The runner overwrites the on-disk artifacts.
-4.  `git diff test-baselines/` shows what changed. Review and commit
+3.  Re-run with `--update-baselines`. The runner overwrites changed
+    artifacts, creates missing ones, and removes stale ones in one
+    pass.
+4.  `git diff test-baselines/` shows everything that changed
+    (including deletions for stale orphans). Review and commit
     those files together with the production change that caused the
     update.
 
@@ -136,7 +143,10 @@ case identities. Default policy:
 -   ordinary run: stale baselines are reported as warnings; CI runs
     treat them as failures (see `runtime-behavior.md` § CI
     Auto-Detection)
--   `--update-baselines=clean` removes them after the run completes
+-   `--update-baselines` (default mode) removes them after the run
+    completes; this is part of the "full update" intent
+-   `--update-baselines=changed` reports them but leaves them on
+    disk
 -   no automatic rename inference (see `non-goals.md` § No automatic
     rename inference) — a renamed test becomes a stale orphan plus a
     missing new baseline; the developer accepts both deliberately

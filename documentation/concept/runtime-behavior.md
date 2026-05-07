@@ -96,7 +96,7 @@ linked here.
 
 | Flag                          | Behavior                                                                    | Reference                                                  |
 | ----------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `--update-baselines`          | Allow baselines to be updated during this run. Off by default in CI.        | `baselines-and-snapshots.md`                               |
+| `--update-baselines`          | Full baseline update: create, overwrite, and remove stale. CI rejects.      | `baselines-and-snapshots.md` § Update Workflow             |
 | `--no-update-baselines`       | Force baseline-update mode off (already the default in CI).                 | this doc § CI Auto-Detection                               |
 
 ### Output And Reporters
