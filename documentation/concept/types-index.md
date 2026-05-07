@@ -206,6 +206,9 @@ type RunPlan = {
     readonly metadataResolved: ReadonlyMap<string, Metadata>;
     readonly loaderConfig: { stripMode: 'strip-only' | 'transform'; sourceMaps: boolean };
     readonly versions: { engine: string; node: string; packages: ReadonlyMap<string, string> };
+    // debug mode plumbing — see runtime-behavior.md § Test Debug Mode
+    readonly debugMode: 'off' | 'all' | 'selected';
+    readonly debuggedCases?: ReadonlyArray<CaseId>; // present when debugMode === 'selected'
 };
 
 type ResolvedRuntime = {

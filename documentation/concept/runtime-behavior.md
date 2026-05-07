@@ -115,6 +115,7 @@ linked here.
 | `--no-ci`                     | Force developer-mode defaults on a CI host.                                 | same                                                       |
 | `--seed <n>`                  | Override the run seed (for reproducible randomization).                     | `reproducibility.md`                                       |
 | `--debug`                     | Emit a structured debug artifact for every test in the resolved set.        | this doc § Test Debug Mode                                 |
+| `--debug-test <id>`           | Emit a debug artifact for a single test by ID or selector pattern.          | this doc § Test Debug Mode                                 |
 
 This list intentionally omits flags that are still under design (e.g.
 `--coverage`, `--since <ref>`, `--shuffle`); when those land, this
@@ -311,15 +312,24 @@ conclusion. A debug artifact never affects the verdict.
 
 Activation is always explicit:
 
--   `--debug` enables debug mode for the resolved test set; pair with
+-   `--debug-test <id-or-pattern>` debugs one specific test (or
+    several matching the same selector grammar as `--filter`) without
+    pulling unrelated tests into debug mode
+-   `--debug` debugs every test in the resolved set; pair with
     `--filter`, `--name`, `--id`, or `--file` to scope
 -   per-test metadata `{ debug: true }` debugs that one test on every
     run, regardless of CLI flags
 
+`--debug-test` is the typical interactive form: "I want to know what
+this *one* test is doing." `--debug` is for run-wide investigations
+(e.g. "everything tagged slow").
+
 Activation does **not** change profile, capability boundaries, or
 scheduling. A debugged microtest is still a microtest with the same
 permissions; debug mode only widens what the runner *records*, not
-what the test may *do*.
+what the test may *do*. Activation is reflected in the run record
+(see `RunPlan.debugMode` / `RunPlan.debuggedCases`) so a replay or
+report can tell that the data was collected.
 
 ### Artifact Shape
 
@@ -445,6 +455,22 @@ whatever it had recorded up to the crash, marked with a
 `rejection`-style final entry. The `WorkerCrash` artifact (see
 `failure-artifacts.md` § Process Crash Artifacts) remains the
 authoritative record.
+
+### Debug Mode And Retries / Replay
+
+When integration-style tests retry (see
+`failure-artifacts.md` § Retry Interaction), each attempt produces
+its own debug artifact: `<case-id>__attempt=0.debug.json`,
+`<case-id>__attempt=1.debug.json`, etc. The artifacts are siblings,
+not a merged log; comparing them is how you see whether a retry
+recovered cleanly or limped.
+
+`overkill replay <run-id>` does **not** automatically re-emit debug
+artifacts for the replayed run. The original artifacts already exist
+in the source run's directory; replay reads them rather than
+regenerating them. To debug a replayed run from scratch, pass
+`--debug` (or `--debug-test`) explicitly on the replay command —
+that produces a fresh set in the new run's directory.
 
 ### Issues The Artifact Surfaces
 
