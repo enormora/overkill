@@ -187,6 +187,9 @@ Remaining speculative work belongs in:
 
 ## Rejected Or Deferred Directions
 
+The full list with rationale lives in [`non-goals.md`](./non-goals.md);
+the highlights:
+
 -   No first-class production-facing `@overkill/world` package in the
     current concept.
 -   No Overkill dependency should be required in consumer production code.
