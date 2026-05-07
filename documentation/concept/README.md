@@ -62,6 +62,7 @@ For a first read, follow this path:
 -   [Higher Test Layers](./higher-test-layers.md)
 -   [Metadata And Selection](./metadata-and-selection.md)
 -   [Non-Goals](./non-goals.md)
+-   [Reporters](./reporters.md)
 -   [Reproducibility](./reproducibility.md)
 -   [Results, Not Exceptions](./results-not-exceptions.md)
 -   [Runtime Behavior](./runtime-behavior.md)
