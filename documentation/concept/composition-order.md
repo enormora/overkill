@@ -4,8 +4,8 @@
 
 Many concept docs describe one wrapper or one resolution rule:
 metadata propagation here, capability intersection there, debug mode
-elsewhere, retry handling somewhere else. None of them say *what
-happens in what order* when several apply at once.
+elsewhere, retry handling somewhere else. None of them say _what
+happens in what order_ when several apply at once.
 
 This doc names the resolution and execution stack, end to end. It is
 a reading aid, not a new mechanism. Every step is already specified
@@ -91,7 +91,7 @@ the order isn't explicit:
 
 -   **Debug observes retries.** Each retry attempt produces its own
     debug artifact (sibling files: `attempt=0`, `attempt=1`, …);
-    debug is *inside* the retry loop, not outside.
+    debug is _inside_ the retry loop, not outside.
 -   **Timeout fires per attempt, not per test.** A 5 s soft timeout
     on an integration test with 3 retries means up to 15 s of total
     real time, not 5 s.

@@ -16,9 +16,7 @@ Reporters declare which lifecycle they participate in. The split
 already exists in `package-architecture.md` and is settled.
 
 ```ts
-type Reporter =
-    | RealTimeReporter
-    | FinalResultReporter;
+type Reporter = RealTimeReporter | FinalResultReporter;
 
 type RealTimeReporter = {
     readonly kind: 'real-time';
@@ -125,7 +123,7 @@ layer:
     (default 100 ms; longer is a reporter bug, the run continues)
 -   isolates errors: a reporter throwing or rejecting does not
     affect other reporters or the run result. The error is surfaced
-    as a `runner-error` event with subtype `reporter` to *other*
+    as a `runner-error` event with subtype `reporter` to _other_
     reporters
 -   delivers `RunResult` to every final-result reporter exactly once
     after run completion
@@ -148,8 +146,8 @@ per-handler timeout produces a `RunnerError`:
 ```
 
 The error is logged to the orchestration layer and propagated to
-*other* reporters via a `runner-error` event so they can render it.
-The faulting reporter is *not* removed from subsequent events; the
+_other_ reporters via a `runner-error` event so they can render it.
+The faulting reporter is _not_ removed from subsequent events; the
 runner trusts it again until it fails again. (Removal would
 encourage silent reporter death; visible repeated errors are
 preferable.)

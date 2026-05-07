@@ -53,14 +53,14 @@ The closed enumeration of capabilities Overkill recognises:
 
 ```ts
 type Capability =
-    | 'fs-read'        // filesystem reads
-    | 'fs-write'       // filesystem writes
-    | 'net'            // any network access
-    | 'child-process'  // spawning subprocesses
-    | 'worker'         // creating worker threads
-    | 'addon'          // loading native addons
-    | 'wasi'           // WASI imports
-    | 'process-exit';  // calling process.exit
+    | 'fs-read' // filesystem reads
+    | 'fs-write' // filesystem writes
+    | 'net' // any network access
+    | 'child-process' // spawning subprocesses
+    | 'worker' // creating worker threads
+    | 'addon' // loading native addons
+    | 'wasi' // WASI imports
+    | 'process-exit'; // calling process.exit
 ```
 
 This is the type used in `Metadata.capabilities` (see

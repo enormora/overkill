@@ -106,7 +106,7 @@ result.
 
 ## What This Doc Is Not
 
--   not a coverage *quality* recommendation (Overkill takes no
+-   not a coverage _quality_ recommendation (Overkill takes no
     position on what counts as enough coverage)
 -   not a built-in instrumenter; the runner orchestrates V8's native
     coverage rather than ship its own
@@ -118,5 +118,5 @@ result.
     (V8 native granularity is per file; per-case requires a wrapping
     layer)
 -   integration with TIA when path-level change detection narrows the
-    run — coverage of *only-affected-tests* is less useful than total
+    run — coverage of _only-affected-tests_ is less useful than total
     coverage; the run record should label which it is

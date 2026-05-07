@@ -20,7 +20,7 @@ Companion to `ideas-and-future-directions.md` (broader product directions),
 > **Note on code samples.** The snippets below use illustrative
 > primitives such as `forall`, `gen.user`, `arbitrary.bytes`,
 > `relation()`, `differential()`, `hyperproperty()`, `slo()`, `fuzz()`,
-> and `baseline()`. These are *proposed future-package syntax*, not
+> and `baseline()`. These are _proposed future-package syntax_, not
 > committed APIs. They are listed as placeholders in
 > `types-index.md` § Placeholders Without Domain Definitions.
 

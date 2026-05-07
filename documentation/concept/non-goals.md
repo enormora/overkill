@@ -3,7 +3,7 @@
 ## Purpose
 
 Concept docs scatter their rejections across many files. This doc
-collects them in one place so the *settled* rejections are visible to
+collects them in one place so the _settled_ rejections are visible to
 reviewers, contributors, and downstream package authors without
 re-litigation per topic.
 
@@ -187,7 +187,7 @@ packages.
 Where: `principles.md` § Keep Production Code Clean,
 `capability-handles.md` § Current Stance.
 
-Alternative: capability handles documented as a *user architecture*
+Alternative: capability handles documented as a _user architecture_
 pattern; `@overkill/doubles` covers test-side function replacement.
 
 ## Reporting And Identity
@@ -288,7 +288,7 @@ discovered surfaces (reporters, baseline adapters).
 ## What This Doc Is Not
 
 This file does not list every feature deferred to a later release. It
-lists *settled rejections* — directions Overkill has decided against,
+lists _settled rejections_ — directions Overkill has decided against,
 not parking-lot items waiting on time. For deferred-but-likely items
 see `ideas-and-future-directions.md` and the open-research items in
 `novel-techniques.md`.

@@ -160,8 +160,8 @@ case identities. Default policy:
 -   cross-delete baselines that belong to a different identity-form
     variant (e.g. the same test under a different runtime) — stale
     detection is scoped to identities present in the current run,
-    so a baseline for a runtime not selected this run is *not*
-    treated as stale and is *not* removed
+    so a baseline for a runtime not selected this run is _not_
+    treated as stale and is _not_ removed
 
 These are framed as non-goals to keep the update story honest about
 what is and is not automatic.

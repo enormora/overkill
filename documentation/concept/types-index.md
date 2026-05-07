@@ -112,24 +112,12 @@ type TestKind =
     | 'simulation'
     | 'approval';
 
-type BaselineSubtype =
-    | 'content-snapshot'
-    | 'visual-snapshot'
-    | 'terminal-snapshot'
-    | 'performance-baseline';
+type BaselineSubtype = 'content-snapshot' | 'visual-snapshot' | 'terminal-snapshot' | 'performance-baseline';
 
 // Closed enumeration; see microtests-and-capabilities.md §
 // Capability Defaults for the canonical definition. New capabilities
 // require an explicit addition.
-type Capability =
-    | 'fs-read'
-    | 'fs-write'
-    | 'net'
-    | 'child-process'
-    | 'worker'
-    | 'addon'
-    | 'wasi'
-    | 'process-exit';
+type Capability = 'fs-read' | 'fs-write' | 'net' | 'child-process' | 'worker' | 'addon' | 'wasi' | 'process-exit';
 ```
 
 Canonical: `tests-as-values.md` for `TestNode`/`TestCase`/`Suite`/`Table`,

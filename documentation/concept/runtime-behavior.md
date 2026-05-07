@@ -64,58 +64,58 @@ linked here.
 
 ### Subcommands
 
-| Command                              | Purpose                                                     | Reference                                                      |
-| ------------------------------------ | ----------------------------------------------------------- | -------------------------------------------------------------- |
-| `overkill run [paths...]`            | Default run mode — discover, plan, and execute.             | this doc                                                       |
-| `overkill list [paths...]`           | Print the resolved test plan without running it.            | `tests-as-values.md`                                           |
-| `overkill replay <run-id>`           | Replay a recorded run from `.overkill/runs/<id>.json`.      | `reproducibility.md` § Replay                                  |
-| `overkill replay-witness <path>`     | Replay a single property/simulation failure from a witness. | `failure-artifacts.md` § Witnesses And Replay Artifacts        |
+| Command                          | Purpose                                                     | Reference                                               |
+| -------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------- |
+| `overkill run [paths...]`        | Default run mode — discover, plan, and execute.             | this doc                                                |
+| `overkill list [paths...]`       | Print the resolved test plan without running it.            | `tests-as-values.md`                                    |
+| `overkill replay <run-id>`       | Replay a recorded run from `.overkill/runs/<id>.json`.      | `reproducibility.md` § Replay                           |
+| `overkill replay-witness <path>` | Replay a single property/simulation failure from a witness. | `failure-artifacts.md` § Witnesses And Replay Artifacts |
 
 ### Selection And Iteration
 
-| Flag                          | Behavior                                                                    | Reference                                                  |
-| ----------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `--filter '<expr>'`           | Filter tests by metadata expression (tags, kind, runtime, owner, …).        | `metadata-and-selection.md` § Filter Expression Grammar    |
-| `--name '<text>'`             | Name substring or quoted exact match.                                       | `metadata-and-selection.md` § Local Iteration Workflow     |
-| `--file <path>`               | Restrict the run to a single file.                                          | same                                                       |
-| `--id <stable-id>`            | Restrict the run to a single case identity (IDE integration).               | same                                                       |
-| `--last-failed`               | Run only tests that failed in the previous run.                             | same                                                       |
-| `--changed`                   | Run tests in files changed since `main`. Path-level only; no graph.         | same                                                       |
-| `--watch`                     | Rerun the selected suite on file change. Uses Node's built-in watcher.      | this doc § Watch-Mode Targeting                            |
-| `--shard <i>/<n>`             | Select shard `i` of `n` from the filtered set.                              | this doc § Sharding                                        |
+| Flag                | Behavior                                                               | Reference                                               |
+| ------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------- |
+| `--filter '<expr>'` | Filter tests by metadata expression (tags, kind, runtime, owner, …).   | `metadata-and-selection.md` § Filter Expression Grammar |
+| `--name '<text>'`   | Name substring or quoted exact match.                                  | `metadata-and-selection.md` § Local Iteration Workflow  |
+| `--file <path>`     | Restrict the run to a single file.                                     | same                                                    |
+| `--id <stable-id>`  | Restrict the run to a single case identity (IDE integration).          | same                                                    |
+| `--last-failed`     | Run only tests that failed in the previous run.                        | same                                                    |
+| `--changed`         | Run tests in files changed since `main`. Path-level only; no graph.    | same                                                    |
+| `--watch`           | Rerun the selected suite on file change. Uses Node's built-in watcher. | this doc § Watch-Mode Targeting                         |
+| `--shard <i>/<n>`   | Select shard `i` of `n` from the filtered set.                         | this doc § Sharding                                     |
 
 ### Capability And Execution
 
-| Flag                          | Behavior                                                                    | Reference                                                  |
-| ----------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `--profile <name>`            | Select a runner profile (e.g. `microtest`, `integration`, `benchmark`).     | `microtests-and-capabilities.md`                           |
-| `--mode <strategy>`           | Override the resolved execution strategy (serial, worker-pool, …).          | this doc § Parallelism Semantics                           |
-| `--workers <n>`               | Override default worker count for worker-pool modes.                        | this doc § Parallelism Semantics                           |
+| Flag                | Behavior                                                                | Reference                        |
+| ------------------- | ----------------------------------------------------------------------- | -------------------------------- |
+| `--profile <name>`  | Select a runner profile (e.g. `microtest`, `integration`, `benchmark`). | `microtests-and-capabilities.md` |
+| `--mode <strategy>` | Override the resolved execution strategy (serial, worker-pool, …).      | this doc § Parallelism Semantics |
+| `--workers <n>`     | Override default worker count for worker-pool modes.                    | this doc § Parallelism Semantics |
 
 ### Baselines
 
-| Flag                          | Behavior                                                                    | Reference                                                  |
-| ----------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `--update-baselines`          | Full baseline update: create, overwrite, and remove stale. CI rejects.      | `baselines-and-snapshots.md` § Update Workflow             |
-| `--no-update-baselines`       | Force baseline-update mode off (already the default in CI).                 | this doc § CI Auto-Detection                               |
+| Flag                    | Behavior                                                               | Reference                                      |
+| ----------------------- | ---------------------------------------------------------------------- | ---------------------------------------------- |
+| `--update-baselines`    | Full baseline update: create, overwrite, and remove stale. CI rejects. | `baselines-and-snapshots.md` § Update Workflow |
+| `--no-update-baselines` | Force baseline-update mode off (already the default in CI).            | this doc § CI Auto-Detection                   |
 
 ### Output And Reporters
 
-| Flag                          | Behavior                                                                    | Reference                                                  |
-| ----------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `--reporter <name>`           | Select a reporter; may be specified multiple times.                         | `package-architecture.md` § Reporters                      |
-| `--no-capture`                | Pass stdout/stderr through live instead of buffering.                       | this doc § Console Output Capture                          |
+| Flag                | Behavior                                              | Reference                             |
+| ------------------- | ----------------------------------------------------- | ------------------------------------- |
+| `--reporter <name>` | Select a reporter; may be specified multiple times.   | `package-architecture.md` § Reporters |
+| `--no-capture`      | Pass stdout/stderr through live instead of buffering. | this doc § Console Output Capture     |
 
 ### Lifecycle And Edge Cases
 
-| Flag                          | Behavior                                                                    | Reference                                                  |
-| ----------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `--allow-empty`               | Treat zero-test runs as success instead of failure.                         | this doc § Zero-Test Runs                                  |
-| `--ci`                        | Force CI defaults on a developer host.                                      | this doc § CI Auto-Detection                               |
-| `--no-ci`                     | Force developer-mode defaults on a CI host.                                 | same                                                       |
-| `--seed <n>`                  | Override the run seed (for reproducible randomization).                     | `reproducibility.md`                                       |
-| `--debug`                     | Emit a structured debug artifact for every test in the resolved set.        | this doc § Test Debug Mode                                 |
-| `--debug-test <id>`           | Emit a debug artifact for a single test by ID or selector pattern.          | this doc § Test Debug Mode                                 |
+| Flag                | Behavior                                                             | Reference                    |
+| ------------------- | -------------------------------------------------------------------- | ---------------------------- |
+| `--allow-empty`     | Treat zero-test runs as success instead of failure.                  | this doc § Zero-Test Runs    |
+| `--ci`              | Force CI defaults on a developer host.                               | this doc § CI Auto-Detection |
+| `--no-ci`           | Force developer-mode defaults on a CI host.                          | same                         |
+| `--seed <n>`        | Override the run seed (for reproducible randomization).              | `reproducibility.md`         |
+| `--debug`           | Emit a structured debug artifact for every test in the resolved set. | this doc § Test Debug Mode   |
+| `--debug-test <id>` | Emit a debug artifact for a single test by ID or selector pattern.   | this doc § Test Debug Mode   |
 
 This list intentionally omits flags that are still under design (e.g.
 `--coverage`, `--since <ref>`, `--shuffle`); when those land, this
@@ -235,13 +235,13 @@ worker (only available in supervised profiles).
 
 Defaults per profile:
 
-| Profile                | Soft timeout     | Hard timeout                                                                |
-| ---------------------- | ---------------- | --------------------------------------------------------------------------- |
-| `microtest`            | 0.5 s            | not available (in-process; no hard recovery from CPU-bound hangs)           |
-| `microtest-supervised` | 0.5 s            | 1 s (subprocess kill; partial state is discarded)                           |
-| `integration-local`    | 5 s              | 7 s (worker terminate)                                                      |
-| `benchmark`            | per-workload     | 1.5 × workload budget, capped at 60 s (single-worker-serial)                |
-| `simulation`           | adapter-declared | adapter-declared                                                            |
+| Profile                | Soft timeout     | Hard timeout                                                      |
+| ---------------------- | ---------------- | ----------------------------------------------------------------- |
+| `microtest`            | 0.5 s            | not available (in-process; no hard recovery from CPU-bound hangs) |
+| `microtest-supervised` | 0.5 s            | 1 s (subprocess kill; partial state is discarded)                 |
+| `integration-local`    | 5 s              | 7 s (worker terminate)                                            |
+| `benchmark`            | per-workload     | 1.5 × workload budget, capped at 60 s (single-worker-serial)      |
+| `simulation`           | adapter-declared | adapter-declared                                                  |
 
 Rationale for the tight numbers: tests should be categorised
 correctly. A microtest that needs more than 500 ms is misclassified;
@@ -294,7 +294,7 @@ Any test — passing or failing — can be hard to reason about. A
 passing test that runs slowly, imports modules its peers don't, or
 just barely beats the soft deadline is suspicious. A failing test,
 especially one that hit the timeout, is even harder: the test failed,
-but *where* did the time go? Which assertion, which awaited
+but _where_ did the time go? Which assertion, which awaited
 operation, which import? The runner observes most of that data
 per-test and discards it unless explicitly asked to keep it.
 
@@ -321,13 +321,13 @@ Activation is always explicit:
     run, regardless of CLI flags
 
 `--debug-test` is the typical interactive form: "I want to know what
-this *one* test is doing." `--debug` is for run-wide investigations
+this _one_ test is doing." `--debug` is for run-wide investigations
 (e.g. "everything tagged slow").
 
 Activation does **not** change profile, capability boundaries, or
 scheduling. A debugged microtest is still a microtest with the same
-permissions; debug mode only widens what the runner *records*, not
-what the test may *do*. Activation is reflected in the run record
+permissions; debug mode only widens what the runner _records_, not
+what the test may _do_. Activation is reflected in the run record
 (see `RunPlan.debugMode` / `RunPlan.debuggedCases`) so a replay or
 report can tell that the data was collected.
 
@@ -475,8 +475,8 @@ that produces a fresh set in the new run's directory.
 ### Issues The Artifact Surfaces
 
 Debug mode does not classify tests as good or bad. The artifact is
-factual; the *patterns* below are interpretation guidance — what
-specific values *can* signal, not judgments the runner emits. CI
+factual; the _patterns_ below are interpretation guidance — what
+specific values _can_ signal, not judgments the runner emits. CI
 post-processors, custom reporters, and reviewers turn these signals
 into action; the runner stays neutral.
 
@@ -524,7 +524,7 @@ linter) reads the pattern.
 ### What This Is Not
 
 -   **Not a profiler.** For CPU or call-frame analysis use Node
-    `--prof` or `--inspect`. Debug mode tells you what *the test*
+    `--prof` or `--inspect`. Debug mode tells you what _the test_
     did, not what V8 did.
 -   **Not a benchmark.** A single-run debug artifact is not
     statistically meaningful; see `benchmarking.md` for

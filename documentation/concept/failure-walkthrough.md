@@ -45,8 +45,8 @@ Diagnostic Shape):
 const recorded: FailedCheck = {
     id: '0001',
     summary: 'expected deep equality',
-    expected: { id: '42', name: 'Adäle' },         // NFC
-    actual:   { id: '42', name: 'Adäle' },   // NFD
+    expected: { id: '42', name: 'Adäle' }, // NFC
+    actual: { id: '42', name: 'Adäle' }, // NFD
     path: ['name'],
     location: { file: 'source/users.test.ts', line: 8 },
     diff: {
@@ -155,7 +155,9 @@ property runner writes a `WitnessFile` to the path above:
     },
     "kind": "property",
     "seed": "0xdeadbeef",
-    "shrinkPath": [/* … shrink steps */],
+    "shrinkPath": [
+        /* … shrink steps */
+    ],
     "counterexample": { "id": "42", "name": "Adäle" }
 }
 ```
