@@ -61,6 +61,9 @@ The full CLI reference (subcommands, flags, and their canonical homes)
 lives in [`cli.md`](./cli.md). Behavior of CLI options that bind
 specifically to runtime concerns — parallelism, watch mode, debug,
 sharding — is documented in this doc; `cli.md` cross-links into it.
+Selection itself is metadata-driven: tags are a first-class metadata
+field, and tag filtering happens through `--filter` expressions such as
+`tag=fast` or `!tag=flaky` (see `metadata-and-selection.md`).
 
 ## Exit Codes And `process.exit`
 
