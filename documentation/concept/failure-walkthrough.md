@@ -14,18 +14,23 @@ how the segments fit.
 
 ## The Test
 
-A property test that round-trips a serializer:
+A property test exported as a `TestNode` value that round-trips a
+serializer:
 
 ```ts
 // source/users.test.ts
-import { test } from '@overkill/test';
-import { forall, gen } from '@overkill/property'; // proposed package, see types-index
+import { suite, test } from '@overkill/test';
+import { gen } from '@overkill/property'; // proposed package, see types-index
 import { parse, serialize } from './users.ts';
 
-test('users.round-trip preserves values', async ({ assert, plan }) => {
-    plan(1);
-    return forall(gen.user(), (user) => assert.equal(parse(serialize(user)), user));
-});
+export default suite('users', [
+    test('round-trip preserves values', (case) => {
+        case.plan(1);
+        return case.forall(gen.user(), (user) =>
+            case.assert.equal(parse(serialize(user)), user),
+        );
+    }),
+]);
 ```
 
 The test passes for thousands of generated inputs, then fails on a
@@ -33,12 +38,17 @@ shrunk minimal counterexample: a `User` whose `name` contains a
 combining accent. `parse(serialize(...))` roundtrips Unicode in NFD
 form when the input was NFC. The structures compare unequal.
 
-## Stage 1 — `assert.equal` Records
+The important part for this walkthrough is not the property helper
+itself; it is the authoring shape around it: the file exports a suite
+value, the case body receives the injected `case` builder, and the
+failure still enters the pipeline as a recorded `FailedCheck`.
 
-`assert.equal(actual, expected)` returns `void` in the builder API
-but records into the test's assertion log. On mismatch, the recorded
-entry is a `FailedCheck` (see `assertions-and-results.md` § Diff And
-Diagnostic Shape):
+## Stage 1 — `case.assert.equal` Records
+
+`case.assert.equal(actual, expected)` returns `void` in the builder
+API but records into the test's assertion log. On mismatch, the
+recorded entry is a `FailedCheck` (see
+`assertions-and-results.md` § Diff And Diagnostic Shape):
 
 ```ts
 // recorded into the test's assertion log
@@ -63,9 +73,12 @@ Canonical: `assertions-and-results.md`.
 
 ## Stage 2 — Test Body Returns; Outcome Constructed
 
-The test body returns `assert.done()`. The engine reads the recorded
-log and constructs the `TestOutcome` (see `results-not-exceptions.md`
-§ The Protocol Shape, also `types-index.md`):
+The case body returns. The property helper has already driven the
+generated examples and the assertion calls have been recorded through
+the injected builder API. The engine reads that recorded log and
+constructs the `TestOutcome` (see
+`results-not-exceptions.md` § The Protocol Shape, also
+`types-index.md`):
 
 ```ts
 const outcome: TestOutcome = {
@@ -74,10 +87,11 @@ const outcome: TestOutcome = {
 };
 ```
 
-Plan check happens here too: `plan(1)` was declared, exactly one
-`assert.*` call recorded, count matches. The plan-mismatch path
-would have produced its own synthetic `FailedCheck` (see
-`assertions-and-results.md` § `plan(n)` Definition).
+Plan check happens here too: `case.plan(1)` was declared, exactly one
+leaf assertion is expected for the property invocation, and the
+plan-mismatch path would have produced its own synthetic
+`FailedCheck` (see `assertions-and-results.md` § `plan(n)`
+Definition).
 
 The engine is at this point done with the test. Whatever happens
 next — verdict derivation, identity attachment, artifact paths,
