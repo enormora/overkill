@@ -112,9 +112,14 @@ Tests do not interact with coverage instrumentation directly.
 Microtest profiles deny filesystem writes by default. The
 `micro-with-coverage` profile — the canonical (and only) coverage
 profile — adds `--allow-fs-write=.overkill/runs/<run-id>/coverage/`
-to the Node permission flags it starts the worker with. The grant is
-path-scoped by the OS-level Node permission model; no
-Overkill-specific abstraction layers on top.
+to the Node permission flags it starts the worker with.
+
+Node's permission model (Node 20+) supports path-scoped grants:
+`--allow-fs-write=<path>` allows writes only to the specified path
+(comma-separated or repeated for multiple paths). The path is known at
+worker-spawn time because the run id is generated before workers
+start. There is no Overkill-specific authority abstraction layered on
+top — the OS / Node enforces the boundary.
 
 ## Reporter Interaction
 
