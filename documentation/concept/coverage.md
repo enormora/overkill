@@ -82,6 +82,13 @@ jobs. The include/exclude patterns that drive all-files reporting
 live in `overkill.config.ts` (project policy, not per-run intent —
 see `principles.md` § One First-Party Path Per Layer).
 
+Format emission inside `c8` delegates to the `istanbul-lib-report`
+family. We could in principle bypass `c8` and call those libraries
+directly, but the all-files glob + V8-to-istanbul conversion is
+substantive enough that re-implementing it would duplicate effort
+`c8` already maintains. `c8` is the right pipeline wrapper as long as
+V8 doesn't ship all-files synthesis itself.
+
 ## CLI Surface
 
 Single flag at the run level, only valid with a microtest profile
