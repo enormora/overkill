@@ -2,18 +2,25 @@
 
 ## Position
 
-Most JS test runners normalize a small subset of techniques: example tests,
-sometimes snapshots, sometimes a thin property-test layer. The wider testing
-literature has many more shapes that are well established in other
-ecosystems and largely missing from JS/TS. This doc surveys them and
-identifies the kernels Overkill should preserve as future package families
-or first-class test kinds.
+This document covers **exploratory, research-flavored techniques** —
+things where the underlying mechanism, ergonomics, or integration with
+Overkill still need investigation before they can be committed to.
 
-The goal is not to ship all of these. It is to ensure the architecture stays
-_open_ to them, with the engine, identity, baseline, and reporter contracts
-strong enough that adding any one is a matter of writing a package.
+Most JS test runners normalize a small subset of techniques: example
+tests, sometimes snapshots, sometimes a thin property-test layer. The
+wider testing literature has many more shapes that are well established
+in other ecosystems and largely missing from JS/TS. This doc surveys
+them and identifies the kernels Overkill should preserve as future
+package families or first-class test kinds.
 
-Companion to `ideas-and-future-directions.md` (broader product directions),
+The goal is not to ship all of these. It is to ensure the architecture
+stays _open_ to them, with the engine, identity, baseline, and reporter
+contracts strong enough that adding any one is a matter of writing a
+package.
+
+For well-understood enhancements where the shape is already clear (such
+as contract testing, golden/approval workflows, builder-style test data
+factories), see `ideas-and-future-directions.md`. Companion docs:
 `research-landscape.md` (prior art), `deterministic-simulation.md`, and
 `capability-handles.md`.
 
@@ -81,26 +88,6 @@ test('round trip', ({ relation, gen }) =>
 
 The relation, the transformation, and the input distribution are all
 recorded. Shrinking is automatic via the underlying PBT layer.
-
-## Approval / Golden / Characterization Testing
-
-Approval testing is a _workflow_ for legacy code: print whatever the system
-observes, save it, manually approve once, and the saved file becomes the
-spec. Different in spirit from snapshots: snapshots are convenience;
-approvals are a deliberate ratchet.
-
-Concrete features:
-
--   `baseline()` primitive distinct from `expect()`, signalling "I am
-    locking observed behavior, not asserting a known truth"
--   combinatoric input generation (`baseline(cartesian(values, transforms))`)
--   diff-tool integration on update (open the user's preferred diff tool to
-    review)
--   per-test approval status visible in metadata
-
-Generalises Overkill's existing baselines model. Likely package home:
-`@overkill/baselines` extended; or a separate `@overkill/approval` if the
-workflow diverges enough.
 
 ## Coverage-Guided In-Process Fuzzing
 
@@ -199,37 +186,6 @@ Composes naturally with the deterministic simulation layer: a "chaos
 profile" is a virtual world configured with a fault distribution. Code that
 explicitly handles failure (retries, circuit breakers, OOM defenses) gets a
 real test runtime.
-
-## In-Source / Colocated Tests
-
-In-source tests live alongside production code (Rust's
-`#[cfg(test)]`, Zig's `test "name" {}`). The current Overkill concept
-**rejects them as the default authoring model** — see
-`non-goals.md` § No in-source tests as the default authoring model
-and `microtests-and-capabilities.md` § In-Source Microtests for the
-canonical rejection.
-
-This entry stays here only as background research, not on the
-adoption path.
-
-What is genuinely interesting:
-
--   the test-next-to-the-code argument has merit
--   Rust and Zig prove the general shape can work in compiled
-    languages
-
-What blocks adoption for Overkill:
-
--   the JS tooling ecosystem treats tests as file-pattern-based
--   production stripping requires a compiler step Overkill does not
-    own — a custom loader or transform fights the
-    Node-builtins-first direction
--   a sentinel-based approach (`if (import.meta.test)`) puts an
-    Overkill-aware import in production code, breaking the "consumer
-    production code does not import Overkill" rule
-
-The shipping and tooling story would need to change materially
-before this is reopened.
 
 ## Out-Of-Band Verdicts
 
@@ -367,13 +323,14 @@ If Overkill commits to incorporating these in priority order:
 9.  **Coverage-guided fuzzing** — defer until coverage is stable
 10. **Linearisability checker** — defer until concurrent-JS users
     materialise
-11. **Approval-test workflow** — defer; covered by baselines
+11. **Approval-test workflow** — defer; the well-understood shape lives in
+    `ideas-and-future-directions.md` § Approval And Golden Workflow Testing
 
 In-source tests are intentionally **not** in this list: the settled
-concept rejects them as the default authoring model (see
+concept rejects them as the default authoring model and the research
+record lives in `non-goals.md` § Deferred With Research (see also
 `architecture-decisions.md` § Default Authoring Model and
-`microtests-and-capabilities.md`). They remain a possible future
-research item only.
+`microtests-and-capabilities.md`).
 
 Item 1 is essentially free given decisions already made. Items 2, 3, 5
 are the big architectural commitments. Item 4 (TIA) is open research.

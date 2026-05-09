@@ -8,8 +8,9 @@ falling back to inline `.only` culture.
 
 ## Position
 
-Overkill treats test metadata as explicit structured data rather than ad-hoc
-naming conventions.
+Overkill treats test metadata as explicit structured data rather than
+ad-hoc naming conventions — the metadata-layer expression of
+`principles.md` § Data Over Side Effects.
 
 Likely metadata categories:
 

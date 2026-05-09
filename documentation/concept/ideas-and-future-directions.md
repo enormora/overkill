@@ -2,9 +2,11 @@
 
 ## Purpose
 
-This document collects broader feature areas and product directions that are worth keeping in view even though they are not yet part of the settled core concept.
+This document collects **well-understood enhancements** that are worth keeping in view even though they are not yet part of the settled core concept. The shape of each is reasonably clear; what is missing is mostly time, prioritisation, or a triggering use case.
 
-Some of these may become first-class packages later. Others may stay as integrations or idea donors. The point of this document is to expand the design space without pretending every idea is already a commitment.
+For exploratory research (techniques where the underlying mechanism still needs investigation — property-based testing depth, hyperproperties, linearizability, fuzzing, mutation 2.0, TIA, AI augmentation, time-travel), see `novel-techniques.md`.
+
+Some of these may become first-class packages later. Others may stay as integrations or idea donors.
 
 ## Contract Tests
 
@@ -49,7 +51,7 @@ Contract testing could eventually appear as:
 
 Overkill probably should not start by inventing a universal contract-testing framework. It should first make sure the engine, baseline model, and artifact identity model are strong enough that such packages can be built cleanly.
 
-## Golden And Master Workflow Tests
+## Approval And Golden Workflow Testing
 
 ### How This Differs From Snapshots
 
@@ -70,10 +72,12 @@ Golden or master workflow tests often compare a larger structured interaction ov
 -   a trace timeline
 -   a workflow with multiple steps and intermediate outputs
 
-So the difference is not “snapshot vs not snapshot.” The difference is:
+So the difference is not "snapshot vs not snapshot." The difference is:
 
 -   snapshots often capture one observation
 -   golden/master workflows often capture a multi-step narrative artifact
+
+Approval testing is the broader workflow that covers both: print whatever the system observes, save it, manually approve once, and the saved file becomes the spec. Different in spirit from snapshots: snapshots are convenience; approvals are a deliberate ratchet.
 
 ### Why This Matters
 
@@ -90,7 +94,7 @@ This pushes the concept toward richer baseline adapters rather than one global s
 
 ### Recommended Direction
 
-Overkill should treat golden/master tests as a subtype of baseline-driven testing, but a richer subtype than the default “single string snapshot” mental model.
+Overkill should treat golden/master tests as a subtype of baseline-driven testing, but a richer subtype than the default "single string snapshot" mental model.
 
 That means the baseline system should be able to support:
 
@@ -99,11 +103,24 @@ That means the baseline system should be able to support:
 -   domain-specific comparison
 -   explicit update workflows
 
+### Concrete Approval Primitives
+
+If approval testing earns its own first-class shape on top of baselines, the concrete primitives worth committing to:
+
+-   a `baseline()` primitive distinct from `expect()`, signalling "I am locking observed behavior, not asserting a known truth"
+-   combinatoric input generation (e.g. `baseline(cartesian(values, transforms))`)
+-   diff-tool integration on update (open the user's preferred diff tool to review)
+-   per-test approval status visible in metadata
+
+Likely package home: `@overkill/baselines` extended, or a separate `@overkill/approval` if the workflow diverges enough.
+
 ## Test Data Generation
 
 ### Position
 
 This deserves more thought. It is broader than fixtures, but it should not imply code generation.
+
+For property-based generators specifically (integrated shrinking, splittable PRNGs, classify/coverage), the research-flavored treatment lives in `novel-techniques.md` § Property-Based Testing. This section covers the broader builder/factory direction.
 
 ### What It Could Mean
 
@@ -145,60 +162,11 @@ This area is promising, but it needs deeper research before becoming a settled p
 
 ## Deterministic Time And Clocks
 
-### Position
+The deterministic clock and scheduler story lives in `deterministic-simulation.md`, which positions simulators as user- or adapter-owned with Overkill providing the testing integration. Overkill should not ship a first-party clock package; the explicit-injection stance there is consistent with the "Keep Production Code Clean" principle.
 
-The anti-pattern warning is correct: monkey patching global clocks should not be the Overkill default story.
+## Scope Note
 
-### Recommended Direction
-
-If Overkill touches clocks at all, the good model is:
-
--   dependency-injected clock interfaces
--   fake clock implementations passed explicitly
--   no global time patching as the default
-
-### Should This Live Under Overkill?
-
-Probably not as an immediate core family.
-
-Reasons against:
-
--   it is a generally useful application design primitive, not only a testing primitive
--   it risks growing into another broad utility library
-
-Reasons it still might belong later:
-
--   benchmarks, microtests, and integration packages may all benefit from a shared clock abstraction
--   the package could reinforce Overkill's explicit-injection philosophy
-
-Current recommendation:
-
--   treat clocks as an adjacent idea, not a committed Overkill package
--   only pull it under the umbrella later if multiple Overkill packages genuinely need the same abstraction
-
-## Rejected For Now: `@overkill/world`
-
-The idea of a first-class `@overkill/world` package remains attractive.
-There is real value in:
-
--   explicit capability boundaries
--   typed recording handles
--   deterministic testing helpers for effectful collaborators
--   reusable recorder and snapshot helpers
-
-But it is rejected for the current concept for one important reason:
-
--   consumer production code should not need to import Overkill packages
-
-If `@overkill/world` became the canonical way to define application handles,
-it would quickly turn into a production-facing architecture dependency. That
-crosses a boundary the current concept should not cross yet.
-
-Current stance:
-
--   keep capability handles as a documented architectural pattern
--   make Overkill’s testing APIs work well with user-owned interfaces
--   do not ship a first-class world package in the current concept
-
-This may be revisited later if the boundary changes or if Overkill develops a
-test-only helper layer that avoids production-code dependency.
+This doc covers broader product directions kept in view as future
+possibilities. Directions that are _rejected for the current concept_
+with research preserved (such as `@overkill/world` and in-source tests)
+live in `non-goals.md` § Deferred With Research instead.

@@ -29,8 +29,10 @@ ScalaCheck: **tests are values**. A test file _exports_ a value describing
 its tests. The runner imports the module, walks the value, and decides what
 to execute.
 
-This should be treated as the first-party answer at the high-level authoring
-layer, not as a discarded side experiment.
+This is the authoring-layer expression of `principles.md` § Data Over
+Side Effects: tests are returned as data, not registered via the act of
+loading the module. It should be treated as the first-party answer at
+the high-level authoring layer, not as a discarded side experiment.
 
 ## What It Looks Like
 

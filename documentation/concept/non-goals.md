@@ -3,12 +3,19 @@
 ## Purpose
 
 Concept docs scatter their rejections across many files. This doc
-collects them in one place so the _settled_ rejections are visible to
-reviewers, contributors, and downstream package authors without
-re-litigation per topic.
+collects them in one place so the rejections are visible to reviewers,
+contributors, and downstream package authors without re-litigation per
+topic.
 
-Each entry names what is rejected, why, where the rejection lives in the
-canonical docs, and what (if anything) is the accepted alternative.
+Two categories live here:
+
+-   **Settled rejections** — directions Overkill has decided against. Each
+    entry names what is rejected, why, where the rejection lives in the
+    canonical docs, and the accepted alternative.
+-   **Deferred with research** (see the section near the end) — directions
+    rejected for the _current_ concept but with a preserved record of the
+    research already done and the conditions under which the decision
+    would be revisited. `@overkill/world` and in-source tests live here.
 
 ## Authoring And API Shape
 
@@ -37,21 +44,6 @@ Where: `architecture-decisions.md` § Default Authoring Model,
 
 Alternative: CLI selection (`--name`, `--file`, `--id`, `--last-failed`,
 `--changed`).
-
-### No in-source tests as the default authoring model
-
-Overkill does not promote `if (import.meta.test) { ... }`-style in-file
-test bodies in source.
-
-Why: it requires a compiler/stripper before shipping production code,
-contradicts the "production code does not import Overkill" rule, and
-its DX is not clearly better than separate test files.
-
-Where: `architecture-decisions.md` § Default Authoring Model,
-`microtests-and-capabilities.md` § In-Source Tests.
-
-Status: tracked as possible future research only (`novel-techniques.md`
-Recommended Path note).
 
 ### No Sinon-style doubles surface
 
@@ -87,8 +79,8 @@ Overkill does not ship a long-lived `overkill daemon` socket-based
 runner.
 
 Why: warm reuse adds long-lived state, socket protocol, and lifecycle
-management that conflict with the "just `node ./foo.test.ts`"
-principle. The optimization target is cold start.
+management — and the optimization target is cold start, not warm
+steady-state (see `principles.md` § Cold Start Is The Budget).
 
 Where: `fast-feedback-loops.md` § 11. Out-of-the-box ideas for fast
 startup.
@@ -101,8 +93,9 @@ imports, pre-resolved file lists.
 Overkill does not require `module.register` / `module.registerHooks`
 hooks for ordinary use.
 
-Why: loader hooks add startup overhead, complicate cold-start budgets,
-and tend to surprise tooling.
+Why: loader hooks add startup overhead and complicate cold-start
+budgets (see `principles.md` § Cold Start Is The Budget); they also
+tend to surprise tooling.
 
 Where: `fast-feedback-loops.md` § 5. Loader Hooks.
 
@@ -128,7 +121,9 @@ research in `novel-techniques.md`.
 Overkill does not ship its own strip cache or bytecode cache.
 
 Why: Node's module compile cache covers bytecode reuse, and the strip
-cost is single-digit milliseconds per file.
+cost is single-digit milliseconds per file. A custom warm cache would
+need to clear `principles.md` § Cold Start Is The Budget — it cannot
+penalize the cold path.
 
 Where: `fast-feedback-loops.md` § 4. Sharing parsed sources between
 tests in the same process.
@@ -171,24 +166,10 @@ Overkill does not enable code coverage instrumentation by default.
 
 Why: instrumentation slows microtests and rarely matters per-iteration.
 
-Where: `architecture-decisions.md` § Rejected Or Deferred Directions,
-`microtests-and-capabilities.md`.
+Where: `microtests-and-capabilities.md`, `coverage.md`.
 
 Alternative: explicit opt-in (`overkill --coverage` / config) using
 external coverage tooling.
-
-### No first-party `@overkill/world` package
-
-Overkill does not ship a production-facing capability-handle container.
-
-Why: consumer production code should not need to import Overkill
-packages.
-
-Where: `principles.md` § Keep Production Code Clean,
-`capability-handles.md` § Current Stance.
-
-Alternative: capability handles documented as a _user architecture_
-pattern; `@overkill/doubles` covers test-side function replacement.
 
 ## Reporting And Identity
 
@@ -197,7 +178,8 @@ pattern; `@overkill/doubles` covers test-side function replacement.
 Overkill rejects `{ allowEmpty: true }` per-test metadata and any
 global override that lets a zero-assertion test pass.
 
-Why: a test that asserts nothing is broken; an opt-out hides defects.
+Why: an "exit ramp" from the contract — see `principles.md` § The
+Suite Is A Contract.
 
 Where: `assertions-and-results.md` § Zero-Assertion Detection As
 Default Failure.
@@ -242,7 +224,8 @@ treat any non-zero exit as failure themselves.
 
 Overkill does not retry microtests as a normal mode.
 
-Why: a flaky microtest is a design failure, not an expected state.
+Why: an "exit ramp" from the contract — see `principles.md` § The
+Suite Is A Contract.
 
 Where: `metadata-and-selection.md` § Stability Markers,
 `microtests-and-capabilities.md`.
@@ -255,12 +238,8 @@ attribution-preserving artifacts. Microtests do not.
 Overkill does not ship a "known-flaky, allow to fail without gating"
 mode.
 
-Why: a test that gives two answers at once does not just fail to
-provide information — it provides actively harmful information. It
-signals that a red test is acceptable, that tests are unreliable, that
-the test suite does not stand for safety. Once that signal is in the
-system, the suite stops being a contract. Quarantine offers an exit
-ramp from that signal; we want there to be no exit ramp.
+Why: an "exit ramp" from the contract — see `principles.md` § The
+Suite Is A Contract.
 
 Where: `metadata-and-selection.md` § Stability Markers (Quarantine
 glossary entry was removed in the same direction).
@@ -285,10 +264,74 @@ Alternative: stable APIs in `@overkill/engine`, orchestration-level
 composition in `@overkill/run`, and config-driven attachment for
 discovered surfaces (reporters, baseline adapters).
 
+## Deferred With Research
+
+These directions are rejected for the _current_ concept but the door is
+not fully closed. Each preserves the research already done, names what
+would have to change for revival, and explains why the deferral is not
+just a parking-lot punt.
+
+### `@overkill/world` (production-facing capability container)
+
+Status: rejected for the current concept; revisit if the production-code
+boundary changes.
+
+What it would have been: a first-class package for declaring application
+capabilities — explicit boundaries, typed recording handles, deterministic
+helpers for effectful collaborators, reusable recorder and snapshot
+helpers.
+
+Why deferred: consumer production code should not need to import Overkill
+packages (see `principles.md` § Keep Production Code Clean). If
+`@overkill/world` became the canonical way to define application handles,
+it would turn into a production-facing architecture dependency. That
+crosses a boundary the current concept will not cross.
+
+What would change to revive: a test-only helper layer that does not pull
+Overkill into production runtime, or a deliberate scope expansion of
+Overkill's role beyond the testing side of the boundary.
+
+Where: `principles.md` § Keep Production Code Clean,
+`capability-handles.md` § Current Stance,
+`ideas-and-future-directions.md` (cross-reference).
+
+Alternative: capability handles documented as a _user architecture_
+pattern; `@overkill/doubles` covers test-side function replacement.
+
+### In-source / colocated tests
+
+Status: rejected as the default authoring model; tracked as background
+research only.
+
+What it would have been: tests living alongside production code, in the
+shape of Rust's `#[cfg(test)]` blocks or Zig's `test "name" {}` bodies.
+The "test next to the code" argument has merit, and Rust and Zig
+demonstrate the general shape works in compiled languages.
+
+Why deferred:
+
+-   the JS tooling ecosystem treats tests as file-pattern-based; an
+    in-source model would have to fight that grain
+-   production stripping requires a compiler step Overkill does not own;
+    a custom loader or transform fights the Node-builtins-first
+    direction
+-   sentinel-based approaches such as `if (import.meta.test) { ... }`
+    put an Overkill-aware import in production code, breaking the
+    "consumer production code does not import Overkill" rule
+-   the DX is not clearly better than separate test files
+
+What would change to revive: the JS shipping and tooling story changes
+materially (e.g. native in-source-test stripping in a runtime), or
+Overkill's scope shifts to own a transform pipeline.
+
+Where: `architecture-decisions.md` § Default Authoring Model,
+`microtests-and-capabilities.md` § In-Source Microtests,
+`novel-techniques.md` Recommended Path note.
+
 ## What This Doc Is Not
 
 This file does not list every feature deferred to a later release. It
-lists _settled rejections_ — directions Overkill has decided against,
-not parking-lot items waiting on time. For deferred-but-likely items
-see `ideas-and-future-directions.md` and the open-research items in
+lists _decided-against_ directions — both settled rejections and the
+deferred-with-research entries above. For deferred-but-likely items see
+`ideas-and-future-directions.md`; for open research items see
 `novel-techniques.md`.

@@ -32,7 +32,10 @@ Underneath that API, Overkill still benefits from a result-oriented protocol:
     data instead of parsing prose
 
 So "results, not exceptions" is now the **protocol-layer principle**, not
-the main user-facing syntax.
+the main user-facing syntax. It is the engine-side expression of
+`principles.md` § Data Over Side Effects: outcomes flow as structured
+values between layers, even when the user-facing API is the injected
+builder.
 
 ## Why The Protocol Matters
 

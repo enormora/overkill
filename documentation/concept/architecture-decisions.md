@@ -184,15 +184,3 @@ Remaining speculative work belongs in:
 -   Stable machine-readable APIs should make IDE and MCP integrations easy.
 -   Remote execution is an architectural direction from the start, not an
     immediate release requirement.
-
-## Rejected Or Deferred Directions
-
-The full list with rationale lives in [`non-goals.md`](./non-goals.md);
-the highlights:
-
--   No first-class production-facing `@overkill/world` package in the
-    current concept.
--   No Overkill dependency should be required in consumer production code.
--   No first-party object or module patching story in doubles.
--   No in-source tests as the planned default authoring model.
--   No always-on coverage in the default run mode.
