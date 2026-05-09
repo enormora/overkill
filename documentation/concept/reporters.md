@@ -138,6 +138,27 @@ event, but it does delay its own next callback. Reporter authors who
 need throughput should buffer internally and return quickly rather than
 holding the event pipeline open.
 
+## Scheduling And UI Ownership
+
+The orchestration layer owns **event delivery**, not UI rendering
+policy. Its responsibility ends at producing ordered `ReporterEvent`s,
+enforcing sink conflicts, and applying the per-reporter timeout/backpressure
+rules above.
+
+The reporter owns how it turns those events into a live UI:
+
+-   a terminal reporter may render inline on the same event loop
+-   an IDE or web reporter may buffer events and repaint on its own cadence
+-   a heavyweight live UI may forward events to a separate worker,
+    subprocess, or external process that owns the animation loop
+
+The default concept does **not** introduce a dedicated UI thread/process
+for live reporters. That would add overhead to the cheapest microtest
+path even when the user only wants plain stdout. If a reporter truly
+needs an isolated render loop (for example a benchmark dashboard or a
+richer TUI), that is a reporter implementation choice above the stable
+reporter contract, not a runner-wide default.
+
 A reporter that needs serialized output (e.g. a TAP reporter writing
 to stdout) declares the sink as `exclusive`; a reporter that
 tolerates interleaving declares `shared`.
