@@ -123,6 +123,13 @@ Artifacts are:
 -   optional when the run mode does not need them
 -   size-bounded with explicit truncation markers
 
+Ordinary microtest failures do **not** imply a standalone on-disk file
+per failed case. The default microtest path stays cheap: assertion
+results, concise diffs, and runner diagnostics live in the run record
+and event stream. Separate per-test files are reserved for artifacts
+whose value survives the run (witnesses, baselines) or for explicitly
+requested diagnostic modes such as `--debug` / `--debug-test`.
+
 ## Storage Policy
 
 Artifacts produced during a run live in a per-run directory by default:

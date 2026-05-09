@@ -199,8 +199,10 @@ same `ArtifactId`. Replay (`overkill replay <run-id>`) reads the
 record; replay-witness (`overkill replay-witness <path>`) reads the
 witness directly.
 
-If `--debug` had been on, a `TestDebugArtifact` (see
-`runtime-behavior.md` § Test Debug Mode) would also exist at
+If the user had explicitly enabled debug for this case — typically via
+`--debug-test <id>` or a narrowly filtered `--debug` run — a
+`TestDebugArtifact` (see `runtime-behavior.md` § Test Debug Mode)
+would also exist at
 `.overkill/runs/<run-id>/debug/<case-id>.debug.json`, with the
 timeline showing `forall` iteration counts up to the failure. The
 `RunPlan.debugMode` field records that debug data was collected.
