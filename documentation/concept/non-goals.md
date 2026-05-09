@@ -188,8 +188,25 @@ Why: instrumentation slows microtests and rarely matters per-iteration.
 
 Where: `microtests-and-capabilities.md`, `coverage.md`.
 
-Alternative: explicit opt-in (`overkill --coverage` / config) using
+Alternative: explicit opt-in (`overkill run --coverage`) using
 external coverage tooling.
+
+### No coverage outside microtest profiles
+
+Coverage is restricted to microtest profiles. Integration, browser,
+and benchmark profiles reject `--coverage`.
+
+Why: integration tests broad-path through code (their coverage reads
+as "everything was hit," uninformative); benchmarks cannot be
+instrumented without distorting timing; browser tests have their own
+coverage story via the browser's instrumentation. Restricting to
+microtests keeps the API surface small.
+
+Where: `coverage.md` § Position.
+
+Alternative: per-profile coverage stories handled outside Overkill —
+browser instrumentation in the browser test rig, integration coverage
+via external tooling if a team genuinely wants it.
 
 ## Reporting And Identity
 

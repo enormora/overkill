@@ -3,10 +3,25 @@
 ## Position
 
 Code coverage is a planned integration from the start, but Overkill
-treats it as **explicit and off by default** rather than a built-in
-always-on instrument.
+treats it as **explicit, off by default, and scoped to microtests**.
 
-Why off by default:
+Why microtests only:
+
+-   coverage answers "what code do my unit-level tests exercise?" —
+    the question fits microtests, where individual case attribution
+    is meaningful
+-   integration tests broad-path through code; their coverage
+    typically reads as "everything was hit," which tells you little
+-   benchmarks must not be instrumented — instrumentation distorts
+    timing (an explicit non-goal: see `non-goals.md` § No always-on
+    coverage in the default run mode)
+-   browser tests have their own coverage story via the browser's
+    own instrumentation (out of scope here)
+-   restricting to microtests keeps the API surface small (see
+    `principles.md` § Low API Surface) and aligns with
+    `principles.md` § Capability-Oriented Microtests
+
+Why off by default within microtests:
 
 -   coverage instrumentation slows microtests measurably and rarely
     matters per-iteration
@@ -17,8 +32,8 @@ Why off by default:
 
 Why a first-class concept anyway:
 
--   teams that want coverage need it to be one flag, not a separate
-    tool chain
+-   teams that want microtest coverage need it to be one flag, not a
+    separate tool chain
 -   the runner already owns the boundaries (workers, subprocesses,
     test identity) where instrumentation has to attach
 -   reporters need a structured way to surface coverage alongside
@@ -26,6 +41,8 @@ Why a first-class concept anyway:
 
 ## Settled Decisions
 
+-   Coverage is restricted to microtest profiles. Other profiles
+    (integration, browser, benchmark) reject `--coverage`.
 -   Coverage is opt-in per run; there is no global "always on"
     default mode in any first-party profile.
 -   Overkill does not ship its own instrumenter or coverage reporter
@@ -51,12 +68,15 @@ output — Overkill orchestrates the engine; `c8` formats the output.
 
 ## CLI Surface
 
-Single flag at the run level (still under design; will be registered
-in `cli.md` once finalised):
+Single flag at the run level, only valid with a microtest profile
+(still under design; will be registered in `cli.md` once finalised):
 
 ```
-overkill run --coverage [--coverage-format <v8|lcov|json|html>]
+overkill run --coverage [--coverage-format <v8|lcov|json|html>] --profile microtest
 ```
+
+`--coverage` combined with a non-microtest profile is rejected at CLI
+parse time with a message pointing at this restriction.
 
 Defaults:
 
@@ -66,15 +86,14 @@ Defaults:
     inside the run-record coverage directory
 
 Programmatic surface mirrors the flag (orchestration-level option in
-`@overkill/run`).
+`@overkill/run`); the same microtest-profile restriction applies.
 
 ## Worker-Pool And Process-Per-File Interaction
 
-V8 coverage is collected per Node process. Worker-pool runs collect
-per-worker output and merge it into the run record at completion;
-process-per-file runs collect per-process output the same way.
-Single-worker-serial runs (benchmarks, simulation) collect a single
-output stream.
+V8 coverage is collected per Node process. Microtest worker-pool runs
+collect per-worker output and merge it into the run record at
+completion; microtest process-per-file runs collect per-process output
+the same way.
 
 The runner is responsible for:
 
@@ -91,11 +110,11 @@ Tests do not interact with coverage instrumentation directly.
 ## Permission Surface
 
 Microtest profiles deny filesystem writes by default. The
-`micro-with-coverage` profile is the narrow exception: it adds
-`--allow-fs-write=.overkill/runs/<run-id>/coverage/` to the Node
-permission flags it starts the worker with. The grant is path-scoped
-by the OS-level Node permission model; no Overkill-specific
-abstraction layers on top.
+`micro-with-coverage` profile — the canonical (and only) coverage
+profile — adds `--allow-fs-write=.overkill/runs/<run-id>/coverage/`
+to the Node permission flags it starts the worker with. The grant is
+path-scoped by the OS-level Node permission model; no
+Overkill-specific abstraction layers on top.
 
 ## Reporter Interaction
 
@@ -111,6 +130,8 @@ result.
     position on what counts as enough coverage)
 -   not a built-in instrumenter; the runner orchestrates V8's native
     coverage rather than ship its own
+-   not a coverage facility for integration, browser, or benchmark
+    profiles — those reject `--coverage`
 
 ## Open Items
 
