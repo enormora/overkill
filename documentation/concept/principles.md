@@ -76,6 +76,14 @@ place to live:
 This avoids precedence bugs, duplicated documentation, and the ambient
 "did I set this here or there?" confusion.
 
+The rule constrains _human-facing_ surfaces (CLI and config). The
+programmatic API exposed by `@overkill/run` (see `## API-First`) is a
+different layer: it is the unified implementation target that both
+human surfaces reduce to. A custom orchestrator using the API
+expresses both per-run intent and project policy in one call; that is
+not a third configuration surface, it is what the CLI parser and the
+config-file loader internally call.
+
 ## Low API Surface
 
 Overkill should keep the visible first-party API surface small.

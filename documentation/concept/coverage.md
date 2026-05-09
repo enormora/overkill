@@ -119,10 +119,12 @@ Other behaviour:
 
 -   per-test attribution: tied to `CaseId`; the per-test slice lives
     inside the run-record coverage directory.
--   programmatic surface mirrors the CLI flag (orchestration-level
-    option in `@overkill/run`); the microtest-profile restriction
-    applies; format / threshold settings come from config in both
-    surfaces.
+-   the programmatic API in `@overkill/run` accepts both the per-run
+    flag (`coverage: true`) and the policy values (formats,
+    thresholds, etc.) in a single `run(config)` call — it is the
+    unified target the CLI and config file both reduce to (see
+    `principles.md` § One First-Party Path Per Layer for why the
+    API is a different layer from the human-facing surfaces).
 
 ## Worker-Pool And Process-Per-File Interaction
 
