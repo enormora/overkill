@@ -158,6 +158,26 @@ Where: `architecture-decisions.md` § Planned Integration Direction,
 Alternative: integrate with [tstyche](https://tstyche.org/) and surface
 its results through the Overkill reporter pipeline.
 
+### No CI auto-detection
+
+Overkill does not switch behavior based on `process.env.CI` or
+per-provider env vars. There is no `--ci` / `--no-ci` flag, no
+auto-switched reporter, no environment-based gate on baseline writes,
+and no auto-tightened defaults in CI.
+
+Why: environment-based behavior switching is a hidden side channel
+(see `principles.md` § No Magic, § Explicit Over Implicit). The same
+invocation should produce the same behavior on a developer host and a
+CI host; differences belong in explicit configuration or explicit
+flags.
+
+Where: `runtime-behavior.md` (the previous § CI Auto-Detection has
+been removed in favour of unconditional defaults).
+
+Alternative: pick the reporter, timeouts, and stale-baseline policy
+in `overkill.config.ts`. CI workflows that want different behavior
+configure it explicitly.
+
 ## Distribution And Coverage
 
 ### No always-on coverage in the default run mode
@@ -205,18 +225,19 @@ already enough to disambiguate.
 
 Where: `artifact-identity.md` § Resolved Identity Rules.
 
-### No exit-code remap in CI mode
+### No exit-code remap
 
 Overkill does not collapse zero-test exit code 4 onto failure exit
-code 1 when running on CI.
+code 1.
 
 Why: collapsing destroys the distinction between "test failure" and
-"no tests collected" exactly where CI consumers most need it.
+"no tests collected" exactly where consumers most need it.
 
-Where: `runtime-behavior.md` § CI Auto-Detection.
+Where: `runtime-behavior.md` § Zero-Test Runs, § Exit Codes And
+`process.exit`.
 
-Alternative: CI consumers that want a single failure threshold can
-treat any non-zero exit as failure themselves.
+Alternative: consumers that want a single failure threshold can treat
+any non-zero exit as failure themselves.
 
 ## Testing Models
 

@@ -60,8 +60,7 @@ Important distinction:
 The full CLI reference (subcommands, flags, and their canonical homes)
 lives in [`cli.md`](./cli.md). Behavior of CLI options that bind
 specifically to runtime concerns — parallelism, watch mode, debug,
-sharding, CI auto-detection — is documented in this doc; `cli.md`
-cross-links into it.
+sharding — is documented in this doc; `cli.md` cross-links into it.
 
 ## Exit Codes And `process.exit`
 
@@ -545,30 +544,6 @@ Default monorepo behavior:
 
 Cross-package test ordering is alphabetic by package name, then by file
 path within each package, deterministic and reproducible without a seed.
-
-## CI Auto-Detection
-
-Default behavior on detected CI environments (`process.env.CI === 'true'`,
-or one of the well-known per-provider env vars):
-
--   color output: enabled if `FORCE_COLOR` is set, otherwise auto-detected
-    from terminal capabilities
--   reporter: switch from `line` to `tap` (or a configurable CI default)
--   every baseline-writing verb (`overkill baseline update`,
-    `apply`, `bootstrap`, `clean`) is rejected; baseline writes
-    require explicit intent (an environment variable opt-in).
-    Read-only verbs (`list`, `diff`) are allowed in CI.
--   stale-baseline detection: any stale baseline fails the run
--   zero-test runs: failure (no `--allow-empty` unless explicit). The
-    exit code stays distinct (4); CI consumers that prefer to gate on
-    a single non-zero value should treat any non-zero exit as failure
-    rather than relying on the runner to remap codes.
--   timeouts: tighter defaults; longer execution budget for benchmarks
--   `console.log` capture: stricter (kept always, not only on failure)
-    where the active profile actually captures console events
-
-Override: `--no-ci` forces dev-mode behavior on a CI host; `--ci` forces
-CI behavior on a dev host.
 
 ## Terminal Capability Detection
 

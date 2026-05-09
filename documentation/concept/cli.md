@@ -29,19 +29,20 @@ flags as `run` — they _are_ runs with different intended artifacts (see
 `Flags vs Subcommands` below). `list` and `clean` operate on disk only
 and do not run tests.
 
-CI rejects every verb under `baseline` that writes to disk (`update`,
-`apply`, `bootstrap`, `clean`); baseline writes require explicit intent
-(an environment variable opt-in). `list` and `diff` are read-only and
-allowed in CI.
+The runner trusts the verb the user typed. `update`, `apply`,
+`bootstrap`, and `clean` write to disk regardless of the host
+environment; if a CI workflow runs them, that is what the workflow
+author intended. There is no env-var opt-in or environment-based
+gate.
 
-| Command                                  | Behavior                                                                                                                     | Reference                                      |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `overkill baseline update [paths...]`    | **Day-to-day update.** Create missing, overwrite changed; **leave stale alone**. Default safe verb.                          | `baselines-and-snapshots.md` § Update Workflow |
-| `overkill baseline apply [paths...]`     | **Full reconciliation.** Create missing, overwrite changed, **and remove stale orphans**. Explicit verb for the cleanup.     | same                                           |
-| `overkill baseline bootstrap [paths...]` | **First-time setup.** Only create missing baselines; do not touch existing files. For brand-new suites.                      | same                                           |
-| `overkill baseline list [paths...]`      | Print all baselines on disk with their resolved identities. Read-only; no test execution.                                    | same                                           |
-| `overkill baseline clean [paths...]`     | Remove stale orphans only. Does not write or update active baselines. Use after deleting tests when you don't want to rerun. | same                                           |
-| `overkill baseline diff [paths...]`      | Show what `apply` would change. Read-only; runs tests but writes nothing.                                                    | same                                           |
+| Command                                  | Behavior                                                                                                                 | Reference                                      |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| `overkill baseline update [paths...]`    | **Day-to-day update.** Create missing, overwrite changed; **leave stale alone**. Default safe verb.                      | `baselines-and-snapshots.md` § Update Workflow |
+| `overkill baseline apply [paths...]`     | **Full reconciliation.** Create missing, overwrite changed, **and remove stale orphans**. Explicit verb for the cleanup. | same                                           |
+| `overkill baseline bootstrap [paths...]` | **First-time setup.** Only create missing baselines; do not touch existing files. For brand-new suites.                  | same                                           |
+| `overkill baseline list [paths...]`      | Print all baselines on disk with their resolved identities. Does not run tests; does not write.                          | same                                           |
+| `overkill baseline clean [paths...]`     | Remove stale orphans only. Does not run tests; does not update active baselines.                                         | same                                           |
+| `overkill baseline diff [paths...]`      | Show what `apply` would change. Runs tests but writes nothing.                                                           | same                                           |
 
 ## Flags vs Subcommands
 
@@ -97,14 +98,12 @@ requires the user to type it deliberately.
 
 ## Lifecycle And Edge Cases
 
-| Flag                | Behavior                                                             | Reference                                 |
-| ------------------- | -------------------------------------------------------------------- | ----------------------------------------- |
-| `--allow-empty`     | Treat zero-test runs as success instead of failure.                  | `runtime-behavior.md` § Zero-Test Runs    |
-| `--ci`              | Force CI defaults on a developer host.                               | `runtime-behavior.md` § CI Auto-Detection |
-| `--no-ci`           | Force developer-mode defaults on a CI host.                          | same                                      |
-| `--seed <n>`        | Override the run seed (for reproducible randomization).              | `reproducibility.md`                      |
-| `--debug`           | Emit a structured debug artifact for every test in the resolved set. | `runtime-behavior.md` § Test Debug Mode   |
-| `--debug-test <id>` | Emit a debug artifact for a single test by ID or selector pattern.   | same                                      |
+| Flag                | Behavior                                                             | Reference                               |
+| ------------------- | -------------------------------------------------------------------- | --------------------------------------- |
+| `--allow-empty`     | Treat zero-test runs as success instead of failure.                  | `runtime-behavior.md` § Zero-Test Runs  |
+| `--seed <n>`        | Override the run seed (for reproducible randomization).              | `reproducibility.md`                    |
+| `--debug`           | Emit a structured debug artifact for every test in the resolved set. | `runtime-behavior.md` § Test Debug Mode |
+| `--debug-test <id>` | Emit a debug artifact for a single test by ID or selector pattern.   | same                                    |
 
 This list intentionally omits flags that are still under design (e.g.
 `--coverage`, `--since <ref>`, `--shuffle`); when those land, this

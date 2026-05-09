@@ -54,7 +54,7 @@ The concept should assume the runner can detect:
 -   obsolete files for removed or renamed tests
 -   orphaned performance budgets
 
-CI behavior should treat stale baselines as failures unless an intentional `overkill baseline apply` or `overkill baseline clean` is invoked with the CI opt-in env var set.
+Stale baselines fail the run by default; removing them requires an explicit `overkill baseline apply` or `overkill baseline clean`.
 
 Vitest’s CI behavior around obsolete snapshots is a useful reference point.
 
@@ -130,14 +130,10 @@ Read-only and disk-only verbs:
     re-running the suite.
 
 When `overkill run` is invoked instead, no baseline writes happen —
-comparison-only is the default mode. CI rejects every write verb
-(`update`, `apply`, `bootstrap`, `clean`) unless an environment
-variable explicitly opts in. `list` and `diff` are read-only and
-allowed in CI.
-
-Per `runtime-behavior.md` § CI Auto-Detection, baseline writes are
-gated behind explicit intent in CI to prevent accidental rubber-
-stamping.
+comparison-only is the default mode. The runner does not gate baseline
+writes by environment; if a CI workflow runs a write verb, that is
+what the workflow author intended. The author of the workflow is
+responsible for not putting `baseline apply` in a check-only pipeline.
 
 ### Review-Then-Commit Flow
 
@@ -170,9 +166,10 @@ Stale baselines (no corresponding collected test) are detected after
 the run by comparing the on-disk baseline files against the resolved
 case identities. Default policy:
 
--   ordinary `overkill run`: stale baselines are reported as warnings;
-    CI runs treat them as failures (see `runtime-behavior.md` § CI
-    Auto-Detection)
+-   ordinary `overkill run`: stale baselines **fail the run**. The
+    suite is honest about its on-disk state. (Configurable to a
+    warning in `overkill.config.ts` if a project needs a softer
+    policy during a transition.)
 -   `overkill baseline update`: stale orphans are reported but **left
     on disk** — `update` is non-destructive
 -   `overkill baseline apply`: stale orphans are removed after the run
@@ -186,8 +183,9 @@ case identities. Default policy:
 
 ### What The Runner Will Not Do
 
--   silently update baselines on a CI run, even when the diff would
-    apply cleanly
+-   silently update baselines under any verb. The user must type a
+    write verb (`update`, `apply`, `bootstrap`, `clean`) for the
+    runner to touch baseline files.
 -   merge two stale-but-similar baselines into one (no fuzzy rename
     inference)
 -   cross-delete baselines that belong to a different identity-form
