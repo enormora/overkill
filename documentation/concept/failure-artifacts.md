@@ -219,7 +219,7 @@ type DiffArtifact = {
     readonly kind: 'value' | 'string' | 'object' | 'array';
     readonly expected: SerializedValue;
     readonly actual: SerializedValue;
-    readonly ops?: ReadonlyArray<DiffOp>;
+    readonly ops?: ReadonlyArray<DiffOperation>;
     readonly hunks?: ReadonlyArray<Hunk>;
 };
 ```

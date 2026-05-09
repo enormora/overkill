@@ -223,7 +223,7 @@ mode flags.
 ## Diff And Diagnostic Shape
 
 Failed checks carry structured diff data. The sketched types
-(`Diff`, `DiffOp`, `Hunk`, `SerializedValue`, `SourceLocation`) are
+(`Diff`, `DiffOperation`, `Hunk`, `SerializedValue`, `SourceLocation`) are
 collected in `types-index.md` § Outcomes And Verdicts.
 
 ```ts
@@ -240,8 +240,8 @@ type FailedCheck = {
 type Diff =
     | { kind: 'value'; expected: SerializedValue; actual: SerializedValue }
     | { kind: 'string'; expected: string; actual: string; hunks: ReadonlyArray<Hunk> }
-    | { kind: 'object'; ops: ReadonlyArray<DiffOp> }
-    | { kind: 'array'; ops: ReadonlyArray<DiffOp> };
+    | { kind: 'object'; ops: ReadonlyArray<DiffOperation> }
+    | { kind: 'array'; ops: ReadonlyArray<DiffOperation> };
 ```
 
 Reporters render diffs from this structured shape. Truncation, colorization,

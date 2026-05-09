@@ -51,7 +51,7 @@ const recorded: FailedCheck = {
     location: { file: 'source/users.test.ts', line: 8 },
     diff: {
         kind: 'object',
-        ops: [{ op: 'replace', path: ['name'], from: '"Adäle"', to: '"Adäle"' }],
+        ops: [{ operation: 'replace', path: ['name'], from: '"Adäle"', to: '"Adäle"' }],
     },
 };
 ```

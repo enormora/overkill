@@ -153,13 +153,13 @@ type FailedCheck = {
 type Diff =
     | { kind: 'value'; expected: SerializedValue; actual: SerializedValue }
     | { kind: 'string'; expected: string; actual: string; hunks: ReadonlyArray<Hunk> }
-    | { kind: 'object'; ops: ReadonlyArray<DiffOp> }
-    | { kind: 'array'; ops: ReadonlyArray<DiffOp> };
+    | { kind: 'object'; ops: ReadonlyArray<DiffOperation> }
+    | { kind: 'array'; ops: ReadonlyArray<DiffOperation> };
 
-type DiffOp =
-    | { op: 'add'; path: ReadonlyArray<string | number>; value: SerializedValue }
-    | { op: 'remove'; path: ReadonlyArray<string | number>; value: SerializedValue }
-    | { op: 'replace'; path: ReadonlyArray<string | number>; from: SerializedValue; to: SerializedValue };
+type DiffOperation =
+    | { operation: 'add'; path: ReadonlyArray<string | number>; value: SerializedValue }
+    | { operation: 'remove'; path: ReadonlyArray<string | number>; value: SerializedValue }
+    | { operation: 'replace'; path: ReadonlyArray<string | number>; from: SerializedValue; to: SerializedValue };
 
 type Hunk = {
     readonly line: number;
@@ -177,7 +177,7 @@ type SourceLocation = {
 ```
 
 Canonical: `results-not-exceptions.md` for `TestOutcome`,
-`assertions-and-results.md` for `FailedCheck`/`Diff`/`DiffOp`/`Hunk`. The
+`assertions-and-results.md` for `FailedCheck`/`Diff`/`DiffOperation`/`Hunk`. The
 `TestVerdict` reporter category is derived from outcome + metadata; see
 `glossary.md` § Test Verdict.
 
@@ -296,7 +296,7 @@ type DiffArtifact = {
     readonly kind: 'value' | 'string' | 'object' | 'array';
     readonly expected: SerializedValue;
     readonly actual: SerializedValue;
-    readonly ops?: ReadonlyArray<DiffOp>;
+    readonly ops?: ReadonlyArray<DiffOperation>;
     readonly hunks?: ReadonlyArray<Hunk>;
 };
 
