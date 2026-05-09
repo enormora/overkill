@@ -84,21 +84,41 @@ Unwinding happens in reverse, innermost first:
 5.  Worker boundary remains; the runner moves to the next test in
     this worker.
 
-## Cost Of The Two-Phase Import
+## Why Two Phases (And What It Costs)
 
-The split between Plan-Time Resolution (in the main thread) and
-Execution-Time Wrapping (in workers or subprocesses) means that in
-parallel modes each test file is imported **twice**:
+Splitting Plan-Time Resolution (in the main thread) from
+Execution-Time Wrapping (in workers or subprocesses) is a deliberate
+choice, not just a forced consequence of how worker boundaries work.
+The split buys several capabilities:
+
+-   `overkill list` prints the resolved plan without executing
+    anything — possible only because collection has produced a
+    complete plan before any worker runs
+-   `--filter`, `--name`, `--last-failed`, `--changed` apply before
+    any test runs; workers receive only the cases that survived
+    selection, instead of importing-then-discarding
+-   `--shard <i>/<n>` partitions deterministically across workers
+    because the full plan is known upfront
+-   the `RunPlan` is recorded as a serializable artifact (per
+    `principles.md` § Data Over Side Effects), enabling replay and
+    IDE / MCP introspection without running
+-   capability profiles, runtime selection, and worker assignment
+    resolve once in the main thread, not redundantly per worker
+-   "plan freeze is total" — dynamically generated tests must be
+    discovered at collection (see § Why The Order Matters), which is
+    only enforceable if the plan is complete before execution starts
+
+The cost is that in parallel modes each test file is imported
+**twice**:
 
 1. once in the main thread during collection, to build the `TestNode`
    tree
 2. once per worker that's assigned the file, to actually execute the
    test bodies
 
-The runner cannot fold these into a single import: test bodies are
-functions, and Node's `worker_threads` / `child_process` boundaries
-do not transmit closures across. Workers re-import the file to get
-executable references.
+The runner cannot fold these into one: test bodies are functions, and
+Node's `worker_threads` / `child_process` boundaries do not transmit
+closures. Workers re-import the file to get executable references.
 
 In practice the cost stays small because:
 
