@@ -88,7 +88,7 @@ Strict microtest mode denies, by default:
     not cover it; the boundary is enforced through runtime
     observability, not permission flags.
 
-The first enforcement mechanism is Node's permission model:
+The first enforcement mechanism is Node's permission model (Node 20+):
 
 -   `--permission`
 -   `--allow-fs-read`
@@ -97,15 +97,43 @@ The first enforcement mechanism is Node's permission model:
 -   `--allow-child-process`
 -   `--allow-worker`
 
-Source: <https://nodejs.org/api/permissions.html>
+Source: <https://nodejs.org/docs/latest-v20.x/api/permissions.html#file-system-permissions>
 
-Important nuance:
+How Overkill applies these flags:
 
--   Node permissions can strongly deny filesystem, network, process, and
-    worker capabilities
--   `console.*` is not covered by the permission model
--   strict microtest handling of `console.*` therefore relies on runtime
-    observability, not on the permission flags themselves
+-   **Path-scoped grants.** `--allow-fs-write=<path>` allows writes
+    only to the listed paths (repeated flags or comma-separated;
+    glob wildcards supported). The runner uses absolute paths.
+-   **Non-existent directories require an explicit wildcard.** If a
+    granted directory doesn't exist at spawn time (e.g. a fresh
+    coverage or run-record directory), the path must end in `/*`
+    or Node will only allow writing the directory entry itself,
+    not files inside it.
+-   **Permissions do not inherit.** Per Node's docs, "the model does
+    not inherit to a child node process or a worker thread." Each
+    Overkill worker is spawned as a fresh Node process with its own
+    `--permission` flags; the parent overkill process does not need
+    to run under the permission model itself.
+-   **Capability isolation requires `child_process`.** Worker threads
+    share the parent's permission set; subprocesses can each have
+    their own. Microtest workers are therefore separate Node
+    processes (see `composition-order.md` § Execution-Time
+    Wrapping).
+-   **Launch path is irrelevant.** `npx overkill ...`, direct
+    invocation, and any other launcher all work identically — the
+    runner spawns workers explicitly with the right flags;
+    inheritance is not assumed.
+
+Caveats `console.*` and symbolic links:
+
+-   `console.*` is not covered by the permission model. Strict
+    microtest handling of `console.*` relies on runtime
+    observability, not on permission flags.
+-   Symbolic links are followed even when they escape granted paths.
+    The runner resolves granted paths and refuses to start workers
+    if any component is a symlink to outside the run record. The
+    Node docs warn: "Relative symbolic links may allow access to
+    arbitrary files and directories."
 
 ## Important Limitation
 
