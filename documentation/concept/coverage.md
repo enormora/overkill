@@ -62,9 +62,25 @@ transform step. Native speed wins; the cost of carrying a second
 engine is not justified.
 
 V8 native coverage in 2026 produces line, function, and block
-coverage with source-map–accurate locations. `c8` is used purely as a
-post-processor to emit LCOV, JSON, or HTML reports from the raw V8
-output — Overkill orchestrates the engine; `c8` formats the output.
+coverage with source-map–accurate locations.
+
+`c8` does two jobs in this pipeline, both consequences of V8's
+shape:
+
+1.  **All-files reporting.** V8 only emits coverage for files that
+    were actually loaded by the process. To report 0% on files that
+    were never loaded — typically the most useful signal in a
+    coverage report — `c8`'s `all: true` mode globs the source tree
+    using include/exclude patterns and synthesises empty coverage
+    records for files V8 didn't see. Without this, a brand-new file
+    with no tests would simply be invisible in the report.
+2.  **Format emission.** `c8` post-processes V8 output into LCOV,
+    JSON, or HTML.
+
+Overkill orchestrates the V8 engine and configures `c8` for both
+jobs. The include/exclude patterns that drive all-files reporting
+live in `overkill.config.ts` (project policy, not per-run intent —
+see `principles.md` § One First-Party Path Per Layer).
 
 ## CLI Surface
 
