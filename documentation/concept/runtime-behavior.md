@@ -206,9 +206,8 @@ Override surfaces:
 -   per-test metadata: `{ timeout: '500ms' }` shortens the soft
     timeout for one test (cannot extend past the profile's hard
     timeout)
--   `--timeout <duration>` at the CLI overrides the soft default for
-    the whole run
--   profile config overrides for both soft and hard
+-   profile config overrides set the soft and hard defaults for the
+    whole run
 
 Soft-timeout mechanics:
 
