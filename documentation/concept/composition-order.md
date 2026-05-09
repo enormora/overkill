@@ -179,9 +179,6 @@ dependency:
     currently rejects hooks; resources fill this role; see
     `runtimes-and-fixtures.md`).
 
-This doc should be updated when a new wrapper lands so the stack
-stays canonical.
-
 ## What This Doc Is Not
 
 -   not a feature; the order described here is what the docs
