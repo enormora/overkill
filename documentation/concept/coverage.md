@@ -191,20 +191,25 @@ Tests do not interact with coverage instrumentation directly.
 
 Microtest profiles deny filesystem writes by default. The
 `micro-with-coverage` profile — the canonical (and only) coverage
-profile — grants `--allow-fs-write` scoped to the run-specific
-coverage directory:
+profile — grants `--allow-fs-write` scoped to the resolved coverage
+directory for the current run:
 
 ```
---allow-fs-write=<absolute-run-coverage-dir>/*
+--allow-fs-write=<absolute-coverage-dir>/*
 ```
 
-The trailing `/*` wildcard is required because the coverage directory
-does not exist at spawn time (the run record is created just before
-workers start). For the general mechanism — how Node permission flags
-are applied per worker, why workers are separate Node processes, and
-the symlink and inheritance caveats — see
-`microtests-and-capabilities.md` § Capability Defaults. There is no
-Overkill-specific authority abstraction layered on top.
+The granted path tracks `coverage.outputDir` from `overkill.config.ts`
+if set; otherwise it defaults to `.overkill/runs/<run-id>/coverage/`.
+Either way the runner resolves it to an absolute path and adds the
+`/*` wildcard before passing it to Node. The wildcard is required
+because the directory does not exist at spawn time (the run record is
+created just before workers start).
+
+For the general mechanism — how Node permission flags are applied per
+worker, why workers are separate Node processes, and the symlink and
+inheritance caveats — see `microtests-and-capabilities.md` § Capability
+Defaults. There is no Overkill-specific authority abstraction layered
+on top.
 
 ## Reporter Interaction
 
