@@ -151,6 +151,13 @@ The replacement for `.only`:
 These are CLI conveniences over the same selection grammar. None modify
 the test source.
 
+`--last-failed` is resolved from the existing `RunRecord` written for
+the previous run (see `reproducibility.md`); it does not require a
+separate tracking file or extra per-test disk writes. If several tests
+failed in the previous run, all of their `CaseId`s are selected. If no
+previous run record exists, the flag is a usage error rather than a
+silent no-op.
+
 ## Recommended Shape
 
 The metadata is:
