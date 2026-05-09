@@ -179,18 +179,16 @@ case identities. Default policy:
     completes; this is the verb's reason for existing
 -   `overkill baseline clean`: stale orphans are removed without
     running tests or touching active baselines
--   no automatic rename inference (see `non-goals.md` § No automatic
-    rename inference) — a renamed test becomes a stale orphan plus a
-    missing new baseline; the developer accepts both deliberately by
-    running `apply`
+
+Renames are detected as a stale orphan plus a missing new baseline
+(see `non-goals.md` § No automatic rename inference); the developer
+accepts both deliberately by running `apply`.
 
 ### What The Runner Will Not Do
 
 -   silently update baselines under any verb. The user must type a
     write verb (`update`, `apply`, `bootstrap`, `clean`) for the
     runner to touch baseline files.
--   merge two stale-but-similar baselines into one (no fuzzy rename
-    inference)
 -   cross-delete baselines that belong to a different identity-form
     variant (e.g. the same test under a different runtime) — stale
     detection is scoped to identities present in the current run,

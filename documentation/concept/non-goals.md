@@ -206,14 +206,18 @@ Default Failure.
 
 ### No automatic rename inference for renamed tests
 
-Overkill does not match renamed tests to old baselines via heuristics.
+Overkill does not match renamed tests to old baselines via heuristics
+(no fuzzy name match, no content similarity, no path-prefix guessing).
 
 Why: silent reuse is more dangerous than visible staleness.
 
-Where: `artifact-identity.md` § Identity Across Renames.
+Where: `artifact-identity.md` § Identity Across Renames,
+`baselines-and-snapshots.md` § Stale Artifact Handling.
 
-Alternative: stale baselines are reported as orphans; the developer
-removes or re-approves explicitly.
+Alternative: a renamed test surfaces as a stale orphan (the old
+baseline) plus a missing new baseline. The developer accepts both
+deliberately by running `overkill baseline apply`, which creates the
+new baseline and removes the orphan in one reviewable diff.
 
 ### No dedicated package/workspace identity field
 
