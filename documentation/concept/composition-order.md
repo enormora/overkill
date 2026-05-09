@@ -125,7 +125,10 @@ In practice the cost stays small because:
 -   tests-as-values means import-time work is constructing a
     descriptor tree, not running fixtures or effects (see
     `principles.md` § Data Over Side Effects)
--   Node's module compile cache makes the second parse cheap
+-   if Overkill enables Node's module compile cache for the
+    orchestrator, flushes it after collection, and shares the same
+    cache directory with workers, the worker-side re-import can reuse
+    V8 code cache and make the second **compilation** cheaper
 -   per-worker imports parallelize across CPU cores
 -   the runner targets `principles.md` § Cold Start Is The Budget; a
     second cheap import per file is acceptable, a second expensive
@@ -133,6 +136,13 @@ In practice the cost stays small because:
 
 In serial modes (single process, single worker) collection and
 execution share one import; no second load happens.
+
+`module.enableCompileCache()` does **not** eliminate the duplicate
+import itself. It only caches compiled code; it does not transmit
+closures across `worker_threads` / `child_process` boundaries, and it
+does not suppress top-level module evaluation in the worker. The
+worker still imports the file again to obtain executable test-body
+references.
 
 If a project's test files do meaningful work at import time
 (violating Data Over Side Effects), that cost is paid twice in

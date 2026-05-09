@@ -103,9 +103,12 @@ Inside a single Node process:
 -   Node’s ESM loader already caches modules by canonical URL. Once a `.ts` file
     is stripped and compiled, importing it again from another test module is
     free: same module record, same exports, no re-parse.
--   Across processes, Node's module compile cache (stable since 24.x) handles
-    bytecode reuse on the user's behalf for `require()` and `import` of `.js`.
-    The cache directory can be steered via `NODE_COMPILE_CACHE`. Lower-level
+-   Across workers / subprocesses, Node's module compile cache can handle
+    bytecode reuse on the user's behalf for `require()` and `import`, but only
+    if the runner enables it and shares the cache directory with child workers
+    (`NODE_COMPILE_CACHE` or `module.enableCompileCache()`). If the parent wants
+    workers created in the same run to benefit from modules it just compiled, it
+    must flush the cache before spawning them. Lower-level
     `vm.Script#createCachedData()` and `vm.SourceTextModule#createCachedData()`
     exist for advanced cases but are not needed in the common path.
 -   The strip output itself is not cached across processes by Node. The
