@@ -198,18 +198,65 @@ directory for the current run:
 --allow-fs-write=<absolute-coverage-dir>/*
 ```
 
-The granted path tracks `coverage.outputDir` from `overkill.config.ts`
-if set; otherwise it defaults to `.overkill/runs/<run-id>/coverage/`.
-Either way the runner resolves it to an absolute path and adds the
-`/*` wildcard before passing it to Node. The wildcard is required
-because the directory does not exist at spawn time (the run record is
-created just before workers start).
+The wildcard is required because the directory does not exist at
+spawn time (the run record is created just before workers start).
+The runner resolves the configured path to absolute and adds the
+wildcard before passing it to Node.
 
-For the general mechanism — how Node permission flags are applied per
-worker, why workers are separate Node processes, and the symlink and
-inheritance caveats — see `microtests-and-capabilities.md` § Capability
-Defaults. There is no Overkill-specific authority abstraction layered
-on top.
+For the general permission mechanism — how Node flags are applied per
+worker, why workers are separate Node processes, the symlink caveat,
+and that permissions do not inherit — see
+`microtests-and-capabilities.md` § Capability Defaults. There is no
+Overkill-specific authority abstraction layered on top.
+
+## Coverage Output Path
+
+The `coverage.outputDir` config value is the only user-tunable piece
+of the coverage permission grant. Because it determines the path the
+runner trusts to grant FS-write to, several rules apply.
+
+### Default And Why It Exists
+
+The default is `.overkill/runs/<run-id>/coverage/` because that path
+is:
+
+-   inside the project (always writable; no permission surprises)
+-   per-run (no overwrite races between concurrent runs)
+-   garbage-collected with the run record (no disk-fill over time)
+-   hidden from source control (`.overkill/` is conventionally
+    gitignored)
+
+A user who overrides the default trades one or more of those
+properties. A path like `coverage/` matches the convention some CI
+systems expect for artifact upload but loses the per-run isolation:
+one coverage run overwrites the previous one. Worth doing knowingly.
+
+### Resolution Of Relative Paths
+
+Relative paths in `coverage.outputDir` are resolved against the
+directory containing the `overkill.config.ts` that defined them. In
+a monorepo with per-package configs, each package's coverage path
+is relative to its own config file unless the user writes an
+absolute path. (Convention worth generalising to other paths in
+config; left for `configuration.md` to formalise.)
+
+### Validation
+
+Before granting `--allow-fs-write`, the runner resolves the
+configured path, follows symlinks, and refuses to start workers if
+the result:
+
+-   is `/`, `/etc`, `/usr`, or another well-known system path
+-   contains a symlink that escapes the project root — same caveat
+    as `microtests-and-capabilities.md` § Capability Defaults, with
+    extra weight because the path is user-supplied
+
+### Replay
+
+The path used for a run is recorded in the run record alongside the
+V8 output. `overkill replay` reads from that recorded path, not the
+current `coverage.outputDir`. A config change does not invalidate
+older records.
 
 ## Reporter Interaction
 
