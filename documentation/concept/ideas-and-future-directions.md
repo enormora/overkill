@@ -164,6 +164,43 @@ This area is promising, but it needs deeper research before becoming a settled p
 
 The deterministic clock and scheduler story lives in `deterministic-simulation.md`, which positions simulators as user- or adapter-owned with Overkill providing the testing integration. Overkill should not ship a first-party clock package; the explicit-injection stance there is consistent with the "Keep Production Code Clean" principle.
 
+## Assertion Budgets
+
+### Position
+
+This is a plausible future policy tool, not a settled part of the
+current assertion model.
+
+### What It Could Mean
+
+A project-level rule such as `maxAssertionsPerTestCase` could put an
+upper bound on how many leaf assertions one test may record.
+
+Possible uses:
+
+-   encourage small, focused microtests
+-   make "one assertion per test" an enforceable team policy where a
+    team wants that style
+-   catch broad "kitchen sink" tests that accumulate many unrelated
+    checks instead of splitting into separate cases
+
+### Why It Is Not Settled Yet
+
+The idea sounds simple, but the tradeoffs are not:
+
+-   some legitimate tests are naturally assertion-dense (tables,
+    fixture validation, richer result objects)
+-   property helpers and custom assertions complicate what should
+    count as "one" assertion
+-   it is unclear whether the better abstraction is a hard cap, a
+    lint-style warning, or simply stronger guidance in docs
+
+### Recommended Direction
+
+Keep the current settled model (`plan(n)`, zero-assertion failure,
+explicit builder API) and revisit assertion budgets only if real usage
+shows that teams want an enforceable upper bound rather than guidance.
+
 ## Scope Note
 
 This doc covers broader product directions kept in view as future
