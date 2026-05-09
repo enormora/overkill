@@ -79,7 +79,8 @@ Explicit update runs:
 
 ## Update Workflow
 
-The CLI surface for baseline updates is one flag:
+The CLI surface for baseline updates is one flag (registered in
+`cli.md` § Baselines):
 
 ```
 overkill run --update-baselines [=<mode>]

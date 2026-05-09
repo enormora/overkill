@@ -51,7 +51,8 @@ output — Overkill orchestrates the engine; `c8` formats the output.
 
 ## CLI Surface
 
-Single flag at the run level:
+Single flag at the run level (still under design; will be registered
+in `cli.md` once finalised):
 
 ```
 overkill run --coverage [--coverage-format <v8|lcov|json|html>]

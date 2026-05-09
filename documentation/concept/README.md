@@ -48,6 +48,7 @@ For a first read, follow this path:
 -   [Architecture Decisions](./architecture-decisions.md)
 -   [Assertions And Results](./assertions-and-results.md)
 -   [Capability Handles](./capability-handles.md)
+-   [CLI Reference](./cli.md)
 -   [Composition Order](./composition-order.md)
 -   [Configuration](./configuration.md)
 -   [Coverage](./coverage.md)
