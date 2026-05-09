@@ -5,13 +5,18 @@
 This document fills in the runtime-shaped concerns most existing concept
 docs name only in passing: console capture, exit codes, signal handling,
 unhandled rejections, leaked resources, parallelism semantics, sharding,
-monorepo discovery, CI behavior, terminal capability detection,
+monorepo discovery, terminal capability detection,
 configuration layering, watch-mode targeting.
 
 It is meant to be normative rather than aspirational. Each section states
 the default, names the override surface where one exists, and pushes
 speculative alternatives into the dedicated future-facing docs instead of
 leaving them implicit here.
+
+This document does **not** define a special CI mode. The same invocation
+should mean the same thing on a developer machine and in CI; workflow-
+specific choices belong in explicit commands or explicit configuration,
+not environment-driven runtime branches.
 
 ## Console Output Capture
 
