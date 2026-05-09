@@ -140,7 +140,10 @@ responsible for not putting `baseline apply` in a check-only pipeline.
 The intended developer loop:
 
 1.  Run normally with `overkill run`; baselines compare. Mismatches
-    fail the run with a structured diff (see
+    fail the run with a diff appropriate to the baseline subtype:
+    structured for content snapshots (text, JSON, objects), size and
+    hash for opaque binary artifacts, and adapter-specific
+    representations for visual or performance baselines (see
     `assertions-and-results.md` § Diff And Diagnostic Shape).
 2.  Inspect the diff in the reporter or in the JSON event stream.
     Decide whether the change is intended.

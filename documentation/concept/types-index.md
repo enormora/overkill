@@ -154,7 +154,8 @@ type Diff =
     | { kind: 'value'; expected: SerializedValue; actual: SerializedValue }
     | { kind: 'string'; expected: string; actual: string; hunks: ReadonlyArray<Hunk> }
     | { kind: 'object'; ops: ReadonlyArray<DiffOperation> }
-    | { kind: 'array'; ops: ReadonlyArray<DiffOperation> };
+    | { kind: 'array'; ops: ReadonlyArray<DiffOperation> }
+    | { kind: 'binary'; expectedSize: number; actualSize: number; expectedHash: string; actualHash: string };
 
 type DiffOperation =
     | { operation: 'add'; path: ReadonlyArray<string | number>; value: SerializedValue }
