@@ -119,6 +119,10 @@ layer:
 
 -   delivers each event to every real-time reporter in registration
     order
+-   serializes delivery **per reporter**: a reporter never receives
+    event `n+1` until its `onEvent` for event `n` has settled (or hit
+    the timeout). Async reporters therefore provide natural
+    backpressure and preserve event order within that reporter
 -   awaits async event handlers but with a per-handler timeout
     (default 100 ms; longer is a reporter bug, the run continues)
 -   isolates errors: a reporter throwing or rejecting does not
@@ -127,6 +131,12 @@ layer:
     reporters
 -   delivers `RunResult` to every final-result reporter exactly once
     after run completion
+
+The serialization guarantee is **per reporter**, not global. A slow
+reporter does not block sibling reporters from observing the same
+event, but it does delay its own next callback. Reporter authors who
+need throughput should buffer internally and return quickly rather than
+holding the event pipeline open.
 
 A reporter that needs serialized output (e.g. a TAP reporter writing
 to stdout) declares the sink as `exclusive`; a reporter that
