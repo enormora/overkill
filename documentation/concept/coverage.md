@@ -97,8 +97,8 @@ V8 doesn't ship all-files synthesis itself.
 
 Following `principles.md` § One First-Party Path Per Layer (each
 setting has one canonical place: per-run intent on the CLI,
-persistent project policy in the config file), the coverage surface
-splits this way:
+persistent project policy in the config file, and no setting
+reachable from both surfaces), the coverage surface splits this way:
 
 CLI — per-run intent, asks "do I want coverage on _this_ run":
 
@@ -118,6 +118,13 @@ Config (`overkill.config.ts`) — project policy, settled across runs:
 -   `coverage.thresholds` — pass/fail thresholds (lines, functions,
     branches) when coverage gating is wanted
 -   `coverage.outputDir` — override for `.overkill/runs/<run-id>/coverage/`
+
+Coverage is not one of the rare "both surfaces" cases: its settings
+bifurcate cleanly along the per-run-vs-policy line above, and no
+single setting is one a user would want to express on both surfaces.
+Adding "CLI overrides config" plumbing for any coverage option would
+cost the precedence ambiguity and doc duplication described in the
+principle without buying genuine flexibility.
 
 Other behaviour:
 
