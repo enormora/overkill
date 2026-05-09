@@ -89,27 +89,40 @@ substantive enough that re-implementing it would duplicate effort
 `c8` already maintains. `c8` is the right pipeline wrapper as long as
 V8 doesn't ship all-files synthesis itself.
 
-## CLI Surface
+## CLI And Config Split
 
-Single flag at the run level, only valid with a microtest profile
-(still under design; will be registered in `cli.md` once finalised):
+Following `principles.md` § One First-Party Path Per Layer (each
+setting has one canonical place: per-run intent on the CLI,
+persistent project policy in the config file), the coverage surface
+splits this way:
+
+CLI — per-run intent, asks "do I want coverage on _this_ run":
 
 ```
-overkill run --coverage [--coverage-format <v8|lcov|json|html>] --profile microtest
+overkill run --coverage --profile microtest
 ```
 
 `--coverage` combined with a non-microtest profile is rejected at CLI
-parse time with a message pointing at this restriction.
+parse time. (Will be registered in `cli.md` once finalised.)
 
-Defaults:
+Config (`overkill.config.ts`) — project policy, settled across runs:
 
--   format: `lcov` for CI compatibility, `v8` raw output written
-    alongside
+-   `coverage.formats` — which report formats to emit (`v8`, `lcov`,
+    `json`, `html`); default: `['lcov', 'v8']`
+-   `coverage.include` / `coverage.exclude` — glob patterns driving
+    `c8`'s all-files reporting
+-   `coverage.thresholds` — pass/fail thresholds (lines, functions,
+    branches) when coverage gating is wanted
+-   `coverage.outputDir` — override for `.overkill/runs/<run-id>/coverage/`
+
+Other behaviour:
+
 -   per-test attribution: tied to `CaseId`; the per-test slice lives
-    inside the run-record coverage directory
-
-Programmatic surface mirrors the flag (orchestration-level option in
-`@overkill/run`); the same microtest-profile restriction applies.
+    inside the run-record coverage directory.
+-   programmatic surface mirrors the CLI flag (orchestration-level
+    option in `@overkill/run`); the microtest-profile restriction
+    applies; format / threshold settings come from config in both
+    surfaces.
 
 ## Worker-Pool And Process-Per-File Interaction
 
@@ -168,7 +181,6 @@ result.
 
 ## Open Items
 
--   exact CLI shape (`--coverage <format>` vs. `--coverage --coverage-format`)
 -   whether the per-test slice is recorded per `CaseId` or per file
     (V8 native granularity is per file; per-case requires a wrapping
     layer)
