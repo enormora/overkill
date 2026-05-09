@@ -84,6 +84,41 @@ Unwinding happens in reverse, innermost first:
 5.  Worker boundary remains; the runner moves to the next test in
     this worker.
 
+## Cost Of The Two-Phase Import
+
+The split between Plan-Time Resolution (in the main thread) and
+Execution-Time Wrapping (in workers or subprocesses) means that in
+parallel modes each test file is imported **twice**:
+
+1. once in the main thread during collection, to build the `TestNode`
+   tree
+2. once per worker that's assigned the file, to actually execute the
+   test bodies
+
+The runner cannot fold these into a single import: test bodies are
+functions, and Node's `worker_threads` / `child_process` boundaries
+do not transmit closures across. Workers re-import the file to get
+executable references.
+
+In practice the cost stays small because:
+
+-   tests-as-values means import-time work is constructing a
+    descriptor tree, not running fixtures or effects (see
+    `principles.md` § Data Over Side Effects)
+-   Node's module compile cache makes the second parse cheap
+-   per-worker imports parallelize across CPU cores
+-   the runner targets `principles.md` § Cold Start Is The Budget; a
+    second cheap import per file is acceptable, a second expensive
+    one is not
+
+In serial modes (single process, single worker) collection and
+execution share one import; no second load happens.
+
+If a project's test files do meaningful work at import time
+(violating Data Over Side Effects), that cost is paid twice in
+parallel mode. Move side-effecting setup into fixtures or test
+bodies if startup becomes a concern.
+
 ## Why The Order Matters
 
 A few consequences flow from this stack and are easy to get wrong if
