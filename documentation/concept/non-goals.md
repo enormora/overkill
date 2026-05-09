@@ -37,7 +37,10 @@ Overkill rejects `.only` / `.skip` chains as the in-source iteration
 mechanism.
 
 Why: inline modifiers encourage one-test-at-a-time hacks that escape
-review and conflict with selection-as-orchestration.
+review and conflict with selection-as-orchestration. They are also
+dangerous when accidentally committed: a focused test can make CI run
+only one test while still appearing green. Many existing frameworks
+need custom lint rules just to contain that footgun.
 
 Where: `architecture-decisions.md` § Default Authoring Model,
 `metadata-and-selection.md` § Local Iteration Workflow.
