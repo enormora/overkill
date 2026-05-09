@@ -186,9 +186,11 @@ accepts both deliberately by running `apply`.
 
 ### What The Runner Will Not Do
 
--   silently update baselines under any verb. The user must type a
-    write verb (`update`, `apply`, `bootstrap`, `clean`) for the
-    runner to touch baseline files.
+-   silently write to baseline files. Every baseline change requires
+    the user to type a write verb explicitly (`update`, `apply`,
+    `bootstrap`, or `clean`); `overkill run` never modifies
+    baselines, regardless of the host environment or who triggered
+    the run.
 -   cross-delete baselines that belong to a different identity-form
     variant (e.g. the same test under a different runtime) — stale
     detection is scoped to identities present in the current run,
