@@ -202,9 +202,6 @@ accepts both deliberately by running `apply`.
     `overkill baseline apply` (or `clean`); a filtered run only
     cleans within its selection.
 
-These are framed as non-goals to keep the update story honest about
-what is and is not automatic.
-
 ## Package Position
 
 Generic snapshots should live above the core, primarily in integration-oriented packages or shared baseline utilities. If research later proves that baseline identity or lifecycle must be in the core, that should be documented as a deliberate exception.
