@@ -119,14 +119,25 @@ Config (`overkill.config.ts`) — project policy, settled across runs:
     branches) when coverage gating is wanted
 -   `coverage.outputDir` — override for `.overkill/runs/<run-id>/coverage/`
 
-Coverage is not one of the rare "both surfaces" cases: its settings
-bifurcate cleanly along the per-run-vs-policy line above, and no
-single setting is one a user would want to express on both surfaces.
-Adding "CLI overrides config" plumbing for any coverage option would
-cost the precedence ambiguity and doc duplication described in the
-principle without buying genuine flexibility.
+### Why The Split, Not Both Surfaces?
 
-Other behaviour:
+Some tools (ESLint, Jest) let the same setting be configured from
+either the CLI or the config file, with the CLI winning when both are
+set. Coverage does not work that way.
+
+Each coverage setting fits cleanly on one side of the split. Enabling
+coverage is a per-run choice (an audit, a CI check, a debug session).
+Formats and thresholds are project decisions written down in config
+and reviewed in code. There is no single coverage setting where
+someone would want to set it in config and then override it on the
+CLI just for one run.
+
+Letting both surfaces own the same setting would mean adding
+precedence rules ("CLI wins over config") and twice the documentation
+surface. The canonical-input rule rejects that trade unless a setting
+truly needs both lifetimes — and coverage does not.
+
+### Other Behaviour
 
 -   per-test attribution: tied to `CaseId`; the per-test slice lives
     inside the run-record coverage directory.
