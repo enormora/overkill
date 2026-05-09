@@ -100,7 +100,6 @@ requires the user to type it deliberately.
 
 | Flag                | Behavior                                                             | Reference                               |
 | ------------------- | -------------------------------------------------------------------- | --------------------------------------- |
-| `--allow-empty`     | Treat zero-test runs as success instead of failure.                  | `runtime-behavior.md` § Zero-Test Runs  |
 | `--seed <n>`        | Override the run seed (for reproducible randomization).              | `reproducibility.md`                    |
 | `--debug`           | Emit a structured debug artifact for every test in the resolved set. | `runtime-behavior.md` § Test Debug Mode |
 | `--debug-test <id>` | Emit a debug artifact for a single test by ID or selector pattern.   | same                                    |

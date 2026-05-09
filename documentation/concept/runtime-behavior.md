@@ -75,7 +75,7 @@ Default exit codes for the `overkill` CLI:
 | At least one test failed (assertion) | 1                           |
 | At least one runner error            | 2                           |
 | Configuration / argument error       | 3                           |
-| No tests collected                   | 4 (configurable, see below) |
+| No tests collected                   | 4                           |
 | Runner crashed (internal bug)        | 70                          |
 
 Test code calling `process.exit(code)` is treated as a runner-level error
@@ -93,10 +93,10 @@ where `process.exit` is observable as the subprocess exit code.
 A run that collects zero tests is a **failure** by default. This catches
 typos in patterns, broken filters, and accidentally-empty test sets.
 
-Override: `--allow-empty` for invocations such as monorepo incremental
-runs and CI shards that may legitimately have no tests allocated. This
-is a per-run decision, so the concept keeps it on the CLI rather than
-duplicating it in config.
+There is no escape hatch in the current concept. A workflow that may
+legitimately have zero matching tests should make that decision before
+invoking Overkill rather than teaching the runner to treat an empty
+selection as success.
 
 ## Unhandled Rejections And Uncaught Exceptions
 
