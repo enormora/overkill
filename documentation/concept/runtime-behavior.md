@@ -93,9 +93,10 @@ where `process.exit` is observable as the subprocess exit code.
 A run that collects zero tests is a **failure** by default. This catches
 typos in patterns, broken filters, and accidentally-empty test sets.
 
-Override: `--allow-empty` (or `allowEmpty: true` in config) for monorepo
-incremental runs and CI shards that may legitimately have no tests
-allocated.
+Override: `--allow-empty` for invocations such as monorepo incremental
+runs and CI shards that may legitimately have no tests allocated. This
+is a per-run decision, so the concept keeps it on the CLI rather than
+duplicating it in config.
 
 ## Unhandled Rejections And Uncaught Exceptions
 
