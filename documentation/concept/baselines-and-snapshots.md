@@ -191,11 +191,16 @@ accepts both deliberately by running `apply`.
     `bootstrap`, or `clean`); `overkill run` never modifies
     baselines, regardless of the host environment or who triggered
     the run.
--   cross-delete baselines that belong to a different identity-form
-    variant (e.g. the same test under a different runtime) — stale
-    detection is scoped to identities present in the current run,
-    so a baseline for a runtime not selected this run is _not_
-    treated as stale and is _not_ removed
+-   delete baselines that belong to identities outside the current
+    run's scope. Stale detection compares on-disk baselines against
+    the case identities the run actually executed. Anything outside
+    that scope — a baseline for a runtime not selected this run, a
+    baseline for a test filtered out by `--filter`, `--name`,
+    `--file`, or `--changed`, a baseline for a profile other than the
+    one used — is **not** treated as stale and is **not** removed.
+    Comprehensive stale cleanup therefore requires an unfiltered
+    `overkill baseline apply` (or `clean`); a filtered run only
+    cleans within its filter.
 
 These are framed as non-goals to keep the update story honest about
 what is and is not automatic.
