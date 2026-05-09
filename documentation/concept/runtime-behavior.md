@@ -554,8 +554,10 @@ or one of the well-known per-provider env vars):
 -   color output: enabled if `FORCE_COLOR` is set, otherwise auto-detected
     from terminal capabilities
 -   reporter: switch from `line` to `tap` (or a configurable CI default)
--   `--no-update-baselines` enforced; baseline updates require explicit
-    intent
+-   every baseline-writing verb (`overkill baseline update`,
+    `apply`, `bootstrap`, `clean`) is rejected; baseline writes
+    require explicit intent (an environment variable opt-in).
+    Read-only verbs (`list`, `diff`) are allowed in CI.
 -   stale-baseline detection: any stale baseline fails the run
 -   zero-test runs: failure (no `--allow-empty` unless explicit). The
     exit code stays distinct (4); CI consumers that prefer to gate on

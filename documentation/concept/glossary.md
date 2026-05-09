@@ -98,7 +98,7 @@ Source: `metadata-and-selection.md`, `testing-models.md`.
 A named set of allowed runtime capabilities (filesystem read, filesystem
 write, network, child process, worker, addons, WASI). The runner applies
 the profile via Node's `--permission` flags plus runner-owned escape
-hatches (coverage artifact directory, baseline update directory, strip
+hatches (coverage artifact directory, baseline write directory, strip
 cache, V8 cache).
 
 Standard profiles:
@@ -430,7 +430,8 @@ Source: `deterministic-simulation.md`.
 A baseline artifact that no longer corresponds to any collected test
 identity. Detected after a run by comparing baseline files on disk
 against the set of identities seen. Stale baselines fail the run by
-default; an explicit cleanup or update mode is required to remove them.
+default; removing them requires an explicit `overkill baseline apply`
+or `overkill baseline clean`.
 
 Source: `baselines-and-snapshots.md`.
 

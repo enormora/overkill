@@ -130,7 +130,7 @@ code should not need Overkill dependencies.
 -   filtering
 -   seed handling
 -   runner profiles
--   update modes for baselines
+-   baseline write verbs (`update`, `apply`, `bootstrap`, `clean`)
 -   process-level orchestration
 -   worker-pool management
 -   resolution of execution strategy from package-provided constraints

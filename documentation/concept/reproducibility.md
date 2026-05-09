@@ -26,7 +26,8 @@ A reproducible run captures, at minimum:
 -   the resolved execution strategy (process model, worker count,
     serialisation rules)
 -   the resolved capability profile per worker
--   the resolved baseline update mode
+-   the baseline verb invoked, if any (`update`, `apply`, `bootstrap`,
+    `clean`)
 -   the benchmark workload identity and calibration inputs where
     relevant
 -   the metadata propagation result (resolved metadata per case)

@@ -11,12 +11,61 @@ from both surfaces.
 
 ## Subcommands
 
+### Run And Replay
+
 | Command                          | Purpose                                                     | Reference                                               |
 | -------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------- |
 | `overkill run [paths...]`        | Default run mode — discover, plan, and execute.             | `runtime-behavior.md`                                   |
 | `overkill list [paths...]`       | Print the resolved test plan without running it.            | `tests-as-values.md`                                    |
 | `overkill replay <run-id>`       | Replay a recorded run from `.overkill/runs/<id>.json`.      | `reproducibility.md` § Replay                           |
 | `overkill replay-witness <path>` | Replay a single property/simulation failure from a witness. | `failure-artifacts.md` § Witnesses And Replay Artifacts |
+
+### Baseline
+
+The `baseline` namespace groups operations on the on-disk baseline
+artifacts. Verbs that execute tests (`update`, `apply`, `bootstrap`,
+`diff`) accept the same selection, capability, output, and lifecycle
+flags as `run` — they _are_ runs with different intended artifacts (see
+`Flags vs Subcommands` below). `list` and `clean` operate on disk only
+and do not run tests.
+
+CI rejects every verb under `baseline` that writes to disk (`update`,
+`apply`, `bootstrap`, `clean`); baseline writes require explicit intent
+(an environment variable opt-in). `list` and `diff` are read-only and
+allowed in CI.
+
+| Command                                  | Behavior                                                                                                                     | Reference                                      |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `overkill baseline update [paths...]`    | **Day-to-day update.** Create missing, overwrite changed; **leave stale alone**. Default safe verb.                          | `baselines-and-snapshots.md` § Update Workflow |
+| `overkill baseline apply [paths...]`     | **Full reconciliation.** Create missing, overwrite changed, **and remove stale orphans**. Explicit verb for the cleanup.     | same                                           |
+| `overkill baseline bootstrap [paths...]` | **First-time setup.** Only create missing baselines; do not touch existing files. For brand-new suites.                      | same                                           |
+| `overkill baseline list [paths...]`      | Print all baselines on disk with their resolved identities. Read-only; no test execution.                                    | same                                           |
+| `overkill baseline clean [paths...]`     | Remove stale orphans only. Does not write or update active baselines. Use after deleting tests when you don't want to rerun. | same                                           |
+| `overkill baseline diff [paths...]`      | Show what `apply` would change. Read-only; runs tests but writes nothing.                                                    | same                                           |
+
+## Flags vs Subcommands
+
+A subcommand exists when the _primary artifact_ the user expects from
+the invocation is different from the default verdict:
+
+-   `run` produces a verdict
+-   `list` produces a printed plan
+-   `replay` re-produces a past verdict
+-   `replay-witness` re-produces a single failure
+-   `baseline <verb>` produces or inspects baseline files (`update`,
+    `apply`, and `bootstrap` write; `list`, `clean`, and `diff` do not
+    write fresh content but operate inside the baseline namespace
+    because the user's primary artifact is still baselines, not a
+    verdict)
+
+A flag refines or augments a `run`. It does not change what the user
+asks for — they still want a verdict; the flag just shapes how the run
+gets there or what extra artifacts are emitted alongside (`--coverage`,
+`--debug`, `--watch`, `--filter`).
+
+The destructive variant (`apply`, which removes stale entries) is its
+own verb rather than a flag on `update` so that the dangerous behaviour
+requires the user to type it deliberately.
 
 ## Selection And Iteration
 
@@ -38,13 +87,6 @@ from both surfaces.
 | `--profile <name>`  | Select a runner profile (e.g. `microtest`, `integration`, `benchmark`). | `microtests-and-capabilities.md`              |
 | `--mode <strategy>` | Override the resolved execution strategy (serial, worker-pool, …).      | `runtime-behavior.md` § Parallelism Semantics |
 | `--workers <n>`     | Override default worker count for worker-pool modes.                    | same                                          |
-
-## Baselines
-
-| Flag                    | Behavior                                                               | Reference                                      |
-| ----------------------- | ---------------------------------------------------------------------- | ---------------------------------------------- |
-| `--update-baselines`    | Full baseline update: create, overwrite, and remove stale. CI rejects. | `baselines-and-snapshots.md` § Update Workflow |
-| `--no-update-baselines` | Force baseline-update mode off (already the default in CI).            | `runtime-behavior.md` § CI Auto-Detection      |
 
 ## Output And Reporters
 

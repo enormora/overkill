@@ -54,7 +54,7 @@ The concept should assume the runner can detect:
 -   obsolete files for removed or renamed tests
 -   orphaned performance budgets
 
-CI behavior should treat stale baselines as failures unless an intentional cleanup/update mode is used.
+CI behavior should treat stale baselines as failures unless an intentional `overkill baseline apply` or `overkill baseline clean` is invoked with the CI opt-in env var set.
 
 Vitest’s CI behavior around obsolete snapshots is a useful reference point.
 
@@ -79,37 +79,63 @@ Explicit update runs:
 
 ## Update Workflow
 
-The CLI surface for baseline updates is one flag (registered in
-`cli.md` § Baselines):
+Baseline operations live under the `baseline` subcommand namespace
+(registered in `cli.md` § Subcommands § Baseline). The verbs split
+along intent:
 
-```
-overkill run --update-baselines [=<mode>]
-```
+| Verb        | Creates missing | Overwrites changed | Removes stale | Runs tests |
+| ----------- | --------------- | ------------------ | ------------- | ---------- |
+| `update`    | yes             | yes                | **no**        | yes        |
+| `apply`     | yes             | yes                | **yes**       | yes        |
+| `bootstrap` | yes             | no                 | no            | yes        |
+| `list`      | —               | —                  | —             | no         |
+| `clean`     | no              | no                 | yes           | no         |
+| `diff`      | no              | no                 | no            | yes        |
 
-Default behaviour and modes:
+The subcommand framing reflects user intent: the primary artifact is
+on-disk baselines, not the verdict (see `cli.md` § Flags vs
+Subcommands). The write verbs (`update`, `apply`, `bootstrap`) accept
+the same selection, capability, and output flags as `run`, since
+updating still requires executing the selected tests.
 
--   `--update-baselines` (no mode) — **full update**: create
-    missing baselines, overwrite changed ones, **and remove stale
-    ones**. This is the default because committing to update means
-    committing to make the on-disk state correct. Leaving stale
-    baselines around makes the workspace ambiguous (which tests do
-    these belong to?) and can make subsequent runs less
-    predictable.
--   `--update-baselines=changed` — create missing and overwrite
-    changed, but **leave stale baselines alone**. Escape hatch for
-    cases where stale entries belong to in-progress renames you are
-    not ready to finalise in the same commit.
--   `--update-baselines=missing` — only create baselines that don't
-    exist yet; do not touch existing baselines, do not remove stale
-    ones. Useful when bootstrapping a brand-new test suite where
-    everything is missing by definition.
+Day-to-day choice:
 
-When `--update-baselines` is **not** passed, no updates of any kind
-happen — comparison-only is the day-to-day mode. CI rejects the flag
-entirely (any update flag is rejected unless an environment variable
-explicitly opts in).
+-   `overkill baseline update` is the safe default. It creates new
+    baselines for newly added tests and overwrites baselines whose
+    content changed. It **does not delete anything**, so an in-progress
+    rename or a temporarily-skipped test cannot lose its baseline by
+    accident.
+-   `overkill baseline apply` is the deliberate cleanup verb. It does
+    everything `update` does **and** removes stale orphans. Use it
+    when committing a rename or a deletion: the diff in
+    `test-baselines/` will include the removals, making the cleanup
+    reviewable in the same change.
+-   `overkill baseline bootstrap` is for the very first time you adopt
+    Overkill in a project. It only creates baselines that don't exist
+    yet; existing baselines are left alone (so a partial bootstrap
+    doesn't trample a baseline that was authored by hand). After the
+    suite has baselines, you stop using `bootstrap` and switch to
+    `update` / `apply`.
 
-Per `runtime-behavior.md` § CI Auto-Detection, baseline updates are
+Read-only and disk-only verbs:
+
+-   `overkill baseline list` prints every baseline currently on disk
+    with its resolved identity. No test execution. Useful for
+    auditing what the suite has accumulated.
+-   `overkill baseline diff` shows what `apply` would change. It runs
+    tests but writes nothing — a dry-run for review pipelines.
+-   `overkill baseline clean` removes stale orphans without running
+    tests or touching active baselines. Use it when you have already
+    deleted tests and want to clear their abandoned baselines without
+    re-running the suite.
+
+When `overkill run` is invoked instead, no baseline writes happen —
+comparison-only is the default mode. CI rejects every write verb
+(`update`, `apply`, `bootstrap`, `clean`) unless an environment
+variable explicitly opts in. `list` and `diff` are read-only and
+allowed in CI.
+
+Per `runtime-behavior.md` § CI Auto-Detection, baseline writes are
 gated behind explicit intent in CI to prevent accidental rubber-
 stamping.
 
@@ -117,20 +143,23 @@ stamping.
 
 The intended developer loop:
 
-1.  Run normally; baselines compare. Mismatches fail the run with a
-    structured diff (see `assertions-and-results.md` § Diff And
-    Diagnostic Shape).
+1.  Run normally with `overkill run`; baselines compare. Mismatches
+    fail the run with a structured diff (see
+    `assertions-and-results.md` § Diff And Diagnostic Shape).
 2.  Inspect the diff in the reporter or in the JSON event stream.
     Decide whether the change is intended.
-3.  Re-run with `--update-baselines`. The runner overwrites changed
-    artifacts, creates missing ones, and removes stale ones in one
-    pass.
-4.  `git diff test-baselines/` shows everything that changed
-    (including deletions for stale orphans). Review and commit
-    those files together with the production change that caused the
-    update.
+3.  For day-to-day intentional changes: run `overkill baseline update`
+    to create new baselines and overwrite changed ones. Stale orphans
+    stay on disk for now.
+4.  When committing a rename or deletion that should also clean up
+    stale baselines: run `overkill baseline apply` instead. The diff
+    in `test-baselines/` will include both the updates and the
+    removals.
+5.  `git diff test-baselines/` shows everything that changed. Review
+    and commit those files together with the production change that
+    caused the update.
 
-The baselines live under version control precisely so step 4 makes
+The baselines live under version control precisely so step 5 makes
 the update reviewable. A baseline change that doesn't fit on a code-
 review screen indicates either a too-broad baseline or a too-broad
 production change.
@@ -141,16 +170,19 @@ Stale baselines (no corresponding collected test) are detected after
 the run by comparing the on-disk baseline files against the resolved
 case identities. Default policy:
 
--   ordinary run: stale baselines are reported as warnings; CI runs
-    treat them as failures (see `runtime-behavior.md` § CI
+-   ordinary `overkill run`: stale baselines are reported as warnings;
+    CI runs treat them as failures (see `runtime-behavior.md` § CI
     Auto-Detection)
--   `--update-baselines` (default mode) removes them after the run
-    completes; this is part of the "full update" intent
--   `--update-baselines=changed` reports them but leaves them on
-    disk
+-   `overkill baseline update`: stale orphans are reported but **left
+    on disk** — `update` is non-destructive
+-   `overkill baseline apply`: stale orphans are removed after the run
+    completes; this is the verb's reason for existing
+-   `overkill baseline clean`: stale orphans are removed without
+    running tests or touching active baselines
 -   no automatic rename inference (see `non-goals.md` § No automatic
     rename inference) — a renamed test becomes a stale orphan plus a
-    missing new baseline; the developer accepts both deliberately
+    missing new baseline; the developer accepts both deliberately by
+    running `apply`
 
 ### What The Runner Will Not Do
 

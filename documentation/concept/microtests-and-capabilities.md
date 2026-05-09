@@ -123,7 +123,8 @@ Some writes are necessary for the runner itself to function. These are
 narrow, runner-owned, and explicit in configuration and diagnostics:
 
 -   coverage output directory (when coverage is enabled)
--   baseline update directory (only in explicit update mode)
+-   baseline write directory (only when a `baseline` write verb is
+    invoked: `update`, `apply`, `bootstrap`)
 -   strip cache (`~/.cache/overkill/strip/`)
 -   V8 startup snapshot cache (`~/.cache/overkill/snapshots/`)
 -   per-test temp directory (`os.tmpdir() + /overkill-<run-id>/<test-id>/`)

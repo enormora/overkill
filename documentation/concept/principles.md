@@ -69,8 +69,8 @@ The same principle applies to user inputs. Each setting has one canonical
 place to live:
 
 -   persistent project policy lives in the config file
--   per-run intent lives on the CLI (for example `--update-baselines`,
-    `--coverage`)
+-   per-run intent lives on the CLI (for example `--coverage`,
+    `--watch`, `--filter`)
 -   no setting is reachable from both surfaces
 
 This avoids precedence bugs, duplicated documentation, and the ambient
