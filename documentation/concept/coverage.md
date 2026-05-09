@@ -43,6 +43,10 @@ Why a first-class concept anyway:
 
 -   Coverage is restricted to microtest profiles. Other profiles
     (integration, browser, benchmark) reject `--coverage`.
+-   Coverage runs single-threaded — one worker process executes all
+    selected microtests serially. Worker-pool and process-per-file
+    modes do not collect coverage. Supervised microtest mode is
+    supported because supervision does not introduce parallelism.
 -   Coverage is opt-in per run; there is no global "always on"
     default mode in any first-party profile.
 -   Overkill does not ship its own instrumenter or coverage reporter
@@ -126,22 +130,42 @@ Other behaviour:
     `principles.md` § One First-Party Path Per Layer for why the
     API is a different layer from the human-facing surfaces).
 
-## Worker-Pool And Process-Per-File Interaction
+## Single-Process Execution Model
 
-V8 coverage is collected per Node process. Microtest worker-pool runs
-collect per-worker output and merge it into the run record at
-completion; microtest process-per-file runs collect per-process output
-the same way.
+Coverage runs **single-threaded**: one Node worker process executes
+all selected microtests serially. Worker-pool and process-per-file
+modes do not collect coverage, even when invoked under a microtest
+profile. `--coverage` forces serial execution for the run.
+
+Why single-threaded:
+
+-   V8 coverage is collected per Node process. Cross-worker
+    aggregation requires merging slices, mapping per-worker output
+    back to `CaseId` boundaries, and reconciling all-files
+    synthesis across slices. None of this is technically blocked,
+    but it adds machinery whose only justification is "coverage
+    runs faster."
+-   Coverage is opt-in and typically run for audits or in CI, not
+    in the inner-loop microtest workflow. Trading parallelism for
+    simpler internals is a reasonable bargain.
+-   Single-process collection makes per-test attribution trivial
+    (one timeline, one slice).
+
+Supervised microtest mode (where the parent supervises the child
+process for crash recovery) still works — supervision does not
+introduce parallelism; the supervised process executes tests
+serially. A `micro-supervised-with-coverage` profile combination is
+supported for that scenario.
 
 The runner is responsible for:
 
--   starting workers/subprocesses with `NODE_V8_COVERAGE` set to a
-    per-worker directory under the run record when `--coverage` is on
--   adding `--allow-fs-write=<run-coverage-dir>` to the worker's Node
-    permission flags so the V8 coverage writer can persist its output
-    despite the microtest profile's blanket FS-write denial
--   merging V8 slices into one report after the run completes (via
-    `c8` or equivalent)
+-   starting the worker subprocess with `NODE_V8_COVERAGE` set to
+    the run's coverage directory when `--coverage` is on
+-   adding `--allow-fs-write=<run-coverage-dir>/*` to the worker's
+    Node permission flags (see `microtests-and-capabilities.md`
+    § Capability Defaults for the mechanism)
+-   handing the V8 output to `c8` for all-files synthesis and format
+    emission once the run completes
 
 Tests do not interact with coverage instrumentation directly.
 

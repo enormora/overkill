@@ -220,7 +220,9 @@ Standard capability profiles (see `glossary.md`):
 -   `micro-supervised` — same denials, plus subprocess supervision for
     crash-only recovery
 -   `micro-with-coverage` — micro-strict with a narrow exception for
-    coverage writes
+    coverage writes; runs single-threaded (see `coverage.md`)
+-   `micro-supervised-with-coverage` — supervised mode + coverage
+    write exception; also single-threaded
 -   `integration-local` — allows FS write within a per-test temp dir,
     loopback net, child process
 -   `benchmark-process` — integration-local plus single-worker
