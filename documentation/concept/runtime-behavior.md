@@ -74,14 +74,14 @@ field, and tag filtering happens through `--filter` expressions such as
 
 Default exit codes for the `overkill` CLI:
 
-| Outcome                              | Exit code                   |
-| ------------------------------------ | --------------------------- |
-| All tests pass and no runner errors  | 0                           |
-| At least one test failed (assertion) | 1                           |
-| At least one runner error            | 2                           |
-| Configuration / argument error       | 3                           |
-| No tests collected                   | 4                           |
-| Runner crashed (internal bug)        | 70                          |
+| Outcome                              | Exit code |
+| ------------------------------------ | --------- |
+| All tests pass and no runner errors  | 0         |
+| At least one test failed (assertion) | 1         |
+| At least one runner error            | 2         |
+| Configuration / argument error       | 3         |
+| No tests collected                   | 4         |
+| Runner crashed (internal bug)        | 70        |
 
 Test code calling `process.exit(code)` is treated as a runner-level error
 and attributed to the currently-running test. The default policy is to

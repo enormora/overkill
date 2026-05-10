@@ -89,11 +89,11 @@ requires the user to type it deliberately.
 
 ## Output And Reporters
 
-| Flag                | Behavior                                              | Reference                                      |
-| ------------------- | ----------------------------------------------------- | ---------------------------------------------- |
+| Flag                | Behavior                                                               | Reference                                      |
+| ------------------- | ---------------------------------------------------------------------- | ---------------------------------------------- |
 | `--coverage`        | Collect coverage for microtest profiles only. Forces serial execution. | `coverage.md`                                  |
-| `--reporter <name>` | Select a reporter; may be specified multiple times.   | `package-architecture.md` § Reporters          |
-| `--no-capture`      | Pass stdout/stderr through live instead of buffering. | `runtime-behavior.md` § Console Output Capture |
+| `--reporter <name>` | Select a reporter; may be specified multiple times.                    | `package-architecture.md` § Reporters          |
+| `--no-capture`      | Pass stdout/stderr through live instead of buffering.                  | `runtime-behavior.md` § Console Output Capture |
 
 ## Lifecycle And Edge Cases
 
