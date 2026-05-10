@@ -39,9 +39,11 @@ shrink." Concrete commitments worth making explicit:
 -   **Integrated shrinking** — generators yield rose trees `{ value, shrinks: () => Iterable<Tree<T>> }`, not separate `shrink` functions.
     Hedgehog-style. Avoids fast-check's invariant-breaking shrinking
     pitfalls.
--   **Splittable PRNGs** — see `capability-handles.md`. Each generator
-    splits a child PRNG; parallel and tree-shaped generation stays
-    reproducible. SplitMix is the canonical algorithm.
+-   **Splittable pseudo-random number generators (PRNGs)** — see
+    `capability-handles.md`. Each generator derives its own child random
+    stream instead of sharing one global source of randomness, so parallel
+    and tree-shaped generation stays reproducible. SplitMix is the canonical
+    algorithm.
 -   **Coverage / Classify / Label** — generators report distribution; a
     property fails not only on a counterexample but also when its input
     distribution drifts (`cover 30 isSorted`).
