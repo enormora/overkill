@@ -153,11 +153,12 @@ narrow, runner-owned, and explicit in configuration and diagnostics:
 -   coverage output directory (when coverage is enabled)
 -   baseline write directory (only when a `baseline` write verb is
     invoked: `update`, `apply`, `bootstrap`)
--   strip cache (`~/.cache/overkill/strip/`)
--   V8 startup snapshot cache (`~/.cache/overkill/snapshots/`)
 
 The runner enforces that these directories are the only paths writable
 under microtest profile, and surfaces unexpected writes as diagnostics.
+
+If future runner-owned caches are added, they should be documented as their
+own explicit write exceptions rather than assumed here by default.
 
 ## Per-Test Versus Per-Process Capabilities
 
