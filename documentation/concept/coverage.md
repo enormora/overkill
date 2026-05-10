@@ -139,8 +139,17 @@ truly needs both lifetimes — and coverage does not.
 
 ### Other Behaviour
 
--   per-test attribution: tied to `CaseId`; the per-test slice lives
-    inside the run-record coverage directory.
+-   coverage granularity is **per-file**, matching V8's native output.
+    Per-`CaseId` attribution would require snapshotting V8 coverage
+    around each case, diffing slices, and labelling them — machinery
+    whose cost is not justified by a question users rarely ask of the
+    runner (running a single filtered case under `--coverage` answers
+    the same question without a wrapping layer).
+-   coverage scope = the `coverage.include`/`coverage.exclude` source
+    set ∩ the executed-test set. A filtered or narrowed run does not
+    claim suite-wide coverage; the run record (see
+    `metadata-and-selection.md` § Selection Model) records which
+    cases were actually executed so reports remain interpretable.
 -   the programmatic API in `@overkill/run` accepts both the per-run
     flag (`coverage: true`) and the policy values (formats,
     thresholds, etc.) in a single `run(config)` call — it is the
@@ -266,11 +275,3 @@ third-party, packaged as `@overkill/reporter-coverage` or similar)
 consume the structured coverage data alongside the rest of the run
 result.
 
-## Open Items
-
--   whether the per-test slice is recorded per `CaseId` or per file
-    (V8 native granularity is per file; per-case requires a wrapping
-    layer)
--   integration with TIA when path-level change detection narrows the
-    run — coverage of _only-affected-tests_ is less useful than total
-    coverage; the run record should label which it is
