@@ -182,9 +182,13 @@ refers to low-level assertion composition such as `assertion.all(...)`, not
 to builder-test control flow. In the builder API, the default control-flow
 rule is simple: `assert` records and continues; `require` records and stops.
 
-## Async Tests
+## Async Test Support
 
-Tests are async by default and may interleave assertions with awaited work.
+Tests may be synchronous or async. The framework should support awaited work
+naturally without making `async` the default mental model for every test.
+When a test does await work, `assert.*` and `require.*` may interleave with
+those awaits in a straightforward way.
+
 Each `assert.*` or `require.*` call records into the test's assertion log
 immediately, regardless of whether more `await`s follow. The plan declared
 at the top of the test body still applies; `assert.done()` at the end
