@@ -201,6 +201,57 @@ Keep the current settled model (`plan(n)`, zero-assertion failure,
 explicit builder API) and revisit assertion budgets only if real usage
 shows that teams want an enforceable upper bound rather than guidance.
 
+## CLI Package (`@overkill/cli`)
+
+### Position
+
+Several pieces of the concept are CLI-scoped or reporter-scoped
+rather than engine/runner concerns: terminal capability detection
+(color, animation, progress UI, terminal width), the CLI subcommand
+and flag surface itself, argument parsing, help formatting, exit-code
+messaging, and stdout/stderr reporter rendering. These currently live
+spread across `runtime-behavior.md`, `cli.md`, and the reporter docs.
+
+A dedicated `@overkill/cli` package could collect this material
+behind one boundary, consumed as a library by the high-level packages
+that need it (`@overkill/run`, `@overkill/test`, `@overkill/bench`).
+The eventual cut is open.
+
+### What's Reasonably Clear
+
+In scope with high confidence:
+
+-   terminal capability detection (currently in `cli.md` § Terminal
+    Capability Detection)
+-   anything depending on `process.stdout.isTTY`, `NO_COLOR`,
+    `FORCE_COLOR`, `TERM`, or terminal width
+-   stdout/stderr formatting helpers shared across first-party
+    reporter packages
+
+### Open Questions
+
+-   **Library only, or also a binary?** A library consumed by the
+    `overkill` binary in `@overkill/run` is the simplest shape.
+    Hosting one or more binaries inside `@overkill/cli` itself is a
+    separate decision.
+-   **Argument parsing and help formatting in scope?** Natural fits,
+    but couple `@overkill/cli` to the surface defined in `cli.md`.
+-   **Where does `cli.md` end up?** Currently the CLI reference;
+    likely the spec doc for `@overkill/cli` if that package lands.
+-   **Other CLI/reporter-scoped content scattered across the concept
+    docs has to be identified before the boundary can be drawn.**
+    The concepts have to be searched for other such topics that
+    might belong in `@overkill/cli` — sweep `runtime-behavior.md`,
+    `package-architecture.md` § Reporters, `failure-artifacts.md`
+    output-capture sections, and the reporter docs for content
+    that fits here rather than where it currently lives.
+
+### Recommended Direction
+
+Capture the idea; leave the cut open. As more content is identified
+as CLI-scoped, gather it into `cli.md` so the eventual extraction
+becomes obvious.
+
 ## Scope Note
 
 This doc covers broader product directions kept in view as future

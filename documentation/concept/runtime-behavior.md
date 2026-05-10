@@ -563,16 +563,9 @@ path within each package, deterministic and reproducible without a seed.
 
 ## Terminal Capability Detection
 
-Color, animation, and progress UI obey:
-
--   `NO_COLOR` (any value) — disables color
--   `FORCE_COLOR` — forces color and chooses depth
--   `TERM=dumb` — disables ANSI control sequences
--   not-a-TTY (`stdout.isTTY === false`) — disables progress UI, defaults
-    to a non-animated reporter
-
-Terminal width detection uses `process.stdout.columns`; updates on
-`SIGWINCH`. Reporters wrap or truncate diff output accordingly.
+Moved to `cli.md` § Terminal Capability Detection — those rules
+(color, animation, progress UI, terminal width) are CLI- and
+reporter-scoped, not runtime concerns.
 
 ## Configuration Layering
 

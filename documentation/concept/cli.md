@@ -1,5 +1,11 @@
 # CLI Reference
 
+**Under investigation.** This doc captures the current CLI surface and
+(as content migrates here) the CLI runtime behaviour. Both are likely
+to move to a dedicated `@overkill/cli` package once that direction is
+settled — see `ideas-and-future-directions.md` § CLI Package
+(`@overkill/cli`) for the open shape.
+
 This document enumerates Overkill's command-line interface — subcommands
 and flags. It is a reading aid: the canonical behavior of each option
 lives in the relevant domain doc and is linked here.
@@ -106,3 +112,16 @@ requires the user to type it deliberately.
 This list intentionally omits flags that are still under design (e.g.
 `--since <ref>`, `--shuffle`); when those land, this table is the
 place they should be registered.
+
+## Terminal Capability Detection
+
+Color, animation, and progress UI obey:
+
+-   `NO_COLOR` (any value) — disables color
+-   `FORCE_COLOR` — forces color and chooses depth
+-   `TERM=dumb` — disables ANSI control sequences
+-   not-a-TTY (`stdout.isTTY === false`) — disables progress UI, defaults
+    to a non-animated reporter
+
+Terminal width detection uses `process.stdout.columns`; updates on
+`SIGWINCH`. Reporters wrap or truncate diff output accordingly.
