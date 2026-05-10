@@ -94,6 +94,54 @@ A benchmark definition should be able to describe:
 
 This is closer to BenchmarkTools benchmark groups and to real workflow benchmarking than to a simple timing loop.
 
+Example direction:
+
+```ts
+import { benchmark, workload } from '@overkill/bench';
+
+export const cliPublishBench = benchmark('publish command', {
+    kind: 'responsiveness',
+    workloads: [
+        workload('small', { packages: 5 }),
+        workload('medium', { packages: 50 }),
+        workload('large', { packages: 200 }),
+    ],
+    setup(workload) {
+        return createPublishFixture(workload);
+    },
+    measure: async ({ fixture, workload, sample }) => {
+        const run = await sample.process({
+            command: ['node', 'dist/cli.js', 'publish', '--dry-run'],
+            cwd: fixture.cwd,
+            pty: true,
+        });
+
+        return {
+            durationMs: run.durationMs,
+            startupMs: run.startupMs,
+            p95EventLoopBlockMs: run.eventLoop.p95,
+            maxEventLoopBlockMs: run.eventLoop.max,
+            outputBytes: run.stdoutBytes + run.stderrBytes,
+            workload: workload.name,
+        };
+    },
+    policy: {
+        small: { startupMs: { max: 120 }, p95EventLoopBlockMs: { max: 8 } },
+        medium: { durationMs: { max: 900 }, p95EventLoopBlockMs: { max: 16 } },
+        large: { durationMs: { max: 3200 }, maxEventLoopBlockMs: { max: 40 } },
+    },
+});
+```
+
+The important shape in this example:
+
+-   workload size is explicit and named
+-   fixture creation happens outside the timing window
+-   the measured action is a real external CLI workflow, not a naked function
+-   multiple metrics are recorded from one run
+-   the policy is checked in as reviewable budget data rather than buried in
+    ad hoc assertions
+
 Source:
 
 -   <https://juliaci.github.io/BenchmarkTools.jl/stable/manual/>
