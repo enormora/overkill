@@ -139,12 +139,6 @@ truly needs both lifetimes — and coverage does not.
 
 ### Other Behaviour
 
--   coverage granularity is **per-file**, matching V8's native output.
-    Per-`CaseId` attribution would require snapshotting V8 coverage
-    around each case, diffing slices, and labelling them — machinery
-    whose cost is not justified by a question users rarely ask of the
-    runner (running a single filtered case under `--coverage` answers
-    the same question without a wrapping layer).
 -   coverage scope = the `coverage.include`/`coverage.exclude` source
     set ∩ the executed-test set. A filtered or narrowed run does not
     claim suite-wide coverage; the run record (see
@@ -164,6 +158,12 @@ all selected microtests serially. Worker-pool and process-per-file
 modes do not collect coverage, even when invoked under a microtest
 profile. `--coverage` forces serial execution for the run.
 
+Coverage attribution is **per-test**: each executed case has its
+own coverage record (keyed by `CaseId`) in the run-record coverage
+directory. Single-process collection makes that trivial — one
+timeline of test boundaries, one V8 slice — so per-case attribution
+falls out of the model without extra machinery.
+
 Why single-threaded:
 
 -   V8 coverage is collected per Node process. Cross-worker
@@ -175,8 +175,6 @@ Why single-threaded:
 -   Coverage is opt-in and typically run for audits or in CI, not
     in the inner-loop microtest workflow. Trading parallelism for
     simpler internals is a reasonable bargain.
--   Single-process collection makes per-test attribution trivial
-    (one timeline, one slice).
 
 Supervised microtest mode (where the parent supervises the child
 process for crash recovery) still works — supervision does not
