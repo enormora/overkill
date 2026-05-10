@@ -155,8 +155,6 @@ narrow, runner-owned, and explicit in configuration and diagnostics:
     invoked: `update`, `apply`, `bootstrap`)
 -   strip cache (`~/.cache/overkill/strip/`)
 -   V8 startup snapshot cache (`~/.cache/overkill/snapshots/`)
--   per-test temp directory (`os.tmpdir() + /overkill-<run-id>/<test-id>/`)
-    when the profile permits it (integration profile, not microtest)
 
 The runner enforces that these directories are the only paths writable
 under microtest profile, and surfaces unexpected writes as diagnostics.
