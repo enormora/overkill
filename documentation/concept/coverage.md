@@ -107,7 +107,7 @@ overkill run --coverage --profile microtest
 ```
 
 `--coverage` combined with a non-microtest profile is rejected at CLI
-parse time. (Will be registered in `cli.md` once finalised.)
+parse time.
 
 Config (`overkill.config.ts`) — project policy, settled across runs:
 

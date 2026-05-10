@@ -54,7 +54,7 @@ The concept should assume the runner can detect:
 -   obsolete files for removed or renamed tests
 -   orphaned performance budgets
 
-Stale baselines fail the run by default; removing them requires an explicit `overkill baseline apply` or `overkill baseline clean`.
+Stale baselines fail the run by default; removing them requires an explicit `overkill baseline apply`.
 
 Vitest’s CI behavior around obsolete snapshots is a useful reference point.
 
@@ -89,7 +89,6 @@ along intent:
 | `apply`     | yes             | yes                | **yes**       | yes        |
 | `bootstrap` | yes             | no                 | no            | yes        |
 | `list`      | —               | —                  | —             | no         |
-| `clean`     | no              | no                 | yes           | no         |
 | `diff`      | no              | no                 | no            | yes        |
 
 The subcommand framing reflects user intent: the primary artifact is
@@ -124,10 +123,6 @@ Read-only and disk-only verbs:
     auditing what the suite has accumulated.
 -   `overkill baseline diff` shows what `apply` would change. It runs
     tests but writes nothing — a dry-run for review pipelines.
--   `overkill baseline clean` removes stale orphans without running
-    tests or touching active baselines. Use it when you have already
-    deleted tests and want to clear their abandoned baselines without
-    re-running the suite.
 
 When `overkill run` is invoked instead, no baseline writes happen —
 comparison-only is the default mode. The runner does not gate baseline
@@ -177,8 +172,6 @@ case identities. Default policy:
     on disk** — `update` is non-destructive
 -   `overkill baseline apply`: stale orphans are removed after the run
     completes; this is the verb's reason for existing
--   `overkill baseline clean`: stale orphans are removed without
-    running tests or touching active baselines
 
 Renames are detected as a stale orphan plus a missing new baseline
 (see `non-goals.md` § No automatic rename inference); the developer
@@ -199,8 +192,8 @@ accepts both deliberately by running `apply`.
     `--changed`, a baseline for a profile other than the one used —
     is **not** treated as stale and is **not** removed.
     Comprehensive stale cleanup therefore requires an unfiltered
-    `overkill baseline apply` (or `clean`); a filtered run only
-    cleans within its selection.
+    `overkill baseline apply`; a filtered run only cleans within its
+    selection.
 
 ## Package Position
 

@@ -26,11 +26,11 @@ The `baseline` namespace groups operations on the on-disk baseline
 artifacts. Verbs that execute tests (`update`, `apply`, `bootstrap`,
 `diff`) accept the same selection, capability, output, and lifecycle
 flags as `run` — they _are_ runs with different intended artifacts (see
-`Flags vs Subcommands` below). `list` and `clean` operate on disk only
-and do not run tests.
+`Flags vs Subcommands` below). `list` operates on disk only and does
+not run tests.
 
 The runner trusts the verb the user typed. `update`, `apply`,
-`bootstrap`, and `clean` write to disk regardless of the host
+and `bootstrap` write to disk regardless of the host
 environment; if a CI workflow runs them, that is what the workflow
 author intended. There is no env-var opt-in or environment-based
 gate.
@@ -41,7 +41,6 @@ gate.
 | `overkill baseline apply [paths...]`     | **Full reconciliation.** Create missing, overwrite changed, **and remove stale orphans**. Explicit verb for the cleanup. | same                                           |
 | `overkill baseline bootstrap [paths...]` | **First-time setup.** Only create missing baselines; do not touch existing files. For brand-new suites.                  | same                                           |
 | `overkill baseline list [paths...]`      | Print all baselines on disk with their resolved identities. Does not run tests; does not write.                          | same                                           |
-| `overkill baseline clean [paths...]`     | Remove stale orphans only. Does not run tests; does not update active baselines.                                         | same                                           |
 | `overkill baseline diff [paths...]`      | Show what `apply` would change. Runs tests but writes nothing.                                                           | same                                           |
 
 ## Flags vs Subcommands
@@ -54,10 +53,9 @@ the invocation is different from the default verdict:
 -   `replay` re-produces a past verdict
 -   `replay-witness` re-produces a single failure
 -   `baseline <verb>` produces or inspects baseline files (`update`,
-    `apply`, and `bootstrap` write; `list`, `clean`, and `diff` do not
-    write fresh content but operate inside the baseline namespace
-    because the user's primary artifact is still baselines, not a
-    verdict)
+    `apply`, and `bootstrap` write; `list` and `diff` do not write
+    fresh content but operate inside the baseline namespace because
+    the user's primary artifact is still baselines, not a verdict)
 
 A flag refines or augments a `run`. It does not change what the user
 asks for — they still want a verdict; the flag just shapes how the run
@@ -93,6 +91,7 @@ requires the user to type it deliberately.
 
 | Flag                | Behavior                                              | Reference                                      |
 | ------------------- | ----------------------------------------------------- | ---------------------------------------------- |
+| `--coverage`        | Collect coverage for microtest profiles only. Forces serial execution. | `coverage.md`                                  |
 | `--reporter <name>` | Select a reporter; may be specified multiple times.   | `package-architecture.md` § Reporters          |
 | `--no-capture`      | Pass stdout/stderr through live instead of buffering. | `runtime-behavior.md` § Console Output Capture |
 
@@ -105,5 +104,5 @@ requires the user to type it deliberately.
 | `--debug-test <id>` | Emit a debug artifact for a single test by ID or selector pattern.   | same                                    |
 
 This list intentionally omits flags that are still under design (e.g.
-`--coverage`, `--since <ref>`, `--shuffle`); when those land, this
-table is the place they should be registered.
+`--since <ref>`, `--shuffle`); when those land, this table is the
+place they should be registered.
