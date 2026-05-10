@@ -506,15 +506,29 @@ linter) reads the pattern.
 ## Parallelism Semantics
 
 Parallelism happens at multiple grains. The default for `@overkill/test`
-is **single-process, in-order**. Other modes are explicitly opt-in:
+is **concurrent-in-process with seeded randomized scheduling**. Other
+modes remain available when the suite or resource model calls for them:
 
 | Mode                    | Description                                           | When useful                                         |
 | ----------------------- | ----------------------------------------------------- | --------------------------------------------------- |
-| `serial`                | One test at a time, single process                    | default for microtests                              |
-| `concurrent-in-process` | Multiple tests' async work interleaves in one process | I/O-bound integration suites                        |
+| `serial`                | One test at a time, single process                    | deterministic simulation, debugger-focused runs     |
+| `concurrent-in-process` | Multiple tests' async work interleaves in one process | default for microtests                              |
 | `worker-pool`           | N worker threads, file-level distribution             | CPU-bound suites, big monorepos                     |
 | `process-per-file`      | Subprocess per test file                              | strong isolation, capability resets, native crashes |
 | `single-worker-serial`  | Single worker thread, no concurrency                  | benchmarks, deterministic-simulation                |
+
+Rationale for the default:
+
+-   microtests should surface accidental coupling early; a concurrent
+    default is better at exposing hidden dependence on ambient global state,
+    fake timers, console ordering assumptions, and resource ownership leaks
+-   same-process concurrency preserves the low cold-start budget while still
+    allowing unrelated async work to overlap
+-   strict serialization remains useful, but it is a debugging and
+    determinism tool rather than the default shape for the suite
+-   tests that genuinely require serialization should declare it through
+    resources or run under `--mode serial`, rather than relying on an
+    implicitly serialized suite
 
 Selection rules:
 
@@ -523,6 +537,36 @@ Selection rules:
     upgrade the mode (e.g. exclusive resource forces serialization within
     its scope)
 -   `--mode` overrides at the CLI
+
+## Execution Order
+
+Execution order is a scheduling concern, not a property of source-file
+layout. The default scheduler is **seeded random order**:
+
+-   after collection, metadata propagation, filtering, and sharding, the
+    selected case set is shuffled by a recorded seed
+-   if the user does not pass `--seed <value>`, the runner chooses one,
+    prints it, and writes it into the `RunPlan` and final `RunRecord`
+-   rerunning with the same seed and the same filtered case set reproduces
+    the same order
+-   resources or execution constraints may force local serialization, but
+    they do not silently disable seeded ordering for unrelated tests
+
+Why randomize by default:
+
+-   fixed lexical order hides order-dependent tests for too long
+-   a seed gives reproducibility without giving up the ability to shake out
+    unwanted coupling
+-   the randomization happens at plan time, so IDEs, replay, and failure
+    artifacts can all report the exact realized order
+
+Override surfaces:
+
+-   `--seed <value>` selects a specific shuffle
+-   `--order lexical` disables shuffling and uses deterministic collection
+    order
+-   runner profiles may choose stricter scheduling only where the test
+    family actually requires it (for example benchmarks)
 
 Default worker count is `Math.min(cpus().length - 1, 8)` for worker-pool
 modes, capped to keep the host responsive. Override via `--workers N`.
@@ -558,8 +602,11 @@ Default monorepo behavior:
 -   baselines and failure artifacts are scoped per-package by default,
     living under each package's `test-baselines/` directory
 
-Cross-package test ordering is alphabetic by package name, then by file
-path within each package, deterministic and reproducible without a seed.
+Collection order remains deterministic for identity and planning purposes:
+packages are discovered alphabetically and files within a package are
+collected in stable path order. The actual execution order is then derived
+from the seeded scheduler above unless the user or profile opts into
+lexical order.
 
 ## Terminal Capability Detection
 

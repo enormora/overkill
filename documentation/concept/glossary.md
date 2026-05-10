@@ -147,7 +147,8 @@ A bundle of `(capability profile, execution strategy, runner configuration)`
 that is referred to by name. Common profiles:
 
 -   `default` — the integration-local profile with a worker pool
--   `microtest` — the micro-strict profile with serial execution in-process
+-   `microtest` — the micro-strict profile with concurrent-in-process
+    execution and seeded randomized order
 -   `benchmark` — the benchmark-process profile with single-worker-serial
 -   `simulation` — deterministic-simulation profile
 

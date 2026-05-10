@@ -41,15 +41,19 @@ layer resolves the run plan in this order:
 4.  **Sharding.** `--shard <i>/<n>` partitions the filtered set
     deterministically by `CaseId` hash. See `runtime-behavior.md` §
     Sharding.
-5.  **Worker assignment.** The execution strategy (resolved from
+5.  **Scheduling order.** The filtered, sharded case set is assigned
+    an execution order. By default this is a seeded shuffle recorded
+    in the run plan; profiles or CLI flags may opt into lexical
+    order. See `runtime-behavior.md` § Execution Order.
+6.  **Worker assignment.** The execution strategy (resolved from
     profile + resource constraints) decides workers, processes,
     isolation grain. See `runtime-behavior.md` § Parallelism
     Semantics and `package-architecture.md` § Orchestration.
-6.  **Plan freeze.** The resulting `RunPlan` (see
+7.  **Plan freeze.** The resulting `RunPlan` (see
     `reproducibility.md`) is written to the run record and is the
     canonical input for replay.
 
-After step 6, the plan does not change. New tests discovered during
+After step 7, the plan does not change. New tests discovered during
 execution are an error.
 
 ## Execution-Time Wrapping
@@ -99,6 +103,9 @@ The split buys several capabilities:
     selection, instead of importing-then-discarding
 -   `--shard <i>/<n>` partitions deterministically across workers
     because the full plan is known upfront
+-   seeded random order is part of the plan, not an execution-time
+    accident; replay and failure reports can name the actual realized
+    order
 -   the `RunPlan` is recorded as a serializable artifact (per
     `principles.md` § Data Over Side Effects), enabling replay and
     IDE / MCP introspection without running
@@ -166,6 +173,9 @@ the order isn't explicit:
 -   **Filters apply before sharding.** `--filter '...' --shard 1/4`
     shards the filtered subset, not the full tree. Reproducibility
     depends on this.
+-   **Randomization happens before worker assignment.** The seed
+    orders the logical case set first; execution strategy then maps
+    that order onto workers or in-process concurrency.
 -   **Plan freeze is total.** Dynamically-generated tests
     (`describe.each` style) must be discovered at collection.
     Generating new tests during execution is rejected at the engine
