@@ -176,6 +176,39 @@ hyperproperty('constant-time hmac', [secretGen, secretGen], (a, b) => {
 real differentiator, especially for crypto / auth code paths. No mainstream
 JS test runner exposes hyperproperties.
 
+Concrete use-cases worth naming:
+
+-   constant-time or near-constant-time behavior for auth / crypto paths
+-   information-flow checks such as "changing the secret must not change the
+    public log/output shape"
+-   fairness or starvation checks where two comparable schedules should not
+    diverge beyond an explicit bound
+-   cache-behavior or scheduling checks where equivalent public inputs should
+    not produce materially different observable latency classes
+
+What a serious Overkill treatment would need:
+
+-   paired or multi-trace generators rather than a single arbitrary input
+-   witness artifacts that record all compared traces, not just one failing
+    sample
+-   explicit measurement policy for noisy domains: sample count, tolerated
+    delta, percentile or histogram rule, and machine comparability metadata
+-   a verdict model that distinguishes "clear relational failure" from
+    "measurement too noisy to decide"
+
+Likely package direction if this ever graduates from research note to real
+surface:
+
+-   build on top of the future property-testing layer rather than beside it
+-   expose primitives such as `hyperproperty(...)` or a more explicit
+    `compareTraces(...)`
+-   reuse the same witness / replay artifact model where possible, extended
+    to multi-trace evidence rather than single-input counterexamples
+
+This is still research-flavored and not a near-term first package, but it is
+now concrete enough to preserve as a real architectural option rather than a
+one-paragraph curiosity.
+
 ## Linearizability And Consistency Model Checking
 
 Concurrent JS code (workers, `Atomics`, `SharedArrayBuffer`) needs more than
