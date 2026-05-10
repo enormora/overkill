@@ -22,7 +22,7 @@ value rather than relying on registration side effects:
 // source/users.test.ts
 import { assertion } from '@overkill/assert';
 import { gen } from '@overkill/property'; // proposed package, see types-index
-import { runIfMain, suite, test } from '@overkill/test';
+import { suite, test } from '@overkill/test';
 import { parse, serialize } from './users.ts';
 
 export const spec = suite('users', [
@@ -32,7 +32,6 @@ export const spec = suite('users', [
         );
     }),
 ]);
-await runIfMain(import.meta, spec);
 ```
 
 The test passes for thousands of generated inputs, then fails on a

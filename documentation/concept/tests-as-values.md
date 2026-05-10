@@ -37,7 +37,7 @@ the high-level authoring layer, not as a discarded side experiment.
 ## What It Looks Like
 
 ```ts
-import { runIfMain, suite, table, test } from '@overkill/test';
+import { suite, table, test } from '@overkill/test';
 
 export const spec = suite('users', [
     test('build', (case) => {
@@ -55,7 +55,6 @@ export const spec = suite('users', [
         return case.assert.done();
     }),
 ]);
-await runIfMain(import.meta, spec);
 ```
 
 The named export `spec` is a `Suite` — a plain data tree. The runner does:
@@ -70,15 +69,19 @@ const result = await run(plan);
 That's it. No registry, no hidden cross-file module-load side effects, no
 order dependence on when `test()` happens to be called.
 
-`runIfMain(import.meta, spec)` is the bridge that keeps direct execution
-simple. A user should be able to run:
+The preferred DX is that direct execution does not require a mandatory
+self-run call in every test file. A user should be able to run:
 
 ```bash
 node source/users.test.ts
 ```
 
 and get the same execution semantics without giving up the exported value for
-tooling.
+tooling. The most likely shape is that the high-level package or loader path
+recognizes the conventional exported test value when the module is the
+entrypoint. A helper such as `runIfMain(import.meta, spec)` may still exist
+as a fallback, but it should not be the preferred first-party authoring
+pattern.
 
 ## Why This Is Better
 

@@ -66,15 +66,23 @@ Planned early integrations:
 -   machine-readable APIs should keep IDE and MCP implementations easy for third parties
 -   optional JS/TS config files should stay small and orchestration-focused
 
-Likely future families:
+Future package families already counted into the concept:
 
 -   browser and visual testing
--   property-based testing
+    -   built on the shared runtime, baseline, artifact, and reporter model
+        rather than on browser-only engine semantics
+-   property-based and model-based testing
+    -   centered on integrated shrinking, replayable witnesses, persistent
+        corpora, and state-machine/linearisability layers above that core
 -   remote execution and distributed orchestration helpers
+    -   preserving the same stable identities, result shapes, and artifact
+        contracts while allowing work to be planned or executed outside one
+        local process tree
 
-Browser and visual testing should stay adapter-driven on top of the shared
-runtime, baseline, and artifact model rather than growing special engine
-semantics.
+These are not just vague possibilities. The current concept already assumes
+their constraints when it talks about stable identity, layered runtimes,
+structured artifacts, package-contributed execution requirements, and
+reporter neutrality.
 
 ## Testing Modes
 

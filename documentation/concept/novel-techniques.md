@@ -161,6 +161,26 @@ Especially useful when a project ships its own implementation of a standard
 
 `quickcheck-state-machine`'s parallel mode is the gold standard.
 
+What a fuller Overkill treatment would need:
+
+-   an explicit notion of compared subject roles (`candidate`, `reference`,
+    `legacy`, `naive`, `polyfill`) so reports explain the mismatch in
+    domain language instead of `left`/`right`
+-   shrinking that preserves both the input and any runtime dimensions
+    needed to reproduce the mismatch
+-   a witness artifact that records both outputs plus any attached logs or
+    transcripts needed to understand why they diverged
+-   optional asymmetry in the relation: exact equality for some fields,
+    tolerances or projection functions for others
+
+Likely package direction if this graduates:
+
+-   a small `@overkill/differential` layer above the future property package
+-   authoring centered on `differential(...)` or `compareAgainst(...)`
+    rather than on hand-written nested loops
+-   reusing the same witness/replay and artifact model as other generated
+    test families
+
 ## Hyperproperties / 2-Trace Properties
 
 A property says "for all `x`, `P(f(x))`." A hyperproperty says "for all `x`,
@@ -223,6 +243,22 @@ interaction log and a sequential model, decides linearisability. Pairs with
 the stateful PBT layer. For users writing code with `Atomics.wait`, this is
 the only correctness check that matters.
 
+To make this feel like a real concept rather than a name-drop, the likely
+shape is:
+
+-   a test or helper records operation history from concurrent actors
+-   the user provides a sequential specification/model
+-   the checker decides whether the observed history can be linearized to a
+    valid sequential execution
+-   on failure, the artifact names the conflicting operations and the
+    minimal non-linearizable history prefix
+
+This would likely sit in a dedicated `@overkill/history` or
+`@overkill/linearizability` package above the future property/model layer,
+not in the engine. The engine only needs stable identity, structured
+artifacts, and enough metadata to attribute a failing history back to its
+generated scenario and runtime dimensions.
+
 ## Chaos Testing In Unit-Test Scope
 
 Most chaos tooling targets integration scope (Toxiproxy, Chaos Mesh).
@@ -236,6 +272,20 @@ Composes naturally with the deterministic simulation layer: a "chaos
 profile" is a virtual world configured with a fault distribution. Code that
 explicitly handles failure (retries, circuit breakers, OOM defenses) gets a
 real test runtime.
+
+What deeper exploration should answer:
+
+-   which fault injectors belong in the first useful slice: dropped message,
+    delayed timer, clock skew, partial write, quota exhaustion, allocator
+    failure
+-   whether the user writes a one-off injected scenario or a reusable
+    `chaosProfile(...)` object that feeds many tests
+-   how failures are rendered so the output says which injected fault made
+    the case fail, not just that some generated run failed
+
+The likely Overkill direction is not "run chaos against production." It is
+"make resilience logic testable in a deterministic local simulation." That
+keeps the scope aligned with the rest of the concept set.
 
 ## Out-Of-Band Verdicts
 
@@ -353,6 +403,23 @@ gaps) that make AI-assisted analysis productive." That is already the
 direction the engine is heading; making MCP integration a first-class
 extension surface ensures editor-driven AI tooling can plug in.
 
+Concrete uses worth preserving:
+
+-   propose metamorphic relations or property generators from existing type
+    and example information
+-   suggest new mutants or equivalence partitions when mutation/coverage
+    data shows a blind spot
+-   explain a failing witness or shrunk counterexample in terms closer to
+    the user domain than the raw diff alone
+
+The boundary should stay strict:
+
+-   AI may assist authoring and diagnosis
+-   AI should not become a hidden oracle that silently decides pass/fail
+-   every AI-derived claim still has to become an explicit assertion,
+    property, relation, or reviewable artifact in the ordinary Overkill
+    pipeline
+
 ## Time-Travel Debugging
 
 `replay.io` (browser), `rr` (Linux), Wallaby's in-editor time-travel debugger.
@@ -364,6 +431,19 @@ guarantee that any failing test in the deterministic-simulation profile is
 reproducible from the recorded seed alone. The witness format from
 `deterministic-simulation.md` is already the trace; an external viewer can
 play it back.
+
+If this grows beyond deterministic simulation, the useful Overkill-specific
+question is not "can the runner build its own universal debugger?" It is
+"which replay artifacts should the runner preserve so external debuggers or
+viewers can reconstruct a failing run?" The concept should therefore stay
+artifact-first:
+
+-   preserve enough scheduling, timing, and injected-event data to replay
+    deterministic runs exactly
+-   keep the witness/trace format stable enough that external tools can
+    build viewers on top of it
+-   avoid turning the core runner into a browser-recorder or VM-level
+    debugger product
 
 ## Tools Worth Tracking
 

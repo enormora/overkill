@@ -32,7 +32,8 @@ without pulling in the higher-level DSL.
 authoring layer. It should favor:
 
 -   exported suite values
--   direct-file execution through a tiny helper such as `runIfMain`
+-   direct-file execution without requiring a mandatory self-run helper in
+    the common case
 -   flat tests
 -   explicit grouping only where needed
 -   test macros as the primary reuse model
@@ -46,6 +47,15 @@ authoring layer. It should favor:
 Tables or parameterized-case helpers may still exist, but they should be
 framed as specialized helpers built on the macro/value model rather than as
 a second competing first-party reuse philosophy.
+
+The preferred DX should be:
+
+-   a test file exports a conventional value such as `spec`
+-   if that file is executed directly, the high-level package or loader path
+    can detect the conventional export and run it automatically
+-   an explicit helper such as `runIfMain(import.meta, spec)` may still exist
+    as a low-level fallback, but it should not remain the canonical
+    first-party authoring shape
 
 ## Assertions
 
@@ -170,6 +180,7 @@ Reporter support should be modeled as a package family rather than one catch-all
 
 Examples:
 
+-   `@overkill/reporter-dot`
 -   `@overkill/reporter-line`
 -   `@overkill/reporter-tap`
 -   `@overkill/reporter-json`

@@ -586,28 +586,6 @@ CI integration: GitHub Actions, GitLab, and CircleCI matrices map directly
 to `--shard`. Reporters can merge per-shard JSON outputs into a single
 final report.
 
-## Monorepo Discovery
-
-Default monorepo behavior:
-
--   the runner detects workspace roots by walking up from the cwd looking
-    for `package.json` with a `workspaces` field, `pnpm-workspace.yaml`,
-    or `lerna.json`
--   if a workspace root is found and the cwd is at the root, the runner
-    discovers tests across all workspace packages by default
--   per-package configuration is layered on top of the root config (see
-    "Configuration layering" below)
--   selection by package: `--package <name>` filters to one package;
-    glob patterns supported
--   baselines and failure artifacts are scoped per-package by default,
-    living under each package's `test-baselines/` directory
-
-Collection order remains deterministic for identity and planning purposes:
-packages are discovered alphabetically and files within a package are
-collected in stable path order. The actual execution order is then derived
-from the seeded scheduler above unless the user or profile opts into
-lexical order.
-
 ## Terminal Capability Detection
 
 Moved to `cli.md` § Terminal Capability Detection — those rules
@@ -616,23 +594,35 @@ reporter-scoped, not runtime concerns.
 
 ## Configuration Layering
 
-Configuration sources, in **decreasing** precedence:
+Project policy should come from config files, not from overlapping config
+channels.
 
-1.  CLI flags
-2.  Environment variables (`OVERKILL_*`)
-3.  Project-local config (`overkill.config.ts` at the cwd or workspace
-    root)
-4.  Per-package config (in monorepos, each package's `overkill.config.ts`)
-5.  User-level defaults (`~/.config/overkill/config.ts`)
-6.  Built-in defaults
+Canonical shape:
+
+-   one root `overkill.config.ts` defines project policy
+-   in a monorepo, package-level config files may extend that root policy
+    where the workspace concept genuinely needs per-package differences
+-   built-in defaults fill gaps, but there is no second user-level config
+    layer and no parallel environment-variable config surface
+
+The only configuration-oriented CLI flag should be `--config <path>` to pick
+the config file location explicitly when discovery is not enough.
+
+Important distinction:
+
+-   config files define project policy
+-   ordinary CLI selection and run-intent flags such as `--file`, `--name`,
+    `--id`, `--seed`, or `--shard` are still valid because they are not a
+    second configuration channel; they are one run request against that
+    policy
 
 Config files are TS modules exporting a default config value. The runner
 imports them via the same loader pipeline as test files (Node type
 stripping). No JSON or YAML schema; types over schema.
 
-A subset of values cascades: a per-package config inherits root config and
-overrides per-key. Arrays merge (with `replace:` opt-out per array
-property).
+Where package-level config exists, it should extend the root config through
+typed composition rather than by inventing unrelated ad-hoc precedence
+rules.
 
 ## Watch-Mode Targeting
 
