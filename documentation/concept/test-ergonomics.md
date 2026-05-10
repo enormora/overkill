@@ -258,11 +258,38 @@ Recommended helpers:
 -   `case.microtasks()`
 -   `case.immediate()`
 
+Suggested semantics:
+
+-   `case.microtasks()` drains the current microtask queue once. Use it when
+    the code under test schedules follow-up work with `Promise.resolve()`,
+    `queueMicrotask`, or an already-resolved async continuation.
+-   `case.immediate()` yields one event-loop turn. Use it when the code under
+    test crosses a macrotask boundary (`setImmediate`, message channel,
+    stream callback, next-turn event dispatch) and a microtask flush is not
+    enough.
+-   `case.flushAsync()` is the bounded "settle what is already in flight"
+    helper. It repeatedly yields through the relevant queue boundaries until
+    the currently scheduled async work has drained, or until a small safety
+    limit is hit so the helper cannot spin forever on a live loop.
+
 These are useful because they do **not** require global time monkey
 patching or a mandatory production-side clock abstraction.
 
 They solve the repeated “yield just enough to observe the intermediate state”
 dance found in controller, state-machine, and lock tests.
+
+Typical use:
+
+-   `microtasks()` for promise-chains and "one more await" state updates
+-   `immediate()` for observer/event-loop handoff where work lands on the
+    next turn rather than the current microtask queue
+-   `flushAsync()` for queue-driven components where the test wants the
+    currently-triggered cascade to settle before asserting
+
+This should stay intentionally small. The first-party concept does not need
+an exhaustive scheduler DSL; it needs a few helpers that replace ad-hoc
+`await Promise.resolve()` and `await new Promise(setImmediate)` littered
+through otherwise straightforward tests.
 
 ## `inFlight(...)`
 
