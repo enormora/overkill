@@ -165,8 +165,19 @@ All caps are configurable per profile.
 
 Failing property tests and deterministic-simulation tests produce
 witnesses: serialised, replayable artifacts that reproduce the
-failure without re-running shrinking. This is the canonical witness
-schema; other docs reference it rather than restating fields.
+failure without re-running shrinking. Both kinds share the same
+problem — the failing run is a **seeded reproduction** whose outcome
+depends on state the test code does not own. A property test's
+failure is determined by the seed plus the shrink path that produced
+the minimal counterexample; a deterministic-simulation test's failure
+is determined by the seed plus the scenario and adapter payload that
+parameterise the simulator (see `deterministic-simulation.md` § Why
+This Matters). In both cases, re-running the test source against the
+same imports without that recorded state would produce a different
+execution, so a witness is the only way to reproduce on demand.
+
+This is the canonical witness schema; other docs reference it rather
+than restating fields.
 
 ```ts
 type WitnessFile = {
