@@ -389,8 +389,7 @@ Resolution rules:
     errors
 -   soft preferences are reconciled by deterministic priority order
 
-Source: `runtimes-and-fixtures.md`, `package-architecture.md`,
-`architecture-decisions.md`.
+Source: `runtimes-and-fixtures.md`, `package-architecture.md`.
 
 ## Run Result
 

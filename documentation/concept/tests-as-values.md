@@ -372,7 +372,7 @@ Because the test definitions are values, an external tool can:
 -   diff two runs by comparing tree shapes
 
 This makes Overkill's machine-readable surface (named in
-`extensions-and-plugins.md` and `architecture-decisions.md`) genuinely
+`extensions-and-plugins.md` and `package-architecture.md`) genuinely
 free, rather than a reporter-output parser kludge.
 
 ## Influences

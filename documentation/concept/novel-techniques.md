@@ -329,8 +329,7 @@ If Overkill commits to incorporating these in priority order:
 In-source tests are intentionally **not** in this list: the settled
 concept rejects them as the default authoring model and the research
 record lives in `non-goals.md` § Deferred With Research (see also
-`architecture-decisions.md` § Default Authoring Model and
-`microtests-and-capabilities.md`).
+`microtests-and-capabilities.md` and `tests-as-values.md` § Recommendation).
 
 Item 1 is essentially free given decisions already made. Items 2, 3, 5
 are the big architectural commitments. Item 4 (TIA) is open research.

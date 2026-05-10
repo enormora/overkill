@@ -26,8 +26,8 @@ Overkill does not inject `describe`/`it`/`test` as ambient globals.
 Why: hidden injection makes registration order, isolation, and types
 opaque, and forces the runner to control every entry point.
 
-Where: `principles.md` § No Magic, `architecture-decisions.md` § Default
-Authoring Model.
+Where: `principles.md` § No Magic, `tests-as-values.md` § What It Looks
+Like.
 
 Alternative: explicit imports from `@overkill/test`.
 
@@ -42,8 +42,8 @@ dangerous when accidentally committed: a focused test can make CI run
 only one test while still appearing green. Many existing frameworks
 need custom lint rules just to contain that footgun.
 
-Where: `architecture-decisions.md` § Default Authoring Model,
-`metadata-and-selection.md` § Local Iteration Workflow.
+Where: `metadata-and-selection.md` § Local Iteration Workflow,
+`tests-as-values.md` § Recommendation.
 
 Alternative: CLI selection (`--name`, `--file`, `--id`, `--last-failed`,
 `--changed`).
@@ -69,7 +69,7 @@ Why: both depend on private internals or loader interception that
 breaks under refactoring and conflicts with capability-restricted
 microtests.
 
-Where: `doubles.md` § Position, `architecture-decisions.md` § Doubles.
+Where: `doubles.md` § Position.
 
 Alternative: explicit dependency injection plus capability handles when
 the collaborator is a typed effect interface.
@@ -155,8 +155,7 @@ Overkill does not implement its own TypeScript type checker for
 Why: type checking belongs to `tsc`; reimplementing it duplicates a
 moving target and ties Overkill releases to TS releases.
 
-Where: `architecture-decisions.md` § Planned Integration Direction,
-`fast-feedback-loops.md` § 11.
+Where: `fast-feedback-loops.md` § 11.
 
 Alternative: integrate with [tstyche](https://tstyche.org/) and surface
 its results through the Overkill reporter pipeline.
@@ -303,7 +302,7 @@ Why: stable package contracts are enough; a plugin runtime adds
 indirection without unique reach.
 
 Where: `extensions-and-plugins.md` § Plugin Philosophy,
-`architecture-decisions.md` § Bundles, Metadata, And Extensions.
+`bundles-and-distribution.md`.
 
 Alternative: stable APIs in `@overkill/engine`, orchestration-level
 composition in `@overkill/run`, and config-driven attachment for
@@ -369,9 +368,9 @@ What would change to revive: the JS shipping and tooling story changes
 materially (e.g. native in-source-test stripping in a runtime), or
 Overkill's scope shifts to own a transform pipeline.
 
-Where: `architecture-decisions.md` § Default Authoring Model,
-`microtests-and-capabilities.md` § In-Source Microtests,
-`novel-techniques.md` Recommended Path note.
+Where: `microtests-and-capabilities.md` § In-Source Microtests,
+`novel-techniques.md` Recommended Path note,
+`tests-as-values.md` § Recommendation.
 
 ## What This Doc Is Not
 
