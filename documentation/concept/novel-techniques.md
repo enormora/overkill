@@ -67,6 +67,21 @@ shrink." Concrete commitments worth making explicit:
 Likely package home: `@overkill/property` plus `@overkill/model` for the
 state-machine and parallel layers.
 
+Relationship to existing JS tools:
+
+-   `fast-check` is the most obvious current JS reference point and should be
+    treated as a serious idea donor
+-   it may still be useful for experimentation, adapter layers, or partial
+    reuse of generator ergonomics
+-   it is not the exact conceptual target for Overkill's long-term property
+    layer, because the desired direction here includes stronger integrated
+    shrinking guarantees, witness/corpus workflows, and a more explicit
+    model/state-machine story
+
+So the stance should be: learn from `fast-check`, borrow where it genuinely
+fits, but do not constrain the future property package to fast-check's
+current model if the architecture wants a stricter or richer design.
+
 ## Metamorphic Testing
 
 When you cannot write `expect(f(x)).toBe(K)` because there is no oracle, you
