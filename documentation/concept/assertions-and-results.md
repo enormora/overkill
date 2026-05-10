@@ -317,6 +317,61 @@ The architecture should preserve room for future exploration of:
 Vitest's domain snapshot adapter model is a useful sign that richer
 comparison contracts are practical in real tooling.
 
+### Assertions-As-Effects
+
+One alternative worth preserving explicitly is an effect-oriented assertion
+model:
+
+-   instead of `case.assert.equal(...)` mutating a builder-owned log,
+    assertion operations emit `AssertionNode`s into a per-test effect sink
+-   the sink is owned by the runner, not by a hidden global registry
+-   the test body can stay structurally close to ordinary imperative code,
+    but the runner still receives a structured stream of assertion events
+
+Sketch:
+
+```ts
+test('saves and re-reads', async (case) => {
+    const id = await store.save({ name: 'Ada' });
+    case.expect.string(id);
+
+    const fetched = await store.read(id);
+    case.require.defined(fetched);
+    case.expect.equal(fetched.name, 'Ada');
+});
+```
+
+Conceptually, `case.expect.equal(...)` would not finalize a result directly.
+It would emit an assertion effect into the case-local sink, and the runner
+would derive the final `TestOutcome` from the recorded effect stream after
+the body finishes.
+
+Why this is interesting:
+
+-   it fits highly-async test bodies well because assertions can be recorded
+    from any awaited segment without having to thread a returned
+    `AssertionNode` through every helper boundary
+-   it opens a path to richer live observation: reporters or debug tooling
+    could observe assertion effects as they happen rather than only after
+    `assert.done()`
+-   it may compose better with helper abstractions that want to emit checks
+    internally without forcing the caller to manually aggregate returned
+    nodes
+
+Why it is not the primary concept today:
+
+-   the builder/result model is simpler to explain and already covers the
+    common path
+-   effect-style recording adds another layer of semantics around ordering,
+    buffering, and finalization
+-   once assertion emission becomes more stream-like, the line between
+    ordinary assertions and runner instrumentation gets blurrier and needs
+    tighter specification
+
+Current stance: preserve this as a plausible future branch, but keep the
+primary first-party authoring model centered on explicit builder APIs plus
+`assert.done()`.
+
 Source:
 
 -   <https://vitest.dev/guide/snapshot.html>
