@@ -31,7 +31,9 @@ Higher-level packages may support config files, but config remains optional.
 
 That means:
 
--   `@overkill/test` and `@overkill/run` may read config files
+-   config loading belongs above the engine, likely in `@overkill/run`
+-   higher layers may contribute configuration domains even when they do not
+    own file discovery
 -   direct programmatic composition stays first-class
 -   no project should be forced to adopt a config file for small setups
 
@@ -53,6 +55,13 @@ Configuration should mainly cover orchestration and package wiring:
 -   extension registration
 
 Configuration should avoid becoming the place where test logic lives.
+
+One important distinction: `@overkill/run` may be the place that loads,
+merges, and validates config files, but it is not the semantic owner of
+every key. Browser, benchmark, assertion, baseline, or type-test packages
+may each contribute their own configuration surface above the engine. The
+runner's job is to assemble those surfaces into one coherent config entry
+point, not to collapse every higher-layer concept into "runner config."
 
 ## Low-Surface Philosophy
 
@@ -97,8 +106,14 @@ Typical ownership:
     -   programmatic options only
 -   `@overkill/test`
     -   high-level authoring helpers that may consume programmatic config
+    -   may contribute package-level config concepts without owning file
+        discovery
 -   `@overkill/run`
     -   config file loading, discovery, orchestration defaults
+    -   config merging / validation across higher-layer packages
+-   other higher-level packages
+    -   package-specific config domains such as browser wiring, benchmark
+        metric collectors, type-test adapters, or assertion registration
 
 ## Custom Assertions
 
@@ -163,5 +178,9 @@ magical for configuration too.
 -   engine configuration is programmatic only
 -   higher-level config files are optional
 -   JS/TS config is preferred
+-   config loading and discovery live above the engine, likely in
+    `@overkill/run`
+-   higher layers may contribute config domains even when the runner owns the
+    top-level loading step
 -   the surface should stay small and orchestration-focused
 -   custom assertion registration is explicitly in scope
