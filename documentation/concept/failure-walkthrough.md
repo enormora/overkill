@@ -14,23 +14,27 @@ how the segments fit.
 
 ## The Test
 
-A property test exported as a `TestNode` value that round-trips a
-serializer:
+A property test exported as a `Suite` value (see `tests-as-values.md`
+§ What It Looks Like); the runner imports the module and walks the
+value rather than relying on registration side effects:
 
 ```ts
 // source/users.test.ts
-import { suite, test } from '@overkill/test';
+import { assertion } from '@overkill/assert';
 import { gen } from '@overkill/property'; // proposed package, see types-index
+import { runIfMain, suite, test } from '@overkill/test';
 import { parse, serialize } from './users.ts';
 
-export default suite('users', [
+const spec = suite('users', [
     test('round-trip preserves values', (case) => {
-        case.plan(1);
         return case.forall(gen.user(), (user) =>
-            case.assert.equal(parse(serialize(user)), user),
+            assertion.equal(parse(serialize(user)), user),
         );
     }),
 ]);
+
+export default spec;
+await runIfMain(import.meta, spec);
 ```
 
 The test passes for thousands of generated inputs, then fails on a
@@ -40,25 +44,30 @@ form when the input was NFC. The structures compare unequal.
 
 The important part for this walkthrough is not the property helper
 itself; it is the authoring shape around it: the file exports a suite
-value, the case body receives the injected `case` builder, and the
-failure still enters the pipeline as a recorded `FailedCheck`.
+value, the case body returns a `case.forall(...)` invocation built
+from pure assertion-node constructors, and the failure still enters
+the pipeline as a recorded `FailedCheck`.
 
-## Stage 1 — `case.assert.equal` Records
+## Stage 1 — `case.forall` Shrinks And Records
 
-`case.assert.equal(actual, expected)` returns `void` in the builder
-API but records into the test's assertion log. On mismatch, the
-recorded entry is a `FailedCheck` (see
-`assertions-and-results.md` § Diff And Diagnostic Shape):
+`case.forall(generator, body)` evaluates the body for each generated
+input, getting back an `AssertionNode` value (`assertion.equal` is
+pure — it produces a node, it does not mutate any log). Once
+`case.forall` sees a failing node, it shrinks the input to a minimal
+counterexample and records a single `FailedCheck` for that
+counterexample into the case's assertion log (see
+`assertions-and-results.md` § Diff And Diagnostic Shape, and
+§ Property Tests And The Assertion Boundary for the boundary rule):
 
 ```ts
-// recorded into the test's assertion log
+// recorded into the case's assertion log
 const recorded: FailedCheck = {
     id: '0001',
     summary: 'expected deep equality',
     expected: { id: '42', name: 'Adäle' }, // NFC
     actual: { id: '42', name: 'Adäle' }, // NFD
     path: ['name'],
-    location: { file: 'source/users.test.ts', line: 8 },
+    location: { file: 'source/users.test.ts', line: 10 },
     diff: {
         kind: 'object',
         ops: [{ operation: 'replace', path: ['name'], from: '"Adäle"', to: '"Adäle"' }],
@@ -73,10 +82,9 @@ Canonical: `assertions-and-results.md`.
 
 ## Stage 2 — Test Body Returns; Outcome Constructed
 
-The case body returns. The property helper has already driven the
-generated examples and the assertion calls have been recorded through
-the injected builder API. The engine reads that recorded log and
-constructs the `TestOutcome` (see
+`case.forall` returns the test body's terminal value (the
+property-test analogue of `case.assert.done()`). The engine reads
+the case's recorded log and constructs the `TestOutcome` (see
 `results-not-exceptions.md` § The Protocol Shape, also
 `types-index.md`):
 
@@ -87,11 +95,17 @@ const outcome: TestOutcome = {
 };
 ```
 
-Plan check happens here too: `case.plan(1)` was declared, exactly one
-leaf assertion is expected for the property invocation, and the
-plan-mismatch path would have produced its own synthetic
-`FailedCheck` (see `assertions-and-results.md` § `plan(n)`
-Definition).
+`case.forall` is the **assertion-recording boundary** for property
+tests: regardless of how many generated inputs the body runs against,
+the call records one assertion's worth of activity in the case's log
+on success, or one `FailedCheck` for the shrunk counterexample on
+failure. The walkthrough does not write `case.plan(1)` because the
+boundary rule already satisfies zero-assertion detection; the
+canonical statement of the rule lives in
+`assertions-and-results.md` § Property Tests And The Assertion
+Boundary. `plan(n)` remains available — it counts boundary
+assertions, so `case.plan(1)` would still pass — but it is not
+load-bearing for property tests.
 
 The engine is at this point done with the test. Whatever happens
 next — verdict derivation, identity attachment, artifact paths,
@@ -129,8 +143,9 @@ The test's stable identity is computed once at collection (see
 ```ts
 const caseId: CaseId = {
     file: 'source/users.test.ts',
-    name: 'users.round-trip preserves values',
-    // suite path empty (flat test), no params, no runtime, no workload
+    suite: ['users'],
+    name: 'round-trip preserves values',
+    // no params, no runtime, no workload
 };
 ```
 
@@ -149,7 +164,7 @@ Path derivation (canonical rule in `artifact-identity.md` § Path
 Derivation):
 
 ```
-.overkill/witnesses/source/users.test__users.round-trip-preserves-values.witness.json
+.overkill/witnesses/source/users.test__users__round-trip-preserves-values.witness.json
 ```
 
 Canonical: `artifact-identity.md`.
@@ -165,7 +180,8 @@ property runner writes a `WitnessFile` to the path above:
     "producedBy": { "library": "@overkill/property", "libraryVersion": "0.4.2" },
     "case": {
         "file": "source/users.test.ts",
-        "name": "users.round-trip preserves values"
+        "suite": ["users"],
+        "name": "round-trip preserves values"
     },
     "kind": "property",
     "seed": "0xdeadbeef",
@@ -216,14 +232,14 @@ The default reporter receives the run events as they happen and
 prints the failure inline:
 
 ```
-✗ users.round-trip preserves values  source/users.test.ts:8
+✗ users › round-trip preserves values  source/users.test.ts:10
 
   expected deep equality at .name
     expected: "Adäle"
     actual:   "Adäle"
 
   Replay this exact failure:
-    overkill replay-witness .overkill/witnesses/source/users.test__users.round-trip-preserves-values.witness.json
+    overkill replay-witness .overkill/witnesses/source/users.test__users__round-trip-preserves-values.witness.json
 ```
 
 The diff shape from stage 1 is what the reporter renders; the
@@ -240,7 +256,7 @@ Canonical: `package-architecture.md` § Reporters,
 The next morning, on a different machine, the developer runs:
 
 ```
-overkill replay-witness .overkill/witnesses/source/users.test__users.round-trip-preserves-values.witness.json
+overkill replay-witness .overkill/witnesses/source/users.test__users__round-trip-preserves-values.witness.json
 ```
 
 The replay-witness command reads the file (stage 5), restores the

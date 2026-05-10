@@ -95,6 +95,37 @@ Semantics:
 
 This is explicit context injection, not hidden global mutable state.
 
+## Property Tests And The Assertion Boundary
+
+Property primitives like `case.forall(gen, body)` (proposed package
+`@overkill/property`) call `body` many times — once per generated
+input — but count as **one assertion at the boundary** for both
+zero-assertion detection and `plan(n)`:
+
+-   on success: `case.forall` records one assertion's worth of
+    activity in the case's log; a property test that completes
+    successfully therefore satisfies § Zero-Assertion Detection
+    without forcing the author to write `case.plan(1)`
+-   on failure: `case.forall` records exactly one `FailedCheck` for
+    the shrunk minimal counterexample, regardless of how many failing
+    inputs were seen during shrinking
+-   `plan(n)` counts boundary assertions: a test with one
+    `case.forall` call satisfies `case.plan(1)`; a test with two
+    `case.forall` calls satisfies `case.plan(2)`
+
+The body passed to `case.forall` typically uses pure assertion-node
+constructors from `@overkill/assert` (e.g.
+`assertion.equal(actual, expected) -> AssertionNode`) rather than
+`case.assert.*` — the body's return value feeds the property
+machinery, which decides what to record at the boundary. See
+`tests-as-values.md` § Macros And Parameterized Tests for the
+canonical authoring shape, and `failure-walkthrough.md` for an
+end-to-end walked example.
+
+The same boundary rule applies to other property-like primitives
+(`relation`, `differential`, `hyperproperty`) when they land: each
+counts as one boundary assertion regardless of internal iteration.
+
 ## Connection To `results-not-exceptions.md`
 
 The low-level protocol remains `AssertionNode`, but the primary authoring DX
