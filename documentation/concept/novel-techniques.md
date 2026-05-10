@@ -303,6 +303,41 @@ budgeted at suite level). Same metric, two consumers. `@overkill/bench`
 already has the measurement plumbing; SLO tests reuse it without paying
 benchmark setup costs.
 
+The useful boundary is:
+
+-   an SLO-style test asks "does this one important operation stay within the
+    latency budget required for correctness or usability?"
+-   a benchmark asks "how does this workload perform across sizes,
+    environments, and policies over time?"
+
+That makes SLO tests a better fit for:
+
+-   parser or serializer hot paths with hard latency budgets
+-   auth / routing / validation paths where tail latency is part of the user
+    contract
+-   event-loop-sensitive code where a max stall or p99 stall budget is the
+    real requirement
+
+And a worse fit for:
+
+-   broad comparative performance work across many workloads
+-   machine-normalized budget tracking
+-   deep profiling or benchmark-specific diagnostics that need the full
+    `@overkill/bench` harness
+
+If this becomes a real package surface, it should likely:
+
+-   reuse measurement primitives from `@overkill/bench`
+-   expose a very small assertion-shaped API (`slo(...)`) rather than a full
+    benchmark DSL
+-   fail like an ordinary test when the latency budget is violated, with the
+    measured percentile/max values attached as structured failure data
+
+This area is worth preserving because it closes a real gap between "unit
+tests" and "benchmark suites": teams often care about one latency budget
+being upheld continuously, but do not want to spin up a whole benchmark
+workflow just to enforce it.
+
 ## AI-Augmented Testing
 
 The 2026 state of the art: LLMs are mediocre at writing oracle-bearing
