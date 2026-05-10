@@ -266,15 +266,6 @@ third-party, packaged as `@overkill/reporter-coverage` or similar)
 consume the structured coverage data alongside the rest of the run
 result.
 
-## What This Doc Is Not
-
--   not a coverage _quality_ recommendation (Overkill takes no
-    position on what counts as enough coverage)
--   not a built-in instrumenter; the runner orchestrates V8's native
-    coverage rather than ship its own
--   not a coverage facility for integration, browser, or benchmark
-    profiles — those reject `--coverage`
-
 ## Open Items
 
 -   whether the per-test slice is recorded per `CaseId` or per file
