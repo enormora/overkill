@@ -240,16 +240,20 @@ real test runtime.
 Mainstream JS runners model verdicts as `pass | fail | skip`. JUnit5 / pytest
 / TestNG model far more:
 
--   `xfail` — expected to fail; passes when it _does_ fail; flips to a
-    `xpass` regression if it unexpectedly passes
 -   `inconclusive` — runtime unhealthy; not the test's verdict
 -   `not-applicable` — precondition not met; distinct from skip
 -   `flaky-detected` — passed only after retry
--   `quarantined` — known-flaky, allowed to fail without gating
 
 TAP supports `# SKIP` and `# TODO` directives natively. Overkill should
 expose first-class verdicts so CI consumers (and humans) distinguish "this
-is broken" from "we couldn't tell" from "we expect this until #4123 lands."
+is broken" from "we couldn't tell" from "this test did not apply in the
+current environment."
+
+Explicit non-goal: Overkill should not support verdicts whose purpose is to
+let known-broken, incomplete, or flaky tests remain in the suite without
+failing. That means no `xfail`/`xpass` workflow and no quarantine verdict in
+the first-party concept. Broken tests should be fixed, deleted, or fail
+normally.
 
 The split between engine `TestOutcome` (`pass | fail | skip |
 inconclusive`) and reporter-facing verdicts is settled (see `glossary.md`
