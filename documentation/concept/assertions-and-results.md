@@ -222,7 +222,9 @@ mode flags.
 
 ## Diff And Diagnostic Shape
 
-Failed checks carry structured diff data:
+Failed checks carry structured diff data. The sketched types
+(`Diff`, `DiffOperation`, `Hunk`, `SerializedValue`, `SourceLocation`) are
+collected in `types-index.md` § Outcomes And Verdicts.
 
 ```ts
 type FailedCheck = {
@@ -238,9 +240,19 @@ type FailedCheck = {
 type Diff =
     | { kind: 'value'; expected: SerializedValue; actual: SerializedValue }
     | { kind: 'string'; expected: string; actual: string; hunks: ReadonlyArray<Hunk> }
-    | { kind: 'object'; ops: ReadonlyArray<DiffOp> }
-    | { kind: 'array'; ops: ReadonlyArray<DiffOp> };
+    | { kind: 'object'; ops: ReadonlyArray<DiffOperation> }
+    | { kind: 'array'; ops: ReadonlyArray<DiffOperation> }
+    | { kind: 'binary'; expectedSize: number; actualSize: number; expectedHash: string; actualHash: string };
 ```
+
+The `binary` kind covers cases where a meaningful structured diff is
+not possible — compiled artifacts, encoded media, opaque blobs.
+Reporters render it as a size-and-hash summary; the full bytes are
+available out-of-band (the baseline files on disk, or attached run
+artifacts) for external diff tools. Baseline subtypes that need
+richer comparison (visual diff for screenshots, percentile diff for
+performance) provide their own adapter-specific representations
+above this type — see `baselines-and-snapshots.md`.
 
 Reporters render diffs from this structured shape. Truncation, colorization,
 and ANSI rendering are reporter concerns; the data stays raw.
@@ -280,7 +292,7 @@ For the product concept:
     `return assert.done()`
 -   low-level protocol name: `AssertionNode`
 -   low-level constructor namespace: `assertion.*`
--   zero-assertion detection: failure by default, with explicit overrides
+-   zero-assertion detection: failure, no opt-out
 -   `plan(n)` is the assertion-count contract; no `atMost`, no `atLeast`,
     and `n > 0`
 -   diff data is structured, not stack-mined

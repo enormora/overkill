@@ -33,7 +33,7 @@ For projects that mainly want pure, capability-restricted microtests:
 For teams that want one standard Overkill setup:
 
 -   micro bundle
--   environments
+-   runtimes
 -   orchestration
 -   baseline support
 

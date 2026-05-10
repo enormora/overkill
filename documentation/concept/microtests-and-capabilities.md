@@ -49,19 +49,46 @@ microtest profile.
 
 ## Capability Defaults
 
+The closed enumeration of capabilities Overkill recognises:
+
+```ts
+type Capability =
+    | 'fs-read' // filesystem reads
+    | 'fs-write' // filesystem writes
+    | 'net' // any network access
+    | 'child-process' // spawning subprocesses
+    | 'worker' // creating worker threads
+    | 'addon' // loading native addons
+    | 'wasi' // WASI imports
+    | 'process-exit'; // calling process.exit
+```
+
+This is the type used in `Metadata.capabilities` (see
+`metadata-and-selection.md`) and across the doc set. New capabilities
+require an explicit addition to this enumeration; the runner does not
+recognise free-form strings.
+
 Strict microtest mode denies, by default:
 
 -   filesystem reads outside what Node needs to load the test program
--   filesystem writes (except runner-owned escape hatches; see below)
--   network access
--   child processes
--   worker threads unless explicitly required by the runner
--   addons, WASI, and similar escape hatches
--   `process.exit` (treated as a runner error if the test calls it)
--   `console.*` usage (reported as a microtest violation when strict console
-    diagnostics are enabled)
+    (`fs-read` denied except for the loader's needs)
+-   filesystem writes (`fs-write` denied except for runner-owned
+    escape hatches; see below)
+-   network access (`net` denied)
+-   child processes (`child-process` denied)
+-   worker threads unless explicitly required by the runner (`worker`
+    denied)
+-   addons (`addon` denied), WASI (`wasi` denied), and similar escape
+    hatches
+-   `process.exit` (treated as a runner error if the test calls it;
+    `process-exit` capability denied)
+-   `console.*` usage is reported as a microtest violation when
+    strict console diagnostics are enabled. `console.*` is **not**
+    listed as a capability above because Node's permission model does
+    not cover it; the boundary is enforced through runtime
+    observability, not permission flags.
 
-The first enforcement mechanism is Node's permission model:
+The first enforcement mechanism is Node's permission model (Node 20+):
 
 -   `--permission`
 -   `--allow-fs-read`
@@ -70,15 +97,43 @@ The first enforcement mechanism is Node's permission model:
 -   `--allow-child-process`
 -   `--allow-worker`
 
-Source: <https://nodejs.org/api/permissions.html>
+Source: <https://nodejs.org/docs/latest-v20.x/api/permissions.html#file-system-permissions>
 
-Important nuance:
+How Overkill applies these flags:
 
--   Node permissions can strongly deny filesystem, network, process, and
-    worker capabilities
--   `console.*` is not covered by the permission model
--   strict microtest handling of `console.*` therefore relies on runtime
-    observability, not on the permission flags themselves
+-   **Path-scoped grants.** `--allow-fs-write=<path>` allows writes
+    only to the listed paths (repeated flags or comma-separated;
+    glob wildcards supported). The runner uses absolute paths.
+-   **Non-existent directories require an explicit wildcard.** If a
+    granted directory doesn't exist at spawn time (e.g. a fresh
+    coverage or run-record directory), the path must end in `/*`
+    or Node will only allow writing the directory entry itself,
+    not files inside it.
+-   **Permissions do not inherit.** Per Node's docs, "the model does
+    not inherit to a child node process or a worker thread." Each
+    Overkill worker is spawned as a fresh Node process with its own
+    `--permission` flags; the parent overkill process does not need
+    to run under the permission model itself.
+-   **Capability isolation requires `child_process`.** Worker threads
+    share the parent's permission set; subprocesses can each have
+    their own. Microtest workers are therefore separate Node
+    processes (see `composition-order.md` § Execution-Time
+    Wrapping).
+-   **Launch path is irrelevant.** `npx overkill ...`, direct
+    invocation, and any other launcher all work identically — the
+    runner spawns workers explicitly with the right flags;
+    inheritance is not assumed.
+
+Caveats `console.*` and symbolic links:
+
+-   `console.*` is not covered by the permission model. Strict
+    microtest handling of `console.*` relies on runtime
+    observability, not on permission flags.
+-   Symbolic links are followed even when they escape granted paths.
+    The runner resolves granted paths and refuses to start workers
+    if any component is a symlink to outside the run record. The
+    Node docs warn: "Relative symbolic links may allow access to
+    arbitrary files and directories."
 
 ## Important Limitation
 
@@ -96,7 +151,8 @@ Some writes are necessary for the runner itself to function. These are
 narrow, runner-owned, and explicit in configuration and diagnostics:
 
 -   coverage output directory (when coverage is enabled)
--   baseline update directory (only in explicit update mode)
+-   baseline write directory (only when a `baseline` write verb is
+    invoked: `update`, `apply`, `bootstrap`)
 -   strip cache (`~/.cache/overkill/strip/`)
 -   V8 startup snapshot cache (`~/.cache/overkill/snapshots/`)
 -   per-test temp directory (`os.tmpdir() + /overkill-<run-id>/<test-id>/`)
@@ -164,7 +220,9 @@ Standard capability profiles (see `glossary.md`):
 -   `micro-supervised` — same denials, plus subprocess supervision for
     crash-only recovery
 -   `micro-with-coverage` — micro-strict with a narrow exception for
-    coverage writes
+    coverage writes; runs single-threaded (see `coverage.md`)
+-   `micro-supervised-with-coverage` — supervised mode + coverage
+    write exception; also single-threaded
 -   `integration-local` — allows FS write within a per-test temp dir,
     loopback net, child process
 -   `benchmark-process` — integration-local plus single-worker

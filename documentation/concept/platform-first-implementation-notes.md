@@ -241,7 +241,7 @@ Overkill should prefer Web Fetch API primitives where they make architectural se
 
 This matters especially for:
 
--   integration-test environments
+-   integration-test runtimes
 -   request/response modeling
 -   adapters and higher-level framework integrations
 

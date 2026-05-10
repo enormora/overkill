@@ -98,7 +98,7 @@ Source: `metadata-and-selection.md`, `testing-models.md`.
 A named set of allowed runtime capabilities (filesystem read, filesystem
 write, network, child process, worker, addons, WASI). The runner applies
 the profile via Node's `--permission` flags plus runner-owned escape
-hatches (coverage artifact directory, baseline update directory, strip
+hatches (coverage artifact directory, baseline write directory, strip
 cache, V8 cache).
 
 Standard profiles:
@@ -175,25 +175,42 @@ may itself return a table when parameterization is the right representation.
 
 Source: `tests-as-values.md`.
 
-## Test Verdict
+## Test Outcome
 
-The outcome category of a test run. Overkill uses a richer ADT than
-`pass | fail | skip`:
+The engine-level outcome of a test run. The `TestOutcome` ADT (see
+`results-not-exceptions.md`) has four cases:
 
 -   `pass` — assertions held
 -   `fail` — assertions did not hold (specific failed checks reported)
 -   `skip` — explicitly skipped with a reason
--   `inconclusive` — the runner could not observe the test (environment
+-   `inconclusive` — the runner could not observe the test (runtime
     unhealthy, missing precondition)
--   `expected-fail` (xfail) — the test failed and was expected to
--   `unexpected-pass` (xpass) — the test passed despite being marked xfail
--   `crashed` — the worker process died during the test (runner-error
-    sub-kind)
 
-Each verdict has a payload: a list of failed checks for `fail`, a reason
+Each outcome has a payload: a list of failed checks for `fail`, a reason
 string for `skip`/`inconclusive`, etc.
 
-Source: `results-not-exceptions.md`, `novel-techniques.md`.
+Source: `results-not-exceptions.md`.
+
+## Test Verdict
+
+The reporter-facing category for a test run. A verdict is derived from
+the engine `TestOutcome` plus metadata available at orchestration time.
+Three additional verdicts beyond the four outcomes:
+
+-   `expected-fail` (xfail) — outcome was `fail` and the test carried
+    xfail metadata; reported as success-equivalent
+-   `unexpected-pass` (xpass) — outcome was `pass` despite xfail
+    metadata; reported as a failure of the xfail expectation
+-   `crashed` — the worker process died during the test; the engine
+    never produced a `TestOutcome`. Reported as a runner-error sub-kind
+    (see `failure-artifacts.md`)
+
+Verdicts are a presentation concept owned by orchestration and
+reporters, not by `@overkill/engine`. The engine returns outcomes;
+verdicts come from `(outcome, metadata, runner-error?)`.
+
+Source: `results-not-exceptions.md`, `failure-artifacts.md`,
+`novel-techniques.md`.
 
 ## AssertionNode
 
@@ -263,14 +280,6 @@ directly; this replaces `expect(mock).toHaveBeenCalledWith(...)` patterns.
 
 Source: `capability-handles.md`.
 
-## Authority Token
-
-An opaque branded value that grants permission for a runner-owned
-operation (writing coverage artifacts, updating baselines, collecting
-snapshots). User code cannot forge a token; the runner constructs and
-passes them. Distinct from capability handles in that authority tokens
-gate _runner_ operations, not _effect_ operations.
-
 Source: `capability-handles.md`.
 
 ## Baseline
@@ -300,13 +309,14 @@ Source: `baselines-and-snapshots.md`.
 
 ## Witness
 
-A serialised reproduction artifact produced by failing property tests and
-deterministic-simulation tests. Contains the seed, shrink path,
-runtime/simulation metadata, captured snapshot when available, fault
-configuration, and library version. Loading the
-witness reproduces the failure bit-for-bit without re-shrinking.
+A serialised reproduction artifact produced by failing property tests
+and deterministic-simulation tests. Loading the witness reproduces the
+failure without re-running shrinking. The canonical schema
+(`WitnessFile`) is defined in `failure-artifacts.md` § Witnesses And
+Replay Artifacts.
 
-Source: `novel-techniques.md`, `deterministic-simulation.md`.
+Source: `failure-artifacts.md`, `novel-techniques.md`,
+`deterministic-simulation.md`.
 
 ## Artifact Identity
 
@@ -420,7 +430,8 @@ Source: `deterministic-simulation.md`.
 A baseline artifact that no longer corresponds to any collected test
 identity. Detected after a run by comparing baseline files on disk
 against the set of identities seen. Stale baselines fail the run by
-default; an explicit cleanup or update mode is required to remove them.
+default; removing them requires an explicit `overkill baseline apply`
+or `overkill baseline clean`.
 
 Source: `baselines-and-snapshots.md`.
 

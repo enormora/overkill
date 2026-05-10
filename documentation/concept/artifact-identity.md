@@ -130,9 +130,9 @@ but the canonical identity remains the structured value.
 
 To make identity stable across machines and runs:
 
--   **file paths** are repo-relative (relative to the workspace root or
-    the package root in a monorepo) and use forward slashes regardless of
-    OS
+-   **file paths** are repo-relative (relative to the resolved project
+    root for the run; see Resolved Identity Rules) and use forward
+    slashes regardless of OS
 -   **suite paths** are ordered arrays; identity is structural, not
     string-joined
 -   **names** are taken verbatim from the source (no automatic

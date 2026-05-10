@@ -2,20 +2,34 @@
 
 ## Position
 
-Most JS test runners normalize a small subset of techniques: example tests,
-sometimes snapshots, sometimes a thin property-test layer. The wider testing
-literature has many more shapes that are well established in other
-ecosystems and largely missing from JS/TS. This doc surveys them and
-identifies the kernels Overkill should preserve as future package families
-or first-class test kinds.
+This document covers **exploratory, research-flavored techniques** —
+things where the underlying mechanism, ergonomics, or integration with
+Overkill still need investigation before they can be committed to.
 
-The goal is not to ship all of these. It is to ensure the architecture stays
-_open_ to them, with the engine, identity, baseline, and reporter contracts
-strong enough that adding any one is a matter of writing a package.
+Most JS test runners normalize a small subset of techniques: example
+tests, sometimes snapshots, sometimes a thin property-test layer. The
+wider testing literature has many more shapes that are well established
+in other ecosystems and largely missing from JS/TS. This doc surveys
+them and identifies the kernels Overkill should preserve as future
+package families or first-class test kinds.
 
-Companion to `ideas-and-future-directions.md` (broader product directions),
+The goal is not to ship all of these. It is to ensure the architecture
+stays _open_ to them, with the engine, identity, baseline, and reporter
+contracts strong enough that adding any one is a matter of writing a
+package.
+
+For well-understood enhancements where the shape is already clear (such
+as contract testing, golden/approval workflows, builder-style test data
+factories), see `ideas-and-future-directions.md`. Companion docs:
 `research-landscape.md` (prior art), `deterministic-simulation.md`, and
 `capability-handles.md`.
+
+> **Note on code samples.** The snippets below use illustrative
+> primitives such as `forall`, `gen.user`, `arbitrary.bytes`,
+> `relation()`, `differential()`, `hyperproperty()`, `slo()`, `fuzz()`,
+> and `baseline()`. These are _proposed future-package syntax_, not
+> committed APIs. They are listed as placeholders in
+> `types-index.md` § Placeholders Without Domain Definitions.
 
 ## Property-Based Testing — What It Should Mean Specifically
 
@@ -31,9 +45,10 @@ shrink." Concrete commitments worth making explicit:
 -   **Coverage / Classify / Label** — generators report distribution; a
     property fails not only on a counterexample but also when its input
     distribution drifts (`cover 30 isSorted`).
--   **Witness-replay artifacts** — `*.witness.json` per failing property,
-    containing seed, shrink path, library version, captured world
-    snapshot. Reruns load the witness and reproduce bit-for-bit.
+-   **Witness-replay artifacts** — `*.witness.json` per failing
+    property; reruns load the witness and reproduce bit-for-bit. See
+    `failure-artifacts.md` § Witnesses And Replay Artifacts for the
+    schema.
 -   **Persistent regression corpus** — every failing example is added to a
     per-test corpus replayed eagerly on the next run. Hypothesis (Python)
     and AFL-style fuzzers do this; JS PBT tools mostly do not.
@@ -73,26 +88,6 @@ test('round trip', ({ relation, gen }) =>
 
 The relation, the transformation, and the input distribution are all
 recorded. Shrinking is automatic via the underlying PBT layer.
-
-## Approval / Golden / Characterization Testing
-
-Approval testing is a _workflow_ for legacy code: print whatever the system
-observes, save it, manually approve once, and the saved file becomes the
-spec. Different in spirit from snapshots: snapshots are convenience;
-approvals are a deliberate ratchet.
-
-Concrete features:
-
--   `baseline()` primitive distinct from `expect()`, signalling "I am
-    locking observed behavior, not asserting a known truth"
--   combinatoric input generation (`baseline(cartesian(values, transforms))`)
--   diff-tool integration on update (open the user's preferred diff tool to
-    review)
--   per-test approval status visible in metadata
-
-Generalises Overkill's existing baselines model. Likely package home:
-`@overkill/baselines` extended; or a separate `@overkill/approval` if the
-workflow diverges enough.
 
 ## Coverage-Guided In-Process Fuzzing
 
@@ -190,31 +185,7 @@ tooling.
 Composes naturally with the deterministic simulation layer: a "chaos
 profile" is a virtual world configured with a fault distribution. Code that
 explicitly handles failure (retries, circuit breakers, OOM defenses) gets a
-real test environment.
-
-## In-Source / Colocated Tests
-
-Already covered partly in `fast-feedback-loops.md`. Worth promoting as a
-recognized testing pattern:
-
-In-source tests are still worth tracking as a novel direction, but they are
-currently rejected from the planned default concept.
-
-Why they are attractive:
-
--   the test lives directly next to the code it explains
--   tiny local invariants can be documented with very low friction
--   languages like Rust and Zig prove the general shape can work well
-
-Why they are still unresolved for Overkill:
-
--   much of the JS tooling ecosystem still treats tests as file-pattern-based
--   production stripping becomes a serious concern
--   a custom loader or transform story would fight the current
-    Node-builtins-first direction
-
-So the concept should keep the idea alive, but only as a researched option
-until the shipping and tooling story is convincingly clear.
+real test runtime.
 
 ## Out-Of-Band Verdicts
 
@@ -223,7 +194,7 @@ Mainstream JS runners model verdicts as `pass | fail | skip`. JUnit5 / pytest
 
 -   `xfail` — expected to fail; passes when it _does_ fail; flips to a
     `xpass` regression if it unexpectedly passes
--   `inconclusive` — environment unhealthy; not the test's verdict
+-   `inconclusive` — runtime unhealthy; not the test's verdict
 -   `not-applicable` — precondition not met; distinct from skip
 -   `flaky-detected` — passed only after retry
 -   `quarantined` — known-flaky, allowed to fail without gating
@@ -232,8 +203,12 @@ TAP supports `# SKIP` and `# TODO` directives natively. Overkill should
 expose first-class verdicts so CI consumers (and humans) distinguish "this
 is broken" from "we couldn't tell" from "we expect this until #4123 lands."
 
-The returned-value outcome model from `results-not-exceptions.md` makes this
-trivial: the verdict ADT just gains constructors.
+The split between engine `TestOutcome` (`pass | fail | skip |
+inconclusive`) and reporter-facing verdicts is settled (see `glossary.md`
+§ Test Outcome / Test Verdict): engine outcomes stay narrow; richer
+verdicts are derived by orchestration from `(outcome, metadata,
+runner-error?)`. Adding a new verdict means adding a derivation rule, not
+a new engine constructor.
 
 ## Test Impact Analysis (TIA)
 
@@ -241,17 +216,24 @@ Microsoft's TIA at scale; Wallaby's per-keystroke variant; Bazel's runfile
 graph; Vitest's Vite-graph-based selective rerun. The kernel: maintain a
 code→test bidirectional map; on commit, run only affected tests.
 
-`fast-feedback-loops.md` already covers the implementation
-(`module.registerHooks` instrumentation, persisted graph, content-hash
-invalidation). What this doc adds is the _user-facing_ commitment:
+**Status: open research.** The current concept does not commit to
+shipping a dependency graph. Path-level change detection (`--changed`
+in `metadata-and-selection.md`) is the baseline; `--watch` reuses
+Node's built-in watcher. True TIA would require:
 
--   `overkill --since main` runs only tests affected by changes since
-    `main`
--   `overkill --watch` runs only affected tests on each save, not all
-    tests
+-   per-test reverse-import tracking (e.g. via `module.registerHooks`)
+-   a persisted, content-hash-keyed graph
+-   invalidation on source change
+
+If pursued later, the user-facing commitments would be:
+
+-   `overkill --since <ref>` runs only tests affected by changes since
+    `<ref>`
+-   `overkill --watch` runs only affected tests on each save
 -   the dependency graph is a public artifact for CI to query
 
-This is one of the highest-leverage user-facing wins available.
+This is one of the highest-leverage potential user-facing wins, but
+not part of the settled concept.
 
 ## SLO / Latency-Sensitive Testing
 
@@ -328,26 +310,31 @@ If Overkill commits to incorporating these in priority order:
     that follows, ~150 LoC of core
 3.  **Witness-replay artifacts** — slot directly into existing baselines /
     failure-artifacts model
-4.  **In-source tests** — leans into Node type stripping and the
-    fast-feedback story
-5.  **TIA with persistent dynamic call graph** — `fast-feedback-loops.md`
-    sets the technical direction; this doc commits to the user-facing
-    surface
-6.  **Stage-1 deterministic simulation** (virtual clock + scheduler) —
+4.  **TIA with persistent dynamic call graph** — open research (see
+    Test Impact Analysis section); the user-facing surface is sketched
+    but not committed
+5.  **Stage-1 deterministic simulation** (virtual clock + scheduler) —
     replaces 80% of fake-timer usage with deterministic equivalents
-7.  **`relation()` primitive** — metamorphic testing as a first-class
+6.  **`relation()` primitive** — metamorphic testing as a first-class
     shape
-8.  **Hyperproperties** — niche but unique
-9.  **Differential testing** — small package, big win for projects with
+7.  **Hyperproperties** — niche but unique
+8.  **Differential testing** — small package, big win for projects with
     parallel implementations
-10. **Coverage-guided fuzzing** — defer until coverage is stable
-11. **Linearisability checker** — defer until concurrent-JS users
+9.  **Coverage-guided fuzzing** — defer until coverage is stable
+10. **Linearisability checker** — defer until concurrent-JS users
     materialise
-12. **Approval-test workflow** — defer; covered by baselines
+11. **Approval-test workflow** — defer; the well-understood shape lives in
+    `ideas-and-future-directions.md` § Approval And Golden Workflow Testing
 
-Items 1, 4, 5 are essentially free given decisions already made. Items 2, 3,
-6 are the big architectural commitments. 7-12 are package-by-package
-extensions.
+In-source tests are intentionally **not** in this list: the settled
+concept rejects them as the default authoring model and the research
+record lives in `non-goals.md` § Deferred With Research (see also
+`architecture-decisions.md` § Default Authoring Model and
+`microtests-and-capabilities.md`).
+
+Item 1 is essentially free given decisions already made. Items 2, 3, 5
+are the big architectural commitments. Item 4 (TIA) is open research.
+Items 6–11 are package-by-package extensions.
 
 ## Sources
 

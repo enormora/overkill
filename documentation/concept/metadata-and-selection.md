@@ -8,8 +8,9 @@ falling back to inline `.only` culture.
 
 ## Position
 
-Overkill treats test metadata as explicit structured data rather than ad-hoc
-naming conventions.
+Overkill treats test metadata as explicit structured data rather than
+ad-hoc naming conventions — the metadata-layer expression of
+`principles.md` § Data Over Side Effects.
 
 Likely metadata categories:
 
@@ -144,10 +145,18 @@ The replacement for `.only`:
 -   `--last-failed` runs tests that failed in the previous run
 -   `--changed` runs tests in files changed since `main` (path-level only;
     Overkill does not track a dependency graph)
--   `--watch` reruns on file change (closure-aware by default)
+-   `--watch` reruns the selected suite on file change (uses Node's
+    built-in watcher; see `runtime-behavior.md` § Watch-Mode Targeting)
 
 These are CLI conveniences over the same selection grammar. None modify
 the test source.
+
+`--last-failed` is resolved from the existing `RunRecord` written for
+the previous run (see `reproducibility.md`); it does not require a
+separate tracking file or extra per-test disk writes. If several tests
+failed in the previous run, all of their `CaseId`s are selected. If no
+previous run record exists, the flag is a usage error rather than a
+silent no-op.
 
 ## Recommended Shape
 
@@ -176,19 +185,11 @@ current concept does not endorse a full quarantine workflow.
 
 ## Capability Propagation
 
-Capability declarations cascade like metadata, but with stricter rules:
-
--   parent capabilities are intersected with child capabilities (children
-    can only declare a _subset_ of the parent's permitted capabilities,
-    not extend)
--   the runner enforces the intersection when starting a worker; tests in
-    the same worker share the worker's capability set
--   tests with incompatible capabilities cannot share a worker; they are
-    routed to separate workers or processes
-
-Per-test capabilities are a _runner-level_ concern: Node permissions are
-process-wide. To run two tests with different capabilities, they must be
-in different processes. The runner schedules accordingly.
+Capability declarations cascade like metadata but with stricter
+intersection-only rules. The canonical specification lives in
+[`microtests-and-capabilities.md`](./microtests-and-capabilities.md);
+the short form here is that children narrow parents but never widen
+them, and tests with incompatible capabilities cannot share a worker.
 
 ## Composition With Sharding
 

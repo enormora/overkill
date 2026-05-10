@@ -26,7 +26,8 @@ A reproducible run captures, at minimum:
 -   the resolved execution strategy (process model, worker count,
     serialisation rules)
 -   the resolved capability profile per worker
--   the resolved baseline update mode
+-   the baseline verb invoked, if any (`update`, `apply`, `bootstrap`,
+    `clean`)
 -   the benchmark workload identity and calibration inputs where
     relevant
 -   the metadata propagation result (resolved metadata per case)
@@ -44,7 +45,7 @@ type RunRecord = {
     readonly seed: bigint;
     readonly plan: RunPlan;
     readonly identities: ReadonlyArray<CaseId>;
-    readonly runtime: ResolvedRuntime;
+    readonly runtime: ResolvedRuntime; // see types-index.md
     readonly versions: { engine: string; node: string; packages: ReadonlyMap<string, string> };
     readonly startedAt: string; // ISO 8601
     readonly result?: RunResult; // populated when the run completes
@@ -141,17 +142,13 @@ Limitations:
 ## Replay Witnesses For Properties And Simulations
 
 For property tests and deterministic-simulation tests, a run record is
-overkill — a witness is enough:
+overkill — a witness is enough. `overkill replay-witness <path>` loads
+the witness JSON, restores its seed and snapshot, and runs that single
+test to reproduction. Witnesses are portable (cross-machine for DST,
+intra-machine-class for property tests with timing-dependent shrinks).
 
--   `overkill replay-witness <path>` loads the witness JSON, restores the
-    seed, the captured world snapshot, and the fault configuration, and
-    runs that single test to reproduction
--   the witness is portable (cross-machine for DST, intra-machine-class
-    for property tests with timing-dependent shrinks)
-
-Witnesses are versioned by the library version that produced them; an
-incompatible reader fails fast rather than running with subtly-different
-shrinking semantics.
+For the witness schema and versioning rules, see
+`failure-artifacts.md` § Witnesses And Replay Artifacts.
 
 ## Scope
 

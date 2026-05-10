@@ -6,7 +6,7 @@ The stable center of Overkill is the programmatic API, not the CLI. A user shoul
 
 ## TypeScript-First
 
-Overkill is optimized for TypeScript rather than trying to be equally ideal for every JS runtime and authoring style. Types are part of the product experience, especially for environments, reporters, and extension APIs.
+Overkill is optimized for TypeScript rather than trying to be equally ideal for every JS runtime and authoring style. Types are part of the product experience, especially for runtimes, reporters, and extension APIs.
 
 ## No Magic
 
@@ -22,7 +22,20 @@ It does not mean “no convenience.” It means convenience must be explainable 
 
 ## Explicit Over Implicit
 
-If a test depends on an environment, a capability, or a baseline artifact, that dependency should be visible in the code or runner configuration. Overkill prefers one more explicit line over a surprising hidden behavior.
+If a test depends on a runtime, a capability, or a baseline artifact, that dependency should be visible in the code or runner configuration. Overkill prefers one more explicit line over a surprising hidden behavior.
+
+## Data Over Side Effects
+
+Overkill prefers values to side effects in its primary contracts. Tests are returned data, not invoked via global registration. Outcomes are structured results, not thrown exceptions. Metadata is explicit on the test value, not stashed in ambient state.
+
+That posture leads to:
+
+-   tests that can be inspected, filtered, and composed before execution
+-   reporters that consume events instead of parsing prose
+-   identity and discovery that work without running anything
+-   tooling (IDEs, MCP servers, mutation testers) that can introspect the suite without owning execution
+
+The principle does not forbid side effects — the runner has to actually run things. It says the _contracts_ between layers are values, and side-effecting glue lives at the edges where it is needed.
 
 ## One First-Party Path Per Layer
 
@@ -51,6 +64,25 @@ If an alternative is worth supporting, it should usually either:
 -   live at a lower layer as a primitive
 -   be treated as explicit sugar over the same model
 -   or be left open for third parties
+
+The same principle applies to user inputs. Each setting has one canonical
+place to live:
+
+-   persistent project policy lives in the config file
+-   per-run intent lives on the CLI (for example `--coverage`,
+    `--watch`, `--filter`)
+-   no setting is reachable from both surfaces
+
+This avoids precedence bugs, duplicated documentation, and the ambient
+"did I set this here or there?" confusion.
+
+The rule constrains _human-facing_ surfaces (CLI and config). The
+programmatic API exposed by `@overkill/run` (see `## API-First`) is a
+different layer: it is the unified implementation target that both
+human surfaces reduce to. A custom orchestrator using the API
+expresses both per-run intent and project policy in one call; that is
+not a third configuration surface, it is what the CLI parser and the
+config-file loader internally call.
 
 ## Low API Surface
 
@@ -115,6 +147,26 @@ Overkill should avoid encouraging:
 -   benchmark numbers without policy semantics
 -   giant unreviewed snapshot blobs
 
+## The Suite Is A Contract
+
+A test suite earns its value by standing as a verdict on safety. The
+moment red tests are tolerated, retried, parked, or excused, the suite
+stops being a contract and becomes noise.
+
+Overkill therefore rejects mechanisms that signal "red tests are
+acceptable":
+
+-   no quarantine workflow that lets a known-flaky test fail without
+    gating
+-   no flaky-test retry as a microtest mode — a flaky microtest is a
+    design failure, not an expected state
+-   no `allowEmpty` escape hatch — a test that asserts nothing is
+    broken, and an opt-out hides defects
+
+The shape is the same in each case: there is no "exit ramp" from the
+contract. A test that cannot give a single honest verdict is fixed or
+deleted, not parked.
+
 ## Small Core, Strong Edges
 
 The core should own only the abstractions that truly need to be shared:
@@ -125,7 +177,7 @@ The core should own only the abstractions that truly need to be shared:
 -   results
 -   reporter and integration contracts
 
-Assertions, environments, snapshots, benchmarks, and bundles can be first-party without being core primitives unless research shows they cannot be built cleanly on top.
+Assertions, runtimes, snapshots, benchmarks, and bundles can be first-party without being core primitives unless research shows they cannot be built cleanly on top.
 
 ## Platform First
 
@@ -150,6 +202,19 @@ Where it makes sense, platform primitives should shape Overkill’s own public a
 -   async execution context should consider `AsyncLocalStorage`
 
 This is partly a maintenance choice and partly a design choice: reusing platform primitives keeps APIs more understandable, more portable, and less framework-specific.
+
+## Cold Start Is The Budget
+
+The optimization target for the default run mode is cold start, not warm steady-state. A user typing `node ./foo.test.ts` (or `overkill`) should see results in sub-second time without a daemon, a long-lived worker pool, or a bundler step.
+
+Concrete consequences:
+
+-   Node built-ins are preferred over loader hooks or custom transforms
+-   the runner core targets V8 startup-snapshot reuse
+-   plugin imports stay lazy; common paths avoid module-graph scans
+-   warm-only optimizations (bytecode cache, strip cache) are accepted only when they do not penalize the cold path
+
+Warm-mode optimizations may exist but never _replace_ a fast cold start as the primary target.
 
 ## Capability-Oriented Microtests
 

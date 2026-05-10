@@ -51,7 +51,7 @@ seam where the runtime can be swapped:
 -   configurable base URLs
 -   runtime factories
 -   adapter registration
--   environment bootstrapping
+-   runtime bootstrapping
 
 If a codebase hardcodes globals, ambient services, and production-only network
 destinations everywhere, Overkill cannot make that code deterministically
@@ -175,6 +175,11 @@ Overkill should therefore treat **simulation via deterministic local
 services** as a first-class pattern, not as an edge case.
 
 ## What A Test Might Look Like
+
+The `withRuntime` and `simulation` helpers shown below are illustrative
+sketches; they are listed as placeholders in `types-index.md`.
+`SimulationAdapter` and `SimulationSession` _are_ canonical (see the
+section above and the types index).
 
 In-process style:
 

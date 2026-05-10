@@ -90,16 +90,16 @@ Related first-party ergonomics above the doubles layer may include:
 -   generic interaction transcript recording
 -   harness helpers for dependency-heavy units
 
-## Environments
+## Runtimes
 
 `@overkill/resources` should own:
 
 -   typed context composition
 -   typed resource composition
--   environment matrices
+-   runtime matrices
 -   explicit setup and teardown patterns
 -   execution-affecting requirements such as isolation, sharing, and lifecycle scope
--   reusable environment factories
+-   reusable runtime factories
 -   explicit artifact attachment from resources or runtimes
 -   deterministic service and browser runtime composition
 
@@ -130,7 +130,7 @@ code should not need Overkill dependencies.
 -   filtering
 -   seed handling
 -   runner profiles
--   update modes for baselines
+-   baseline write verbs (`update`, `apply`, `bootstrap`, `clean`)
 -   process-level orchestration
 -   worker-pool management
 -   resolution of execution strategy from package-provided constraints
@@ -153,7 +153,7 @@ Execution strategy should be modeled as resolved planning, not a fixed trait of 
 -   preferred worker count
 -   process vs in-process execution
 -   file-level or case-level isolation
--   environment sharing boundaries
+-   runtime sharing boundaries
 -   serialization requirements for measurement reliability
 
 Supervision and termination policy should also be execution-strategy-dependent:
@@ -274,7 +274,7 @@ What this means conceptually:
 
 ## Builder Layer
 
-Overkill should preserve an explicit builder-oriented layer for higher-level packages. This is where the Folio influence matters most: first-party and third-party packages should be able to assemble specialized test APIs from lower-level execution, environment, and reporting contracts rather than forking the whole runner.
+Overkill should preserve an explicit builder-oriented layer for higher-level packages. This is where the Folio influence matters most: first-party and third-party packages should be able to assemble specialized test APIs from lower-level execution, runtime, and reporting contracts rather than forking the whole runner.
 
 Conceptually this layer sits above `@overkill/engine` and below finished
 user-facing bundles or DSL packages.

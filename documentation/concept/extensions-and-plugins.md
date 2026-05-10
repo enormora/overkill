@@ -16,7 +16,7 @@ The most important extension types are:
 -   baseline adapters
 -   serializer adapters
 -   custom assertions
--   resource and environment factories
+-   resource and runtime factories
 -   benchmark metric collectors
 -   benchmark policy adapters
 -   orchestration helpers
@@ -29,7 +29,7 @@ Extensions should compose through stable contracts, not through private runner p
 That means:
 
 -   reporters consume structured events or finished results
--   resource packages contribute explicit environment or execution constraints
+-   resource packages contribute explicit runtime or execution constraints
 -   baselines contribute identity, collection, comparison, and update semantics
 -   benchmark packages contribute workloads, measurements, and policies
 

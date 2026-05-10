@@ -32,7 +32,10 @@ Underneath that API, Overkill still benefits from a result-oriented protocol:
     data instead of parsing prose
 
 So "results, not exceptions" is now the **protocol-layer principle**, not
-the main user-facing syntax.
+the main user-facing syntax. It is the engine-side expression of
+`principles.md` § Data Over Side Effects: outcomes flow as structured
+values between layers, even when the user-facing API is the injected
+builder.
 
 ## Why The Protocol Matters
 
@@ -53,13 +56,16 @@ Overkill's structured outcome model avoids that at the architectural level.
 The engine should treat structured outcomes as canonical:
 
 ```ts
+// engine-level outcome; reporter-facing verdicts (xfail, xpass,
+// crashed) are derived from outcome + metadata + runner-error state
+// — see `glossary.md` § Test Outcome / Test Verdict.
 type TestOutcome = Pass | Fail | Skip | Inconclusive;
 
 type Pass = { kind: 'pass' };
 
 type Fail = {
     kind: 'fail';
-    assertions: ReadonlyArray<FailedAssertion>;
+    checks: ReadonlyArray<FailedCheck>;
 };
 
 type Skip = {
@@ -134,7 +140,7 @@ The protocol model also sharpens an important distinction:
 
 -   **assertion failure** — structured test outcome
 -   **runner error** — unexpected exception, rejection, crash, permission
-    denial, or environment failure
+    denial, or runtime failure
 
 This separation is part of the core concept. Assertion failures should not
 need to travel through the same path as infrastructure errors.

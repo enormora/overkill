@@ -27,7 +27,10 @@ to Scala (cats-effect, ZIO), F# (Eff), and TypeScript (`effect`, `fp-ts`,
 
 ## The Core Idea
 
-Effects are not implicit globals. They are typed values passed in:
+Effects are not implicit globals. They are typed values passed in. The
+illustrative `User`, `UserInput`, `Saved` types are placeholders for an
+application's own domain types; the handle types (`Clock`, `Random`,
+`FileSystem`, `HttpClient`, `Logger`) are sketched in `types-index.md`.
 
 ```ts
 type AppRuntime = {
@@ -183,7 +186,10 @@ type RecordingRuntime = AppRuntime & {
 
 Tests assert on `recorded()` directly. Reporters can attach the recording to
 a failed test as a structured artifact. Replays use `snapshot`/`restore` to
-reproduce a runtime state.
+reproduce a runtime state. Test debug mode (see `runtime-behavior.md`
+§ Test Debug Mode) aggregates `RecordedEvent` arrays into the
+per-test debug artifact so the same data is available for any test —
+not only failing ones — when the mode is on.
 
 ## Splittable Random For Determinism Under Parallelism
 
@@ -208,19 +214,6 @@ SplitMix is small, well understood, and has a TypeScript implementation in
 under 200 lines.
 
 This becomes the foundation for the property-testing package family later.
-
-## Capabilities Beyond Effects: Authority Tokens
-
-Some "capabilities" are not effect-performing handles but _authority tokens_
-the runner grants. Examples:
-
--   `CoverageWriter` — permits writing to the coverage artifact directory
-
-Tokens are opaque branded types. Owning the token is the only way to access
-the operation. The runner constructs and passes them; user code cannot forge
-one. This is the "ocap" pattern — object capabilities — applied to the test
-runner. It dovetails with the Node permission model (the seat belt) but adds
-runner-level granularity that Node permissions cannot express.
 
 ## Connection To `@overkill/doubles`
 
@@ -328,7 +321,6 @@ later reopens the “no Overkill in consumer production code” rule.
 -   Elm `Cmd` / `Sub` — programs return effect descriptions
 -   `effect-ts` (TypeScript) — current state of the art for TS effect
     systems; useful idea donor even if Overkill prefers a lighter shape
--   Mark Miller's "object capabilities" — authority tokens
 -   `splitmix` (Haskell) — splittable PRNGs
 
 ## Sources
@@ -337,5 +329,4 @@ later reopens the “no Overkill in consumer production code” rule.
 -   [Effect-TS — documentation](https://effect.website)
 -   [ZIO Test — Why ZIO Test](https://zio.dev/reference/test/why-zio-test/)
 -   [The Elm Architecture](https://guide.elm-lang.org/architecture/)
--   [Mark Miller — Robust Composition (object capabilities)](http://www.erights.org/talks/thesis/markm-thesis.pdf)
 -   [PureScript — Effect and Aff documentation](https://pursuit.purescript.org/packages/purescript-effect)

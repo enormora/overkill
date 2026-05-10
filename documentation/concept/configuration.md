@@ -45,7 +45,7 @@ Configuration should mainly cover orchestration and package wiring:
 -   test discovery
 -   runtime profiles
 -   reporter selection
--   baseline update policy
+-   baseline policy (paths, write directory, CI opt-in env var)
 -   coverage enablement
 -   mutation integration
 -   type-test integration
