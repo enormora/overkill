@@ -90,6 +90,24 @@ Filterable dimensions:
 
 This is the conceptual replacement for relying on `.only`.
 
+### Selection In Multi-Process Runs
+
+Selection does not depend on workers or subprocesses discovering tests later.
+The runner first collects the test tree, resolves metadata, applies filters,
+and freezes the selected case set in the main planning phase. Only after
+that does worker assignment happen.
+
+That means:
+
+-   multi-process execution does not change the selection semantics
+-   workers receive cases from the frozen plan; they do not independently
+    register additional tests that could alter filtering or sharding
+-   sharding and worker distribution operate on an already-collected case set
+
+The more detailed ordering lives in `composition-order.md`, but the important
+point here is simple: selection is a plan-time operation, not a worker-time
+side effect.
+
 ## Filter Expression Grammar
 
 CLI filters use a small expression language:
