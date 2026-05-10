@@ -49,6 +49,19 @@ The core should be a typed function double with:
 
 The recommendation is to make the primary shape configuration-driven rather than chain-driven.
 
+That does not mean every use must start with a config object. The simple
+path should stay very small:
+
+```ts
+const log = testDouble().returns(undefined);
+const loadUser = testDouble<(id: string) => Promise<User>>().resolves(adminUser);
+```
+
+The intended split is:
+
+-   shorthand instance methods for the common fixed-behavior cases
+-   config object plus rule composition for advanced behavior
+
 Example direction:
 
 ```ts
@@ -69,6 +82,10 @@ This gives one concept that handles:
 -   per-call sequencing
 -   per-argument behavior
 -   fallback behavior for unexpected calls
+
+If no explicit function type is provided, `testDouble()` should still be
+valid. The default untyped path should use `unknown` rather than `any`, so
+users can start untyped without silently giving up all type safety.
 
 ## Introspection Surface
 
@@ -205,6 +222,7 @@ That means:
 -   `returns()` should type-check against the return type of `Fn`
 -   `resolves()` and `rejects()` should work naturally for async function signatures
 -   recorded calls should preserve the argument tuple type
+-   the untyped default should be `unknown`, not `any`
 
 The likely target shape is:
 
@@ -217,6 +235,15 @@ const loadUser = testDouble<UserLoader>({
 ```
 
 This should be easier to reason about than matcher-heavy APIs that gradually lose concrete types.
+
+The untyped path is still legitimate for quick tests or gradual migration:
+
+```ts
+const writeLine = testDouble().returns(undefined);
+```
+
+Typed signatures remain the preferred path when the function contract is part
+of what the test cares about.
 
 ## `when()` Versus Matchers
 
