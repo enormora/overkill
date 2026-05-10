@@ -274,4 +274,3 @@ the report directory. Dedicated coverage reporters (likely
 third-party, packaged as `@overkill/reporter-coverage` or similar)
 consume the structured coverage data alongside the rest of the run
 result.
-
