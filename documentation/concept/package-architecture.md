@@ -215,6 +215,22 @@ This is especially important for:
 -   reproducibility
 -   config-driven extensions such as reporters or baseline adapters
 
+## CLI
+
+The `overkill` binary lives at the orchestration layer (likely
+inside `@overkill/run`). Once the surface stabilises and a second
+binary appears that wants to share the same argument parsing, help
+formatting, and config-file discovery — for example
+`@overkill/bench` shipping its own `overkill-bench` entry point — the
+shared parts should be lifted into a dedicated `@overkill/cli`
+package that both consume. The runtime layer holds the canonical
+behaviour; the CLI package is presentation and parsing.
+
+Until that second consumer exists, extracting the package early
+would be premature: a single-consumer library is just a misplaced
+module. The CLI surface itself is documented in `cli.md`; this is a
+packaging note, not a contract for the binary.
+
 ## Configuration
 
 Configuration belongs above the engine.
