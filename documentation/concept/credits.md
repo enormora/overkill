@@ -60,11 +60,19 @@ honesty and future traceability.
 -   **JMH**
     -   warmup / measurement separation and execution policy as part of the
         benchmark definition
+    -   forks, measurement iterations, and harness discipline against
+        misleading numbers
 -   **Criterion.rs**
     -   grouped benchmarks, parameterized benchmark identities, and richer
         measurement vocabulary
+    -   throughput annotations and custom measurement backends
 -   **BenchmarkDotNet**
-    -   benchmark jobs and diagnoser-style metric collection
+    -   benchmark jobs / execution profiles and diagnoser-style metric
+        collection
+    -   multiple run strategies such as `Throughput` and `ColdStart`
+-   **pytest-benchmark**
+    -   compare mode, pedantic/manual control mode, and benchmark-result
+        JSON with machine metadata
 -   **hyperfine**
     -   external-process benchmarking as a primary workflow
 -   **real-world benchmark suites**

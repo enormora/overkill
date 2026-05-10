@@ -297,33 +297,23 @@ Benchmark reports should be:
 -   explicit about whether results are raw, normalized, or not comparable
 -   clear about warmup, sample count, and process model
 
-## Strong External Influences
+## Adopted Concepts
 
-The strongest reusable benchmark concepts from other ecosystems are:
+Overkill is deliberately borrowing selected benchmark concepts rather than
+copying one existing benchmark ecosystem wholesale.
 
--   **Criterion.rs**
-    -   benchmark groups
-    -   parameterized inputs
-    -   throughput annotations
-    -   custom measurement backends
--   **JMH**
-    -   forks, warmup, measurement iterations, and cold-start awareness
--   **BenchmarkDotNet**
-    -   jobs as explicit execution profiles
-    -   diagnosers
-    -   multiple run strategies such as `Throughput` and `ColdStart`
--   **pytest-benchmark**
-    -   compare mode
-    -   pedantic/manual control mode
-    -   benchmark-result JSON with machine metadata
--   **hyperfine**
-    -   process benchmarking as a first-class use case
-    -   setup / prepare / conclude / cleanup phases
-    -   parameter scans
--   **Google Benchmark**
-    -   counters and rates
-    -   fixture benchmarks
-    -   benchmark context metadata
+The benchmark model described here adopts ideas such as:
+
+-   grouped and parameterized workloads
+-   warmup / measurement phase separation
+-   explicit execution profiles for different benchmark shapes
+-   diagnoser-style secondary metrics beyond wall-clock runtime
+-   machine-readable benchmark results with machine metadata
+-   first-class external-process benchmarking
+
+The attribution-heavy source list belongs in `credits.md`. This document
+keeps only the product-level concepts that materially shape the benchmark
+family.
 
 Overkill should not copy all of these tools, but it should absorb their best
 ideas into one coherent benchmark model.
