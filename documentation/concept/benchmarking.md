@@ -214,11 +214,37 @@ Examples:
 
 The likely implementation direction is:
 
--   a browser-oriented benchmark layer on top of `@overkill/bench`
+-   a dedicated package above `@overkill/bench`, likely
+    `@overkill/browser-bench`
 -   driven by Playwright or another browser controller
 -   with metric collection via browser APIs, WebDriver BiDi where it is
     sufficient, DevTools Protocol surfaces where deeper engine-specific
     metrics are needed, or Lighthouse-style analysis where appropriate
+
+The package split should be:
+
+-   `@overkill/bench` owns the generic workload, measurement, policy,
+    baseline, and reporting contracts
+-   `@overkill/browser-bench` owns browser runtime provisioning, page-flow
+    workloads, browser-specific metric collectors, and browser-specific
+    artifact capture
+
+Concept sketch for `@overkill/browser-bench`:
+
+-   benchmark author declares a browser workload such as cold page load,
+    route transition, typed interaction flow, or repeated render/update loop
+-   the package provisions a controlled browser runtime and page/session
+    lifecycle around that workload
+-   metrics may come from portable browser surfaces first, with deeper
+    engine-specific adapters layered where needed
+-   artifacts may include traces, screenshots, filmstrips, performance-event
+    timelines, and raw metric dumps attached to the benchmark result
+-   policies remain expressed through the shared benchmark model: explicit
+    budgets for paint timing, interaction latency, jank, bundle weight, or
+    other measured dimensions
+
+This keeps browser benchmarking inside one benchmark family while still
+giving it a real package boundary and room for browser-specific mechanics.
 
 The benchmark layer should therefore be **backend-agnostic** at the concept
 level:
