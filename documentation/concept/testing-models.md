@@ -61,7 +61,12 @@ Those should remain visible runner concepts rather than hidden defaults.
 
 ## Browser and Workflow Tests
 
-These tests validate UI, CLI, or multi-step workflows. The central model is runtime-driven execution, often with:
+These tests validate UI, CLI, or multi-step workflows. The primary browser
+meaning should be: run tests in real browsers for frontend code. That is
+closer to the `karma` / `@web/test-runner` family than to building a full
+Playwright replacement.
+
+The central model is runtime-driven execution, often with:
 
 -   matrixed runtimes
 -   screenshots or structural snapshots
@@ -70,13 +75,21 @@ These tests validate UI, CLI, or multi-step workflows. The central model is runt
 
 Concrete browser-layer needs include:
 
--   page objects as the main test-facing handles
+-   browser-executed microtests or component-style tests
+-   page objects as test-facing handles only in richer adapter-driven layers
 -   transport-level request and event transcripts
 -   explicit attachments such as accessibility scan JSON
 -   visual baselines across browser and resolution matrices
 
 These should be modeled above the engine through browser-oriented runtimes,
 fixtures, and baseline adapters.
+
+The important boundary is:
+
+-   Overkill should have a first-party browser-execution story
+-   richer end-to-end browser automation should come through integrations or
+    adapters, with Playwright the obvious example, rather than through
+    Overkill reimplementing that entire stack
 
 ## Baseline-Driven Tests
 

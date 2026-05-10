@@ -69,8 +69,12 @@ Planned early integrations:
 Future package families already counted into the concept:
 
 -   browser and visual testing
-    -   built on the shared runtime, baseline, artifact, and reporter model
+    -   primarily meaning "run tests in real browsers" for frontend code,
+        built on the shared runtime, baseline, artifact, and reporter model
         rather than on browser-only engine semantics
+    -   richer browser automation should come through adapters/integrations
+        such as Playwright rather than through Overkill trying to replace an
+        end-to-end browser framework
 -   property-based and model-based testing
     -   centered on integrated shrinking, replayable witnesses, persistent
         corpora, and state-machine/linearisability layers above that core
@@ -102,7 +106,7 @@ repetition.
 The preferred first-party authoring shape should be tests-as-values:
 
 -   exported suite trees
--   direct `node foo.test.ts` execution through a tiny self-run helper
+-   direct `node foo.test.ts` execution
 -   trivial machine-readable discovery
 
 Module-load registration DSLs are still valid ideas, but they should not be
@@ -119,7 +123,9 @@ Its assertion model should be explicit:
 
 ### Integration-Style Tests
 
-Integration-style tests are allowed to use richer runtimes, I/O, snapshots, and external processes. They need stronger orchestration, more expressive fixtures, and often more than one reporter.
+Integration-style tests are allowed to use richer runtimes, I/O, snapshots,
+and external processes. They need stronger orchestration, more expressive
+fixtures, and often more than one reporter.
 
 In practice, the main first-party support here should be:
 
@@ -129,6 +135,21 @@ In practice, the main first-party support here should be:
 -   runtime dimensions that feed identity and baselines
 
 They may also justify controlled retries and richer failure artifacts in ways that microtests should not.
+
+### Browser Tests
+
+Browser testing should mean two distinct things, with one of them primary:
+
+-   primary: run tests in real browsers for frontend code, closer to the
+    `karma` / `@web/test-runner` family than to a full browser-automation
+    framework
+-   secondary: integrate richer browser workflows such as page objects,
+    screenshots, traces, or end-to-end flows through adapters
+
+The concept should therefore not assume that Overkill is building a
+Playwright replacement. The first-party browser story should start from
+browser-executed tests, while broader browser automation remains
+integration-driven.
 
 ### Benchmarks
 

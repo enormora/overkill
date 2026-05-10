@@ -98,6 +98,14 @@ The repeated lesson is:
 Overkill should support this pattern directly through typed runtime/resource
 composition, without prescribing Playwright itself.
 
+That still needs a scope boundary:
+
+-   the first-party browser story should start with running tests in real
+    browsers
+-   page-object-heavy and end-to-end-style flows are important, but they
+    should be framed as richer adapter-driven layers rather than as the
+    default meaning of "browser testing"
+
 ### First-Class Attachments
 
 The higher layers frequently need artifacts that are richer than a failure
@@ -229,6 +237,12 @@ The right split is:
     -   browser contexts, pages, devices, scenarios
 -   browser packages
     -   Playwright/BiDi/CDP/Lighthouse-specific implementations
+
+The intended product direction is therefore:
+
+-   first-party support for browser-executed tests
+-   adapter/integration support for richer browser-automation stacks
+-   no first-party attempt to replace Playwright wholesale
 
 ### 6. Visual Regression Is A Baseline Family, Not A Special Runner
 

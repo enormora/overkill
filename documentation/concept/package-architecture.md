@@ -123,9 +123,16 @@ This package family is the main place for supporting:
 
 -   deterministic local service fixtures
 -   temporary registries and external-process harnesses
--   page-object-oriented browser fixtures
+-   browser-executed test runtimes
+-   page-object-oriented browser fixtures where an adapter layer chooses that
+    shape
 -   accessibility or compliance helpers that attach artifacts
 -   runtime scenarios and dimensions
+
+This should not be read as a commitment to build a first-party replacement
+for Playwright. The broader browser-automation shapes belong behind browser
+adapter/integration packages; the shared resource/runtime layer only needs to
+be strong enough to host them cleanly.
 
 Capability-handle or “world” style architecture remains compatible with this
 package family, but Overkill should not ship a first-class production-facing
