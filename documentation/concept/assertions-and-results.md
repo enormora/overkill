@@ -164,6 +164,7 @@ This split should be explicit in the docs.
 
 -   records an assertion
 -   returns `void` in the builder API
+-   does not short-circuit the test body on failure
 -   is suitable for the ordinary “check and continue” path
 
 `require`:
@@ -175,6 +176,11 @@ This split should be explicit in the docs.
 
 This is inspired in part by Swift Testing’s split between expectation-style
 and require-style checks.
+
+When the docs talk about explicit aggregate or "run all" semantics, that
+refers to low-level assertion composition such as `assertion.all(...)`, not
+to builder-test control flow. In the builder API, the default control-flow
+rule is simple: `assert` records and continues; `require` records and stops.
 
 ## Async Tests
 
@@ -329,7 +335,9 @@ For the product concept:
 -   diff data is structured, not stack-mined
 -   ordinary async/app errors remain distinct from assertion failures
 -   `require` exists because narrowing and straight-line ergonomics matter
--   aggregate “run all” semantics should be explicit rather than the silent
+-   builder control flow is explicit: `assert` records and continues;
+    `require` records and short-circuits
+-   aggregate assertion composition should be explicit rather than the silent
     default
 
 ## Influences
