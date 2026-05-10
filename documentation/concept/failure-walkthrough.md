@@ -25,15 +25,13 @@ import { gen } from '@overkill/property'; // proposed package, see types-index
 import { runIfMain, suite, test } from '@overkill/test';
 import { parse, serialize } from './users.ts';
 
-const spec = suite('users', [
+export const spec = suite('users', [
     test('round-trip preserves values', (case) => {
         return case.forall(gen.user(), (user) =>
             assertion.equal(parse(serialize(user)), user),
         );
     }),
 ]);
-
-export default spec;
 await runIfMain(import.meta, spec);
 ```
 

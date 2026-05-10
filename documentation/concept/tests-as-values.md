@@ -39,7 +39,7 @@ the high-level authoring layer, not as a discarded side experiment.
 ```ts
 import { runIfMain, suite, table, test } from '@overkill/test';
 
-const spec = suite('users', [
+export const spec = suite('users', [
     test('build', (case) => {
         case.assert.equal(buildUser('Ada').name, 'Ada');
         return case.assert.done();
@@ -55,16 +55,14 @@ const spec = suite('users', [
         return case.assert.done();
     }),
 ]);
-
-export default spec;
 await runIfMain(import.meta, spec);
 ```
 
-The default export is a `Suite` — a plain data tree. The runner does:
+The named export `spec` is a `Suite` — a plain data tree. The runner does:
 
 ```ts
 const mod = await import(file);
-const tree: TestNode = mod.default;
+const tree: TestNode = mod.spec;
 const plan = orchestrate(tree, filter, profile);
 const result = await run(plan);
 ```
@@ -110,7 +108,7 @@ const unameCase =
           })
         : skippedTest('uname', 'not linux');
 
-export default suite('platform', [
+export const spec = suite('platform', [
     test('linux', linuxOnly, ...),
     unameCase,
 ]);
@@ -147,7 +145,7 @@ walk. There is no half-registered global state to clean up.
 ### Reproducibility improves
 
 Two runs of `overkill list` produce identical output as long as the file's
-default export is identical. Imperative registration can produce different
+exported `spec` is identical. Imperative registration can produce different
 output if module evaluation has any non-determinism.
 
 ## The Underlying Type
@@ -224,7 +222,7 @@ function lawsOfMonoid<T>({ name, empty, concat, gen, eq }: MonoidLaws<T>): TestN
     ]);
 }
 
-export default suite('string concat', [lawsOfMonoid({ name: 'string', empty: '', concat: (a, b) => a + b, gen, eq })]);
+export const spec = suite('string concat', [lawsOfMonoid({ name: 'string', empty: '', concat: (a, b) => a + b, gen, eq })]);
 ```
 
 Three properties for free, no boilerplate, fully typed. This is borrowed
@@ -257,7 +255,7 @@ not be evaluated until first access. Combined with tests-as-values:
 ```ts
 import defer * as heavy from './heavy-module.ts';
 
-export default suite('heavy', [
+export const spec = suite('heavy', [
     test('uses heavy', (case) => {
         case.assert.equal(heavy.compute(), 42);
         return case.assert.done();
@@ -326,7 +324,7 @@ an explicit constant inside the suite construction:
 ```ts
 const fixtures = loadFixtures(); // executes at module load — visible
 
-export default suite('users', [
+export const spec = suite('users', [
     test('a', (case) => {
         case.assert.equal(buildUser(fixtures.a).id, '1');
         return case.assert.done();
