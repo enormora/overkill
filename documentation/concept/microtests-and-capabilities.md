@@ -237,43 +237,6 @@ observability. That makes strict console policy plausible without directly
 patching `console.*` itself. It is still a form of instrumentation and may
 carry some overhead, so profiles should keep it explicit.
 
-## In-Source Microtests
-
-True in-source microtests are **rejected in the current concept**.
-
-They are attractive because they keep the test physically next to the code,
-and because very small local checks often read well inline. A possible shape
-would be a sentinel such as `if (import.meta.test) { ... }`:
-
-```ts
-// source/users.ts
-export function buildUser(name: string) {
-    return { name: name.trim() };
-}
-
-if (import.meta.test) {
-    test('strips whitespace', (case) => case.assert.equal(buildUser('  Ada  ').name, 'Ada'));
-}
-```
-
-The reasons for rejection are straightforward:
-
--   many tools still classify tests by file patterns rather than by semantic
-    in-file detection
--   production shipping gets harder if stripping requires custom transforms
--   the concept conflicts with the goal of leaning on Node built-ins rather
-    than custom loader pipelines
-
-So the current concept stance is:
-
--   colocated separate test files are the default and safest pattern
--   true in-source tests are rejected in the current concept
--   Overkill should not promise automatic stripping or loader magic
-
-Native Node 26 already supports `import.meta.main` for self-running source
-files. That is useful on its own, even if Overkill never standardizes true
-in-source tests.
-
 ## Hang Detection And Forced Termination
 
 Distinguish between:

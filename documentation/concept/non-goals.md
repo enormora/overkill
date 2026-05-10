@@ -368,9 +368,8 @@ What would change to revive: the JS shipping and tooling story changes
 materially (e.g. native in-source-test stripping in a runtime), or
 Overkill's scope shifts to own a transform pipeline.
 
-Where: `microtests-and-capabilities.md` § In-Source Microtests,
-`novel-techniques.md` Recommended Path note,
-`tests-as-values.md` § Recommendation.
+Where: `tests-as-values.md` § Recommendation,
+`novel-techniques.md` Recommended Path note.
 
 ## What This Doc Is Not
 
