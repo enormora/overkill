@@ -203,11 +203,34 @@ This is especially justified for:
 Example direction:
 
 ```ts
-generatedCases('user schema', [missingField('name'), undefinedField('name'), wrongType('age', 'number')]);
+const schemaValidationCases = defineGeneratedCases([
+    missingField('name'),
+    undefinedField('name'),
+    wrongType('age', 'number'),
+]);
+
+const schemaContract = generatedCaseMacro('schema contract', schemaValidationCases, (schemaCase, schema, case) => {
+    return schemaCase.run(schema, case);
+});
+
+export default suite('schemas', [
+    schemaContract('user schema', userSchema),
+    schemaContract('pet schema', petSchema),
+]);
 ```
 
-This should still be a macro-oriented model, not a competing parameterization
-philosophy.
+The important shape is not the helper names. It is that a generated-case
+macro can be defined once and then applied repeatedly to different subjects
+without re-spelling the same case matrix in every test file.
+
+That means the first-party concept should support both:
+
+-   one-off expansion for a local matrix
+-   reusable higher-order macros that expand into several concrete tests for
+    each subject they are applied to
+
+This should still be a macro-oriented model, not a competing
+parameterization philosophy.
 
 ### Stack Traces Matter
 
