@@ -149,14 +149,14 @@ When writing or editing a concept doc:
 The four content statuses (settled, speculative, research,
 deferred-with-research) map to the doc set as follows:
 
-| Folder         | Typical status                                            |
-| -------------- | --------------------------------------------------------- |
-| `decisions/`   | mostly settled; some sections speculative or research     |
-| `architecture/`| settled                                                   |
-| `authoring/`   | settled; some forward-looking sections marked speculative |
-| `reference/`   | reference (lookup view of settled material)               |
-| `research/`    | research / comparison                                     |
-| `meta/`        | meta (about the docs themselves)                          |
+| Folder          | Typical status                                            |
+| --------------- | --------------------------------------------------------- |
+| `decisions/`    | mostly settled; some sections speculative or research     |
+| `architecture/` | settled                                                   |
+| `authoring/`    | settled; some forward-looking sections marked speculative |
+| `reference/`    | reference (lookup view of settled material)               |
+| `research/`     | research / comparison                                     |
+| `meta/`         | meta (about the docs themselves)                          |
 
 The two view statuses (reading aid, reference) apply to specific docs
 inside the folders, not to whole folders. Two docs currently declare

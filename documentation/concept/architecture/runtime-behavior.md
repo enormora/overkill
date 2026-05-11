@@ -248,7 +248,6 @@ reporter interaction, overhead, retry/replay behavior, and the
 interpretation patterns the artifact surfaces — lives in
 [Test Debug Mode](../authoring/debug-mode.md).
 
-
 ## Parallelism Semantics
 
 Parallelism happens at multiple grains. The default for `@overkill/test`
