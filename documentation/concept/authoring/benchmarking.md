@@ -246,6 +246,23 @@ Benchmarking external processes should be first-class:
 
 This is critical for real tool benchmarking and should not require ad hoc custom harnesses.
 
+## Event Loop And Runtime Health
+
+Some performance metrics describe the health of the runtime itself rather than the
+throughput or latency of a specific workload. These apply to any JavaScript runtime —
+Node servers, workers, and browser pages alike — and should be a first-class metric
+family rather than something only the browser layer cares about.
+
+Examples:
+
+-   event-loop lag / blocking duration
+-   GC pause counts and durations
+-   heap allocation pressure and resident size
+
+These are emitted by the workload runtime (`perf_hooks` in Node, equivalent browser
+APIs in a browser page) and recorded as additional metrics on the same benchmark run,
+not as a separate benchmark shape.
+
 ## Browser And Frontend Performance Benchmarks
 
 Browser-facing performance benchmarks should be considered an important
@@ -257,7 +274,6 @@ Examples:
 -   FPS-related rendering smoothness
 -   first paint / first contentful paint style metrics
 -   interaction responsiveness
--   event-loop blocking during UI workflows
 -   bundle or output size budgets that influence page performance
 
 The likely implementation direction is:
