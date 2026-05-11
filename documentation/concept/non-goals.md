@@ -26,8 +26,7 @@ Overkill does not inject `describe`/`it`/`test` as ambient globals.
 Why: hidden injection makes registration order, isolation, and types
 opaque, and forces the runner to control every entry point.
 
-Where: `principles.md` § No Magic, `tests-as-values.md` § What It Looks
-Like.
+Where: [Principles § No Magic](./principles.md#no-magic), [Tests As Values § What It Looks Like](./tests-as-values.md#what-it-looks-like).
 
 Alternative: explicit imports from `@overkill/test`.
 
@@ -42,8 +41,8 @@ dangerous when accidentally committed: a focused test can make CI run
 only one test while still appearing green. Many existing frameworks
 need custom lint rules just to contain that footgun.
 
-Where: `metadata-and-selection.md` § Local Iteration Workflow,
-`tests-as-values.md` § Recommendation.
+Where: [Metadata And Selection § Local Iteration Workflow](./metadata-and-selection.md#local-iteration-workflow),
+[Tests As Values § Recommendation](./tests-as-values.md#recommendation).
 
 Alternative: CLI selection (`--name`, `--file`, `--id`, `--last-failed`,
 `--changed`).
@@ -55,7 +54,7 @@ Alternative: CLI selection (`--name`, `--file`, `--id`, `--last-failed`,
 
 Why: overlapping nouns and mutable chaining trade clarity for power.
 
-Where: `doubles.md` § Why Not A Sinon-Style Surface.
+Where: [Doubles § Why Not A Sinon-Style Surface](./doubles.md#why-not-a-sinon-style-surface).
 
 Alternative: a single `testDouble()` plus composable rule helpers
 (`when`, `onCall`, `returns`, `resolves`, `rejects`, `throws`, etc.).
@@ -69,7 +68,7 @@ Why: both depend on private internals or loader interception that
 breaks under refactoring and conflicts with capability-restricted
 microtests.
 
-Where: `doubles.md` § Position.
+Where: [Doubles § Position](./doubles.md#position).
 
 Alternative: explicit dependency injection plus capability handles when
 the collaborator is a typed effect interface.
@@ -83,10 +82,9 @@ runner.
 
 Why: warm reuse adds long-lived state, socket protocol, and lifecycle
 management — and the optimization target is cold start, not warm
-steady-state (see `principles.md` § Cold Start Is The Budget).
+steady-state (see [Principles § Cold Start Is The Budget](./principles.md#cold-start-is-the-budget)).
 
-Where: `fast-feedback-loops.md` § 11. Out-of-the-box ideas for fast
-startup.
+Where: [Fast Feedback Loops § 11. Out-of-the-box ideas for fast startup](./fast-feedback-loops.md#11-out-of-the-box-ideas-for-fast-startup).
 
 Alternative: V8 startup snapshot of the runner core, lazy plugin
 imports, pre-resolved file lists.
@@ -97,10 +95,10 @@ Overkill does not require `module.register` / `module.registerHooks`
 hooks for ordinary use.
 
 Why: loader hooks add startup overhead and complicate cold-start
-budgets (see `principles.md` § Cold Start Is The Budget); they also
+budgets (see [Principles § Cold Start Is The Budget](./principles.md#cold-start-is-the-budget)); they also
 tend to surprise tooling.
 
-Where: `fast-feedback-loops.md` § 5. Loader Hooks.
+Where: [Fast Feedback Loops § 5. Loader Hooks](./fast-feedback-loops.md#5-loader-hooks).
 
 Alternative: Node's built-in TypeScript stripping; transform mode only
 where the file actually needs it.
@@ -112,12 +110,11 @@ Overkill does not maintain its own per-test reverse-import graph.
 Why: building, persisting, and invalidating a graph adds complexity
 that the path-level `--changed` selector covers for most teams.
 
-Where: removed from `fast-feedback-loops.md` (was § 11. Module graph
-caching without Vite); `metadata-and-selection.md` § Local Iteration
-Workflow notes the path-level scope.
+Where: removed from [Fast Feedback Loops](./fast-feedback-loops.md) (was § 11. Module graph
+caching without Vite); [Metadata And Selection § Local Iteration Workflow](./metadata-and-selection.md#local-iteration-workflow) notes the path-level scope.
 
 Alternative: path-level change detection. True TIA is tracked as open
-research in `novel-techniques.md`.
+research in [Novel And Under-Used Testing Techniques](./novel-techniques.md).
 
 ### No custom strip / V8 cache layer by default
 
@@ -125,11 +122,10 @@ Overkill does not ship its own strip cache or bytecode cache.
 
 Why: Node's module compile cache covers bytecode reuse, and the strip
 cost is single-digit milliseconds per file. A custom warm cache would
-need to clear `principles.md` § Cold Start Is The Budget — it cannot
+need to clear [Principles § Cold Start Is The Budget](./principles.md#cold-start-is-the-budget) — it cannot
 penalize the cold path.
 
-Where: `fast-feedback-loops.md` § 4. Sharing parsed sources between
-tests in the same process.
+Where: [Fast Feedback Loops § 4. Sharing parsed sources between tests in the same process](./fast-feedback-loops.md#4-sharing-parsed-sources-between-tests-in-the-same-process).
 
 Alternative: rely on Node's compile cache. Add a custom cache only if
 measurement on a real workload justifies it.
@@ -141,8 +137,8 @@ Overkill does not maintain its own file watcher.
 Why: Node's `--watch` is sufficient as the default; closure-aware
 reruns require the dependency graph that we explicitly do not maintain.
 
-Where: `runtime-behavior.md` § Watch-Mode Targeting,
-`fast-feedback-loops.md` § 7. Watch and reload.
+Where: [Runtime Behavior § Watch-Mode Targeting](./runtime-behavior.md#watch-mode-targeting),
+[Fast Feedback Loops § 7. Watch and reload](./fast-feedback-loops.md#7-watch-and-reload).
 
 Alternative: Node `--watch`. Future TIA-driven smart watch is open
 research.
@@ -155,7 +151,7 @@ Overkill does not implement its own TypeScript type checker for
 Why: type checking belongs to `tsc`; reimplementing it duplicates a
 moving target and ties Overkill releases to TS releases.
 
-Where: `fast-feedback-loops.md` § 11.
+Where: [Fast Feedback Loops § 11. Out-of-the-box ideas for fast startup](./fast-feedback-loops.md#11-out-of-the-box-ideas-for-fast-startup)
 
 Alternative: integrate with [tstyche](https://tstyche.org/) and surface
 its results through the Overkill reporter pipeline.
@@ -168,12 +164,12 @@ auto-switched reporter, no environment-based gate on baseline writes,
 and no auto-tightened defaults in CI.
 
 Why: environment-based behavior switching is a hidden side channel
-(see `principles.md` § No Magic, § Explicit Over Implicit). The same
+(see [Principles § No Magic](./principles.md#no-magic), § Explicit Over Implicit). The same
 invocation should produce the same behavior on a developer host and a
 CI host; differences belong in explicit configuration or explicit
 flags.
 
-Where: `runtime-behavior.md` (the previous § CI Auto-Detection has
+Where: [Runtime Behavior](./runtime-behavior.md) (the previous § CI Auto-Detection has
 been removed in favour of unconditional defaults).
 
 Alternative: pick the reporter, timeouts, and stale-baseline policy
@@ -188,7 +184,7 @@ Overkill does not enable code coverage instrumentation by default.
 
 Why: instrumentation slows microtests and rarely matters per-iteration.
 
-Where: `microtests-and-capabilities.md`, `coverage.md`.
+Where: [Microtests And Capabilities](./microtests-and-capabilities.md), [Coverage](./coverage.md).
 
 Alternative: explicit opt-in (`overkill run --coverage`) using
 external coverage tooling.
@@ -204,7 +200,7 @@ instrumented without distorting timing; browser tests have their own
 coverage story via the browser's instrumentation. Restricting to
 microtests keeps the API surface small.
 
-Where: `coverage.md` § Position.
+Where: [Coverage § Position](./coverage.md#position).
 
 Alternative: per-profile coverage stories handled outside Overkill —
 browser instrumentation in the browser test rig, integration coverage
@@ -217,11 +213,9 @@ via external tooling if a team genuinely wants it.
 Overkill rejects `{ allowEmpty: true }` per-test metadata and any
 global override that lets a zero-assertion test pass.
 
-Why: an "exit ramp" from the contract — see `principles.md` § The
-Suite Is A Contract.
+Why: an "exit ramp" from the contract — see [Principles § The Suite Is A Contract](./principles.md#the-suite-is-a-contract).
 
-Where: `assertions-and-results.md` § Zero-Assertion Detection As
-Default Failure.
+Where: [Assertions And Results § Zero-Assertion Detection As Default Failure](./assertions-and-results.md#zero-assertion-detection-as-default-failure).
 
 ### No automatic rename inference for renamed tests
 
@@ -230,8 +224,8 @@ Overkill does not match renamed tests to old baselines via heuristics
 
 Why: silent reuse is more dangerous than visible staleness.
 
-Where: `artifact-identity.md` § Identity Across Renames,
-`baselines-and-snapshots.md` § Stale Artifact Handling.
+Where: [Artifact Identity § Identity Across Renames](./artifact-identity.md#identity-across-renames),
+[Baselines And Snapshots § Stale Artifact Handling](./baselines-and-snapshots.md#stale-artifact-handling).
 
 Alternative: a renamed test surfaces as a stale orphan (the old
 baseline) plus a missing new baseline. The developer accepts both
@@ -246,7 +240,7 @@ inside `CaseId`.
 Why: the `file` field, repo-relative to the resolved project root, is
 already enough to disambiguate.
 
-Where: `artifact-identity.md` § Resolved Identity Rules.
+Where: [Artifact Identity § Resolved Identity Rules](./artifact-identity.md#resolved-identity-rules).
 
 ### No exit-code remap
 
@@ -256,7 +250,7 @@ code 1.
 Why: collapsing destroys the distinction between "test failure" and
 "no tests collected" exactly where consumers most need it.
 
-Where: `runtime-behavior.md` § Zero-Test Runs, § Exit Codes And
+Where: [Runtime Behavior § Zero-Test Runs](./runtime-behavior.md#zero-test-runs), § Exit Codes And
 `process.exit`.
 
 Alternative: consumers that want a single failure threshold can treat
@@ -268,11 +262,10 @@ any non-zero exit as failure themselves.
 
 Overkill does not retry microtests as a normal mode.
 
-Why: an "exit ramp" from the contract — see `principles.md` § The
-Suite Is A Contract.
+Why: an "exit ramp" from the contract — see [Principles § The Suite Is A Contract](./principles.md#the-suite-is-a-contract).
 
-Where: `metadata-and-selection.md` § Stability Markers,
-`microtests-and-capabilities.md`.
+Where: [Metadata And Selection § Stability Markers](./metadata-and-selection.md#stability-markers),
+[Microtests And Capabilities](./microtests-and-capabilities.md).
 
 Alternative: integration-style profiles may opt into retries with
 attribution-preserving artifacts. Microtests do not.
@@ -282,10 +275,9 @@ attribution-preserving artifacts. Microtests do not.
 Overkill does not ship a "known-flaky, allow to fail without gating"
 mode.
 
-Why: an "exit ramp" from the contract — see `principles.md` § The
-Suite Is A Contract.
+Why: an "exit ramp" from the contract — see [Principles § The Suite Is A Contract](./principles.md#the-suite-is-a-contract).
 
-Where: `metadata-and-selection.md` § Stability Markers (Quarantine
+Where: [Metadata And Selection § Stability Markers](./metadata-and-selection.md#stability-markers) (Quarantine
 glossary entry was removed in the same direction).
 
 Alternative: stability markers as reporting metadata only; CI gates use
@@ -301,8 +293,8 @@ configuration-driven hook system.
 Why: stable package contracts are enough; a plugin runtime adds
 indirection without unique reach.
 
-Where: `extensions-and-plugins.md` § Plugin Philosophy,
-`bundles-and-distribution.md`.
+Where: [Extensions And Plugins § Plugin Philosophy](./extensions-and-plugins.md#plugin-philosophy),
+[Bundles And Distribution](./bundles-and-distribution.md).
 
 Alternative: stable APIs in `@overkill/engine`, orchestration-level
 composition in `@overkill/run`, and config-driven attachment for
@@ -326,7 +318,7 @@ helpers for effectful collaborators, reusable recorder and snapshot
 helpers.
 
 Why deferred: consumer production code should not need to import Overkill
-packages (see `principles.md` § Keep Production Code Clean). If
+packages (see [Principles § Keep Production Code Clean](./principles.md#keep-production-code-clean)). If
 `@overkill/world` became the canonical way to define application handles,
 it would turn into a production-facing architecture dependency. That
 crosses a boundary the current concept will not cross.
@@ -335,9 +327,9 @@ What would change to revive: a test-only helper layer that does not pull
 Overkill into production runtime, or a deliberate scope expansion of
 Overkill's role beyond the testing side of the boundary.
 
-Where: `principles.md` § Keep Production Code Clean,
-`capability-handles.md` § Current Stance,
-`ideas-and-future-directions.md` (cross-reference).
+Where: [Principles § Keep Production Code Clean](./principles.md#keep-production-code-clean),
+[Capability Handles § Current Stance](./capability-handles.md#current-stance),
+[Ideas And Future Directions](./ideas-and-future-directions.md) (cross-reference).
 
 Alternative: capability handles documented as a _user architecture_
 pattern; `@overkill/doubles` covers test-side function replacement.
@@ -368,13 +360,13 @@ What would change to revive: the JS shipping and tooling story changes
 materially (e.g. native in-source-test stripping in a runtime), or
 Overkill's scope shifts to own a transform pipeline.
 
-Where: `tests-as-values.md` § Recommendation,
-`novel-techniques.md` Recommended Path note.
+Where: [Tests As Values § Recommendation](./tests-as-values.md#recommendation),
+[Novel And Under-Used Testing Techniques](./novel-techniques.md) Recommended Path note.
 
 ## What This Doc Is Not
 
 This file does not list every feature deferred to a later release. It
 lists _decided-against_ directions — both settled rejections and the
 deferred-with-research entries above. For deferred-but-likely items see
-`ideas-and-future-directions.md`; for open research items see
-`novel-techniques.md`.
+[Ideas And Future Directions](./ideas-and-future-directions.md); for open research items see
+[Novel And Under-Used Testing Techniques](./novel-techniques.md).

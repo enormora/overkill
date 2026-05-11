@@ -13,13 +13,12 @@ Why microtests only:
 -   integration tests broad-path through code; their coverage
     typically reads as "everything was hit," which tells you little
 -   benchmarks must not be instrumented — instrumentation distorts
-    timing (an explicit non-goal: see `non-goals.md` § No always-on
-    coverage in the default run mode)
+    timing (an explicit non-goal: see [Non-Goals § No always-on coverage in the default run mode](./non-goals.md#no-always-on-coverage-in-the-default-run-mode))
 -   browser tests have their own coverage story via the browser's
     own instrumentation (out of scope here)
 -   restricting to microtests keeps the API surface small (see
-    `principles.md` § Low API Surface) and aligns with
-    `principles.md` § Capability-Oriented Microtests
+    [Principles § Low API Surface](./principles.md#low-api-surface)) and aligns with
+    [Principles § Capability-Oriented Microtests](./principles.md#capability-oriented-microtests)
 
 Why off by default within microtests:
 
@@ -84,7 +83,7 @@ shape:
 Overkill orchestrates the V8 engine and configures `c8` for both
 jobs. The include/exclude patterns that drive all-files reporting
 live in `overkill.config.ts` (project policy, not per-run intent —
-see `principles.md` § One First-Party Path Per Layer).
+see [Principles § One First-Party Path Per Layer](./principles.md#one-first-party-path-per-layer)).
 
 Format emission inside `c8` delegates to the `istanbul-lib-report`
 family. We could in principle bypass `c8` and call those libraries
@@ -95,7 +94,7 @@ V8 doesn't ship all-files synthesis itself.
 
 ## CLI And Config Split
 
-Following `principles.md` § One First-Party Path Per Layer (each
+Following [Principles § One First-Party Path Per Layer](./principles.md#one-first-party-path-per-layer) (each
 setting has one canonical place: per-run intent on the CLI,
 persistent project policy in the config file, and no setting
 reachable from both surfaces), the coverage surface splits this way:
@@ -142,13 +141,13 @@ truly needs both lifetimes — and coverage does not.
 -   coverage scope = the `coverage.include`/`coverage.exclude` source
     set ∩ the executed-test set. A filtered or narrowed run does not
     claim suite-wide coverage; the run record (see
-    `metadata-and-selection.md` § Selection Model) records which
+    [Metadata And Selection § Selection Model](./metadata-and-selection.md#selection-model)) records which
     cases were actually executed so reports remain interpretable.
 -   the programmatic API in `@overkill/run` accepts both the per-run
     flag (`coverage: true`) and the policy values (formats,
     thresholds, etc.) in a single `run(config)` call — it is the
     unified target the CLI and config file both reduce to (see
-    `principles.md` § One First-Party Path Per Layer for why the
+    [Principles § One First-Party Path Per Layer](./principles.md#one-first-party-path-per-layer) for why the
     API is a different layer from the human-facing surfaces).
 
 ## Single-Process Execution Model
@@ -187,8 +186,7 @@ The runner is responsible for:
 -   starting the worker subprocess with `NODE_V8_COVERAGE` set to
     the run's coverage directory when `--coverage` is on
 -   adding `--allow-fs-write=<run-coverage-dir>/*` to the worker's
-    Node permission flags (see `microtests-and-capabilities.md`
-    § Capability Defaults for the mechanism)
+    Node permission flags (see [Microtests And Capabilities § Capability Defaults](./microtests-and-capabilities.md#capability-defaults) for the mechanism)
 -   handing the V8 output to `c8` for all-files synthesis and format
     emission once the run completes
 
@@ -213,7 +211,7 @@ wildcard before passing it to Node.
 For the general permission mechanism — how Node flags are applied per
 worker, why workers are separate Node processes, the symlink caveat,
 and that permissions do not inherit — see
-`microtests-and-capabilities.md` § Capability Defaults. There is no
+[Microtests And Capabilities § Capability Defaults](./microtests-and-capabilities.md#capability-defaults). There is no
 Overkill-specific authority abstraction layered on top.
 
 ## Coverage Output Path
@@ -245,7 +243,7 @@ directory containing the `overkill.config.ts` that defined them. In
 a monorepo with per-package configs, each package's coverage path
 is relative to its own config file unless the user writes an
 absolute path. (Convention worth generalising to other paths in
-config; left for `configuration.md` to formalise.)
+config; left for [Configuration](./configuration.md) to formalise.)
 
 ### Validation
 
@@ -255,7 +253,7 @@ the result:
 
 -   is `/`, `/etc`, `/usr`, or another well-known system path
 -   contains a symlink that escapes the project root — same caveat
-    as `microtests-and-capabilities.md` § Capability Defaults, with
+    as [Microtests And Capabilities § Capability Defaults](./microtests-and-capabilities.md#capability-defaults), with
     extra weight because the path is user-supplied
 
 ### Replay

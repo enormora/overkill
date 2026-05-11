@@ -10,12 +10,12 @@ falling back to inline `.only` culture.
 
 Overkill treats test metadata as explicit structured data rather than
 ad-hoc naming conventions — the metadata-layer expression of
-`principles.md` § Data Over Side Effects.
+[Principles § Data Over Side Effects](./principles.md#data-over-side-effects).
 
 Likely metadata categories:
 
 -   **tags** — free-form labels (`'fast'`, `'flaky'`, `'auth'`)
--   **kind** — closed enumeration (see `glossary.md` § Test Kind)
+-   **kind** — closed enumeration (see [Glossary § Test Kind](./glossary.md#test-kind))
 -   **runtimes** — declared runtime matrix entries
 -   **capabilities** — required capability profile
 -   **baselines** — baseline subtypes the test consumes
@@ -70,7 +70,7 @@ export default suite('users', { tags: ['auth'], ownership: ['@auth'] }, [
 Propagation is a tree fold computed at collection time. The resolved
 metadata is part of the test's identity for selection but not for artifact
 identity (which uses only file/suite/name structure — see
-`artifact-identity.md`).
+[Artifact Identity](./artifact-identity.md)).
 
 ## Selection Model
 
@@ -104,7 +104,7 @@ That means:
     register additional tests that could alter filtering or sharding
 -   sharding and worker distribution operate on an already-collected case set
 
-The more detailed ordering lives in `composition-order.md`, but the important
+The more detailed ordering lives in [Composition Order](./composition-order.md), but the important
 point here is simple: selection is a plan-time operation, not a worker-time
 side effect.
 
@@ -164,13 +164,13 @@ The replacement for `.only`:
 -   `--changed` runs tests in files changed since `main` (path-level only;
     Overkill does not track a dependency graph)
 -   `--watch` reruns the selected suite on file change (uses Node's
-    built-in watcher; see `runtime-behavior.md` § Watch-Mode Targeting)
+    built-in watcher; see [Runtime Behavior § Watch-Mode Targeting](./runtime-behavior.md#watch-mode-targeting))
 
 These are CLI conveniences over the same selection grammar. None modify
 the test source.
 
 `--last-failed` is resolved from the existing `RunRecord` written for
-the previous run (see `reproducibility.md`); it does not require a
+the previous run (see [Reproducibility](./reproducibility.md)); it does not require a
 separate tracking file or extra per-test disk writes. If several tests
 failed in the previous run, all of their `CaseId`s are selected. If no
 previous run record exists, the flag is a usage error rather than a

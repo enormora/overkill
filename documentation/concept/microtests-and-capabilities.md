@@ -15,7 +15,7 @@ A test is a microtest if and only if it runs in a microtest _capability
 profile_. Two tests with identical bodies but different profiles are
 different tests.
 
-See `glossary.md` for the canonical term definitions.
+See [Glossary](./glossary.md) for the canonical term definitions.
 
 ## Goal
 
@@ -64,7 +64,7 @@ type Capability =
 ```
 
 This is the type used in `Metadata.capabilities` (see
-`metadata-and-selection.md`) and across the doc set. New capabilities
+[Metadata And Selection](./metadata-and-selection.md)) and across the doc set. New capabilities
 require an explicit addition to this enumeration; the runner does not
 recognise free-form strings.
 
@@ -117,8 +117,7 @@ How Overkill applies these flags:
 -   **Capability isolation requires `child_process`.** Worker threads
     share the parent's permission set; subprocesses can each have
     their own. Microtest workers are therefore separate Node
-    processes (see `composition-order.md` § Execution-Time
-    Wrapping).
+    processes (see [Composition Order § Execution-Time Wrapping](./composition-order.md#execution-time-wrapping)).
 -   **Launch path is irrelevant.** `npx overkill ...`, direct
     invocation, and any other launcher all work identically — the
     runner spawns workers explicitly with the right flags;
@@ -174,13 +173,17 @@ This means:
 -   the orchestrator routes tests by their declared capabilities; tests
     with incompatible declarations are scheduled to separate workers
 
-Capability declarations are _intersected_ down the suite tree (a child
-cannot extend the parent's permissions; it can only narrow them).
+### Capability Propagation
+
+Capabilities are _intersected_ down the suite tree: a child can only
+narrow the parent's permissions, never widen them — strictly more
+restrictive than metadata propagation, where fields like `tags` merge
+by union. See [Composition Order](./composition-order.md).
 
 ## Capability Handles As The Language-Level Boundary
 
 The Node permission model is the OS-level seat belt. The
-`capability-handles.md` pattern adds a language-level boundary: a
+[Capability Handles](./capability-handles.md) pattern adds a language-level boundary: a
 microtest's runtime object is a typed bag of effect handles, and the test cannot
 perform effects whose handles it did not receive.
 
@@ -213,14 +216,14 @@ Sources:
 
 ## Runner Profiles
 
-Standard capability profiles (see `glossary.md`):
+Standard capability profiles (see [Glossary](./glossary.md)):
 
 -   `micro-strict` — denies almost everything; the default microtest
     profile, and fails on observed `console.*` usage
 -   `micro-supervised` — same denials, plus subprocess supervision for
     crash-only recovery
 -   `micro-with-coverage` — micro-strict with a narrow exception for
-    coverage writes; runs single-threaded (see `coverage.md`)
+    coverage writes; runs single-threaded (see [Coverage](./coverage.md))
 -   `micro-supervised-with-coverage` — supervised mode + coverage
     write exception; also single-threaded
 -   `integration-local` — allows FS write within a per-test temp dir,
@@ -289,21 +292,21 @@ filesystem to set up a fixture either fails under strict capability
 denials or quietly opens up the boundary. Either way, the microtest
 contract becomes muddier.
 
-Test macros (`tests-as-values.md` § macros) are the recommended reuse
+Test macros ([Tests As Values § Macros And Parameterized Tests](./tests-as-values.md#macros-and-parameterized-tests)) are the recommended reuse
 mechanism instead.
 
 ## Connection To Other Docs
 
--   `capability-handles.md` — language-level capability boundary
+-   [Capability Handles](./capability-handles.md) — language-level capability boundary
     complementing the OS-level one
--   `runtime-behavior.md` — process-wide consequences of the capability
+-   [Runtime Behavior](./runtime-behavior.md) — process-wide consequences of the capability
     profile
--   `fast-feedback-loops.md` — fast microtest feedback loops are the
+-   [Fast Feedback Loops](./fast-feedback-loops.md) — fast microtest feedback loops are the
     motivation for the strict profile
--   `tests-as-values.md` — microtests as data; macros instead of hooks
--   `results-not-exceptions.md` — returned outcomes mean less stack-walk
+-   [Tests As Values](./tests-as-values.md) — microtests as data; macros instead of hooks
+-   [Results, Not Exceptions](./results-not-exceptions.md) — returned outcomes mean less stack-walk
     overhead in the success path
--   `glossary.md` — canonical definitions of capability profile, runner
+-   [Glossary](./glossary.md) — canonical definitions of capability profile, runner
     profile, microtest
 
 ## Sources

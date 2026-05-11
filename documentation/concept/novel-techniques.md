@@ -20,16 +20,16 @@ package.
 
 For well-understood enhancements where the shape is already clear (such
 as contract testing, golden/approval workflows, builder-style test data
-factories), see `ideas-and-future-directions.md`. Companion docs:
-`research-landscape.md` (prior art), `deterministic-simulation.md`, and
-`capability-handles.md`.
+factories), see [Ideas And Future Directions](./ideas-and-future-directions.md). Companion docs:
+[Research Landscape](./research-landscape.md) (prior art), [Deterministic Simulation Testing](./deterministic-simulation.md), and
+[Capability Handles](./capability-handles.md).
 
 > **Note on code samples.** The snippets below use illustrative
 > primitives such as `forall`, `gen.user`, `arbitrary.bytes`,
 > `relation()`, `differential()`, `hyperproperty()`, `slo()`, `fuzz()`,
 > and `baseline()`. These are _proposed future-package syntax_, not
 > committed APIs. They are listed as placeholders in
-> `types-index.md` § Placeholders Without Domain Definitions.
+> [Types Index § Placeholders Without Domain Definitions](./types-index.md#placeholders-without-domain-definitions).
 
 ## Property-Based Testing — What It Should Mean Specifically
 
@@ -40,7 +40,7 @@ shrink." Concrete commitments worth making explicit:
     Hedgehog-style. Avoids fast-check's invariant-breaking shrinking
     pitfalls.
 -   **Splittable pseudo-random number generators (PRNGs)** — see
-    `capability-handles.md`. Each generator derives its own child random
+    [Capability Handles](./capability-handles.md). Each generator derives its own child random
     stream instead of sharing one global source of randomness, so parallel
     and tree-shaped generation stays reproducible. SplitMix is the canonical
     algorithm.
@@ -49,7 +49,7 @@ shrink." Concrete commitments worth making explicit:
     distribution drifts (`cover 30 isSorted`).
 -   **Witness-replay artifacts** — `*.witness.json` per failing
     property; reruns load the witness and reproduce bit-for-bit. See
-    `failure-artifacts.md` § Witnesses And Replay Artifacts for the
+    [Failure Artifacts § Witnesses And Replay Artifacts](./failure-artifacts.md#witnesses-and-replay-artifacts) for the
     schema.
 -   **Persistent regression corpus** — every failing example is added to a
     per-test corpus replayed eagerly on the next run. Hypothesis (Python)
@@ -127,7 +127,7 @@ stable.
 
 ## Mutation Testing 2.0
 
-Stryker integration is already planned (`overview.md`). Beyond the basic
+Stryker integration is already planned ([Overkill](./overview.md)). Beyond the basic
 "mutate code, run all tests" loop:
 
 -   **Incremental mutation testing** — only mutate touched lines since
@@ -308,8 +308,7 @@ the first-party concept. Broken tests should be fixed, deleted, or fail
 normally.
 
 The split between engine `TestOutcome` (`pass | fail | skip |
-inconclusive`) and reporter-facing verdicts is settled (see `glossary.md`
-§ Test Outcome / Test Verdict): engine outcomes stay narrow; richer
+inconclusive`) and reporter-facing verdicts is settled (see [Glossary § Test Outcome](./glossary.md#test-outcome) / Test Verdict): engine outcomes stay narrow; richer
 verdicts are derived by orchestration from `(outcome, metadata,
 runner-error?)`. Adding a new verdict means adding a derivation rule, not
 a new engine constructor.
@@ -322,7 +321,7 @@ code→test bidirectional map; on commit, run only affected tests.
 
 **Status: open research.** The current concept does not commit to
 shipping a dependency graph. Path-level change detection (`--changed`
-in `metadata-and-selection.md`) is the baseline; `--watch` reuses
+in [Metadata And Selection](./metadata-and-selection.md)) is the baseline; `--watch` reuses
 Node's built-in watcher. True TIA would require:
 
 -   per-test reverse-import tracking (e.g. via `module.registerHooks`)
@@ -429,7 +428,7 @@ heisenbugs that only appear once.
 For Overkill: don't compete with `replay.io` on browser recording. _Do_
 guarantee that any failing test in the deterministic-simulation profile is
 reproducible from the recorded seed alone. The witness format from
-`deterministic-simulation.md` is already the trace; an external viewer can
+[Deterministic Simulation Testing](./deterministic-simulation.md) is already the trace; an external viewer can
 play it back.
 
 If this grows beyond deterministic simulation, the useful Overkill-specific
@@ -467,7 +466,7 @@ Pointers, not deep dives — for future audits:
 -   `Jazzer.js` — coverage-guided JS fuzzer
 -   `Hedgehog` ports — integrated shrinking reference
 
-These should be re-audited periodically alongside `candidate-libraries.md`.
+These should be re-audited periodically alongside [Candidate Libraries](./candidate-libraries.md).
 
 ## Recommended Path
 
@@ -493,12 +492,12 @@ If Overkill commits to incorporating these in priority order:
 10. **Linearisability checker** — defer until concurrent-JS users
     materialise
 11. **Approval-test workflow** — defer; the well-understood shape lives in
-    `ideas-and-future-directions.md` § Approval And Golden Workflow Testing
+    [Ideas And Future Directions § Approval And Golden Workflow Testing](./ideas-and-future-directions.md#approval-and-golden-workflow-testing)
 
 In-source tests are intentionally **not** in this list: the settled
 concept rejects them as the default authoring model and the research
-record lives in `non-goals.md` § Deferred With Research (see also
-`microtests-and-capabilities.md` and `tests-as-values.md` § Recommendation).
+record lives in [Non-Goals § Deferred With Research](./non-goals.md#deferred-with-research) (see also
+[Microtests And Capabilities](./microtests-and-capabilities.md) and [Tests As Values § Recommendation](./tests-as-values.md#recommendation)).
 
 Item 1 is essentially free given decisions already made. Items 2, 3, 5
 are the big architectural commitments. Item 4 (TIA) is open research.

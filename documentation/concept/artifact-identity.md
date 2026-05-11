@@ -180,7 +180,7 @@ than trying to be clever about rename inference.
 
 ## Identity And Retries
 
-Retries (integration profiles only — `failure-artifacts.md` covers the
+Retries (integration profiles only — [Failure Artifacts](./failure-artifacts.md) covers the
 attribution rules) introduce attempt identity. The first attempt has
 `attempt: { index: 0 }`; subsequent attempts increment. Reporters can
 choose to display only the final attempt or all of them; the engine
@@ -214,7 +214,7 @@ A run record includes the resolved set of identities. Replaying a run with
 -   the same baseline lookup decisions
 -   the same workload parameters
 
-This is the practical meaning of `reproducibility.md`'s "reproducible run
+This is the practical meaning of [Reproducibility](./reproducibility.md)'s "reproducible run
 intent": the inputs to the plan are stable and the plan is replayable.
 
 ## Identity And IDE Integration

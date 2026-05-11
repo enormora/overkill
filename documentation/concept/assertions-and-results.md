@@ -118,15 +118,15 @@ constructors from `@overkill/assert` (e.g.
 `assertion.equal(actual, expected) -> AssertionNode`) rather than
 `case.assert.*` — the body's return value feeds the property
 machinery, which decides what to record at the boundary. See
-`tests-as-values.md` § Macros And Parameterized Tests for the
-canonical authoring shape, and `failure-walkthrough.md` for an
+[Tests As Values § Macros And Parameterized Tests](./tests-as-values.md#macros-and-parameterized-tests) for the
+canonical authoring shape, and [Failure Walkthrough](./failure-walkthrough.md) for an
 end-to-end walked example.
 
 The same boundary rule applies to other property-like primitives
 (`relation`, `differential`, `hyperproperty`) when they land: each
 counts as one boundary assertion regardless of internal iteration.
 
-## Connection To `results-not-exceptions.md`
+## Connection To [Results, Not Exceptions](./results-not-exceptions.md)
 
 The low-level protocol remains `AssertionNode`, but the primary authoring DX
 is the injected builder API:
@@ -215,7 +215,7 @@ Key points:
 -   `require` between awaits short-circuits on failure: subsequent awaits
     and assertions never run, the recorded log up to that point is reported
 -   if an awaited operation rejects, that rejection is a runner error
-    (see `failure-artifacts.md`), not an assertion failure; the test
+    (see [Failure Artifacts](./failure-artifacts.md)), not an assertion failure; the test
     is recorded as such and the plan's expected count does not apply
 -   the plan count covers only `assert.*` and `require.*` invocations;
     awaits do not count
@@ -265,7 +265,7 @@ mode flags.
 
 Failed checks carry structured diff data. The sketched types
 (`Diff`, `DiffOperation`, `Hunk`, `SerializedValue`, `SourceLocation`) are
-collected in `types-index.md` § Outcomes And Verdicts.
+collected in [Types Index § Outcomes And Verdicts](./types-index.md#outcomes-and-verdicts).
 
 ```ts
 type FailedCheck = {
@@ -293,7 +293,7 @@ available out-of-band (the baseline files on disk, or attached run
 artifacts) for external diff tools. Baseline subtypes that need
 richer comparison (visual diff for screenshots, percentile diff for
 performance) provide their own adapter-specific representations
-above this type — see `baselines-and-snapshots.md`.
+above this type — see [Baselines And Snapshots](./baselines-and-snapshots.md).
 
 Reporters render diffs from this structured shape. Truncation, colorization,
 and ANSI rendering are reporter concerns; the data stays raw.
@@ -310,9 +310,9 @@ The architecture should preserve room for future exploration of:
     per-test effect bus rather than returned (more amenable to highly-async
     test bodies)
 -   richer relational checks: `relation()` for metamorphic testing (see
-    `novel-techniques.md`)
+    [Novel And Under-Used Testing Techniques](./novel-techniques.md))
 -   semantic baseline comparisons via subtype-specific adapters (see
-    `baselines-and-snapshots.md`)
+    [Baselines And Snapshots](./baselines-and-snapshots.md))
 
 Vitest's domain snapshot adapter model is a useful sign that richer
 comparison contracts are practical in real tooling.

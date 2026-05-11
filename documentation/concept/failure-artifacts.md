@@ -29,7 +29,7 @@ Overkill should distinguish three artifact sources:
 
 Examples:
 
--   captured stdout / stderr (see `runtime-behavior.md` § console capture)
+-   captured stdout / stderr (see [Runtime Behavior § Console Output Capture](./runtime-behavior.md#console-output-capture))
 -   temp files
 -   trace or event timelines
 -   current-vs-baseline diffs
@@ -115,7 +115,7 @@ mechanism.
 Artifacts are:
 
 -   explicitly associated with stable test identities (see
-    `artifact-identity.md`)
+    [Artifact Identity](./artifact-identity.md))
 -   clearly typed (subtype tag in `ArtifactId`)
 -   reviewable where appropriate (snapshots, baselines)
 -   discoverable by reporters and integrations (declared in the run
@@ -177,8 +177,7 @@ way — their outcome depends on state the source doesn't own:
 -   a deterministic-simulation test runs against a simulator
     configured through a scenario name and adapter payload, also
     driven by a seed. Without all three, the simulator behaves
-    differently next time. See `deterministic-simulation.md` § Why
-    This Matters.
+    differently next time. See [Deterministic Simulation Testing § Why This Matters](./deterministic-simulation.md#why-this-matters).
 
 A witness file records that state — which is why these two kinds,
 and only these two, produce witnesses.
@@ -221,7 +220,7 @@ with subtly-different shrinking semantics.
 
 ## Captured Output
 
-Default policy (covered in `runtime-behavior.md`):
+Default policy (covered in [Runtime Behavior](./runtime-behavior.md)):
 
 -   owned-boundary runs may capture stdout/stderr per test and attribute it
     via `AsyncLocalStorage` correlation plus worker/process ownership
@@ -237,7 +236,7 @@ Default policy (covered in `runtime-behavior.md`):
 
 ## Diff Artifacts
 
-A failed assertion's diff is structured (see `assertions-and-results.md`):
+A failed assertion's diff is structured (see [Assertions And Results](./assertions-and-results.md)):
 
 ```ts
 type DiffArtifact = {
@@ -285,7 +284,7 @@ When a worker process dies mid-test (segfault, OOM, native-addon crash):
     -   any environment metadata helpful for triage (Node version,
         loaded native addons)
 
-See `runtime-behavior.md` § process crash handling for the run-level
+See [Runtime Behavior § Process Crash Handling](./runtime-behavior.md#process-crash-handling) for the run-level
 policy (replacement workers, crash-budget abort).
 
 ## Sources

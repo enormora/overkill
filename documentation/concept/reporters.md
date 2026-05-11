@@ -7,13 +7,13 @@ machine-readable output. They are a **stable extension contract**:
 first-party reporters and third-party reporters meet the same shape,
 and the engine never bakes presentation choices into its core types.
 
-This doc names the contract. `package-architecture.md` § Reporters
+This doc names the contract. [Package Architecture § Reporters](./package-architecture.md#reporters)
 covers the package-family rationale; this is the interface.
 
 ## Two Lifecycles
 
 Reporters declare which lifecycle they participate in. The split
-already exists in `package-architecture.md` and is settled.
+already exists in [Package Architecture](./package-architecture.md) and is settled.
 
 ```ts
 type Reporter = RealTimeReporter | FinalResultReporter;
@@ -197,9 +197,9 @@ preferable.)
 
 ## Cross-References
 
--   `package-architecture.md` § Reporters — the package-family stance
--   `runtime-behavior.md` § Console Output Capture — how reporters
+-   [Package Architecture § Reporters](./package-architecture.md#reporters) — the package-family stance
+-   [Runtime Behavior § Console Output Capture](./runtime-behavior.md#console-output-capture) — how reporters
     interact with captured stdout/stderr
--   `failure-artifacts.md` — the artifacts reporters consume
--   `types-index.md` — `RunPlan`, `RunResult`, `TestOutcome`,
+-   [Failure Artifacts](./failure-artifacts.md) — the artifacts reporters consume
+-   [Types Index](./types-index.md) — `RunPlan`, `RunResult`, `TestOutcome`,
     `RunnerError`, `CaseId`, `TestDebugArtifact`

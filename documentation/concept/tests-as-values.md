@@ -29,8 +29,7 @@ ScalaCheck: **tests are values**. A test file _exports_ a value describing
 its tests. The runner imports the module, walks the value, and decides what
 to execute.
 
-This is the authoring-layer expression of `principles.md` § Data Over
-Side Effects: tests are returned as data, not registered via the act of
+This is the authoring-layer expression of [Principles § Data Over Side Effects](./principles.md#data-over-side-effects): tests are returned as data, not registered via the act of
 loading the module. It should be treated as the first-party answer at
 the high-level authoring layer, not as a discarded side experiment.
 
@@ -183,7 +182,7 @@ type Table = {
 ```
 
 `Metadata` and `Capability` are the structures defined in
-`metadata-and-selection.md` and `microtests-and-capabilities.md`. The runner
+[Metadata And Selection](./metadata-and-selection.md) and [Microtests And Capabilities](./microtests-and-capabilities.md). The runner
 walks the tree, applies filters by metadata, expands tables into individual
 cases, and produces an execution plan.
 
@@ -234,7 +233,7 @@ single law bundle replaces dozens of example tests.
 
 ## Filters Become Tree Walks
 
-`metadata-and-selection.md` describes filtering by tags, file paths, kinds,
+[Metadata And Selection](./metadata-and-selection.md) describes filtering by tags, file paths, kinds,
 and so on. Tests-as-values makes the implementation trivial:
 
 ```ts
@@ -273,7 +272,7 @@ own module and lazy-importing on demand from the runner. Tests-as-values
 makes the simulation transparent because the test definitions are pure data
 that doesn't need the implementation modules to exist.
 
-## Connection To `results-not-exceptions.md`
+## Connection To [Results, Not Exceptions](./results-not-exceptions.md)
 
 Tests-as-values composes with the returned-value outcome model: a test is a
 value with a `run` function returning a `TestOutcome` value. Both ends of
@@ -373,7 +372,7 @@ Because the test definitions are values, an external tool can:
 -   diff two runs by comparing tree shapes
 
 This makes Overkill's machine-readable surface (named in
-`extensions-and-plugins.md` and `package-architecture.md`) genuinely
+[Extensions And Plugins](./extensions-and-plugins.md) and [Package Architecture](./package-architecture.md)) genuinely
 free, rather than a reporter-output parser kludge.
 
 ## Influences

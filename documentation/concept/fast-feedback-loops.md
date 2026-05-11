@@ -10,8 +10,8 @@ tests as a thinking tool.
 
 This document captures the concrete engineering knobs available in modern Node 26-era runtimes (May 2026)
 that a test runner can pull _today_ to keep the cold path short and the hot path
-sharable. Companion to `platform-first-implementation-notes.md` and
-`bundles-and-distribution.md`.
+sharable. Companion to [Platform-First Implementation Notes](./platform-first-implementation-notes.md) and
+[Bundles And Distribution](./bundles-and-distribution.md).
 
 The investigation is structured around twelve technical areas; each section is
 deliberately concrete so it can be turned into an issue or RFC without further
@@ -254,7 +254,7 @@ Notes:
     -   a deferred presentation layer (pretty-printed diffs, ANSI colour,
         snapshot serializers) imported lazily on first failure or first
         snapshot mismatch.
--   Because Overkill builds on `assertions-and-results.md`’s “tests as values”
+-   Because Overkill builds on [Assertions And Results](./assertions-and-results.md)’s “tests as values”
     direction, the diff producer never runs unless a result is observed. The
     runner can short-circuit fully when a filter excludes a test.
 

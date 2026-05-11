@@ -80,7 +80,7 @@ Explicit update runs:
 ## Update Workflow
 
 Baseline operations live under the `baseline` subcommand namespace
-(registered in `cli.md` § Subcommands § Baseline). The verbs split
+(registered in [CLI Reference § Subcommands](./cli.md#subcommands) § Baseline). The verbs split
 along intent:
 
 | Verb        | Creates missing | Overwrites changed | Removes stale | Runs tests |
@@ -92,8 +92,7 @@ along intent:
 | `diff`      | no              | no                 | no            | yes        |
 
 The subcommand framing reflects user intent: the primary artifact is
-on-disk baselines, not the verdict (see `cli.md` § Flags vs
-Subcommands). The write verbs (`update`, `apply`, `bootstrap`) accept
+on-disk baselines, not the verdict (see [CLI Reference § Flags vs Subcommands](./cli.md#flags-vs-subcommands)). The write verbs (`update`, `apply`, `bootstrap`) accept
 the same selection, capability, and output flags as `run`, since
 updating still requires executing the selected tests.
 
@@ -139,7 +138,7 @@ The intended developer loop:
     structured for content snapshots (text, JSON, objects), size and
     hash for opaque binary artifacts, and adapter-specific
     representations for visual or performance baselines (see
-    `assertions-and-results.md` § Diff And Diagnostic Shape).
+    [Assertions And Results § Diff And Diagnostic Shape](./assertions-and-results.md#diff-and-diagnostic-shape)).
 2.  Inspect the diff in the reporter or in the JSON event stream.
     Decide whether the change is intended.
 3.  For day-to-day intentional changes: run `overkill baseline update`
@@ -174,7 +173,7 @@ case identities. Default policy:
     completes; this is the verb's reason for existing
 
 Renames are detected as a stale orphan plus a missing new baseline
-(see `non-goals.md` § No automatic rename inference); the developer
+(see [Non-Goals § No automatic rename inference for renamed tests](./non-goals.md#no-automatic-rename-inference-for-renamed-tests)); the developer
 accepts both deliberately by running `apply`.
 
 ### What The Runner Will Not Do

@@ -3,16 +3,14 @@
 **Under investigation.** This doc captures the current CLI surface and
 (as content migrates here) the CLI runtime behaviour. Both are likely
 to move to a dedicated `@overkill/cli` package once that direction is
-settled — see `ideas-and-future-directions.md` § CLI Package
-(`@overkill/cli`) for the open shape.
+settled — see [Ideas And Future Directions § CLI Package (`@overkill/cli`)](./ideas-and-future-directions.md#cli-package-overkillcli) for the open shape.
 
 This document enumerates Overkill's command-line interface — subcommands
 and flags. It is a reading aid: the canonical behavior of each option
 lives in the relevant domain doc and is linked here.
 
-The CLI surface follows `principles.md` § One First-Party Path Per
-Layer: per-run intent lives on the CLI, persistent project policy lives
-in the config file (`configuration.md`), and no setting is reachable
+The CLI surface follows [Principles § One First-Party Path Per Layer](./principles.md#one-first-party-path-per-layer): per-run intent lives on the CLI, persistent project policy lives
+in the config file ([Configuration](./configuration.md)), and no setting is reachable
 from both surfaces.
 
 ## Subcommands
@@ -21,10 +19,10 @@ from both surfaces.
 
 | Command                          | Purpose                                                     | Reference                                               |
 | -------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------- |
-| `overkill run [paths...]`        | Default run mode — discover, plan, and execute.             | `runtime-behavior.md`                                   |
-| `overkill list [paths...]`       | Print the resolved test plan without running it.            | `tests-as-values.md`                                    |
-| `overkill replay <run-id>`       | Replay a recorded run from `.overkill/runs/<id>.json`.      | `reproducibility.md` § Replay                           |
-| `overkill replay-witness <path>` | Replay a single property/simulation failure from a witness. | `failure-artifacts.md` § Witnesses And Replay Artifacts |
+| `overkill run [paths...]`        | Default run mode — discover, plan, and execute.             | [Runtime Behavior](./runtime-behavior.md)                                   |
+| `overkill list [paths...]`       | Print the resolved test plan without running it.            | [Tests As Values](./tests-as-values.md)                                    |
+| `overkill replay <run-id>`       | Replay a recorded run from `.overkill/runs/<id>.json`.      | [Reproducibility § Replay](./reproducibility.md#replay)                           |
+| `overkill replay-witness <path>` | Replay a single property/simulation failure from a witness. | [Failure Artifacts § Witnesses And Replay Artifacts](./failure-artifacts.md#witnesses-and-replay-artifacts) |
 
 ### Baseline
 
@@ -43,7 +41,7 @@ gate.
 
 | Command                                  | Behavior                                                                                                                 | Reference                                      |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
-| `overkill baseline update [paths...]`    | **Day-to-day update.** Create missing, overwrite changed; **leave stale alone**. Default safe verb.                      | `baselines-and-snapshots.md` § Update Workflow |
+| `overkill baseline update [paths...]`    | **Day-to-day update.** Create missing, overwrite changed; **leave stale alone**. Default safe verb.                      | [Baselines And Snapshots § Update Workflow](./baselines-and-snapshots.md#update-workflow) |
 | `overkill baseline apply [paths...]`     | **Full reconciliation.** Create missing, overwrite changed, **and remove stale orphans**. Explicit verb for the cleanup. | same                                           |
 | `overkill baseline bootstrap [paths...]` | **First-time setup.** Only create missing baselines; do not touch existing files. For brand-new suites.                  | same                                           |
 | `overkill baseline list [paths...]`      | Print all baselines on disk with their resolved identities. Does not run tests; does not write.                          | same                                           |
@@ -76,37 +74,37 @@ requires the user to type it deliberately.
 
 | Flag                | Behavior                                                               | Reference                                               |
 | ------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------- |
-| `--filter '<expr>'` | Filter tests by metadata expression (tags, kind, runtime, owner, …).   | `metadata-and-selection.md` § Filter Expression Grammar |
-| `--name '<text>'`   | Name substring or quoted exact match.                                  | `metadata-and-selection.md` § Local Iteration Workflow  |
+| `--filter '<expr>'` | Filter tests by metadata expression (tags, kind, runtime, owner, …).   | [Metadata And Selection § Filter Expression Grammar](./metadata-and-selection.md#filter-expression-grammar) |
+| `--name '<text>'`   | Name substring or quoted exact match.                                  | [Metadata And Selection § Local Iteration Workflow](./metadata-and-selection.md#local-iteration-workflow)  |
 | `--file <path>`     | Restrict the run to a single file.                                     | same                                                    |
 | `--id <stable-id>`  | Restrict the run to a single case identity (IDE integration).          | same                                                    |
 | `--last-failed`     | Run only tests that failed in the previous run.                        | same                                                    |
 | `--changed`         | Run tests in files changed since `main`. Path-level only; no graph.    | same                                                    |
-| `--watch`           | Rerun the selected suite on file change. Uses Node's built-in watcher. | `runtime-behavior.md` § Watch-Mode Targeting            |
-| `--shard <i>/<n>`   | Select shard `i` of `n` from the filtered set.                         | `runtime-behavior.md` § Sharding                        |
+| `--watch`           | Rerun the selected suite on file change. Uses Node's built-in watcher. | [Runtime Behavior § Watch-Mode Targeting](./runtime-behavior.md#watch-mode-targeting)            |
+| `--shard <i>/<n>`   | Select shard `i` of `n` from the filtered set.                         | [Runtime Behavior § Sharding](./runtime-behavior.md#sharding)                        |
 
 ## Capability And Execution
 
 | Flag                | Behavior                                                                | Reference                                     |
 | ------------------- | ----------------------------------------------------------------------- | --------------------------------------------- |
-| `--profile <name>`  | Select a runner profile (e.g. `microtest`, `integration`, `benchmark`). | `microtests-and-capabilities.md`              |
-| `--mode <strategy>` | Override the resolved execution strategy (serial, worker-pool, …).      | `runtime-behavior.md` § Parallelism Semantics |
+| `--profile <name>`  | Select a runner profile (e.g. `microtest`, `integration`, `benchmark`). | [Microtests And Capabilities](./microtests-and-capabilities.md)              |
+| `--mode <strategy>` | Override the resolved execution strategy (serial, worker-pool, …).      | [Runtime Behavior § Parallelism Semantics](./runtime-behavior.md#parallelism-semantics) |
 | `--workers <n>`     | Override default worker count for worker-pool modes.                    | same                                          |
 
 ## Output And Reporters
 
 | Flag                | Behavior                                                               | Reference                                      |
 | ------------------- | ---------------------------------------------------------------------- | ---------------------------------------------- |
-| `--coverage`        | Collect coverage for microtest profiles only. Forces serial execution. | `coverage.md`                                  |
-| `--reporter <name>` | Select a reporter; may be specified multiple times.                    | `package-architecture.md` § Reporters          |
-| `--no-capture`      | Pass stdout/stderr through live instead of buffering.                  | `runtime-behavior.md` § Console Output Capture |
+| `--coverage`        | Collect coverage for microtest profiles only. Forces serial execution. | [Coverage](./coverage.md)                                  |
+| `--reporter <name>` | Select a reporter; may be specified multiple times.                    | [Package Architecture § Reporters](./package-architecture.md#reporters)          |
+| `--no-capture`      | Pass stdout/stderr through live instead of buffering.                  | [Runtime Behavior § Console Output Capture](./runtime-behavior.md#console-output-capture) |
 
 ## Lifecycle And Edge Cases
 
 | Flag                | Behavior                                                             | Reference                               |
 | ------------------- | -------------------------------------------------------------------- | --------------------------------------- |
-| `--seed <n>`        | Override the run seed (for reproducible randomization).              | `reproducibility.md`                    |
-| `--debug`           | Emit a structured debug artifact for every test in the resolved set. | `runtime-behavior.md` § Test Debug Mode |
+| `--seed <n>`        | Override the run seed (for reproducible randomization).              | [Reproducibility](./reproducibility.md)                    |
+| `--debug`           | Emit a structured debug artifact for every test in the resolved set. | [Runtime Behavior § Test Debug Mode](./runtime-behavior.md#test-debug-mode) |
 | `--debug-test <id>` | Emit a debug artifact for a single test by ID or selector pattern.   | same                                    |
 
 This list intentionally omits flags that are still under design (e.g.

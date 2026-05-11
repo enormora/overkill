@@ -26,31 +26,27 @@ layer resolves the run plan in this order:
 
 1.  **Collection.** Test files are imported; the engine builds the
     `TestNode` tree (suites, tables, test cases). See
-    `tests-as-values.md`.
+    [Tests As Values](./tests-as-values.md).
 2.  **Metadata propagation.** Parent suite metadata cascades to
     children. Set-valued fields (`tags`) merge by union;
     array-valued fields (`runtimes`) merge unless `replace: true`;
     enum fields replace. Capabilities **intersect** — children may
-    only narrow, not widen. See `metadata-and-selection.md` §
-    Metadata Propagation and `microtests-and-capabilities.md` §
-    Capability Propagation.
+    only narrow, not widen. See [Metadata And Selection § Metadata Propagation](./metadata-and-selection.md#metadata-propagation) and [Microtests And Capabilities § Capability Propagation](./microtests-and-capabilities.md#capability-propagation).
 3.  **Filter application.** The CLI filter expression (or
     programmatic predicate) is evaluated against resolved metadata
     and identity. Result: a filtered case set. See
-    `metadata-and-selection.md` § Selection Model.
+    [Metadata And Selection § Selection Model](./metadata-and-selection.md#selection-model).
 4.  **Sharding.** `--shard <i>/<n>` partitions the filtered set
-    deterministically by `CaseId` hash. See `runtime-behavior.md` §
-    Sharding.
+    deterministically by `CaseId` hash. See [Runtime Behavior § Sharding](./runtime-behavior.md#sharding).
 5.  **Scheduling order.** The filtered, sharded case set is assigned
     an execution order. By default this is a seeded shuffle recorded
     in the run plan; profiles or CLI flags may opt into lexical
-    order. See `runtime-behavior.md` § Execution Order.
+    order. See [Runtime Behavior § Execution Order](./runtime-behavior.md#execution-order).
 6.  **Worker assignment.** The execution strategy (resolved from
     profile + resource constraints) decides workers, processes,
-    isolation grain. See `runtime-behavior.md` § Parallelism
-    Semantics and `package-architecture.md` § Orchestration.
+    isolation grain. See [Runtime Behavior § Parallelism Semantics](./runtime-behavior.md#parallelism-semantics) and [Package Architecture § Orchestration](./package-architecture.md#orchestration).
 7.  **Plan freeze.** The resulting `RunPlan` (see
-    `reproducibility.md`) is written to the run record and is the
+    [Reproducibility](./reproducibility.md)) is written to the run record and is the
     canonical input for replay.
 
 After step 7, the plan does not change. New tests discovered during
@@ -64,17 +60,17 @@ the body. Outermost first:
 1.  **Worker / process boundary.** Capability profile applied via
     Node `--permission` flags. This is process-level: the boundary
     exists for the worker's lifetime, not per test. See
-    `microtests-and-capabilities.md` § Capability Defaults.
+    [Microtests And Capabilities § Capability Defaults](./microtests-and-capabilities.md#capability-defaults).
 2.  **Retry loop** (integration profiles only). Wraps the entire
     per-attempt sequence below. Decides after each attempt whether
-    to run again. See `failure-artifacts.md` § Retry Interaction.
+    to run again. See [Failure Artifacts § Retry Interaction](./failure-artifacts.md#retry-interaction).
 3.  **Timeout watchdog.** Per-attempt soft and (where supported)
     hard deadlines. Sets up the `AbortSignal` and the optional
-    watchdog timer. See `runtime-behavior.md` § Timeouts.
+    watchdog timer. See [Runtime Behavior § Timeouts](./runtime-behavior.md#timeouts).
 4.  **Debug recording** (when `--debug` / `--debug-test` /
     `{ debug: true }`). Begins capturing the timeline, handle
     events, module loads, heap baseline. See
-    `runtime-behavior.md` § Test Debug Mode.
+    [Runtime Behavior § Test Debug Mode](./runtime-behavior.md#test-debug-mode).
 5.  **Test body.** The actual code under test runs.
 
 Unwinding happens in reverse, innermost first:
@@ -107,7 +103,7 @@ The split buys several capabilities:
     accident; replay and failure reports can name the actual realized
     order
 -   the `RunPlan` is recorded as a serializable artifact (per
-    `principles.md` § Data Over Side Effects), enabling replay and
+    [Principles § Data Over Side Effects](./principles.md#data-over-side-effects)), enabling replay and
     IDE / MCP introspection without running
 -   capability profiles, runtime selection, and worker assignment
     resolve once in the main thread, not redundantly per worker
@@ -131,13 +127,13 @@ In practice the cost stays small because:
 
 -   tests-as-values means import-time work is constructing a
     descriptor tree, not running fixtures or effects (see
-    `principles.md` § Data Over Side Effects)
+    [Principles § Data Over Side Effects](./principles.md#data-over-side-effects))
 -   if Overkill enables Node's module compile cache for the
     orchestrator, flushes it after collection, and shares the same
     cache directory with workers, the worker-side re-import can reuse
     V8 code cache and make the second **compilation** cheaper
 -   per-worker imports parallelize across CPU cores
--   the runner targets `principles.md` § Cold Start Is The Budget; a
+-   the runner targets [Principles § Cold Start Is The Budget](./principles.md#cold-start-is-the-budget); a
     second cheap import per file is acceptable, a second expensive
     one is not
 
@@ -197,7 +193,7 @@ dependency:
 -   **Outside retry** if it spans the entire test regardless of
     attempts (e.g. test-level setup/teardown — though Overkill
     currently rejects hooks; resources fill this role; see
-    `runtimes-and-fixtures.md`).
+    [Runtimes And Fixtures](./runtimes-and-fixtures.md)).
 
 ## What This Doc Is Not
 
@@ -212,10 +208,10 @@ dependency:
 
 ## Cross-References
 
--   `tests-as-values.md` — collection and `TestNode`
--   `metadata-and-selection.md` — metadata propagation and filters
--   `microtests-and-capabilities.md` — capability intersection
--   `runtime-behavior.md` — sharding, parallelism, timeouts, debug
--   `failure-artifacts.md` — retry interaction
--   `reproducibility.md` — `RunPlan` freeze
--   `package-architecture.md` — orchestration responsibilities
+-   [Tests As Values](./tests-as-values.md) — collection and `TestNode`
+-   [Metadata And Selection](./metadata-and-selection.md) — metadata propagation and filters
+-   [Microtests And Capabilities](./microtests-and-capabilities.md) — capability intersection
+-   [Runtime Behavior](./runtime-behavior.md) — sharding, parallelism, timeouts, debug
+-   [Failure Artifacts](./failure-artifacts.md) — retry interaction
+-   [Reproducibility](./reproducibility.md) — `RunPlan` freeze
+-   [Package Architecture](./package-architecture.md) — orchestration responsibilities

@@ -62,7 +62,7 @@ type ArtifactId = {
 };
 ```
 
-Canonical: `artifact-identity.md`.
+Canonical: [Artifact Identity](./artifact-identity.md).
 
 ## Test Tree And Metadata
 
@@ -120,8 +120,8 @@ type BaselineSubtype = 'content-snapshot' | 'visual-snapshot' | 'terminal-snapsh
 type Capability = 'fs-read' | 'fs-write' | 'net' | 'child-process' | 'worker' | 'addon' | 'wasi' | 'process-exit';
 ```
 
-Canonical: `tests-as-values.md` for `TestNode`/`TestCase`/`Suite`/`Table`,
-`metadata-and-selection.md` for `Metadata`, `glossary.md` for the
+Canonical: [Tests As Values](./tests-as-values.md) for `TestNode`/`TestCase`/`Suite`/`Table`,
+[Metadata And Selection](./metadata-and-selection.md) for `Metadata`, [Glossary](./glossary.md) for the
 enumerations.
 
 ## Outcomes And Verdicts
@@ -177,10 +177,10 @@ type SourceLocation = {
 };
 ```
 
-Canonical: `results-not-exceptions.md` for `TestOutcome`,
-`assertions-and-results.md` for `FailedCheck`/`Diff`/`DiffOperation`/`Hunk`. The
+Canonical: [Results, Not Exceptions](./results-not-exceptions.md) for `TestOutcome`,
+[Assertions And Results](./assertions-and-results.md) for `FailedCheck`/`Diff`/`DiffOperation`/`Hunk`. The
 `TestVerdict` reporter category is derived from outcome + metadata; see
-`glossary.md` § Test Verdict.
+[Glossary § Test Verdict](./glossary.md#test-verdict).
 
 ## Run Record
 
@@ -235,8 +235,8 @@ type RunnerError = {
 };
 ```
 
-Canonical: `reproducibility.md` for `RunPlan` and `RunRecord`,
-`failure-artifacts.md` for `RunnerError`.
+Canonical: [Reproducibility](./reproducibility.md) for `RunPlan` and `RunRecord`,
+[Failure Artifacts](./failure-artifacts.md) for `RunnerError`.
 
 ## Capability Handles (illustrative)
 
@@ -287,7 +287,7 @@ type RecordedEvent =
 type RuntimeSnapshot = unknown; // adapter-specific replay payload
 ```
 
-Canonical: `capability-handles.md`. These are illustrative architecture
+Canonical: [Capability Handles](./capability-handles.md). These are illustrative architecture
 patterns, not contracts owned by `@overkill/engine`.
 
 ## Failure Artifacts
@@ -366,7 +366,7 @@ type WitnessFile = {
 };
 ```
 
-Canonical: `failure-artifacts.md`.
+Canonical: [Failure Artifacts](./failure-artifacts.md).
 
 ## Simulation Adapters
 
@@ -394,7 +394,7 @@ type ExecutionRequirement =
     | { kind: 'startup-budget-ms'; min: number };
 ```
 
-Canonical: `deterministic-simulation.md`.
+Canonical: [Deterministic Simulation Testing](./deterministic-simulation.md).
 
 ## Placeholders Without Domain Definitions
 
@@ -402,12 +402,12 @@ These names appear in code samples to keep the example readable. They are
 not part of the Overkill API surface; treat them as `unknown` unless the
 sample explicitly defines them.
 
--   `User`, `UserInput`, `Saved` — appear in `capability-handles.md`'s
+-   `User`, `UserInput`, `Saved` — appear in [Capability Handles](./capability-handles.md)'s
     illustrative `saveUser` example
 -   `arbitrary.user`, `arbitrary.bytes`, `gen.user` — placeholder generator
     references in property-test snippets
 -   `forall`, `relation`, `differential`, `hyperproperty`, `slo`, `fuzz`,
-    `baseline()` — proposed primitives in `novel-techniques.md`; not part
+    `baseline()` — proposed primitives in [Novel And Under-Used Testing Techniques](./novel-techniques.md); not part
     of the settled concept
 -   `withRuntime`, `simulation(...)` — illustrative test helpers in
-    `deterministic-simulation.md`; signatures are not committed
+    [Deterministic Simulation Testing](./deterministic-simulation.md); signatures are not committed

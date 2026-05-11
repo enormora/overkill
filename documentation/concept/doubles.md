@@ -290,7 +290,7 @@ This is a better fit for Overkill than APIs that replace methods on already-crea
 
 ## Relationship To Capability Handles
 
-The companion concept is **capability handles** (see `capability-handles.md`):
+The companion concept is **capability handles** (see [Capability Handles](./capability-handles.md)):
 typed bags of effect-performing services (clock, random, filesystem, http,
 logger) passed explicitly into code, with recording variants used in tests.
 
