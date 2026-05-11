@@ -216,17 +216,34 @@ This becomes the foundation for the property-testing package family later.
 
 ## Connection To `@overkill/doubles`
 
-The current doubles concept (see [Doubles](./doubles.md)) centers on `testDouble()` for
-function doubles. Capability handles complement it:
+This is the canonical home for the handles ↔ doubles boundary; [Doubles](./doubles.md)
+links here rather than restating it.
 
--   handles model collaborators with several methods (clock, fs, logger)
--   `testDouble()` models single-function doubles passed explicitly
--   they compose: a handle's method can be a `testDouble()` for fine-grained
-    per-call control
+The two concepts serve different shapes:
 
-Recommendation: `@overkill/doubles` should remain the primary Overkill
-concept for test doubles. Capability handles, if they become part of the
-ecosystem, should complement `testDouble()` rather than compete with it.
+-   capability handles model **collaborators with multiple methods** — full
+    effect interfaces such as `Clock` with `now`/`sleep`/`monotonic`,
+    `HttpClient` with `request`/`fetch`, `Logger` with `info`/`warn`. A
+    recording handle covers the whole interface; a test asserts on the
+    structured event log.
+-   `testDouble()` models **single-function doubles** passed explicitly —
+    application-specific service interfaces, callback parameters,
+    higher-order function arguments. Not part of the standard handle set,
+    and not worth a whole interface.
+
+They compose. A handle's method can be a `testDouble()` for fine-grained
+per-call control: a test might use an injected runtime object for standard
+effects and `testDouble()` for one application-specific function-shaped
+collaborator. Both refuse module-graph patching; both prefer explicit
+injection.
+
+The boundary, in one line: is this an effect on the standard list, or a
+domain-specific function? Handles for the former, doubles for the
+latter.
+
+`@overkill/doubles` remains the primary Overkill concept for test
+doubles. Capability handles, if they become part of the ecosystem,
+complement `testDouble()` rather than compete with it.
 
 ## Connection To Microtest Capabilities
 

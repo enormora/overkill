@@ -290,28 +290,15 @@ This is a better fit for Overkill than APIs that replace methods on already-crea
 
 ## Relationship To Capability Handles
 
-The companion concept is **capability handles** (see [Capability Handles](./capability-handles.md)):
-typed bags of effect-performing services (clock, random, filesystem, http,
-logger) passed explicitly into code, with recording variants used in tests.
+The boundary between `@overkill/doubles` and capability handles —
+when to reach for which, how they compose, why both refuse module-graph
+patching — is documented in
+[Capability Handles § Connection To `@overkill/doubles`](./capability-handles.md#connection-to-overkilldoubles).
 
-The two packages serve different shapes:
-
--   a capability-handle helper package, if Overkill ever ships one, would
-    provide _recording handles_ for full effect interfaces — `Clock` with
-    `now`/`sleep`/`monotonic`, `HttpClient` with `request`/`fetch`, etc.
--   `@overkill/doubles` ships function-level doubles for one-off
-    collaborators that are not part of the standard handle set —
-    application-specific service interfaces, callback parameters,
-    higher-order function arguments
-
-They compose: a handle's method can be a `testDouble()` for fine-grained
-per-call control. A test might use an injected runtime object for standard
-effects and `testDouble()` for application-specific function-shaped
-collaborators.
-
-Both refuse module-graph patching. Both prefer explicit injection. The
-boundary is "is this an effect on the standard list or a domain-specific
-function?" — handles for the former, doubles for the latter.
+Short version: handles model multi-method effect interfaces from a
+standard list; `testDouble()` models single-function doubles for
+domain-specific collaborators. They compose; a handle's method can be a
+`testDouble()`.
 
 ## Current Recommendation
 

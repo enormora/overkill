@@ -101,21 +101,13 @@ the profile via Node's `--permission` flags plus runner-owned escape
 hatches (coverage artifact directory, baseline write directory, strip
 cache, V8 cache).
 
-Standard profiles:
-
--   `micro-strict` — denies almost everything; the default microtest
-    profile
--   `micro-supervised` — same denials, plus subprocess supervision for
-    crash-only recovery
--   `micro-with-coverage` — micro-strict with a narrow exception for
-    coverage writes
--   `integration-local` — allows FS write within a per-test temp dir,
-    loopback net, child process
--   `benchmark-process` — integration-local plus single-worker
-    serialization
-
 A capability profile is a _permission_ concept. It is distinct from
 execution strategy.
+
+The catalog of standard profiles (`micro-strict`, `micro-supervised`,
+`micro-with-coverage`, `micro-supervised-with-coverage`,
+`integration-local`, `benchmark-process`) lives in
+[Microtests And Capabilities § Runner Profiles](../authoring/microtests-and-capabilities.md#runner-profiles).
 
 Source: [Microtests And Capabilities](../authoring/microtests-and-capabilities.md).
 
