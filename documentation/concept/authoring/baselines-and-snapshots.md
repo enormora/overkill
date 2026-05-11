@@ -80,7 +80,7 @@ Explicit update runs:
 ## Update Workflow
 
 Baseline operations live under the `baseline` subcommand namespace
-(registered in [CLI Reference § Subcommands](./cli.md#subcommands) § Baseline). The verbs split
+(registered in [CLI Reference § Subcommands](../reference/cli.md#subcommands) § Baseline). The verbs split
 along intent:
 
 | Verb        | Creates missing | Overwrites changed | Removes stale | Runs tests |
@@ -92,7 +92,7 @@ along intent:
 | `diff`      | no              | no                 | no            | yes        |
 
 The subcommand framing reflects user intent: the primary artifact is
-on-disk baselines, not the verdict (see [CLI Reference § Flags vs Subcommands](./cli.md#flags-vs-subcommands)). The write verbs (`update`, `apply`, `bootstrap`) accept
+on-disk baselines, not the verdict (see [CLI Reference § Flags vs Subcommands](../reference/cli.md#flags-vs-subcommands)). The write verbs (`update`, `apply`, `bootstrap`) accept
 the same selection, capability, and output flags as `run`, since
 updating still requires executing the selected tests.
 
@@ -173,7 +173,7 @@ case identities. Default policy:
     completes; this is the verb's reason for existing
 
 Renames are detected as a stale orphan plus a missing new baseline
-(see [Non-Goals § No automatic rename inference for renamed tests](./non-goals.md#no-automatic-rename-inference-for-renamed-tests)); the developer
+(see [Non-Goals § No automatic rename inference for renamed tests](../decisions/non-goals.md#no-automatic-rename-inference-for-renamed-tests)); the developer
 accepts both deliberately by running `apply`.
 
 ### What The Runner Will Not Do

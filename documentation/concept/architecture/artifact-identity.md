@@ -180,7 +180,7 @@ than trying to be clever about rename inference.
 
 ## Identity And Retries
 
-Retries (integration profiles only — [Failure Artifacts](./failure-artifacts.md) covers the
+Retries (integration profiles only — [Failure Artifacts](../authoring/failure-artifacts.md) covers the
 attribution rules) introduce attempt identity. The first attempt has
 `attempt: { index: 0 }`; subsequent attempts increment. Reporters can
 choose to display only the final attempt or all of them; the engine

@@ -200,6 +200,6 @@ preferable.)
 -   [Package Architecture § Reporters](./package-architecture.md#reporters) — the package-family stance
 -   [Runtime Behavior § Console Output Capture](./runtime-behavior.md#console-output-capture) — how reporters
     interact with captured stdout/stderr
--   [Failure Artifacts](./failure-artifacts.md) — the artifacts reporters consume
--   [Types Index](./types-index.md) — `RunPlan`, `RunResult`, `TestOutcome`,
+-   [Failure Artifacts](../authoring/failure-artifacts.md) — the artifacts reporters consume
+-   [Types Index](../reference/types-index.md) — `RunPlan`, `RunResult`, `TestOutcome`,
     `RunnerError`, `CaseId`, `TestDebugArtifact`

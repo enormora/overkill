@@ -4,7 +4,7 @@
 
 This document collects **well-understood enhancements** that are worth keeping in view even though they are not yet part of the settled core concept. The shape of each is reasonably clear; what is missing is mostly time, prioritisation, or a triggering use case.
 
-For exploratory research (techniques where the underlying mechanism still needs investigation — property-based testing depth, hyperproperties, linearizability, fuzzing, mutation 2.0, TIA, AI augmentation, time-travel), see [Novel And Under-Used Testing Techniques](./novel-techniques.md).
+For exploratory research (techniques where the underlying mechanism still needs investigation — property-based testing depth, hyperproperties, linearizability, fuzzing, mutation 2.0, TIA, AI augmentation, time-travel), see [Novel And Under-Used Testing Techniques](../research/novel-techniques.md).
 
 Some of these may become first-class packages later. Others may stay as integrations or idea donors.
 
@@ -120,7 +120,7 @@ Likely package home: `@overkill/baselines` extended, or a separate `@overkill/ap
 
 This deserves more thought. It is broader than fixtures, but it should not imply code generation.
 
-For property-based generators specifically (integrated shrinking, splittable PRNGs, classify/coverage), the research-flavored treatment lives in [Novel And Under-Used Testing Techniques § Property-Based Testing — What It Should Mean Specifically](./novel-techniques.md#property-based-testing-what-it-should-mean-specifically). This section covers the broader builder/factory direction.
+For property-based generators specifically (integrated shrinking, splittable PRNGs, classify/coverage), the research-flavored treatment lives in [Novel And Under-Used Testing Techniques § Property-Based Testing — What It Should Mean Specifically](../research/novel-techniques.md#property-based-testing-what-it-should-mean-specifically). This section covers the broader builder/factory direction.
 
 ### What It Could Mean
 
@@ -162,7 +162,7 @@ This area is promising, but it needs deeper research before becoming a settled p
 
 ## Deterministic Time And Clocks
 
-The deterministic clock and scheduler story lives in [Deterministic Simulation Testing](./deterministic-simulation.md), which positions simulators as user- or adapter-owned with Overkill providing the testing integration. Overkill should not ship a first-party clock package; the explicit-injection stance there is consistent with the "Keep Production Code Clean" principle.
+The deterministic clock and scheduler story lives in [Deterministic Simulation Testing](../authoring/deterministic-simulation.md), which positions simulators as user- or adapter-owned with Overkill providing the testing integration. Overkill should not ship a first-party clock package; the explicit-injection stance there is consistent with the "Keep Production Code Clean" principle.
 
 ## Assertion Budgets
 
@@ -210,7 +210,7 @@ rather than engine/runner concerns: terminal capability detection
 (color, animation, progress UI, terminal width), the CLI subcommand
 and flag surface itself, argument parsing, help formatting, exit-code
 messaging, and stdout/stderr reporter rendering. These currently live
-spread across [Runtime Behavior](./runtime-behavior.md), [CLI Reference](./cli.md), and the reporter docs.
+spread across [Runtime Behavior](../architecture/runtime-behavior.md), [CLI Reference](../reference/cli.md), and the reporter docs.
 
 A dedicated `@overkill/cli` package could collect this material
 behind one boundary, consumed as a library by the high-level packages
@@ -221,7 +221,7 @@ The eventual cut is open.
 
 In scope with high confidence:
 
--   terminal capability detection (currently in [CLI Reference § Terminal Capability Detection](./cli.md#terminal-capability-detection))
+-   terminal capability detection (currently in [CLI Reference § Terminal Capability Detection](../reference/cli.md#terminal-capability-detection))
 -   anything depending on `process.stdout.isTTY`, `NO_COLOR`,
     `FORCE_COLOR`, `TERM`, or terminal width
 -   stdout/stderr formatting helpers shared across first-party
@@ -234,21 +234,21 @@ In scope with high confidence:
     Hosting one or more binaries inside `@overkill/cli` itself is a
     separate decision.
 -   **Argument parsing and help formatting in scope?** Natural fits,
-    but couple `@overkill/cli` to the surface defined in [CLI Reference](./cli.md).
--   **Where does [CLI Reference](./cli.md) end up?** Currently the CLI reference;
+    but couple `@overkill/cli` to the surface defined in [CLI Reference](../reference/cli.md).
+-   **Where does [CLI Reference](../reference/cli.md) end up?** Currently the CLI reference;
     likely the spec doc for `@overkill/cli` if that package lands.
 -   **Other CLI/reporter-scoped content scattered across the concept
     docs has to be identified before the boundary can be drawn.**
     The concepts have to be searched for other such topics that
-    might belong in `@overkill/cli` — sweep [Runtime Behavior](./runtime-behavior.md),
-    [Package Architecture § Reporters](./package-architecture.md#reporters), [Failure Artifacts](./failure-artifacts.md)
+    might belong in `@overkill/cli` — sweep [Runtime Behavior](../architecture/runtime-behavior.md),
+    [Package Architecture § Reporters](../architecture/package-architecture.md#reporters), [Failure Artifacts](../authoring/failure-artifacts.md)
     output-capture sections, and the reporter docs for content
     that fits here rather than where it currently lives.
 
 ### Recommended Direction
 
 Capture the idea; leave the cut open. As more content is identified
-as CLI-scoped, gather it into [CLI Reference](./cli.md) so the eventual extraction
+as CLI-scoped, gather it into [CLI Reference](../reference/cli.md) so the eventual extraction
 becomes obvious.
 
 ## Scope Note

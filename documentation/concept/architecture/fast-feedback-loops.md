@@ -254,7 +254,7 @@ Notes:
     -   a deferred presentation layer (pretty-printed diffs, ANSI colour,
         snapshot serializers) imported lazily on first failure or first
         snapshot mismatch.
--   Because Overkill builds on [Assertions And Results](./assertions-and-results.md)’s “tests as values”
+-   Because Overkill builds on [Assertions And Results](../authoring/assertions-and-results.md)’s “tests as values”
     direction, the diff producer never runs unless a result is observed. The
     runner can short-circuit fully when a filter excludes a test.
 

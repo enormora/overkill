@@ -30,7 +30,7 @@ to Scala (cats-effect, ZIO), F# (Eff), and TypeScript (`effect`, `fp-ts`,
 Effects are not implicit globals. They are typed values passed in. The
 illustrative `User`, `UserInput`, `Saved` types are placeholders for an
 application's own domain types; the handle types (`Clock`, `Random`,
-`FileSystem`, `HttpClient`, `Logger`) are sketched in [Types Index](./types-index.md).
+`FileSystem`, `HttpClient`, `Logger`) are sketched in [Types Index](../reference/types-index.md).
 
 ```ts
 type AppRuntime = {
@@ -186,7 +186,7 @@ type RecordingRuntime = AppRuntime & {
 
 Tests assert on `recorded()` directly. Reporters can attach the recording to
 a failed test as a structured artifact. Replays use `snapshot`/`restore` to
-reproduce a runtime state. Test debug mode (see [Runtime Behavior § Test Debug Mode](./runtime-behavior.md#test-debug-mode)) aggregates `RecordedEvent` arrays into the
+reproduce a runtime state. Test debug mode (see [Runtime Behavior § Test Debug Mode](../architecture/runtime-behavior.md#test-debug-mode)) aggregates `RecordedEvent` arrays into the
 per-test debug artifact so the same data is available for any test —
 not only failing ones — when the mode is on.
 
@@ -291,7 +291,7 @@ rewiring.
 Compared to module mocking — which forces the runner to control the loader,
 manage a per-test patch state, and tear down between tests — handles are
 strictly cheaper at runtime. They also keep the loader hooks discussed in
-[Fast Feedback Loops](./fast-feedback-loops.md) simple.
+[Fast Feedback Loops](../architecture/fast-feedback-loops.md) simple.
 
 ## Current Stance
 

@@ -10,12 +10,12 @@ falling back to inline `.only` culture.
 
 Overkill treats test metadata as explicit structured data rather than
 ad-hoc naming conventions — the metadata-layer expression of
-[Principles § Data Over Side Effects](./principles.md#data-over-side-effects).
+[Principles § Data Over Side Effects](../decisions/principles.md#data-over-side-effects).
 
 Likely metadata categories:
 
 -   **tags** — free-form labels (`'fast'`, `'flaky'`, `'auth'`)
--   **kind** — closed enumeration (see [Glossary § Test Kind](./glossary.md#test-kind))
+-   **kind** — closed enumeration (see [Glossary § Test Kind](../reference/glossary.md#test-kind))
 -   **runtimes** — declared runtime matrix entries
 -   **capabilities** — required capability profile
 -   **baselines** — baseline subtypes the test consumes
@@ -205,7 +205,7 @@ current concept does not endorse a full quarantine workflow.
 
 Capability declarations cascade like metadata but with stricter
 intersection-only rules. The canonical specification lives in
-[`microtests-and-capabilities.md`](./microtests-and-capabilities.md);
+[`microtests-and-capabilities.md`](../authoring/microtests-and-capabilities.md);
 the short form here is that children narrow parents but never widen
 them, and tests with incompatible capabilities cannot share a worker.
 

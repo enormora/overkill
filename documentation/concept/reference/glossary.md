@@ -22,7 +22,7 @@ A test is a microtest if and only if it runs in a microtest _capability
 profile_. Two tests with identical bodies but different profiles are
 different tests.
 
-Source: [Microtests And Capabilities](./microtests-and-capabilities.md).
+Source: [Microtests And Capabilities](../authoring/microtests-and-capabilities.md).
 
 ## Test Macro
 
@@ -38,7 +38,7 @@ theme.
 A macro is not a metaprogramming construct. It is just a function that
 constructs values. The TypeScript type system is the only "macro engine."
 
-Source: [Tests As Values](./tests-as-values.md).
+Source: [Tests As Values](../authoring/tests-as-values.md).
 
 ## Generated-Case Macro
 
@@ -55,7 +55,7 @@ Generated-case macros are still macros, not a separate parameterization
 philosophy. The important extra requirement is that generated failures keep
 meaningful names and useful stack traces.
 
-Source: [Test Ergonomics](./test-ergonomics.md).
+Source: [Test Ergonomics](../authoring/test-ergonomics.md).
 
 ## Case Context
 
@@ -72,7 +72,7 @@ The case context may expose:
 
 Users may still choose different local variable names.
 
-Source: [Assertions And Results](./assertions-and-results.md), [Test Ergonomics](./test-ergonomics.md).
+Source: [Assertions And Results](../authoring/assertions-and-results.md), [Test Ergonomics](../authoring/test-ergonomics.md).
 
 ## Test Kind
 
@@ -91,7 +91,7 @@ first-party kinds:
 Higher-level packages may extend the enumeration with additional kinds via
 the engine's metadata contract; the core kinds are stable.
 
-Source: [Metadata And Selection](./metadata-and-selection.md), [Testing Models](./testing-models.md).
+Source: [Metadata And Selection](../architecture/metadata-and-selection.md), [Testing Models](../authoring/testing-models.md).
 
 ## Capability Profile
 
@@ -117,7 +117,7 @@ Standard profiles:
 A capability profile is a _permission_ concept. It is distinct from
 execution strategy.
 
-Source: [Microtests And Capabilities](./microtests-and-capabilities.md).
+Source: [Microtests And Capabilities](../authoring/microtests-and-capabilities.md).
 
 ## Execution Strategy
 
@@ -139,7 +139,7 @@ A given run uses one execution strategy at a time, but different parts of
 the test plan may run under different strategies (e.g. microtests in
 worker-pool, benchmarks in single-worker-serial).
 
-Source: [Runtime Behavior](./runtime-behavior.md), [Package Architecture](./package-architecture.md).
+Source: [Runtime Behavior](../architecture/runtime-behavior.md), [Package Architecture](../architecture/package-architecture.md).
 
 ## Runner Profile
 
@@ -155,7 +155,7 @@ that is referred to by name. Common profiles:
 Users select a runner profile via CLI or config. The profile resolves to
 specific capability + execution + reporter choices.
 
-Source: [Microtests And Capabilities](./microtests-and-capabilities.md), [Package Architecture](./package-architecture.md).
+Source: [Microtests And Capabilities](../authoring/microtests-and-capabilities.md), [Package Architecture](../architecture/package-architecture.md).
 
 ## Suite
 
@@ -165,7 +165,7 @@ Overkill; they do not carry hooks, shared mutable state, or hierarchical
 lifecycle. They exist for naming, identity composition, and metadata
 inheritance only.
 
-Source: [Tests As Values](./tests-as-values.md), [Package Architecture](./package-architecture.md).
+Source: [Tests As Values](../authoring/tests-as-values.md), [Package Architecture](../architecture/package-architecture.md).
 
 ## Table / Parameterized Test
 
@@ -174,12 +174,12 @@ becomes a distinct expanded test in the run plan. Tables are the
 parameterized-test shape. Macros remain the primary reuse mechanism; a macro
 may itself return a table when parameterization is the right representation.
 
-Source: [Tests As Values](./tests-as-values.md).
+Source: [Tests As Values](../authoring/tests-as-values.md).
 
 ## Test Outcome
 
 The engine-level outcome of a test run. The `TestOutcome` ADT (see
-[Results, Not Exceptions](./results-not-exceptions.md)) has four cases:
+[Results, Not Exceptions](../authoring/results-not-exceptions.md)) has four cases:
 
 -   `pass` — assertions held
 -   `fail` — assertions did not hold (specific failed checks reported)
@@ -190,7 +190,7 @@ The engine-level outcome of a test run. The `TestOutcome` ADT (see
 Each outcome has a payload: a list of failed checks for `fail`, a reason
 string for `skip`/`inconclusive`, etc.
 
-Source: [Results, Not Exceptions](./results-not-exceptions.md).
+Source: [Results, Not Exceptions](../authoring/results-not-exceptions.md).
 
 ## Test Verdict
 
@@ -204,14 +204,14 @@ Three additional verdicts beyond the four outcomes:
     metadata; reported as a failure of the xfail expectation
 -   `crashed` — the worker process died during the test; the engine
     never produced a `TestOutcome`. Reported as a runner-error sub-kind
-    (see [Failure Artifacts](./failure-artifacts.md))
+    (see [Failure Artifacts](../authoring/failure-artifacts.md))
 
 Verdicts are a presentation concept owned by orchestration and
 reporters, not by `@overkill/engine`. The engine returns outcomes;
 verdicts come from `(outcome, metadata, runner-error?)`.
 
-Source: [Results, Not Exceptions](./results-not-exceptions.md), [Failure Artifacts](./failure-artifacts.md),
-[Novel And Under-Used Testing Techniques](./novel-techniques.md).
+Source: [Results, Not Exceptions](../authoring/results-not-exceptions.md), [Failure Artifacts](../authoring/failure-artifacts.md),
+[Novel And Under-Used Testing Techniques](../research/novel-techniques.md).
 
 ## AssertionNode
 
@@ -221,7 +221,7 @@ return them through `assert.done()`. The engine consumes structured assertion
 results; ordinary users usually interact with injected `assert` / `require`
 instead of raw nodes.
 
-Source: [Assertions And Results](./assertions-and-results.md), [Results, Not Exceptions](./results-not-exceptions.md).
+Source: [Assertions And Results](../authoring/assertions-and-results.md), [Results, Not Exceptions](../authoring/results-not-exceptions.md).
 
 ## Plan
 
@@ -231,7 +231,7 @@ or fewer leaves is a `fail`. Plans are explicit test-local state, not hidden
 global counters, and they work with both builder-style assertions and the
 explicit throwing mode.
 
-Source: [Assertions And Results](./assertions-and-results.md), [Results, Not Exceptions](./results-not-exceptions.md).
+Source: [Assertions And Results](../authoring/assertions-and-results.md), [Results, Not Exceptions](../authoring/results-not-exceptions.md).
 
 ## Capability Handle
 
@@ -242,7 +242,7 @@ implementations, the test runtime from deterministic or recording variants.
 
 Capability handles are one promising alternative to mocking.
 
-Source: [Capability Handles](./capability-handles.md).
+Source: [Capability Handles](../authoring/capability-handles.md).
 
 ## Harness
 
@@ -257,7 +257,7 @@ parts needed to observe or override it. Harnesses usually provide:
 Harnesses are test-only ergonomics. They do not imply production-side
 framework coupling.
 
-Source: [Test Ergonomics](./test-ergonomics.md).
+Source: [Test Ergonomics](../authoring/test-ergonomics.md).
 
 ## Interaction Transcript
 
@@ -271,7 +271,7 @@ A recorded ordered log of interactions such as:
 The important abstraction is the ordered transcript, not a specific event
 emitter type.
 
-Source: [Test Ergonomics](./test-ergonomics.md).
+Source: [Test Ergonomics](../authoring/test-ergonomics.md).
 
 ## Recording Handle
 
@@ -279,9 +279,9 @@ A capability handle that, in addition to implementing its interface, logs
 every invocation as a typed event. Tests assert on the recorded log
 directly; this replaces `expect(mock).toHaveBeenCalledWith(...)` patterns.
 
-Source: [Capability Handles](./capability-handles.md).
+Source: [Capability Handles](../authoring/capability-handles.md).
 
-Source: [Capability Handles](./capability-handles.md).
+Source: [Capability Handles](../authoring/capability-handles.md).
 
 ## Baseline
 
@@ -291,7 +291,7 @@ performance baseline. The shared workflow (review, diff, explicit update,
 stale detection) is unified under one baseline concept; the semantics
 diverge per subtype.
 
-Source: [Baselines And Snapshots](./baselines-and-snapshots.md).
+Source: [Baselines And Snapshots](../authoring/baselines-and-snapshots.md).
 
 ## Baseline Subtype
 
@@ -306,17 +306,17 @@ One of:
 Subtypes share storage and update workflow, differ in comparison logic
 and policy semantics.
 
-Source: [Baselines And Snapshots](./baselines-and-snapshots.md).
+Source: [Baselines And Snapshots](../authoring/baselines-and-snapshots.md).
 
 ## Witness
 
 A serialised reproduction artifact produced by failing property tests
 and deterministic-simulation tests. Loading the witness reproduces the
 failure without re-running shrinking. The canonical schema
-(`WitnessFile`) is defined in [Failure Artifacts § Witnesses And Replay Artifacts](./failure-artifacts.md#witnesses-and-replay-artifacts).
+(`WitnessFile`) is defined in [Failure Artifacts § Witnesses And Replay Artifacts](../authoring/failure-artifacts.md#witnesses-and-replay-artifacts).
 
-Source: [Failure Artifacts](./failure-artifacts.md), [Novel And Under-Used Testing Techniques](./novel-techniques.md),
-[Deterministic Simulation Testing](./deterministic-simulation.md).
+Source: [Failure Artifacts](../authoring/failure-artifacts.md), [Novel And Under-Used Testing Techniques](../research/novel-techniques.md),
+[Deterministic Simulation Testing](../authoring/deterministic-simulation.md).
 
 ## Artifact Identity
 
@@ -329,7 +329,7 @@ metadata.
 The identity is a value, not a path. The path is a readable derivation of the
 identity.
 
-Source: [Artifact Identity](./artifact-identity.md).
+Source: [Artifact Identity](../architecture/artifact-identity.md).
 
 ## Reporter
 
@@ -343,7 +343,7 @@ Two lifecycle modes:
 -   real-time — observes `start`, progress, completion events
 -   final-result — only consumes the finished result
 
-Source: [Package Architecture](./package-architecture.md).
+Source: [Package Architecture](../architecture/package-architecture.md).
 
 ## Sink
 
@@ -359,7 +359,7 @@ A typed output target a reporter writes to. Kinds:
 Sinks declared by reporters allow the orchestration layer to detect
 conflicts (e.g. two reporters claiming `stdout`).
 
-Source: [Package Architecture](./package-architecture.md), [Runtime Behavior](./runtime-behavior.md).
+Source: [Package Architecture](../architecture/package-architecture.md), [Runtime Behavior](../architecture/runtime-behavior.md).
 
 ## Execution Plan
 
@@ -373,7 +373,7 @@ Produced by `@overkill/run` from a `TestNode` tree, runner profile,
 filters, and resource constraints. Consumed by execution machinery and
 preserved as part of the run record for reproducibility.
 
-Source: [Package Architecture](./package-architecture.md), [Reproducibility](./reproducibility.md).
+Source: [Package Architecture](../architecture/package-architecture.md), [Reproducibility](../architecture/reproducibility.md).
 
 ## Execution Requirement
 
@@ -389,7 +389,7 @@ Resolution rules:
     errors
 -   soft preferences are reconciled by deterministic priority order
 
-Source: [Runtimes And Fixtures](./runtimes-and-fixtures.md), [Package Architecture](./package-architecture.md).
+Source: [Runtimes And Fixtures](../authoring/runtimes-and-fixtures.md), [Package Architecture](../architecture/package-architecture.md).
 
 ## Run Result
 
@@ -399,7 +399,7 @@ metadata, seed, total wall-time, plan identity. Final-result reporters
 consume this value; real-time reporters consume the events that produce
 it.
 
-Source: [Failure Artifacts](./failure-artifacts.md), [Package Architecture](./package-architecture.md).
+Source: [Failure Artifacts](../authoring/failure-artifacts.md), [Package Architecture](../architecture/package-architecture.md).
 
 ## World
 
@@ -409,7 +409,7 @@ is built from test-specific implementations. This is one possible pattern
 for explicit dependency injection, not an Overkill requirement or official
 package shape.
 
-Source: [Capability Handles](./capability-handles.md).
+Source: [Capability Handles](../authoring/capability-handles.md).
 
 ## Scenario
 
@@ -422,7 +422,7 @@ Scenarios are especially useful for deterministic local services and other
 simulation-aware runtimes because they give failures and replay artifacts a
 shared vocabulary beyond raw flags.
 
-Source: [Deterministic Simulation Testing](./deterministic-simulation.md).
+Source: [Deterministic Simulation Testing](../authoring/deterministic-simulation.md).
 
 ## Stale Baseline
 
@@ -432,7 +432,7 @@ against the set of identities seen. Stale baselines fail the run by
 default; removing them requires an explicit `overkill baseline apply`
 or `overkill baseline clean`.
 
-Source: [Baselines And Snapshots](./baselines-and-snapshots.md).
+Source: [Baselines And Snapshots](../authoring/baselines-and-snapshots.md).
 
 ## Selection
 
@@ -441,7 +441,7 @@ subset based on metadata, identity, file path, or kind. Selection is
 deterministic given the same tree and filter expression. Composes with
 sharding (sharding partitions the result of selection).
 
-Source: [Metadata And Selection](./metadata-and-selection.md).
+Source: [Metadata And Selection](../architecture/metadata-and-selection.md).
 
 ## Microtask vs Macrotask Scheduling
 
@@ -452,4 +452,4 @@ deterministic-simulation layer virtualises both. Documents that mention
 Overkill owns the queue at that moment (real platform scheduler outside
 simulation; the virtual scheduler inside simulation).
 
-Source: [Deterministic Simulation Testing](./deterministic-simulation.md).
+Source: [Deterministic Simulation Testing](../authoring/deterministic-simulation.md).

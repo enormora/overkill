@@ -26,12 +26,12 @@ layer resolves the run plan in this order:
 
 1.  **Collection.** Test files are imported; the engine builds the
     `TestNode` tree (suites, tables, test cases). See
-    [Tests As Values](./tests-as-values.md).
+    [Tests As Values](../authoring/tests-as-values.md).
 2.  **Metadata propagation.** Parent suite metadata cascades to
     children. Set-valued fields (`tags`) merge by union;
     array-valued fields (`runtimes`) merge unless `replace: true`;
     enum fields replace. Capabilities **intersect** — children may
-    only narrow, not widen. See [Metadata And Selection § Metadata Propagation](./metadata-and-selection.md#metadata-propagation) and [Microtests And Capabilities § Capability Propagation](./microtests-and-capabilities.md#capability-propagation).
+    only narrow, not widen. See [Metadata And Selection § Metadata Propagation](./metadata-and-selection.md#metadata-propagation) and [Microtests And Capabilities § Capability Propagation](../authoring/microtests-and-capabilities.md#capability-propagation).
 3.  **Filter application.** The CLI filter expression (or
     programmatic predicate) is evaluated against resolved metadata
     and identity. Result: a filtered case set. See
@@ -60,10 +60,10 @@ the body. Outermost first:
 1.  **Worker / process boundary.** Capability profile applied via
     Node `--permission` flags. This is process-level: the boundary
     exists for the worker's lifetime, not per test. See
-    [Microtests And Capabilities § Capability Defaults](./microtests-and-capabilities.md#capability-defaults).
+    [Microtests And Capabilities § Capability Defaults](../authoring/microtests-and-capabilities.md#capability-defaults).
 2.  **Retry loop** (integration profiles only). Wraps the entire
     per-attempt sequence below. Decides after each attempt whether
-    to run again. See [Failure Artifacts § Retry Interaction](./failure-artifacts.md#retry-interaction).
+    to run again. See [Failure Artifacts § Retry Interaction](../authoring/failure-artifacts.md#retry-interaction).
 3.  **Timeout watchdog.** Per-attempt soft and (where supported)
     hard deadlines. Sets up the `AbortSignal` and the optional
     watchdog timer. See [Runtime Behavior § Timeouts](./runtime-behavior.md#timeouts).
@@ -103,7 +103,7 @@ The split buys several capabilities:
     accident; replay and failure reports can name the actual realized
     order
 -   the `RunPlan` is recorded as a serializable artifact (per
-    [Principles § Data Over Side Effects](./principles.md#data-over-side-effects)), enabling replay and
+    [Principles § Data Over Side Effects](../decisions/principles.md#data-over-side-effects)), enabling replay and
     IDE / MCP introspection without running
 -   capability profiles, runtime selection, and worker assignment
     resolve once in the main thread, not redundantly per worker
@@ -127,13 +127,13 @@ In practice the cost stays small because:
 
 -   tests-as-values means import-time work is constructing a
     descriptor tree, not running fixtures or effects (see
-    [Principles § Data Over Side Effects](./principles.md#data-over-side-effects))
+    [Principles § Data Over Side Effects](../decisions/principles.md#data-over-side-effects))
 -   if Overkill enables Node's module compile cache for the
     orchestrator, flushes it after collection, and shares the same
     cache directory with workers, the worker-side re-import can reuse
     V8 code cache and make the second **compilation** cheaper
 -   per-worker imports parallelize across CPU cores
--   the runner targets [Principles § Cold Start Is The Budget](./principles.md#cold-start-is-the-budget); a
+-   the runner targets [Principles § Cold Start Is The Budget](../decisions/principles.md#cold-start-is-the-budget); a
     second cheap import per file is acceptable, a second expensive
     one is not
 
@@ -193,7 +193,7 @@ dependency:
 -   **Outside retry** if it spans the entire test regardless of
     attempts (e.g. test-level setup/teardown — though Overkill
     currently rejects hooks; resources fill this role; see
-    [Runtimes And Fixtures](./runtimes-and-fixtures.md)).
+    [Runtimes And Fixtures](../authoring/runtimes-and-fixtures.md)).
 
 ## What This Doc Is Not
 
@@ -208,10 +208,10 @@ dependency:
 
 ## Cross-References
 
--   [Tests As Values](./tests-as-values.md) — collection and `TestNode`
+-   [Tests As Values](../authoring/tests-as-values.md) — collection and `TestNode`
 -   [Metadata And Selection](./metadata-and-selection.md) — metadata propagation and filters
--   [Microtests And Capabilities](./microtests-and-capabilities.md) — capability intersection
+-   [Microtests And Capabilities](../authoring/microtests-and-capabilities.md) — capability intersection
 -   [Runtime Behavior](./runtime-behavior.md) — sharding, parallelism, timeouts, debug
--   [Failure Artifacts](./failure-artifacts.md) — retry interaction
+-   [Failure Artifacts](../authoring/failure-artifacts.md) — retry interaction
 -   [Reproducibility](./reproducibility.md) — `RunPlan` freeze
 -   [Package Architecture](./package-architecture.md) — orchestration responsibilities

@@ -16,10 +16,10 @@ The existing codebase already points toward several important concepts:
 
 Relevant files (repo-relative):
 
--   [`package.json`](../../package.json)
--   [`source/runner.ts`](../../source/runner.ts)
--   [`source/test-run-session.ts`](../../source/test-run-session.ts)
--   [`source/reporter/reporter.ts`](../../source/reporter/reporter.ts)
+-   [`package.json`](../../../package.json)
+-   [`source/runner.ts`](../../../source/runner.ts)
+-   [`source/test-run-session.ts`](../../../source/test-run-session.ts)
+-   [`source/reporter/reporter.ts`](../../../source/reporter/reporter.ts)
 
 ## Notable Inconsistencies In The Current State
 

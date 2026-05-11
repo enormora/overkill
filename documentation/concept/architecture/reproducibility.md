@@ -82,7 +82,7 @@ Every test gets its own splittable PRNG derived from
 -   rerunning one test under `--retry` produces identical inputs to the
     failing run
 
-The PRNG is SplitMix-based (see [Capability Handles § Splittable Random For Determinism Under Parallelism](./capability-handles.md#splittable-random-for-determinism-under-parallelism)).
+The PRNG is SplitMix-based (see [Capability Handles § Splittable Random For Determinism Under Parallelism](../authoring/capability-handles.md#splittable-random-for-determinism-under-parallelism)).
 
 ## Artifact Reproducibility
 
@@ -110,7 +110,7 @@ Some metrics inherently vary across machines. Overkill's policy:
     reproducibility. Calibration normalises against a reference workload
     on the current machine; baselines are stored as
     machine-class-stratified (e.g. `linux-x64-ci-shared` vs
-    `darwin-arm64-dev`). See [Benchmarking § Calibration And Normalization](./benchmarking.md#calibration-and-normalization).
+    `darwin-arm64-dev`). See [Benchmarking § Calibration And Normalization](../authoring/benchmarking.md#calibration-and-normalization).
 -   **Witnesses from deterministic-simulation tests** require exact
     reproducibility (the whole point of DST).
 
@@ -147,7 +147,7 @@ test to reproduction. Witnesses are portable (cross-machine for DST,
 intra-machine-class for property tests with timing-dependent shrinks).
 
 For the witness schema and versioning rules, see
-[Failure Artifacts § Witnesses And Replay Artifacts](./failure-artifacts.md#witnesses-and-replay-artifacts).
+[Failure Artifacts § Witnesses And Replay Artifacts](../authoring/failure-artifacts.md#witnesses-and-replay-artifacts).
 
 ## Scope
 
@@ -178,11 +178,11 @@ That is enough to make:
 
 -   [Artifact Identity](./artifact-identity.md) — provides the stable `CaseId` and `ArtifactId`
     used here
--   [Capability Handles](./capability-handles.md) — splittable PRNG; recording handles for
+-   [Capability Handles](../authoring/capability-handles.md) — splittable PRNG; recording handles for
     deterministic effect logs
--   [Deterministic Simulation Testing](./deterministic-simulation.md) — the strongest form of reproducibility
+-   [Deterministic Simulation Testing](../authoring/deterministic-simulation.md) — the strongest form of reproducibility
     in Overkill
--   [Failure Artifacts](./failure-artifacts.md) — witnesses are first-class artifacts
+-   [Failure Artifacts](../authoring/failure-artifacts.md) — witnesses are first-class artifacts
 -   [Metadata And Selection](./metadata-and-selection.md) — the resolved metadata is part of the
     plan
--   [Benchmarking](./benchmarking.md) — calibration and machine-class stratification
+-   [Benchmarking](../authoring/benchmarking.md) — calibration and machine-class stratification

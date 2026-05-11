@@ -13,12 +13,12 @@ Why microtests only:
 -   integration tests broad-path through code; their coverage
     typically reads as "everything was hit," which tells you little
 -   benchmarks must not be instrumented — instrumentation distorts
-    timing (an explicit non-goal: see [Non-Goals § No always-on coverage in the default run mode](./non-goals.md#no-always-on-coverage-in-the-default-run-mode))
+    timing (an explicit non-goal: see [Non-Goals § No always-on coverage in the default run mode](../decisions/non-goals.md#no-always-on-coverage-in-the-default-run-mode))
 -   browser tests have their own coverage story via the browser's
     own instrumentation (out of scope here)
 -   restricting to microtests keeps the API surface small (see
-    [Principles § Low API Surface](./principles.md#low-api-surface)) and aligns with
-    [Principles § Capability-Oriented Microtests](./principles.md#capability-oriented-microtests)
+    [Principles § Low API Surface](../decisions/principles.md#low-api-surface)) and aligns with
+    [Principles § Capability-Oriented Microtests](../decisions/principles.md#capability-oriented-microtests)
 
 Why off by default within microtests:
 
@@ -83,7 +83,7 @@ shape:
 Overkill orchestrates the V8 engine and configures `c8` for both
 jobs. The include/exclude patterns that drive all-files reporting
 live in `overkill.config.ts` (project policy, not per-run intent —
-see [Principles § One First-Party Path Per Layer](./principles.md#one-first-party-path-per-layer)).
+see [Principles § One First-Party Path Per Layer](../decisions/principles.md#one-first-party-path-per-layer)).
 
 Format emission inside `c8` delegates to the `istanbul-lib-report`
 family. We could in principle bypass `c8` and call those libraries
@@ -94,7 +94,7 @@ V8 doesn't ship all-files synthesis itself.
 
 ## CLI And Config Split
 
-Following [Principles § One First-Party Path Per Layer](./principles.md#one-first-party-path-per-layer) (each
+Following [Principles § One First-Party Path Per Layer](../decisions/principles.md#one-first-party-path-per-layer) (each
 setting has one canonical place: per-run intent on the CLI,
 persistent project policy in the config file, and no setting
 reachable from both surfaces), the coverage surface splits this way:
@@ -147,7 +147,7 @@ truly needs both lifetimes — and coverage does not.
     flag (`coverage: true`) and the policy values (formats,
     thresholds, etc.) in a single `run(config)` call — it is the
     unified target the CLI and config file both reduce to (see
-    [Principles § One First-Party Path Per Layer](./principles.md#one-first-party-path-per-layer) for why the
+    [Principles § One First-Party Path Per Layer](../decisions/principles.md#one-first-party-path-per-layer) for why the
     API is a different layer from the human-facing surfaces).
 
 ## Single-Process Execution Model
@@ -186,7 +186,7 @@ The runner is responsible for:
 -   starting the worker subprocess with `NODE_V8_COVERAGE` set to
     the run's coverage directory when `--coverage` is on
 -   adding `--allow-fs-write=<run-coverage-dir>/*` to the worker's
-    Node permission flags (see [Microtests And Capabilities § Capability Defaults](./microtests-and-capabilities.md#capability-defaults) for the mechanism)
+    Node permission flags (see [Microtests And Capabilities § Capability Defaults](../authoring/microtests-and-capabilities.md#capability-defaults) for the mechanism)
 -   handing the V8 output to `c8` for all-files synthesis and format
     emission once the run completes
 
@@ -211,7 +211,7 @@ wildcard before passing it to Node.
 For the general permission mechanism — how Node flags are applied per
 worker, why workers are separate Node processes, the symlink caveat,
 and that permissions do not inherit — see
-[Microtests And Capabilities § Capability Defaults](./microtests-and-capabilities.md#capability-defaults). There is no
+[Microtests And Capabilities § Capability Defaults](../authoring/microtests-and-capabilities.md#capability-defaults). There is no
 Overkill-specific authority abstraction layered on top.
 
 ## Coverage Output Path
@@ -253,7 +253,7 @@ the result:
 
 -   is `/`, `/etc`, `/usr`, or another well-known system path
 -   contains a symlink that escapes the project root — same caveat
-    as [Microtests And Capabilities § Capability Defaults](./microtests-and-capabilities.md#capability-defaults), with
+    as [Microtests And Capabilities § Capability Defaults](../authoring/microtests-and-capabilities.md#capability-defaults), with
     extra weight because the path is user-supplied
 
 ### Replay

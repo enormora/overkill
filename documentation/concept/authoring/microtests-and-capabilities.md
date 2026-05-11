@@ -15,7 +15,7 @@ A test is a microtest if and only if it runs in a microtest _capability
 profile_. Two tests with identical bodies but different profiles are
 different tests.
 
-See [Glossary](./glossary.md) for the canonical term definitions.
+See [Glossary](../reference/glossary.md) for the canonical term definitions.
 
 ## Goal
 
@@ -64,7 +64,7 @@ type Capability =
 ```
 
 This is the type used in `Metadata.capabilities` (see
-[Metadata And Selection](./metadata-and-selection.md)) and across the doc set. New capabilities
+[Metadata And Selection](../architecture/metadata-and-selection.md)) and across the doc set. New capabilities
 require an explicit addition to this enumeration; the runner does not
 recognise free-form strings.
 
@@ -117,7 +117,7 @@ How Overkill applies these flags:
 -   **Capability isolation requires `child_process`.** Worker threads
     share the parent's permission set; subprocesses can each have
     their own. Microtest workers are therefore separate Node
-    processes (see [Composition Order § Execution-Time Wrapping](./composition-order.md#execution-time-wrapping)).
+    processes (see [Composition Order § Execution-Time Wrapping](../architecture/composition-order.md#execution-time-wrapping)).
 -   **Launch path is irrelevant.** `npx overkill ...`, direct
     invocation, and any other launcher all work identically — the
     runner spawns workers explicitly with the right flags;
@@ -178,7 +178,7 @@ This means:
 Capabilities are _intersected_ down the suite tree: a child can only
 narrow the parent's permissions, never widen them — strictly more
 restrictive than metadata propagation, where fields like `tags` merge
-by union. See [Composition Order](./composition-order.md).
+by union. See [Composition Order](../architecture/composition-order.md).
 
 ## Capability Handles As The Language-Level Boundary
 
@@ -216,14 +216,14 @@ Sources:
 
 ## Runner Profiles
 
-Standard capability profiles (see [Glossary](./glossary.md)):
+Standard capability profiles (see [Glossary](../reference/glossary.md)):
 
 -   `micro-strict` — denies almost everything; the default microtest
     profile, and fails on observed `console.*` usage
 -   `micro-supervised` — same denials, plus subprocess supervision for
     crash-only recovery
 -   `micro-with-coverage` — micro-strict with a narrow exception for
-    coverage writes; runs single-threaded (see [Coverage](./coverage.md))
+    coverage writes; runs single-threaded (see [Coverage](../architecture/coverage.md))
 -   `micro-supervised-with-coverage` — supervised mode + coverage
     write exception; also single-threaded
 -   `integration-local` — allows FS write within a per-test temp dir,
@@ -299,14 +299,14 @@ mechanism instead.
 
 -   [Capability Handles](./capability-handles.md) — language-level capability boundary
     complementing the OS-level one
--   [Runtime Behavior](./runtime-behavior.md) — process-wide consequences of the capability
+-   [Runtime Behavior](../architecture/runtime-behavior.md) — process-wide consequences of the capability
     profile
--   [Fast Feedback Loops](./fast-feedback-loops.md) — fast microtest feedback loops are the
+-   [Fast Feedback Loops](../architecture/fast-feedback-loops.md) — fast microtest feedback loops are the
     motivation for the strict profile
 -   [Tests As Values](./tests-as-values.md) — microtests as data; macros instead of hooks
 -   [Results, Not Exceptions](./results-not-exceptions.md) — returned outcomes mean less stack-walk
     overhead in the success path
--   [Glossary](./glossary.md) — canonical definitions of capability profile, runner
+-   [Glossary](../reference/glossary.md) — canonical definitions of capability profile, runner
     profile, microtest
 
 ## Sources

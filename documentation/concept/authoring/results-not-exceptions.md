@@ -33,7 +33,7 @@ Underneath that API, Overkill still benefits from a result-oriented protocol:
 
 So "results, not exceptions" is now the **protocol-layer principle**, not
 the main user-facing syntax. It is the engine-side expression of
-[Principles § Data Over Side Effects](./principles.md#data-over-side-effects): outcomes flow as structured
+[Principles § Data Over Side Effects](../decisions/principles.md#data-over-side-effects): outcomes flow as structured
 values between layers, even when the user-facing API is the injected
 builder.
 
@@ -148,7 +148,7 @@ need to travel through the same path as infrastructure errors.
 See:
 
 -   [`failure-artifacts.md`](./failure-artifacts.md)
--   [`runtime-behavior.md`](./runtime-behavior.md)
+-   [`runtime-behavior.md`](../architecture/runtime-behavior.md)
 
 ## Why This Still Fits The Engine
 

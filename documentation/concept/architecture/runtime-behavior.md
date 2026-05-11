@@ -30,7 +30,7 @@ Default policy:
 -   same-process runs should not promise universal transparent capture of
     every stdout/stderr write path
 -   captured output is preserved as a structured failure artifact (see
-    [Failure Artifacts](./failure-artifacts.md)) — typed as `{ stream: 'stdout' | 'stderr', chunks: ReadonlyArray<{ at: bigint; bytes: Uint8Array }> }`
+    [Failure Artifacts](../authoring/failure-artifacts.md)) — typed as `{ stream: 'stdout' | 'stderr', chunks: ReadonlyArray<{ at: bigint; bytes: Uint8Array }> }`
 -   in the default reporter, captured output is **suppressed** for passing
     tests and **printed** for failing tests immediately after the failure
     summary
@@ -63,9 +63,9 @@ Important distinction:
 ## CLI Surface
 
 The full CLI reference (subcommands, flags, and their canonical homes)
-lives in [`cli.md`](./cli.md). Behavior of CLI options that bind
+lives in [`cli.md`](../reference/cli.md). Behavior of CLI options that bind
 specifically to runtime concerns — parallelism, watch mode, debug,
-sharding — is documented in this doc; [CLI Reference](./cli.md) cross-links into it.
+sharding — is documented in this doc; [CLI Reference](../reference/cli.md) cross-links into it.
 Selection itself is metadata-driven: tags are a first-class metadata
 field, and tag filtering happens through `--filter` expressions such as
 `tag=fast` or `!tag=flaky` (see [Metadata And Selection](./metadata-and-selection.md)).
@@ -110,7 +110,7 @@ Async failures are messy. The runner's policy:
 -   any unhandled rejection or uncaught exception emitted **during** a
     test's `run` (including its async tail until the next test starts) is
     attributed to that test as a **runner error** (see
-    [Failure Artifacts](./failure-artifacts.md))
+    [Failure Artifacts](../authoring/failure-artifacts.md))
 -   any such error after the last test has finished but before the run
     completes is attributed to the run itself
 -   any such error from the runner's own machinery is a runner crash
@@ -142,7 +142,7 @@ on the global hooks.
 Cancellation propagates via `AbortController` chains, in keeping with
 [Platform-First Implementation Notes](./platform-first-implementation-notes.md). Tests that ignore the abort
 signal cannot be force-killed in-process; supervised profiles can kill the
-worker (see [Microtests And Capabilities § Hang Detection And Forced Termination](./microtests-and-capabilities.md#hang-detection-and-forced-termination)).
+worker (see [Microtests And Capabilities § Hang Detection And Forced Termination](../authoring/microtests-and-capabilities.md#hang-detection-and-forced-termination)).
 
 ## Process Crash Handling
 
@@ -157,7 +157,7 @@ When a worker process dies mid-test (segfault, OOM, native-addon crash):
 
 The crash report includes the captured output, the worker's exit signal,
 core-dump pointer where available, and the test identity that was active.
-This complements [Microtests And Capabilities](./microtests-and-capabilities.md)'s discussion of crash-
+This complements [Microtests And Capabilities](../authoring/microtests-and-capabilities.md)'s discussion of crash-
 only supervision.
 
 ## Leaked Promises, Timers, And Handles
@@ -172,7 +172,7 @@ Detection:
 -   the diagnostic is a _warning_ by default and a _failure_ in strict
     profiles
 
-This is the leak-vs-hang split named in [Microtests And Capabilities](./microtests-and-capabilities.md).
+This is the leak-vs-hang split named in [Microtests And Capabilities](../authoring/microtests-and-capabilities.md).
 The runner reports leaks as structured diagnostics, not as test failures
 unless policy elevates them.
 
@@ -234,7 +234,7 @@ Hard-timeout mechanics:
 -   crash-budget rules (`Process Crash Handling`) apply
 
 In-process modes intentionally lack hard termination — see
-[Microtests And Capabilities § Hang Detection And Forced Termination](./microtests-and-capabilities.md#hang-detection-and-forced-termination) for the rationale and supervised-profile alternative.
+[Microtests And Capabilities § Hang Detection And Forced Termination](../authoring/microtests-and-capabilities.md#hang-detection-and-forced-termination) for the rationale and supervised-profile alternative.
 
 ## Test Debug Mode
 
@@ -327,7 +327,7 @@ type TimelineEntry =
     | { readonly kind: 'rejection'; readonly at: bigint; readonly reason: unknown };
 ```
 
-Both types are sketched in [Types Index](./types-index.md).
+Both types are sketched in [Types Index](../reference/types-index.md).
 
 The timeline records discrete events the runner already observes:
 body start, each `assert.*` / `require.*` call, `plan()`, body
@@ -337,7 +337,7 @@ with Node's strip-only path. The gaps between timeline entries are
 themselves the diagnostic for "where time went": a 480 ms gap
 between two adjacent entries is a 480 ms awaited operation. When
 the test uses capability handles with recording variants (see
-[Capability Handles](./capability-handles.md)), those events are included as
+[Capability Handles](../authoring/capability-handles.md)), those events are included as
 `handleEvents` and pin the awaited operation down to a specific
 handle call; tests that do not use recording handles still receive
 the rest of the artifact.
@@ -351,7 +351,7 @@ Debug artifacts live alongside the run record:
 ```
 
 They are garbage-collected with the rest of the run record per
-[Failure Artifacts § Storage Policy](./failure-artifacts.md#storage-policy).
+[Failure Artifacts § Storage Policy](../authoring/failure-artifacts.md#storage-policy).
 
 This is deliberately **not** the default microtest path. A normal
 microtest run does not write one artifact file per test case. The
@@ -409,13 +409,13 @@ particularly worth debugging:
 For crash failures the artifact is best-effort: the runner flushes
 whatever it had recorded up to the crash, marked with a
 `rejection`-style final entry. The `WorkerCrash` artifact (see
-[Failure Artifacts § Process Crash Artifacts](./failure-artifacts.md#process-crash-artifacts)) remains the
+[Failure Artifacts § Process Crash Artifacts](../authoring/failure-artifacts.md#process-crash-artifacts)) remains the
 authoritative record.
 
 ### Debug Mode And Retries / Replay
 
 When integration-style tests retry (see
-[Failure Artifacts § Retry Interaction](./failure-artifacts.md#retry-interaction)), each attempt produces
+[Failure Artifacts § Retry Interaction](../authoring/failure-artifacts.md#retry-interaction)), each attempt produces
 its own debug artifact: `<case-id>__attempt=0.debug.json`,
 `<case-id>__attempt=1.debug.json`, etc. The artifacts are siblings,
 not a merged log; comparing them is how you see whether a retry
@@ -438,7 +438,7 @@ into action; the runner stays neutral.
 
 -   `stats.assertCount === 0 && stats.requireCount === 0` — the test
     produced no assertions. The engine already fails this case (see
-    [Assertions And Results § Zero-Assertion Detection As Default Failure](./assertions-and-results.md#zero-assertion-detection-as-default-failure)); the
+    [Assertions And Results § Zero-Assertion Detection As Default Failure](../authoring/assertions-and-results.md#zero-assertion-detection-as-default-failure)); the
     artifact makes the absence visible across runs.
 -   `stats.handleCallCount === 0` in a profile that expects effects
     — the test exercised no recorded effects. Often intentional for
@@ -483,7 +483,7 @@ linter) reads the pattern.
     `--prof` or `--inspect`. Debug mode tells you what _the test_
     did, not what V8 did.
 -   **Not a benchmark.** A single-run debug artifact is not
-    statistically meaningful; see [Benchmarking](./benchmarking.md) for
+    statistically meaningful; see [Benchmarking](../authoring/benchmarking.md) for
     measurement-quality timing.
 -   **Not advice.** No tips, hints, or recommended actions are
     produced. The artifact reports facts; the developer interprets.
@@ -492,7 +492,7 @@ linter) reads the pattern.
 
 ### Connections
 
--   Capability handle recording is owned by [Capability Handles](./capability-handles.md);
+-   Capability handle recording is owned by [Capability Handles](../authoring/capability-handles.md);
     debug mode aggregates those events into the timeline rather than
     duplicating the recording mechanism.
 -   The module-load list overlaps with [Fast Feedback Loops § 4. Sharing parsed sources between tests in the same process](./fast-feedback-loops.md#4-sharing-parsed-sources-between-tests-in-the-same-process), but is
@@ -531,7 +531,7 @@ Rationale for the default:
 Selection rules:
 
 -   the runner profile names a default mode
--   resource execution requirements ([Runtimes And Fixtures](./runtimes-and-fixtures.md)) can
+-   resource execution requirements ([Runtimes And Fixtures](../authoring/runtimes-and-fixtures.md)) can
     upgrade the mode (e.g. exclusive resource forces serialization within
     its scope)
 -   `--mode` overrides at the CLI
@@ -586,7 +586,7 @@ final report.
 
 ## Terminal Capability Detection
 
-Moved to [CLI Reference § Terminal Capability Detection](./cli.md#terminal-capability-detection) — those rules
+Moved to [CLI Reference § Terminal Capability Detection](../reference/cli.md#terminal-capability-detection) — those rules
 (color, animation, progress UI, terminal width) are CLI- and
 reporter-scoped, not runtime concerns.
 
@@ -648,7 +648,7 @@ affected. Test output is captured as bytes; rendering decodes as UTF-8.
 
 ## Network And Filesystem Defaults
 
-By profile ([Microtests And Capabilities](./microtests-and-capabilities.md) enumerates):
+By profile ([Microtests And Capabilities](../authoring/microtests-and-capabilities.md) enumerates):
 
 -   microtest: deny FS write, deny net, deny child process, deny worker
 -   integration-local: allow FS write within a per-test temp dir, allow
@@ -659,15 +659,15 @@ By profile ([Microtests And Capabilities](./microtests-and-capabilities.md) enum
 The temp-dir convention is `os.tmpdir() + /overkill-<run-id>/<test-id>/`,
 created lazily per test, removed on test completion (or run completion in
 debug mode). This is one of the runner-owned escape hatches named in
-[Microtests And Capabilities](./microtests-and-capabilities.md).
+[Microtests And Capabilities](../authoring/microtests-and-capabilities.md).
 
 ## Connection To Other Docs
 
 This document is the runtime counterpart to several others. Cross-links:
 
--   [Microtests And Capabilities](./microtests-and-capabilities.md) — capability profiles, hang
+-   [Microtests And Capabilities](../authoring/microtests-and-capabilities.md) — capability profiles, hang
     detection, supervision
--   [Failure Artifacts](./failure-artifacts.md) — output capture, runner-error vs test-failure
+-   [Failure Artifacts](../authoring/failure-artifacts.md) — output capture, runner-error vs test-failure
     distinction
 -   [Metadata And Selection](./metadata-and-selection.md) — selection rules sharding composes with
 -   [Fast Feedback Loops](./fast-feedback-loops.md) — watch mode and cache behavior

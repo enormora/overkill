@@ -29,7 +29,7 @@ Overkill should distinguish three artifact sources:
 
 Examples:
 
--   captured stdout / stderr (see [Runtime Behavior § Console Output Capture](./runtime-behavior.md#console-output-capture))
+-   captured stdout / stderr (see [Runtime Behavior § Console Output Capture](../architecture/runtime-behavior.md#console-output-capture))
 -   temp files
 -   trace or event timelines
 -   current-vs-baseline diffs
@@ -115,7 +115,7 @@ mechanism.
 Artifacts are:
 
 -   explicitly associated with stable test identities (see
-    [Artifact Identity](./artifact-identity.md))
+    [Artifact Identity](../architecture/artifact-identity.md))
 -   clearly typed (subtype tag in `ArtifactId`)
 -   reviewable where appropriate (snapshots, baselines)
 -   discoverable by reporters and integrations (declared in the run
@@ -220,7 +220,7 @@ with subtly-different shrinking semantics.
 
 ## Captured Output
 
-Default policy (covered in [Runtime Behavior](./runtime-behavior.md)):
+Default policy (covered in [Runtime Behavior](../architecture/runtime-behavior.md)):
 
 -   owned-boundary runs may capture stdout/stderr per test and attribute it
     via `AsyncLocalStorage` correlation plus worker/process ownership
@@ -284,7 +284,7 @@ When a worker process dies mid-test (segfault, OOM, native-addon crash):
     -   any environment metadata helpful for triage (Node version,
         loaded native addons)
 
-See [Runtime Behavior § Process Crash Handling](./runtime-behavior.md#process-crash-handling) for the run-level
+See [Runtime Behavior § Process Crash Handling](../architecture/runtime-behavior.md#process-crash-handling) for the run-level
 policy (replacement workers, crash-budget abort).
 
 ## Sources

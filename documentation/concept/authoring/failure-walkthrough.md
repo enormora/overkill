@@ -82,7 +82,7 @@ Canonical: [Assertions And Results](./assertions-and-results.md).
 property-test analogue of `case.assert.done()`). The engine reads
 the case's recorded log and constructs the `TestOutcome` (see
 [Results, Not Exceptions § The Protocol Shape](./results-not-exceptions.md#the-protocol-shape), also
-[Types Index](./types-index.md)):
+[Types Index](../reference/types-index.md)):
 
 ```ts
 const outcome: TestOutcome = {
@@ -112,7 +112,7 @@ Canonical: [Results, Not Exceptions](./results-not-exceptions.md), [Assertions A
 
 The orchestration layer combines the engine outcome with metadata
 and runner-error state to derive a reporter-facing **verdict** (see
-[Glossary § Test Verdict](./glossary.md#test-verdict)).
+[Glossary § Test Verdict](../reference/glossary.md#test-verdict)).
 
 For this test:
 
@@ -121,19 +121,19 @@ For this test:
 -   no runner error during the body
 
 → verdict `fail`. Exit code 1 will follow at run completion (see
-[Runtime Behavior § Exit Codes And `process.exit`](./runtime-behavior.md#exit-codes-and-processexit)).
+[Runtime Behavior § Exit Codes And `process.exit`](../architecture/runtime-behavior.md#exit-codes-and-processexit)).
 
 If the test had been marked `{ stability: 'experimental' }` with
 xfail expectation, the same outcome would have derived
 `expected-fail` instead. Same engine result, different verdict — the
 layering isolates the engine from reporter policy.
 
-Canonical: [Glossary § Test Outcome](./glossary.md#test-outcome) / Test Verdict.
+Canonical: [Glossary § Test Outcome](../reference/glossary.md#test-outcome) / Test Verdict.
 
 ## Stage 4 — Identity And Artifact Path
 
 The test's stable identity is computed once at collection (see
-[Artifact Identity](./artifact-identity.md)):
+[Artifact Identity](../architecture/artifact-identity.md)):
 
 ```ts
 const caseId: CaseId = {
@@ -146,7 +146,7 @@ const caseId: CaseId = {
 
 Property tests produce a witness — a replayable artifact recording
 seed and shrunk counterexample — alongside the failure. Its
-`ArtifactId` (see [Artifact Identity § Concrete Type Sketch](./artifact-identity.md#concrete-type-sketch)):
+`ArtifactId` (see [Artifact Identity § Concrete Type Sketch](../architecture/artifact-identity.md#concrete-type-sketch)):
 
 ```ts
 const witnessId: ArtifactId = {
@@ -155,13 +155,13 @@ const witnessId: ArtifactId = {
 };
 ```
 
-Path derivation (canonical rule in [Artifact Identity § Path Derivation](./artifact-identity.md#path-derivation)):
+Path derivation (canonical rule in [Artifact Identity § Path Derivation](../architecture/artifact-identity.md#path-derivation)):
 
 ```
 .overkill/witnesses/source/users.test__users__round-trip-preserves-values.witness.json
 ```
 
-Canonical: [Artifact Identity](./artifact-identity.md).
+Canonical: [Artifact Identity](../architecture/artifact-identity.md).
 
 ## Stage 5 — Witness File Written
 
@@ -192,7 +192,7 @@ Canonical: [Failure Artifacts](./failure-artifacts.md).
 
 ## Stage 6 — Run Record
 
-Run completion writes a `RunRecord` (see [Reproducibility § Run Record Shape](./reproducibility.md#run-record-shape), also [Types Index](./types-index.md)) to
+Run completion writes a `RunRecord` (see [Reproducibility § Run Record Shape](../architecture/reproducibility.md#run-record-shape), also [Types Index](../reference/types-index.md)) to
 `.overkill/runs/<run-id>.json`. The relevant per-test entry:
 
 ```ts
@@ -210,14 +210,14 @@ witness directly.
 
 If the user had explicitly enabled debug for this case — typically via
 `--debug-test <id>` or a narrowly filtered `--debug` run — a
-`TestDebugArtifact` (see [Runtime Behavior § Test Debug Mode](./runtime-behavior.md#test-debug-mode))
+`TestDebugArtifact` (see [Runtime Behavior § Test Debug Mode](../architecture/runtime-behavior.md#test-debug-mode))
 would also exist at
 `.overkill/runs/<run-id>/debug/<case-id>.debug.json`, with the
 timeline showing `forall` iteration counts up to the failure. The
 `RunPlan.debugMode` field records that debug data was collected.
 
-Canonical: [Reproducibility](./reproducibility.md), [Failure Artifacts](./failure-artifacts.md),
-[Runtime Behavior](./runtime-behavior.md).
+Canonical: [Reproducibility](../architecture/reproducibility.md), [Failure Artifacts](./failure-artifacts.md),
+[Runtime Behavior](../architecture/runtime-behavior.md).
 
 ## Stage 7 — Reporter Renders
 
@@ -241,7 +241,7 @@ reporters (JSON, HTML, TAP) format the same data differently. The
 JSON reporter writes the full diff and witness path as a structured
 event consumable by IDEs and MCP servers.
 
-Canonical: [Package Architecture § Reporters](./package-architecture.md#reporters),
+Canonical: [Package Architecture § Reporters](../architecture/package-architecture.md#reporters),
 [Failure Artifacts](./failure-artifacts.md).
 
 ## Stage 8 — Replay The Witness
@@ -258,7 +258,7 @@ re-shrinking), and reproduces the failure bit-for-bit. Stages 1–7
 repeat with `verdict === 'fail'` and the same failed check.
 
 Canonical: [Failure Artifacts § Witnesses And Replay Artifacts](./failure-artifacts.md#witnesses-and-replay-artifacts),
-[Reproducibility § Replay Witnesses For Properties And Simulations](./reproducibility.md#replay-witnesses-for-properties-and-simulations).
+[Reproducibility § Replay Witnesses For Properties And Simulations](../architecture/reproducibility.md#replay-witnesses-for-properties-and-simulations).
 
 ## What This Walkthrough Surfaces
 
@@ -266,7 +266,7 @@ Reading the stages in sequence, the boundary contracts that have to
 hold for the path to work:
 
 -   `FailedCheck` shape is the same in [Assertions And Results](./assertions-and-results.md),
-    [Results, Not Exceptions](./results-not-exceptions.md), and [Types Index](./types-index.md)
+    [Results, Not Exceptions](./results-not-exceptions.md), and [Types Index](../reference/types-index.md)
 -   `TestOutcome` is the engine ADT (4 cases); the verdict is the
     derivation
 -   `CaseId` is the only key threading test → outcome → artifact →
@@ -288,9 +288,9 @@ This document is a reading aid; the canonical specs live in:
 -   [Assertions And Results](./assertions-and-results.md) — assertion API, `FailedCheck`,
     diff shape, plan
 -   [Results, Not Exceptions](./results-not-exceptions.md) — `TestOutcome` ADT
--   [Glossary](./glossary.md) — outcome / verdict layering
--   [Artifact Identity](./artifact-identity.md) — identity types, path derivation
+-   [Glossary](../reference/glossary.md) — outcome / verdict layering
+-   [Artifact Identity](../architecture/artifact-identity.md) — identity types, path derivation
 -   [Failure Artifacts](./failure-artifacts.md) — witnesses, run-record artifact list
--   [Reproducibility](./reproducibility.md) — `RunRecord`, replay
--   [Runtime Behavior](./runtime-behavior.md) — exit codes, debug mode
--   [Types Index](./types-index.md) — every TS type used above
+-   [Reproducibility](../architecture/reproducibility.md) — `RunRecord`, replay
+-   [Runtime Behavior](../architecture/runtime-behavior.md) — exit codes, debug mode
+-   [Types Index](../reference/types-index.md) — every TS type used above

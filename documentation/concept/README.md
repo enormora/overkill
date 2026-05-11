@@ -5,93 +5,138 @@ implementation resumes. The documents in `documentation/concept/` are the
 current product narrative; they will eventually be condensed into a
 project-level `README.md` and design RFCs.
 
+The docs are organised into folders that mirror their role:
+
+-   [`decisions/`](./decisions/) — settled principles, rejected directions,
+    planned future work
+-   [`architecture/`](./architecture/) — how the system is shaped: packages,
+    composition, runtime behaviour, identity, configuration
+-   [`authoring/`](./authoring/) — how tests are written and what each test
+    kind needs: microtests, assertions, doubles, fixtures, baselines,
+    benchmarks
+-   [`reference/`](./reference/) — lookup material: glossary, types index,
+    CLI reference
+-   [`research/`](./research/) — comparisons, audits, and research-flavored
+    surveys
+-   [`meta/`](./meta/) — how the docs themselves are organised, plus a
+    snapshot of the current repo state
+
 ## Recommended Reading Order
 
 For a first read, follow this path:
 
-1. [Overview](./overview.md) — what Overkill is, who it's for, product shape
-2. [Principles](./principles.md) — the design rules that drive every
-   decision
-3. [Glossary](./glossary.md) — canonical definitions of microtest, macro,
-   profile, sink, baseline subtype, verdict, witness, etc.
-4. [Testing Models](./testing-models.md) — the test categories Overkill
-   recognises
-5. [Fast Feedback Loops](./fast-feedback-loops.md) — the engineering
-   commitments behind sub-second startup
-6. [Package Architecture](./package-architecture.md) — package families,
-   ownership boundaries, builder layer
-7. [Microtests And Capabilities](./microtests-and-capabilities.md) — the
-   capability-restricted default
-8. [Results, Not Exceptions](./results-not-exceptions.md) — protocol-layer
-   rationale behind the assertion model
-9. [Tests As Values](./tests-as-values.md) — first-class value-oriented
-    authoring mode with direct-file execution
-10. [Test Ergonomics](./test-ergonomics.md) — the small set of
+1.  [Overview](./overview.md) — what Overkill is, who it's for, product
+    shape
+2.  [Principles](./decisions/principles.md) — the design rules that drive
+    every decision
+3.  [Glossary](./reference/glossary.md) — canonical definitions of
+    microtest, macro, profile, sink, baseline subtype, verdict, witness,
+    etc.
+4.  [Testing Models](./authoring/testing-models.md) — the test categories
+    Overkill recognises
+5.  [Fast Feedback Loops](./architecture/fast-feedback-loops.md) — the
+    engineering commitments behind sub-second startup
+6.  [Package Architecture](./architecture/package-architecture.md) —
+    package families, ownership boundaries, builder layer
+7.  [Microtests And Capabilities](./authoring/microtests-and-capabilities.md) —
+    the capability-restricted default
+8.  [Results, Not Exceptions](./authoring/results-not-exceptions.md) —
+    protocol-layer rationale behind the assertion model
+9.  [Tests As Values](./authoring/tests-as-values.md) — first-class
+    value-oriented authoring mode with direct-file execution
+10. [Test Ergonomics](./authoring/test-ergonomics.md) — the small set of
     first-party DX helpers worth keeping
-11. [Configuration](./configuration.md) — low-surface config philosophy
-12. [Capability Handles](./capability-handles.md) — the alternative to
-    mocking
-13. [Higher Test Layers](./higher-test-layers.md) — what integration,
-    browser, visual, and property-test layers imply for Overkill
-14. [Runtime Behavior](./runtime-behavior.md) — console capture, exit
-    codes, signals, parallelism, sharding, monorepo, CI
-15. [Baselines And Snapshots](./baselines-and-snapshots.md)
-16. [Benchmarking](./benchmarking.md)
-17. [Research Landscape](./research-landscape.md)
+11. [Configuration](./architecture/configuration.md) — low-surface config
+    philosophy
+12. [Capability Handles](./authoring/capability-handles.md) — the
+    alternative to mocking
+13. [Higher Test Layers](./authoring/higher-test-layers.md) — what
+    integration, browser, visual, and property-test layers imply for
+    Overkill
+14. [Runtime Behavior](./architecture/runtime-behavior.md) — console
+    capture, exit codes, signals, parallelism, sharding, monorepo, CI
+15. [Baselines And Snapshots](./authoring/baselines-and-snapshots.md)
+16. [Benchmarking](./authoring/benchmarking.md)
+17. [Research Landscape](./research/research-landscape.md)
 
-## Architecture And Cross-Cutting Concepts
+## Decisions
 
--   [Package Architecture](./package-architecture.md)
--   [Artifact Identity](./artifact-identity.md)
--   [Assertions And Results](./assertions-and-results.md)
--   [Capability Handles](./capability-handles.md)
--   [CLI Reference](./cli.md)
--   [Composition Order](./composition-order.md)
--   [Configuration](./configuration.md)
--   [Coverage](./coverage.md)
--   [Credits](./credits.md)
--   [Documentation Strategy](./documentation-strategy.md)
--   [Doubles](./doubles.md)
--   [Runtimes And Fixtures](./runtimes-and-fixtures.md)
--   [Extensions And Plugins](./extensions-and-plugins.md)
--   [Failure Artifacts](./failure-artifacts.md)
--   [Failure Walkthrough](./failure-walkthrough.md)
--   [Fast Feedback Loops](./fast-feedback-loops.md)
--   [Glossary](./glossary.md)
--   [Higher Test Layers](./higher-test-layers.md)
--   [Metadata And Selection](./metadata-and-selection.md)
--   [Non-Goals](./non-goals.md)
--   [Reporters](./reporters.md)
--   [Reproducibility](./reproducibility.md)
--   [Results, Not Exceptions](./results-not-exceptions.md)
--   [Runtime Behavior](./runtime-behavior.md)
--   [Tests As Values](./tests-as-values.md)
--   [Test Ergonomics](./test-ergonomics.md)
--   [Types Index](./types-index.md)
+What has been settled, rejected, or planned.
 
-## Distribution And Platform
+-   [Principles](./decisions/principles.md)
+-   [Non-Goals](./decisions/non-goals.md)
+-   [Ideas And Future Directions](./decisions/ideas-and-future-directions.md)
 
--   [Bundles And Distribution](./bundles-and-distribution.md)
--   [Candidate Libraries](./candidate-libraries.md)
--   [Platform-First Implementation Notes](./platform-first-implementation-notes.md)
+## Architecture
 
-## Forward-Looking And Research
+How the system is shaped.
 
--   [Deterministic Simulation](./deterministic-simulation.md)
--   [Ideas And Future Directions](./ideas-and-future-directions.md)
--   [Novel Techniques](./novel-techniques.md)
--   [Research Landscape](./research-landscape.md)
+-   [Package Architecture](./architecture/package-architecture.md)
+-   [Composition Order](./architecture/composition-order.md) — reading aid
+    threading plan-time and execution-time stages
+-   [Configuration](./architecture/configuration.md)
+-   [Platform-First Implementation Notes](./architecture/platform-first-implementation-notes.md)
+-   [Fast Feedback Loops](./architecture/fast-feedback-loops.md)
+-   [Runtime Behavior](./architecture/runtime-behavior.md)
+-   [Reporters](./architecture/reporters.md)
+-   [Metadata And Selection](./architecture/metadata-and-selection.md)
+-   [Coverage](./architecture/coverage.md)
+-   [Artifact Identity](./architecture/artifact-identity.md)
+-   [Reproducibility](./architecture/reproducibility.md)
+-   [Bundles And Distribution](./architecture/bundles-and-distribution.md)
+-   [Extensions And Plugins](./architecture/extensions-and-plugins.md)
 
-## Repo State
+## Authoring
 
--   [Current Repo Notes](./current-repo-notes.md)
+How tests are written and what each test kind needs.
+
+-   [Testing Models](./authoring/testing-models.md)
+-   [Tests As Values](./authoring/tests-as-values.md)
+-   [Microtests And Capabilities](./authoring/microtests-and-capabilities.md)
+-   [Assertions And Results](./authoring/assertions-and-results.md)
+-   [Results, Not Exceptions](./authoring/results-not-exceptions.md)
+-   [Capability Handles](./authoring/capability-handles.md)
+-   [Doubles](./authoring/doubles.md)
+-   [Test Ergonomics](./authoring/test-ergonomics.md)
+-   [Higher Test Layers](./authoring/higher-test-layers.md)
+-   [Runtimes And Fixtures](./authoring/runtimes-and-fixtures.md)
+-   [Failure Artifacts](./authoring/failure-artifacts.md)
+-   [Failure Walkthrough](./authoring/failure-walkthrough.md) — reading aid
+    threading a property-test failure end-to-end
+-   [Baselines And Snapshots](./authoring/baselines-and-snapshots.md)
+-   [Benchmarking](./authoring/benchmarking.md)
+-   [Deterministic Simulation](./authoring/deterministic-simulation.md)
+
+## Reference
+
+Lookup material.
+
+-   [Glossary](./reference/glossary.md)
+-   [Types Index](./reference/types-index.md)
+-   [CLI Reference](./reference/cli.md)
+
+## Research
+
+Comparisons, audits, and research-flavored surveys.
+
+-   [Research Landscape](./research/research-landscape.md)
+-   [Candidate Libraries](./research/candidate-libraries.md)
+-   [Novel Techniques](./research/novel-techniques.md)
+-   [Credits](./research/credits.md)
+
+## Meta
+
+About the docs themselves and the current repo state.
+
+-   [Documentation Strategy](./meta/documentation-strategy.md)
+-   [Current Repo Notes](./meta/current-repo-notes.md)
 
 ## How To Contribute To These Docs
 
 The docs aim to be:
 
--   normative where decisions are settled (the canonical docs and
-    their owning topic docs are the source of truth)
+-   normative where decisions are settled (the canonical docs and their
+    owning topic docs are the source of truth)
 -   speculative where decisions are not (clearly marked as future
     directions, future package families, or open items)
 -   cross-linked rather than redundant (each concept has one canonical

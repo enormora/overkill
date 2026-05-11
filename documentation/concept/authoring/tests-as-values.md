@@ -29,7 +29,7 @@ ScalaCheck: **tests are values**. A test file _exports_ a value describing
 its tests. The runner imports the module, walks the value, and decides what
 to execute.
 
-This is the authoring-layer expression of [Principles § Data Over Side Effects](./principles.md#data-over-side-effects): tests are returned as data, not registered via the act of
+This is the authoring-layer expression of [Principles § Data Over Side Effects](../decisions/principles.md#data-over-side-effects): tests are returned as data, not registered via the act of
 loading the module. It should be treated as the first-party answer at
 the high-level authoring layer, not as a discarded side experiment.
 
@@ -182,7 +182,7 @@ type Table = {
 ```
 
 `Metadata` and `Capability` are the structures defined in
-[Metadata And Selection](./metadata-and-selection.md) and [Microtests And Capabilities](./microtests-and-capabilities.md). The runner
+[Metadata And Selection](../architecture/metadata-and-selection.md) and [Microtests And Capabilities](./microtests-and-capabilities.md). The runner
 walks the tree, applies filters by metadata, expands tables into individual
 cases, and produces an execution plan.
 
@@ -233,7 +233,7 @@ single law bundle replaces dozens of example tests.
 
 ## Filters Become Tree Walks
 
-[Metadata And Selection](./metadata-and-selection.md) describes filtering by tags, file paths, kinds,
+[Metadata And Selection](../architecture/metadata-and-selection.md) describes filtering by tags, file paths, kinds,
 and so on. Tests-as-values makes the implementation trivial:
 
 ```ts
@@ -372,7 +372,7 @@ Because the test definitions are values, an external tool can:
 -   diff two runs by comparing tree shapes
 
 This makes Overkill's machine-readable surface (named in
-[Extensions And Plugins](./extensions-and-plugins.md) and [Package Architecture](./package-architecture.md)) genuinely
+[Extensions And Plugins](../architecture/extensions-and-plugins.md) and [Package Architecture](../architecture/package-architecture.md)) genuinely
 free, rather than a reporter-output parser kludge.
 
 ## Influences

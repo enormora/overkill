@@ -113,7 +113,7 @@ The interaction with worker-scoped fixtures: worker fixtures setup _once per wor
 
 `describe.configure({ mode: 'serial' })` collapses retry semantics: a serial group retries together. This is the only way to express "these tests share mutable state and must run in order."
 
-Overkill direction: name the three axes explicitly (workers × fullyParallel × shards). Document them as orthogonal. See [Runtime Behavior](./runtime-behavior.md) for the resulting parallelism table.
+Overkill direction: name the three axes explicitly (workers × fullyParallel × shards). Document them as orthogonal. See [Runtime Behavior](../architecture/runtime-behavior.md) for the resulting parallelism table.
 
 #### Auto-Waiting / Polled Assertions
 
@@ -129,7 +129,7 @@ Traces are zip files containing screenshots, network requests, console output, D
 
 The viewer is a static HTML page (`trace.playwright.dev`) that opens the zip locally — no server, no upload. The trace format is open and stable enough that CI artifacts can be linked directly.
 
-Overkill direction: failure artifacts should be **single self-contained zip files per failed test**, not scattered logs/screenshots/diffs across directories. A static viewer that opens the zip locally beats any cloud upload story. See [Failure Artifacts](./failure-artifacts.md).
+Overkill direction: failure artifacts should be **single self-contained zip files per failed test**, not scattered logs/screenshots/diffs across directories. A static viewer that opens the zip locally beats any cloud upload story. See [Failure Artifacts](../authoring/failure-artifacts.md).
 
 #### Reporters API
 
@@ -158,8 +158,8 @@ suffix. The chosen direction is:
     suite wants "run all" semantics
 
 That keeps the richer result protocol without making soft or non-fail-fast
-behavior the invisible default. See [Assertions And Results](./assertions-and-results.md) and
-[Results, Not Exceptions](./results-not-exceptions.md).
+behavior the invisible default. See [Assertions And Results](../authoring/assertions-and-results.md) and
+[Results, Not Exceptions](../authoring/results-not-exceptions.md).
 
 #### Annotations And Verdict Modifiers
 
@@ -172,7 +172,7 @@ test.info().annotations.push({ type: 'issue', description: 'ABC-123' });
 
 `test.fail` is not a skip — it is xfail (test runs; flips verdict). Annotations are first-class metadata accessible to reporters via `testCase.annotations`.
 
-Overkill direction: verdict modifiers belong on the test descriptor as fields, not as imperative side-effecting calls. See [Metadata And Selection § Stability Markers](./metadata-and-selection.md#stability-markers) and [Glossary § Test Verdict](./glossary.md#test-verdict).
+Overkill direction: verdict modifiers belong on the test descriptor as fields, not as imperative side-effecting calls. See [Metadata And Selection § Stability Markers](../architecture/metadata-and-selection.md#stability-markers) and [Glossary § Test Verdict](../reference/glossary.md#test-verdict).
 
 #### `test.step` And Attachments
 
@@ -244,7 +244,7 @@ For Overkill: package families like `@overkill/transport`, `@overkill/event-stre
 
 `buster-eventedlogger` modeled the entire test run as an event stream: `test:start`, `assertion:pass`, `test:complete`, `suite:complete`, `run:complete`. A reporter was a subscriber. A network reporter was just a subscriber that pushed events over Bayeux (HTTP long-poll, websockets where available). Local and remote reporters shared zero code. This is exactly the pattern that landed in Playwright reporters ten years later.
 
-For Overkill: an evented reporter pipeline with a pluggable transport (in-process, IPC, WebSocket) means the same reporter works locally and against a remote runner. See [Package Architecture](./package-architecture.md) and [Extensions And Plugins](./extensions-and-plugins.md).
+For Overkill: an evented reporter pipeline with a pluggable transport (in-process, IPC, WebSocket) means the same reporter works locally and against a remote runner. See [Package Architecture](../architecture/package-architecture.md) and [Extensions And Plugins](../architecture/extensions-and-plugins.md).
 
 #### Configuration That Anticipated Playwright Projects
 
@@ -260,7 +260,7 @@ Named groups, each with an `environment`, `libs`/`sources`/`tests`/`resources`, 
 
 `autoRun: false` plus explicit `buster.run()` lets the test author gate the start of the run — useful when AMD modules are still loading, when async setup must complete, when a service worker must register. The runner doesn't auto-start; the bootstrapper says "go."
 
-For ESM with `await import()` and dynamic registration, the explicit-start pattern is more honest than today's "tests fire on load" assumption. Overkill's tests-as-values shape (see [Tests As Values](./tests-as-values.md)) takes this further: the file _exports_ the suite, the runner starts walking when ready.
+For ESM with `await import()` and dynamic registration, the explicit-start pattern is more honest than today's "tests fire on load" assumption. Overkill's tests-as-values shape (see [Tests As Values](../authoring/tests-as-values.md)) takes this further: the file _exports_ the suite, the runner starts walking when ready.
 
 #### Static Browser Runs
 
@@ -407,7 +407,7 @@ and the API explicitly distinguishes between syntax forms that run checks
 immediately and suite values that are built and later executed.
 
 This is very close to the direction documented in
-[Tests As Values](./tests-as-values.md).
+[Tests As Values](../authoring/tests-as-values.md).
 
 Source:
 

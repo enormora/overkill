@@ -177,7 +177,7 @@ services** as a first-class pattern, not as an edge case.
 ## What A Test Might Look Like
 
 The `withRuntime` and `simulation` helpers shown below are illustrative
-sketches; they are listed as placeholders in [Types Index](./types-index.md).
+sketches; they are listed as placeholders in [Types Index](../reference/types-index.md).
 `SimulationAdapter` and `SimulationSession` _are_ canonical (see the
 section above and the types index).
 

@@ -265,7 +265,7 @@ mode flags.
 
 Failed checks carry structured diff data. The sketched types
 (`Diff`, `DiffOperation`, `Hunk`, `SerializedValue`, `SourceLocation`) are
-collected in [Types Index § Outcomes And Verdicts](./types-index.md#outcomes-and-verdicts).
+collected in [Types Index § Outcomes And Verdicts](../reference/types-index.md#outcomes-and-verdicts).
 
 ```ts
 type FailedCheck = {
@@ -310,7 +310,7 @@ The architecture should preserve room for future exploration of:
     per-test effect bus rather than returned (more amenable to highly-async
     test bodies)
 -   richer relational checks: `relation()` for metamorphic testing (see
-    [Novel And Under-Used Testing Techniques](./novel-techniques.md))
+    [Novel And Under-Used Testing Techniques](../research/novel-techniques.md))
 -   semantic baseline comparisons via subtype-specific adapters (see
     [Baselines And Snapshots](./baselines-and-snapshots.md))
 
