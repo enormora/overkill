@@ -57,6 +57,13 @@ const log = testDouble().returns(undefined);
 const loadUser = testDouble<(id: string) => Promise<User>>().resolves(adminUser);
 ```
 
+The type argument is the full function signature, not a separate args-tuple plus
+return generic. Reading the call site as a function type literal is the most
+familiar TypeScript shape, and matchers, `when(...)`, and the answer-function
+escape hatch can extract argument and return types via `Parameters<T>` and
+`ReturnType<T>` internally without forcing that decomposition into the user-facing
+generic.
+
 The intended split is:
 
 -   shorthand instance methods for the common fixed-behavior cases
