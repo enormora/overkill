@@ -124,6 +124,7 @@ Comparisons, audits, and research-flavored surveys.
 About the docs themselves and the current repo state.
 
 -   [Documentation Strategy](./meta/documentation-strategy.md)
+-   [Concept Status Vocabulary](./meta/concept-status.md)
 -   [Current Repo Notes](./meta/current-repo-notes.md)
 
 ## How To Contribute To These Docs

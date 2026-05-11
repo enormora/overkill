@@ -347,6 +347,43 @@ The important constraint is that Overkill should not ship multiple
 first-party DSLs at the same level. The builder layer exists so third
 parties can do that if they want to.
 
+## Package Boundaries Matrix
+
+This is a single-page lookup of which package owns each concept.
+Each concept has one canonical package; satellite packages may consume
+or extend the contract but do not redefine it.
+
+| Concept                                       | Canonical package                                 | Notes                                                                                |
+| --------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Test definitions, suites, cases               | `@overkill/engine`                                | The `TestNode`/`TestCase`/`Suite` shapes; see [Tests As Values](../authoring/tests-as-values.md). |
+| `TestOutcome` ADT (engine result protocol)    | `@overkill/engine`                                | `Pass`/`Fail`/`Skip`/`Inconclusive`; see [Assertions And Results § Protocol Layer](../authoring/assertions-and-results.md#protocol-layer-structured-outcomes). |
+| Test verdict derivation (xfail, crashed, …)   | `@overkill/run`                                   | Verdicts derived from `(outcome, metadata, runner-error?)`.                          |
+| `RunPlan` and `RunRecord`                     | `@overkill/run`                                   | `RunPlan` shape sketched in [Reproducibility](./reproducibility.md).                 |
+| Assertion nodes, `FailedCheck`, `Diff`        | `@overkill/assert`                                | Low-level `assertion.*` constructors.                                                |
+| Injected `assert` / `require` builder API     | `@overkill/test`                                  | DX layer on top of `@overkill/assert`.                                               |
+| Test doubles (`testDouble`, `when`, helpers)  | `@overkill/doubles`                               | See [Doubles](../authoring/doubles.md).                                              |
+| Typed runtime / resource composition          | `@overkill/resources`                             | Lifecycle scopes, execution requirements.                                            |
+| Discovery, filtering, runner profiles         | `@overkill/run`                                   | Reads config, freezes `RunPlan`.                                                     |
+| Selection filter grammar                      | `@overkill/run`                                   | Spec in [Metadata And Selection](./metadata-and-selection.md).                       |
+| Sharding                                      | `@overkill/run`                                   | Stable identity-hash partitioning.                                                   |
+| Reporter event stream contract                | `@overkill/engine`                                | The `ReporterEvent` ADT.                                                             |
+| Reporter rendering                            | `@overkill/reporter-*`                            | Each presentation choice is its own package.                                         |
+| Sink declarations and conflict resolution     | `@overkill/run`                                   | Computed before workers start.                                                       |
+| Capability profile model                      | `@overkill/run`                                   | Profile names; permission boundary applied at worker spawn.                          |
+| Capability handle pattern (`AppRuntime`, …)   | user code / adapter package                       | No first-party `@overkill/world`; see [Capability Handles](../authoring/capability-handles.md). |
+| Baseline subtypes (snapshot, visual, perf)    | `@overkill/baselines`                             | Shared identity and stale detection.                                                 |
+| Baseline verbs (`update`/`apply`/…)           | `@overkill/run`                                   | Verbs sit at the runner layer; semantics from `@overkill/baselines`.                 |
+| Benchmark workloads, measurements, policies   | `@overkill/bench`                                 | Above the engine; contributes execution requirements.                                |
+| Coverage instrumentation                      | `@overkill/run`                                   | V8 native; microtest-only; opt-in.                                                   |
+| Witness file format                           | `@overkill/engine`                                | Schema in engine; producers/consumers across families.                               |
+| Failure artifacts (storage + schema)          | `@overkill/engine` (schema) + `@overkill/run` (storage policy) | Storage layout owned by orchestration.                                |
+| Metadata propagation rules                    | `@overkill/engine`                                | Set merge, array replace-flag, capabilities intersect.                               |
+| Configuration loading                         | `@overkill/run`                                   | Reads root `overkill.config.ts`; engine has no config.                               |
+| Custom assertion registration                 | `@overkill/run` (config) + `@overkill/assert` (impl) | One canonical config-use case for the assertion layer.                            |
+| CLI entry, terminal capability detection      | `@overkill/run` (today)                           | Possible future extraction to `@overkill/cli`; see [CLI Reference](../reference/cli.md) and [Ideas And Future Directions § CLI Package](../decisions/ideas-and-future-directions.md#cli-package-overkillcli). |
+| Test debug mode artifact                      | `@overkill/run`                                   | Activation, storage, retention; see [Test Debug Mode](../authoring/debug-mode.md).   |
+| Reporter packages (`@overkill/reporter-line`, …) | `@overkill/reporter-*`                         | Stable contract from `@overkill/engine`; presentation owned per-package.             |
+
 ## Bundles
 
 Some projects will want several Overkill features together and should not

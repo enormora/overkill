@@ -281,8 +281,6 @@ directly; this replaces `expect(mock).toHaveBeenCalledWith(...)` patterns.
 
 Source: [Capability Handles](../authoring/capability-handles.md).
 
-Source: [Capability Handles](../authoring/capability-handles.md).
-
 ## Baseline
 
 A checked-in artifact compared during runs and updated only intentionally.
@@ -453,3 +451,90 @@ Overkill owns the queue at that moment (real platform scheduler outside
 simulation; the virtual scheduler inside simulation).
 
 Source: [Deterministic Simulation Testing](../authoring/deterministic-simulation.md).
+
+## RunPlan
+
+The frozen, machine-readable description of one run before any test
+body executes. Captures the seed, the resolved selection, the runtime
+matrix, the chosen execution strategy, the capability profile, the
+baseline verb, workload identity, metadata, loader configuration, and
+package versions. The plan is the input that, together with the
+recorded outcomes, becomes the `RunRecord`. Two runs with the same
+`RunPlan` should produce equivalent `RunRecord`s up to the
+machine-class tier defined in [Reproducibility § Tiered Reproducibility](../architecture/reproducibility.md#machine-dependent-reproducibility).
+
+Source: [Reproducibility](../architecture/reproducibility.md), [Types Index](./types-index.md).
+
+## RunRecord
+
+The persisted artifact describing one completed run: the `RunPlan`
+plus per-test verdicts, per-test captured artifacts, run-level summary,
+runner errors, and runtime metadata. `overkill replay <run-id>` reads
+the `RunRecord` to reconstruct the original run; `--last-failed` reads
+it to scope the next run to the previously-failing subset.
+
+Source: [Reproducibility § Run Record Shape](../architecture/reproducibility.md#run-record-shape), [Types Index](./types-index.md).
+
+## Runner Error
+
+Distinct from a test failure. A runner error is an unexpected
+exception, rejection, crash, permission denial, or runtime failure
+that prevents the runner from producing a clean `TestOutcome`.
+Reporters consume runner errors as a separate channel; the engine
+exposes one machine-readable `RunnerError` shape so reporters and
+machine consumers do not have to reconstruct meaning from prose.
+
+Source: [Assertions And Results § Error Separation](../authoring/assertions-and-results.md#error-separation), [Failure Artifacts](../authoring/failure-artifacts.md).
+
+## Crash Budget
+
+The maximum number of worker process crashes Overkill tolerates in
+one run before aborting with a runner error. Default is 3. Crash
+budget exists to prevent infinite-replay loops when a deterministic
+crash hits multiple workers in a row.
+
+Source: [Runtime Behavior § Process Crash Handling](../architecture/runtime-behavior.md#process-crash-handling).
+
+## Attribution Drift
+
+When the runner cannot reliably attribute an async failure (unhandled
+rejection, uncaught exception, leaked timer) to the test that caused
+it, the misattribution is called attribution drift. The runner uses
+`AsyncLocalStorage`-based correlation but acknowledges the best-effort
+nature: an async leak that escapes the test's logical window may be
+attributed to a sibling test. The runner warns when drift is detected
+rather than silently mis-blaming a test.
+
+Source: [Runtime Behavior § Unhandled Rejections And Uncaught Exceptions](../architecture/runtime-behavior.md#unhandled-rejections-and-uncaught-exceptions), [Failure Artifacts § Attribution Rules](../authoring/failure-artifacts.md#attribution-rules).
+
+## Soft Timeout vs Hard Timeout
+
+A **soft timeout** flags a test that exceeded its deadline but allows
+it to finish; the verdict is `fail` with the timeline preserved.
+A **hard timeout** is force-terminated: in-process modes cannot
+guarantee hard termination (the test body keeps running), but
+supervised profiles can kill the worker. Microtest profiles use soft
+timeouts by default; the supervised profile adds hard termination.
+
+Source: [Runtime Behavior § Timeouts](../architecture/runtime-behavior.md#timeouts), [Microtests And Capabilities § Hang Detection And Forced Termination](../authoring/microtests-and-capabilities.md#hang-detection-and-forced-termination).
+
+## Assertion-Recording Boundary
+
+The boundary at which a property or generated-case primitive
+contributes one (not many) leaf assertion to the recorded log.
+`case.forall`, `relation`, `differential`, and similar primitives
+each count as one boundary assertion regardless of how many internal
+iterations they perform; their internal checks compose into a single
+`FailedCheck` payload on failure.
+
+Source: [Assertions And Results § Property Tests And The Assertion Boundary](../authoring/assertions-and-results.md#property-tests-and-the-assertion-boundary).
+
+## Microtask Flush
+
+The async-control helper that drains the microtask queue without
+advancing macrotasks. Tests use `case.flushAsync()` to give pending
+Promise callbacks a chance to run before continuing the body.
+Distinct from `case.microtasks()` (a single microtask tick) and
+`case.immediate()` (one macrotask tick).
+
+Source: [Test Ergonomics § Async-Control Helpers](../authoring/test-ergonomics.md#async-control-helpers).
