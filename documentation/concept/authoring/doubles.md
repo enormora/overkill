@@ -59,7 +59,7 @@ const loadUser = testDouble<(id: string) => Promise<User>>().resolves(adminUser)
 
 The type argument is the full function signature, not a separate args-tuple plus
 return generic. Reading the call site as a function type literal is the most
-familiar TypeScript shape, and matchers, `when(...)`, and the answer-function
+familiar TypeScript shape, and matchers, `rule.when(...)`, and the answer-function
 escape hatch can extract argument and return types via `Parameters<T>` and
 `ReturnType<T>` internally without forcing that decomposition into the user-facing
 generic.
@@ -72,15 +72,27 @@ The intended split is:
 Example direction:
 
 ```ts
+import { testDouble, rule } from '@overkill/double';
+
 const loadUser = testDouble<(id: string) => Promise<User>>({
     rules: [
-        when('admin', resolves(adminUser)),
-        when('guest', resolves(guestUser)),
-        onCall(3, rejects(new Error('flaky backend'))),
+        rule.when('admin').resolves(adminUser),
+        rule.when('guest').resolves(guestUser),
+        rule.onCall(3).rejects(new Error('flaky backend')),
     ],
-    fallback: rejects(new Error('unexpected user id')),
+    fallback: rule.rejects(new Error('unexpected user id')),
 });
 ```
+
+Rule helpers are namespaced under a single `rule` import rather than exported
+individually. This avoids shadowing common user-side names like `when` and
+`returns`, and keeps the rule-construction surface visible at every call site.
+Inside the namespace the shape is fluent: `rule.when(...args)` and
+`rule.onCall(n)` start a rule and the terminator (`.returns`, `.resolves`,
+`.rejects`, `.throws`, `.calls`) attaches the behavior. Behavior factories
+(`rule.returns`, `rule.resolves`, `rule.rejects`, `rule.throws`, `rule.calls`,
+`rule.sequence`) are also reachable directly for use in `fallback:` and as
+arguments to other helpers.
 
 This gives one concept that handles:
 
@@ -159,20 +171,20 @@ Overkill direction of one main doubles concept instead of category sprawl.
 The minimal shape worth exploring is:
 
 -   `testDouble<Fn>(config?)`
--   `when(...args, behavior)` for arg-specific rules
--   `onCall(index, behavior)` for ordered rules
--   `returns(value)`
--   `resolves(value)`
--   `rejects(error)`
--   `throws(error)`
--   `calls(fn)` or `answer(fn)` for fully custom logic
--   `sequence(...)` for successive results without verbose call-index rules
+-   `rule.when(...args)` for arg-specific rules — fluent terminator attaches behavior
+-   `rule.onCall(index)` for ordered rules — fluent terminator attaches behavior
+-   `rule.returns(value)`
+-   `rule.resolves(value)`
+-   `rule.rejects(error)`
+-   `rule.throws(error)`
+-   `rule.calls(fn)` for fully custom logic (the `answer` config field is the equivalent at the double level)
+-   `rule.sequence(...)` for successive results without verbose call-index rules
 
 Example:
 
 ```ts
 const nextToken = testDouble<() => string>({
-    fallback: sequence('a', 'b', throws(new Error('done'))),
+    fallback: rule.sequence('a', 'b', rule.throws(new Error('done'))),
 });
 ```
 
@@ -194,11 +206,11 @@ users to switch to a second primary fluent API:
 ```ts
 const read = testDouble<(path: string) => Promise<string>>({
     rules: [
-        onCall(1, resolves('first')),
-        onCall(2, resolves('second')),
-        when('/missing', rejects(new Error('not found'))),
+        rule.onCall(1).resolves('first'),
+        rule.onCall(2).resolves('second'),
+        rule.when('/missing').rejects(new Error('not found')),
     ],
-    fallback: rejects(new Error('unexpected call')),
+    fallback: rule.rejects(new Error('unexpected call')),
 });
 ```
 
@@ -225,9 +237,9 @@ Type safety should be a primary design requirement.
 That means:
 
 -   `testDouble<Fn>()` should preserve the full function signature
--   `when()` should type-check argument tuples against `Fn`
--   `returns()` should type-check against the return type of `Fn`
--   `resolves()` and `rejects()` should work naturally for async function signatures
+-   `rule.when()` should type-check argument tuples against `Fn`
+-   `rule.returns()` should type-check against the return type of `Fn`
+-   `rule.resolves()` and `rule.rejects()` should work naturally for async function signatures
 -   recorded calls should preserve the argument tuple type
 -   the untyped default should be `unknown`, not `any`
 
@@ -237,7 +249,7 @@ The likely target shape is:
 type UserLoader = (id: string, includeDeleted?: boolean) => Promise<User>;
 
 const loadUser = testDouble<UserLoader>({
-    rules: [when('42', true, resolves(user))],
+    rules: [rule.when('42', true).resolves(user)],
 });
 ```
 
@@ -252,9 +264,9 @@ const writeLine = testDouble().returns(undefined);
 Typed signatures remain the preferred path when the function contract is part
 of what the test cares about.
 
-## `when()` Versus Matchers
+## `rule.when()` Versus Matchers
 
-`when()` is attractive if it stays concrete and typed.
+`rule.when()` is attractive if it stays concrete and typed.
 
 Recommended direction:
 
@@ -264,8 +276,8 @@ Recommended direction:
 
 That suggests:
 
--   exact `when("x", 1, returns("y"))`
--   perhaps later `when(match.string, match.number, returns("y"))`
+-   exact `rule.when("x", 1).returns("y")`
+-   perhaps later `rule.when(match.string, match.number).returns("y")`
 
 The first release concept should not depend on complex matcher machinery.
 
@@ -315,10 +327,10 @@ Recommended direction:
 -   primary abstraction: `testDouble()`
 -   primary API shape: config object plus rule composition
 -   strong direct introspection on each instance, such as `callCount`, `firstCall`, `lastCall`, and typed call/result records
--   advanced escape hatch: `answer(call)` or `calls(fn)`
--   common-case sugar: `returns`, `resolves`, `rejects`, `throws`, `sequence`
+-   advanced escape hatch: `answer(call)` config field or `rule.calls(fn)`
+-   common-case sugar: instance methods (`.returns`, `.resolves`, `.rejects`, `.throws`) on the simple path; `rule.returns`, `rule.resolves`, `rule.rejects`, `rule.throws`, `rule.sequence` for advanced rules
 -   advanced-path behavior still configured through `rules`, `fallback`, and
-    `answer` on the config object
+    `answer` on the config object, with rules built via the `rule.*` namespace
 -   no object-method replacement API in the first-party concept
 -   no module replacement API in the first-party concept
 
