@@ -70,7 +70,7 @@ the body. Outermost first:
 4.  **Debug recording** (when `--debug` / `--debug-test` /
     `{ debug: true }`). Begins capturing the timeline, handle
     events, module loads, heap baseline. See
-    [Runtime Behavior § Test Debug Mode](./runtime-behavior.md#test-debug-mode).
+    [Test Debug Mode](../authoring/debug-mode.md).
 5.  **Test body.** The actual code under test runs.
 
 Unwinding happens in reverse, innermost first:
@@ -193,7 +193,7 @@ dependency:
 -   **Outside retry** if it spans the entire test regardless of
     attempts (e.g. test-level setup/teardown — though Overkill
     currently rejects hooks; resources fill this role; see
-    [Runtimes And Fixtures](../authoring/runtimes-and-fixtures.md)).
+    [Higher Test Layers § Resource Factories](../authoring/higher-test-layers.md#1-resource-factories-as-the-main-higher-layer-primitive)).
 
 ## What This Doc Is Not
 

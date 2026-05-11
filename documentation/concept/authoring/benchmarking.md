@@ -359,7 +359,7 @@ The benchmark model described here adopts ideas such as:
 -   machine-readable benchmark results with machine metadata
 -   first-class external-process benchmarking
 
-The attribution-heavy source list belongs in [Credits](../research/credits.md). This document
+The attribution-heavy source list lives in [Research Landscape § Influences And Attribution](../research/research-landscape.md#influences-and-attribution). This document
 keeps only the product-level concepts that materially shape the benchmark
 family.
 

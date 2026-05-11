@@ -186,7 +186,7 @@ type RecordingRuntime = AppRuntime & {
 
 Tests assert on `recorded()` directly. Reporters can attach the recording to
 a failed test as a structured artifact. Replays use `snapshot`/`restore` to
-reproduce a runtime state. Test debug mode (see [Runtime Behavior § Test Debug Mode](../architecture/runtime-behavior.md#test-debug-mode)) aggregates `RecordedEvent` arrays into the
+reproduce a runtime state. Test debug mode (see [Test Debug Mode](./debug-mode.md)) aggregates `RecordedEvent` arrays into the
 per-test debug artifact so the same data is available for any test —
 not only failing ones — when the mode is on.
 
@@ -244,7 +244,7 @@ A microtest that constructs a narrow runtime object such as `{ clock, random }`
 literally cannot perform other effects through that object, because the
 language types do not let it.
 
-## Connection To [Assertions And Results](./assertions-and-results.md) And [Results, Not Exceptions](./results-not-exceptions.md)
+## Connection To [Assertions And Results](./assertions-and-results.md)
 
 A test that uses recording handles produces a structured effect log. The
 returned-value assertion model lets the test assert on that log directly:

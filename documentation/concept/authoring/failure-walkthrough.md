@@ -81,7 +81,7 @@ Canonical: [Assertions And Results](./assertions-and-results.md).
 `case.forall` returns the test body's terminal value (the
 property-test analogue of `case.assert.done()`). The engine reads
 the case's recorded log and constructs the `TestOutcome` (see
-[Results, Not Exceptions § The Protocol Shape](./results-not-exceptions.md#the-protocol-shape), also
+[Assertions And Results § The Protocol Shape](./assertions-and-results.md#the-protocol-shape), also
 [Types Index](../reference/types-index.md)):
 
 ```ts
@@ -106,7 +106,7 @@ The engine is at this point done with the test. Whatever happens
 next — verdict derivation, identity attachment, artifact paths,
 reporter dispatch — is orchestration.
 
-Canonical: [Results, Not Exceptions](./results-not-exceptions.md), [Assertions And Results](./assertions-and-results.md).
+Canonical: [Assertions And Results](./assertions-and-results.md), specifically [§ Protocol Layer](./assertions-and-results.md#protocol-layer-structured-outcomes).
 
 ## Stage 3 — Verdict Derivation
 
@@ -210,7 +210,7 @@ witness directly.
 
 If the user had explicitly enabled debug for this case — typically via
 `--debug-test <id>` or a narrowly filtered `--debug` run — a
-`TestDebugArtifact` (see [Runtime Behavior § Test Debug Mode](../architecture/runtime-behavior.md#test-debug-mode))
+`TestDebugArtifact` (see [Test Debug Mode](./debug-mode.md))
 would also exist at
 `.overkill/runs/<run-id>/debug/<case-id>.debug.json`, with the
 timeline showing `forall` iteration counts up to the failure. The
@@ -265,14 +265,14 @@ Canonical: [Failure Artifacts § Witnesses And Replay Artifacts](./failure-artif
 Reading the stages in sequence, the boundary contracts that have to
 hold for the path to work:
 
--   `FailedCheck` shape is the same in [Assertions And Results](./assertions-and-results.md),
-    [Results, Not Exceptions](./results-not-exceptions.md), and [Types Index](../reference/types-index.md)
+-   `FailedCheck` shape is the same in [Assertions And Results](./assertions-and-results.md)
+    and [Types Index](../reference/types-index.md)
 -   `TestOutcome` is the engine ADT (4 cases); the verdict is the
     derivation
 -   `CaseId` is the only key threading test → outcome → artifact →
     witness → run record → reporter
 -   `WitnessFile` schema is the source of truth for replay; the
-    glossary, novel-techniques, and reproducibility cross-link
+    glossary, ideas-and-future-directions, and reproducibility cross-link
 -   `--debug` adds a parallel artifact stream without altering any
     of the contracts above
 
@@ -286,8 +286,7 @@ visible first.
 This document is a reading aid; the canonical specs live in:
 
 -   [Assertions And Results](./assertions-and-results.md) — assertion API, `FailedCheck`,
-    diff shape, plan
--   [Results, Not Exceptions](./results-not-exceptions.md) — `TestOutcome` ADT
+    diff shape, plan, `TestOutcome` ADT
 -   [Glossary](../reference/glossary.md) — outcome / verdict layering
 -   [Artifact Identity](../architecture/artifact-identity.md) — identity types, path derivation
 -   [Failure Artifacts](./failure-artifacts.md) — witnesses, run-record artifact list

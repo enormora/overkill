@@ -179,7 +179,7 @@ Source: [Tests As Values](../authoring/tests-as-values.md).
 ## Test Outcome
 
 The engine-level outcome of a test run. The `TestOutcome` ADT (see
-[Results, Not Exceptions](../authoring/results-not-exceptions.md)) has four cases:
+[Assertions And Results § The Protocol Shape](../authoring/assertions-and-results.md#the-protocol-shape)) has four cases:
 
 -   `pass` — assertions held
 -   `fail` — assertions did not hold (specific failed checks reported)
@@ -190,7 +190,7 @@ The engine-level outcome of a test run. The `TestOutcome` ADT (see
 Each outcome has a payload: a list of failed checks for `fail`, a reason
 string for `skip`/`inconclusive`, etc.
 
-Source: [Results, Not Exceptions](../authoring/results-not-exceptions.md).
+Source: [Assertions And Results § Protocol Layer](../authoring/assertions-and-results.md#protocol-layer-structured-outcomes).
 
 ## Test Verdict
 
@@ -210,8 +210,8 @@ Verdicts are a presentation concept owned by orchestration and
 reporters, not by `@overkill/engine`. The engine returns outcomes;
 verdicts come from `(outcome, metadata, runner-error?)`.
 
-Source: [Results, Not Exceptions](../authoring/results-not-exceptions.md), [Failure Artifacts](../authoring/failure-artifacts.md),
-[Novel And Under-Used Testing Techniques](../research/novel-techniques.md).
+Source: [Assertions And Results § Protocol Layer](../authoring/assertions-and-results.md#protocol-layer-structured-outcomes), [Failure Artifacts](../authoring/failure-artifacts.md),
+[Ideas And Future Directions § Out-Of-Band Verdicts](../decisions/ideas-and-future-directions.md#out-of-band-verdicts).
 
 ## AssertionNode
 
@@ -221,7 +221,7 @@ return them through `assert.done()`. The engine consumes structured assertion
 results; ordinary users usually interact with injected `assert` / `require`
 instead of raw nodes.
 
-Source: [Assertions And Results](../authoring/assertions-and-results.md), [Results, Not Exceptions](../authoring/results-not-exceptions.md).
+Source: [Assertions And Results](../authoring/assertions-and-results.md).
 
 ## Plan
 
@@ -231,7 +231,7 @@ or fewer leaves is a `fail`. Plans are explicit test-local state, not hidden
 global counters, and they work with both builder-style assertions and the
 explicit throwing mode.
 
-Source: [Assertions And Results](../authoring/assertions-and-results.md), [Results, Not Exceptions](../authoring/results-not-exceptions.md).
+Source: [Assertions And Results](../authoring/assertions-and-results.md).
 
 ## Capability Handle
 
@@ -315,7 +315,7 @@ and deterministic-simulation tests. Loading the witness reproduces the
 failure without re-running shrinking. The canonical schema
 (`WitnessFile`) is defined in [Failure Artifacts § Witnesses And Replay Artifacts](../authoring/failure-artifacts.md#witnesses-and-replay-artifacts).
 
-Source: [Failure Artifacts](../authoring/failure-artifacts.md), [Novel And Under-Used Testing Techniques](../research/novel-techniques.md),
+Source: [Failure Artifacts](../authoring/failure-artifacts.md), [Ideas And Future Directions § Property-Based Testing](../decisions/ideas-and-future-directions.md#property-based-testing),
 [Deterministic Simulation Testing](../authoring/deterministic-simulation.md).
 
 ## Artifact Identity
@@ -389,7 +389,7 @@ Resolution rules:
     errors
 -   soft preferences are reconciled by deterministic priority order
 
-Source: [Runtimes And Fixtures](../authoring/runtimes-and-fixtures.md), [Package Architecture](../architecture/package-architecture.md).
+Source: [Higher Test Layers § Resource Factories](../authoring/higher-test-layers.md#1-resource-factories-as-the-main-higher-layer-primitive), [Package Architecture](../architecture/package-architecture.md).
 
 ## Run Result
 

@@ -177,7 +177,7 @@ type SourceLocation = {
 };
 ```
 
-Canonical: [Results, Not Exceptions](../authoring/results-not-exceptions.md) for `TestOutcome`,
+Canonical: [Assertions And Results § The Protocol Shape](../authoring/assertions-and-results.md#the-protocol-shape) for `TestOutcome`,
 [Assertions And Results](../authoring/assertions-and-results.md) for `FailedCheck`/`Diff`/`DiffOperation`/`Hunk`. The
 `TestVerdict` reporter category is derived from outcome + metadata; see
 [Glossary § Test Verdict](./glossary.md#test-verdict).
@@ -407,7 +407,7 @@ sample explicitly defines them.
 -   `arbitrary.user`, `arbitrary.bytes`, `gen.user` — placeholder generator
     references in property-test snippets
 -   `forall`, `relation`, `differential`, `hyperproperty`, `slo`, `fuzz`,
-    `baseline()` — proposed primitives in [Novel And Under-Used Testing Techniques](../research/novel-techniques.md); not part
+    `baseline()` — proposed primitives in [Ideas And Future Directions § Research-Stage Techniques](../decisions/ideas-and-future-directions.md#research-stage-techniques); not part
     of the settled concept
 -   `withRuntime`, `simulation(...)` — illustrative test helpers in
     [Deterministic Simulation Testing](../authoring/deterministic-simulation.md); signatures are not committed

@@ -126,10 +126,69 @@ The same boundary rule applies to other property-like primitives
 (`relation`, `differential`, `hyperproperty`) when they land: each
 counts as one boundary assertion regardless of internal iteration.
 
-## Connection To [Results, Not Exceptions](./results-not-exceptions.md)
+## Protocol Layer: Structured Outcomes
 
-The low-level protocol remains `AssertionNode`, but the primary authoring DX
-is the injected builder API:
+The user-facing API is the injected builder, but underneath that API
+Overkill speaks a result-oriented protocol. "Results, not exceptions" is
+the engine-side expression of
+[Principles § Data Over Side Effects](../decisions/principles.md#data-over-side-effects):
+outcomes flow as structured values between layers, even when the
+authoring style is the injected builder.
+
+### Why The Protocol Matters
+
+Mainstream JS runners treat assertion failure as the normal exception
+path. That has several costs:
+
+-   the success path still depends on exception-oriented machinery
+-   stack walking becomes part of ordinary failure rendering
+-   machine-readable integrations must reconstruct meaning from error
+    objects and strings
+-   "test failed" and "runner could not execute the test correctly" are
+    easy to muddle together
+
+Overkill's structured outcome model avoids that at the architectural
+level. Reporters, IDEs, MCP servers, and remote executors consume
+structured data instead of parsing prose.
+
+### The Protocol Shape
+
+The engine treats structured outcomes as canonical:
+
+```ts
+// engine-level outcome; reporter-facing verdicts (xfail, xpass,
+// crashed) are derived from outcome + metadata + runner-error state
+// — see Glossary § Test Outcome / Test Verdict.
+type TestOutcome = Pass | Fail | Skip | Inconclusive;
+
+type Pass = { kind: 'pass' };
+
+type Fail = {
+    kind: 'fail';
+    checks: ReadonlyArray<FailedCheck>;
+};
+
+type Skip = {
+    kind: 'skip';
+    reason: string;
+};
+
+type Inconclusive = {
+    kind: 'inconclusive';
+    reason: string;
+};
+```
+
+Low-level assertion constructors return `AssertionNode` values that can
+be combined into those outcomes. Builder-style tests record those nodes
+implicitly and finalize them through `assert.done()`. That gives Overkill
+one canonical internal representation even though the surface authoring
+styles differ.
+
+### Builder Mode And Throwing Mode
+
+Builder mode is the preferred surface because it solves practical
+TypeScript problems:
 
 ```ts
 test('user shape', (case) => {
@@ -139,22 +198,83 @@ test('user shape', (case) => {
 });
 ```
 
-Key distinction:
-
 -   `assert.*` records ordinary assertions
--   `require.*` records gating assertions and short-circuits on failure
+-   `require.*` records gating assertions and short-circuits on failure;
+    `require` exists because TypeScript narrowing matters in
+    straight-line tests
 
-`require` exists because TypeScript narrowing matters. A test framework that
-never allows gating assertions cannot support ergonomic narrowing in
-straight-line TypeScript tests.
+Builder mode does not invalidate the underlying result-oriented
+protocol — it is simply a friendlier way to produce it. `throwingTest`
+remains a supported alternate authoring style, but the engine
+normalizes its result into the same structured `TestOutcome` shape so
+reporters consume one failure model.
 
-The low-level `@overkill/assert` package can still expose:
+### Where Returned Values Still Matter Directly
+
+The low-level `@overkill/assert` package still exposes:
 
 -   `assertion.equal(...) -> AssertionNode`
 -   `assertion.all(...) -> AssertionNode`
 -   other low-level node constructors for advanced composition
 
-But that is not the primary end-user style.
+These remain useful in cases where explicit returned values are a strong
+fit:
+
+-   tests-as-values
+-   property-based or relational checks
+-   reusable low-level assertion combinators
+-   future experimental assertion DSLs
+
+```ts
+import { assertion } from '@overkill/assert';
+
+function validUser(user: User) {
+    return assertion.all([assertion.string(user.id), assertion.string(user.name), assertion.array(user.roles)]);
+}
+```
+
+This is not the default day-to-day style, but it is a valuable
+capability to preserve.
+
+### Error Separation
+
+The protocol model sharpens an important distinction:
+
+-   **assertion failure** — structured test outcome
+-   **runner error** — unexpected exception, rejection, crash, permission
+    denial, or runtime failure
+
+This separation is part of the core concept. Assertion failures should
+not need to travel through the same path as infrastructure errors. See
+[Failure Artifacts](./failure-artifacts.md) and
+[Runtime Behavior](../architecture/runtime-behavior.md).
+
+### Engine Flexibility
+
+The narrow `@overkill/engine` stays flexible enough to support:
+
+-   builder/context authoring
+-   explicit throwing mode
+-   value-oriented suite trees and test nodes
+-   future packages that need compositional result values
+
+That is why the engine continues to speak structured outcomes natively,
+even though the default human-facing authoring experience is no longer
+pure returned-value assertions.
+
+### Influences
+
+-   `elm-test` — expectations as values
+-   ZIO Test — assertions as values
+-   ScalaCheck — properties as values
+-   Rust — coexistence of alternate test-result styles
+
+Sources:
+
+-   [elm-test — `Expect`](https://package.elm-lang.org/packages/elm-explorations/test/latest/Expect)
+-   [ZIO Test — Why ZIO Test](https://zio.dev/reference/test/why-zio-test/)
+-   [ScalaCheck — Properties](https://scalacheck.org/documentation.html)
+-   [Rust by Example — Unit testing with `Result`](https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html)
 
 ## `assert` Versus `require`
 
@@ -310,7 +430,7 @@ The architecture should preserve room for future exploration of:
     per-test effect bus rather than returned (more amenable to highly-async
     test bodies)
 -   richer relational checks: `relation()` for metamorphic testing (see
-    [Novel And Under-Used Testing Techniques](../research/novel-techniques.md))
+    [Ideas And Future Directions § Metamorphic Testing](../decisions/ideas-and-future-directions.md#metamorphic-testing))
 -   semantic baseline comparisons via subtype-specific adapters (see
     [Baselines And Snapshots](./baselines-and-snapshots.md))
 

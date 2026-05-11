@@ -181,6 +181,35 @@ That should cover:
 -   external processes
 -   PTYs and CLI harnesses
 
+`@overkill/resources` should therefore be understood as a resource and
+context composition layer, not merely a fixture helper for
+`@overkill/test`. It should be able to model:
+
+-   ordinary test context
+-   shared or isolated resources
+-   per-run, per-file, per-suite, or per-case lifecycle scopes
+-   runtime matrices
+-   execution requirements that affect scheduling or isolation
+
+Why this over hooks. Hooks tend to hide ordering assumptions, local
+mutable state, fixture lifetime, and cleanup responsibility. Runtime
+composition is clearer when setup is attached to an explicit runtime
+factory or wrapper rather than ambient lifecycle callbacks. The
+important pattern is not "before/after hooks". It is: create a runtime,
+yield a typed handle, let the runtime own teardown and optional
+post-test validation.
+
+Execution requirements. Runtimes should be able to contribute execution
+requirements without owning the final scheduling decision. Examples:
+
+-   a runtime may require exclusive access to a shared resource
+-   a benchmark runtime may request single-worker execution
+-   a browser runtime may request process or worker isolation
+-   a local integration runtime may allow shared setup across many cases
+
+Those requirements flow into orchestration, where they are resolved
+together with the needs of the test family and runner profile.
+
 ### 2. Scenario Support At The Resource Layer
 
 The deterministic-server pattern is too useful to leave implicit.

@@ -114,7 +114,7 @@ Where: removed from [Fast Feedback Loops](../architecture/fast-feedback-loops.md
 caching without Vite); [Metadata And Selection § Local Iteration Workflow](../architecture/metadata-and-selection.md#local-iteration-workflow) notes the path-level scope.
 
 Alternative: path-level change detection. True TIA is tracked as open
-research in [Novel And Under-Used Testing Techniques](../research/novel-techniques.md).
+research in [Ideas And Future Directions § Test Impact Analysis](./ideas-and-future-directions.md#test-impact-analysis-tia).
 
 ### No custom strip / V8 cache layer by default
 
@@ -293,8 +293,9 @@ configuration-driven hook system.
 Why: stable package contracts are enough; a plugin runtime adds
 indirection without unique reach.
 
-Where: [Extensions And Plugins § Plugin Philosophy](../architecture/extensions-and-plugins.md#plugin-philosophy),
-[Bundles And Distribution](../architecture/bundles-and-distribution.md).
+Where: [Package Architecture § Extension Surfaces](../architecture/package-architecture.md#extension-surfaces),
+[Configuration § Configuration Versus Plugins](../architecture/configuration.md#configuration-versus-plugins),
+[Package Architecture § Bundles](../architecture/package-architecture.md#bundles).
 
 Alternative: stable APIs in `@overkill/engine`, orchestration-level
 composition in `@overkill/run`, and config-driven attachment for
@@ -361,12 +362,13 @@ materially (e.g. native in-source-test stripping in a runtime), or
 Overkill's scope shifts to own a transform pipeline.
 
 Where: [Tests As Values § Recommendation](../authoring/tests-as-values.md#recommendation),
-[Novel And Under-Used Testing Techniques](../research/novel-techniques.md) Recommended Path note.
+[Ideas And Future Directions § Recommended Path](./ideas-and-future-directions.md#recommended-path) note.
 
 ## What This Doc Is Not
 
 This file does not list every feature deferred to a later release. It
 lists _decided-against_ directions — both settled rejections and the
 deferred-with-research entries above. For deferred-but-likely items see
-[Ideas And Future Directions](./ideas-and-future-directions.md); for open research items see
-[Novel And Under-Used Testing Techniques](../research/novel-techniques.md).
+[Ideas And Future Directions § Future Directions With Known Shape](./ideas-and-future-directions.md#future-directions-with-known-shape);
+for open research items see
+[Ideas And Future Directions § Research-Stage Techniques](./ideas-and-future-directions.md#research-stage-techniques).

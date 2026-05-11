@@ -304,7 +304,7 @@ mechanism instead.
 -   [Fast Feedback Loops](../architecture/fast-feedback-loops.md) — fast microtest feedback loops are the
     motivation for the strict profile
 -   [Tests As Values](./tests-as-values.md) — microtests as data; macros instead of hooks
--   [Results, Not Exceptions](./results-not-exceptions.md) — returned outcomes mean less stack-walk
+-   [Assertions And Results § Protocol Layer](./assertions-and-results.md#protocol-layer-structured-outcomes) — returned outcomes mean less stack-walk
     overhead in the success path
 -   [Glossary](../reference/glossary.md) — canonical definitions of capability profile, runner
     profile, microtest

@@ -272,7 +272,7 @@ own module and lazy-importing on demand from the runner. Tests-as-values
 makes the simulation transparent because the test definitions are pure data
 that doesn't need the implementation modules to exist.
 
-## Connection To [Results, Not Exceptions](./results-not-exceptions.md)
+## Connection To [Assertions And Results § Protocol Layer](./assertions-and-results.md#protocol-layer-structured-outcomes)
 
 Tests-as-values composes with the returned-value outcome model: a test is a
 value with a `run` function returning a `TestOutcome` value. Both ends of
@@ -372,7 +372,7 @@ Because the test definitions are values, an external tool can:
 -   diff two runs by comparing tree shapes
 
 This makes Overkill's machine-readable surface (named in
-[Extensions And Plugins](../architecture/extensions-and-plugins.md) and [Package Architecture](../architecture/package-architecture.md)) genuinely
+[Package Architecture § Extension Surfaces](../architecture/package-architecture.md#extension-surfaces)) genuinely
 free, rather than a reporter-output parser kludge.
 
 ## Influences

@@ -233,6 +233,52 @@ This is especially important for:
 -   reproducibility
 -   config-driven extensions such as reporters or baseline adapters
 
+### Extension Surfaces
+
+The most important extension types Overkill should support are:
+
+-   reporters
+-   baseline adapters
+-   serializer adapters
+-   custom assertions
+-   resource and runtime factories
+-   benchmark metric collectors
+-   benchmark policy adapters
+-   orchestration helpers
+-   future browser and workflow integrations
+
+Extensions should compose through stable contracts, not through private
+runner patch points. That means:
+
+-   reporters consume structured events or finished results
+-   resource packages contribute explicit runtime or execution constraints
+-   baselines contribute identity, collection, comparison, and update
+    semantics
+-   benchmark packages contribute workloads, measurements, and policies
+
+Overkill does not need a giant global plugin container to be extensible.
+Stable package-level APIs, stable contracts in `@overkill/engine`, and
+orchestration-level composition in `@overkill/run` are enough for many
+extension stories without inventing a heavy plugin runtime. See
+[Configuration § Configuration Versus Plugins](./configuration.md#configuration-versus-plugins)
+for how config-driven attachment composes with direct programmatic
+registration.
+
+### Third-Party Ecosystem
+
+The same openness should make it straightforward for third parties to
+build:
+
+-   IDE integrations
+-   MCP servers
+-   remote execution coordinators
+-   type-test adapters
+-   mutation-testing adapters
+-   browser-runtime adapters
+-   accessibility or compliance fixtures
+-   interaction-transcript collectors for transports such as HTTP or
+    browser requests
+
 ## Configuration
 
 Configuration belongs above the engine.
@@ -303,11 +349,48 @@ parties can do that if they want to.
 
 ## Bundles
 
+Some projects will want several Overkill features together and should not
+have to manually assemble every package before getting productive. Bundles
+are the answer to that convenience need.
+
+### Rule
+
+Bundles are a distribution convenience. Fine-grained packages remain the
+architectural truth. That means:
+
+-   docs describe packages first
+-   bundles are documented as curated entrypoints
+-   a user can always drop down to explicit composition
+
+### Candidate Bundle Shapes
+
 Bundle examples that conceptually make sense:
 
--   `@overkill/micro`: engine + test + assert + selected reporters + microtest profile helpers
--   `@overkill/default`: engine + test + assert + resources + selected reporters + run + baselines
--   `@overkill/integration`: default bundle plus integration-oriented baseline and process features
--   `@overkill/all`: convenience meta-package for adoption or evaluation
+-   `@overkill/micro`: engine + test + assert + selected reporters +
+    microtest profile helpers. For projects that mainly want pure,
+    capability-restricted microtests.
+-   `@overkill/default`: engine + test + assert + resources + selected
+    reporters + run + baselines. For teams that want one standard Overkill
+    setup.
+-   `@overkill/integration`: default bundle plus integration-oriented
+    baseline and process features. For broader system and workflow
+    testing.
+-   `@overkill/all`: convenience meta-package for adoption or evaluation.
+
+### Risks
+
+Bundles must not:
+
+-   hide the real package boundaries
+-   force every user into an all-in-one framework mentality
+-   become the only documented experience
+-   make versioning strategy impossible to reason about
+
+### Concept Direction
+
+The docs should preserve both:
+
+-   expert-friendly explicit composition
+-   team-friendly curated bundles
 
 Bundles should never be the only documented entrypoint.

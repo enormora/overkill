@@ -96,6 +96,38 @@ export default defineConfig({
 
 This should be a thin typed wrapper, not a mandatory DSL.
 
+## Configuration Layering
+
+Project policy should come from config files, not from overlapping config
+channels.
+
+Canonical shape:
+
+-   one root `overkill.config.ts` defines project policy
+-   in a monorepo, package-level config files may extend that root policy
+    where the workspace concept genuinely needs per-package differences
+-   built-in defaults fill gaps, but there is no second user-level config
+    layer and no parallel environment-variable config surface
+
+The only configuration-oriented CLI flag should be `--config <path>` to pick
+the config file location explicitly when discovery is not enough.
+
+Important distinction:
+
+-   config files define project policy
+-   ordinary CLI selection and run-intent flags such as `--file`, `--name`,
+    `--id`, `--seed`, or `--shard` are still valid because they are not a
+    second configuration channel; they are one run request against that
+    policy
+
+Config files are TS modules exporting a default config value. The runner
+imports them via the same loader pipeline as test files (Node type
+stripping). No JSON or YAML schema; types over schema.
+
+Where package-level config exists, it should extend the root config through
+typed composition rather than by inventing unrelated ad-hoc precedence
+rules.
+
 ## Relationship To Packages
 
 Configuration belongs above the engine.

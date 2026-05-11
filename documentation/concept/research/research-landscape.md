@@ -159,7 +159,7 @@ suffix. The chosen direction is:
 
 That keeps the richer result protocol without making soft or non-fail-fast
 behavior the invisible default. See [Assertions And Results](../authoring/assertions-and-results.md) and
-[Results, Not Exceptions](../authoring/results-not-exceptions.md).
+[Assertions And Results § Protocol Layer](../authoring/assertions-and-results.md#protocol-layer-structured-outcomes).
 
 #### Annotations And Verdict Modifiers
 
@@ -244,7 +244,7 @@ For Overkill: package families like `@overkill/transport`, `@overkill/event-stre
 
 `buster-eventedlogger` modeled the entire test run as an event stream: `test:start`, `assertion:pass`, `test:complete`, `suite:complete`, `run:complete`. A reporter was a subscriber. A network reporter was just a subscriber that pushed events over Bayeux (HTTP long-poll, websockets where available). Local and remote reporters shared zero code. This is exactly the pattern that landed in Playwright reporters ten years later.
 
-For Overkill: an evented reporter pipeline with a pluggable transport (in-process, IPC, WebSocket) means the same reporter works locally and against a remote runner. See [Package Architecture](../architecture/package-architecture.md) and [Extensions And Plugins](../architecture/extensions-and-plugins.md).
+For Overkill: an evented reporter pipeline with a pluggable transport (in-process, IPC, WebSocket) means the same reporter works locally and against a remote runner. See [Package Architecture](../architecture/package-architecture.md) and [Package Architecture § Extension Surfaces](../architecture/package-architecture.md#extension-surfaces).
 
 #### Configuration That Anticipated Playwright Projects
 
@@ -754,3 +754,72 @@ The main conclusions for Overkill are:
 -   keep room for tests-as-values, property DSLs, model/state-machine DSLs,
     and documentation/example test DSLs
 -   explore future DSLs and package families without forcing them into the first default runner
+
+## Influences And Attribution
+
+The lessons-and-costs sections above organise prior art by what each system
+teaches. This section flips the view: it records the specific ideas Overkill
+borrows or adapts, so the intellectual lineage is visible without rereading
+the whole document.
+
+The purpose is intellectual honesty and future traceability, not branding.
+When a concept is clearly inspired by prior art, the documentation should
+say so.
+
+### Testing And DSL Design
+
+-   **AVA** — macros as a serious reuse model rather than a novelty;
+    assertion-count discipline and failure on zero assertions as a quality
+    signal.
+-   **Swift Testing** — the explicit split between ordinary assertions and
+    gating checks inspired Overkill's `assert` / `require` distinction.
+-   **Haskell `tasty`** — tests as explicit values and unified trees consumed
+    by one runner.
+-   **RackUnit / Racket** — tests as suites-as-values and the broader idea
+    that authoring does not need to begin from side-effectful registration.
+-   **Rust** — structured test outcomes and the idea that throwing/panic-style
+    tests can coexist with richer result models.
+
+### Doubles And Interaction Testing
+
+-   **Sinon** — strong direct introspection on doubles (`callCount`,
+    `firstCall`, ordering); small behavior helpers such as `returns`,
+    `resolves`, `rejects`, `throws`. Overkill intentionally borrows these
+    strengths while rejecting the larger surface and patching culture.
+-   **testdouble.js** — useful precedent for argument-based behavior
+    definitions such as `when(...)`.
+
+### Property, Model, And Advanced Testing
+
+-   **QuickCheck and related property-testing work** — the importance of
+    generators, shrinking, and properties as a distinct testing family.
+-   **Model-based and metamorphic testing literature** — the idea that
+    relation-based checks matter more than surface-level DSL style in
+    advanced testing.
+
+### Browser, Runtime, And Platform Philosophy
+
+-   **Platform-first web framework work** — the broader philosophy of
+    building on platform primitives rather than replacing them with
+    framework-local concepts.
+-   **Node.js and Web Platform APIs** — direct use of platform capabilities
+    such as `AbortSignal`, diagnostics channels, `perf_hooks`, and typed
+    runtime contexts.
+
+### Benchmarking
+
+-   **JMH** — warmup / measurement separation and execution policy as part of
+    the benchmark definition; forks, measurement iterations, and harness
+    discipline against misleading numbers.
+-   **Criterion.rs** — grouped benchmarks, parameterized benchmark identities,
+    and richer measurement vocabulary; throughput annotations and custom
+    measurement backends.
+-   **BenchmarkDotNet** — benchmark jobs / execution profiles and
+    diagnoser-style metric collection; multiple run strategies such as
+    `Throughput` and `ColdStart`.
+-   **pytest-benchmark** — compare mode, pedantic/manual control mode, and
+    benchmark-result JSON with machine metadata.
+-   **hyperfine** — external-process benchmarking as a primary workflow.
+-   **Real-world benchmark suites** — practical evidence that projects need
+    workload files, checked-in thresholds, PTY-aware CLI benchmarks, and
+    richer metrics than runtime alone.

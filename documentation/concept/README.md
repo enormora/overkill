@@ -40,8 +40,8 @@ For a first read, follow this path:
     package families, ownership boundaries, builder layer
 7.  [Microtests And Capabilities](./authoring/microtests-and-capabilities.md) —
     the capability-restricted default
-8.  [Results, Not Exceptions](./authoring/results-not-exceptions.md) —
-    protocol-layer rationale behind the assertion model
+8.  [Assertions And Results](./authoring/assertions-and-results.md) —
+    the assertion model and the structured-outcome protocol underneath
 9.  [Tests As Values](./authoring/tests-as-values.md) — first-class
     value-oriented authoring mode with direct-file execution
 10. [Test Ergonomics](./authoring/test-ergonomics.md) — the small set of
@@ -83,8 +83,6 @@ How the system is shaped.
 -   [Coverage](./architecture/coverage.md)
 -   [Artifact Identity](./architecture/artifact-identity.md)
 -   [Reproducibility](./architecture/reproducibility.md)
--   [Bundles And Distribution](./architecture/bundles-and-distribution.md)
--   [Extensions And Plugins](./architecture/extensions-and-plugins.md)
 
 ## Authoring
 
@@ -94,15 +92,14 @@ How tests are written and what each test kind needs.
 -   [Tests As Values](./authoring/tests-as-values.md)
 -   [Microtests And Capabilities](./authoring/microtests-and-capabilities.md)
 -   [Assertions And Results](./authoring/assertions-and-results.md)
--   [Results, Not Exceptions](./authoring/results-not-exceptions.md)
 -   [Capability Handles](./authoring/capability-handles.md)
 -   [Doubles](./authoring/doubles.md)
 -   [Test Ergonomics](./authoring/test-ergonomics.md)
 -   [Higher Test Layers](./authoring/higher-test-layers.md)
--   [Runtimes And Fixtures](./authoring/runtimes-and-fixtures.md)
 -   [Failure Artifacts](./authoring/failure-artifacts.md)
 -   [Failure Walkthrough](./authoring/failure-walkthrough.md) — reading aid
     threading a property-test failure end-to-end
+-   [Test Debug Mode](./authoring/debug-mode.md)
 -   [Baselines And Snapshots](./authoring/baselines-and-snapshots.md)
 -   [Benchmarking](./authoring/benchmarking.md)
 -   [Deterministic Simulation](./authoring/deterministic-simulation.md)
@@ -121,8 +118,6 @@ Comparisons, audits, and research-flavored surveys.
 
 -   [Research Landscape](./research/research-landscape.md)
 -   [Candidate Libraries](./research/candidate-libraries.md)
--   [Novel Techniques](./research/novel-techniques.md)
--   [Credits](./research/credits.md)
 
 ## Meta
 
