@@ -138,6 +138,11 @@ Artifacts produced during a run live in a per-run directory by default:
 .overkill/runs/<run-id>/artifacts/<case-id-derived-path>
 ```
 
+The `.overkill` prefix is the runtime-state directory and is configurable via
+`runtimeStateDir` in `overkill.config.ts` (default `.overkill`). Every path shown
+in this section is rooted at that directory. See
+[Configuration § Scope Of Configuration](../architecture/configuration.md#scope-of-configuration).
+
 Artifacts that survive runs (baselines, witnesses) live in their own
 directories:
 

@@ -53,6 +53,7 @@ Configuration should mainly cover orchestration and package wiring:
 -   type-test integration
 -   browser or benchmark package wiring
 -   extension registration
+-   runtime-state directory (`runtimeStateDir`, default `.overkill`) — root for run records, witnesses, fuzzing/property corpus, debug-mode artifacts, and other runtime-owned outputs
 
 Configuration should avoid becoming the place where test logic lives.
 
