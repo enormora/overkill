@@ -255,6 +255,18 @@ The important typing rule is:
 -   `parameters` is not part of the ordinary top-level case API for
     non-parameterized tests
 
+Nested suites are intentionally allowed. They are useful for:
+
+-   grouping related behaviors under one named subtree
+-   importing reusable suite fragments
+-   macro-generated law/contract bundles
+-   preserving a meaningful result tree for reporters and selection
+
+But they should stay a **structural** tool, not a lifecycle/setup tool.
+Overkill's answer to shared setup is still resources, macros, and explicit
+composition rather than ever-deeper nested suite trees pretending to be
+fixture scopes.
+
 ## Relationship To Other DSLs
 
 Other DSLs may still be built on top of the same engine and tree model.
