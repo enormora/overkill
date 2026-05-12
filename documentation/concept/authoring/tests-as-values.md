@@ -49,8 +49,11 @@ export const spec = suite('users', [
         return case.assert.done();
     }),
 
-    table('round-trip', cases, ({ input, expected }, case) => {
-        case.assert.equal(parse(serialize(input)), expected);
+    table('round-trip', cases, (case) => {
+        case.assert.equal(
+            parse(serialize(case.parameters.input)),
+            case.parameters.expected,
+        );
         return case.assert.done();
     }),
 ]);
@@ -216,6 +219,10 @@ type TestCase = {
     readonly run: (ctx: TestContext) => Promise<TestOutcome> | TestOutcome;
 };
 
+type ParameterizedTestContext<TParameters> = TestContext & {
+    readonly parameters: TParameters;
+};
+
 type Suite = {
     readonly kind: 'suite';
     readonly name: string;
@@ -228,7 +235,10 @@ type Table = {
     readonly name: string;
     readonly metadata: Metadata;
     readonly cases: ReadonlyArray<TableCase>;
-    readonly run: (case_: TableCase, ctx: TestContext) => Promise<TestOutcome> | TestOutcome;
+    readonly run: (
+        case_: TableCase,
+        ctx: ParameterizedTestContext<TableCase>,
+    ) => Promise<TestOutcome> | TestOutcome;
 };
 ```
 
@@ -236,6 +246,14 @@ type Table = {
 [Metadata And Selection](../architecture/metadata-and-selection.md) and [Microtests And Capabilities](./microtests-and-capabilities.md). The runner
 walks the tree, applies filters by metadata, expands tables into individual
 cases, and produces an execution plan.
+
+The important typing rule is:
+
+-   plain tests receive `TestContext`
+-   parameterized/generated cases receive a refined context with
+    `case.parameters`
+-   `parameters` is not part of the ordinary top-level case API for
+    non-parameterized tests
 
 ## Relationship To Other DSLs
 

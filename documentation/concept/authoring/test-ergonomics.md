@@ -209,9 +209,16 @@ const schemaValidationCases = defineGeneratedCases([
     wrongType('age', 'number'),
 ]);
 
-const schemaContract = generatedCaseMacro('schema contract', schemaValidationCases, (schemaCase, schema, case) => {
-    return schemaCase.run(schema, case);
-});
+const schemaContract = generatedCaseMacro(
+    'schema contract',
+    schemaValidationCases,
+    (case) => {
+        return case.parameters.schemaValidationCase.run(
+            case.parameters.schema,
+            case,
+        );
+    },
+);
 
 export default suite('schemas', [
     schemaContract('user schema', userSchema),
@@ -231,6 +238,13 @@ That means the first-party concept should support both:
 
 This should still be a macro-oriented model, not a competing
 parameterization philosophy.
+
+The callback model should stay consistent with table cases:
+
+-   ordinary tests use one `case` parameter
+-   generated/parameterized cases also use one `case` parameter
+-   generated input is carried under `case.parameters`, not flattened into
+    the top-level case namespace
 
 ### Stack Traces Matter
 
