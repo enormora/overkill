@@ -68,6 +68,25 @@ const result = await run(plan);
 That's it. No registry, no hidden cross-file module-load side effects, no
 order dependence on when `test()` happens to be called.
 
+An important consequence of this model is that `test(...)`, `table(...)`,
+and `suite(...)` are ordinary value constructors. A node may be created
+first and attached later:
+
+```ts
+const sharedRoundTrip = test('round-trip', (case) => {
+    case.assert.equal(parse(serialize(user)), user);
+    return case.assert.done();
+});
+
+export const spec = suite('users', [
+    sharedRoundTrip,
+]);
+```
+
+That temporary detachment is a feature, not a misuse. The semantic boundary
+is **reachability from the exported root**: only nodes reachable from `spec`
+participate in planning and execution.
+
 The preferred DX is that direct execution does not require a mandatory
 self-run call in every test file. A user should be able to run:
 
@@ -96,6 +115,38 @@ imports of pure data.
 IDE plugins, MCP servers, mutation testers, coverage UIs all consume a
 `TestNode` value. There is no parsing of `describe` source, no AST walk, no
 re-running with a `--list` flag that re-imports everything.
+
+### Temporary detached nodes are valid composition
+
+Because tests are plain values, helper modules may expose more nodes than one
+consumer uses:
+
+```ts
+// helpers/user-cases.ts
+export const userCases = {
+    roundTrip: test('round-trip', roundTripBody),
+    parseError: test('parse error', parseErrorBody),
+};
+
+// users.test.ts
+import { userCases } from './helpers/user-cases.ts';
+
+export const spec = suite('users', [
+    userCases.roundTrip,
+]);
+```
+
+This is valid and intentional. The runner should not treat every constructed
+node as an obligation to appear in every final suite tree. What matters is:
+
+-   nodes are plain values that may be named, stored, exported, and reused
+-   only nodes reachable from the exported root are part of the run
+-   unreachable nodes may be a mistake, but they may also be a legitimate
+    unused subset of a reusable catalog
+
+That is why the value-oriented model is preferred over a more restrictive
+builder API that tries to make every detached node impossible. The stricter
+API would remove a real composition benefit of tests-as-values.
 
 ### Conditional registration is visible
 
