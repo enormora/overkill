@@ -148,9 +148,10 @@ code should not need Overkill dependencies.
 -   filtering
 -   seed handling
 -   runner profiles
--   baseline write verbs (`update`, `apply`, `bootstrap`, `clean`)
+-   baseline write verbs (`update`, `apply`, `bootstrap`, `diff`)
 -   process-level orchestration
 -   worker-pool management
+-   remote work-unit planning and coordinator-side execution placement
 -   resolution of execution strategy from package-provided constraints
 -   supervision policies for isolated workers or subprocesses
 -   selection and metadata-aware run planning
@@ -173,6 +174,11 @@ Execution strategy should be modeled as resolved planning, not a fixed trait of 
 -   file-level or case-level isolation
 -   runtime sharing boundaries
 -   serialization requirements for measurement reliability
+
+In all of these modes, discovery stays centralized. The orchestrator
+collects tests once, freezes a `RunPlan`, and then assigns already-known
+plan items to local workers, subprocesses, or future remote executors.
+Execution boundaries may change; discovery authority does not.
 
 Supervision and termination policy should also be execution-strategy-dependent:
 
@@ -353,6 +359,8 @@ What this means conceptually:
 -   the architecture should allow external type-checking engines to participate in selection and reporting
 -   Node's built-in watch behavior should be reused instead of reinvented by default
 -   machine-consumable APIs should be stable enough for editors, MCP servers, and remote workers
+-   remote workers should consume frozen work units rather than recollecting
+    tests independently
 -   the integration should live above the engine rather than turning mutation testing into a core runner concern
 
 ## Benchmarking

@@ -337,6 +337,90 @@ CI integration: GitHub Actions, GitLab, and CircleCI matrices map directly
 to `--shard`. Reporters can merge per-shard JSON outputs into a single
 final report.
 
+## Multi-Process Execution
+
+Multi-process execution does **not** change how tests are discovered.
+Collection still happens once in the orchestrator:
+
+-   test files are imported in the planning process
+-   the full `TestNode` tree is collected
+-   metadata resolution, filtering, sharding, and ordering happen there
+-   the resulting `RunPlan` is frozen before any worker executes a test
+
+Only after that does the runner hand work to workers or subprocesses.
+
+This has two important consequences:
+
+-   workers never "register more tests later"
+-   sharding is over the collected logical case set, not over whatever a
+    worker happens to discover locally
+
+Assignment depends on execution strategy:
+
+-   `concurrent-in-process`
+    -   one process owns the whole frozen plan
+    -   cases launch inside that process subject to resource constraints
+-   `worker-pool`
+    -   the orchestrator assigns plan items to N workers
+    -   assignment may still group by file when that keeps imports cheaper or
+        respects runtime-sharing boundaries
+-   `process-per-file`
+    -   the orchestrator groups the frozen case set by source file
+    -   each subprocess imports exactly the file(s) it was assigned and
+        executes only the planned subset from that file
+-   `single-worker-serial`
+    -   one dedicated worker/process executes the whole frozen plan in order
+
+The worker input is therefore not "go discover tests." It is:
+
+-   the frozen run identity (`runId`, seed, selected shard, ordering)
+-   assigned case identities
+-   runtime / capability / timeout requirements
+-   reporter and artifact routing metadata
+
+Workers re-import code to obtain executable test-body references, but that
+re-import is execution-time plumbing, not a second discovery authority.
+
+## Remote Execution
+
+Remote execution is not a default mode, but the concept should still define
+its shape.
+
+The core rule is the same as for local multi-process runs:
+
+-   collection happens once in the coordinator
+-   the coordinator freezes a `RunPlan`
+-   remote workers execute assigned plan items; they do not recollect or
+    mutate the plan
+
+Minimal remote-execution sketch:
+
+1.  The coordinator resolves the full plan locally.
+2.  The plan is partitioned into remote work units.
+3.  Each work unit contains:
+    -   case identities
+    -   ordering / seed data
+    -   required runtime adapters and capability envelope
+    -   artifact upload policy
+4.  A remote worker checks that it can satisfy the requested environment.
+5.  The worker imports the assigned test code, executes only the assigned
+    plan items, and streams structured events/results back.
+6.  The coordinator merges remote results into the same final `RunRecord`
+    shape used for local runs.
+
+The important architectural consequences are:
+
+-   remote execution belongs above `@overkill/engine`, in orchestration /
+    coordinator packages
+-   stable `CaseId`, serializable `RunPlan`, and structured events are what
+    make remote work possible; terminal output alone is not enough
+-   artifact identity cannot depend on which machine executed the case
+-   capability and runtime requirements must be declarative enough for a
+    coordinator to decide placement before execution starts
+
+Remote execution should therefore be thought of as "another executor behind
+the same frozen-plan protocol," not as a separate discovery model.
+
 ## Terminal Capability Detection
 
 Moved to [CLI Reference § Terminal Capability Detection](../reference/cli.md#terminal-capability-detection) — those rules
