@@ -269,8 +269,9 @@ The concept currently assumes:
 -   modern Node, with Node 26 as the preferred baseline
 -   ESM-first package shape
 -   TypeScript focus rather than general JavaScript coverage
--   single-process deterministic execution by default
--   randomization as explicit opt-in with reproducible seeds
+-   single-process concurrent execution by default for ordinary microtests
+-   seeded randomized order by default, with lexical order as an explicit
+    opt-out
 -   stable identity and selection metadata as first-class concepts
 -   coverage is off by default, but should be easy to enable through explicit tooling
 -   watch mode should lean on Node's built-in `--watch` behavior by default

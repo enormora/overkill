@@ -83,9 +83,9 @@ That implies:
 -   stable test identities ([Artifact Identity](./artifact-identity.md))
 -   deterministic expansion of parameterized and runtime-driven cases
 
-The default ordering is alphabetic by `CaseId` for stability. Randomized
-ordering is opt-in (`--shuffle`) and reports the seed prominently in the
-run summary.
+The default ordering is a seeded shuffle recorded in the run plan and
+reported in the run summary. Lexical ordering is an explicit opt-out for
+debugging or policy-driven runs that prefer source-stable order.
 
 ## Per-Test Seeds
 

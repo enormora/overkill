@@ -254,6 +254,12 @@ Parallelism happens at multiple grains. The default for `@overkill/test`
 is **concurrent-in-process with seeded randomized scheduling**. Other
 modes remain available when the suite or resource model calls for them:
 
+In the unconstrained microtest path, this is conceptually a
+`Promise.all(...)`-style launch of the selected cases inside one process
+after the seeded plan order has been fixed. The ordering still matters for
+plan identity, derived seeds, and any scheduler decisions that must stage
+work before resource constraints narrow the runnable set.
+
 | Mode                    | Description                                           | When useful                                         |
 | ----------------------- | ----------------------------------------------------- | --------------------------------------------------- |
 | `serial`                | One test at a time, single process                    | deterministic simulation, debugger-focused runs     |
