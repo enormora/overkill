@@ -15,19 +15,21 @@ This document is intentionally broader than the current codebase. It looks in al
 -   assertions
 -   deep comparison and diffs
 -   doubles and spying
+-   property-based testing
 -   coverage
 -   worker pools and scheduling
 -   subprocess and PTY execution
 -   snapshots and baseline infrastructure
 -   reporters and report artifact formats
 -   terminal rendering
+-   ESLint rule-test adapters and plugin utilities
 -   stack traces and source maps
 
 Node built-ins should be preferred wherever they are good enough. Third-party packages should only win when they provide a clear capability gap.
 
 ## Audit Scope
 
-This document was re-audited on 2026-05-05.
+This document was re-audited on 2026-05-13.
 
 The audit used current npm metadata where available, especially:
 
@@ -133,7 +135,8 @@ Freshness note:
 Assessment:
 
 -   idea donor and secondary candidate
--   worth studying closely, but probably not the direct foundation for `@overkill/assert`
+-   worth studying closely, but probably not the direct foundation for the
+    built-in assertion surface in `@overkill/test`
 
 Source:
 
@@ -194,7 +197,8 @@ Source:
 
 Recommended direction:
 
--   build `@overkill/assert`
+-   keep the public assertion surface in `@overkill/test`
+-   treat low-level normalization and diff protocol as internal
 -   borrow ideas from `tcompare`, `earljs`, `chai`, and `unexpected`
 -   do not adopt a whole third-party assertion framework as the foundation
 
@@ -225,37 +229,6 @@ Assessment:
 Source:
 
 -   <https://nodejs.org/api/test.html>
-
-### `sinon`
-
-What it is:
-
--   the long-running JavaScript test doubles library
-
-Pros:
-
--   mature
--   broad behavior surface
--   excellent prior art for call inspection, sequential behavior, and promise helpers
-
-Cons:
-
--   JavaScript-first
--   heavy conceptual surface
--   built around overlapping categories and patch/restore workflows that Overkill does not want to normalize
-
-Freshness note:
-
--   `21.1.2`, last modified 2026-04-11
-
-Assessment:
-
--   strong idea donor
--   reject as the direct foundation
-
-Source:
-
--   <https://sinonjs.org/>
 
 ### `testdouble`
 
@@ -323,11 +296,115 @@ Source:
 Recommended direction:
 
 -   build `@overkill/doubles`
--   study `sinon` for behavior coverage
 -   study `testdouble` for `when()`-style ergonomics
 -   study Node built-ins for call-tracking primitives
 -   optionally study `tinyspy` for minimal implementation shape
 -   do not adopt a patch-first doubles library as the direct foundation
+
+## Property-Based Testing
+
+### `fast-check`
+
+What it is:
+
+-   the dominant current JavaScript property-based testing library
+
+Pros:
+
+-   current
+-   TypeScript typings included
+-   broad generator surface
+-   still the most obvious JS idea donor and experimental backend candidate
+
+Cons:
+
+-   its long-term model does not line up exactly with Overkill's desired
+    direction around integrated shrinking guarantees, persistent corpora,
+    and the fuller model/state-machine story
+
+Freshness note:
+
+-   `4.8.0`, last modified 2026-05-11
+
+Assessment:
+
+-   strong idea donor
+-   possible short-term experimentation backend
+-   not the conceptual target to build around blindly
+
+Source:
+
+-   <https://github.com/dubzzz/fast-check>
+
+### `pure-rand`
+
+What it is:
+
+-   the small PRNG package from the `fast-check` ecosystem
+
+Pros:
+
+-   current
+-   focused
+-   directly relevant to Overkill's splittable seeded-randomness needs
+
+Cons:
+
+-   still needs direct evaluation for whether its generator model lines up
+    cleanly with the exact split/derive semantics Overkill wants
+
+Freshness note:
+
+-   `8.4.0`, last modified 2026-03-27
+
+Assessment:
+
+-   strong candidate to evaluate
+
+Source:
+
+-   <https://github.com/dubzzz/pure-rand>
+
+### `gentest`
+
+What it is:
+
+-   a smaller generator/property library that is especially useful as a
+    design reference for keeping the generator algebra compact
+
+Pros:
+
+-   strong reminder to keep the primitive generator surface small and
+    compositional
+-   useful reference for `map` / `flatMap` / tuple / object-shape style
+    composition and explicit sampling
+
+Cons:
+
+-   not a TypeScript-first modern foundation candidate for Overkill
+-   more useful as a philosophy and API-shape donor than as an adopted
+    implementation dependency
+
+Assessment:
+
+-   idea donor
+
+Source:
+
+-   <https://github.com/graue/gentest>
+
+### Property Recommendation
+
+Recommended direction:
+
+-   keep `fast-check` as the main JS reference point and experimental
+    comparison baseline
+-   evaluate `pure-rand` for the seeded/splittable randomness layer
+-   treat `gentest` as an API-shape donor for keeping generator primitives
+    small and compositional
+-   do not commit the future `@overkill/property` package to `fast-check`'s
+    current model if it conflicts with integrated shrinking, edge-case
+    semantics, exhaustive finite domains, or witness/corpus workflows
 
 ## Coverage
 
@@ -885,6 +962,81 @@ Recommended direction:
     -   `jest-diff`
     -   Overkill-owned identity, update, and stale-detection logic
 
+## ESLint Tooling
+
+### `@eslint-community/eslint-utils`
+
+What it is:
+
+-   utility helpers for building ESLint rules and rule-analysis logic
+
+Pros:
+
+-   current
+-   explicit TypeScript typings
+-   directly relevant to `@overkill/eslint-plugin` utility work such as
+    scope-aware binding analysis
+
+Cons:
+
+-   does not solve Overkill's full binding-tracing problem by itself
+-   should be treated as a helper layer, not as the design source of truth
+
+Freshness note:
+
+-   `4.9.1`, last modified 2026-01-11
+
+Assessment:
+
+-   strong candidate to evaluate
+
+Source:
+
+-   <https://github.com/eslint-community/eslint-utils>
+
+### `@typescript-eslint/rule-tester`
+
+What it is:
+
+-   the stricter TypeScript-era wrapper around ESLint rule-testing patterns
+
+Pros:
+
+-   current
+-   directly relevant to the future `@overkill/eslint-rule-test` adapter
+-   useful reference for typed/parser-heavy rule-test cases
+
+Cons:
+
+-   still shaped around the ESLint `RuleTester` world rather than Overkill's
+    own suite/macro model
+-   better as a compatibility and case-shape reference than as the final
+    Overkill API
+
+Freshness note:
+
+-   `8.59.3`, last modified 2026-05-11
+
+Assessment:
+
+-   strong idea donor
+-   likely compatibility reference
+
+Source:
+
+-   <https://github.com/typescript-eslint/typescript-eslint/tree/main/packages/rule-tester>
+
+### ESLint Recommendation
+
+Recommended direction:
+
+-   evaluate `@eslint-community/eslint-utils` for the future
+    `@overkill/eslint-plugin`
+-   study `@typescript-eslint/rule-tester` as the strongest current
+    compatibility reference for `@overkill/eslint-rule-test`
+-   keep Overkill's public rule-test authoring surface macro/suite-based
+    rather than exposing raw `RuleTester` as the first-class primitive
+
 ## HTML, XML, And Machine-Readable Reporting
 
 ### JUnit XML
@@ -1175,7 +1327,6 @@ Source:
 If Overkill had to choose a strict shortlist today, it would be:
 
 -   assertions:
-    -   build `@overkill/assert`
     -   evaluate `tcompare`
     -   study `earljs`
 -   equality:
@@ -1184,6 +1335,10 @@ If Overkill had to choose a strict shortlist today, it would be:
 -   serialization and diffs:
     -   `pretty-format`
     -   `jest-diff`
+-   property testing:
+    -   `pure-rand`
+    -   `fast-check` as the main JS comparison point
+    -   `gentest` as an API-shape donor
 -   worker pools:
     -   `tinypool`
     -   `piscina`
@@ -1197,6 +1352,9 @@ If Overkill had to choose a strict shortlist today, it would be:
     -   `@tapjs/snapshot`
     -   `@vitest/snapshot`
     -   otherwise build on lower-level pieces
+-   ESLint tooling:
+    -   `@eslint-community/eslint-utils`
+    -   `@typescript-eslint/rule-tester`
 -   terminal:
     -   `ansis`
     -   `yoctocolors`
