@@ -55,6 +55,10 @@ concept should therefore commit to these constraints:
 -   one strict assertion surface only; no loose/coercive equality variants
 -   no positional overloading where a later argument might mean matcher,
     options, or custom message depending on type
+-   if human annotation support is provided, it should be a prefix assertion
+    context such as `case.assert.annotated('...').equal(actual, expected)`,
+    not an extra positional message argument and not a postfix
+    `.annotate(...)` on the result of an assertion call
 -   no public import-style split between several overlapping assertion entry
     points
 -   semantic first-class assertions should be preferred over generic boolean
