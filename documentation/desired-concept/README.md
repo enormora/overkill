@@ -35,30 +35,14 @@ For a first read, follow this path:
     etc.
 4.  [Testing Models](./authoring/testing-models.md) — the test categories
     Overkill recognises
-5.  [Fast Feedback Loops](./architecture/fast-feedback-loops.md) — the
-    engineering commitments behind sub-second startup
-6.  [Package Architecture](./architecture/package-architecture.md) —
-    package families, ownership boundaries, builder layer
-7.  [Microtests And Capabilities](./authoring/microtests-and-capabilities.md) —
+5.  [Microtests And Capabilities](./authoring/microtests-and-capabilities.md) —
     the capability-restricted default
-8.  [Assertions And Results](./authoring/assertions-and-results.md) —
-    the assertion model and the structured-outcome protocol underneath
-9.  [Tests As Values](./authoring/tests-as-values.md) — first-class
+6.  [Tests As Values](./authoring/tests-as-values.md) — first-class
     value-oriented authoring mode with explicit runner-owned direct-file
     execution
-10. [Test Ergonomics](./authoring/test-ergonomics.md) — the small set of
-    first-party DX helpers worth keeping
-11. [Configuration](./architecture/configuration.md) — low-surface config
-    philosophy
-12. [Capability Handles](./authoring/capability-handles.md) — the
-    alternative to mocking
-13. [Higher Test Layers](./authoring/higher-test-layers.md) — what
-    integration, browser, visual, and property-test layers imply for
-    Overkill
-14. [Runtime Behavior](./architecture/runtime-behavior.md) — console
-    capture, exit codes, signals, parallelism, sharding, monorepo, CI
-15. [Baselines And Snapshots](./authoring/baselines-and-snapshots.md)
-16. [Benchmarking](./authoring/benchmarking.md)
+
+After the first pass, the per-section catalogues below cover everything
+else.
 
 ## Decisions
 
