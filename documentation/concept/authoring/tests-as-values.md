@@ -290,6 +290,9 @@ A "macro" in Overkill is a function that takes parameters and returns a
 is the recommended reuse mechanism for cross-cutting test patterns and the
 principal anti-hook tool.
 
+There is no separate runtime "macro object" in the core model. A macro is
+just ordinary tree construction.
+
 ```ts
 import { assertion } from '@overkill/assert';
 import { suite, test } from '@overkill/test';
@@ -316,6 +319,24 @@ export const spec = suite('string concat', [lawsOfMonoid({ name: 'string', empty
 Three properties for free, no boilerplate, fully typed. This is borrowed
 directly from cats-laws / scalacheck-laws / `Test.QuickCheck.Classes`. A
 single law bundle replaces dozens of example tests.
+
+## Macro Callsite Metadata
+
+Because macros are plain functions, Overkill has to preserve the authored
+callsite deliberately rather than assuming the JavaScript stack will make it
+obvious later.
+
+The concept should therefore commit to this rule:
+
+-   node-construction metadata is captured at macro application time
+-   listings, failures, and tooling should prefer the macro application site
+    over the macro implementation site where practical
+-   a generated subtree may have many internal test nodes, but the user-
+    authored application call remains the meaningful definition location for
+    the bundle as a whole
+
+This is a metadata-capture rule on `test(...)`, `suite(...)`, `table(...)`,
+and related helpers, not a reason to invent a second macro runtime type.
 
 ## Filters Become Tree Walks
 

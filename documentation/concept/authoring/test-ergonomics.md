@@ -248,13 +248,14 @@ The callback model should stay consistent with table cases:
 
 ### Stack Traces Matter
 
-Generated cases should preserve meaningful failure locations and names.
+Macro-generated and generated-case tests should preserve meaningful failure
+locations and names.
 
 That means:
 
 -   generated tests must have strong explicit names
--   helper failures should point back to the user-authored macro callsite
-    where practical
+-   helper failures and definition-site metadata should point back to the
+    user-authored macro application callsite where practical
 -   the first-party concept should care about stack quality, not only about
     case expansion
 
