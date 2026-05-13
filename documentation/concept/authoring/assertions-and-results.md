@@ -372,12 +372,21 @@ These assertions should remain:
 -   explicit
 -   typed
 -   registered through package wiring or JS/TS config
+-   uniquely named across both first-party and registered custom assertions
 
 They should extend the first-party assertion system, not replace it with an
 entirely separate assertion library.
 
 This keeps large throwing-style suites ergonomic without introducing global
 mode flags.
+
+Registration must reject collisions. A custom assertion may not shadow:
+
+-   a built-in first-party assertion
+-   another registered custom assertion
+
+Such collisions should fail during startup/config resolution rather than
+silently overriding anything.
 
 ### Composite Assertions
 

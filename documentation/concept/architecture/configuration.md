@@ -200,10 +200,16 @@ This should stay additive and explicit:
 -   first-party assertions remain the baseline
 -   custom assertions extend them
 -   config wires them into the high-level test package or runner
+-   assertion names must be unique at registration time
 
 For assertion composition specifically, config is the registration point for
 named composite assertions such as `calledOnceWith`; the composite itself is
 still implemented as ordinary imported code, not as inline config logic.
+
+If config registers a custom assertion whose name collides with a built-in
+assertion or with another registered custom assertion, configuration
+resolution should fail immediately. There is no shadowing or last-wins rule
+for assertion names.
 
 ## Configuration Versus Plugins
 
