@@ -129,3 +129,30 @@ The docs should avoid:
 -   mixing settled product guidance with exploratory or research-stage notes
 
 Overkill should feel smaller than its internal architecture.
+
+## Concept Documentation Shape
+
+Internal concept documentation in `documentation/concept/` follows a
+canonical section order:
+
+1.  `# Title` — matches the filename closely
+2.  `## Purpose` — what the document is for and what decision it owns
+3.  `## Position` — where the document fits inside a larger system flow
+4.  Body sections in title case
+5.  `## Cross-References` — relative links to sibling concept
+    documents, grouped under one H2 with H3 subsections when several
+    are needed
+6.  `## Influences` — prior art whose ideas informed the design;
+    always plural
+7.  `## Sources` — external references cited inline; always last
+
+Every section except the title is optional.
+
+### Heading Conventions
+
+-   Title-case all headings, including short words like "And", "Or",
+    "For", "With", "Of".
+-   Filenames are lowercase-hyphenated and should match the H1
+    closely.
+-   Do not embed markdown links in heading text — keep headings plain
+    and link in the body.
