@@ -14,8 +14,8 @@ Overkill needs a result model that is:
 The core accepts two first-party styles:
 
 -   **builder/result mode** — the primary concept; tests receive injected
-    `assert`, `require`, and `plan`, and must explicitly return
-    `assert.done()`
+    `case.assert`, `case.require`, and `case.plan`, and must explicitly
+    return `case.assert.done()`
 -   **throwing mode** — an explicit alternate test API such as
     `throwingTest`; tests may return `void`
 
@@ -181,9 +181,9 @@ type Inconclusive = {
 
 Low-level assertion constructors return `AssertionNode` values that can
 be combined into those outcomes. Builder-style tests record those nodes
-implicitly and finalize them through `assert.done()`. That gives Overkill
-one canonical internal representation even though the surface authoring
-styles differ.
+implicitly and finalize them through `case.assert.done()`. That gives
+Overkill one canonical internal representation even though the surface
+authoring styles differ.
 
 ### Builder Mode And Throwing Mode
 
@@ -311,7 +311,7 @@ those awaits in a straightforward way.
 
 Each `assert.*` or `require.*` call records into the test's assertion log
 immediately, regardless of whether more `await`s follow. The plan declared
-at the top of the test body still applies; `assert.done()` at the end
+at the top of the test body still applies; `case.assert.done()` at the end
 finalizes the recorded log.
 
 ```ts
@@ -473,7 +473,7 @@ Why this is interesting:
     `AssertionNode` through every helper boundary
 -   it opens a path to richer live observation: reporters or debug tooling
     could observe assertion effects as they happen rather than only after
-    `assert.done()`
+    `case.assert.done()`
 -   it may compose better with helper abstractions that want to emit checks
     internally without forcing the caller to manually aggregate returned
     nodes
@@ -490,7 +490,7 @@ Why it is not the primary concept today:
 
 Current stance: preserve this as a plausible future branch, but keep the
 primary first-party authoring model centered on explicit builder APIs plus
-`assert.done()`.
+`case.assert.done()`.
 
 Source:
 
@@ -503,9 +503,9 @@ For the product concept:
 -   core supports structured assertion results and explicit throwing-mode
     tests
 -   first-party assertions live in `@overkill/assert`, but ordinary tests
-    primarily consume them through injected `assert` / `require`
+    primarily consume them through injected `case.assert` / `case.require`
 -   primary authoring shape: builder/context API with explicit
-    `return assert.done()`
+    `return case.assert.done()`
 -   low-level protocol name: `AssertionNode`
 -   low-level constructor namespace: `assertion.*`
 -   zero-assertion detection: failure, no opt-out

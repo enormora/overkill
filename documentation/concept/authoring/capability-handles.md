@@ -59,20 +59,27 @@ Instead of mocks, tests can use _recording_ implementations of the relevant
 handles:
 
 ```ts
-const runtime = recordingRuntime({
-    clock: virtualClock('2026-01-01T00:00:00Z'),
-    random: seededRandom(0xc0ffee),
-    fs: memoryFs({ 'users/_template.json': '{}' }),
-    http: stubHttp({ 'GET /users/1': { status: 200, body: { id: 1 } } }),
-});
+import { suite, test } from '@overkill/test';
 
-const saved = await saveUser(runtime, { name: 'Ada' });
+export const spec = suite('saveUser', [
+    test('records the effect transcript', async (case) => {
+        const runtime = recordingRuntime({
+            clock: virtualClock('2026-01-01T00:00:00Z'),
+            random: seededRandom(0xc0ffee),
+            fs: memoryFs({ 'users/_template.json': '{}' }),
+            http: stubHttp({ 'GET /users/1': { status: 200, body: { id: 1 } } }),
+        });
 
-return assert.equal(runtime.recorded(), [
-    { kind: 'random.uuid' },
-    { kind: 'clock.now' },
-    { kind: 'fs.write', path: 'users/<uuid>.json', body: '...' },
-    { kind: 'log.info', msg: 'saved <uuid>' },
+        await saveUser(runtime, { name: 'Ada' });
+
+        case.assert.deepEqual(runtime.recorded(), [
+            { kind: 'random.uuid' },
+            { kind: 'clock.now' },
+            { kind: 'fs.write', path: 'users/<uuid>.json', body: '...' },
+            { kind: 'log.info', msg: 'saved <uuid>' },
+        ]);
+        return case.assert.done();
+    }),
 ]);
 ```
 
@@ -263,11 +270,13 @@ language types do not let it.
 
 ## Connection To [Assertions And Results](./assertions-and-results.md)
 
-A test that uses recording handles produces a structured effect log. The
-returned-value assertion model lets the test assert on that log directly:
+A test that uses recording handles produces a structured effect log. In the
+preferred high-level authoring style, the test asserts on that log through
+the injected `case.assert` API:
 
 ```ts
-return assert.equal(runtime.recorded(), expected);
+case.assert.deepEqual(runtime.recorded(), expected);
+return case.assert.done();
 ```
 
 There is nothing to throw. The whole test reads as `(input, runtime) -> (output, effects, outcome)` — pure data, deterministic, machine-readable.

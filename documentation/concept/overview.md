@@ -45,7 +45,7 @@ Core package families:
 
 -   `@overkill/engine`: runner contracts, test definitions, events, results, reporter integration points
 -   `@overkill/test`: default first-party authoring layer built on top of the engine
--   `@overkill/assert`: first-party assertion protocol and helpers, primarily consumed through injected `assert` / `require` in `@overkill/test`
+-   `@overkill/assert`: first-party assertion protocol and helpers, primarily consumed through injected `case.assert` / `case.require` in `@overkill/test`
 -   `@overkill/doubles`: explicit, function-first test doubles centered on a single `testDouble()` concept
 -   `@overkill/resources`: typed runtimes, resource composition, and execution requirements
 -   higher-layer runtime patterns for deterministic services, browser page
@@ -115,10 +115,11 @@ co-equal first-party answers at the same layer.
 
 Its assertion model should be explicit:
 
--   `assert` for ordinary assertions recorded into the test result
--   `require` for gating assertions that short-circuit and support TypeScript
+-   `case.assert` for ordinary assertions recorded into the test result
+-   `case.require` for gating assertions that short-circuit and support
+    TypeScript
     narrowing
--   explicit `return assert.done()` in builder mode
+-   explicit `return case.assert.done()` in builder mode
 -   optional custom assertions for domain-specific types such as `Result` or
     `Maybe`
 

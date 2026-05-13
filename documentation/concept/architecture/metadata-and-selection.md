@@ -57,7 +57,7 @@ Metadata cascades from suite to test, with override semantics:
 Example:
 
 ```ts
-export default suite('users', { tags: ['auth'], ownership: ['@auth'] }, [
+export const spec = suite('users', { tags: ['auth'], ownership: ['@auth'] }, [
     test('login', { tags: ['critical'] }, body), // tags = {auth, critical}
     test('logout', body), // tags = {auth}
     suite('admin', { tags: ['admin'] }, [

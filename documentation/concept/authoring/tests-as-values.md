@@ -346,6 +346,7 @@ If a project wants a more explicit declaration form, the first-party
 ergonomics layer may also expose optional sugar such as `defineMacro(...)`:
 
 ```ts
+import { assertion } from '@overkill/assert';
 import { defineMacro, suite, test } from '@overkill/test';
 
 const lawsOfMonoid = defineMacro(

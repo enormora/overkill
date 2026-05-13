@@ -126,9 +126,9 @@ The goal is that a user can inspect a double naturally in a debugger or in an as
 Example direction:
 
 ```ts
-expect(saveUser.callCount).toBe(2);
-expect(saveUser.firstCall.arguments[0].id).toBe('42');
-expect(saveUser.lastResult.status).toBe('returned');
+case.assert.equal(saveUser.callCount, 2);
+case.assert.equal(saveUser.firstCall.arguments[0].id, '42');
+case.assert.equal(saveUser.lastResult.status, 'returned');
 ```
 
 This is one of the places where Sinon remains strong: the instance objects are easy to inspect. Overkill should preserve that strength while keeping the rest of the API smaller and more coherent.

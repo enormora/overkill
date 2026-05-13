@@ -210,9 +210,9 @@ Source: [Assertions And Results § Protocol Layer](../authoring/assertions-and-r
 
 A typed low-level value produced by assertion constructors such as
 `assertion.equal(...)`. Builder APIs may record these nodes implicitly and
-return them through `assert.done()`. The engine consumes structured assertion
-results; ordinary users usually interact with injected `assert` / `require`
-instead of raw nodes.
+return them through `case.assert.done()`. The engine consumes structured
+assertion results; ordinary users usually interact with injected
+`case.assert` / `case.require` instead of raw nodes.
 
 Source: [Assertions And Results](../authoring/assertions-and-results.md).
 
