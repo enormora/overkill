@@ -265,6 +265,14 @@ export const spec = eslintRuleSuite({
 });
 ```
 
+This same adapter pattern should also cover domain-specific assertion
+ecosystems where the foreign library already carries valuable semantics.
+A concrete example is:
+
+-   `@overkill/aws-cdk` wrapping `@aws-cdk/assertions` through Overkill's
+    foreign-assertion bridge rather than trying to make third-party matcher
+    interop a generic core feature
+
 Why this belongs in an adapter package:
 
 -   it preserves the familiar case-table shape for rule authors

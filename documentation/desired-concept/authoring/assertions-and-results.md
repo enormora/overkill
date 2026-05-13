@@ -678,6 +678,107 @@ Important rule:
 This keeps `plan(n)` stable and prevents assertion-counting from depending
 on how a custom assertion happens to be implemented internally.
 
+### Foreign Assertion Bridges
+
+Overkill should **not** try to absorb arbitrary third-party assertion
+libraries into `case.assert.*` wholesale.
+
+That would make too many core behaviors ambiguous:
+
+-   assertion counting
+-   `plan(n)` semantics
+-   failure normalization
+-   annotations
+-   location metadata
+-   `require`-style narrowing
+
+The better direction is one narrow bridge primitive for adapter authors:
+
+```ts
+type ForeignAssertionBridge = {
+    fromThrowable(label: string, body: () => void | Promise<void>): unknown;
+};
+```
+
+That bridge converts a foreign throwable-style assertion callback into one
+Overkill assertion boundary:
+
+-   success records one passed assertion boundary
+-   failure records one `FailedCheck`
+-   thrown foreign errors are normalized into Overkill's structured
+    diagnostics
+
+The callback may internally run a complex foreign assertion library, but the
+Overkill boundary remains explicit and stable.
+
+Example direction:
+
+```ts
+import { defineCompositeAssertion } from '@overkill/test';
+
+export const hasResourceProperties = defineCompositeAssertion(
+    'hasResourceProperties',
+    (check, stack, resourceType, expected) => {
+        return check.fromThrowable('aws-cdk.assertions.hasResourceProperties', () => {
+            const template = Template.fromStack(stack);
+            template.hasResourceProperties(resourceType, expected);
+        });
+    },
+);
+```
+
+This still counts as **one** assertion boundary for zero-assertion
+detection, `plan(n)`, and assertion budgets.
+
+The rule should therefore be:
+
+-   no generic third-party assertion plug-in surface
+-   yes to package-specific adapters built on one normalized foreign
+    assertion bridge
+
+### Package-Specific Assertion Adapters
+
+Some ecosystems already have strong domain-specific assertion libraries that
+are not worth rewriting. `@aws-cdk/assertions` is a good example.
+
+The preferred Overkill direction is a focused adapter package such as:
+
+-   `@overkill/aws-cdk`
+
+That package should expose facade-ready assertion extensions such as:
+
+-   `matchesTemplate`
+-   `hasResource`
+-   `hasResourceProperties`
+-   `resourceCountIs`
+-   `hasOutput`
+
+Usage direction:
+
+```ts
+import { createTestFacade } from '@overkill/test';
+import { cdkAssertions } from '@overkill/aws-cdk';
+
+export const { test, suite } = createTestFacade({
+    assertions: [cdkAssertions],
+});
+```
+
+Then ordinary tests use a native Overkill surface:
+
+```ts
+test('defines versioned bucket', (case) => {
+    case.assert.hasResourceProperties(stack, 'AWS::S3::Bucket', {
+        VersioningConfiguration: { Status: 'Enabled' },
+    });
+
+    return case.assert.done();
+});
+```
+
+Internally the adapter still uses the official CDK assertion library, but
+Overkill remains the owner of counting, failure boundaries, and reporting.
+
 ## Diff And Diagnostic Shape
 
 Failed checks carry structured diff data. The sketched types

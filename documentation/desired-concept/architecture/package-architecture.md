@@ -130,6 +130,22 @@ separate user-facing package. The concept still needs a clear home for:
 -   test-facade-level registration of domain-specific assertion vocabularies
     such as `Result` / `Maybe`
 
+Overkill should not expose a broad “mount any third-party matcher library
+into `case.assert`” surface. The extension boundary should stay narrower:
+
+-   `@overkill/test` owns the assertion model and counting rules
+-   adapter packages may wrap foreign throwable-style assertion libraries
+    through the normalized bridge described in
+    [Assertions And Results](../authoring/assertions-and-results.md)
+
+This is the right place for focused adapter packages such as:
+
+-   `@overkill/aws-cdk`
+
+That package should bridge `@aws-cdk/assertions` into facade-ready Overkill
+assertions without making generic third-party assertion interop part of the
+core model.
+
 ## Doubles
 
 `@overkill/doubles` should be a separate first-party package rather than an assertion side feature.
