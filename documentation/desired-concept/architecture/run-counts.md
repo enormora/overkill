@@ -194,7 +194,7 @@ Examples of situations the counts make visible:
     "how many of these are my own test runs actually consuming?"
     legible at a glance.
 
-The runner never says any of these are *wrong*; it reports the
+The runner never says any of these are _wrong_; it reports the
 numbers, and the developer or CI gate interprets.
 
 ## Cross-References
@@ -211,5 +211,5 @@ numbers, and the developer or CI gate interprets.
     precedent
 -   [Coverage](./coverage.md) — precedent for per-case data in
     `RunRecord`
--   [Test Debug Mode](../authoring/debug-mode.md) — explicitly *not*
+-   [Test Debug Mode](../authoring/debug-mode.md) — explicitly _not_
     the home for this concept
