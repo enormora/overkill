@@ -47,7 +47,8 @@ Configuration should mainly cover orchestration and package wiring:
 -   test discovery
 -   named profile definitions
 -   reporter selection
--   baseline policy (paths, write directory, explicit update behavior)
+-   baseline policy (paths, write directory, explicit update behavior,
+    no environment-based write gate)
 -   coverage policy (formats, thresholds, include/exclude, output paths)
 -   mutation integration
 -   type-test integration

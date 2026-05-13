@@ -128,6 +128,8 @@ comparison-only is the default mode. The runner does not gate baseline
 writes by environment; if a CI workflow runs a write verb, that is
 what the workflow author intended. The author of the workflow is
 responsible for not putting `baseline apply` in a check-only pipeline.
+This is a settled policy choice, not something configurable via
+`process.env.CI` or a config-level opt-in flag.
 
 ### Review-Then-Commit Flow
 
