@@ -179,11 +179,10 @@ rather than treated as unrelated concepts:
 
 -   metamorphic testing belongs in the property family as relation-style
     checks over transformed inputs and outputs
--   differential testing belongs above the property family, likely in a
-    small package such as `@overkill/differential`
+-   differential testing belongs above the property family, for example in
+    `@overkill/differential`
 -   linearizability or consistency checking belongs above the model family,
-    likely in a package such as `@overkill/linearizability` or
-    `@overkill/history`
+    for example in `@overkill/linearizability` or `@overkill/history`
 
 These styles should reuse the same shrinking, witness, corpus, and
 reporting infrastructure rather than inventing parallel systems.
@@ -227,8 +226,9 @@ narrow name such as:
 
 -   `@overkill/eslint-rule-test`
 
-That keeps room for a separate future package such as
-`@overkill/eslint-plugin`.
+This is distinct from:
+
+-   `@overkill/eslint-plugin` for Overkill-specific static authoring rules
 
 The package should export ready-made macros or suite builders that turn
 RuleTester-style case objects into ordinary Overkill tests.

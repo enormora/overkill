@@ -243,7 +243,7 @@ That means:
 -   recorded calls should preserve the argument tuple type
 -   the untyped default should be `unknown`, not `any`
 
-The likely target shape is:
+The target shape is:
 
 ```ts
 type UserLoader = (id: string, includeDeleted?: boolean) => Promise<User>;
@@ -361,4 +361,6 @@ Recommended direction:
 -   no object-method replacement API in the first-party concept
 -   no module replacement API in the first-party concept
 
-If future research finds a compelling need for object patching, it should be treated as a separate, more controversial layer rather than folded into the core doubles model.
+Object patching is outside the first-party doubles model. If someone wants
+it, it belongs in a separate extension package rather than in
+`@overkill/doubles`.

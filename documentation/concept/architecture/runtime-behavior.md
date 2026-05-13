@@ -8,9 +8,8 @@ unhandled rejections, leaked resources, parallelism semantics, sharding,
 monorepo discovery, terminal capability detection, watch-mode targeting.
 
 It is meant to be normative rather than aspirational. Each section states
-the default, names the override surface where one exists, and pushes
-speculative alternatives into the dedicated future-facing docs instead of
-leaving them implicit here.
+the default and names the override surface where one exists instead of
+leaving important runtime behavior implicit.
 
 This document does **not** define a special CI mode. The same invocation
 should mean the same thing on a developer machine and in CI; workflow-

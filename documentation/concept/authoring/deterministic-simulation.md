@@ -316,13 +316,3 @@ Strong near-term direction:
 4.  support for local deterministic services and base-URL swapping
 5.  runtime-wrapper authoring shape for both in-process and local-service
     simulation entry
-
-More speculative territory:
-
--   a fully virtualized scheduler
--   virtual filesystems and transports as first-party packages
--   exhaustive interleaving exploration
--   a universal Overkill simulation runtime
-
-Overkill should stay open to those ideas without pretending they are required
-for the first serious version of deterministic simulation support.

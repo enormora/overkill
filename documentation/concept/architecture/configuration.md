@@ -31,7 +31,7 @@ Higher-level packages may support config files, but config remains optional.
 
 That means:
 
--   config loading belongs above the engine, likely in `@overkill/run`
+-   config loading belongs above the engine, in `@overkill/run`
 -   higher layers may contribute configuration domains even when they do not
     own file discovery
 -   direct programmatic composition stays first-class

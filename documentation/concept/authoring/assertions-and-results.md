@@ -403,7 +403,7 @@ The narrow `@overkill/engine` stays flexible enough to support:
 -   builder/context authoring
 -   explicit throwing mode
 -   value-oriented suite trees and test nodes
--   future packages that need compositional result values
+-   higher-layer or extension packages that need compositional result values
 
 That is why the engine continues to speak structured outcomes natively,
 even though the default human-facing authoring experience is no longer
