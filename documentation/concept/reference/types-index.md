@@ -3,7 +3,7 @@
 ## Purpose
 
 A canonical sketch of every TypeScript type referenced from more than one
-concept doc, plus the placeholder types used in illustrative code samples.
+concept doc.
 
 This file exists so reviewers do not have to chase types across the doc
 set, and so authoring docs can cite a single source instead of re-stating
@@ -15,9 +15,9 @@ domain doc, that doc is named under the sketch.
 
 ## Status
 
-Open: this index is best-effort. Some types named in the docs (`Capability`,
-`Fields`, `User`, `UserInput`) are still placeholders or open questions.
-Those are marked explicitly below.
+Reference-first: the main sections below are lookup sketches for settled
+cross-doc concepts. Any remaining placeholders are isolated at the end so
+the doc does not blur canonical shared types with illustrative sample names.
 
 ## Identity
 
@@ -280,7 +280,7 @@ type RunnerError = {
 Canonical: [Reproducibility](../architecture/reproducibility.md) for `RunPlan` and `RunRecord`,
 [Failure Artifacts](../authoring/failure-artifacts.md) for `RunnerError`.
 
-## Capability Handles (illustrative)
+## Illustrative Capability-Handle Types
 
 ```ts
 type AppRuntime = {
@@ -312,8 +312,6 @@ type Logger = {
     error(msg: string, fields?: Fields): void;
 };
 
-// Open: Fields is a structured-log placeholder. Concrete shape depends
-// on the production logger; tests typically use Record<string, unknown>.
 type Fields = Record<string, unknown>;
 
 type FileSystem = unknown; // placeholder; out of concept scope
@@ -329,8 +327,9 @@ type RecordedEvent =
 type RuntimeSnapshot = unknown; // adapter-specific replay payload
 ```
 
-Canonical: [Capability Handles](../authoring/capability-handles.md). These are illustrative architecture
-patterns, not contracts owned by `@overkill/engine`.
+Source: [Capability Handles](../authoring/capability-handles.md). These are
+illustrative architecture patterns, not canonical contracts owned by
+`@overkill/engine`.
 
 ## Failure Artifacts
 
@@ -438,7 +437,7 @@ type ExecutionRequirement =
 
 Canonical: [Deterministic Simulation Testing](../authoring/deterministic-simulation.md).
 
-## Placeholders Without Domain Definitions
+## Illustrative Placeholders Without Domain Definitions
 
 These names appear in code samples to keep the example readable. They are
 not part of the Overkill API surface; treat them as `unknown` unless the
