@@ -39,7 +39,7 @@ The strongest candidates are:
 
 -   dependency-injected test harnesses
 -   interaction transcripts
--   generated-case macros
+-   reusable multi-case macros
 -   small async-control helpers
 
 This does **not** justify a broad step/scenario DSL for ordinary
@@ -189,10 +189,11 @@ The concept should be:
 -   multiple adapters
 -   no assumption that every source is a Node `EventEmitter`
 
-## Generated-Case Macros
+## Reusable Multi-Case Macros
 
-Overkill already prefers macros. One useful extension is macros that expand
-into multiple concrete test cases at once.
+Overkill already prefers macros. Ordinary macros are already powerful enough
+to expand into multiple concrete test cases at once, because a macro may
+return a whole suite tree rather than only one test.
 
 This is especially justified for:
 
@@ -203,32 +204,33 @@ This is especially justified for:
 Example direction:
 
 ```ts
-const schemaValidationCases = defineGeneratedCases([
+import { defineMacro, suite, test } from '@overkill/test';
+
+const schemaValidationCases = [
     missingField('name'),
     undefinedField('name'),
     wrongType('age', 'number'),
-]);
+];
 
-const schemaContract = generatedCaseMacro(
-    'schema contract',
-    schemaValidationCases,
-    (case) => {
-        return case.parameters.schemaValidationCase.run(
-            case.parameters.schema,
-            case,
-        );
-    },
+const schemaContract = defineMacro((title, schema) =>
+    suite(title, [
+        ...schemaValidationCases.map((schemaValidationCase, index) =>
+            test(schemaValidationCase.title ?? `case ${index + 1}`, (case) => {
+                return schemaValidationCase.run(schema, case);
+            }),
+        ),
+    ]),
 );
 
-export default suite('schemas', [
+export const spec = suite('schemas', [
     schemaContract('user schema', userSchema),
     schemaContract('pet schema', petSchema),
 ]);
 ```
 
-The important shape is not the helper names. It is that a generated-case
-macro can be defined once and then applied repeatedly to different subjects
-without re-spelling the same case matrix in every test file.
+The important shape is that a reusable macro can define a canonical case
+family once and then apply it repeatedly to different subjects without
+re-spelling the same matrix in every test file.
 
 That means the first-party concept should support both:
 
@@ -237,14 +239,11 @@ That means the first-party concept should support both:
     each subject they are applied to
 
 This should still be a macro-oriented model, not a competing
-parameterization philosophy.
+parameterization philosophy. Tables remain the small local convenience form;
+reusable multi-case expansion is just ordinary macro construction.
 
-Like tables, generated-case helpers lower to ordinary concrete test nodes.
-Whether the implementation literally reuses macro/table expansion machinery
-is an internal detail; the important public concept is one shared
-parameterized-case model.
-
-The callback model should stay consistent with table cases:
+When a reusable macro chooses parameterized expansion rather than plain
+ordinary tests, the callback model should stay consistent with table cases:
 
 -   ordinary tests use one `case` parameter
 -   generated/parameterized cases also use one `case` parameter
@@ -255,7 +254,7 @@ The callback model should stay consistent with table cases:
 
 ### Stack Traces Matter
 
-Macro-generated and generated-case tests should preserve meaningful failure
+Macro-generated and multi-case generated tests should preserve meaningful failure
 locations and names.
 
 That means:
@@ -266,7 +265,7 @@ That means:
 -   the first-party concept should care about stack quality, not only about
     case expansion
 
-This matters especially for schema, parser, and law-style generated cases,
+This matters especially for schema, parser, and law-style generated suites,
 where failures must still point back to the meaningful authored callsite.
 
 ## Async-Control Helpers
@@ -356,7 +355,7 @@ The current concept should preserve room for:
 
 -   `defineHarness(...)`
 -   transcript recording with generic subscription adapters
--   generated-case macros
+-   reusable multi-case macros
 -   `flushAsync()` / `microtasks()` / `immediate()`
 -   `inFlight(...)`
 

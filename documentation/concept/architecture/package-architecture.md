@@ -42,7 +42,7 @@ authoring layer. It should favor:
 -   async support
 -   no hook-centric lifecycle model
 -   a small advanced ergonomics layer for harnesses, interaction recording,
-    generated-case macros, and async queue helpers
+    reusable multi-case macros, and async queue helpers
 
 Tables or parameterized-case helpers may still exist, but they should be
 framed as specialized helpers built on the macro/value model rather than as

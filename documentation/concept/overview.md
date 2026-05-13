@@ -51,7 +51,8 @@ Core package families:
 -   higher-layer runtime patterns for deterministic services, browser page
     objects, explicit attachments, and runtime scenarios
 -   small advanced ergonomics in `@overkill/test`, such as harnesses,
-    interaction transcripts, generated-case macros, and async queue helpers
+    interaction transcripts, reusable multi-case macros, and async queue
+    helpers
 -   reporter packages such as `@overkill/reporter-line`, `@overkill/reporter-tap`, `@overkill/reporter-json`, and `@overkill/reporter-html`
 -   `@overkill/run`: orchestration for discovery, filtering, seeds, and terminal workflows
 -   `@overkill/baselines`: shared baseline model for snapshots and performance expectations

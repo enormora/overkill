@@ -59,7 +59,7 @@ This is where the rarer mechanics belong:
 
 -   `defineHarness(...)`
 -   transcript recording
--   generated-case macros
+-   reusable multi-case macros
 -   `inFlight(...)`
 -   queue-flush helpers
 -   benchmark workloads and policies
