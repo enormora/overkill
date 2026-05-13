@@ -333,9 +333,41 @@ same identities.
 Sharding composes with selection: filters apply first, sharding applies to
 the filtered set.
 
-CI integration: GitHub Actions, GitLab, and CircleCI matrices map directly
-to `--shard`. Reporters can merge per-shard JSON outputs into a single
-final report.
+Baseline CI mode should not assume that the CI system provides a native
+"collect once, distribute exact test plan" primitive. Instead, each shard
+performs deterministic self-planning:
+
+-   every shard imports and collects the same candidate test set
+-   every shard applies the same filters, seed handling, ordering, and
+    planning rules
+-   every shard executes only its own partition from `--shard <i>/<n>`
+
+This works with ordinary matrix/parallel-job features in systems such as
+GitHub Actions, GitLab, CircleCI, and Buildkite because it only requires
+shard identity, not a CI-native planner.
+
+Result collection then happens in two layers:
+
+-   **baseline shard mode**
+    -   each shard is one independent Overkill run
+    -   each shard produces its own exit code and local reports/artifacts
+    -   any failing shard fails its CI job, so the overall workflow fails
+-   **optional merged-results mode**
+    -   each shard emits a machine-readable result artifact
+    -   a later merge step combines those artifacts into one final report
+      and one overall run result
+
+The merged overall result should be:
+
+-   `pass` only if all shards pass
+-   `fail` if any shard reports test failures
+-   `error` / `inconclusive` if any shard crashes, is missing, or fails to
+    report a usable result
+
+CI integration: GitHub Actions, GitLab, CircleCI, and similar matrix systems
+map directly to `--shard`. Richer workflows may additionally run an explicit
+merge step such as `overkill merge-results ...` to produce one combined
+JSON/HTML report.
 
 ## Multi-Process Execution
 

@@ -37,6 +37,11 @@ A reproducible run captures, at minimum:
 
 Together these form a `RunPlan` value preserved as part of the run record.
 
+For sharded CI runs, the baseline model is that each shard independently
+reconstructs the same `RunPlan` and then executes only its own shard
+partition. A richer two-phase planner/executor workflow may still exist, but
+it is an optimization, not the required cross-CI baseline.
+
 ## Run Record Shape
 
 ```ts
@@ -71,6 +76,11 @@ So the settled direction should be:
 
 When persisted, the record is written under `.overkill/runs/<id>.json` and
 replay uses it as input.
+
+For optional merged-results workflows, shard-local run records or result
+artifacts may later be merged into one combined final report. The shard
+records remain the primary execution facts; the merged record is a derived
+summary over them.
 
 ## Ordering
 

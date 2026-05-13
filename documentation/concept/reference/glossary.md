@@ -472,6 +472,10 @@ results up to the machine-class tier defined in [Reproducibility § Tiered Repro
 but they are still distinct run instances with distinct `RunRecord.id`
 values.
 
+In baseline sharded CI mode, each shard reconstructs the same `RunPlan`
+locally and executes only its shard partition. Centralized planner-based
+distribution is optional, not required.
+
 Source: [Reproducibility](../architecture/reproducibility.md), [Types Index](./types-index.md).
 
 ## RunRecord
@@ -481,6 +485,10 @@ plus per-test verdicts, per-test captured artifacts, run-level summary,
 runner errors, and runtime metadata. `overkill replay <run-id>` reads
 the `RunRecord` to reconstruct the original run; `--last-failed` reads
 it to scope the next run to the previously-failing subset.
+
+In a merged-results workflow, shard-local records or result artifacts may be
+combined into one derived aggregate report. The shard-local records remain
+the canonical execution facts.
 
 Source: [Reproducibility § Run Record Shape](../architecture/reproducibility.md#run-record-shape), [Types Index](./types-index.md).
 
