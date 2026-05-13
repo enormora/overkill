@@ -291,6 +291,11 @@ package.
 Overkill should treat property-based testing as more than "random inputs +
 shrink." Concrete commitments worth making explicit:
 
+-   **Small compositional generator algebra** — keep the primitive
+    generator surface compact (`map`, `flatMap`, tuples/products, object
+    shape builders, `oneOf`, filters only when unavoidable) and bias users
+    toward composition rather than writing generator internals from scratch.
+    `gentest` is a good reminder that the core algebra should stay small.
 -   **Integrated shrinking** — generators yield rose trees `{ value, shrinks: () => Iterable<Tree<T>> }`, not separate `shrink` functions.
     Hedgehog-style. Avoids fast-check's invariant-breaking shrinking
     pitfalls.
@@ -299,6 +304,12 @@ shrink." Concrete commitments worth making explicit:
     stream instead of sharing one global source of randomness, so parallel
     and tree-shaped generation stays reproducible. SplitMix is the canonical
     algorithm.
+-   **First-class edge cases** — generators carry canonical edge cases as
+    part of their own definition and combinators preserve or combine them
+    rather than treating them as an afterthought.
+-   **Finite-domain exhaustive mode** — if the domain is truly small,
+    enumerate it instead of sampling randomly. Random exploration should not
+    be fetishized when exhaustive generation is cheaper and stronger.
 -   **Coverage / Classify / Label** — generators report distribution; a
     property fails not only on a counterexample but also when its input
     distribution drifts (`cover 30 isSorted`).
@@ -309,14 +320,21 @@ shrink." Concrete commitments worth making explicit:
 -   **Persistent regression corpus** — every failing example is added to a
     per-test corpus replayed eagerly on the next run. Hypothesis (Python)
     and AFL-style fuzzers do this; JS PBT tools mostly do not.
+-   **Sample / preview utilities** — authors should be able to inspect a
+    generator interactively without writing a property first. A first-class
+    `sample(...)` or `preview(...)` facility belongs in the package.
+-   **Explicit size/growth control** — recursive or nested generators should
+    not rely on opaque library heuristics. Size should be a real concept
+    with visible growth policy.
 -   **Targeted PBT** — search the input space with a user-supplied
     distance function as feedback (PropEr's targeted mode). Better than
     blind random for properties with tight invariants.
 -   **Stateful / model-based** — programs are sequences of commands; the
     SUT is run in lockstep with a pure model; postconditions check
-    observational equivalence. `quickcheck-state-machine` and
-    `quickcheck-dynamic` (used by Cardano for finance-grade systems) are
-    the references.
+    observational equivalence. The vocabulary should be explicitly
+    rule-based: commands, actions, bundles of produced values, and replayable
+    histories. `quickcheck-state-machine` and `quickcheck-dynamic` (used by
+    Cardano for finance-grade systems) are the references.
 -   **Parallel / linearisability** — the same model executed
     concurrently; the checker validates that the observed history is
     linearisable. Combine with Porcupine-style checking.
@@ -328,12 +346,15 @@ Relationship to existing JS tools:
 
 -   `fast-check` is the most obvious current JS reference point and should be
     treated as a serious idea donor
+-   `gentest` is a useful counterweight because it keeps the generator
+    algebra intentionally small and compositional instead of expanding into
+    many overlapping DSLs
 -   it may still be useful for experimentation, adapter layers, or partial
     reuse of generator ergonomics
 -   it is not the exact conceptual target for Overkill's long-term property
     layer, because the desired direction here includes stronger integrated
-    shrinking guarantees, witness/corpus workflows, and a more explicit
-    model/state-machine story
+    shrinking guarantees, explicit edge-case and exhaustive-domain behavior,
+    witness/corpus workflows, and a more explicit model/state-machine story
 
 So the stance should be: learn from `fast-check`, borrow where it genuinely
 fits, but do not constrain the future property package to fast-check's

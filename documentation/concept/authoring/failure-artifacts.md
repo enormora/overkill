@@ -179,6 +179,8 @@ way — their outcome depends on state the source doesn't own:
     shrinks one of them down to a minimal counterexample. The seed
     reproduces the search; the shrink path and counterexample let
     replay skip re-shrinking.
+    The persistent corpus is then replayed eagerly on later runs before
+    fresh generation starts again.
 -   a deterministic-simulation test runs against a simulator
     configured through a scenario name and adapter payload, also
     driven by a seed. Without all three, the simulator behaves

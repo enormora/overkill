@@ -152,9 +152,17 @@ They are a separate authoring family with different needs:
 
 -   seed control
 -   shrinking
+-   edge-case injection
+-   finite-domain exhaustive generation when a domain is small enough to stop
+    pretending randomness is useful
 -   reproducibility
+-   persistent regression corpus replay before novel generation
+-   explicit size/growth control for recursive data
+-   generator sampling/preview for authoring and debugging
 -   generated-case naming and reporting
 -   useful witnesses for failing generated inputs
+-   targeted search for hard-to-reach counterexamples
+-   rule-based/state-machine layers above ordinary generated examples
 
 Overkill should continue to treat property-based testing as a real package
 direction, not merely “fancier unit tests”.

@@ -83,7 +83,9 @@ Future package families already counted into the concept:
         end-to-end browser framework
 -   property-based and model-based testing
     -   centered on integrated shrinking, replayable witnesses, persistent
-        corpora, and state-machine/linearisability layers above that core
+        corpora, first-class edge cases, and finite-domain exhaustive modes
+    -   state-machine and linearisability layers should sit above that core,
+        not replace it
 -   remote execution and distributed orchestration helpers
     -   preserving the same stable identities, result shapes, and artifact
         contracts while allowing work to be planned or executed outside one
