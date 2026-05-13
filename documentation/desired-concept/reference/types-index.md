@@ -285,8 +285,9 @@ type RunRecord = {
 };
 
 type RunResult = {
-    readonly summary: { passed: number; failed: number; skipped: number; inconclusive: number };
+    readonly summary: { discovered: number; passed: number; failed: number; skipped: number; inconclusive: number };
     readonly perTest: ReadonlyArray<{ id: CaseId; outcome: TestOutcome; verdict: string }>;
+    readonly bySuite: Record<string, { discovered: number; executed: number }>;
     readonly runnerErrors: ReadonlyArray<RunnerError>;
     readonly artifacts: ReadonlyArray<ArtifactId>;
     readonly wallTimeMs: number;

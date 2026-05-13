@@ -67,6 +67,7 @@ How the system is shaped.
 -   [Coverage](./architecture/coverage.md)
 -   [Artifact Identity](./architecture/artifact-identity.md)
 -   [Reproducibility](./architecture/reproducibility.md)
+-   [Run Counts](./architecture/run-counts.md)
 
 ## Authoring
 
