@@ -756,7 +756,7 @@ The main conclusions for Overkill are:
     and documentation/example test DSLs
 -   explore future DSLs and package families without forcing them into the first default runner
 
-## Influences And Attribution
+## Influences
 
 The lessons-and-costs sections above organise prior art by what each system
 teaches. This section flips the view: it records the specific ideas Overkill

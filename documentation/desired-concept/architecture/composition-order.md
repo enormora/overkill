@@ -11,7 +11,7 @@ This doc names the resolution and execution stack, end to end. It is
 a reading aid, not a new mechanism. Every step is already specified
 in its domain doc; this file is where they meet.
 
-## Influence
+## Influences
 
 The framing borrows from aspect-oriented programming literature
 (AspectJ's joinpoint model, ZIO Test's `@@` aspects, Common Lisp

@@ -428,10 +428,10 @@ family.
 Overkill should not copy all of these tools, but it should absorb their best
 ideas into one coherent benchmark model.
 
-## Influence
+## Influences
 
 JMH provides the strongest reminder that a benchmark harness must actively help users avoid misleading results.
 
-Source:
+## Sources
 
 -   <https://github.com/openjdk/jmh>

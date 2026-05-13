@@ -300,7 +300,7 @@ Overkill takes ideas from many systems without copying their whole world:
 
 The goal is not novelty for its own sake. The goal is to assemble a cleaner testing model for TypeScript.
 
-## Source Notes
+## Sources
 
 Key sources used across the concept docs:
 
