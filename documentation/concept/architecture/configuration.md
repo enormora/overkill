@@ -45,10 +45,10 @@ than custom formats.
 Configuration should mainly cover orchestration and package wiring:
 
 -   test discovery
--   runtime profiles
+-   named profile definitions
 -   reporter selection
 -   baseline policy (paths, write directory, explicit update behavior)
--   coverage enablement
+-   coverage policy (formats, thresholds, include/exclude, output paths)
 -   mutation integration
 -   type-test integration
 -   browser or benchmark package wiring
@@ -90,12 +90,26 @@ import { defineConfig, createLineReporter } from '@overkill/test';
 export default defineConfig({
     include: ['source/**/*.test.ts'],
     reporters: [createLineReporter()],
-    profile: 'microtest',
-    coverage: false,
+    coverage: {
+        formats: ['text', 'lcov'],
+    },
 });
 ```
 
 This should be a thin typed wrapper, not a mandatory DSL.
+
+Important ownership split:
+
+-   config defines persistent project policy
+-   CLI chooses per-run intent
+
+So, for example:
+
+-   `--profile <name>` chooses which runner profile to use for this run
+-   `--coverage` chooses whether this run collects coverage
+-   `coverage.formats`, `coverage.thresholds`, `coverage.include`, and
+    `coverage.outputDir` live in config because they describe how coverage
+    behaves once activated
 
 ## Configuration Layering
 
