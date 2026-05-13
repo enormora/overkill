@@ -354,8 +354,10 @@ compilers, ML models, and scientific code; it is rare in JS. Overkill should
 ship `relation()` as a first-class primitive:
 
 ```ts
-test('round trip', ({ relation, gen }) =>
-    relation('parse∘serialize = id', gen.user, (u) => deepEqual(parse(serialize(u)), u)));
+test('round trip', (case) => {
+    const { relation, gen } = case;
+    return relation('parse∘serialize = id', gen.user, (u) => deepEqual(parse(serialize(u)), u));
+});
 ```
 
 The relation, the transformation, and the input distribution are all
@@ -599,7 +601,10 @@ Bake p99 budgets into tests, not just into benchmarks. `perf_hooks.Histogram`
 gives percentile-stable measurement.
 
 ```ts
-test('parse is fast', ({ slo }) => slo({ p99: '5ms', samples: 1000 }, () => parseLargeJson(fixture)));
+test('parse is fast', (case) => {
+    const { slo } = case;
+    return slo({ p99: '5ms', samples: 1000 }, () => parseLargeJson(fixture));
+});
 ```
 
 Different from benchmarks (which are workload-shaped, calibrated, and

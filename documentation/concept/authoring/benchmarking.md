@@ -129,7 +129,8 @@ export const cliPublishBench = benchmark('publish command', {
     setup(workload) {
         return createPublishFixture(workload);
     },
-    measure: async ({ fixture, workload, sample }) => {
+    measure: async (context) => {
+        const { fixture, workload, sample } = context;
         const run = await sample.process({
             command: ['node', 'dist/cli.js', 'publish', '--dry-run'],
             cwd: fixture.cwd,

@@ -365,8 +365,9 @@ ergonomics layer may also expose optional sugar such as `defineMacro(...)`:
 import { defineMacro, suite, test } from '@overkill/test';
 
 const lawsOfMonoid = defineMacro(
-    <T>({ name, empty, concat, gen, eq }: MonoidLaws<T>) =>
-        suite(`monoid laws: ${name}`, [
+    <T>(parameters: MonoidLaws<T>) => {
+        const { name, empty, concat, gen, eq } = parameters;
+        return suite(`monoid laws: ${name}`, [
             test('left identity', (case) => {
                 return case.forall(gen, (x, sample) => {
                     sample.assert.equal(eq(concat(empty, x), x), true);
@@ -379,7 +380,8 @@ const lawsOfMonoid = defineMacro(
                     return sample.assert.done();
                 });
             }),
-        ]),
+        ]);
+    },
 );
 ```
 
@@ -394,7 +396,8 @@ That helper should stay optional sugar only:
 ```ts
 import { suite, test } from '@overkill/test';
 
-function lawsOfMonoid<T>({ name, empty, concat, gen, eq }: MonoidLaws<T>): TestNode {
+function lawsOfMonoid<T>(parameters: MonoidLaws<T>): TestNode {
+    const { name, empty, concat, gen, eq } = parameters;
     return suite(`monoid laws: ${name}`, [
         test('left identity', (case) => {
             return case.forall(gen, (x, sample) => {
@@ -409,7 +412,8 @@ function lawsOfMonoid<T>({ name, empty, concat, gen, eq }: MonoidLaws<T>): TestN
             });
         }),
         test('associativity', (case) => {
-            return case.forall([gen, gen, gen], ([a, b, c], sample) => {
+            return case.forall([gen, gen, gen], (values, sample) => {
+                const [a, b, c] = values;
                 sample.assert.equal(
                     eq(concat(concat(a, b), c), concat(a, concat(b, c))),
                     true,

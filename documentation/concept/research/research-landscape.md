@@ -66,7 +66,7 @@ Playwright Test is the most sophisticated testing system in mainstream JS today.
 
 #### Fixture System
 
-`test.extend({ ... })` builds typed fixture sets. Each fixture is `async ({ deps }, use) => { setup; await use(value); teardown }` — a coroutine where `await use(value)` is the yield. The runner parses parameter destructuring of every callback (test body, fixture, hook), builds a dependency DAG, instantiates only the requested subgraph lazily, and tears down in reverse order.
+`test.extend({ ... })` builds typed fixture sets. Each fixture is `async (context, use) => { const { deps } = context; setup; await use(value); teardown }` — a coroutine where `await use(value)` is the yield. The runner parses parameter destructuring of every callback (test body, fixture, hook), builds a dependency DAG, instantiates only the requested subgraph lazily, and tears down in reverse order.
 
 Two scope axes: `'test'` (default; setup per test) and `'worker'` (setup once per worker process). Worker fixtures act as global before/after hooks per worker but survive file boundaries when worker reuse kicks in.
 
@@ -177,7 +177,8 @@ Overkill direction: verdict modifiers belong on the test descriptor as fields, n
 #### `test.step` And Attachments
 
 ```ts
-test('checkout', async ({ page }, testInfo) => {
+test('checkout', async (context, testInfo) => {
+    const { page } = context;
     await test.step('login', async () => {
         /* ... */
     });
