@@ -504,7 +504,7 @@ created lazily per test, removed on test completion (or run completion in
 debug mode). This is one of the runner-owned escape hatches named in
 [Microtests And Capabilities](../authoring/microtests-and-capabilities.md).
 
-## Connection To Other Docs
+## Cross-References
 
 This document is the runtime counterpart to several others. Cross-links:
 
