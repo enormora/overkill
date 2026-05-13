@@ -41,7 +41,7 @@ Together these form a `RunPlan` value preserved as part of the run record.
 
 ```ts
 type RunRecord = {
-    readonly id: string; // ULID or content hash of the plan
+    readonly id: string; // ULID
     readonly seed: bigint;
     readonly plan: RunPlan;
     readonly identities: ReadonlyArray<CaseId>;
@@ -51,6 +51,11 @@ type RunRecord = {
     readonly result?: RunResult; // populated when the run completes
 };
 ```
+
+`RunRecord.id` identifies one concrete persisted run instance. It is not a
+plan hash and it is not reused across repeated identical runs. If the
+concept later needs an explicit same-plan fingerprint, that should be a
+separate field rather than overloading the run-record ID.
 
 The record is a conceptual output of the run, but persistence is not free and
 should not be mandatory on the hottest microtest path.

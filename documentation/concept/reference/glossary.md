@@ -452,8 +452,10 @@ matrix, the chosen execution strategy, the capability profile, the
 baseline verb, workload identity, metadata, loader configuration, and
 package versions. The plan is the input that, together with the
 recorded outcomes, becomes the `RunRecord`. Two runs with the same
-`RunPlan` should produce equivalent `RunRecord`s up to the
-machine-class tier defined in [Reproducibility § Tiered Reproducibility](../architecture/reproducibility.md#machine-dependent-reproducibility).
+`RunPlan` should produce equivalent resolved intent and comparable
+results up to the machine-class tier defined in [Reproducibility § Tiered Reproducibility](../architecture/reproducibility.md#machine-dependent-reproducibility),
+but they are still distinct run instances with distinct `RunRecord.id`
+values.
 
 Source: [Reproducibility](../architecture/reproducibility.md), [Types Index](./types-index.md).
 

@@ -209,7 +209,7 @@ type ResolvedRuntime = {
 };
 
 type RunRecord = {
-    readonly id: string; // ULID or content hash of the plan
+    readonly id: string; // ULID
     readonly seed: bigint;
     readonly plan: RunPlan;
     readonly identities: ReadonlyArray<CaseId>;
