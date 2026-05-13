@@ -75,8 +75,9 @@ identity (which uses only file/suite/name structure — see
 ## Selection Model
 
 Selection belongs to orchestration, not to hidden inline controls inside
-the test file. Filters apply at run planning, before sharding, before worker
-assignment, and before expansion of tables and runtime matrices.
+the test file. Filters apply during run planning, before execution starts.
+The full ordering of collection, expansion, filtering, sharding, and plan
+freeze lives in [Composition Order](./composition-order.md).
 
 Filterable dimensions:
 
@@ -92,21 +93,10 @@ This is the conceptual replacement for relying on `.only`.
 
 ### Selection In Multi-Process Runs
 
-Selection does not depend on workers or subprocesses discovering tests later.
-The runner first collects the test tree, resolves metadata, applies filters,
-and freezes the selected case set in the main planning phase. Only after
-that does worker assignment happen.
-
-That means:
-
--   multi-process execution does not change the selection semantics
--   workers receive cases from the frozen plan; they do not independently
-    register additional tests that could alter filtering or sharding
--   sharding and worker distribution operate on an already-collected case set
-
-The more detailed ordering lives in [Composition Order](./composition-order.md), but the important
-point here is simple: selection is a plan-time operation, not a worker-time
-side effect.
+Multi-process execution does not change selection semantics. Selection is a
+plan-time operation, not a worker-time side effect: workers receive cases
+from the frozen plan rather than discovering new tests that could alter
+filtering or sharding.
 
 ## Filter Expression Grammar
 
@@ -161,8 +151,6 @@ The replacement for `.only`:
 -   `--file source/auth/login.test.ts` runs only that file
 -   `--id <stable-id>` runs the exact case (IDE integration emits this)
 -   `--last-failed` runs tests that failed in the previous run
--   `--changed` runs tests in files changed since `main` (path-level only;
-    Overkill does not track a dependency graph)
 -   `--watch` reruns the selected suite on file change (uses Node's
     built-in watcher; see [Runtime Behavior § Watch-Mode Targeting](./runtime-behavior.md#watch-mode-targeting))
 
@@ -210,12 +198,9 @@ them, and tests with incompatible capabilities cannot share a worker.
 
 ## Composition With Sharding
 
-Sharding partitions the _filtered_ test set. Filters apply first; sharding
-operates on the result. This means:
-
--   `--filter '...' --shard 1/4` shards the filtered subset
--   reproducibility: the same filter + same shard count + same shard
-    index produces the same case set across runs
+Sharding partitions the filtered test set. Filters apply first; sharding
+operates on the result. See [Composition Order](./composition-order.md) and
+[Runtime Behavior § Sharding](./runtime-behavior.md#sharding).
 
 ## Programmatic Selection API
 

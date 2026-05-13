@@ -200,7 +200,6 @@ type RunRequest = {
         readonly file?: string;
         readonly id?: CaseId;
         readonly lastFailed?: boolean;
-        readonly changed?: boolean;
     };
     readonly shard?: { readonly index: number; readonly total: number };
     readonly profile?: RunnerProfileName;

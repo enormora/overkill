@@ -169,10 +169,8 @@ Limitations:
 ## Replay Witnesses For Properties And Simulations
 
 For property tests and deterministic-simulation tests, a run record is
-overkill — a witness is enough. `overkill replay-witness <path>` loads
-the witness JSON, restores its seed and snapshot, and runs that single
-test to reproduction. Witnesses are portable (cross-machine for DST,
-intra-machine-class for property tests with timing-dependent shrinks).
+overkill — a witness is enough. `overkill replay-witness <path>` loads the
+witness JSON and replays that single failing case directly.
 
 For the witness schema and versioning rules, see
 [Failure Artifacts § Witnesses And Replay Artifacts](../authoring/failure-artifacts.md#witnesses-and-replay-artifacts).

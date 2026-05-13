@@ -86,7 +86,6 @@ entrypoints rather than as hidden boolean flags.
 | `--file <path>`     | Restrict the run to a single file.                                     | same                                                                                                                      |
 | `--id <stable-id>`  | Restrict the run to a single case identity (IDE integration).          | same                                                                                                                      |
 | `--last-failed`     | Run only tests that failed in the previous run.                        | same                                                                                                                      |
-| `--changed`         | Run tests in files changed since `main`. Path-level only; no graph.    | same                                                                                                                      |
 | `--watch`           | Rerun the selected suite on file change. Uses Node's built-in watcher. | [Runtime Behavior § Watch-Mode Targeting](../architecture/runtime-behavior.md#watch-mode-targeting)                       |
 | `--shard <i>/<n>`   | Select shard `i` of `n` from the filtered set.                         | [Runtime Behavior § Sharding](../architecture/runtime-behavior.md#sharding)                                               |
 
@@ -98,7 +97,7 @@ entrypoints rather than as hidden boolean flags.
 | `--mode <strategy>` | Override the resolved execution strategy (serial, worker-pool, …).      | [Runtime Behavior § Parallelism Semantics](../architecture/runtime-behavior.md#parallelism-semantics) |
 | `--workers <n>`     | Override default worker count for worker-pool modes.                    | same                                                                                                  |
 
-## Output And Reporters
+## Output And Capture
 
 | Flag                | Behavior                                                               | Reference                                                                                               |
 | ------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |

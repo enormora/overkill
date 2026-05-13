@@ -169,25 +169,18 @@ All caps are configurable per profile.
 ## Witnesses And Replay Artifacts
 
 Failing property tests and deterministic-simulation tests produce
-witnesses: serialised, replayable artifacts that reproduce the
-failure without re-running shrinking. Most failures reproduce by
-re-running the same code: the source determines the execution.
-Property tests and deterministic-simulation tests don't work that
-way — their outcome depends on state the source doesn't own:
+witnesses: serialised, replayable artifacts that reproduce the failure
+without re-running shrinking or rebuilding simulator state. They exist for
+the test families whose outcome depends on generated or simulator-owned
+state rather than only on source code:
 
--   a property test picks generated inputs via a random seed, then
-    shrinks one of them down to a minimal counterexample. The seed
-    reproduces the search; the shrink path and counterexample let
-    replay skip re-shrinking.
-    The persistent corpus is then replayed eagerly on later runs before
-    fresh generation starts again.
--   a deterministic-simulation test runs against a simulator
-    configured through a scenario name and adapter payload, also
-    driven by a seed. Without all three, the simulator behaves
-    differently next time. See [Deterministic Simulation Testing § Why This Matters](./deterministic-simulation.md#why-this-matters).
+-   property tests record the failing generated input and shrink state
+-   deterministic-simulation tests record the seed, scenario, and
+    adapter-owned replay payload
 
-A witness file records that state — which is why these two kinds,
-and only these two, produce witnesses.
+Run-record and replay semantics live in
+[Reproducibility](../architecture/reproducibility.md). This doc owns only
+the witness artifact shape and its attachment/reporting behavior.
 
 This is the canonical witness schema; other docs reference it rather
 than restating fields.
@@ -211,18 +204,14 @@ type WitnessFile = {
 };
 ```
 
-A witness is also a failure artifact — it attaches to the failing
-case via `ArtifactId` and is rendered by reporters as a "replay
-command" line:
+A witness is also a failure artifact — it attaches to the failing case via
+`ArtifactId` and is rendered by reporters as a replay command line:
 
 ```
 overkill replay-witness .overkill/witnesses/users__round-trip__c0ffee.witness.json
 ```
 
-Witnesses are first-class enough that the runner records them even
-when the failure is reproducible by other means. Their cost is small
-(a few KB) and their value when triaging flakes is high. An
-incompatible `version` causes the reader to fail fast rather than run
+An incompatible `version` causes the reader to fail fast rather than run
 with subtly-different shrinking semantics.
 
 ## Captured Output

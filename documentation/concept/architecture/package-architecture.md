@@ -295,8 +295,6 @@ Multiple reporters should be attachable to one run.
 
 The core should expose the reporter contract; individual reporters should live in separate packages so projects can depend only on what they use.
 
-The reporter contract should preserve enough structured detail that different reporters can make different presentation choices for the same failure or error.
-
 The current first-party reporter set should be treated as settled:
 
 -   `dot` for minimal real-time progress output
@@ -326,14 +324,8 @@ it only supports certain run families or result capabilities, and
 orchestration should reject incompatible configurations before execution
 rather than producing a meaningless report.
 
-The reporter contract should preserve two reporter lifecycles:
-
--   real-time reporters that receive start, progress, and done events
--   final-result reporters that only receive the finished result
-
-This split already exists in the current source tree and should remain part of the concept because it maps cleanly to terminal reporters versus artifact-producing reporters such as HTML reports.
-
-The orchestration layer should also understand reporter sinks. At the concept level it should be able to detect or mediate obvious conflicts such as multiple reporters trying to write competing human-facing output to stdout.
+Lifecycle, sink, delivery, and backpressure semantics live in
+[Reporters](./reporters.md). This doc only owns the package-family stance.
 
 ## Baselines
 

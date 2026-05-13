@@ -154,22 +154,12 @@ rules.
 
 ## Relationship To Packages
 
-Configuration belongs above the engine.
-
-Typical ownership:
-
--   `@overkill/engine`
-    -   programmatic options only
--   `@overkill/test`
-    -   high-level authoring helpers that may consume programmatic config
-    -   may contribute package-level config concepts without owning file
-        discovery
--   `@overkill/run`
-    -   config file loading, discovery, orchestration defaults
-    -   config merging / validation across higher-layer packages
--   other higher-level packages
-    -   package-specific config domains such as browser wiring, benchmark
-        metric collectors, or type-test adapters
+Configuration belongs above the engine. `@overkill/run` owns config file
+loading, discovery, and cross-package merging/validation. Higher-level
+packages may still contribute their own config domains such as browser
+wiring, benchmark metric collectors, baseline policy, or type-test
+adapters. The detailed package-boundary matrix lives in
+[Package Architecture](./package-architecture.md).
 
 ## Assertion Registration Belongs To Test Facades
 
@@ -241,8 +231,7 @@ magical for configuration too.
 -   engine configuration is programmatic only
 -   higher-level config files are optional
 -   JS/TS config is preferred
--   config loading and discovery live above the engine, likely in
-    `@overkill/run`
+-   config loading and discovery live above the engine, in `@overkill/run`
 -   higher layers may contribute config domains even when the runner owns the
     top-level loading step
 -   the surface should stay small and orchestration-focused

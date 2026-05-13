@@ -66,13 +66,13 @@ export const spec = suite('users', [
 ]);
 ```
 
-The named export `spec` is a `Suite` — a plain data tree. The runner does:
+The named export `spec` is a `Suite` — a plain data tree. The runner imports
+that value and hands it to orchestration:
 
 ```ts
 const mod = await import(file);
 const tree: TestNode = mod.spec;
-const plan = orchestrate(tree, filter, profile);
-const result = await run(plan);
+await run(tree);
 ```
 
 That's it. No registry, no hidden cross-file module-load side effects, no
@@ -111,7 +111,9 @@ export const spec = suite('users', [
 
 That temporary detachment is a feature, not a misuse. The semantic boundary
 is **reachability from the exported root**: only nodes reachable from `spec`
-participate in planning and execution.
+participate in the run. Collection, filtering, sharding, and plan freeze
+are described in
+[Composition Order](../architecture/composition-order.md).
 
 The preferred DX is that direct execution does not require a mandatory
 self-run call in every test file. The canonical command should be:
@@ -205,14 +207,13 @@ silently elides the test from the registry — invisible to listings.
 ### Ordering is structural
 
 The order of children in a suite is the order they appear in the array.
-Sorting, shuffling, sharding all become array operations on a tree, not
-side-effects on a global.
+Sorting, shuffling, and other orchestration steps operate on a tree, not on
+side-effects in a global registry.
 
 ### Parallel collection is free
 
-Multiple workers can each `import` a subset of test files and produce their
-local trees independently. Merging is concatenation. There is no shared
-registry to race over.
+Multiple workers can each `import` test files and produce local trees
+independently. There is no shared registry to race over.
 
 ### No "global before everything" footgun
 
@@ -272,8 +273,8 @@ type Table = {
 
 `Metadata` and `Capability` are the structures defined in
 [Metadata And Selection](../architecture/metadata-and-selection.md) and [Microtests And Capabilities](./microtests-and-capabilities.md). The runner
-walks the tree, applies filters by metadata, expands tables into individual
-cases, and produces an execution plan.
+walks the tree. The detailed collection-to-plan pipeline lives in
+[Composition Order](../architecture/composition-order.md).
 
 The important typing rule is:
 

@@ -228,36 +228,14 @@ export const spec = suite('schemas', [
 ]);
 ```
 
-The important shape is that a reusable macro can define a canonical case
-family once and then apply it repeatedly to different subjects without
-re-spelling the same matrix in every test file.
+The important ergonomic point is that a reusable macro can define a
+canonical case family once and then apply it repeatedly to different
+subjects without re-spelling the same matrix in every test file.
 
-That means the first-party concept should support both:
-
--   one-off expansion for a local matrix
--   reusable higher-order macros that expand into several concrete tests for
-    each subject they are applied to
-
-This should still be a macro-oriented model, not a competing
-parameterization philosophy. Tables remain the small local convenience form;
-reusable multi-case expansion is just ordinary macro construction.
-
-When a reusable macro chooses parameterized expansion rather than plain
-ordinary tests, the callback model should stay consistent with table cases:
-
--   ordinary tests use one `case` parameter
--   generated/parameterized cases also use one `case` parameter
--   generated input is carried under `case.parameters`, not flattened into
-    the top-level case namespace
--   expanded child titles must still be unique among siblings after
-    generation; duplicate final titles are a collection/planning error
-
-### Stack Traces Matter
-
-Macro-generated and multi-case generated tests should preserve meaningful failure
-locations and names.
-
-That means:
+Canonical macro, table, generated-case naming, and callsite semantics live
+in [Tests As Values](./tests-as-values.md). This doc only keeps the
+ergonomic justification for using macros to remove repeated local
+choreography.
 
 -   generated tests must have strong explicit names
 -   helper failures and definition-site metadata should point back to the

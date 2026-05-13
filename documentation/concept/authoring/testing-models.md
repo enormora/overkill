@@ -144,40 +144,22 @@ They should be able to participate in run planning, reporting, and selection eve
 ## Property-Based and Model-Based Tests
 
 These are first-class higher-layer families rather than default microtest
-behavior. They fit Overkill’s philosophy because they are explicit and
-programmatic, but they require different primitives:
-
--   generators
--   integrated shrinking
--   model state
--   edge cases
--   finite-domain exhaustive modes
--   classification and coverage of generated cases
--   witnesses and persistent corpora
--   targeted search in harder input spaces
-
-Property tests should be treated as a real higher-layer family, not just a
-microtest variant with a helper library. They need:
-
--   seeds
--   shrinking
--   reproducible failing inputs
--   meaningful generated-case names and artifacts
+behavior. They need different primitives such as generators, integrated
+shrinking, edge cases, witnesses, corpora, model state, and targeted
+search.
 
 The settled package split is:
 
 -   `@overkill/property` for generator-driven property testing
 -   `@overkill/model` for rule-based/state-machine testing above that core
 
-Related advanced styles sit on top of that family rather than beside it:
+Related advanced styles such as metamorphic, differential, and
+linearizability-oriented testing also belong in that higher-layer family.
+Contract-oriented suites belong there too, but primarily through
+protocol-specific adapters.
 
--   metamorphic testing
--   differential testing
--   linearizability / consistency checking
-
-Contract-oriented suites are another distinct higher-layer family, but they
-arrive primarily through protocol-specific adapters rather than one universal
-core framework.
+See [Higher Test Layers](./higher-test-layers.md) for the detailed package
+and authoring model.
 
 ## Why The Separation Matters
 

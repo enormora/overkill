@@ -158,28 +158,9 @@ Canonical: [Artifact Identity](../architecture/artifact-identity.md).
 
 ## Stage 5 — Witness File Written
 
-Per [Failure Artifacts § Witnesses And Replay Artifacts](./failure-artifacts.md#witnesses-and-replay-artifacts), the
-property runner writes a `WitnessFile` to the path above:
-
-```json
-{
-    "version": 1,
-    "producedBy": { "library": "@overkill/property", "libraryVersion": "0.4.2" },
-    "case": {
-        "file": "source/users.test.ts",
-        "suite": ["users"],
-        "name": "round-trip preserves values"
-    },
-    "kind": "property",
-    "seed": "0xdeadbeef",
-    "shrinkPath": [
-        /* … shrink steps */
-    ],
-    "counterexample": { "id": "42", "name": "Adäle" }
-}
-```
-
-This is the artifact that survives the run.
+Per [Failure Artifacts § Witnesses And Replay Artifacts](./failure-artifacts.md#witnesses-and-replay-artifacts),
+the property runner writes the canonical `WitnessFile` schema to the
+path above. This is the artifact that survives the run.
 
 Canonical: [Failure Artifacts](./failure-artifacts.md).
 
@@ -245,10 +226,9 @@ The next morning, on a different machine, the developer runs:
 overkill replay-witness .overkill/witnesses/source/users.test__users__round-trip-preserves-values.witness.json
 ```
 
-The replay-witness command reads the file (stage 5), restores the
-seed, replays the test against the recorded counterexample (no
-re-shrinking), and reproduces the failure bit-for-bit. Stages 1–7
-repeat with `verdict === 'fail'` and the same failed check.
+The replay-witness command reads the file (stage 5) and replays that
+single failing case directly. Stages 1–7 repeat with `verdict === 'fail'`
+and the same failed check.
 
 Canonical: [Failure Artifacts § Witnesses And Replay Artifacts](./failure-artifacts.md#witnesses-and-replay-artifacts),
 [Reproducibility § Replay Witnesses For Properties And Simulations](../architecture/reproducibility.md#replay-witnesses-for-properties-and-simulations).

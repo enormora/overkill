@@ -186,15 +186,10 @@ accepts both deliberately by running `apply`.
     baselines, regardless of the host environment or who triggered
     the run.
 -   delete baselines that belong to tests the current run did not
-    execute. Stale detection compares on-disk baselines against the
-    case identities the run actually executed; anything else — a
-    baseline for a runtime not selected this run, a baseline for a
-    test filtered out by `--filter`, `--name`, `--file`, or
-    `--changed`, a baseline for a profile other than the one used —
-    is **not** treated as stale and is **not** removed.
-    Comprehensive stale cleanup therefore requires an unfiltered
-    `overkill baseline apply`; a filtered run only cleans within its
-    selection.
+    execute. Stale detection only compares on-disk baselines against the
+    case identities actually executed in that run. Comprehensive cleanup
+    therefore requires an unfiltered `overkill baseline apply`; a filtered
+    run only cleans within its selection.
 
 ## Package Position
 
