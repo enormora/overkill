@@ -149,7 +149,8 @@ mechanism is presentation.
 Config should prefer explicit imported values, for example:
 
 ```ts
-import { defineConfig, createLineReporter } from '@overkill/test';
+import { defineConfig } from '@overkill/run';
+import { createLineReporter } from '@overkill/reporter-line';
 import { createBenchmarkHtmlReporter } from '@overkill/reporter-benchmark-html';
 
 export default defineConfig({

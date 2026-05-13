@@ -88,7 +88,8 @@ Overkill should avoid:
 The first-party shape is:
 
 ```ts
-import { defineConfig, createLineReporter } from '@overkill/test';
+import { defineConfig } from '@overkill/run';
+import { createLineReporter } from '@overkill/reporter-line';
 
 export default defineConfig({
     include: ['source/**/*.test.ts'],

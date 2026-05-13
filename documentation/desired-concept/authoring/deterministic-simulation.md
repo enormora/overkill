@@ -184,17 +184,20 @@ test primitive. In other words:
 -   the wrapper should make the adapter, seed, and scenario explicit at the
     declaration site
 
-The helper names below are still concept-level sketches, but this shape
-should be treated as the recommended first-party direction. `SimulationAdapter`
-and `SimulationSession` _are_ canonical (see the section above and the
-types index).
+The public helper should be treated as settled:
+
+-   `withSimulation(adapter, options, body)`
+
+`SimulationAdapter` and `SimulationSession` are canonical too (see the
+section above and the types index). `withSimulation(...)` is the wrapper
+entrypoint that turns those lower-level pieces into ordinary test authoring.
 
 In-process style:
 
 ```ts
 test(
     'queue stays consistent under the deterministic runtime',
-    withRuntime(simulation(myAppSim, { seed: 42n, scenario: 'default' }), async (case) => {
+    withSimulation(myAppSim, { seed: 42n, scenario: 'default' }, async (case) => {
         case.assert.done();
     }),
 );
@@ -205,7 +208,7 @@ Local-service style:
 ```ts
 test(
     'checkout handles upstream 500s',
-    withRuntime(simulation(deterministicApi, { scenario: 'payments-500' }), async (case) => {
+    withSimulation(deterministicApi, { scenario: 'payments-500' }, async (case) => {
         const runtime = case.runtime;
         const baseUrl = runtime.endpoint;
         // App under test talks to the deterministic service over real HTTP.
@@ -214,8 +217,7 @@ test(
 );
 ```
 
-The important point is not that these exact helper names are frozen. The
-important point is that the public shape should stay:
+The important point is that the public shape stays:
 
 -   runtime wrapper first
 -   adapter/seed/scenario explicit in the wrapper call

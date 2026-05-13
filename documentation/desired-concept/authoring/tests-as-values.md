@@ -116,23 +116,41 @@ are described in
 [Composition Order](../architecture/composition-order.md).
 
 The preferred DX is that direct execution does not require a mandatory
-self-run call in every test file. The canonical command should be:
+self-run call in every test file. Two direct-file entry paths should be
+treated as first-class:
 
 ```bash
 overkill run source/users.test.ts
 ```
 
-That preserves the exported value for tooling without requiring per-file
-boilerplate. A helper such as `runIfMain(import.meta, spec)` may still exist
-as an explicit fallback for users who specifically want:
+and:
 
 ```bash
 node source/users.test.ts
 ```
 
-But that fallback should not be the preferred first-party authoring pattern,
-and the default concept should not promise bare `node` auto-detecting a
-conventional exported suite value without a helper.
+The first path preserves the exported value for tooling without requiring
+per-file boilerplate. The second path is fully supported through an explicit
+authoring helper:
+
+```ts
+import { runIfMain, suite, test } from '#tests/micro';
+
+export const spec = suite('users', [
+    test('build', (case) => {
+        case.assert.equal(buildUser('Ada').name, 'Ada');
+        return case.assert.done();
+    }),
+]);
+
+await runIfMain(import.meta, spec);
+```
+
+`runIfMain(...)` is not a second-class escape hatch. It is the supported
+companion path for teams that want a test file to behave like an ordinary
+Node entrypoint while still exporting the same suite value for tooling.
+What the concept rejects is silent bare-`node` auto-detection of a
+conventional exported suite value without that explicit helper.
 
 ## Why This Is Better
 

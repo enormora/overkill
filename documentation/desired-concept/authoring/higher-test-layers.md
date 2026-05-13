@@ -178,14 +178,23 @@ Property-adjacent testing styles should be layered on top of that family
 rather than treated as unrelated concepts:
 
 -   metamorphic testing belongs in the property family as relation-style
-    checks over transformed inputs and outputs
--   differential testing belongs above the property family, for example in
-    `@overkill/differential`
--   linearizability or consistency checking belongs above the model family,
-    for example in `@overkill/linearizability` or `@overkill/history`
+    checks over transformed inputs and outputs, exposed through a helper
+    such as `relation(...)`
+-   differential testing belongs above the property family in
+    `@overkill/differential`, exposed through a helper such as
+    `differential(...)`
+-   linearizability or consistency checking belongs above the model family
+    in `@overkill/linearizability`, exposed through a helper such as
+    `linearizability(...)`
 
 These styles should reuse the same shrinking, witness, corpus, and
 reporting infrastructure rather than inventing parallel systems.
+
+The canonical helper names for these layers should be treated as settled:
+
+-   `relation(...)` in `@overkill/property`
+-   `differential(...)` in `@overkill/differential`
+-   `linearizability(...)` in `@overkill/linearizability`
 
 ### Contract-Oriented Suites
 

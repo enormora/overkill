@@ -113,7 +113,8 @@ repetition.
 The preferred first-party authoring shape should be tests-as-values:
 
 -   exported suite trees
--   direct `node foo.test.ts` execution
+-   direct-file execution through `overkill run foo.test.ts`
+-   explicit `runIfMain(import.meta, spec)` support for `node foo.test.ts`
 -   trivial machine-readable discovery
 
 Module-load registration DSLs are still valid ideas, but they should not be

@@ -227,6 +227,45 @@ The error assertions should stay strict:
 -   no ambiguous positional matcher/message overloads
 -   `rejects` should prefer a thunk over an already-awaited promise value
 
+The matcher itself should be a small object contract:
+
+```ts
+type ErrorMatcher = {
+    readonly type?: abstract new (...args: ReadonlyArray<unknown>) => Error;
+    readonly message?: string | RegExp;
+    readonly code?: string;
+    readonly name?: string;
+    readonly cause?: ErrorMatcher;
+};
+```
+
+Recommended examples:
+
+```ts
+case.assert.throws(doParse, {
+    type: SyntaxError,
+    message: /invalid header/,
+});
+
+await case.assert.rejects(
+    () => loadUser('42'),
+    {
+        code: 'ENOENT',
+        message: 'user not found',
+    },
+);
+```
+
+This matcher should stay intentionally small:
+
+-   no positional message argument
+-   no predicate overloads
+-   no arbitrary callback matcher DSL
+
+If a test needs custom matching logic, it should catch the error and use
+ordinary assertions on the resulting value instead of overloading the
+`throws` / `rejects` surface.
+
 `deepEqual` and `partialDeepEqual` should already understand modern
 collection primitives such as `Map` and `Set`. Separate `mapEqual` /
 `setEqual` built-ins are not needed in the first pass if the ordinary deep
@@ -562,6 +601,16 @@ export const { test, suite, table } = createTestFacade({
     assertions: [calledOnceWith],
 });
 ```
+
+The settled facade contract is narrow:
+
+-   `createTestFacade(...)` accepts assertion extensions only
+-   it returns the typed core authoring helpers for that suite family:
+    `test`, `suite`, `table`, `defineMacro`, and `runIfMain`
+-   config loading, reporters, discovery, and other runner concerns stay in
+    `@overkill/run`
+-   higher-layer helpers are re-exported alongside the facade from a stable
+    project alias rather than configured through facade creation
 
 This follows the Playwright-style facade pattern:
 

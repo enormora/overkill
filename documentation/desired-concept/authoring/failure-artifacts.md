@@ -106,8 +106,8 @@ attribution drift (an async chain escaped its test window), it warns rather
 than silently mis-blaming a sibling test.
 
 Tests that intend to test rejection paths use the assertion library's
-explicit support (`assert.rejects(promise, expected)`) rather than relying
-on the global hooks. The global hooks are the safety net, not the
+explicit support (`case.assert.rejects(() => promiseReturningCall(), { message: /expected/ })`)
+rather than relying on the global hooks. The global hooks are the safety net, not the
 mechanism.
 
 ## Artifact Policy

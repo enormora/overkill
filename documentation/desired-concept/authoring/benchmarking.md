@@ -234,6 +234,11 @@ So the distinction should stay clear:
 -   SLO checks decide whether measured behavior stays within declared
     latency/service budgets
 
+The canonical policy helper name should be treated as settled too:
+
+-   `slo(...)` in `@overkill/bench` expresses latency- or service-level
+    budget policy over measured benchmark results
+
 ## Execution Strategy
 
 Benchmarks should be allowed to influence execution strategy strongly, because measurement reliability is often more important than raw throughput.
@@ -324,7 +329,7 @@ Examples:
 
 The implementation direction is:
 
--   a dedicated package above `@overkill/bench`, for example
+-   a dedicated package above `@overkill/bench`:
     `@overkill/browser-bench`
 -   driven by Playwright or another browser controller
 -   with metric collection via browser APIs, WebDriver BiDi where it is
@@ -341,8 +346,10 @@ The package split should be:
 
 Concept sketch for `@overkill/browser-bench`:
 
--   benchmark author declares a browser workload such as cold page load,
-    route transition, typed interaction flow, or repeated render/update loop
+-   benchmark author declares a browser workload through a helper such as
+    `browserBenchmark(...)`
+-   that workload may represent cold page load, route transition, typed
+    interaction flow, or repeated render/update loop
 -   the package provisions a controlled browser runtime and page/session
     lifecycle around that workload
 -   metrics may come from portable browser surfaces first, with deeper

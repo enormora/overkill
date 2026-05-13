@@ -182,6 +182,45 @@ Canonical: [Assertions And Results § The Protocol Shape](../authoring/assertion
 `TestVerdict` reporter category is derived from outcome + metadata; see
 [Glossary § Test Verdict](./glossary.md#test-verdict).
 
+## Assertion Extensions And Error Matching
+
+```ts
+type ErrorMatcher = {
+    readonly type?: abstract new (...args: ReadonlyArray<unknown>) => Error;
+    readonly message?: string | RegExp;
+    readonly code?: string;
+    readonly name?: string;
+    readonly cause?: ErrorMatcher;
+};
+
+type AssertionExtension = {
+    readonly name: string;
+};
+
+type CreateTestFacadeOptions = {
+    readonly assertions?: ReadonlyArray<AssertionExtension>;
+};
+
+type TestBody = (case: unknown) => unknown;
+
+type TestFacade = {
+    readonly test: (name: string, body: TestBody) => TestCase;
+    readonly suite: (name: string, children: ReadonlyArray<TestNode>) => Suite;
+    readonly table: (options: {
+        title: string;
+        cases: ReadonlyArray<unknown>;
+        caseTitle?: (parameters: unknown, index: number) => string;
+        test: TestBody;
+    }) => Table;
+    readonly defineMacro: <Args extends ReadonlyArray<unknown>>(
+        factory: (...args: Args) => TestNode,
+    ) => (...args: Args) => TestNode;
+    readonly runIfMain: (meta: ImportMeta, spec: TestNode) => Promise<void>;
+};
+```
+
+Canonical: [Assertions And Results](../authoring/assertions-and-results.md).
+
 ## Run Request, Plan, And Record
 
 ```ts
@@ -419,6 +458,13 @@ type SimulationSession = {
     stop(): Promise<void>;
 };
 
+type SimulationOptions = {
+    readonly seed?: bigint;
+    readonly scenario?: string;
+};
+
+type WithSimulation = (adapter: SimulationAdapter, options: SimulationOptions, body: TestBody) => TestBody;
+
 type ExecutionRequirement =
     | { kind: 'serial' }
     | { kind: 'single-worker' }
@@ -438,8 +484,7 @@ sample explicitly defines them.
     illustrative `saveUser` example
 -   `arbitrary.user`, `arbitrary.bytes`, `gen.user` — placeholder generator
     references in property-test snippets
--   `relation`, `differential`, `slo()` — illustrative helper names for
-    settled higher-layer directions; exact syntax is not committed by this
-    index
--   `withRuntime`, `simulation(...)` — illustrative test helpers in
-    [Deterministic Simulation Testing](../authoring/deterministic-simulation.md); signatures are not committed
+-   `relation`, `differential`, `linearizability`, `browserBenchmark`,
+    `slo()` — settled helper names for higher-layer families; owning docs
+    define the package home and concept-level semantics, but this index does
+    not own their full signatures

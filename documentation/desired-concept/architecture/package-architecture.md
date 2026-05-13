@@ -83,17 +83,18 @@ The preferred DX should be:
 
 -   a test file exports a conventional value such as `spec`
 -   the canonical direct-file command is `overkill run path/to/file.test.ts`
--   an explicit helper such as `runIfMain(import.meta, spec)` may still exist
-    for users who specifically want bare `node path/to/file.test.ts`
--   bare `node` execution should not be promised as the default first-party
-    path unless Overkill deliberately adopts a loader or import-hook
-    mechanism, which the current concept rejects
+-   `runIfMain(import.meta, spec)` is a fully supported companion path for
+    users who want bare `node path/to/file.test.ts`
+-   bare `node` execution should not be promised to auto-discover a
+    conventional exported suite value without that explicit helper unless
+    Overkill deliberately adopts a loader or import-hook mechanism, which
+    the current concept rejects
 
 When projects need different assertion surfaces for different suite
 families, the preferred pattern is a Playwright-style **test facade**:
 
--   `createTestFacade(...)` in project code composes custom assertions or
-    higher-layer helpers
+-   `createTestFacade(...)` in project code composes custom assertions into
+    one typed authoring surface
 -   the project re-exports that facade through a stable alias such as
     `#tests/micro` or `#tests/integration`
 -   test files import from that stable alias rather than from varying
@@ -101,6 +102,19 @@ families, the preferred pattern is a Playwright-style **test facade**:
 
 This keeps types exact without global augmentation, config-time typing
 magic, or noisy per-assertion local opt-in.
+
+The facade surface itself should stay narrow and settled:
+
+-   `createTestFacade({ assertions })` configures assertion extensions only
+-   the returned facade re-exports the core authoring helpers:
+    `test`, `suite`, `table`, `defineMacro`, and `runIfMain`
+-   higher-layer helpers such as `property`, `browserBenchmark`, or
+    `eslintRuleSuite` should be imported and re-exported alongside the
+    facade from the project's stable alias, not injected into
+    `createTestFacade(...)`
+
+This keeps facade creation focused on the typed test surface rather than
+turning it into a second plugin runtime.
 
 ## Assertions
 
