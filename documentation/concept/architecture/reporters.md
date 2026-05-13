@@ -10,6 +10,42 @@ and the engine never bakes presentation choices into its core types.
 This doc names the contract. [Package Architecture § Reporters](./package-architecture.md#reporters)
 covers the package-family rationale; this is the interface.
 
+## First-Party Reporter Set
+
+The current first-party reporter set should be treated as part of the
+settled concept:
+
+-   `@overkill/reporter-dot`
+    -   real-time, stdout
+    -   minimal progress output for local or CI runs where compactness matters
+-   `@overkill/reporter-line`
+    -   real-time, stdout
+    -   default human reporter for ordinary test runs
+-   `@overkill/reporter-tap`
+    -   real-time, stdout
+    -   TAP-compatible stream for existing tooling ecosystems
+-   `@overkill/reporter-json`
+    -   final-result
+    -   canonical machine-readable run result
+-   `@overkill/reporter-html`
+    -   final-result
+    -   generic artifact/failure report for ordinary test families
+-   `@overkill/reporter-benchmark-html`
+    -   final-result
+    -   benchmark-specific report with metric tables, comparisons, baseline
+        deltas, machine metadata, and plotting-oriented output
+
+The benchmark HTML reporter should show at least:
+
+-   benchmark groups and workloads
+-   recorded raw metrics
+-   normalized metrics when calibration is in use
+-   percentiles and other configured summary statistics
+-   budget/baseline deltas and pass/fail policy outcomes
+-   machine/runtime metadata relevant to comparability
+-   visual comparison output such as distributions or workload comparison
+    plots
+
 ## Two Lifecycles
 
 Reporters declare which lifecycle they participate in. The split
@@ -104,13 +140,33 @@ Two attachment surfaces:
 
 -   **Programmatic** — `runner.run({ reporters: [reporterA, reporterB] })`
     accepts already-instantiated reporter objects
--   **Config-driven** — `overkill.config.ts` lists reporter package
-    names; the runner imports and instantiates them. Resolves to the
-    same in-memory shape
+-   **Config-driven** — `overkill.config.ts` imports reporter factories or
+    reporter values directly and passes instantiated reporters to the runner
 
 Both forms produce the same `Reporter[]` array; the registration
-mechanism is presentation. Per-run `--reporter <name>` flags add to
-the list.
+mechanism is presentation.
+
+Config should prefer explicit imported values, for example:
+
+```ts
+import { defineConfig, createLineReporter } from '@overkill/test';
+import { createBenchmarkHtmlReporter } from '@overkill/reporter-benchmark-html';
+
+export default defineConfig({
+    reporters: [
+        createLineReporter(),
+        createBenchmarkHtmlReporter({
+            outputDir: '.overkill/bench-report',
+        }),
+    ],
+});
+```
+
+There is intentionally no implicit third-party reporter discovery by naming
+convention and no package-name lookup magic in the settled concept.
+
+Bundle packages may re-export the built-in reporter factories so users do not
+need to import each built-in reporter from its leaf package by default.
 
 ## Multi-Reporter Composition
 
@@ -194,6 +250,22 @@ preferable.)
 -   not a recommendation to write a custom reporter — first-party
     reporters cover the common cases; third-party reporters exist
     for specialised pipelines
+
+## Compatibility
+
+Not every reporter is meaningful for every run family. Reporters may declare
+compatibility requirements over the resolved run plan or result shape.
+
+Examples:
+
+-   generic reporters such as `dot`, `line`, `tap`, `json`, and generic
+    `html` can attach to ordinary test-family runs
+-   `benchmark-html` requires benchmark result data and benchmark-specific
+    metrics
+
+If a configuration attaches an incompatible reporter, orchestration should
+reject it before execution with a configuration error rather than attempting
+to render nonsense.
 
 ## Cross-References
 

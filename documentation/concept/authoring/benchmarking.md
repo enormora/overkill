@@ -74,6 +74,26 @@ It also confirms that Overkill should support:
 -   normalization as a first-class harness concern
 -   benchmark-specific artifact output and diagnostics
 
+The benchmark-specific reporter offering should be considered settled too:
+
+-   generic reporters may still render benchmark pass/fail and summary data
+-   but Overkill should also ship a dedicated
+    `@overkill/reporter-benchmark-html` package for benchmark-oriented final
+    reports
+
+That reporter should present:
+
+-   workload/group tables
+-   raw and normalized metrics
+-   percentiles and configured summary statistics
+-   budget/baseline deltas
+-   machine/runtime comparability metadata
+-   visual comparison output such as distribution or workload plots
+
+It should be a separate reporter package rather than part of
+`@overkill/bench`, because the benchmark package owns benchmark execution and
+result semantics while reporter packages own presentation.
+
 ## Benchmark Definition Model
 
 The conceptual unit should be a **workload-oriented benchmark**, not just “function X.”

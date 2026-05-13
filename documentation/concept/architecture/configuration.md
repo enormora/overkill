@@ -47,7 +47,7 @@ Configuration should mainly cover orchestration and package wiring:
 -   test discovery
 -   runtime profiles
 -   reporter selection
--   baseline policy (paths, write directory, CI opt-in env var)
+-   baseline policy (paths, write directory, explicit update behavior)
 -   coverage enablement
 -   mutation integration
 -   type-test integration
@@ -85,11 +85,11 @@ Overkill should avoid:
 The likely first-party shape is:
 
 ```ts
-import { defineConfig } from '@overkill/run';
+import { defineConfig, createLineReporter } from '@overkill/test';
 
 export default defineConfig({
     include: ['source/**/*.test.ts'],
-    reporters: ['line'],
+    reporters: [createLineReporter()],
     profile: 'microtest',
     coverage: false,
 });

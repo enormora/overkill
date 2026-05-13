@@ -192,13 +192,42 @@ Examples:
 -   `@overkill/reporter-tap`
 -   `@overkill/reporter-json`
 -   `@overkill/reporter-html`
--   benchmark- or browser-specific reporters as separate packages
+-   `@overkill/reporter-benchmark-html`
 
 Multiple reporters should be attachable to one run.
 
 The core should expose the reporter contract; individual reporters should live in separate packages so projects can depend only on what they use.
 
 The reporter contract should preserve enough structured detail that different reporters can make different presentation choices for the same failure or error.
+
+The current first-party reporter set should be treated as settled:
+
+-   `dot` for minimal real-time progress output
+-   `line` as the default human terminal reporter
+-   `tap` for TAP-oriented integrations
+-   `json` as the canonical machine-readable result dump
+-   `html` as the generic artifact/failure report
+-   `benchmark-html` as the benchmark-specific final report with
+    metric-oriented presentation
+
+The benchmark-specific HTML reporter is justified because benchmark suites
+need presentation that generic test reporters do not: workload comparisons,
+percentiles, baseline deltas, machine metadata, and plotting-oriented output.
+That reporter should therefore remain a separate reporter package rather than
+being hidden inside `@overkill/bench`.
+
+Reporter loading should stay explicit and JS/TS-native:
+
+-   config imports reporter factories/instances directly
+-   first-party bundle packages may re-export built-in reporter factories
+-   there is no implicit package-name discovery or naming-convention scan for
+    third-party reporters
+-   reporter selection is config-only, not a duplicate CLI surface
+
+Reporter compatibility should also be explicit. A reporter may declare that
+it only supports certain run families or result capabilities, and
+orchestration should reject incompatible configurations before execution
+rather than producing a meaningless report.
 
 The reporter contract should preserve two reporter lifecycles:
 

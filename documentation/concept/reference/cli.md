@@ -96,7 +96,6 @@ requires the user to type it deliberately.
 | Flag                | Behavior                                                               | Reference                                                                                               |
 | ------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `--coverage`        | Collect coverage for microtest profiles only. Forces serial execution. | [Coverage](../architecture/coverage.md)                                                                 |
-| `--reporter <name>` | Select a reporter; may be specified multiple times.                    | [Package Architecture § Reporters](../architecture/package-architecture.md#reporters)                   |
 | `--no-capture`      | Pass stdout/stderr through live instead of buffering.                  | [Runtime Behavior § Console Output Capture](../architecture/runtime-behavior.md#console-output-capture) |
 
 ## Lifecycle And Edge Cases
