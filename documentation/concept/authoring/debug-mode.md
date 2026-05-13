@@ -118,9 +118,10 @@ They are garbage-collected with the rest of the run record per
 [Failure Artifacts § Storage Policy](./failure-artifacts.md#storage-policy).
 
 This is deliberately **not** the default microtest path. A normal
-microtest run does not write one artifact file per test case. The
-ordinary path keeps failure data in the run record and reporter/event
-stream only. Per-test debug files exist solely for tests the user
+microtest run does not write one artifact file per test case, and it
+does not have to persist a run record unless another active workflow
+requires one. The ordinary path keeps failure data in memory and in the
+reporter/event stream only. Per-test debug files exist solely for tests the user
 explicitly put into debug mode (`--debug` or `--debug-test`), and the
 expected microtest workflow is to scope that mode narrowly with
 `--debug-test`, `--id`, `--name`, `--file`, or `--filter`.

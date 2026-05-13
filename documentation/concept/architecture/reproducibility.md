@@ -52,8 +52,20 @@ type RunRecord = {
 };
 ```
 
-The record is written to `.overkill/runs/<id>.json` by default. Replay
-uses it as input.
+The record is a conceptual output of the run, but persistence is not free and
+should not be mandatory on the hottest microtest path.
+
+So the settled direction should be:
+
+-   every run has an in-memory run plan/result model
+-   persisted `RunRecord`s are written only when an active workflow needs
+    them
+-   examples include explicit replay/recording workflows, debug-mode
+    retention, coverage/artifact-producing runs, and other runs where the
+    user or active feature asked for durable runtime state
+
+When persisted, the record is written under `.overkill/runs/<id>.json` and
+replay uses it as input.
 
 ## Ordering
 
@@ -120,7 +132,8 @@ machine class X."
 
 ## Replay
 
-`overkill replay <run-id>` loads a run record and executes the same plan:
+`overkill replay <run-id>` loads a previously persisted run record and
+executes the same plan:
 
 -   restores the seed
 -   restores the selection (no re-collection from disk; the recorded

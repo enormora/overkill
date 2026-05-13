@@ -192,7 +192,7 @@ Canonical: [Failure Artifacts](./failure-artifacts.md).
 
 ## Stage 6 — Run Record
 
-Run completion writes a `RunRecord` (see [Reproducibility § Run Record Shape](../architecture/reproducibility.md#run-record-shape), also [Types Index](../reference/types-index.md)) to
+When the active workflow persists a run record (see [Reproducibility § Run Record Shape](../architecture/reproducibility.md#run-record-shape), also [Types Index](../reference/types-index.md)), run completion writes it to
 `.overkill/runs/<run-id>.json`. The relevant per-test entry:
 
 ```ts
