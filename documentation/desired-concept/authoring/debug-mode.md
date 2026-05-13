@@ -255,7 +255,7 @@ linter) reads the pattern.
 -   **Not a verdict input.** Whatever the artifact contains, it never
     affects pass/fail.
 
-## Connections
+## Cross-References
 
 -   Capability handle recording is owned by [Capability Handles](./capability-handles.md);
     debug mode aggregates those events into the timeline rather than

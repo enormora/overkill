@@ -221,7 +221,9 @@ under 200 lines.
 
 This becomes the foundation for the property-testing package family later.
 
-## Connection To `@overkill/doubles`
+## Cross-References
+
+### `@overkill/doubles`
 
 This is the canonical home for the handles ↔ doubles boundary; [Doubles](./doubles.md)
 links here rather than restating it.
@@ -252,7 +254,7 @@ latter.
 doubles. Capability handles, if they become part of the ecosystem,
 complement `testDouble()` rather than compete with it.
 
-## Connection To Microtest Capabilities
+### Microtest Capabilities
 
 Capability-restricted microtests deny FS, network, and child-process access
 at the Node permission level. Capability handles complement this at the
@@ -268,7 +270,9 @@ A microtest that constructs a narrow runtime object such as `{ clock, random }`
 literally cannot perform other effects through that object, because the
 language types do not let it.
 
-## Connection To [Assertions And Results](./assertions-and-results.md)
+### Assertions And Results
+
+See [Assertions And Results](./assertions-and-results.md).
 
 A test that uses recording handles produces a structured effect log. In the
 preferred high-level authoring style, the test asserts on that log through
@@ -281,7 +285,7 @@ return case.assert.done();
 
 There is nothing to throw. The whole test reads as `(input, runtime) -> (output, effects, outcome)` — pure data, deterministic, machine-readable.
 
-## Connection To Reproducibility
+### Reproducibility
 
 A `RuntimeSnapshot` captures the random seed, virtual clock state, FS image,
 and HTTP stub set. A failing run can serialize the snapshot as a failure

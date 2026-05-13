@@ -200,7 +200,7 @@ That is enough to make:
 -   benchmark policies meaningful
 -   CI failures reproducible locally
 
-## Connection To Other Docs
+## Cross-References
 
 -   [Artifact Identity](./artifact-identity.md) — provides the stable `CaseId` and `ArtifactId`
     used here

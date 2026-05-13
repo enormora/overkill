@@ -462,43 +462,6 @@ function selected(node: TestNode, filter: Filter): TestNode | null {
 Filtering produces a smaller tree. Listing returns the tree. Executing walks
 the tree. The same data structure feeds every operation.
 
-## Connection To `import defer`
-
-TC39 `import defer` (Stage 3 as of May 2026, supported syntactically in
-TypeScript 5.9, not yet in V8) lets a module declare that an import should
-not be evaluated until first access. Combined with tests-as-values:
-
-```ts
-import defer * as heavy from './heavy-module.ts';
-
-export const spec = suite('heavy', [
-    test('uses heavy', (case) => {
-        case.assert.equal(heavy.compute(), 42);
-        return case.assert.done();
-    }),
-]);
-```
-
-The import graph for `heavy-module.ts` is _not_ evaluated when the test file
-is imported for listing. It only evaluates when the test body runs. Until V8
-ships native support, Overkill can simulate this by keeping each test in its
-own module and lazy-importing on demand from the runner. Tests-as-values
-makes the simulation transparent because the test definitions are pure data
-that doesn't need the implementation modules to exist.
-
-## Connection To [Assertions And Results § Protocol Layer](./assertions-and-results.md#protocol-layer-structured-outcomes)
-
-Tests-as-values composes with the returned-value outcome model: a test is a
-value with a `run` function returning a `TestOutcome` value. Both ends of
-the test lifecycle are pure data:
-
--   the test definition is data (the suite tree)
--   the test result is data (the outcome)
-
-The runner's job is `(SuiteTree, Filter, Profile) -> Promise<RunResult>` —
-a function from data to data. No global registry, no thrown exceptions on
-the success path, no hidden cross-file registration state.
-
 ## Current Product Stance
 
 Overkill should make the value-oriented path strong enough that it does not
@@ -511,23 +474,6 @@ The design goal is:
 -   third-party freedom to build alternate DSLs on top of the same engine
 
 This is the cleanest form of the "API-First" principle the overview names.
-
-## Connection To Capability Handles
-
-Tests-as-values + capability handles + recording variants give a fully
-deterministic test as a function:
-
-```ts
-type TestRun = (input: { runtime: RuntimeHandles; seed: bigint }) => Promise<{
-    outcome: TestOutcome;
-    effects: ReadonlyArray<RecordedEvent>;
-    snapshot: RuntimeSnapshot;
-}>;
-```
-
-Replaying a test means running this function with the same runtime snapshot
-and seed. Recording means saving the resulting snapshot. Determinism comes
-out for free because every input is explicit.
 
 ## Drawbacks And Mitigations
 
@@ -575,7 +521,65 @@ The suite array has natural order. Randomized order is a runner concern,
 applied to the resolved plan. Reproducibility is preserved by reporting the
 seed and the resulting permutation.
 
-## Connection To IDE / MCP / Tooling
+## Cross-References
+
+### `import defer`
+
+TC39 `import defer` (Stage 3 as of May 2026, supported syntactically in
+TypeScript 5.9, not yet in V8) lets a module declare that an import should
+not be evaluated until first access. Combined with tests-as-values:
+
+```ts
+import defer * as heavy from './heavy-module.ts';
+
+export const spec = suite('heavy', [
+    test('uses heavy', (case) => {
+        case.assert.equal(heavy.compute(), 42);
+        return case.assert.done();
+    }),
+]);
+```
+
+The import graph for `heavy-module.ts` is _not_ evaluated when the test file
+is imported for listing. It only evaluates when the test body runs. Until V8
+ships native support, Overkill can simulate this by keeping each test in its
+own module and lazy-importing on demand from the runner. Tests-as-values
+makes the simulation transparent because the test definitions are pure data
+that doesn't need the implementation modules to exist.
+
+### Assertions And Results § Protocol Layer
+
+See [Assertions And Results § Protocol Layer](./assertions-and-results.md#protocol-layer-structured-outcomes).
+
+Tests-as-values composes with the returned-value outcome model: a test is a
+value with a `run` function returning a `TestOutcome` value. Both ends of
+the test lifecycle are pure data:
+
+-   the test definition is data (the suite tree)
+-   the test result is data (the outcome)
+
+The runner's job is `(SuiteTree, Filter, Profile) -> Promise<RunResult>` —
+a function from data to data. No global registry, no thrown exceptions on
+the success path, no hidden cross-file registration state.
+
+### Capability Handles
+
+Tests-as-values + capability handles + recording variants give a fully
+deterministic test as a function:
+
+```ts
+type TestRun = (input: { runtime: RuntimeHandles; seed: bigint }) => Promise<{
+    outcome: TestOutcome;
+    effects: ReadonlyArray<RecordedEvent>;
+    snapshot: RuntimeSnapshot;
+}>;
+```
+
+Replaying a test means running this function with the same runtime snapshot
+and seed. Recording means saving the resulting snapshot. Determinism comes
+out for free because every input is explicit.
+
+### IDE / MCP / Tooling
 
 Because the test definitions are values, an external tool can:
 

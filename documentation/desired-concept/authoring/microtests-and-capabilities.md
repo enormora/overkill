@@ -297,7 +297,7 @@ contract becomes muddier.
 Test macros ([Tests As Values § Macros And Parameterized Tests](./tests-as-values.md#macros-and-parameterized-tests)) are the recommended reuse
 mechanism instead.
 
-## Connection To Other Docs
+## Cross-References
 
 -   [Capability Handles](./capability-handles.md) — language-level capability boundary
     complementing the OS-level one
