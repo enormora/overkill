@@ -91,18 +91,23 @@ is **reachability from the exported root**: only nodes reachable from `spec`
 participate in planning and execution.
 
 The preferred DX is that direct execution does not require a mandatory
-self-run call in every test file. A user should be able to run:
+self-run call in every test file. The canonical command should be:
+
+```bash
+overkill run source/users.test.ts
+```
+
+That preserves the exported value for tooling without requiring per-file
+boilerplate. A helper such as `runIfMain(import.meta, spec)` may still exist
+as an explicit fallback for users who specifically want:
 
 ```bash
 node source/users.test.ts
 ```
 
-and get the same execution semantics without giving up the exported value for
-tooling. The most likely shape is that the high-level package or loader path
-recognizes the conventional exported test value when the module is the
-entrypoint. A helper such as `runIfMain(import.meta, spec)` may still exist
-as a fallback, but it should not be the preferred first-party authoring
-pattern.
+But that fallback should not be the preferred first-party authoring pattern,
+and the default concept should not promise bare `node` auto-detecting a
+conventional exported suite value without a helper.
 
 ## Why This Is Better
 

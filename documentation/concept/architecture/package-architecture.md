@@ -32,8 +32,8 @@ without pulling in the higher-level DSL.
 authoring layer. It should favor:
 
 -   exported suite values
--   direct-file execution without requiring a mandatory self-run helper in
-    the common case
+-   direct-file execution through `overkill run path/to/file.test.ts`
+    without requiring a mandatory self-run helper in the common case
 -   flat tests
 -   explicit grouping only where needed
 -   test macros as the primary reuse model
@@ -51,11 +51,12 @@ a second competing first-party reuse philosophy.
 The preferred DX should be:
 
 -   a test file exports a conventional value such as `spec`
--   if that file is executed directly, the high-level package or loader path
-    can detect the conventional export and run it automatically
+-   the canonical direct-file command is `overkill run path/to/file.test.ts`
 -   an explicit helper such as `runIfMain(import.meta, spec)` may still exist
-    as a low-level fallback, but it should not remain the canonical
-    first-party authoring shape
+    for users who specifically want bare `node path/to/file.test.ts`
+-   bare `node` execution should not be promised as the default first-party
+    path unless Overkill deliberately adopts a loader or import-hook
+    mechanism, which the current concept rejects
 
 ## Assertions
 

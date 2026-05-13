@@ -43,7 +43,8 @@ For a first read, follow this path:
 8.  [Assertions And Results](./authoring/assertions-and-results.md) —
     the assertion model and the structured-outcome protocol underneath
 9.  [Tests As Values](./authoring/tests-as-values.md) — first-class
-    value-oriented authoring mode with direct-file execution
+    value-oriented authoring mode with explicit runner-owned direct-file
+    execution
 10. [Test Ergonomics](./authoring/test-ergonomics.md) — the small set of
     first-party DX helpers worth keeping
 11. [Configuration](./architecture/configuration.md) — low-surface config
