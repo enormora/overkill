@@ -1,7 +1,7 @@
 # Overkill Concept Docs
 
 This folder captures the product concept for `overkill` before runtime
-implementation resumes. The documents in `documentation/concept/` are the
+implementation resumes. The documents in `documentation/desired-concept/` are the
 current product narrative; they will eventually be condensed into a
 project-level `README.md` and design RFCs.
 
