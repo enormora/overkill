@@ -354,7 +354,6 @@ able to wire in:
 
 -   reporters
 -   baseline adapters
--   custom assertions
 -   mutation integrations
 -   type-test adapters
 -   browser or benchmark backends
