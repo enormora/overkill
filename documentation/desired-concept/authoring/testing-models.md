@@ -63,7 +63,7 @@ Integration-style runs may also legitimately use:
 
 Those should remain visible runner concepts rather than hidden defaults.
 
-## Browser and Workflow Tests
+## Browser And Workflow Tests
 
 These tests validate UI, CLI, or multi-step workflows. The primary browser
 meaning should be: run tests in real browsers for frontend code. That is
@@ -141,7 +141,7 @@ Typical concerns:
 
 They should be able to participate in run planning, reporting, and selection even if the underlying checking engine is external.
 
-## Property-Based and Model-Based Tests
+## Property-Based And Model-Based Tests
 
 These are first-class higher-layer families rather than default microtest
 behavior. They need different primitives such as generators, integrated

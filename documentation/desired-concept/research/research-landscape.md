@@ -4,7 +4,7 @@
 
 This document is not a market survey. It records the ideas that materially influence the Overkill concept and the ones that should be rejected.
 
-## Mainstream JavaScript and TypeScript
+## Mainstream JavaScript And TypeScript
 
 ### Jest and Vitest
 
@@ -58,7 +58,7 @@ Sources:
 -   <https://docs.deno.com/api/deno/~/Deno.test>
 -   <https://bun.sh/docs/test>
 
-## Browser and Environment-Centric Testing
+## Browser And Environment-Centric Testing
 
 ### Playwright Test
 
@@ -502,7 +502,7 @@ Sources:
 -   <https://zio.dev/reference/test/aspects/>
 -   <https://zio.dev/reference/test/why-zio-test/>
 
-## Snapshot and Baseline Systems
+## Snapshot And Baseline Systems
 
 Snapshot systems in Jest, Vitest, and Playwright establish several baseline truths:
 
@@ -519,7 +519,7 @@ Sources:
 -   <https://vitest.dev/guide/snapshot.html>
 -   <https://playwright.dev/docs/aria-snapshots>
 
-## Benchmarking and Performance Tooling
+## Benchmarking And Performance Tooling
 
 ### JMH
 
@@ -692,7 +692,7 @@ Source:
 
 -   <https://github.com/tinylibs/tinybench>
 
-## Property-Based, Model-Based, and Verified Testing
+## Property-Based, Model-Based, And Verified Testing
 
 These systems matter because they show that “test runner” can mean more than example-based assertions.
 
