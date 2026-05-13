@@ -46,6 +46,34 @@ underlying assertion layer still needs a home for:
 -   internal assertion-protocol values used between authoring and engine
 -   implementation shared between the high-level builder API and the engine
 
+## API Constraints To Avoid Lint-Rule Patchwork
+
+One useful design pressure is to avoid assertion APIs that routinely need
+ESLint rules to compensate for ambiguity or weak defaults. The assertion
+concept should therefore commit to these constraints:
+
+-   one strict assertion surface only; no loose/coercive equality variants
+-   no positional overloading where a later argument might mean matcher,
+    options, or custom message depending on type
+-   no public import-style split between several overlapping assertion entry
+    points
+-   semantic first-class assertions should be preferred over generic boolean
+    wrappers such as `ok(predicate())`
+-   rich built-ins should exist for deep equality, partial matching, regex
+    matching, and call assertions so users do not need to encode intent via
+    low-signal boolean checks
+-   async error assertions such as `throws` / `rejects` should avoid weak or
+    ambiguous forms; matcher requirements should be expressed explicitly by
+    signature or by separate APIs rather than by overloaded optional
+    arguments
+-   custom assertions should follow the same rules: explicit names, no
+    collisions, and no silent shadowing of built-ins
+
+This does not eliminate every possible lint rule. A team may still want
+policy rules, and generic equality-style APIs can still be misused by
+reversing `actual` / `expected`. But the first-party assertion shape should
+not depend on linting to resolve basic ambiguity.
+
 ## Zero-Assertion Detection As Default Failure
 
 A test that runs to completion without performing any assertion is a
