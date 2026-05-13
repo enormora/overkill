@@ -239,12 +239,19 @@ That means the first-party concept should support both:
 This should still be a macro-oriented model, not a competing
 parameterization philosophy.
 
+Like tables, generated-case helpers lower to ordinary concrete test nodes.
+Whether the implementation literally reuses macro/table expansion machinery
+is an internal detail; the important public concept is one shared
+parameterized-case model.
+
 The callback model should stay consistent with table cases:
 
 -   ordinary tests use one `case` parameter
 -   generated/parameterized cases also use one `case` parameter
 -   generated input is carried under `case.parameters`, not flattened into
     the top-level case namespace
+-   expanded child titles must still be unique among siblings after
+    generation; duplicate final titles are a collection/planning error
 
 ### Stack Traces Matter
 

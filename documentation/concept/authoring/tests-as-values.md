@@ -49,12 +49,19 @@ export const spec = suite('users', [
         return case.assert.done();
     }),
 
-    table('round-trip', cases, (case) => {
-        case.assert.equal(
-            parse(serialize(case.parameters.input)),
-            case.parameters.expected,
-        );
-        return case.assert.done();
+    table({
+        title: 'round-trip',
+        cases,
+        caseTitle(parameters) {
+            return `should round-trip ${parameters.kind}`;
+        },
+        test(case) {
+            case.assert.equal(
+                parse(serialize(case.parameters.input)),
+                case.parameters.expected,
+            );
+            return case.assert.done();
+        },
     }),
 ]);
 ```
@@ -259,6 +266,48 @@ The important typing rule is:
     `case.parameters`
 -   `parameters` is not part of the ordinary top-level case API for
     non-parameterized tests
+
+## Tables As Local Convenience
+
+Tables should exist as a small first-party convenience helper for local
+parameterized cases, not as a competing reuse philosophy.
+
+The preferred shape is:
+
+```ts
+table({
+    title: 'json parser',
+    cases,
+    caseTitle(parameters, index) {
+        return `should parse ${parameters.kind} #${index + 1}`;
+    },
+    test(case) {
+        case.assert.deepEqual(
+            parse(case.parameters.input),
+            case.parameters.expected,
+        );
+        return case.assert.done();
+    },
+});
+```
+
+The settled semantics should be:
+
+-   `title` names the table/group
+-   `cases` is plain data, not a second row-wrapper DSL
+-   `caseTitle` is optional and derives each expanded child case title
+-   if `caseTitle` is omitted, Overkill generates deterministic fallback
+    names such as `case 1`, `case 2`, ...
+-   the callback is named `test` and receives the ordinary `case` object
+    refined with `case.parameters`
+-   tables are authoring sugar over the same underlying expansion model as
+    other parameterized helpers; whether that shares macro machinery
+    internally is an implementation detail
+
+After expansion, sibling concrete test titles must be unique. If two table
+cases, macro expansions, or generated cases produce the same final sibling
+title under one parent suite, collection/planning should fail rather than
+silently suffixing or deduplicating them.
 
 Nested suites are intentionally allowed. They are useful for:
 
