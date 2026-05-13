@@ -43,6 +43,8 @@ authoring layer. It should favor:
 -   no hook-centric lifecycle model
 -   a small advanced ergonomics layer for harnesses, interaction recording,
     reusable multi-case macros, and async queue helpers
+-   explicit facade creation for suite families that need an extended
+    assertion or helper surface
 
 Tables or parameterized-case helpers may still exist, but they should be
 framed as specialized helpers built on the macro/value model rather than as
@@ -58,6 +60,19 @@ The preferred DX should be:
     path unless Overkill deliberately adopts a loader or import-hook
     mechanism, which the current concept rejects
 
+When projects need different assertion surfaces for different suite
+families, the preferred pattern is a Playwright-style **test facade**:
+
+-   `createTestFacade(...)` in project code composes custom assertions or
+    higher-layer helpers
+-   the project re-exports that facade through a stable alias such as
+    `#tests/micro` or `#tests/integration`
+-   test files import from that stable alias rather than from varying
+    relative paths
+
+This keeps types exact without global augmentation, config-time typing
+magic, or noisy per-assertion local opt-in.
+
 ## Assertions
 
 The first-party assertion layer should live in `@overkill/test`, with the
@@ -68,7 +83,8 @@ separate user-facing package. The concept still needs a clear home for:
 -   assertion count tracking
 -   richer mismatch reporting
 -   serializer hooks for baseline systems
--   custom assertion registration for domain-specific assertion vocabularies
+-   built-in assertion vocabulary
+-   test-facade-level registration of domain-specific assertion vocabularies
     such as `Result` / `Maybe`
 
 ## Doubles
@@ -94,7 +110,10 @@ It should avoid:
 The conceptual split is:
 
 -   `@overkill/doubles` owns programmable function doubles
--   `@overkill/test` owns assertions over recorded calls, results, and expectations
+-   `@overkill/test` owns built-in assertions plus assertion-facade
+    composition
+-   doubles-specific assertions may be contributed by `@overkill/doubles`
+    when a facade explicitly opts into them
 
 This keeps the creation of doubles separate from how tests assert on them.
 
@@ -419,7 +438,7 @@ or extend the contract but do not redefine it.
 | Failure artifacts (storage + schema)             | `@overkill/engine` (schema) + `@overkill/run` (storage policy) | Storage layout owned by orchestration.                                                                                                                                                                        |
 | Metadata propagation rules                       | `@overkill/engine`                                             | Set merge, array replace-flag, capabilities intersect.                                                                                                                                                        |
 | Configuration loading                            | `@overkill/run`                                                | Reads root `overkill.config.ts`; engine has no config.                                                                                                                                                        |
-| Custom assertion registration                    | `@overkill/run` (config) + `@overkill/test` (impl)            | One canonical config-use case for the assertion layer; registration rejects name collisions with built-ins or other custom assertions.                                                                        |
+| Test facade creation / assertion extension      | project code + `@overkill/test`                                | Facades compose suite-local authoring surfaces and assertion extensions.                                                                                                                                      |
 | CLI entry, terminal capability detection         | `@overkill/run` (today)                                        | Possible future extraction to `@overkill/cli`; see [CLI Reference](../reference/cli.md) and [Ideas And Future Directions § CLI Package](../decisions/ideas-and-future-directions.md#cli-package-overkillcli). |
 | Test debug mode artifact                         | `@overkill/run`                                                | Activation, storage, retention; see [Test Debug Mode](../authoring/debug-mode.md).                                                                                                                            |
 | Reporter packages (`@overkill/reporter-line`, …) | `@overkill/reporter-*`                                         | Stable contract from `@overkill/engine`; presentation owned per-package.                                                                                                                                      |

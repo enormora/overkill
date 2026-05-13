@@ -127,6 +127,120 @@ Semantics:
 
 This is explicit context injection, not hidden global mutable state.
 
+## Built-In Assertion Catalog
+
+The first-party built-in assertion surface should be intentionally small,
+strict, and semantic.
+
+Two namespaces exist:
+
+-   `case.assert.*` — broad assertion surface; records and continues
+-   `case.require.*` — narrow gating surface; records and short-circuits,
+    primarily for type narrowing
+
+### `case.require`
+
+`require` should stay minimal. It exists to make preconditions explicit and
+to support useful TypeScript narrowing in straight-line tests.
+
+Recommended built-ins:
+
+-   `defined(value)`
+-   `null(value)`
+-   `notNull(value)`
+-   `string(value)`
+-   `number(value)`
+-   `boolean(value)`
+-   `function(value)`
+-   `object(value)`
+-   `array(value)`
+-   `instanceOf(value, ctor)`
+-   `hasProperty(value, key)`
+
+`require` should not become a second full assertion DSL. Equality, regex,
+numeric comparison, and doubles-specific assertions belong on `assert`, not
+on `require`.
+
+### `case.assert`
+
+`assert` should include all useful `require` assertions plus the ordinary
+test assertion vocabulary.
+
+Recommended built-ins:
+
+-   equality
+    -   `equal(actual, expected)`
+    -   `notEqual(actual, expected)`
+    -   `deepEqual(actual, expected)`
+    -   `notDeepEqual(actual, expected)`
+-   partial / subset
+    -   `partialDeepEqual(actual, expectedSubset)`
+    -   `arrayContainsPartial(actual, expectedSubset)`
+    -   `membersPartialDeepEqual(actual, expectedMembers)`
+-   presence / boolean
+    -   `defined(value)`
+    -   `undefined(value)`
+    -   `null(value)`
+    -   `notNull(value)`
+    -   `true(value)`
+    -   `false(value)`
+-   type / shape
+    -   `string(value)`
+    -   `number(value)`
+    -   `boolean(value)`
+    -   `function(value)`
+    -   `object(value)`
+    -   `array(value)`
+    -   `instanceOf(value, ctor)`
+    -   `hasProperty(value, key)`
+-   numeric
+    -   `greaterThan(actual, threshold)`
+    -   `greaterThanOrEqual(actual, threshold)`
+    -   `lessThan(actual, threshold)`
+    -   `lessThanOrEqual(actual, threshold)`
+    -   `between(actual, min, max)`
+-   string / regex
+    -   `match(actual, pattern)`
+    -   `notMatch(actual, pattern)`
+    -   `includes(actual, part)`
+    -   `startsWith(actual, prefix)`
+    -   `endsWith(actual, suffix)`
+-   collection
+    -   `length(actual, expectedLength)`
+    -   `empty(value)`
+    -   `notEmpty(value)`
+-   async error checks
+    -   `throws(fn, matcher)`
+    -   `rejects(thunk, matcher)`
+-   control / metadata
+    -   `fail(reason?)`
+    -   `annotated(text).<assertion>(...)`
+    -   `done()`
+
+The error assertions should stay strict:
+
+-   no weak `throwsAny` / `rejectsAny` built-ins
+-   no ambiguous positional matcher/message overloads
+-   `rejects` should prefer a thunk over an already-awaited promise value
+
+`deepEqual` and `partialDeepEqual` should already understand modern
+collection primitives such as `Map` and `Set`. Separate `mapEqual` /
+`setEqual` built-ins are not needed in the first pass if the ordinary deep
+assertions define sensible order-insensitive semantics for those types.
+
+### Built-In Surface Boundaries
+
+The built-in first-party surface should **not** center:
+
+-   loose equality variants
+-   generic truthiness helpers such as `ok(...)`
+-   weak "anything throws" forms
+-   giant call-assertion catalogs tied to one doubles package
+
+If a concept is package-specific, it should extend the assertion surface
+through a typed test facade rather than being forced into every default test
+bundle.
+
 ## Property Tests And The Assertion Boundary
 
 Property primitives like `case.forall(gen, body)` (proposed package
@@ -417,8 +531,48 @@ Registration must reject collisions. A custom assertion may not shadow:
 -   a built-in first-party assertion
 -   another registered custom assertion
 
-Such collisions should fail during startup/config resolution rather than
-silently overriding anything.
+Such collisions should fail during facade creation or suite startup rather
+than silently overriding anything.
+
+### Assertion Extensions And Test Facades
+
+Custom assertions should no longer be registered in root runner config.
+Instead, they belong to **test facade creation**, because assertion
+registration changes the authoring surface and therefore the static type of
+`case.assert`.
+
+Recommended shape:
+
+```ts
+import { createTestFacade, defineCompositeAssertion } from '@overkill/test';
+import type { TestDouble } from '@overkill/doubles';
+
+const calledOnceWith = defineCompositeAssertion(
+    'calledOnceWith',
+    <TArg>(check, sut: TestDouble<[TArg], unknown>, expected: TArg) => {
+        return check.group([
+            check.calledOnce(sut),
+            check.calledWith(sut, expected),
+        ]);
+    },
+);
+
+export const { test, suite, table } = createTestFacade({
+    assertions: [calledOnceWith],
+});
+```
+
+This follows the Playwright-style facade pattern:
+
+-   one facade defines one stable authoring surface
+-   type information comes from the facade directly
+-   projects can have different facades for different suite families
+    (microtest, integration, browser, etc.) without global type pollution
+
+For good DX, projects should expose such facades through stable package
+aliases rather than through varying relative paths. See
+[Tests As Values](./tests-as-values.md) and
+[Package Architecture](../architecture/package-architecture.md).
 
 ### Composite Assertions
 
@@ -434,10 +588,10 @@ This is distinct from a test macro:
 Definition shape:
 
 ```ts
-import { defineCompositeAssertion } from '@overkill/test';
+import { createTestFacade, defineCompositeAssertion } from '@overkill/test';
 import type { TestDouble } from '@overkill/doubles';
 
-export const calledOnceWith = defineCompositeAssertion(
+const calledOnceWith = defineCompositeAssertion(
     'calledOnceWith',
     <TArg>(check, sut: TestDouble<[TArg], unknown>, expected: TArg) => {
         return check.group([
@@ -446,6 +600,10 @@ export const calledOnceWith = defineCompositeAssertion(
         ]);
     },
 );
+
+export const { test, suite, table } = createTestFacade({
+    assertions: [calledOnceWith],
+});
 ```
 
 Registered composite assertions then appear as ordinary high-level

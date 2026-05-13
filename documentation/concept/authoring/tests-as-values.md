@@ -36,7 +36,7 @@ the high-level authoring layer, not as a discarded side experiment.
 ## What It Looks Like
 
 ```ts
-import { suite, table, test } from '@overkill/test';
+import { suite, table, test } from '#tests/micro';
 
 export const spec = suite('users', [
     test('build', (case) => {
@@ -77,6 +77,22 @@ const result = await run(plan);
 
 That's it. No registry, no hidden cross-file module-load side effects, no
 order dependence on when `test()` happens to be called.
+
+For projects that need different authoring surfaces for different suite
+families, the preferred import story is a stable alias backed by
+`package.json#imports`, for example:
+
+```json
+{
+    "imports": {
+        "#tests/micro": "./testing/micro.ts",
+        "#tests/integration": "./testing/integration.ts"
+    }
+}
+```
+
+That keeps test-file imports stable even when different facades expose
+different assertion sets or helpers.
 
 An important consequence of this model is that `test(...)`, `table(...)`,
 and `suite(...)` are ordinary value constructors. A node may be created

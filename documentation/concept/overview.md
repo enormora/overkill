@@ -120,7 +120,7 @@ Its assertion model should be explicit:
     narrowing
 -   explicit `return case.assert.done()` in builder mode
 -   optional custom assertions for domain-specific types such as `Result` or
-    `Maybe`
+    `Maybe`, composed through suite-specific test facades when needed
 
 ### Integration-Style Tests
 

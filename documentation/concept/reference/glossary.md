@@ -74,6 +74,20 @@ Users may still choose different local variable names.
 
 Source: [Assertions And Results](../authoring/assertions-and-results.md), [Test Ergonomics](../authoring/test-ergonomics.md).
 
+## Test Facade
+
+A project-local typed authoring entrypoint built with
+`createTestFacade(...)` and re-exported through a stable import alias such
+as `#tests/micro` or `#tests/integration`.
+
+A facade exists when different suite families need different assertion or
+helper surfaces without relying on global type augmentation or config-driven
+typing magic. It owns the authoring surface of `test`, `suite`, `table`,
+`case.assert`, and related helpers for that suite family. Root runner config
+still owns orchestration.
+
+Source: [Package Architecture](../architecture/package-architecture.md), [Assertions And Results](../authoring/assertions-and-results.md).
+
 ## Test Kind
 
 A closed enumeration that classifies the testing mode of a `TestNode`. The

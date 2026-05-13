@@ -53,7 +53,6 @@ Configuration should mainly cover orchestration and package wiring:
 -   mutation integration
 -   type-test integration
 -   browser or benchmark package wiring
--   extension registration
 -   runtime-state directory (`runtimeStateDir`, default `.overkill`) — root for run records, witnesses, fuzzing/property corpus, debug-mode artifacts, and other runtime-owned outputs
 
 Configuration should avoid becoming the place where test logic lives.
@@ -161,24 +160,22 @@ Typical ownership:
     -   config merging / validation across higher-layer packages
 -   other higher-level packages
     -   package-specific config domains such as browser wiring, benchmark
-        metric collectors, type-test adapters, or assertion registration
+        metric collectors, or type-test adapters
 
-## Custom Assertions
+## Assertion Registration Belongs To Test Facades
 
-Custom assertions are a good example of where JavaScript or TypeScript
-configuration is useful.
+Custom assertion registration should not live in root runner config. It
+changes the static authoring surface, so it belongs to test facade creation
+instead.
 
-The current concept should allow projects to register additional assertion
-vocabularies, especially domain-specific ones such as `Result` / `Maybe`
-assertions.
+The root config still owns orchestration. The test facade owns what
+`case.assert` and `case.require` expose in a given suite family.
 
 Example direction:
 
 ```ts
-import { defineConfig } from '@overkill/run';
-import { defineCompositeAssertion } from '@overkill/test';
+import { createTestFacade, defineCompositeAssertion } from '@overkill/test';
 import type { TestDouble } from '@overkill/doubles';
-import { maybeAssertions, resultAssertions } from './test/assertions';
 
 const calledOnceWith = defineCompositeAssertion(
     'calledOnceWith',
@@ -190,26 +187,14 @@ const calledOnceWith = defineCompositeAssertion(
     },
 );
 
-export default defineConfig({
-    assertions: [resultAssertions(), maybeAssertions(), calledOnceWith],
+export const { test, suite, table } = createTestFacade({
+    assertions: [calledOnceWith],
 });
 ```
 
-This should stay additive and explicit:
-
--   first-party assertions remain the baseline
--   custom assertions extend them
--   config wires them into the high-level test package or runner
--   assertion names must be unique at registration time
-
-For assertion composition specifically, config is the registration point for
-named composite assertions such as `calledOnceWith`; the composite itself is
-still implemented as ordinary imported code, not as inline config logic.
-
-If config registers a custom assertion whose name collides with a built-in
-assertion or with another registered custom assertion, configuration
-resolution should fail immediately. There is no shadowing or last-wins rule
-for assertion names.
+That surface can then be re-exported through a stable import alias such as
+`#tests/integration`, keeping per-file DX acceptable without global type
+augmentation or per-assertion local opt-in noise.
 
 ## Configuration Versus Plugins
 
@@ -226,7 +211,6 @@ That is enough for:
 
 -   reporters
 -   baseline adapters
--   custom assertions
 -   benchmark metric collectors
 -   type-test adapters
 -   mutation integrations
@@ -253,4 +237,5 @@ magical for configuration too.
 -   higher layers may contribute config domains even when the runner owns the
     top-level loading step
 -   the surface should stay small and orchestration-focused
--   custom assertion registration is explicitly in scope
+-   custom assertion registration belongs to test facade creation, not root
+    config
