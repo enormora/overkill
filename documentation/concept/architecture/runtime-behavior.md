@@ -188,13 +188,13 @@ Defaults per profile:
 | ---------------------- | ---------------- | ----------------------------------------------------------------- |
 | `microtest`            | 0.5 s            | not available (in-process; no hard recovery from CPU-bound hangs) |
 | `microtest-supervised` | 0.5 s            | 1 s (subprocess kill; partial state is discarded)                 |
-| `integration-local`    | 5 s              | 7 s (worker terminate)                                            |
+| `integration`          | 5 s              | 7 s (worker terminate)                                            |
 | `benchmark`            | per-workload     | 1.5 × workload budget, capped at 60 s (single-worker-serial)      |
 | `simulation`           | adapter-declared | adapter-declared                                                  |
 
 Rationale for the tight numbers: tests should be categorised
 correctly. A microtest that needs more than 500 ms is misclassified;
-an integration-local test that needs more than 5 s is doing real
+an integration test that needs more than 5 s is doing real
 network I/O it should not be doing. The hard timeouts on supervised
 profiles give just enough headroom (~30–40% of soft) for
 `AbortSignal`-aware cleanup to actually run before the watchdog kills
@@ -226,7 +226,7 @@ Soft-timeout mechanics:
 Hard-timeout mechanics:
 
 -   only available in profiles that own a worker or subprocess
-    boundary (supervised microtests, integration-local with workers,
+    boundary (supervised microtests, integration runs with workers,
     benchmark, simulation)
 -   the watchdog terminates the worker after the hard timeout; the
     test is recorded as `crashed`
@@ -379,9 +379,9 @@ affected. Test output is captured as bytes; rendering decodes as UTF-8.
 By profile ([Microtests And Capabilities](../authoring/microtests-and-capabilities.md) enumerates):
 
 -   microtest: deny FS write, deny net, deny child process, deny worker
--   integration-local: allow FS write within a per-test temp dir, allow
+-   integration: allow FS write within a per-test temp dir, allow
     loopback net, allow child process
--   benchmark: allow as integration-local but with single-worker
+-   benchmark: allow as integration but with single-worker
     serialization
 
 The temp-dir convention is `os.tmpdir() + /overkill-<run-id>/<test-id>/`,

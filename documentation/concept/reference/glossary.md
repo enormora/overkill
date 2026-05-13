@@ -98,16 +98,13 @@ Source: [Metadata And Selection](../architecture/metadata-and-selection.md), [Te
 A named set of allowed runtime capabilities (filesystem read, filesystem
 write, network, child process, worker, addons, WASI). The runner applies
 the profile via Node's `--permission` flags plus runner-owned escape
-hatches (coverage artifact directory, baseline write directory, strip
-cache, V8 cache).
+hatches.
 
 A capability profile is a _permission_ concept. It is distinct from
 execution strategy.
 
-The catalog of standard profiles (`micro-strict`, `micro-supervised`,
-`micro-with-coverage`, `micro-supervised-with-coverage`,
-`integration-local`, `benchmark-process`) lives in
-[Microtests And Capabilities § Runner Profiles](../authoring/microtests-and-capabilities.md#runner-profiles).
+Capability presets are lower-level building blocks under the public runner
+profiles; they are not the primary user-facing vocabulary.
 
 Source: [Microtests And Capabilities](../authoring/microtests-and-capabilities.md).
 
@@ -138,10 +135,14 @@ Source: [Runtime Behavior](../architecture/runtime-behavior.md), [Package Archit
 A bundle of `(capability profile, execution strategy, runner configuration)`
 that is referred to by name. Common profiles:
 
--   `default` — the integration-local profile with a worker pool
--   `microtest` — the micro-strict profile with concurrent-in-process
-    execution and seeded randomized order
--   `benchmark` — the benchmark-process profile with single-worker-serial
+-   `microtest` — capability-restricted microtest profile with
+    concurrent-in-process execution and seeded randomized order
+-   `microtest-supervised` — microtest profile with subprocess
+    supervision for crash-only recovery
+-   `microtest-with-coverage` — microtest profile with the narrow coverage
+    write exception and single-threaded execution while coverage is active
+-   `integration` — broader local integration profile
+-   `benchmark` — benchmark profile with single-worker-serial execution
 -   `simulation` — deterministic-simulation profile
 
 Users select a runner profile via CLI or config. The profile resolves to

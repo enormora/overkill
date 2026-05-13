@@ -112,6 +112,14 @@ type TestKind =
     | 'simulation'
     | 'approval';
 
+type RunnerProfileName =
+    | 'microtest'
+    | 'microtest-supervised'
+    | 'microtest-with-coverage'
+    | 'integration'
+    | 'benchmark'
+    | 'simulation';
+
 type BaselineSubtype = 'content-snapshot' | 'visual-snapshot' | 'terminal-snapshot' | 'performance-baseline';
 
 // Closed enumeration; see microtests-and-capabilities.md §

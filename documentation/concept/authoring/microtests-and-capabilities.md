@@ -216,23 +216,25 @@ Sources:
 
 ## Runner Profiles
 
-Standard capability profiles (see [Glossary](../reference/glossary.md)):
+Standard public runner profiles (see [Glossary](../reference/glossary.md)):
 
--   `micro-strict` — denies almost everything; the default microtest
-    profile, and fails on observed `console.*` usage
--   `micro-supervised` — same denials, plus subprocess supervision for
-    crash-only recovery
--   `micro-with-coverage` — micro-strict with a narrow exception for
-    coverage writes; runs single-threaded (see [Coverage](../architecture/coverage.md))
--   `micro-supervised-with-coverage` — supervised mode + coverage
-    write exception; also single-threaded
--   `integration-local` — allows FS write within a per-test temp dir,
-    loopback net, child process
--   `benchmark-process` — integration-local plus single-worker
-    serialization
+-   `microtest` — default microtest profile; capability-restricted,
+    concurrent-in-process, seeded randomized order
+-   `microtest-supervised` — same microtest boundary, but with subprocess
+    supervision for crash-only recovery
+-   `microtest-with-coverage` — microtest profile plus the narrow coverage
+    write exception; runs single-threaded when coverage is active (see
+    [Coverage](../architecture/coverage.md))
+-   `integration` — allows FS write within a per-test temp dir, loopback
+    net, and child process use
+-   `benchmark` — integration-style capability envelope plus
+    single-worker serialization
+-   `simulation` — deterministic-simulation profile, with adapter-owned
+    execution/runtime details
 
-These are conceptual profiles. Implementation details (exact flag set,
-exact temp-dir layout) are runner-internal.
+These public names resolve to lower-level capability presets and execution
+strategies. Implementation details (exact permission flag set, exact
+temp-dir layout, exact supervision mechanism) are runner-internal.
 
 Modern Node diagnostics channels provide built-in `console.log`,
 `console.info`, `console.debug`, `console.warn`, and `console.error`

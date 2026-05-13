@@ -178,8 +178,8 @@ Why single-threaded:
 Supervised microtest mode (where the parent supervises the child
 process for crash recovery) still works — supervision does not
 introduce parallelism; the supervised process executes tests
-serially. A `micro-supervised-with-coverage` profile combination is
-supported for that scenario.
+serially. The `microtest-supervised` runner profile may be combined with
+`--coverage` for that scenario.
 
 The runner is responsible for:
 
@@ -195,9 +195,9 @@ Tests do not interact with coverage instrumentation directly.
 ## Permission Surface
 
 Microtest profiles deny filesystem writes by default. The
-`micro-with-coverage` profile — the canonical (and only) coverage
-profile — grants `--allow-fs-write` scoped to the resolved coverage
-directory for the current run:
+`microtest-with-coverage` runner profile — the canonical public
+coverage-enabled profile — grants `--allow-fs-write` scoped to the
+resolved coverage directory for the current run:
 
 ```
 --allow-fs-write=<absolute-coverage-dir>/*
