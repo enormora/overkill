@@ -1,9 +1,8 @@
 # CLI Reference
 
-**Under investigation.** This doc captures the current CLI surface and
-(as content migrates here) the CLI runtime behaviour. Both are likely
-to move to a dedicated `@overkill/cli` package once that direction is
-settled — see [Ideas And Future Directions § CLI Package (`@overkill/cli`)](../decisions/ideas-and-future-directions.md#cli-package-overkillcli) for the open shape.
+This doc captures the current CLI surface and CLI runtime behavior.
+If the CLI is later extracted to a dedicated `@overkill/cli` package,
+that changes packaging, not the concept described here.
 
 This document enumerates Overkill's command-line interface — subcommands
 and flags. It is a reading aid: the canonical behavior of each option

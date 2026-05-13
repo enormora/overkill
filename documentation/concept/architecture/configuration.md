@@ -83,7 +83,7 @@ Overkill should avoid:
 
 ## Recommended File Story
 
-The likely first-party shape is:
+The first-party shape is:
 
 ```ts
 import { defineConfig, createLineReporter } from '@overkill/test';

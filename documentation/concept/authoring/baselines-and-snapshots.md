@@ -182,7 +182,7 @@ accepts both deliberately by running `apply`.
 
 -   silently write to baseline files. Every baseline change requires
     the user to type a write verb explicitly (`update`, `apply`,
-    `bootstrap`, or `clean`); `overkill run` never modifies
+    or `bootstrap`); `overkill run` never modifies
     baselines, regardless of the host environment or who triggered
     the run.
 -   delete baselines that belong to tests the current run did not

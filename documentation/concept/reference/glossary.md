@@ -421,7 +421,8 @@ A baseline artifact that no longer corresponds to any collected test
 identity. Detected after a run by comparing baseline files on disk
 against the set of identities seen. Stale baselines fail the run by
 default; removing them requires an explicit `overkill baseline apply`
-or `overkill baseline clean`.
+or equivalent reconciliation through `overkill baseline diff` followed by
+`overkill baseline apply`.
 
 Source: [Baselines And Snapshots](../authoring/baselines-and-snapshots.md).
 

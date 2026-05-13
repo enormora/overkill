@@ -60,7 +60,8 @@ The preferred DX should be:
 
 ## Assertions
 
-`@overkill/assert` should be optional but deeply integrable. It is the likely place for:
+`@overkill/assert` should be optional but deeply integrable. It is the
+first-party place for:
 
 -   `plan()`-style guarantees
 -   assertion count tracking
@@ -89,7 +90,7 @@ It should avoid:
 -   mandatory sandboxes or restore registries
 -   Sinon-style category sprawl where users must choose between multiple overlapping concepts
 
-The likely conceptual split is:
+The conceptual split is:
 
 -   `@overkill/doubles` owns programmable function doubles
 -   `@overkill/assert` owns assertions over recorded calls, results, and expectations
@@ -159,7 +160,7 @@ code should not need Overkill dependencies.
 
 This is also the logical layer for choosing microtest vs integration vs benchmark profiles.
 
-It is also the likely home for first-party configuration-file loading and
+It is also the home for first-party configuration-file loading and
 `defineConfig(...)` support.
 
 It should also understand first-class runtime and resource factories as run
