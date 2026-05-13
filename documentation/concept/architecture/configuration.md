@@ -78,6 +78,8 @@ Overkill should avoid:
 -   dozens of one-off booleans
 -   configuration-only features that cannot also be expressed
     programmatically
+-   CLI-only features that cannot also be expressed through the public
+    programmatic API on the owning package
 -   opaque framework behavior hidden behind config
 
 ## Recommended File Story
@@ -102,11 +104,15 @@ Important ownership split:
 
 -   config defines persistent project policy
 -   CLI chooses per-run intent
+-   programmatic `RunRequest` values choose the same per-run intent without
+    going through CLI parsing
 
 So, for example:
 
 -   `--profile <name>` chooses which runner profile to use for this run
 -   `--coverage` chooses whether this run collects coverage
+-   `run({ profile: 'microtest', coverage: true })` should express the same
+    intent directly through `@overkill/run`
 -   `coverage.formats`, `coverage.thresholds`, `coverage.include`, and
     `coverage.outputDir` live in config because they describe how coverage
     behaves once activated

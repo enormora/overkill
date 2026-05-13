@@ -159,8 +159,10 @@ that is referred to by name. Common profiles:
 -   `benchmark` — benchmark profile with single-worker-serial execution
 -   `simulation` — deterministic-simulation profile
 
-Users select a runner profile via CLI or config. The profile resolves to
-specific capability + execution + reporter choices.
+Users select a runner profile via CLI or a programmatic run request. Config
+may define named profiles, but it does not own the per-run selection
+itself. The selected profile resolves to specific capability + execution +
+reporter choices.
 
 Source: [Microtests And Capabilities](../authoring/microtests-and-capabilities.md), [Package Architecture](../architecture/package-architecture.md).
 
@@ -373,9 +375,10 @@ strategy, their assigned worker / process, their resource requirements,
 their pre/post hooks (where present in higher-level packages), and the
 seed / metadata under which they will run.
 
-Produced by `@overkill/run` from a `TestNode` tree, runner profile,
-filters, and resource constraints. Consumed by execution machinery and
-preserved as part of the run record for reproducibility.
+Produced by `@overkill/run` from a `RunRequest` plus a `TestNode` tree,
+runner profile definitions, filters, and resource constraints. Consumed by
+execution machinery and preserved as part of the run record for
+reproducibility.
 
 Source: [Package Architecture](../architecture/package-architecture.md), [Reproducibility](../architecture/reproducibility.md).
 

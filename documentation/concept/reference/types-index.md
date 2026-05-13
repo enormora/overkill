@@ -190,9 +190,36 @@ Canonical: [Assertions And Results § The Protocol Shape](../authoring/assertion
 `TestVerdict` reporter category is derived from outcome + metadata; see
 [Glossary § Test Verdict](./glossary.md#test-verdict).
 
-## Run Record
+## Run Request, Plan, And Record
 
 ```ts
+type RunRequest = {
+    readonly paths?: ReadonlyArray<string>;
+    readonly selection?: {
+        readonly filter?: string;
+        readonly name?: string;
+        readonly file?: string;
+        readonly id?: CaseId;
+        readonly lastFailed?: boolean;
+        readonly changed?: boolean;
+    };
+    readonly shard?: { readonly index: number; readonly total: number };
+    readonly profile?: RunnerProfileName;
+    readonly execution?: {
+        readonly mode?: string; // see runtime-behavior.md
+        readonly workers?: number;
+    };
+    readonly coverage?: boolean;
+    readonly capture?: 'buffered' | 'live';
+    readonly seed?: bigint;
+    readonly order?: 'seeded' | 'lexical';
+    readonly debug?: {
+        readonly mode: 'off' | 'all' | 'selected';
+        readonly selectors?: ReadonlyArray<string>;
+    };
+    readonly configPath?: string;
+};
+
 type RunPlan = {
     readonly seed: bigint;
     readonly identities: ReadonlyArray<CaseId>;

@@ -43,7 +43,8 @@ Overkill is a monorepo with fine-grained packages as the architectural truth.
 
 Core package families:
 
--   `@overkill/engine`: runner contracts, test definitions, events, results, reporter integration points
+-   `@overkill/engine`: runner contracts, test definitions, frozen plans,
+    execution sessions, events, results, reporter integration points
 -   `@overkill/test`: default first-party authoring layer built on top of the engine, including first-party assertions through injected `case.assert` / `case.require`
 -   `@overkill/doubles`: explicit, function-first test doubles centered on a single `testDouble()` concept
 -   `@overkill/resources`: typed runtimes, resource composition, and execution requirements
@@ -53,7 +54,8 @@ Core package families:
     interaction transcripts, reusable multi-case macros, and async queue
     helpers
 -   reporter packages such as `@overkill/reporter-line`, `@overkill/reporter-tap`, `@overkill/reporter-json`, and `@overkill/reporter-html`
--   `@overkill/run`: orchestration for discovery, filtering, seeds, and terminal workflows
+-   `@overkill/run`: orchestration for discovery, filtering, seeds, shard
+    selection, debug/coverage/watch intent, and terminal workflows
 -   `@overkill/baselines`: shared baseline model for snapshots and performance expectations
 -   `@overkill/bench`: benchmark-specific package family
 

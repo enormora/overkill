@@ -12,6 +12,11 @@ The CLI surface follows [Principles § One First-Party Path Per Layer](../decisi
 in the config file ([Configuration](../architecture/configuration.md)), and no setting is reachable
 from both surfaces.
 
+This does **not** mean the CLI is the only programmatic path. The CLI should
+desugar to the same typed request objects that `@overkill/run` exposes.
+There should be no meaningful "CLI-only flag" whose behavior cannot also be
+requested through the public programmatic API.
+
 ## Subcommands
 
 ### Run And Replay
@@ -68,6 +73,9 @@ gets there or what extra artifacts are emitted alongside (`--coverage`,
 The destructive variant (`apply`, which removes stale entries) is its
 own verb rather than a flag on `update` so that the dangerous behaviour
 requires the user to type it deliberately.
+
+Programmatically, the same distinction should exist as separate function
+entrypoints rather than as hidden boolean flags.
 
 ## Selection And Iteration
 

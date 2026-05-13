@@ -23,8 +23,45 @@ It should not assume one assertion library, one snapshot format, or one benchmar
 
 For tiny projects, this layer should already be usable directly. A single
 file should be able to build tests with engine-level primitives such as
-`createSuite(...)`, `createTestCase(...)`, and a direct `run(...)` call
+`createSuite(...)`, `createTestCase(...)`, and an `executePlan(...)` call
 without pulling in the higher-level DSL.
+
+The layer split should stay explicit:
+
+-   `@overkill/engine` owns execution of an already-resolved plan
+-   `@overkill/run` owns turning human or programmatic run intent into that
+    plan
+
+The CLI must not become a privileged control surface. Any meaningful
+run-intent flag should also exist as a typed programmatic field on the
+semantic owner package. In practice that means:
+
+-   CLI flags that shape planning or orchestration map to `@overkill/run`
+    request fields
+-   engine consumers can still bypass CLI and config entirely by constructing
+    a `RunPlan` and calling `executePlan(...)` directly
+
+Recommended public split:
+
+```ts
+import { executePlan } from '@overkill/engine';
+import {
+    list,
+    mergeResults,
+    planRun,
+    replay,
+    replayWitness,
+    run,
+    watch,
+} from '@overkill/run';
+```
+
+Conceptually:
+
+-   `planRun(request)` returns a frozen `RunPlan`
+-   `run(request)` is shorthand for planning plus execution
+-   `executePlan(plan)` is the lower-level engine entrypoint once planning is
+    already done
 
 ## Default Test Authoring
 
@@ -177,6 +214,38 @@ code should not need Overkill dependencies.
 -   supervision policies for isolated workers or subprocesses
 -   selection and metadata-aware run planning
 -   watch-mode orchestration where explicit runner behavior is needed beyond raw Node `--watch`
+
+It should also expose the canonical programmatic mirror of CLI run intent.
+The CLI is a parser for this API, not a second capability layer.
+
+Recommended shape:
+
+```ts
+await run({
+    paths: ['source/**/*.test.ts'],
+    selection: {
+        filter: 'tag=fast',
+    },
+    profile: 'microtest',
+    coverage: true,
+    seed: 42n,
+    shard: { index: 1, total: 4 },
+    debug: { mode: 'selected', selectors: ['users > round-trip'] },
+});
+```
+
+Equivalent programmatic entrypoints should exist for the other major CLI
+verbs too:
+
+-   `list(request)` — mirror of `overkill list`
+-   `watch(request)` — mirror of `overkill run --watch`
+-   `replay(runId, options?)` — mirror of `overkill replay`
+-   `replayWitness(path, options?)` — mirror of `overkill replay-witness`
+-   `mergeResults(inputs, options?)` — mirror of the richer merged-results
+    workflow
+-   `baseline.update(request)`, `baseline.apply(request)`,
+    `baseline.bootstrap(request)`, `baseline.diff(request)`,
+    `baseline.list(request)` — mirrors of the baseline subcommands
 
 This is also the logical layer for choosing microtest vs integration vs benchmark profiles.
 
