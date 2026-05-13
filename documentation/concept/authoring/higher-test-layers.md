@@ -14,6 +14,7 @@ The relevant families are:
 -   visual regression
 -   workflow and publish benchmarks
 -   property-based tests
+-   rule-centric adapter suites such as ESLint rule tests
 
 ## Main Patterns
 
@@ -157,6 +158,69 @@ They are a separate authoring family with different needs:
 
 Overkill should continue to treat property-based testing as a real package
 direction, not merely “fancier unit tests”.
+
+### Rule-Centric Adapter Suites
+
+Some ecosystems already have their own case-description DSLs and helper
+tools. ESLint rule testing is the clearest example: projects often already
+have `valid` / `invalid` case tables and want to preserve that structure.
+
+Overkill should support this, but not by making raw ESLint `RuleTester` a
+core primitive. The better direction is a focused adapter package, with a
+narrow name such as:
+
+-   `@overkill/eslint-rule-test`
+
+That keeps room for a separate future package such as
+`@overkill/eslint-plugin`.
+
+The package should export ready-made macros or suite builders that turn
+RuleTester-style case objects into ordinary Overkill tests.
+
+Example direction:
+
+```ts
+import { eslintRuleSuite } from '@overkill/eslint-rule-test';
+import rule from '../src/rules/no-foo.ts';
+
+export const spec = eslintRuleSuite({
+    name: 'no-foo',
+    rule,
+    languageOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+    },
+    valid: [
+        'bar()',
+    ],
+    invalid: [
+        {
+            code: 'foo()',
+            errors: [{ messageId: 'unexpectedFoo' }],
+        },
+    ],
+});
+```
+
+Why this belongs in an adapter package:
+
+-   it preserves the familiar case-table shape for rule authors
+-   it compiles into ordinary Overkill suites/cases rather than introducing
+    another core test DSL
+-   it can enforce stricter, more explicit rule-test case semantics at
+    collection time
+-   it avoids forcing framework-global `RuleTester` assumptions into
+    `@overkill/test`
+
+Default capability stance:
+
+-   string-only rule tests should be microtest-friendly where possible
+-   parser-heavy, type-aware, fixture-heavy, or processor-heavy rule tests
+    may need a richer facade/profile
+
+So the package should be allowed to expose more than one facade or helper
+preset, but the default authoring story should still be the macro-style
+suite builder above.
 
 ## What Overkill Should Add Or Emphasize
 

@@ -61,6 +61,9 @@ Planned early integrations:
 
 -   type-test support should exist through adapters or integrations, not through a custom Overkill type-test engine
 -   a first-party Stryker plugin should be planned from the beginning
+-   first-party ESLint rule-testing support should exist through a focused
+    adapter package such as `@overkill/eslint-rule-test`, not by treating
+    raw `RuleTester` as a core Overkill primitive
 -   coverage should be easy to enable from the beginning, even though it is not part of the default run mode
 -   watch mode should work through Node's built-in `--watch` behavior wherever that is sufficient
 -   machine-readable APIs should keep IDE and MCP implementations easy for third parties
