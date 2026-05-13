@@ -99,19 +99,19 @@ entrypoints rather than as hidden boolean flags.
 
 ## Output And Capture
 
-| Flag                | Behavior                                                               | Reference                                                                                               |
-| ------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `--coverage`        | Collect coverage for microtest profiles only. Forces serial execution. | [Coverage](../architecture/coverage.md)                                                                 |
-| `--no-capture`      | Pass stdout/stderr through live instead of buffering.                  | [Runtime Behavior § Console Output Capture](../architecture/runtime-behavior.md#console-output-capture) |
+| Flag           | Behavior                                                               | Reference                                                                                               |
+| -------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `--coverage`   | Collect coverage for microtest profiles only. Forces serial execution. | [Coverage](../architecture/coverage.md)                                                                 |
+| `--no-capture` | Pass stdout/stderr through live instead of buffering.                  | [Runtime Behavior § Console Output Capture](../architecture/runtime-behavior.md#console-output-capture) |
 
 ## Lifecycle And Edge Cases
 
-| Flag                | Behavior                                                             | Reference                                             |
-| ------------------- | -------------------------------------------------------------------- | ----------------------------------------------------- |
-| `--seed <n>`        | Override the run seed (for reproducible randomization).              | [Reproducibility](../architecture/reproducibility.md) |
+| Flag                | Behavior                                                             | Reference                                               |
+| ------------------- | -------------------------------------------------------------------- | ------------------------------------------------------- |
+| `--seed <n>`        | Override the run seed (for reproducible randomization).              | [Reproducibility](../architecture/reproducibility.md)   |
 | `--order lexical`   | Disable seeded shuffling and use deterministic collection order.     | [Runtime Behavior](../architecture/runtime-behavior.md) |
-| `--debug`           | Emit a structured debug artifact for every test in the resolved set. | [Test Debug Mode](../authoring/debug-mode.md)         |
-| `--debug-test <id>` | Emit a debug artifact for a single test by ID or selector pattern.   | same                                                  |
+| `--debug`           | Emit a structured debug artifact for every test in the resolved set. | [Test Debug Mode](../authoring/debug-mode.md)           |
+| `--debug-test <id>` | Emit a debug artifact for a single test by ID or selector pattern.   | same                                                    |
 
 This list intentionally omits flags that are still under design (e.g.
 `--since <ref>`); when those land, this table is the

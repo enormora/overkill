@@ -335,8 +335,8 @@ The current concept is intentionally narrow:
     attribution, but it is not the primary capability-handle story.
 
 Questions such as eager versus lazy recording, reusable scheduler handles,
-or first-party helper packages are future design topics only if the concept
-later reopens the “no Overkill in consumer production code” rule.
+or first-party helper packages are not part of the settled concept unless
+the “no Overkill in consumer production code” rule is explicitly reopened.
 
 ## Influences
 

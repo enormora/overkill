@@ -102,14 +102,7 @@ type Metadata = {
     readonly extra?: ReadonlyMap<string, unknown>;
 };
 
-type TestKind =
-    | 'microtest'
-    | 'integration'
-    | 'browser'
-    | 'benchmark'
-    | 'type-test'
-    | 'property'
-    | 'simulation';
+type TestKind = 'microtest' | 'integration' | 'browser' | 'benchmark' | 'type-test' | 'property' | 'simulation';
 
 type RunnerProfileName =
     | 'microtest'

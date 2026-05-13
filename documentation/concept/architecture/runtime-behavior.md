@@ -354,7 +354,7 @@ Result collection then happens in two layers:
 -   **optional merged-results mode**
     -   each shard emits a machine-readable result artifact
     -   a later merge step combines those artifacts into one final report
-      and one overall run result
+        and one overall run result
 
 The merged overall result should be:
 

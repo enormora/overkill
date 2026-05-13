@@ -179,10 +179,7 @@ import type { TestDouble } from '@overkill/doubles';
 const calledOnceWith = defineCompositeAssertion(
     'calledOnceWith',
     <TArg>(check, sut: TestDouble<[TArg], unknown>, expected: TArg) => {
-        return check.group([
-            check.calledOnce(sut),
-            check.calledWith(sut, expected),
-        ]);
+        return check.group([check.calledOnce(sut), check.calledWith(sut, expected)]);
     },
 );
 

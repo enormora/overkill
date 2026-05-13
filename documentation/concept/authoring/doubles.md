@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document describes the concept for a future `@overkill/doubles` package.
+This document describes the concept for the `@overkill/doubles` package.
 
 The goal is not to recreate Sinon. The goal is to provide a small, TypeScript-first way to create explicit test doubles without pushing users toward method patching, module interception, or large mutable mock ecosystems.
 
@@ -305,10 +305,7 @@ import type { TestDouble } from '@overkill/doubles';
 export const calledOnceWith = defineCompositeAssertion(
     'calledOnceWith',
     <TArg>(check, sut: TestDouble<[TArg], unknown>, expected: TArg) => {
-        return check.group([
-            check.calledOnce(sut),
-            check.calledWith(sut, expected),
-        ]);
+        return check.group([check.calledOnce(sut), check.calledWith(sut, expected)]);
     },
 );
 ```

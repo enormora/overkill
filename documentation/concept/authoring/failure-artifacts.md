@@ -36,7 +36,7 @@ Examples:
 -   benchmark sample data
 -   property-test witnesses
 -   deterministic-simulation witnesses
--   future browser screenshots or traces
+-   browser screenshots or traces
 
 Modern Node also provides some platform-native observability. For example,
 diagnostics channels expose built-in `console.*` events, which makes strict

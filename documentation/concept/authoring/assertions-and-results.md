@@ -554,10 +554,7 @@ import type { TestDouble } from '@overkill/doubles';
 const calledOnceWith = defineCompositeAssertion(
     'calledOnceWith',
     <TArg>(check, sut: TestDouble<[TArg], unknown>, expected: TArg) => {
-        return check.group([
-            check.calledOnce(sut),
-            check.calledWith(sut, expected),
-        ]);
+        return check.group([check.calledOnce(sut), check.calledWith(sut, expected)]);
     },
 );
 
@@ -598,10 +595,7 @@ import type { TestDouble } from '@overkill/doubles';
 const calledOnceWith = defineCompositeAssertion(
     'calledOnceWith',
     <TArg>(check, sut: TestDouble<[TArg], unknown>, expected: TArg) => {
-        return check.group([
-            check.calledOnce(sut),
-            check.calledWith(sut, expected),
-        ]);
+        return check.group([check.calledOnce(sut), check.calledWith(sut, expected)]);
     },
 );
 
@@ -675,82 +669,6 @@ and ANSI rendering are reporter concerns; the data stays raw.
 Default truncation: 100 lines per diff or 8 KiB per value, whichever is
 hit first, with explicit truncation markers in the rendered output. Full
 data preserved in the JSON event stream regardless of terminal truncation.
-
-## Alternatives Worth Preserving
-
-The architecture should preserve room for future exploration of:
-
--   assertions-as-effects: internal assertion-protocol values produced and
-    accumulated on a
-    per-test effect bus rather than returned (more amenable to highly-async
-    test bodies)
--   richer relational checks in the property-testing family, such as
-    metamorphic relations
--   semantic baseline comparisons via subtype-specific adapters (see
-    [Baselines And Snapshots](./baselines-and-snapshots.md))
-
-Vitest's domain snapshot adapter model is a useful sign that richer
-comparison contracts are practical in real tooling.
-
-### Assertions-As-Effects
-
-One alternative worth preserving explicitly is an effect-oriented assertion
-model:
-
--   instead of `case.assert.equal(...)` mutating a builder-owned log,
-    assertion operations emit internal assertion-protocol values into a
-    per-test effect sink
--   the sink is owned by the runner, not by a hidden global registry
--   the test body can stay structurally close to ordinary imperative code,
-    but the runner still receives a structured stream of assertion events
-
-Sketch:
-
-```ts
-test('saves and re-reads', async (case) => {
-    const id = await store.save({ name: 'Ada' });
-    case.expect.string(id);
-
-    const fetched = await store.read(id);
-    case.require.defined(fetched);
-    case.expect.equal(fetched.name, 'Ada');
-});
-```
-
-Conceptually, `case.expect.equal(...)` would not finalize a result directly.
-It would emit an assertion effect into the case-local sink, and the runner
-would derive the final `TestOutcome` from the recorded effect stream after
-the body finishes.
-
-Why this is interesting:
-
--   it fits highly-async test bodies well because assertions can be recorded
-    from any awaited segment without having to thread a returned
-    protocol value through every helper boundary
--   it opens a path to richer live observation: reporters or debug tooling
-    could observe assertion effects as they happen rather than only after
-    `case.assert.done()`
--   it may compose better with helper abstractions that want to emit checks
-    internally without forcing the caller to manually aggregate returned
-    nodes
-
-Why it is not the primary concept today:
-
--   the builder/result model is simpler to explain and already covers the
-    common path
--   effect-style recording adds another layer of semantics around ordering,
-    buffering, and finalization
--   once assertion emission becomes more stream-like, the line between
-    ordinary assertions and runner instrumentation gets blurrier and needs
-    tighter specification
-
-Current stance: preserve this as a plausible future branch, but keep the
-primary first-party authoring model centered on explicit builder APIs plus
-`case.assert.done()`.
-
-Source:
-
--   <https://vitest.dev/guide/snapshot.html>
 
 ## Settled Direction
 

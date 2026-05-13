@@ -180,7 +180,7 @@ the order isn't explicit:
 
 ## Adding A New Wrapper
 
-When a future feature adds a per-test wrapper, the question is: where
+When a new per-test wrapper is added, the question is: where
 does it go in the unwinding stack? The answer follows the data
 dependency:
 

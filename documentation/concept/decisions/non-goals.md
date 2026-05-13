@@ -44,8 +44,7 @@ need custom lint rules just to contain that footgun.
 Where: [Metadata And Selection § Local Iteration Workflow](../architecture/metadata-and-selection.md#local-iteration-workflow),
 [Tests As Values § Recommendation](../authoring/tests-as-values.md#recommendation).
 
-Alternative: CLI selection (`--name`, `--file`, `--id`, `--last-failed`,
-`--changed`).
+Alternative: CLI selection (`--name`, `--file`, `--id`, `--last-failed`).
 
 ### No Sinon-style doubles surface
 
@@ -107,10 +106,10 @@ where the file actually needs it.
 Overkill does not maintain its own per-test reverse-import graph.
 
 Why: building, persisting, and invalidating a graph adds complexity
-that the path-level `--changed` selector covers for most teams.
+without enough payoff for the settled concept.
 
 Where: removed from [Fast Feedback Loops](../architecture/fast-feedback-loops.md) (was § 11. Module graph
-caching without Vite); [Metadata And Selection § Local Iteration Workflow](../architecture/metadata-and-selection.md#local-iteration-workflow) notes the path-level scope.
+caching without Vite).
 
 Alternative: explicit file/path selection only. Full graph-based test
 impact analysis is not part of the settled concept.

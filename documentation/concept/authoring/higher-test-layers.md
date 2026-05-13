@@ -246,9 +246,7 @@ export const spec = eslintRuleSuite({
         ecmaVersion: 'latest',
         sourceType: 'module',
     },
-    valid: [
-        'bar()',
-    ],
+    valid: ['bar()'],
     invalid: [
         {
             code: 'foo()',

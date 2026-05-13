@@ -164,9 +164,7 @@ export const userCases = {
 // users.test.ts
 import { userCases } from './helpers/user-cases.ts';
 
-export const spec = suite('users', [
-    userCases.roundTrip,
-]);
+export const spec = suite('users', [userCases.roundTrip]);
 ```
 
 This is valid and intentional. The runner should not treat every constructed
@@ -264,10 +262,7 @@ type Table = {
     readonly name: string;
     readonly metadata: Metadata;
     readonly cases: ReadonlyArray<TableCase>;
-    readonly run: (
-        case_: TableCase,
-        ctx: ParameterizedTestContext<TableCase>,
-    ) => Promise<TestOutcome> | TestOutcome;
+    readonly run: (case_: TableCase, ctx: ParameterizedTestContext<TableCase>) => Promise<TestOutcome> | TestOutcome;
 };
 ```
 

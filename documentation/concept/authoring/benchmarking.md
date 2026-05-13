@@ -322,9 +322,9 @@ Examples:
 -   interaction responsiveness
 -   bundle or output size budgets that influence page performance
 
-The likely implementation direction is:
+The implementation direction is:
 
--   a dedicated package above `@overkill/bench`, likely
+-   a dedicated package above `@overkill/bench`, for example
     `@overkill/browser-bench`
 -   driven by Playwright or another browser controller
 -   with metric collection via browser APIs, WebDriver BiDi where it is

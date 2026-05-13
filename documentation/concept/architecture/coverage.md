@@ -2,7 +2,7 @@
 
 ## Position
 
-Code coverage is a planned integration from the start, but Overkill
+Code coverage is part of the concept from the start, but Overkill
 treats it as **explicit, off by default, and scoped to microtests**.
 
 Why microtests only:
@@ -265,8 +265,6 @@ older records.
 
 ## Reporter Interaction
 
-The default reporter does not render coverage inline; it points at
-the report directory. Dedicated coverage reporters (likely
-third-party, packaged as `@overkill/reporter-coverage` or similar)
-consume the structured coverage data alongside the rest of the run
-result.
+The default reporter does not render coverage inline; it points at the
+report directory. Dedicated coverage reporters, if introduced, consume the
+structured coverage data alongside the rest of the run result.

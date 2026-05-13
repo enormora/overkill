@@ -249,7 +249,7 @@ hold for the path to work:
 -   `--debug` adds a parallel artifact stream without altering any
     of the contracts above
 
-If a future change breaks one of those contracts (renaming
+If a later change breaks one of those contracts (renaming
 `FailedCheck`, splitting `TestOutcome`, dropping a required
 `WitnessFile` field), this walkthrough is where the break becomes
 visible first.

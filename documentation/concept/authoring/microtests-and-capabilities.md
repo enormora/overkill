@@ -154,8 +154,8 @@ narrow, runner-owned, and explicit in configuration and diagnostics:
 The runner enforces that these directories are the only paths writable
 under microtest profile, and surfaces unexpected writes as diagnostics.
 
-If future runner-owned caches are added, they should be documented as their
-own explicit write exceptions rather than assumed here by default.
+If additional runner-owned caches are added, they should be documented as
+their own explicit write exceptions rather than assumed here by default.
 
 Baseline and snapshot workflows belong to higher-layer families, not to the
 strict microtest profile.

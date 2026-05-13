@@ -181,7 +181,7 @@ Execution strategy should not be hard-coded by any one package. Different layers
 -   `@overkill/resources` may introduce resource-sharing or isolation requirements
 -   `@overkill/doubles` should remain cheap enough for in-process microtests and should not force isolation by itself
 -   `@overkill/bench` may want strict single-worker execution for measurement stability
--   future browser or integration packages may prefer worker pools, file-level isolation, or one-process-per-runtime strategies
+-   browser or integration packages may prefer worker pools, file-level isolation, or one-process-per-runtime strategies
 
 The concept should therefore treat execution strategy as a negotiated run plan built from package-provided requirements and constraints, with orchestration resolving the final plan.
 
