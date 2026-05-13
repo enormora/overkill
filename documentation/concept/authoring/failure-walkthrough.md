@@ -19,16 +19,16 @@ value rather than relying on registration side effects:
 
 ```ts
 // source/users.test.ts
-import { assertion } from '@overkill/assert';
 import { gen } from '@overkill/property'; // proposed package, see types-index
 import { suite, test } from '@overkill/test';
 import { parse, serialize } from './users.ts';
 
 export const spec = suite('users', [
     test('round-trip preserves values', (case) => {
-        return case.forall(gen.user(), (user) =>
-            assertion.equal(parse(serialize(user)), user),
-        );
+        return case.forall(gen.user(), (user, sample) => {
+            sample.assert.equal(parse(serialize(user)), user);
+            return sample.assert.done();
+        });
     }),
 ]);
 ```
@@ -40,17 +40,16 @@ form when the input was NFC. The structures compare unequal.
 
 The important part for this walkthrough is not the property helper
 itself; it is the authoring shape around it: the file exports a suite
-value, the case body returns a `case.forall(...)` invocation built
-from pure assertion-node constructors, and the failure still enters
-the pipeline as a recorded `FailedCheck`.
+value, the case body returns a `case.forall(...)` invocation that uses a
+nested injected assertion context, and the failure still enters the
+pipeline as a recorded `FailedCheck`.
 
 ## Stage 1 — `case.forall` Shrinks And Records
 
 `case.forall(generator, body)` evaluates the body for each generated
-input, getting back an `AssertionNode` value (`assertion.equal` is
-pure — it produces a node, it does not mutate any log). Once
-`case.forall` sees a failing node, it shrinks the input to a minimal
-counterexample and records a single `FailedCheck` for that
+input, giving that body a nested assertion context for the sampled input.
+Once `case.forall` sees a failing sample, it shrinks the input to a
+minimal counterexample and records a single `FailedCheck` for that
 counterexample into the case's assertion log (see
 [Assertions And Results § Diff And Diagnostic Shape](./assertions-and-results.md#diff-and-diagnostic-shape), and
 § Property Tests And The Assertion Boundary for the boundary rule):

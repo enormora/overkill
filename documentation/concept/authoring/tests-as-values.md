@@ -346,21 +346,22 @@ If a project wants a more explicit declaration form, the first-party
 ergonomics layer may also expose optional sugar such as `defineMacro(...)`:
 
 ```ts
-import { assertion } from '@overkill/assert';
 import { defineMacro, suite, test } from '@overkill/test';
 
 const lawsOfMonoid = defineMacro(
     <T>({ name, empty, concat, gen, eq }: MonoidLaws<T>) =>
         suite(`monoid laws: ${name}`, [
             test('left identity', (case) => {
-                return case.forall(gen, (x) =>
-                    assertion.equal(eq(concat(empty, x), x), true),
-                );
+                return case.forall(gen, (x, sample) => {
+                    sample.assert.equal(eq(concat(empty, x), x), true);
+                    return sample.assert.done();
+                });
             }),
             test('right identity', (case) => {
-                return case.forall(gen, (x) =>
-                    assertion.equal(eq(concat(x, empty), x), true),
-                );
+                return case.forall(gen, (x, sample) => {
+                    sample.assert.equal(eq(concat(x, empty), x), true);
+                    return sample.assert.done();
+                });
             }),
         ]),
 );
@@ -375,21 +376,30 @@ That helper should stay optional sugar only:
     declaration form, not a second macro system
 
 ```ts
-import { assertion } from '@overkill/assert';
 import { suite, test } from '@overkill/test';
 
 function lawsOfMonoid<T>({ name, empty, concat, gen, eq }: MonoidLaws<T>): TestNode {
     return suite(`monoid laws: ${name}`, [
         test('left identity', (case) => {
-            return case.forall(gen, (x) => assertion.equal(eq(concat(empty, x), x), true));
+            return case.forall(gen, (x, sample) => {
+                sample.assert.equal(eq(concat(empty, x), x), true);
+                return sample.assert.done();
+            });
         }),
         test('right identity', (case) => {
-            return case.forall(gen, (x) => assertion.equal(eq(concat(x, empty), x), true));
+            return case.forall(gen, (x, sample) => {
+                sample.assert.equal(eq(concat(x, empty), x), true);
+                return sample.assert.done();
+            });
         }),
         test('associativity', (case) => {
-            return case.forall([gen, gen, gen], ([a, b, c]) =>
-                assertion.equal(eq(concat(concat(a, b), c), concat(a, concat(b, c))), true),
-            );
+            return case.forall([gen, gen, gen], ([a, b, c], sample) => {
+                sample.assert.equal(
+                    eq(concat(concat(a, b), c), concat(a, concat(b, c))),
+                    true,
+                );
+                return sample.assert.done();
+            });
         }),
     ]);
 }

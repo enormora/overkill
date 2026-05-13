@@ -26,10 +26,10 @@ Sources:
 -   [Rust by Example — Unit testing with `Result`](https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html)
 -   [elm-test — `Test` and `Expect`](https://package.elm-lang.org/packages/elm-explorations/test/latest/Test)
 
-## Why A First-Party Assertion Package Still Makes Sense
+## Why A First-Party Assertion Layer Still Makes Sense
 
 Assertion tracking is hard to do well if assertions are entirely external.
-A first-party assertion package offers a clean place to provide:
+A first-party assertion layer offers a clean place to provide:
 
 -   assertion count tracking
 -   `plan()`-style guarantees
@@ -37,14 +37,14 @@ A first-party assertion package offers a clean place to provide:
 -   rich diffs and mismatch metadata
 -   baseline-aware serializers
 
-Most tests should not need to import `@overkill/assert` directly. The main
-user-facing API comes from `@overkill/test` context injection. The package
-still makes sense as the home of:
+Most tests should not need to import a separate assertion package at all.
+The main user-facing API comes from `@overkill/test` context injection. The
+underlying assertion layer still needs a home for:
 
--   the `AssertionNode` protocol
--   low-level `assertion.*` constructors for advanced composition
+-   assertion-count and plan tracking
 -   diffing and serializer logic
--   implementation shared between `@overkill/assert` and `@overkill/test`
+-   internal assertion-protocol values used between authoring and engine
+-   implementation shared between the high-level builder API and the engine
 
 ## Zero-Assertion Detection As Default Failure
 
@@ -113,11 +113,22 @@ zero-assertion detection and `plan(n)`:
     `case.forall` call satisfies `case.plan(1)`; a test with two
     `case.forall` calls satisfies `case.plan(2)`
 
-The body passed to `case.forall` typically uses pure assertion-node
-constructors from `@overkill/assert` (e.g.
-`assertion.equal(actual, expected) -> AssertionNode`) rather than
-`case.assert.*` — the body's return value feeds the property
-machinery, which decides what to record at the boundary. See
+The body passed to `case.forall` should use an injected property-local
+assertion context rather than importing a separate low-level assertion
+package. A typical shape is:
+
+```ts
+test('round-trips', (case) => {
+    return case.forall(gen.user(), (user, sample) => {
+        sample.assert.equal(parse(serialize(user)), user);
+        return sample.assert.done();
+    });
+});
+```
+
+The property helper owns the internal aggregation and decides what to record
+at the boundary. User code stays on the same injected-assertion model as
+ordinary tests. See
 [Tests As Values § Macros And Parameterized Tests](./tests-as-values.md#macros-and-parameterized-tests) for the
 canonical authoring shape, and [Failure Walkthrough](./failure-walkthrough.md) for an
 end-to-end walked example.
@@ -179,11 +190,10 @@ type Inconclusive = {
 };
 ```
 
-Low-level assertion constructors return `AssertionNode` values that can
-be combined into those outcomes. Builder-style tests record those nodes
-implicitly and finalize them through `case.assert.done()`. That gives
-Overkill one canonical internal representation even though the surface
-authoring styles differ.
+The builder APIs normalize recorded checks into the same structured
+outcomes. Internally Overkill may still use assertion-protocol values while
+assembling those outcomes, but that protocol no longer needs to be a
+separate public authoring package.
 
 ### Builder Mode And Throwing Mode
 
@@ -209,32 +219,19 @@ remains a supported alternate authoring style, but the engine
 normalizes its result into the same structured `TestOutcome` shape so
 reporters consume one failure model.
 
-### Where Returned Values Still Matter Directly
+### Internal Protocol Versus Public API
 
-The low-level `@overkill/assert` package still exposes:
+Overkill still benefits from an internal assertion protocol while moving
+checks between authoring helpers and the engine, but that protocol does not
+need to be exposed as a separate first-party user package.
 
--   `assertion.equal(...) -> AssertionNode`
--   `assertion.all(...) -> AssertionNode`
--   other low-level node constructors for advanced composition
+The public concept therefore stays simpler:
 
-These remain useful in cases where explicit returned values are a strong
-fit:
-
--   tests-as-values
--   property-based or relational checks
--   reusable low-level assertion combinators
--   future experimental assertion DSLs
-
-```ts
-import { assertion } from '@overkill/assert';
-
-function validUser(user: User) {
-    return assertion.all([assertion.string(user.id), assertion.string(user.name), assertion.array(user.roles)]);
-}
-```
-
-This is not the default day-to-day style, but it is a valuable
-capability to preserve.
+-   day-to-day tests use injected `case.assert` / `case.require`
+-   property helpers such as `case.forall(...)` use a nested injected
+    assertion context
+-   the engine still receives structured `FailedCheck` data, diffs, and
+    counts without users constructing protocol nodes directly
 
 ### Error Separation
 
@@ -298,9 +295,10 @@ This is inspired in part by Swift Testing’s split between expectation-style
 and require-style checks.
 
 When the docs talk about explicit aggregate or "run all" semantics, that
-refers to low-level assertion composition such as `assertion.all(...)`, not
-to builder-test control flow. In the builder API, the default control-flow
-rule is simple: `assert` records and continues; `require` records and stops.
+refers to explicit aggregate helpers in the assertion layer, not to
+builder-test control flow. In the builder API, the default control-flow
+rule is simple: `case.assert` records and continues; `case.require`
+records and stops.
 
 ## Async Test Support
 
@@ -354,8 +352,8 @@ test('legacy flow', (case) => {
 
 ## Custom Assertions
 
-`@overkill/assert` should support explicit extension with domain-specific
-assertion vocabularies.
+The assertion layer should support explicit extension with domain-specific
+assertion vocabularies exposed through the high-level test API.
 
 This is especially useful for ecosystems that repeatedly work with wrappers
 such as `Result` or `Maybe`.
@@ -426,7 +424,8 @@ data preserved in the JSON event stream regardless of terminal truncation.
 
 The architecture should preserve room for future exploration of:
 
--   assertions-as-effects: `AssertionNode` produced and accumulated on a
+-   assertions-as-effects: internal assertion-protocol values produced and
+    accumulated on a
     per-test effect bus rather than returned (more amenable to highly-async
     test bodies)
 -   richer relational checks: `relation()` for metamorphic testing (see
@@ -443,7 +442,8 @@ One alternative worth preserving explicitly is an effect-oriented assertion
 model:
 
 -   instead of `case.assert.equal(...)` mutating a builder-owned log,
-    assertion operations emit `AssertionNode`s into a per-test effect sink
+    assertion operations emit internal assertion-protocol values into a
+    per-test effect sink
 -   the sink is owned by the runner, not by a hidden global registry
 -   the test body can stay structurally close to ordinary imperative code,
     but the runner still receives a structured stream of assertion events
@@ -470,7 +470,7 @@ Why this is interesting:
 
 -   it fits highly-async test bodies well because assertions can be recorded
     from any awaited segment without having to thread a returned
-    `AssertionNode` through every helper boundary
+    protocol value through every helper boundary
 -   it opens a path to richer live observation: reporters or debug tooling
     could observe assertion effects as they happen rather than only after
     `case.assert.done()`
@@ -502,12 +502,12 @@ For the product concept:
 
 -   core supports structured assertion results and explicit throwing-mode
     tests
--   first-party assertions live in `@overkill/assert`, but ordinary tests
-    primarily consume them through injected `case.assert` / `case.require`
+-   first-party assertions primarily live in the injected `case.assert` /
+    `case.require` model exposed by `@overkill/test`
 -   primary authoring shape: builder/context API with explicit
     `return case.assert.done()`
--   low-level protocol name: `AssertionNode`
--   low-level constructor namespace: `assertion.*`
+-   `AssertionNode` may still exist as an internal protocol term, but not as
+    a separate public-first authoring surface
 -   zero-assertion detection: failure, no opt-out
 -   `plan(n)` is the assertion-count contract; no `atMost`, no `atLeast`,
     and `n > 0`

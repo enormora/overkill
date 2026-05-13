@@ -285,7 +285,8 @@ The first release concept should not depend on complex matcher machinery.
 
 `@overkill/doubles` should create and track doubles.
 
-`@overkill/assert` should remain responsible for assertions about them, such as:
+The first-party assertion layer in `@overkill/test` should remain
+responsible for assertions about them, such as:
 
 -   call count
 -   call arguments

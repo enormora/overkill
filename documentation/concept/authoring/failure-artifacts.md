@@ -74,8 +74,8 @@ The runner should also preserve provenance:
 A clear conceptual distinction:
 
 -   **test failure** — the test ran and reported unmet expectations. The
-    test produced a failed `AssertionNode` result (or threw a recognised
-    assertion failure through the throwing adapter).
+    test produced a failed structured assertion result (or threw a
+    recognised assertion failure through the throwing adapter).
 -   **runner or infrastructure error** — the system could not execute or
     observe the test correctly. Examples: fixture setup threw, a worker
     crashed, an unhandled rejection escaped the test window, a Node

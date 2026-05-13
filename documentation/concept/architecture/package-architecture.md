@@ -60,8 +60,9 @@ The preferred DX should be:
 
 ## Assertions
 
-`@overkill/assert` should be optional but deeply integrable. It is the
-first-party place for:
+The first-party assertion layer should live in `@overkill/test`, with the
+low-level normalization protocol treated as internal rather than as a
+separate user-facing package. The concept still needs a clear home for:
 
 -   `plan()`-style guarantees
 -   assertion count tracking
@@ -93,7 +94,7 @@ It should avoid:
 The conceptual split is:
 
 -   `@overkill/doubles` owns programmable function doubles
--   `@overkill/assert` owns assertions over recorded calls, results, and expectations
+-   `@overkill/test` owns assertions over recorded calls, results, and expectations
 
 This keeps the creation of doubles separate from how tests assert on them.
 
@@ -398,8 +399,8 @@ or extend the contract but do not redefine it.
 | `TestOutcome` ADT (engine result protocol)       | `@overkill/engine`                                             | `Pass`/`Fail`/`Skip`/`Inconclusive`; see [Assertions And Results § Protocol Layer](../authoring/assertions-and-results.md#protocol-layer-structured-outcomes).                                                |
 | Test verdict derivation (xfail, crashed, …)      | `@overkill/run`                                                | Verdicts derived from `(outcome, metadata, runner-error?)`.                                                                                                                                                   |
 | `RunPlan` and `RunRecord`                        | `@overkill/run`                                                | `RunPlan` shape sketched in [Reproducibility](./reproducibility.md).                                                                                                                                          |
-| Assertion nodes, `FailedCheck`, `Diff`           | `@overkill/assert`                                             | Low-level `assertion.*` constructors.                                                                                                                                                                         |
-| Injected `assert` / `require` builder API        | `@overkill/test`                                               | DX layer on top of `@overkill/assert`.                                                                                                                                                                        |
+| `FailedCheck`, `Diff`, internal assertion protocol | `@overkill/engine` (schema) + `@overkill/test` (authoring)   | Internal normalization protocol plus public injected assertion surface.                                                                                                                                       |
+| Injected `assert` / `require` builder API        | `@overkill/test`                                               | Public first-party assertion surface.                                                                                                                                                                         |
 | Test doubles (`testDouble`, `when`, helpers)     | `@overkill/doubles`                                            | See [Doubles](../authoring/doubles.md).                                                                                                                                                                       |
 | Typed runtime / resource composition             | `@overkill/resources`                                          | Lifecycle scopes, execution requirements.                                                                                                                                                                     |
 | Discovery, filtering, runner profiles            | `@overkill/run`                                                | Reads config, freezes `RunPlan`.                                                                                                                                                                              |
@@ -418,7 +419,7 @@ or extend the contract but do not redefine it.
 | Failure artifacts (storage + schema)             | `@overkill/engine` (schema) + `@overkill/run` (storage policy) | Storage layout owned by orchestration.                                                                                                                                                                        |
 | Metadata propagation rules                       | `@overkill/engine`                                             | Set merge, array replace-flag, capabilities intersect.                                                                                                                                                        |
 | Configuration loading                            | `@overkill/run`                                                | Reads root `overkill.config.ts`; engine has no config.                                                                                                                                                        |
-| Custom assertion registration                    | `@overkill/run` (config) + `@overkill/assert` (impl)           | One canonical config-use case for the assertion layer.                                                                                                                                                        |
+| Custom assertion registration                    | `@overkill/run` (config) + `@overkill/test` (impl)            | One canonical config-use case for the assertion layer.                                                                                                                                                        |
 | CLI entry, terminal capability detection         | `@overkill/run` (today)                                        | Possible future extraction to `@overkill/cli`; see [CLI Reference](../reference/cli.md) and [Ideas And Future Directions § CLI Package](../decisions/ideas-and-future-directions.md#cli-package-overkillcli). |
 | Test debug mode artifact                         | `@overkill/run`                                                | Activation, storage, retention; see [Test Debug Mode](../authoring/debug-mode.md).                                                                                                                            |
 | Reporter packages (`@overkill/reporter-line`, …) | `@overkill/reporter-*`                                         | Stable contract from `@overkill/engine`; presentation owned per-package.                                                                                                                                      |
