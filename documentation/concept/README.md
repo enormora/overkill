@@ -7,8 +7,8 @@ project-level `README.md` and design RFCs.
 
 The docs are organised into folders that mirror their role:
 
--   [`decisions/`](./decisions/) — settled principles, rejected directions,
-    planned future work
+-   [`decisions/`](./decisions/) — settled principles and rejected
+    directions
 -   [`architecture/`](./architecture/) — how the system is shaped: packages,
     composition, runtime behaviour, identity, configuration
 -   [`authoring/`](./authoring/) — how tests are written and what each test
@@ -16,10 +16,11 @@ The docs are organised into folders that mirror their role:
     benchmarks
 -   [`reference/`](./reference/) — lookup material: glossary, types index,
     CLI reference
--   [`research/`](./research/) — comparisons, audits, and research-flavored
-    surveys
--   [`meta/`](./meta/) — how the docs themselves are organised, plus a
-    snapshot of the current repo state
+-   [`research/`](./research/) — supporting background: comparisons, audits,
+    and prior-art notes that inform but do not define the settled concept
+-   top-level maintainer docs such as
+    [Documentation Strategy](./documentation-strategy.md) — how user-facing
+    Overkill docs should be written
 
 ## Recommended Reading Order
 
@@ -58,15 +59,13 @@ For a first read, follow this path:
     capture, exit codes, signals, parallelism, sharding, monorepo, CI
 15. [Baselines And Snapshots](./authoring/baselines-and-snapshots.md)
 16. [Benchmarking](./authoring/benchmarking.md)
-17. [Research Landscape](./research/research-landscape.md)
 
 ## Decisions
 
-What has been settled, rejected, or planned.
+What has been settled or explicitly rejected.
 
 -   [Principles](./decisions/principles.md)
 -   [Non-Goals](./decisions/non-goals.md)
--   [Ideas And Future Directions](./decisions/ideas-and-future-directions.md)
 
 ## Architecture
 
@@ -115,18 +114,11 @@ Lookup material.
 
 ## Research
 
-Comparisons, audits, and research-flavored surveys.
+Optional background and comparison material, not part of the settled concept
+surface.
 
 -   [Research Landscape](./research/research-landscape.md)
 -   [Candidate Libraries](./research/candidate-libraries.md)
-
-## Meta
-
-About the docs themselves and the current repo state.
-
--   [Documentation Strategy](./meta/documentation-strategy.md)
--   [Concept Status Vocabulary](./meta/concept-status.md)
--   [Current Repo Notes](./meta/current-repo-notes.md)
 
 ## How To Contribute To These Docs
 
@@ -134,10 +126,12 @@ The docs aim to be:
 
 -   normative where decisions are settled (the canonical docs and their
     owning topic docs are the source of truth)
--   speculative where decisions are not (clearly marked as future
-    directions, future package families, or open items)
 -   cross-linked rather than redundant (each concept has one canonical
     home; other docs reference it)
+
+Research and candidate exploration should live outside the settled concept
+surface in [`research/`](./research/) or external notes, not as mixed-status
+sections inside the canonical concept docs.
 
 When adding a new concept, prefer extending an existing doc over
 introducing a new one unless the new concept is genuinely cross-cutting.

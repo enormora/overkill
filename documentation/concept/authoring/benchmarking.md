@@ -209,6 +209,31 @@ Policy examples:
 
 This policy layer is where CI gating semantics belong. Reporters explain the outcome; policy decides what counts as failure.
 
+## SLO And Latency-Sensitive Checks
+
+SLO or latency-sensitive testing belongs inside the benchmark family rather
+than beside it as a separate testing model.
+
+The settled direction is:
+
+-   measurement captures latency, responsiveness, and related metrics
+-   policy evaluates those measurements against explicit service-level or
+    workflow-level budgets
+-   the same benchmark/reporting infrastructure carries the result
+
+Typical examples:
+
+-   p50/p95/p99 latency ceilings
+-   event-loop stall budgets
+-   interaction latency or jank budgets in browser-facing workloads
+-   startup responsiveness budgets for CLIs or services
+
+So the distinction should stay clear:
+
+-   benchmarks measure behavior
+-   SLO checks decide whether measured behavior stays within declared
+    latency/service budgets
+
 ## Execution Strategy
 
 Benchmarks should be allowed to influence execution strategy strongly, because measurement reliability is often more important than raw throughput.

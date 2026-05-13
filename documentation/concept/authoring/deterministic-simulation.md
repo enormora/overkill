@@ -176,10 +176,18 @@ services** as a first-class pattern, not as an edge case.
 
 ## What A Test Might Look Like
 
-The `withRuntime` and `simulation` helpers shown below are illustrative
-sketches; they are listed as placeholders in [Types Index](../reference/types-index.md).
-`SimulationAdapter` and `SimulationSession` _are_ canonical (see the
-section above and the types index).
+The preferred public entry shape should be a **runtime wrapper**, not a new
+test primitive. In other words:
+
+-   simulation belongs in runtime/resource composition
+-   tests still look like ordinary tests
+-   the wrapper should make the adapter, seed, and scenario explicit at the
+    declaration site
+
+The helper names below are still concept-level sketches, but this shape
+should be treated as the recommended first-party direction. `SimulationAdapter`
+and `SimulationSession` _are_ canonical (see the section above and the
+types index).
 
 In-process style:
 
@@ -187,7 +195,7 @@ In-process style:
 test(
     'queue stays consistent under the deterministic runtime',
     withRuntime(simulation(myAppSim, { seed: 42n, scenario: 'default' }), async (case) => {
-        const { t } = case;
+        const t = case.t;
         // ...
     }),
 );
@@ -199,16 +207,23 @@ Local-service style:
 test(
     'checkout handles upstream 500s',
     withRuntime(simulation(deterministicApi, { scenario: 'payments-500' }), async (case) => {
-        const { t, runtime } = case;
+        const t = case.t;
+        const runtime = case.runtime;
         const baseUrl = runtime.endpoint;
         // App under test talks to the deterministic service over real HTTP.
     }),
 );
 ```
 
-The common idea is not the exact helper name. The important thing is that the
-runtime is explicitly declared, and Overkill sees enough metadata to plan,
-report, and replay it.
+The important point is not that these exact helper names are frozen. The
+important point is that the public shape should stay:
+
+-   runtime wrapper first
+-   adapter/seed/scenario explicit in the wrapper call
+-   ordinary `test(...)` body inside that wrapper
+
+That gives Overkill enough metadata to plan, report, and replay the run
+without inventing a second test primitive just for simulation.
 
 ## Manual And Exploratory Simulation
 
@@ -299,7 +314,8 @@ Strong near-term direction:
 2.  scenario-aware artifact identity and reporting
 3.  seed/witness/replay envelope
 4.  support for local deterministic services and base-URL swapping
-5.  optional in-process simulation helpers where they fit
+5.  runtime-wrapper authoring shape for both in-process and local-service
+    simulation entry
 
 More speculative territory:
 

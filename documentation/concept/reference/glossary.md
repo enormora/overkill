@@ -40,23 +40,6 @@ constructs values. The TypeScript type system is the only "macro engine."
 
 Source: [Tests As Values](../authoring/tests-as-values.md).
 
-## Generated-Case Macro
-
-A macro whose main purpose is to expand into multiple concrete test cases at
-once.
-
-Typical uses:
-
--   schema field matrices
--   parser cases
--   reusable law or contract checks
-
-Generated-case macros are still macros, not a separate parameterization
-philosophy. The important extra requirement is that generated failures keep
-meaningful names and useful stack traces.
-
-Source: [Test Ergonomics](../authoring/test-ergonomics.md).
-
 ## Case Context
 
 The injected context object passed to a first-party `@overkill/test` test
@@ -100,7 +83,6 @@ first-party kinds:
 -   `type-test`
 -   `property`
 -   `simulation` (deterministic-simulation tests)
--   `approval`
 
 Higher-level packages may extend the enumeration with additional kinds via
 the engine's metadata contract; the core kinds are stable.
@@ -205,22 +187,18 @@ Source: [Assertions And Results § Protocol Layer](../authoring/assertions-and-r
 
 The reporter-facing category for a test run. A verdict is derived from
 the engine `TestOutcome` plus metadata available at orchestration time.
-Three additional verdicts beyond the four outcomes:
+One common additional reporter-facing category beyond the four outcomes:
 
--   `expected-fail` (xfail) — outcome was `fail` and the test carried
-    xfail metadata; reported as success-equivalent
--   `unexpected-pass` (xpass) — outcome was `pass` despite xfail
-    metadata; reported as a failure of the xfail expectation
--   `crashed` — the worker process died during the test; the engine
-    never produced a `TestOutcome`. Reported as a runner-error sub-kind
-    (see [Failure Artifacts](../authoring/failure-artifacts.md))
+-   `crashed` — the worker process died during the test; the engine never
+    produced a `TestOutcome`. Reported as a runner-error sub-kind (see
+    [Failure Artifacts](../authoring/failure-artifacts.md))
 
 Verdicts are a presentation concept owned by orchestration and
 reporters, not by `@overkill/engine`. The engine returns outcomes;
 verdicts come from `(outcome, metadata, runner-error?)`.
 
 Source: [Assertions And Results § Protocol Layer](../authoring/assertions-and-results.md#protocol-layer-structured-outcomes), [Failure Artifacts](../authoring/failure-artifacts.md),
-[Ideas And Future Directions § Out-Of-Band Verdicts](../decisions/ideas-and-future-directions.md#out-of-band-verdicts).
+[Glossary § Test Outcome](#test-outcome).
 
 ## AssertionNode
 
@@ -234,10 +212,10 @@ Source: [Assertions And Results](../authoring/assertions-and-results.md).
 ## Plan
 
 A declared assertion-count contract on a test. `plan(3)` requires the test to
-record exactly three leaf assertions before completion. A test that runs more
-or fewer leaves is a `fail`. Plans are explicit test-local state, not hidden
-global counters, and they work with both builder-style assertions and the
-explicit throwing mode.
+record exactly three assertion boundaries before completion. A test that runs
+more or fewer boundaries is a `fail`. Plans are explicit test-local state,
+not hidden global counters, and they work with both builder-style assertions
+and the explicit throwing mode.
 
 Source: [Assertions And Results](../authoring/assertions-and-results.md).
 
@@ -321,7 +299,7 @@ and deterministic-simulation tests. Loading the witness reproduces the
 failure without re-running shrinking. The canonical schema
 (`WitnessFile`) is defined in [Failure Artifacts § Witnesses And Replay Artifacts](../authoring/failure-artifacts.md#witnesses-and-replay-artifacts).
 
-Source: [Failure Artifacts](../authoring/failure-artifacts.md), [Ideas And Future Directions § Property-Based Testing](../decisions/ideas-and-future-directions.md#property-based-testing),
+Source: [Failure Artifacts](../authoring/failure-artifacts.md),
 [Deterministic Simulation Testing](../authoring/deterministic-simulation.md).
 
 ## Artifact Identity
@@ -540,12 +518,12 @@ Source: [Runtime Behavior § Timeouts](../architecture/runtime-behavior.md#timeo
 
 ## Assertion-Recording Boundary
 
-The boundary at which a property or generated-case primitive
-contributes one (not many) leaf assertion to the recorded log.
-`case.forall`, `relation`, `differential`, and similar primitives
-each count as one boundary assertion regardless of how many internal
-iterations they perform; their internal checks compose into a single
-`FailedCheck` payload on failure.
+The boundary at which a property-family primitive contributes one
+(not many) assertion to the recorded log. `case.forall`, relation-style
+metamorphic checks, differential checks, and similar primitives each count
+as one boundary assertion regardless of how many internal iterations they
+perform; their internal checks compose into a single `FailedCheck` payload
+on failure.
 
 Source: [Assertions And Results § Property Tests And The Assertion Boundary](../authoring/assertions-and-results.md#property-tests-and-the-assertion-boundary).
 

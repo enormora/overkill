@@ -21,7 +21,7 @@ That means:
 
 ## Documentation Layers
 
-The user-facing documentation should likely be organized in layers.
+The user-facing documentation should be organized in layers.
 
 ### 1. Quick Start
 
@@ -73,6 +73,15 @@ main docs.
 Reference documentation should be complete and searchable, but not the main
 learning path.
 
+### 6. Background Research
+
+Comparisons, candidate-library audits, and prior-art notes should live
+outside the main user-facing concept and guide flow.
+
+They are useful for maintainers and contributors, but they should not be
+mixed into the primary product explanation or treated as part of the settled
+user-facing concept surface.
+
 ## API Presentation
 
 The API overview should not dump every helper equally.
@@ -117,5 +126,6 @@ The docs should avoid:
 -   leading with every possible test style
 -   leading with every advanced utility
 -   assuming users want framework-level ceremony for small tests
+-   mixing settled product guidance with exploratory or research-stage notes
 
 Overkill should feel smaller than its internal architecture.

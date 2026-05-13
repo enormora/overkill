@@ -109,8 +109,7 @@ type TestKind =
     | 'benchmark'
     | 'type-test'
     | 'property'
-    | 'simulation'
-    | 'approval';
+    | 'simulation';
 
 type RunnerProfileName =
     | 'microtest'
@@ -447,8 +446,8 @@ sample explicitly defines them.
     illustrative `saveUser` example
 -   `arbitrary.user`, `arbitrary.bytes`, `gen.user` — placeholder generator
     references in property-test snippets
--   `forall`, `relation`, `differential`, `hyperproperty`, `slo`, `fuzz`,
-    `baseline()` — proposed primitives in [Ideas And Future Directions § Research-Stage Techniques](../decisions/ideas-and-future-directions.md#research-stage-techniques); not part
-    of the settled concept
+-   `relation`, `differential`, `slo()` — illustrative helper names for
+    settled higher-layer directions; exact syntax is not committed by this
+    index
 -   `withRuntime`, `simulation(...)` — illustrative test helpers in
     [Deterministic Simulation Testing](../authoring/deterministic-simulation.md); signatures are not committed

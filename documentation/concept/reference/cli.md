@@ -1,8 +1,8 @@
 # CLI Reference
 
 This doc captures the current CLI surface and CLI runtime behavior.
-If the CLI is later extracted to a dedicated `@overkill/cli` package,
-that changes packaging, not the concept described here.
+The first-party CLI belongs to `@overkill/run`; packaging changes would not
+change the concept described here.
 
 This document enumerates Overkill's command-line interface — subcommands
 and flags. It is a reading aid: the canonical behavior of each option

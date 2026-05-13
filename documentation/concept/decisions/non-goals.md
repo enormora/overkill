@@ -112,8 +112,8 @@ that the path-level `--changed` selector covers for most teams.
 Where: removed from [Fast Feedback Loops](../architecture/fast-feedback-loops.md) (was § 11. Module graph
 caching without Vite); [Metadata And Selection § Local Iteration Workflow](../architecture/metadata-and-selection.md#local-iteration-workflow) notes the path-level scope.
 
-Alternative: path-level change detection. True TIA is tracked as open
-research in [Ideas And Future Directions § Test Impact Analysis](./ideas-and-future-directions.md#test-impact-analysis-tia).
+Alternative: explicit file/path selection only. Full graph-based test
+impact analysis is not part of the settled concept.
 
 ### No custom strip / V8 cache layer by default
 
@@ -328,8 +328,7 @@ Overkill into production runtime, or a deliberate scope expansion of
 Overkill's role beyond the testing side of the boundary.
 
 Where: [Principles § Keep Production Code Clean](./principles.md#keep-production-code-clean),
-[Capability Handles § Current Stance](../authoring/capability-handles.md#current-stance),
-[Ideas And Future Directions](./ideas-and-future-directions.md) (cross-reference).
+[Capability Handles § Current Stance](../authoring/capability-handles.md#current-stance).
 
 Alternative: capability handles documented as a _user architecture_
 pattern; `@overkill/doubles` covers test-side function replacement.
@@ -360,14 +359,10 @@ What would change to revive: the JS shipping and tooling story changes
 materially (e.g. native in-source-test stripping in a runtime), or
 Overkill's scope shifts to own a transform pipeline.
 
-Where: [Tests As Values § Recommendation](../authoring/tests-as-values.md#recommendation),
-[Ideas And Future Directions § Recommended Path](./ideas-and-future-directions.md#recommended-path) note.
+Where: [Tests As Values § Recommendation](../authoring/tests-as-values.md#recommendation).
 
 ## What This Doc Is Not
 
 This file does not list every feature deferred to a later release. It
 lists _decided-against_ directions — both settled rejections and the
-deferred-with-research entries above. For deferred-but-likely items see
-[Ideas And Future Directions § Future Directions With Known Shape](./ideas-and-future-directions.md#future-directions-with-known-shape);
-for open research items see
-[Ideas And Future Directions § Research-Stage Techniques](./ideas-and-future-directions.md#research-stage-techniques).
+deferred-with-research entries above.

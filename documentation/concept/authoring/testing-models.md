@@ -2,7 +2,11 @@
 
 ## Purpose
 
-Overkill should define test categories clearly enough that package boundaries and defaults make sense.
+Overkill should define test categories clearly enough that package
+boundaries, defaults, and authoring expectations make sense.
+
+This doc is a taxonomy and entry point, not the full specification for each
+family. The owning docs named below carry the detailed mechanics.
 
 ## Microtests
 
@@ -106,7 +110,9 @@ These are usually better suited to integration-oriented packages than to the mic
 
 ## Benchmarks
 
-Benchmarks model workflow performance under controlled workloads. Their output is not just pass/fail correctness but measured behavior relative to budgets, baselines, and policies.
+Benchmarks model workflow performance under controlled workloads. Their
+output is not just pass/fail correctness but measured behavior relative to
+budgets, baselines, and policies.
 
 Benchmarks may measure:
 
@@ -115,6 +121,10 @@ Benchmarks may measure:
 -   latency percentiles
 -   responsiveness
 -   domain-specific metrics captured during execution
+
+SLO or latency-sensitive checks belong in this family too: benchmarks
+measure, and SLO policies decide whether the measured latency or
+responsiveness stays within declared budgets.
 
 ## Type Tests
 
@@ -133,12 +143,18 @@ They should be able to participate in run planning, reporting, and selection eve
 
 ## Property-Based and Model-Based Tests
 
-These are future first-class directions rather than default microtest behavior. They fit Overkill’s philosophy because they are explicit and programmatic, but they require different primitives:
+These are first-class higher-layer families rather than default microtest
+behavior. They fit Overkill’s philosophy because they are explicit and
+programmatic, but they require different primitives:
 
 -   generators
--   shrinkers
+-   integrated shrinking
 -   model state
+-   edge cases
+-   finite-domain exhaustive modes
 -   classification and coverage of generated cases
+-   witnesses and persistent corpora
+-   targeted search in harder input spaces
 
 Property tests should be treated as a real higher-layer family, not just a
 microtest variant with a helper library. They need:
@@ -148,6 +164,24 @@ microtest variant with a helper library. They need:
 -   reproducible failing inputs
 -   meaningful generated-case names and artifacts
 
+The settled package split is:
+
+-   `@overkill/property` for generator-driven property testing
+-   `@overkill/model` for rule-based/state-machine testing above that core
+
+Related advanced styles sit on top of that family rather than beside it:
+
+-   metamorphic testing
+-   differential testing
+-   linearizability / consistency checking
+
+Contract-oriented suites are another distinct higher-layer family, but they
+arrive primarily through protocol-specific adapters rather than one universal
+core framework.
+
 ## Why The Separation Matters
 
-Overkill should not pretend that one API shape is the perfect surface for all of these. The shared core should unify execution and reporting contracts; higher-level packages should specialize the authoring model and defaults.
+Overkill should not pretend that one API shape is the perfect surface for
+all of these. The shared core should unify execution and reporting
+contracts; higher-level packages should specialize the authoring model and
+defaults.

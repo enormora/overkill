@@ -50,6 +50,7 @@ Configuration should mainly cover orchestration and package wiring:
 -   baseline policy (paths, write directory, explicit update behavior,
     no environment-based write gate)
 -   coverage policy (formats, thresholds, include/exclude, output paths)
+-   optional global assertion budget policy
 -   mutation integration
 -   type-test integration
 -   browser or benchmark package wiring
@@ -113,6 +114,8 @@ So, for example:
 -   `--coverage` chooses whether this run collects coverage
 -   `run({ profile: 'microtest', coverage: true })` should express the same
     intent directly through `@overkill/run`
+-   an optional global assertion budget policy lives in config because it is
+    centrally enforced suite policy rather than per-test authoring
 -   `coverage.formats`, `coverage.thresholds`, `coverage.include`, and
     `coverage.outputDir` live in config because they describe how coverage
     behaves once activated

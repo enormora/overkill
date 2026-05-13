@@ -116,16 +116,10 @@ and runner-error state to derive a reporter-facing **verdict** (see
 For this test:
 
 -   outcome `kind === 'fail'`
--   no `xfail` metadata on the test
 -   no runner error during the body
 
 → verdict `fail`. Exit code 1 will follow at run completion (see
 [Runtime Behavior § Exit Codes And `process.exit`](../architecture/runtime-behavior.md#exit-codes-and-processexit)).
-
-If the test had been marked `{ stability: 'experimental' }` with
-xfail expectation, the same outcome would have derived
-`expected-fail` instead. Same engine result, different verdict — the
-layering isolates the engine from reporter policy.
 
 Canonical: [Glossary § Test Outcome](../reference/glossary.md#test-outcome) / Test Verdict.
 
@@ -271,7 +265,7 @@ hold for the path to work:
 -   `CaseId` is the only key threading test → outcome → artifact →
     witness → run record → reporter
 -   `WitnessFile` schema is the source of truth for replay; the
-    glossary, ideas-and-future-directions, and reproducibility cross-link
+    glossary and reproducibility docs cross-link it
 -   `--debug` adds a parallel artifact stream without altering any
     of the contracts above
 

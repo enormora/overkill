@@ -102,7 +102,7 @@ to implement.
 
 ## `plan(n)` Definition
 
-`plan` declares the expected number of leaf assertions in a test:
+`plan` declares the expected number of assertion boundaries in a test:
 
 ```ts
 test('parses three rows', (case) => {
@@ -121,9 +121,13 @@ Semantics:
     `assert.*` or `require.*` invocation, or calling it more than once, is a
     test error
 -   `n` must be greater than `0`
--   the test must record exactly `n` leaf assertions before completion
+-   the test must record exactly `n` assertion boundaries before completion
 -   both more and fewer fail
 -   if the test never returns, timeout or crash handling applies instead
+
+For ordinary assertions, one call records one boundary. Composite
+assertions and property-family primitives such as `case.forall(...)` also
+count as one boundary each.
 
 This is explicit context injection, not hidden global mutable state.
 
@@ -279,9 +283,9 @@ ordinary tests. See
 canonical authoring shape, and [Failure Walkthrough](./failure-walkthrough.md) for an
 end-to-end walked example.
 
-The same boundary rule applies to other property-like primitives
-(`relation`, `differential`, `hyperproperty`) when they land: each
-counts as one boundary assertion regardless of internal iteration.
+The same boundary rule should apply to other property-family primitives such
+as metamorphic relations and differential checks: each counts as one
+boundary assertion regardless of internal iteration.
 
 ## Protocol Layer: Structured Outcomes
 
@@ -313,8 +317,8 @@ structured data instead of parsing prose.
 The engine treats structured outcomes as canonical:
 
 ```ts
-// engine-level outcome; reporter-facing verdicts (xfail, xpass,
-// crashed) are derived from outcome + metadata + runner-error state
+// engine-level outcome; reporter-facing verdicts (for example
+// `crashed`) are derived from outcome + metadata + runner-error state
 // — see Glossary § Test Outcome / Test Verdict.
 type TestOutcome = Pass | Fail | Skip | Inconclusive;
 
@@ -680,8 +684,8 @@ The architecture should preserve room for future exploration of:
     accumulated on a
     per-test effect bus rather than returned (more amenable to highly-async
     test bodies)
--   richer relational checks: `relation()` for metamorphic testing (see
-    [Ideas And Future Directions § Metamorphic Testing](../decisions/ideas-and-future-directions.md#metamorphic-testing))
+-   richer relational checks in the property-testing family, such as
+    metamorphic relations
 -   semantic baseline comparisons via subtype-specific adapters (see
     [Baselines And Snapshots](./baselines-and-snapshots.md))
 
@@ -763,6 +767,9 @@ For the product concept:
 -   zero-assertion detection: failure, no opt-out
 -   `plan(n)` is the assertion-count contract; no `atMost`, no `atLeast`,
     and `n > 0`
+-   optional global assertion budgets are allowed as a centrally configured
+    policy; they count assertion boundaries, so composite assertions and
+    `case.forall(...)` each count as 1
 -   diff data is structured, not stack-mined
 -   ordinary async/app errors remain distinct from assertion failures
 -   `require` exists because narrowing and straight-line ergonomics matter

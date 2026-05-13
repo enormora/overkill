@@ -58,21 +58,18 @@ Core package families:
     selection, debug/coverage/watch intent, and terminal workflows
 -   `@overkill/baselines`: shared baseline model for snapshots and performance expectations
 -   `@overkill/bench`: benchmark-specific package family
-
-Planned early integrations:
-
--   type-test support should exist through adapters or integrations, not through a custom Overkill type-test engine
--   a first-party Stryker plugin should be planned from the beginning
--   first-party ESLint rule-testing support should exist through a focused
-    adapter package such as `@overkill/eslint-rule-test`, not by treating
-    raw `RuleTester` as a core Overkill primitive
--   a separate `@overkill/eslint-plugin` should enforce Overkill-specific
-    authoring constraints such as tests-as-values, facade usage, and
-    assertion-shape rules
--   coverage should be easy to enable from the beginning, even though it is not part of the default run mode
--   watch mode should work through Node's built-in `--watch` behavior wherever that is sufficient
--   machine-readable APIs should keep IDE and MCP implementations easy for third parties
--   optional JS/TS config files should stay small and orchestration-focused
+-   type-test support through adapters or integrations rather than through a
+    custom Overkill type-test engine
+-   a first-party Stryker plugin
+-   `@overkill/eslint-rule-test` for ESLint rule-suite authoring rather than
+    raw `RuleTester` as a core primitive
+-   `@overkill/eslint-plugin` for Overkill-specific static authoring rules
+-   coverage as an explicit, easy-to-enable capability rather than part of
+    the default run mode
+-   watch mode leaning on Node's built-in `--watch` wherever that is
+    sufficient
+-   machine-readable APIs stable enough for IDE and MCP consumers
+-   optional JS/TS config files that stay small and orchestration-focused
 
 Future package families already counted into the concept:
 

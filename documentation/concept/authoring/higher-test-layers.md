@@ -167,6 +167,54 @@ They are a separate authoring family with different needs:
 Overkill should continue to treat property-based testing as a real package
 direction, not merely “fancier unit tests”.
 
+The settled package split is:
+
+-   `@overkill/property` for generator-driven property testing, shrinking,
+    edge cases, witness/corpus workflows, and generated-case reporting
+-   `@overkill/model` for rule-based/state-machine testing above that
+    property core
+
+Property-adjacent testing styles should be layered on top of that family
+rather than treated as unrelated concepts:
+
+-   metamorphic testing belongs in the property family as relation-style
+    checks over transformed inputs and outputs
+-   differential testing belongs above the property family, likely in a
+    small package such as `@overkill/differential`
+-   linearizability or consistency checking belongs above the model family,
+    likely in a package such as `@overkill/linearizability` or
+    `@overkill/history`
+
+These styles should reuse the same shrinking, witness, corpus, and
+reporting infrastructure rather than inventing parallel systems.
+
+### Contract-Oriented Suites
+
+Contract testing is part of Overkill's product shape, but not as one
+universal first-party framework. The settled direction is:
+
+-   Overkill supports contract-oriented suites through protocol-specific
+    adapters
+-   those adapters build on already-settled primitives such as baselines,
+    structured diffs, machine-readable results, and higher-layer runtimes
+-   Pact-style HTTP/service contract adapters are an obvious first example,
+    but the concept does not commit to one vendor or one protocol family
+
+This keeps contract testing real without forcing every contract workflow
+through one mandatory `@overkill/contracts` abstraction.
+
+### Mutation Integrations
+
+Mutation testing belongs in Overkill through integration, not through a
+custom mutation engine.
+
+The settled direction is:
+
+-   a first-party Stryker plugin is part of the product shape
+-   initial scope targets microtests only
+-   Overkill contributes stable identities, selection, and
+    machine-readable run results; Stryker remains the mutation engine
+
 ### Rule-Centric Adapter Suites
 
 Some ecosystems already have their own case-description DSLs and helper
