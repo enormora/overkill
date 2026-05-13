@@ -47,8 +47,7 @@ Performance characteristics:
     the full esbuild parse + emit, because no JS AST is reconstructed for
     erasable syntax.
 -   Node v24+ ships a **module compile cache** (`require(esm)` related work) that
-    caches V8 bytecode. It does **not** cache the strip output. A test runner can
-    layer its own per-file strip cache keyed by `(absolute path, mtime, size, amaro version)` to avoid repeating the WASM call on warm runs.
+    caches V8 bytecode. It does **not** cache the strip output.
 
 Practical bottom line for Overkill:
 
@@ -171,45 +170,22 @@ should not promise a custom dependency-graph-based watch mode in the core
 concept. The default story stays simple: use Node `--watch` and rerun the
 selected suite.
 
-## 8. V8 startup snapshots and the `<50 ms cold start` target
+## 8. V8 startup snapshots are not part of the settled concept
 
-V8 snapshot tooling available today:
+V8 startup snapshots are a real platform capability, but Overkill should not
+commit to them as part of the default architecture.
 
--   `node --snapshot-blob out.blob --build-snapshot entry.js` builds a custom
-    startup snapshot.
--   `node --snapshot-blob out.blob` launches a process pre-initialized from the
-    snapshot. Reported context-creation cost drops from ~40 ms to <2 ms on
-    desktop, ~270 ms to ~10 ms on phones (V8 blog).
--   `v8.startupSnapshot.{addSerializeCallback, addDeserializeCallback, setDeserializeMainFunction, isBuildingSnapshot}` lets the snapshotted code
-    rehydrate state on launch.
--   ESM code cache for SEA (single-executable apps) landed in 2026 (commit
-    `966b700`).
+Why not:
 
-Limitations that matter for a test runner:
+-   they add a version-bound build artifact and boot path of their own
+-   snapshot-safe state is constrained and easy to get subtly wrong
+-   the concept should not depend on warm-start tactics that still need proof
+    on real Overkill workloads
 
--   Only a subset of built-ins is snapshot-safe. `Math.random` and `Date.now`
-    captured at snapshot time become fixed in the snapshot, requiring explicit
-    rehydration.
--   Snapshots are V8-version-bound: must be regenerated per Node binary
-    upgrade.
--   `createSnapshot` is destructive in Node mode (the environment is consumed).
-    The build step has to be a separate process.
-
-A concrete plan for Overkill:
-
--   Ship a build step that creates a `overkill.snapshot.blob` containing the
-    runner core, reporter, default assertion library, plugin registry, and
-    pre-resolved file lists. Save it in `~/.cache/overkill/snapshots/<hash>.blob`,
-    keyed by `(node version, overkill version, plugin set hash)`.
--   `overkill run` launches via `node --snapshot-blob …`. Cold start of the
-    runner itself (before user code) becomes a few milliseconds.
--   Combined with a per-file ESM `vm.SourceTextModule#cachedData` cache for the
-    user’s test files, total time-to-first-test in the 30–50 ms range is
-    realistic on warm caches.
-
-Reproducibility note: V8 requires `--random_seed=42` (or any fixed value) and
-careful flag matching for the code cache to be accepted; Joyee Cheung’s blog
-series documents the exact set.
+The current concept therefore keeps startup-snapshot work out of the settled
+plan. If future measurements show that a snapshot materially improves the
+runner without distorting the cold-path story, it can be revisited as an
+implementation spike rather than treated as a design commitment today.
 
 ## 9. Single-file `.ts` execution today
 
@@ -263,12 +239,9 @@ Notes:
 The optimization target is **cold start**, not warm reuse. A persistent
 runner daemon would speed up incremental edits but adds complexity (long-
 lived state, socket protocol, lifecycle management) that conflicts with the
-"just `node ./foo.test.ts`" principle. Every idea below is consistent with
+minimal direct-file startup principle. Every idea below is consistent with
 keeping the cold path short and not requiring a hot daemon to feel fast.
 
--   **V8 startup snapshot of the runner.** As described in section 8, ship a
-    pre-warmed engine snapshot for the runner itself. Cold start under
-    50 ms is realistic.
 -   **Eval-free, no-bundler, no-source-map-rewrite microtest path.** Run
     test files directly through Node's native type stripping; never emit a
     temporary file, never call `vm.runInThisContext`. The simplest path is
@@ -290,12 +263,9 @@ keeping the cold path short and not requiring a hot daemon to feel fast.
     application) between runs. Re-validate via inotify/FSEvents or a short
     `git status` rather than rewalking the tree.
 -   **O(1) test-file load.** Reuse ESM module records across runs in the same
-    process. With `vm.SourceTextModule#cachedData`, even cross-process reuse
-    is cheap. Combine with content-hash keys to avoid `require.cache`-class
-    staleness bugs.
--   **Strip cache on disk.** Persist amaro’s output keyed by file hash + amaro
-    version. The strip itself is a few ms per file but adds up to seconds in
-    larger graphs; this cache keeps warm runs effectively zero.
+    process. Keep the common path focused on module-record reuse and avoid
+    inventing custom bytecode-cache layers unless measurement later proves
+    they are worth the complexity.
 -   **Inotify-driven run targeting.** When the watcher fires, classify the
     change (test file / source file / config / fixture) and run only the
     relevant subset.

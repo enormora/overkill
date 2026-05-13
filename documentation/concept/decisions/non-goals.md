@@ -86,8 +86,7 @@ steady-state (see [Principles § Cold Start Is The Budget](./principles.md#cold-
 
 Where: [Fast Feedback Loops § 11. Out-of-the-box ideas for fast startup](../architecture/fast-feedback-loops.md#11-out-of-the-box-ideas-for-fast-startup).
 
-Alternative: V8 startup snapshot of the runner core, lazy plugin
-imports, pre-resolved file lists.
+Alternative: lazy plugin imports, pre-resolved file lists.
 
 ### No bespoke loader hooks in the default story
 

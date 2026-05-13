@@ -210,9 +210,8 @@ The optimization target for the default run mode is cold start, not warm steady-
 Concrete consequences:
 
 -   Node built-ins are preferred over loader hooks or custom transforms
--   the runner core targets V8 startup-snapshot reuse
 -   plugin imports stay lazy; common paths avoid module-graph scans
--   warm-only optimizations (bytecode cache, strip cache) are accepted only when they do not penalize the cold path
+-   platform-provided warm optimizations are acceptable only when they do not penalize the cold path
 
 Warm-mode optimizations may exist but never _replace_ a fast cold start as the primary target.
 
