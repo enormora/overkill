@@ -64,6 +64,9 @@ Planned early integrations:
 -   first-party ESLint rule-testing support should exist through a focused
     adapter package such as `@overkill/eslint-rule-test`, not by treating
     raw `RuleTester` as a core Overkill primitive
+-   a separate `@overkill/eslint-plugin` should enforce Overkill-specific
+    authoring constraints such as tests-as-values, facade usage, and
+    assertion-shape rules
 -   coverage should be easy to enable from the beginning, even though it is not part of the default run mode
 -   watch mode should work through Node's built-in `--watch` behavior wherever that is sufficient
 -   machine-readable APIs should keep IDE and MCP implementations easy for third parties

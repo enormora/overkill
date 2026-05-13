@@ -222,6 +222,50 @@ So the package should be allowed to expose more than one facade or helper
 preset, but the default authoring story should still be the macro-style
 suite builder above.
 
+### Static Authoring Rules
+
+The ESLint rule-test adapter should be complemented by a separate
+`@overkill/eslint-plugin` package.
+
+Its purpose is different:
+
+-   `@overkill/eslint-rule-test` adapts an external test-case DSL into
+    ordinary Overkill suites
+-   `@overkill/eslint-plugin` statically enforces Overkill-specific
+    authoring constraints
+
+The plugin should stay small and semantic, focusing on rules that the API
+shape and runtime cannot fully guarantee on their own.
+
+Recommended first rules:
+
+-   `no-constant-actual-assert`
+    -   catches likely reversed `actual` / `expected` in equality-style
+        assertions
+-   `require-exported-spec`
+    -   enforces the tests-as-values exported-root convention
+-   `no-orphan-test-nodes`
+    -   catches high-confidence cases where `test(...)`, `suite(...)`, or
+        `table(...)` results are constructed but obviously discarded
+-   `no-duplicate-sibling-titles`
+    -   catches statically obvious duplicate sibling test titles before
+        runtime planning fails
+-   `require-test-facade-import`
+    -   enforces project use of stable facade aliases such as `#tests/micro`
+        / `#tests/integration` where the project has adopted that pattern
+-   `consistent-run-if-main`
+    -   enforces `always` / `never` policy for explicit `runIfMain(...)`
+        fallback usage
+
+The plugin should rely on TypeScript types where possible rather than
+duplicating them in lint rules. For example, explicit matcher requirements
+for `throws` / `rejects` should come from the assertion signatures rather
+than from a dedicated lint rule.
+
+To make these rules work across `@overkill/test`, facades, `@overkill/bench`,
+engine-level usage, and re-exports, the plugin should use a real
+binding-tracing utility rather than matching one import string literally.
+
 ## What Overkill Should Add Or Emphasize
 
 ### 1. Resource Factories As The Main Higher-Layer Primitive

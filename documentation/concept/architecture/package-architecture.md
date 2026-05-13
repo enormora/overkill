@@ -369,6 +369,8 @@ The clearest current example is:
 -   a first-party Stryker integration
 -   a first-party ESLint rule-testing adapter package rather than baking
     `RuleTester` compatibility into the core authoring layer
+-   a separate `@overkill/eslint-plugin` for static enforcement of
+    Overkill-specific authoring conventions
 -   an easy-to-enable coverage story based on explicit tooling rather than built-in default behavior
 -   watch-mode support that reuses Node's built-in behavior where possible
 -   easy third-party IDE or MCP integration through stable machine-readable APIs
@@ -383,6 +385,9 @@ What this means conceptually:
 -   adapter packages should be able to compile external test-case DSLs into
     ordinary Overkill suites and cases rather than forcing those DSLs into
     the engine or default authoring surface
+-   static tooling packages should be able to trace Overkill bindings across
+    facades, re-exports, and package families rather than only matching one
+    hard-coded import form
 -   Node's built-in watch behavior should be reused instead of reinvented by default
 -   machine-consumable APIs should be stable enough for editors, MCP servers, and remote workers
 -   remote workers should consume frozen work units rather than recollecting
