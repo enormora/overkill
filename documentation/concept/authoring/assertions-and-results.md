@@ -379,6 +379,59 @@ entirely separate assertion library.
 This keeps large throwing-style suites ergonomic without introducing global
 mode flags.
 
+### Composite Assertions
+
+A particularly useful subtype of custom assertion is the **composite
+assertion**: one named assertion built from several existing checks.
+
+This is distinct from a test macro:
+
+-   a test macro builds `TestNode`s
+-   a composite assertion stays inside one existing test body and names one
+    reusable invariant
+
+Definition shape:
+
+```ts
+import { defineCompositeAssertion } from '@overkill/test';
+import type { TestDouble } from '@overkill/doubles';
+
+export const calledOnceWith = defineCompositeAssertion(
+    'calledOnceWith',
+    <TArg>(check, sut: TestDouble<[TArg], unknown>, expected: TArg) => {
+        return check.group([
+            check.calledOnce(sut),
+            check.calledWith(sut, expected),
+        ]);
+    },
+);
+```
+
+Registered composite assertions then appear as ordinary high-level
+assertions:
+
+```ts
+test('publishes the release', async (case) => {
+    await publishRelease(harness, 'v1.2.3');
+
+    case.assert.calledOnceWith(harness.buildAndPublishAll, {
+        tag: 'v1.2.3',
+    });
+
+    return case.assert.done();
+});
+```
+
+Important rule:
+
+-   a composite assertion counts as **one** assertion boundary for
+    zero-assertion detection and `plan(n)`
+-   the child checks inside `check.group([...])` are grouped diagnostics, not
+    extra plan units
+
+This keeps `plan(n)` stable and prevents assertion-counting from depending
+on how a custom assertion happens to be implemented internally.
+
 ## Diff And Diagnostic Shape
 
 Failed checks carry structured diff data. The sketched types

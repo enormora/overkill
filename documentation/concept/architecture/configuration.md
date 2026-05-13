@@ -176,10 +176,22 @@ Example direction:
 
 ```ts
 import { defineConfig } from '@overkill/run';
+import { defineCompositeAssertion } from '@overkill/test';
+import type { TestDouble } from '@overkill/doubles';
 import { maybeAssertions, resultAssertions } from './test/assertions';
 
+const calledOnceWith = defineCompositeAssertion(
+    'calledOnceWith',
+    <TArg>(check, sut: TestDouble<[TArg], unknown>, expected: TArg) => {
+        return check.group([
+            check.calledOnce(sut),
+            check.calledWith(sut, expected),
+        ]);
+    },
+);
+
 export default defineConfig({
-    assertions: [resultAssertions(), maybeAssertions()],
+    assertions: [resultAssertions(), maybeAssertions(), calledOnceWith],
 });
 ```
 
@@ -188,6 +200,10 @@ This should stay additive and explicit:
 -   first-party assertions remain the baseline
 -   custom assertions extend them
 -   config wires them into the high-level test package or runner
+
+For assertion composition specifically, config is the registration point for
+named composite assertions such as `calledOnceWith`; the composite itself is
+still implemented as ordinary imported code, not as inline config logic.
 
 ## Configuration Versus Plugins
 
