@@ -199,7 +199,7 @@ type RunPlan = {
     readonly runtimes: ReadonlyArray<ResolvedRuntime>;
     readonly executionStrategy: string; // see runtime-behavior.md
     readonly capabilityProfile: string;
-    readonly baselineUpdateMode: 'off' | 'update' | 'review';
+    readonly baselineUpdateMode: 'none' | 'update' | 'apply' | 'bootstrap' | 'diff';
     readonly metadataResolved: ReadonlyMap<string, Metadata>;
     readonly loaderConfig: { stripMode: 'strip-only' | 'transform'; sourceMaps: boolean };
     readonly versions: { engine: string; node: string; packages: ReadonlyMap<string, string> };
@@ -236,7 +236,14 @@ type RunResult = {
 };
 
 type RunnerError = {
-    readonly subtype: 'fixture' | 'crash' | 'unhandled-rejection' | 'permission' | 'loader' | 'attribution-drift';
+    readonly subtype:
+        | 'fixture'
+        | 'crash'
+        | 'unhandled-rejection'
+        | 'permission'
+        | 'loader'
+        | 'reporter'
+        | 'attribution-drift';
     readonly attributedTo?: CaseId; // missing when run-level
     readonly message: string;
     readonly cause?: unknown;

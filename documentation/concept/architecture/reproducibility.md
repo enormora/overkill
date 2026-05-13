@@ -27,7 +27,7 @@ A reproducible run captures, at minimum:
     serialisation rules)
 -   the resolved capability profile per worker
 -   the baseline verb invoked, if any (`update`, `apply`, `bootstrap`,
-    `clean`)
+    `diff`)
 -   the benchmark workload identity and calibration inputs where
     relevant
 -   the metadata propagation result (resolved metadata per case)

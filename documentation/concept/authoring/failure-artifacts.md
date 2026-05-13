@@ -245,7 +245,7 @@ A failed assertion's diff is structured (see [Assertions And Results](./assertio
 
 ```ts
 type DiffArtifact = {
-    readonly kind: 'value' | 'string' | 'object' | 'array';
+    readonly kind: 'value' | 'string' | 'object' | 'array' | 'binary';
     readonly expected: SerializedValue;
     readonly actual: SerializedValue;
     readonly ops?: ReadonlyArray<DiffOperation>;

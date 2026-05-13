@@ -72,7 +72,7 @@ The intended split is:
 Example direction:
 
 ```ts
-import { testDouble, rule } from '@overkill/double';
+import { testDouble, rule } from '@overkill/doubles';
 
 const loadUser = testDouble<(id: string) => Promise<User>>({
     rules: [
