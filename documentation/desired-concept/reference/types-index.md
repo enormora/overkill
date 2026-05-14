@@ -67,7 +67,11 @@ Canonical: [Artifact Identity](../architecture/artifact-identity.md).
 ## Test Tree And Metadata
 
 ```ts
-type TestNode = TestCase | Suite | Table;
+declare const testNodeBrand: unique symbol;
+
+type TestNode = (TestCase | Suite | Table) & {
+    readonly [testNodeBrand]: true;
+};
 
 type TestCase = {
     readonly kind: 'test';
@@ -124,6 +128,9 @@ type Capability = 'fs-read' | 'fs-write' | 'net' | 'child-process' | 'worker' | 
 Canonical: [Tests As Values](../authoring/tests-as-values.md) for `TestNode`/`TestCase`/`Suite`/`Table`,
 [Metadata And Selection](../architecture/metadata-and-selection.md) for `Metadata`, [Glossary](./glossary.md) for the
 enumerations.
+
+`TestNode` is engine-branded. Shape-compatible plain objects are not valid
+run inputs unless they were created by engine-owned constructors.
 
 ## Outcomes And Verdicts
 

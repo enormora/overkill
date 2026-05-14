@@ -239,7 +239,7 @@ Source: [Failure Artifacts](../authoring/failure-artifacts.md), [Package Archite
 
 A `TestNode` that was constructed during collection but that no run
 root reaches, so the runner never executes it. Detected exactly, by
-identity, as the set difference between the constructed nodes and the
+identity, as the set difference between the engine-constructed nodes and the
 reachable nodes; surfaced as an informational list in the run record,
 not a failure.
 

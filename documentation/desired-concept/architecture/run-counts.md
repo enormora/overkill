@@ -22,20 +22,29 @@ reports those nodes; the developer interprets.
 
 ## Position
 
-This is primarily an `@overkill/engine` concept: the new fields extend
-engine's structured-results contract — `RunResult` and `RunSummary`.
-`@overkill/run` produces the collection- and discovery-derived values
-during planning — the `Reached` walk, orphan detection, and the
-per-suite counts — while `@overkill/engine` execution fills the
-per-outcome counts as it does today. The default human reporter
-extends its run-summary line to surface them. It
-is **not** an extension of test debug mode. The
+This is an `@overkill/engine` concept. The new fields extend engine's
+structured-results contract — `RunResult` and `RunSummary` — and the
+engine owns the bookkeeping needed to produce them:
+
+-   the `Constructed` set
+-   the `Reached` walk
+-   orphan detection
+-   per-suite discovered/executed aggregation
+-   the final summary fields
+
+`@overkill/run` still owns file discovery and module loading, but once it
+hands exported roots to engine, the meaning of run counts is fully engine
+owned. `@overkill/test` is not special here; it merely wraps the same
+engine-owned node constructors that any other adapter must use if it wants
+run-count and orphan-detection support. The default human reporter extends
+its run-summary line to surface them. It is **not** an extension of test
+debug mode. The
 [Test Debug Mode](../authoring/debug-mode.md) is opt-in because of its
 per-test telemetry overhead (heap snapshots, module-load hooks,
 active-handle deltas). The counts here are cheap: `discovered` and the
-per-outcome counts are integers the runner already produces during
+per-outcome counts are integers the engine already produces during
 plan freeze and run completion, and orphan detection is a set
-difference between two collections the runner already holds — an
+difference between two collections the engine already holds — an
 `O(1)` record per node construction, then one pass at collection end.
 None of it carries per-test telemetry overhead, so it all belongs in
 the standard run summary, not behind a debug flag.
@@ -98,8 +107,7 @@ application and sharding. In a sharded run this is the global count,
 identical on every shard's record.
 
 `executed` at run scope is intentionally not stored as an explicit
-field. It is derivable as `passed + failed + skipped + inconclusive +
-crashed` (where `crashed` is counted from `runnerErrors` with subtype
+field. It is derivable as `passed + failed + skipped + inconclusive + crashed` (where `crashed` is counted from `runnerErrors` with subtype
 `crash`). The existing summary has no denormalised fields; run counts
 preserve that pattern.
 
@@ -168,11 +176,18 @@ the user question the counts are meant to answer.
 
 ### Definition Of "Defined"
 
-A node is _defined_ when one of the `@overkill/test` node constructors
-— `test(...)`, `table(...)`, `suite(...)`, `skippedTest(...)`, and
-their kin — builds it while the runner is evaluating test modules for
-collection. The constructors record each node they produce, with its
-origin file, into a run-scoped collection `Constructed`.
+A node is _defined_ when one of the engine-owned node constructors
+builds it while the runner is evaluating test modules for collection.
+Those constructors record each node they produce, with its origin
+file, into a run-scoped collection `Constructed`.
+
+This is also where engine enforces node authenticity. `TestNode` is not
+"any object with the right shape". Engine constructors brand every node
+instance with a private symbol, and engine rejects shape-compatible values
+that are missing that brand. That rule lets other adapters benefit from the
+same orphan-detection and identity bookkeeping without forcing them through
+`@overkill/test`, while still preventing forged plain objects from entering
+the run.
 
 `Constructed` is reset when collection starts and is recorded into only during
 the collection phase; constructions during test-body _execution_ are
@@ -290,8 +305,8 @@ significant, and parallel collection races over shared state.
 -   Collection runs once, single-threaded, in the orchestrator, so
     nothing races over it.
 
-`Constructed` is runtime-internal bookkeeping — `@overkill/test` recording which
-nodes its own constructors produced — used only for diagnostics. It is
+`Constructed` is runtime-internal engine bookkeeping — recording which
+engine-branded nodes were built — used only for diagnostics. It is
 the same category as a construction-time call counter: the two differ
 only in payload, a set of node identities rather than an integer, not
 in kind. If a construction-time count is acceptable, a

@@ -124,6 +124,12 @@ participate in the run. Collection, filtering, sharding, and plan freeze
 are described in
 [Composition Order](../architecture/composition-order.md).
 
+`TestNode` is still a real value, but not just a structural TypeScript
+shape. Engine constructors brand every node with a private symbol, and
+engine rejects plain objects that merely look like `TestNode`s. That keeps
+the values model explicit while preserving exact identity for features such
+as orphan detection and run counts.
+
 The preferred DX is that direct execution does not require a mandatory
 self-run call in every test file. Two direct-file entry paths should be
 treated as first-class:
@@ -264,7 +270,11 @@ output if module evaluation has any non-determinism.
 Sketch of the data model:
 
 ```ts
-type TestNode = TestCase | Suite | Table;
+declare const testNodeBrand: unique symbol;
+
+type TestNode = (TestCase | Suite | Table) & {
+    readonly [testNodeBrand]: true;
+};
 
 type TestCase = {
     readonly kind: 'test';
@@ -635,7 +645,7 @@ free, rather than a reporter-output parser kludge.
 
 ## Recommendation
 
--   `@overkill/engine` exposes `TestNode` as a stable type
+-   `@overkill/engine` exposes `TestNode` as a stable branded type
 -   `@overkill/test` exports `suite`, `test`, `table`, and the imperative
     sugar layer; both produce the same `TestNode` value
 -   files export their root node as `default`

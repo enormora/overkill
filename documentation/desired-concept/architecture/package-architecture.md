@@ -26,6 +26,12 @@ file should be able to build tests with engine-level primitives such as
 `createSuite(...)`, `createTestCase(...)`, and an `executePlan(...)` call
 without pulling in the higher-level DSL.
 
+Those primitives should also be the only way to create valid engine
+`TestNode`s. Shape-compatible plain objects are not enough: engine-branded
+node values are required so identity-sensitive features such as orphan
+detection and run counts remain exact across first-party and third-party
+adapters alike.
+
 The layer split should stay explicit:
 
 -   `@overkill/engine` owns execution of an already-resolved plan
