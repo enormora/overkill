@@ -78,6 +78,15 @@ await run(tree);
 That's it. No registry, no hidden cross-file module-load side effects, no
 order dependence on when `test()` happens to be called.
 
+That "no registry" claim is about _discovery_: the runner never runs
+registration code to learn what tests exist — it reads the exported
+value. It does not forbid runtime-internal bookkeeping that discovery
+never consults. Run Counts, for instance, has the node constructors
+record each constructed node into a run-scoped collection used only to
+report orphaned nodes; that collection never feeds discovery and leaves
+the exported `spec` unchanged. See
+[Run Counts § Orphan Detection](../architecture/run-counts.md#orphan-detection).
+
 For projects that need different authoring surfaces for different suite
 families, the preferred import story is a stable alias backed by
 `package.json#imports`, for example:
@@ -229,7 +238,8 @@ side-effects in a global registry.
 ### Parallel collection is free
 
 Multiple workers can each `import` test files and produce local trees
-independently. There is no shared registry to race over.
+independently. The test-definition model has no shared registry to
+race over.
 
 ### No "global before everything" footgun
 
