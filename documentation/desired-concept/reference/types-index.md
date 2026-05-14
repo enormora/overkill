@@ -290,9 +290,17 @@ type RunRecord = {
 };
 
 type RunResult = {
-    readonly summary: { discovered: number; passed: number; failed: number; skipped: number; inconclusive: number };
+    readonly summary: {
+        discovered: number;
+        defined: number; // TestNodes constructed during collection; orphaned = orphans.length
+        passed: number;
+        failed: number;
+        skipped: number;
+        inconclusive: number;
+    };
     readonly perTest: ReadonlyArray<{ id: CaseId; outcome: TestOutcome; verdict: string }>;
     readonly bySuite: Record<string, { discovered: number; executed: number }>;
+    readonly orphans: ReadonlyArray<{ file: string; name: string; kind: 'test' | 'suite' | 'table' }>;
     readonly runnerErrors: ReadonlyArray<RunnerError>;
     readonly artifacts: ReadonlyArray<ArtifactId>;
     readonly wallTimeMs: number;

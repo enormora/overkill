@@ -235,6 +235,16 @@ artifacts, run-level summary, runner errors, and related metadata.
 
 Source: [Failure Artifacts](../authoring/failure-artifacts.md), [Package Architecture](../architecture/package-architecture.md).
 
+## Orphaned Node
+
+A `TestNode` that was constructed during collection but that no run
+root reaches, so the runner never executes it. Detected exactly, by
+identity, as the set difference between the constructed nodes and the
+reachable nodes; surfaced as an informational list in the run record,
+not a failure.
+
+Source: [Run Counts § Orphan Detection](../architecture/run-counts.md#orphan-detection).
+
 ## World
 
 A typed bag of capability handles passed to a test as part of its context.

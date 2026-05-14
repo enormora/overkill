@@ -14,6 +14,12 @@ sharding, intentional skips). The numbers help authors recognise the
 situation; the runner makes no claim about whether the gap is good or
 bad.
 
+Run counts also surface a third fact: which test nodes were
+_constructed_ during collection but reach no run root — _orphans_. A
+test defined and never wired into a `spec`, or a suite fragment
+imported and never used, was built but runs nowhere. The runner
+reports those nodes; the developer interprets.
+
 ## Position
 
 This is a `@overkill/run` concept that adds fields to `RunResult` and
@@ -21,33 +27,47 @@ extends the run-summary line emitted by the default human reporter. It
 is **not** an extension of test debug mode. The
 [Test Debug Mode](../authoring/debug-mode.md) is opt-in because of its
 per-test telemetry overhead (heap snapshots, module-load hooks,
-active-handle deltas). The counts here are integers the runner already
-produces during plan freeze and run completion, and cost effectively
-nothing to emit. They therefore belong in the standard run summary,
-not behind a debug flag.
+active-handle deltas). The counts here are cheap: `discovered` and the
+per-outcome tallies are integers the runner already produces during
+plan freeze and run completion, and orphan detection is a set
+difference between two collections the runner already holds — an
+`O(1)` record per node construction, then one pass at collection end.
+None of it carries per-test telemetry overhead, so it all belongs in
+the standard run summary, not behind a debug flag.
 
 ## Scope
 
-Run counts address **reachability-bounded counts**: how many cases are
-reachable from the exported test roots, and how many of those the
-runner attempted. They do **not** address:
+Run counts cover two related questions:
 
--   **Orphan-in-file detection** — cases authored as `const x = test(...)`
-    and never added to any exported `spec`. Catching that would require
-    either tracking every constructed `TestNode` (which contradicts the
-    [Tests As Values](../authoring/tests-as-values.md) rule that
-    detached nodes are a legitimate composition pattern) or static
-    analysis. Either is a different tool.
+-   **Reachability-bounded counts** — how many cases are reachable
+    from the exported test roots, and how many of those the runner
+    attempted.
+-   **Orphan detection** — which test nodes were constructed during
+    collection but reach no run root. See
+    [Orphan Detection](#orphan-detection).
+
+Orphan detection is **exact** for everything constructed during
+collection, and it reports node identities, not just a count. It does
+**not** see nodes in modules that collection never evaluates — a
+`test(...)` in a module imported lazily, conditionally, or not at all
+is never constructed, so there is no runtime node to detect. That is
+not a gap in the count: a node that never came into existence is not a
+runtime orphan. The static counterpart is the `no-orphan-test-nodes`
+rule in `@overkill/eslint-plugin` (see
+[Higher Test Layers § Static Authoring Rules](../authoring/higher-test-layers.md#static-authoring-rules)),
+which inspects source rather than a run.
 
 ## Data Model
 
-Run counts add one field to `RunResult.summary` and one top-level
-field to `RunResult`. The full shape is documented in
+Run counts add two fields to `RunResult.summary` — `discovered` and
+`defined` — and two top-level fields to `RunResult` — `bySuite` and
+`orphans`. The full shape is documented in
 [Types Index](../reference/types-index.md):
 
 ```ts
 type RunSummary = {
     readonly discovered: number;
+    readonly defined: number;
     readonly passed: number;
     readonly failed: number;
     readonly skipped: number;
@@ -58,6 +78,7 @@ type RunResult = {
     readonly summary: RunSummary;
     readonly perTest: ReadonlyArray<{ id: CaseId; outcome: TestOutcome; verdict: string }>;
     readonly bySuite: Record<string, { discovered: number; executed: number }>;
+    readonly orphans: ReadonlyArray<{ file: string; name: string; kind: 'test' | 'suite' | 'table' }>;
     readonly runnerErrors: ReadonlyArray<RunnerError>;
     readonly artifacts: ReadonlyArray<ArtifactId>;
     readonly wallTimeMs: number;
@@ -76,6 +97,24 @@ field. It is derivable as `passed + failed + skipped + inconclusive +
 crashed` (where `crashed` is counted from `runnerErrors` with subtype
 `crash`). The existing summary has no denormalised fields; run counts
 preserve that pattern.
+
+### `summary.defined`
+
+Count of `TestNode`s the constructors built while the runner evaluated
+test modules for collection — see
+[Definition Of "Defined"](#definition-of-defined). It is a node count,
+not an expanded-case count: a `table(...)` is one defined node
+regardless of how many rows it carries. `defined` is stored because it
+is not derivable from the other summary fields.
+
+### `orphans`
+
+The list of constructed nodes that reach no run root. Each entry names
+the source `file`, the node `name`, and its `kind`. `orphaned` at run
+scope is not stored — like `executed`, it is derived, here as
+`orphans.length`. The list carries identities because "you have 3
+orphans" is only actionable together with "...and here they are"; the
+mechanism is described in [Orphan Detection](#orphan-detection).
 
 ### `bySuite`
 
@@ -103,7 +142,9 @@ Each entry has two integers:
 Suite-scope `executed` is stored explicitly because the per-outcome
 breakdown (pass/fail/skip/inconclusive) is **not** denormalised
 per-suite. Without an explicit `executed`, the suite-level question
-would not be answerable from the run record alone.
+would not be answerable from the run record alone. There is no
+per-suite orphan entry: an orphan belongs to no suite, so orphans
+exist only at run scope.
 
 ## Semantics
 
@@ -120,6 +161,20 @@ started a body even if the worker died before completion. The rule is
 deliberately simple — "the runner got to it, in any way" — and matches
 the user question the counts are meant to answer.
 
+### Definition Of "Defined"
+
+A node is _defined_ when one of the `@overkill/test` node constructors
+— `test(...)`, `table(...)`, `suite(...)`, `skippedTest(...)`, and
+their kin — builds it while the runner is evaluating test modules for
+collection. The constructors record each node they produce, with its
+origin file, into a run-scoped collection `R`.
+
+`R` is reset when collection starts and is recorded into only during
+the collection phase; constructions during test-body _execution_ are
+out of scope. Collection happens once, in the orchestrator, before any
+worker runs (see [Runtime Behavior](./runtime-behavior.md)), so the
+records are written single-threaded and need no synchronisation.
+
 ### Sharded Runs
 
 `discovered` is global (the pre-shard count). `executed` is local to
@@ -132,19 +187,139 @@ sums `executed` across shards. Per-suite breakdowns merge the same
 way: `discovered` is identical on every shard for a given suite;
 `executed` sums across shards.
 
+`defined` and `orphans` are global like `discovered`: collection runs
+once in the orchestrator before sharding, so every shard's record
+carries the same `defined` and the same `orphans`, and the merger
+takes any shard's copy.
+
 ### Replay
 
 `overkill replay <run-id>` re-runs the recorded plan. `discovered`
 matches the original (the plan is fixed). `executed` reflects what
-the replay actually ran.
+the replay actually ran. `defined` and `orphans` reflect collection,
+which replay does not repeat; a replay record carries the original
+run's values forward unchanged.
+
+## Orphan Detection
+
+### How It Works
+
+Orphan detection is a set difference between two collections of
+authored nodes the runner already has:
+
+-   **`R`** — every node the constructors built during collection, as
+    defined in [Definition Of "Defined"](#definition-of-defined).
+-   **`Reach`** — every node reachable from the exported run roots.
+    The runner already performs this walk; it is the basis of
+    `discovered`.
+
+```
+orphans = R - Reach    (by node identity)
+```
+
+Both sides are authored `TestNode`s, compared by identity. The
+canonical orphan is a forgotten test:
+
+```ts
+export const someTest = test('some-test', () => {});
+export const otherTest = test('other-test', () => {});
+
+export const spec = suite('foo', [someTest]);
+```
+
+Both `test(...)` calls run when the module evaluates, so both nodes
+are in `R`. Only `someTest` is reachable from `spec`, so only it is in
+`Reach`. `otherTest` is in `R - Reach`: it was built and wired into
+nothing.
+
+### Why It Is Exact
+
+The comparison is between node-identity sets, never between counts
+taken at different pipeline stages. That is what makes it exact where
+a bare construction _counter_ is not:
+
+-   **Node reuse.** A node constructed once and placed in two suites
+    is one identity in `R` and is in `Reach`, so it is correctly not
+    an orphan. A counter would see one construction against two
+    reachable cases and underflow.
+-   **Matrix expansion.** A `table(...)` that fans out across runtimes
+    is one authored node in both `R` and `Reach`. Expansion into many
+    `CaseId`s is a planning concern that orphan detection never
+    touches, so it cannot distort the result.
+-   **Imported-but-unused fragments.** A suite or case imported from a
+    helper module and never wired into a root is in `R` but not
+    `Reach`, so it is reported as an orphan — correctly. This is real
+    information, not noise: "you imported this and used it nowhere" is
+    a true fact worth surfacing. The `file` field on each entry says
+    where the node was constructed, so an unused import and a
+    forgotten local test are distinguishable in the report without
+    either being suppressed.
+-   **Uncalled macros.** A macro that is defined but never applied
+    constructs nothing, so it contributes to neither set — correct,
+    there is no node. A macro that is applied but whose result is
+    never wired in contributes orphaned nodes — also correct.
+
+Every entry in `R - Reach` is a node that genuinely exists and
+genuinely reaches no root. There is no case where the figure is
+confidently wrong.
+
+### Relationship To The No-Side-Effects Rule
+
+[Tests As Values](../authoring/tests-as-values.md) rejects
+define-by-side-effect: a runner where calling `test(...)` mutates a
+hidden registry, and the runner then _reads that registry_ to learn
+what tests exist. The poison there is that the registry is
+**load-bearing for discovery** — test definitions are not addressable
+until every module has been evaluated, call order becomes
+significant, and parallel collection races over shared state.
+
+`R` has none of those properties:
+
+-   Discovery does not consult it. The runner still learns the test
+    set by walking the exported `spec` value; `R` is never read to
+    decide what runs.
+-   It is a set, not a sequence. Insertion order does not affect `R`,
+    and `R - Reach` is order-independent.
+-   It is not the source of truth. The exported `spec` value is
+    byte-for-byte identical whether or not `R` exists.
+-   Collection runs once, single-threaded, in the orchestrator, so
+    nothing races over it.
+
+`R` is runtime-internal bookkeeping — `@overkill/test` recording which
+nodes its own constructors produced — used only for diagnostics. It is
+the same category as a construction-time call counter: the two differ
+only in payload, a set of node identities rather than an integer, not
+in kind. If a construction-time tally is acceptable, a
+construction-time identity set is acceptable for the same reason. What
+it does cost is that the constructors are no longer referentially
+transparent in the strict sense, and `R` is process state; both are
+contained by keeping `R` run-scoped and writing to it only during
+single-threaded orchestrator collection.
+
+### Requirements And Edges
+
+-   **Re-evaluation per run.** A constructor records into `R` only
+    when it runs, which is on first module evaluation. For `defined`
+    and `orphans` to stay accurate across repeated runs in one process
+    (watch mode), the runner must re-evaluate test modules each run
+    rather than serve them from the module cache. The runner does this
+    anyway for test isolation; orphan detection depends on it.
+-   **Collection-phase scope.** `R` is recorded into only during
+    collection. A `test(...)` call made from inside a running test
+    body is not collection-time construction and does not enter `R`.
+-   **Retention.** `R` holds references to constructed nodes —
+    including ones that would otherwise be unreachable garbage — for
+    the duration of collection. The cost is bounded by the size of the
+    authored test set and is released once the `RunResult` is
+    produced.
 
 ## Surfacing
 
 ### Always Computed
 
-Counts are always computed and always present in `RunResult.summary`
-and `RunResult.bySuite`, regardless of run mode or flags. No
-activation surface.
+Counts are always computed and always present in `RunResult.summary`,
+`RunResult.bySuite`, and `RunResult.orphans`, regardless of run mode
+or flags. No activation surface.
 
 ### Persistence
 
@@ -158,20 +333,28 @@ counts still live in the in-memory `RunResult` consumed by reporters.
 ### Reporter Rendering
 
 The default human reporter extends its end-of-run summary line to
-include `discovered`. Suggested shape:
+include `discovered`, and an orphan count when one exists. Suggested
+shape:
 
 ```
 10000 discovered, 9000 executed (8800 pass, 100 fail, 100 skip)  in 4.2s
 ```
 
-The behaviour matches the precedent that
-`RunResult.summary.passed/failed/skipped/inconclusive` are
-unconditionally rendered, even when zero. Hiding `discovered` based on
-the size of the gap would be inconsistent with how the rest of the
-summary works.
+with the orphan count appended when `orphans` is non-empty:
 
-Machine-readable reporters (JSON, TAP) emit the full structured data;
-per-suite breakdown is available to consumers that want it.
+```
+10000 discovered, 9000 executed (8800 pass, 100 fail, 100 skip), 3 orphaned  in 4.2s
+```
+
+`discovered` and the per-outcome tallies render unconditionally, even
+when zero, matching the existing summary precedent. The orphan figure
+is shown only when non-zero, and when shown the reporter lists the
+orphaned nodes (`file`, `name`, `kind`) below the summary line — the
+identities are the actionable part, the bare count is not.
+
+Machine-readable reporters (JSON, TAP) emit the full structured data,
+including `defined` and the `orphans` list; the per-suite breakdown is
+available to consumers that want it.
 
 ## What Counts Surface In Practice
 
@@ -185,19 +368,24 @@ Examples of situations the counts make visible:
 -   A suite with conditional `skippedTest` where the condition
     accidentally elided more cases than expected — `bySuite[suite]`
     shows the gap localised to one subtree.
--   Library authors writing reusable suite fragments — counts make
-    "how many of these are my own test runs actually consuming?"
-    legible at a glance.
+-   A test defined but never added to a `spec` — the refactor that
+    split one suite into two left a case wired to neither; it appears
+    in `orphans` with its file and name.
+-   A reusable suite fragment imported but never used — `orphans`
+    shows it, with the helper file as its origin, so "how much of this
+    catalog is this project actually consuming?" is legible at a
+    glance.
 
 The runner never says any of these are _wrong_; it reports the
-numbers, and the developer or CI gate interprets.
+numbers and identities, and the developer or CI gate interprets.
 
 ## Cross-References
 
 -   [Reproducibility § Run Record Shape](./reproducibility.md#run-record-shape)
     — where `RunResult` lives, persistence policy
 -   [Tests As Values](../authoring/tests-as-values.md) — the
-    reachability rule `discovered` is built on
+    reachability rule `Reach` is built on, and the no-side-effects
+    rule `R` is reconciled against
 -   [Composition Order](./composition-order.md) — the pipeline that
     produces filter and shard narrowing
 -   [Runtime Behavior § Sharding](./runtime-behavior.md#sharding) —
@@ -206,5 +394,8 @@ numbers, and the developer or CI gate interprets.
     precedent
 -   [Coverage](./coverage.md) — precedent for per-case data in
     `RunRecord`
+-   [Higher Test Layers § Static Authoring Rules](../authoring/higher-test-layers.md#static-authoring-rules)
+    — the `no-orphan-test-nodes` lint rule, the static-source
+    counterpart to runtime orphan detection
 -   [Test Debug Mode](../authoring/debug-mode.md) — explicitly _not_
     the home for this concept
