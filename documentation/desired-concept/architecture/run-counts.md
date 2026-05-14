@@ -25,7 +25,7 @@ reports those nodes; the developer interprets.
 This is primarily an `@overkill/engine` concept: the new fields extend
 engine's structured-results contract — `RunResult` and `RunSummary`.
 `@overkill/run` produces the collection- and discovery-derived values
-during planning — the `Reach` walk, orphan detection, and the
+during planning — the `Reached` walk, orphan detection, and the
 per-suite counts — while `@overkill/engine` execution fills the
 per-outcome counts as it does today. The default human reporter
 extends its run-summary line to surface them. It
@@ -172,9 +172,9 @@ A node is _defined_ when one of the `@overkill/test` node constructors
 — `test(...)`, `table(...)`, `suite(...)`, `skippedTest(...)`, and
 their kin — builds it while the runner is evaluating test modules for
 collection. The constructors record each node they produce, with its
-origin file, into a run-scoped collection `R`.
+origin file, into a run-scoped collection `Constructed`.
 
-`R` is reset when collection starts and is recorded into only during
+`Constructed` is reset when collection starts and is recorded into only during
 the collection phase; constructions during test-body _execution_ are
 out of scope. Collection happens once, in the orchestrator, before any
 worker runs (see [Runtime Behavior](./runtime-behavior.md)), so the
@@ -212,14 +212,14 @@ run's values forward unchanged.
 Orphan detection is a set difference between two collections of
 authored nodes the runner already has:
 
--   **`R`** — every node the constructors built during collection, as
+-   **`Constructed`** — every node the constructors built during collection, as
     defined in [Definition Of "Defined"](#definition-of-defined).
--   **`Reach`** — every node reachable from the exported run roots.
+-   **`Reached`** — every node reachable from the exported run roots.
     The runner already performs this walk; it is the basis of
     `discovered`.
 
 ```
-orphans = R - Reach    (by node identity)
+orphans = Constructed - Reached    (by node identity)
 ```
 
 Both sides are authored `TestNode`s, compared by identity. The
@@ -233,8 +233,8 @@ export const spec = suite('foo', [someTest]);
 ```
 
 Both `test(...)` calls run when the module evaluates, so both nodes
-are in `R`. Only `someTest` is reachable from `spec`, so only it is in
-`Reach`. `otherTest` is in `R - Reach`: it was built and wired into
+are in `Constructed`. Only `someTest` is reachable from `spec`, so only it is in
+`Reached`. `otherTest` is in `Constructed - Reached`: it was built and wired into
 nothing.
 
 ### Why It Is Exact
@@ -244,16 +244,16 @@ taken at different pipeline stages. That is what makes it exact where
 a bare construction _counter_ is not:
 
 -   **Node reuse.** A node constructed once and placed in two suites
-    is one identity in `R` and is in `Reach`, so it is correctly not
+    is one identity in `Constructed` and is in `Reached`, so it is correctly not
     an orphan. A counter would see one construction against two
     reachable cases and underflow.
 -   **Matrix expansion.** A `table(...)` that fans out across runtimes
-    is one authored node in both `R` and `Reach`. Expansion into many
+    is one authored node in both `Constructed` and `Reached`. Expansion into many
     `CaseId`s is a planning concern that orphan detection never
     touches, so it cannot distort the result.
 -   **Imported-but-unused fragments.** A suite or case imported from a
-    helper module and never wired into a root is in `R` but not
-    `Reach`, so it is reported as an orphan — correctly. This is real
+    helper module and never wired into a root is in `Constructed` but not
+    `Reached`, so it is reported as an orphan — correctly. This is real
     information, not noise: "you imported this and used it nowhere" is
     a true fact worth surfacing. The `file` field on each entry says
     where the node was constructed, so an unused import and a
@@ -264,7 +264,7 @@ a bare construction _counter_ is not:
     there is no node. A macro that is applied but whose result is
     never wired in contributes orphaned nodes — also correct.
 
-Every entry in `R - Reach` is a node that genuinely exists and
+Every entry in `Constructed - Reached` is a node that genuinely exists and
 genuinely reaches no root. There is no case where the figure is
 confidently wrong.
 
@@ -278,41 +278,41 @@ what tests exist. The poison there is that the registry is
 until every module has been evaluated, call order becomes
 significant, and parallel collection races over shared state.
 
-`R` has none of those properties:
+`Constructed` has none of those properties:
 
 -   Discovery does not consult it. The runner still learns the test
-    set by walking the exported `spec` value; `R` is never read to
+    set by walking the exported `spec` value; `Constructed` is never read to
     decide what runs.
--   It is a set, not a sequence. Insertion order does not affect `R`,
-    and `R - Reach` is order-independent.
+-   It is a set, not a sequence. Insertion order does not affect `Constructed`,
+    and `Constructed - Reached` is order-independent.
 -   It is not the source of truth. The exported `spec` value is
-    byte-for-byte identical whether or not `R` exists.
+    byte-for-byte identical whether or not `Constructed` exists.
 -   Collection runs once, single-threaded, in the orchestrator, so
     nothing races over it.
 
-`R` is runtime-internal bookkeeping — `@overkill/test` recording which
+`Constructed` is runtime-internal bookkeeping — `@overkill/test` recording which
 nodes its own constructors produced — used only for diagnostics. It is
 the same category as a construction-time call counter: the two differ
 only in payload, a set of node identities rather than an integer, not
 in kind. If a construction-time count is acceptable, a
 construction-time identity set is acceptable for the same reason. What
 it does cost is that the constructors are no longer referentially
-transparent in the strict sense, and `R` is process state; both are
-contained by keeping `R` run-scoped and writing to it only during
+transparent in the strict sense, and `Constructed` is process state; both are
+contained by keeping `Constructed` run-scoped and writing to it only during
 single-threaded orchestrator collection.
 
 ### Requirements And Edges
 
--   **Re-evaluation per run.** A constructor records into `R` only
+-   **Re-evaluation per run.** A constructor records into `Constructed` only
     when it runs, which is on first module evaluation. For `defined`
     and `orphans` to stay accurate across repeated runs in one process
     (watch mode), the runner must re-evaluate test modules each run
     rather than serve them from the module cache. The runner does this
     anyway for test isolation; orphan detection depends on it.
--   **Collection-phase scope.** `R` is recorded into only during
+-   **Collection-phase scope.** `Constructed` is recorded into only during
     collection. A `test(...)` call made from inside a running test
-    body is not collection-time construction and does not enter `R`.
--   **Retention.** `R` holds references to constructed nodes —
+    body is not collection-time construction and does not enter `Constructed`.
+-   **Retention.** `Constructed` holds references to constructed nodes —
     including ones that would otherwise be unreachable garbage — for
     the duration of collection. The cost is bounded by the size of the
     authored test set and is released once the `RunResult` is
@@ -389,8 +389,8 @@ numbers and identities, and the developer or CI gate interprets.
 -   [Reproducibility § Run Record Shape](./reproducibility.md#run-record-shape)
     — where `RunResult` lives, persistence policy
 -   [Tests As Values](../authoring/tests-as-values.md) — the
-    reachability rule `Reach` is built on, and the no-side-effects
-    rule `R` is reconciled against
+    reachability rule `Reached` is built on, and the no-side-effects
+    rule `Constructed` is reconciled against
 -   [Composition Order](./composition-order.md) — the pipeline that
     produces filter and shard narrowing
 -   [Runtime Behavior § Sharding](./runtime-behavior.md#sharding) —
