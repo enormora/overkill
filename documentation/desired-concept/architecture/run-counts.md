@@ -22,13 +22,18 @@ reports those nodes; the developer interprets.
 
 ## Position
 
-This is a `@overkill/run` concept that adds fields to `RunResult` and
-extends the run-summary line emitted by the default human reporter. It
+This is primarily an `@overkill/engine` concept: the new fields extend
+engine's structured-results contract — `RunResult` and `RunSummary`.
+`@overkill/run` produces the collection- and discovery-derived values
+during planning — the `Reach` walk, orphan detection, and the
+per-suite counts — while `@overkill/engine` execution fills the
+per-outcome counts as it does today. The default human reporter
+extends its run-summary line to surface them. It
 is **not** an extension of test debug mode. The
 [Test Debug Mode](../authoring/debug-mode.md) is opt-in because of its
 per-test telemetry overhead (heap snapshots, module-load hooks,
 active-handle deltas). The counts here are cheap: `discovered` and the
-per-outcome tallies are integers the runner already produces during
+per-outcome counts are integers the runner already produces during
 plan freeze and run completion, and orphan detection is a set
 difference between two collections the runner already holds — an
 `O(1)` record per node construction, then one pass at collection end.
@@ -289,7 +294,7 @@ significant, and parallel collection races over shared state.
 nodes its own constructors produced — used only for diagnostics. It is
 the same category as a construction-time call counter: the two differ
 only in payload, a set of node identities rather than an integer, not
-in kind. If a construction-time tally is acceptable, a
+in kind. If a construction-time count is acceptable, a
 construction-time identity set is acceptable for the same reason. What
 it does cost is that the constructors are no longer referentially
 transparent in the strict sense, and `R` is process state; both are
@@ -346,7 +351,7 @@ with the orphan count appended when `orphans` is non-empty:
 10000 discovered, 9000 executed (8800 pass, 100 fail, 100 skip), 3 orphaned  in 4.2s
 ```
 
-`discovered` and the per-outcome tallies render unconditionally, even
+`discovered` and the per-outcome counts render unconditionally, even
 when zero, matching the existing summary precedent. The orphan figure
 is shown only when non-zero, and when shown the reporter lists the
 orphaned nodes (`file`, `name`, `kind`) below the summary line — the
