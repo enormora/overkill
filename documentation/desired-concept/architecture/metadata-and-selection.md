@@ -22,6 +22,7 @@ Likely metadata categories:
 -   **ownership** — domain or team labels (`'@auth-team'`)
 -   **stability** — `'stable' | 'flaky' | 'experimental'`
 -   **priority** — `'critical' | 'standard' | 'optional'`
+-   **debug** — pin [Test Debug Mode](../authoring/debug-mode.md) on for this test or subtree
 
 ## Concrete Type Sketch
 
@@ -35,6 +36,7 @@ type Metadata = {
     readonly ownership?: ReadonlyArray<string>;
     readonly stability?: 'stable' | 'flaky' | 'experimental';
     readonly priority?: 'critical' | 'standard' | 'optional';
+    readonly debug?: boolean; // pins Test Debug Mode on for this test/subtree
     readonly extra?: ReadonlyMap<string, unknown>; // open-ended
 };
 ```
@@ -52,7 +54,7 @@ Metadata cascades from suite to test, with override semantics:
 4.  set-valued fields (`tags`) merge by union with the parent
 5.  array-valued fields (`runtimes`) merge unless the child sets
     `replace: true` (rare)
-6.  enum fields (`kind`, `stability`, `priority`) replace
+6.  enum and boolean fields (`kind`, `stability`, `priority`, `debug`) replace
 
 Example:
 

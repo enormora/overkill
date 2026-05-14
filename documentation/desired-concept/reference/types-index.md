@@ -99,6 +99,7 @@ type Metadata = {
     readonly ownership?: ReadonlyArray<string>;
     readonly stability?: 'stable' | 'flaky' | 'experimental';
     readonly priority?: 'critical' | 'standard' | 'optional';
+    readonly debug?: boolean;
     readonly extra?: ReadonlyMap<string, unknown>;
 };
 
