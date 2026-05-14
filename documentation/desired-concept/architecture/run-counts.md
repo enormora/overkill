@@ -38,11 +38,6 @@ runner attempted. They do **not** address:
     [Tests As Values](../authoring/tests-as-values.md) rule that
     detached nodes are a legitimate composition pattern) or static
     analysis. Either is a different tool.
--   **Catalog tests** — cases exported by a project for downstream
-    consumers but never reached by any local test entry point. That is
-    a static property of the project, not a runtime property of a run,
-    and is handled by a separate `overkill audit-catalog` command
-    rather than wedged into per-run output.
 
 ## Data Model
 
