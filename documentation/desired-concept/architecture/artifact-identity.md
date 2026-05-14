@@ -57,7 +57,7 @@ not as a hard requirement baked into `@overkill/engine`.
 
 ```ts
 type TestId = {
-    readonly file: string; // canonical source file path, repo-relative
+    readonly file: string; // canonical source file path, repository-relative
     readonly suite?: ReadonlyArray<string>; // ordered suite names, root → leaf
     readonly name: string; // test name within its parent
 };
@@ -130,7 +130,7 @@ but the canonical identity remains the structured value.
 
 To make identity stable across machines and runs:
 
--   **file paths** are repo-relative (relative to the resolved project
+-   **file paths** are repository-relative (relative to the resolved project
     root for the run; see Resolved Identity Rules) and use forward
     slashes regardless of OS
 -   **suite paths** are ordered arrays; identity is structural, not
@@ -232,7 +232,7 @@ re-parsing the file.
     derivation.
 -   Suite path is **explicit only**. Folders contribute to `file`, not to
     `suite`.
--   In monorepos, `file` remains **repo-relative** to the resolved project
+-   In monorepos, `file` remains **repository-relative** to the resolved project
     root chosen for the run. There is no dedicated package/workspace field.
 -   If the runner cannot determine the project root unambiguously, it should
     fail rather than invent unstable identities.

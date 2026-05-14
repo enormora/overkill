@@ -464,7 +464,7 @@ Sources:
 
 ## `assert` Versus `require`
 
-This split should be explicit in the docs.
+This split should be explicit in the documentation.
 
 `assert`:
 
@@ -483,7 +483,7 @@ This split should be explicit in the docs.
 This is inspired in part by Swift Testing’s split between expectation-style
 and require-style checks.
 
-When the docs talk about explicit aggregate or "run all" semantics, that
+When the documentation talks about explicit aggregate or "run all" semantics, that
 refers to explicit aggregate helpers in the assertion layer, not to
 builder-test control flow. In the builder API, the default control-flow
 rule is simple: `case.assert` records and continues; `case.require`
@@ -560,7 +560,7 @@ These assertions should remain:
 
 -   explicit
 -   typed
--   registered through package wiring or JS/TS config
+-   registered through package wiring or JS/TS configuration
 -   uniquely named across both first-party and registered custom assertions
 
 They should extend the first-party assertion system, not replace it with an
@@ -579,7 +579,7 @@ than silently overriding anything.
 
 ### Assertion Extensions And Test Facades
 
-Custom assertions should no longer be registered in root runner config.
+Custom assertions should no longer be registered in root runner configuration.
 Instead, they belong to **test facade creation**, because assertion
 registration changes the authoring surface and therefore the static type of
 `case.assert`.
@@ -607,7 +607,7 @@ The settled facade contract is narrow:
 -   `createTestFacade(...)` accepts assertion extensions only
 -   it returns the typed core authoring helpers for that suite family:
     `test`, `suite`, `table`, `defineMacro`, and `runIfMain`
--   config loading, reporters, discovery, and other runner concerns stay in
+-   configuration loading, reporters, discovery, and other runner concerns stay in
     `@overkill/run`
 -   higher-layer helpers are re-exported alongside the facade from a stable
     project alias rather than configured through facade creation

@@ -148,7 +148,7 @@ directories:
 
 -   `test-baselines/` — all baseline subtypes
 -   `.overkill/witnesses/` — replay witnesses (gitignored by default; can
-    be promoted into the repo when valuable)
+    be promoted into the repository when valuable)
 -   `.overkill/corpus/` — fuzzing/property regression corpus
 -   `.overkill/runs/` — run records (kept for the last N runs, default 20)
 
@@ -182,7 +182,7 @@ Run-record and replay semantics live in
 [Reproducibility](../architecture/reproducibility.md). This doc owns only
 the witness artifact shape and its attachment/reporting behavior.
 
-This is the canonical witness schema; other docs reference it rather
+This is the canonical witness schema; other documents reference it rather
 than restating fields.
 
 ```ts

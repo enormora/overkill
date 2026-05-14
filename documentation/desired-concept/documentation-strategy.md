@@ -11,7 +11,7 @@ needs to be.
 
 ## Principle
 
-The docs should reflect the low-API-surface principle.
+The documentation should reflect the low-API-surface principle.
 
 That means:
 
@@ -66,7 +66,7 @@ This is where the rarer mechanics belong:
 -   browser metrics backends
 
 These should exist, but they should not be in the first screenful of the
-main docs.
+main documentation.
 
 ### 5. Reference
 
@@ -120,7 +120,7 @@ not.
 
 ## What To Avoid
 
-The docs should avoid:
+The documentation should avoid:
 
 -   leading with the full package graph
 -   leading with every possible test style

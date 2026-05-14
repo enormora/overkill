@@ -2,10 +2,10 @@
 
 ## Purpose
 
-Several terms in the Overkill concept docs are used in slightly different
-ways across files. This glossary is the canonical definition. When other
-docs use these terms, they should be read as referring to the definitions
-here.
+Several terms in the Overkill concept documentation are used in slightly
+different ways across files. This glossary is the canonical definition. When
+other documents use these terms, they should be read as referring to the
+definitions here.
 
 ## Microtest
 
@@ -36,7 +36,7 @@ Source: [Assertions And Results](../authoring/assertions-and-results.md), [Test 
 A project-local typed authoring entrypoint built with
 `createTestFacade(...)` and re-exported through a stable alias such as
 `#tests/micro`. A facade owns the authoring surface for one suite family;
-root runner config still owns orchestration.
+root runner configuration still owns orchestration.
 
 Source: [Package Architecture](../architecture/package-architecture.md), [Assertions And Results](../authoring/assertions-and-results.md).
 
@@ -79,7 +79,7 @@ Source: [Runtime Behavior](../architecture/runtime-behavior.md), [Package Archit
 
 A named bundle of capability profile, execution strategy, and runner
 configuration. Users select a runner profile per run via CLI or
-programmatic request; config may define named profiles but does not own the
+programmatic request; configuration may define named profiles but does not own the
 selection itself.
 
 Source: [Microtests And Capabilities](../authoring/microtests-and-capabilities.md), [Package Architecture](../architecture/package-architecture.md).

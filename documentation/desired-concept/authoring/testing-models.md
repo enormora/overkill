@@ -6,7 +6,7 @@ Overkill should define test categories clearly enough that package
 boundaries, defaults, and authoring expectations make sense.
 
 This doc is a taxonomy and entry point, not the full specification for each
-family. The owning docs named below carry the detailed mechanics.
+family. The owning documents named below carry the detailed mechanics.
 
 ## Microtests
 

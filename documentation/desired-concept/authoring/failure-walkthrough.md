@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Most concept docs describe one segment of the failure path: how
+Most concept documents describe one segment of the failure path: how
 assertions are recorded, how outcomes are typed, how artifacts are
 named, how reporters render. This doc threads them.
 
@@ -245,7 +245,7 @@ hold for the path to work:
 -   `CaseId` is the only key threading test → outcome → artifact →
     witness → run record → reporter
 -   `WitnessFile` schema is the source of truth for replay; the
-    glossary and reproducibility docs cross-link it
+    glossary and reproducibility documents cross-link it
 -   `--debug` adds a parallel artifact stream without altering any
     of the contracts above
 

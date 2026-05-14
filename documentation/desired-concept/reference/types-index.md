@@ -6,8 +6,8 @@ A canonical sketch of every TypeScript type referenced from more than one
 concept doc.
 
 This file exists so reviewers do not have to chase types across the doc
-set, and so authoring docs can cite a single source instead of re-stating
-fields.
+set, and so authoring documentation can cite a single source instead of
+re-stating fields.
 
 The shapes here are concept-level sketches, not contracts. The actual
 package types may add fields. If a type's canonical definition lives in a
@@ -23,7 +23,7 @@ the doc does not blur canonical shared types with illustrative sample names.
 
 ```ts
 type TestId = {
-    readonly file: string; // canonical source file path, repo-relative
+    readonly file: string; // canonical source file path, repository-relative
     readonly suite?: ReadonlyArray<string>; // ordered suite names, root → leaf
     readonly name: string; // test name within its parent
 };
@@ -491,6 +491,6 @@ sample explicitly defines them.
 -   `arbitrary.user`, `arbitrary.bytes`, `gen.user` — placeholder generator
     references in property-test snippets
 -   `relation`, `differential`, `linearizability`, `browserBenchmark`,
-    `slo()` — settled helper names for higher-layer families; owning docs
-    define the package home and concept-level semantics, but this index does
-    not own their full signatures
+    `slo()` — settled helper names for higher-layer families; owning
+    documentation defines the package home and concept-level semantics, but
+    this index does not own their full signatures

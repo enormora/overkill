@@ -1,11 +1,11 @@
-# Overkill Concept Docs
+# Overkill Concept Documentation
 
 This folder captures the product concept for `overkill` before runtime
 implementation resumes. The documents in `documentation/desired-concept/` are the
 current product narrative; they will eventually be condensed into a
 project-level `README.md` and design RFCs.
 
-The docs are organised into folders that mirror their role:
+The documentation is organised into folders that mirror their role:
 
 -   [`decisions/`](./decisions/) — settled principles and rejected
     directions
@@ -18,9 +18,9 @@ The docs are organised into folders that mirror their role:
     CLI reference
 -   [`research/`](./research/) — supporting background: comparisons, audits,
     and prior-art notes that inform but do not define the settled concept
--   top-level maintainer docs such as
+-   top-level maintainer documentation such as
     [Documentation Strategy](./documentation-strategy.md) — how user-facing
-    Overkill docs should be written
+    Overkill documentation should be written
 
 ## Recommended Reading Order
 
@@ -105,18 +105,18 @@ surface.
 -   [Research Landscape](./research/research-landscape.md)
 -   [Candidate Libraries](./research/candidate-libraries.md)
 
-## How To Contribute To These Docs
+## How To Contribute To This Documentation
 
-The docs aim to be:
+The documentation aims to be:
 
--   normative where decisions are settled (the canonical docs and their
-    owning topic docs are the source of truth)
+-   normative where decisions are settled (the canonical documents and their
+    owning topic documents are the source of truth)
 -   cross-linked rather than redundant (each concept has one canonical
-    home; other docs reference it)
+    home; other documents reference it)
 
 Research and candidate exploration should live outside the settled concept
 surface in [`research/`](./research/) or external notes, not as mixed-status
-sections inside the canonical concept docs.
+sections inside the canonical concept documents.
 
 When adding a new concept, prefer extending an existing doc over
 introducing a new one unless the new concept is genuinely cross-cutting.

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Concept docs scatter their rejections across many files. This doc
+Concept documents scatter their rejections across many files. This document
 collects them in one place so the rejections are visible to reviewers,
 contributors, and downstream package authors without re-litigation per
 topic.
@@ -11,7 +11,7 @@ Two categories live here:
 
 -   **Settled rejections** — directions Overkill has decided against. Each
     entry names what is rejected, why, where the rejection lives in the
-    canonical docs, and the accepted alternative.
+    canonical documentation, and the accepted alternative.
 -   **Deferred with research** (see the section near the end) — directions
     rejected for the _current_ concept but with a preserved record of the
     research already done and the conditions under which the decision
@@ -157,7 +157,7 @@ its results through the Overkill reporter pipeline.
 ### No CI auto-detection
 
 Overkill does not switch behavior based on `process.env.CI` or
-per-provider env vars. There is no `--ci` / `--no-ci` flag, no
+per-provider environment variables. There is no `--ci` / `--no-ci` flag, no
 auto-switched reporter, no environment-based gate on baseline writes,
 and no auto-tightened defaults in CI.
 
@@ -235,7 +235,7 @@ new baseline and removes the orphan in one reviewable diff.
 Overkill identity does not carry a separate package or workspace key
 inside `CaseId`.
 
-Why: the `file` field, repo-relative to the resolved project root, is
+Why: the `file` field, repository-relative to the resolved project root, is
 already enough to disambiguate.
 
 Where: [Artifact Identity § Resolved Identity Rules](../architecture/artifact-identity.md#resolved-identity-rules).
@@ -296,7 +296,7 @@ Where: [Package Architecture § Extension Surfaces](../architecture/package-arch
 [Package Architecture § Bundles](../architecture/package-architecture.md#bundles).
 
 Alternative: stable APIs in `@overkill/engine`, orchestration-level
-composition in `@overkill/run`, and config-driven attachment for
+composition in `@overkill/run`, and configuration-driven attachment for
 discovered surfaces (reporters, baseline adapters).
 
 ## Deferred With Research

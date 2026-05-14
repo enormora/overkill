@@ -140,7 +140,7 @@ Two attachment surfaces:
 
 -   **Programmatic** — `runner.run({ reporters: [reporterA, reporterB] })`
     accepts already-instantiated reporter objects
--   **Config-driven** — `overkill.config.ts` imports reporter factories or
+-   **Configuration-driven** — `overkill.config.ts` imports reporter factories or
     reporter values directly and passes instantiated reporters to the runner
 
 Both forms produce the same `Reporter[]` array; the registration
@@ -243,7 +243,7 @@ preferable.)
 ## What This Doc Is Not
 
 -   not a concrete reporter (terminal, JSON, HTML, TAP) — those are
-    separate packages with their own docs
+    separate packages with their own documentation
 -   not a guarantee that every event includes every conceivable
     field; reporters that need richer data declare it through
     additional artifacts (debug, witness, baselines), not by

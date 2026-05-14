@@ -2,7 +2,7 @@
 
 ## Position
 
-Many concept docs describe one wrapper or one resolution rule:
+Many concept documents describe one wrapper or one resolution rule:
 metadata propagation here, capability intersection there, debug mode
 elsewhere, retry handling somewhere else. None of them say _what
 happens in what order_ when several apply at once.
@@ -198,8 +198,8 @@ dependency:
 
 ## What This Doc Is Not
 
--   not a feature; the order described here is what the docs
-    already specify, just collected
+-   not a feature; the order described here is what the documentation
+    already specifies, just collected
 -   not a recommendation that user code reach into the wrapping
     stack
 -   not an aspect-weaving system. There is no joinpoint declaration

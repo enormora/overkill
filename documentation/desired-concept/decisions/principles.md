@@ -68,7 +68,7 @@ If an alternative is worth supporting, it should usually either:
 The same principle applies to user inputs. Each setting has one canonical
 place to live:
 
--   persistent project policy lives in the config file
+-   persistent project policy lives in the configuration file
 -   per-run intent lives on the CLI (for example `--coverage`,
     `--watch`, `--filter`)
 -   no setting is reachable from both surfaces
@@ -76,13 +76,13 @@ place to live:
 This avoids precedence bugs, duplicated documentation, and the ambient
 "did I set this here or there?" confusion.
 
-The rule constrains _human-facing_ surfaces (CLI and config). The
+The rule constrains _human-facing_ surfaces (CLI and configuration). The
 programmatic API exposed by `@overkill/run` (see `## API-First`) is a
 different layer: it is the unified implementation target that both
 human surfaces reduce to. A custom orchestrator using the API
 expresses both per-run intent and project policy in one call; that is
 not a third configuration surface, it is what the CLI parser and the
-config-file loader internally call.
+configuration-file loader internally call.
 
 ## Low API Surface
 

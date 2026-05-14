@@ -109,7 +109,7 @@ How Overkill applies these flags:
     coverage or run-record directory), the path must end in `/*`
     or Node will only allow writing the directory entry itself,
     not files inside it.
--   **Permissions do not inherit.** Per Node's docs, "the model does
+-   **Permissions do not inherit.** Per Node's documentation, "the model does
     not inherit to a child node process or a worker thread." Each
     Overkill worker is spawned as a fresh Node process with its own
     `--permission` flags; the parent overkill process does not need
@@ -131,14 +131,15 @@ Caveats `console.*` and symbolic links:
 -   Symbolic links are followed even when they escape granted paths.
     The runner resolves granted paths and refuses to start workers
     if any component is a symlink to outside the run record. The
-    Node docs warn: "Relative symbolic links may allow access to
+    Node documentation warns: "Relative symbolic links may allow access to
     arbitrary files and directories."
 
 ## Important Limitation
 
 Node explicitly describes the permission model as a "seat belt" model and
-notes that it is not a security boundary against malicious code. The docs
-also note bypass caveats such as alternative file access routes and
+notes that it is not a security boundary against malicious code. The
+documentation also notes bypass caveats such as alternative file access routes
+and
 inherited file descriptors.
 
 Overkill repeats that distinction clearly. The threat model section above
@@ -225,8 +226,8 @@ Standard public runner profiles (see [Glossary](../reference/glossary.md)):
 -   `microtest-with-coverage` — microtest profile plus the narrow coverage
     write exception; runs single-threaded when coverage is active (see
     [Coverage](../architecture/coverage.md))
--   `integration` — allows FS write within a per-test temp dir, loopback
-    net, and child process use
+-   `integration` — allows FS write within a per-test temporary directory,
+    loopback net, and child process use
 -   `benchmark` — integration-style capability envelope plus
     single-worker serialization
 -   `simulation` — deterministic-simulation profile, with adapter-owned
@@ -234,7 +235,7 @@ Standard public runner profiles (see [Glossary](../reference/glossary.md)):
 
 These public names resolve to lower-level capability presets and execution
 strategies. Implementation details (exact permission flag set, exact
-temp-dir layout, exact supervision mechanism) are runner-internal.
+temporary-directory layout, exact supervision mechanism) are runner-internal.
 
 Modern Node diagnostics channels provide built-in `console.log`,
 `console.info`, `console.debug`, `console.warn`, and `console.error`

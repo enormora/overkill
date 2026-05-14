@@ -49,7 +49,7 @@ The core should be a typed function double with:
 
 The recommendation is to make the primary shape configuration-driven rather than chain-driven.
 
-That does not mean every use must start with a config object. The simple
+That does not mean every use must start with a configuration object. The simple
 path should stay very small:
 
 ```ts
@@ -67,7 +67,7 @@ generic.
 The intended split is:
 
 -   shorthand instance methods for the common fixed-behavior cases
--   config object plus rule composition for advanced behavior
+-   configuration object plus rule composition for advanced behavior
 
 Example direction:
 
@@ -177,7 +177,7 @@ The minimal shape worth exploring is:
 -   `rule.resolves(value)`
 -   `rule.rejects(error)`
 -   `rule.throws(error)`
--   `rule.calls(fn)` for fully custom logic (the `answer` config field is the equivalent at the double level)
+-   `rule.calls(fn)` for fully custom logic (the `answer` configuration field is the equivalent at the double level)
 -   `rule.sequence(...)` for successive results without verbose call-index rules
 
 Example:
@@ -200,7 +200,7 @@ const authorize = testDouble<(user: string, scope: string) => boolean>({
 });
 ```
 
-The advanced path should stay in the config object too. It should not require
+The advanced path should stay in the configuration object too. It should not require
 users to switch to a second primary fluent API:
 
 ```ts
@@ -349,12 +349,12 @@ Recommended direction:
 
 -   package name: `@overkill/doubles`
 -   primary abstraction: `testDouble()`
--   primary API shape: config object plus rule composition
+-   primary API shape: configuration object plus rule composition
 -   strong direct introspection on each instance, such as `callCount`, `firstCall`, `lastCall`, and typed call/result records
--   advanced escape hatch: `answer(call)` config field or `rule.calls(fn)`
+-   advanced escape hatch: `answer(call)` configuration field or `rule.calls(fn)`
 -   common-case sugar: instance methods (`.returns`, `.resolves`, `.rejects`, `.throws`) on the simple path; `rule.returns`, `rule.resolves`, `rule.rejects`, `rule.throws`, `rule.sequence` for advanced rules
 -   advanced-path behavior still configured through `rules`, `fallback`, and
-    `answer` on the config object, with rules built via the `rule.*` namespace
+    `answer` on the configuration object, with rules built via the `rule.*` namespace
 -   no object-method replacement API in the first-party concept
 -   no module replacement API in the first-party concept
 

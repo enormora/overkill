@@ -92,7 +92,7 @@ Overkill direction:
 
 #### Projects, Project Dependencies, And Project Teardown
 
-Projects are top-level matrices. Each project has its own `use` (fixtures and config), `testMatch`, `testIgnore`, `fullyParallel`, `retries`, and crucially:
+Projects are top-level matrices. Each project has its own `use` (fixtures and configuration), `testMatch`, `testIgnore`, `fullyParallel`, `retries`, and crucially:
 
 -   `dependencies: ['setup']` — must complete (and pass) before this project starts
 -   `teardown: 'cleanup'` — runs after this project AND its dependents finish
@@ -194,7 +194,7 @@ Steps are nestable, named, and appear in the trace and HTML report as the natura
 
 -   `expect` matchers are narrower than Vitest's; users stack libraries
 -   parameter-name injection breaks rename refactors silently
--   project config interactions (`fullyParallel`, `dependencies`, `teardown`, `use`, `testMatch`) are non-obvious
+-   project configuration interactions (`fullyParallel`, `dependencies`, `teardown`, `use`, `testMatch`) are non-obvious
 -   worker-reuse rules across files depend on worker-fixture parameter equality — surprising invalidation
 -   `test.use` for fixture override is positional and untyped against the project's options shape unless authors thread types manually
 
@@ -269,7 +269,7 @@ For ESM with `await import()` and dynamic registration, the explicit-start patte
 
 #### Why Buster Died (And What To Avoid)
 
-1.  **Stuck in beta** — no 1.0 ever shipped. Issue #171 (multi-config) milestoned for 1.0 in 2012, archived 2018 unfixed.
+1.  **Stuck in beta** — no 1.0 ever shipped. Issue #171 (multi-configuration) milestoned for 1.0 in 2012, archived 2018 unfixed.
 2.  **Capture-server friction** — users had to install a server, run it, capture browsers manually before tests could run. Karma did the capture automatically; PhantomJS made headless trivial. Buster's killer feature became its onboarding cliff.
 3.  **Too modular** — 14+ packages with cross-version drift. A `buster-test` bug needed coordinated releases across half the ecosystem.
 4.  **One-author bottleneck** — Christian Johansen put his maintenance attention into Sinon (which lives) and consultancy work; rough edges (hung hybrid Node+browser test runs) stayed rough.
@@ -309,7 +309,7 @@ design axis is usually **not** whether the surface says `describe()` or
 
 -   how tests are discovered
 -   whether tests are side effects or values
--   whether examples, properties, models, and docs are separate families
+-   whether examples, properties, models, and documentation are separate families
 -   whether setup is hidden lifecycle machinery or ordinary composable code
 
 Across ecosystems, at least these distinct DSL families show up:

@@ -3,7 +3,7 @@
 ## Purpose
 
 This document fills in the runtime-shaped concerns most existing concept
-docs name only in passing: console capture, exit codes, signal handling,
+documentation names only in passing: console capture, exit codes, signal handling,
 unhandled rejections, leaked resources, parallelism semantics, sharding,
 monorepo discovery, terminal capability detection, watch-mode targeting.
 
@@ -42,7 +42,7 @@ Override surfaces:
 -   instrumented profiles may observe `console.*` through Node diagnostics
     channels even in same-process runs
 -   per-test metadata `{ capture: 'live' }` — opt out for one test
--   reporter-level config — choose to print captured output for passing
+-   reporter-level configuration — choose to print captured output for passing
     tests as well
 
 Capture must respect orderings within a test. Captured chunks are timestamped
@@ -204,7 +204,7 @@ Override surfaces:
 -   per-test metadata: `{ timeout: '500ms' }` shortens the soft
     timeout for one test (cannot extend past the profile's hard
     timeout)
--   profile config overrides set the soft and hard defaults for the
+-   profile configuration overrides set the soft and hard defaults for the
     whole run
 
 Soft-timeout mechanics:
@@ -460,7 +460,7 @@ reporter-scoped, not runtime concerns.
 
 ## Configuration Layering
 
-How project policy composes across a monorepo (root config,
+How project policy composes across a monorepo (root configuration,
 package-level extension, the `--config` flag, and the boundary
 against ordinary CLI selection flags) is documented in
 [Configuration § Configuration Layering](./configuration.md#configuration-layering).
@@ -494,12 +494,12 @@ affected. Test output is captured as bytes; rendering decodes as UTF-8.
 By profile ([Microtests And Capabilities](../authoring/microtests-and-capabilities.md) enumerates):
 
 -   microtest: deny FS write, deny net, deny child process, deny worker
--   integration: allow FS write within a per-test temp dir, allow
+-   integration: allow FS write within a per-test temporary directory, allow
     loopback net, allow child process
 -   benchmark: allow as integration but with single-worker
     serialization
 
-The temp-dir convention is `os.tmpdir() + /overkill-<run-id>/<test-id>/`,
+The temporary-directory convention is `os.tmpdir() + /overkill-<run-id>/<test-id>/`,
 created lazily per test, removed on test completion (or run completion in
 debug mode). This is one of the runner-owned escape hatches named in
 [Microtests And Capabilities](../authoring/microtests-and-capabilities.md).

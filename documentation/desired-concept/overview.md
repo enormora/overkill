@@ -69,7 +69,7 @@ Core package families:
 -   watch mode leaning on Node's built-in `--watch` wherever that is
     sufficient
 -   machine-readable APIs stable enough for IDE and MCP consumers
--   optional JS/TS config files that stay small and orchestration-focused
+-   optional JS/TS configuration files that stay small and orchestration-focused
 
 Future package families already counted into the concept:
 
@@ -242,7 +242,7 @@ Possible bundle shapes:
 -   an integration-oriented bundle
 -   a full convenience bundle
 
-Bundles are a distribution convenience, not the architectural source of truth. The docs should always explain the underlying package model even when bundle entrypoints exist.
+Bundles are a distribution convenience, not the architectural source of truth. The documentation should always explain the underlying package model even when bundle entrypoints exist.
 
 ## Metadata And Identity
 
@@ -303,7 +303,7 @@ The goal is not novelty for its own sake. The goal is to assemble a cleaner test
 
 ## Sources
 
-Key sources used across the concept docs:
+Key sources used across the concept documentation:
 
 -   Node permissions: <https://nodejs.org/api/permissions.html>
 -   Node V8 coverage: <https://nodejs.org/api/v8.html>

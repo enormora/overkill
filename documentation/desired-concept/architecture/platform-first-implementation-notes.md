@@ -148,7 +148,7 @@ Node trace events are worth considering for low-level diagnostics and machine-co
 
 Important caveat:
 
--   this API remains marked experimental in Node’s docs and should not become a casual default
+-   this API remains marked experimental in Node’s documentation and should not become a casual default
 
 Sources:
 
@@ -373,7 +373,7 @@ Architectural implication:
 
 Current caveat:
 
--   useful to keep in view, but it should not yet be assumed as a Node baseline in the concept docs unless we verify official runtime support in the targeted Node version
+-   useful to keep in view, but it should not yet be assumed as a Node baseline in the concept documentation unless we verify official runtime support in the targeted Node version
 
 Source:
 

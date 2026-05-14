@@ -92,11 +92,11 @@ substantive enough that re-implementing it would duplicate effort
 `c8` already maintains. `c8` is the right pipeline wrapper as long as
 V8 doesn't ship all-files synthesis itself.
 
-## CLI And Config Split
+## CLI And Configuration Split
 
 Following [Principles § One First-Party Path Per Layer](../decisions/principles.md#one-first-party-path-per-layer) (each
 setting has one canonical place: per-run intent on the CLI,
-persistent project policy in the config file, and no setting
+persistent project policy in the configuration file, and no setting
 reachable from both surfaces), the coverage surface splits this way:
 
 CLI — per-run intent, asks "do I want coverage on _this_ run":
@@ -108,7 +108,7 @@ overkill run --coverage --profile microtest
 `--coverage` combined with a non-microtest profile is rejected at CLI
 parse time.
 
-Config (`overkill.config.ts`) — project policy, settled across runs:
+Configuration (`overkill.config.ts`) — project policy, settled across runs:
 
 -   `coverage.formats` — which report formats to emit (`v8`, `lcov`,
     `json`, `html`); default: `['lcov', 'v8']`
@@ -121,18 +121,18 @@ Config (`overkill.config.ts`) — project policy, settled across runs:
 ### Why The Split, Not Both Surfaces?
 
 Some tools (ESLint, Jest) let the same setting be configured from
-either the CLI or the config file, with the CLI winning when both are
+either the CLI or the configuration file, with the CLI winning when both are
 set. Coverage does not work that way.
 
 Each coverage setting fits cleanly on one side of the split. Enabling
 coverage is a per-run choice (an audit, a CI check, a debug session).
-Formats and thresholds are project decisions written down in config
+Formats and thresholds are project decisions written down in configuration
 and reviewed in code. There is no single coverage setting where
-someone would want to set it in config and then override it on the
+someone would want to set it in configuration and then override it on the
 CLI just for one run.
 
 Letting both surfaces own the same setting would mean adding
-precedence rules ("CLI wins over config") and twice the documentation
+precedence rules ("CLI wins over configuration") and twice the documentation
 surface. The canonical-input rule rejects that trade unless a setting
 truly needs both lifetimes — and coverage does not.
 
@@ -146,7 +146,7 @@ truly needs both lifetimes — and coverage does not.
 -   the programmatic API in `@overkill/run` accepts both the per-run
     flag (`coverage: true`) and the policy values (formats,
     thresholds, etc.) in a single `run(config)` call — it is the
-    unified target the CLI and config file both reduce to (see
+    unified target the CLI and configuration file both reduce to (see
     [Principles § One First-Party Path Per Layer](../decisions/principles.md#one-first-party-path-per-layer) for why the
     API is a different layer from the human-facing surfaces).
 
@@ -216,7 +216,7 @@ Overkill-specific authority abstraction layered on top.
 
 ## Coverage Output Path
 
-The `coverage.outputDir` config value is the only user-tunable piece
+The `coverage.outputDir` configuration value is the only user-tunable piece
 of the coverage permission grant. Because it determines the path the
 runner trusts to grant FS-write to, several rules apply.
 
@@ -240,10 +240,10 @@ one coverage run overwrites the previous one. Worth doing knowingly.
 
 Relative paths in `coverage.outputDir` are resolved against the
 directory containing the `overkill.config.ts` that defined them. In
-a monorepo with per-package configs, each package's coverage path
-is relative to its own config file unless the user writes an
+a monorepo with per-package configuration files, each package's coverage path
+is relative to its own configuration file unless the user writes an
 absolute path. (Convention worth generalising to other paths in
-config; left for [Configuration](./configuration.md) to formalise.)
+configuration; left for [Configuration](./configuration.md) to formalise.)
 
 ### Validation
 
@@ -260,7 +260,7 @@ the result:
 
 The path used for a run is recorded in the run record alongside the
 V8 output. `overkill replay` reads from that recorded path, not the
-current `coverage.outputDir`. A config change does not invalidate
+current `coverage.outputDir`. A configuration change does not invalidate
 older records.
 
 ## Reporter Interaction

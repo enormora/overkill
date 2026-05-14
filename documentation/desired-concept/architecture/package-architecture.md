@@ -38,7 +38,7 @@ semantic owner package. In practice that means:
 
 -   CLI flags that shape planning or orchestration map to `@overkill/run`
     request fields
--   engine consumers can still bypass CLI and config entirely by constructing
+-   engine consumers can still bypass CLI and configuration entirely by constructing
     a `RunPlan` and calling `executePlan(...)` directly
 
 Recommended public split:
@@ -100,7 +100,7 @@ families, the preferred pattern is a Playwright-style **test facade**:
 -   test files import from that stable alias rather than from varying
     relative paths
 
-This keeps types exact without global augmentation, config-time typing
+This keeps types exact without global augmentation, configuration-time typing
 magic, or noisy per-assertion local opt-in.
 
 The facade surface itself should stay narrow and settled:
@@ -158,7 +158,7 @@ It should favor:
 -   call history and result inspection with strong direct instance introspection
 -   simple behavior configuration for common cases
 -   rule-based or answer-based behavior for advanced cases
--   config-object-driven advanced behavior rather than a second fluent API
+-   configuration-object-driven advanced behavior rather than a second fluent API
 
 It should avoid:
 
@@ -335,11 +335,11 @@ being hidden inside `@overkill/bench`.
 
 Reporter loading should stay explicit and JS/TS-native:
 
--   config imports reporter factories/instances directly
+-   configuration imports reporter factories/instances directly
 -   first-party bundle packages may re-export built-in reporter factories
 -   there is no implicit package-name discovery or naming-convention scan for
     third-party reporters
--   reporter selection is config-only, not a duplicate CLI surface
+-   reporter selection is configuration-only, not a duplicate CLI surface
 
 Reporter compatibility should also be explicit. A reporter may declare that
 it only supports certain run families or result capabilities, and
@@ -371,7 +371,7 @@ This is especially important for:
 -   artifact naming
 -   stale-baseline detection
 -   reproducibility
--   config-driven extensions such as reporters or baseline adapters
+-   configuration-driven extensions such as reporters or baseline adapters
 
 ### Extension Surfaces
 
@@ -401,7 +401,7 @@ Stable package-level APIs, stable contracts in `@overkill/engine`, and
 orchestration-level composition in `@overkill/run` are enough for many
 extension stories without inventing a heavy plugin runtime. See
 [Configuration § Configuration Versus Plugins](./configuration.md#configuration-versus-plugins)
-for how config-driven attachment composes with direct programmatic
+for how configuration-driven attachment composes with direct programmatic
 registration.
 
 ### Third-Party Ecosystem
@@ -429,7 +429,7 @@ The conceptual split is:
 -   `@overkill/engine`
     -   programmatic options only
 -   `@overkill/run`
-    -   optional config files, discovery, orchestration defaults
+    -   optional configuration files, discovery, orchestration defaults
 -   high-level packages
     -   package-specific programmatic registration surfaces
 
@@ -518,7 +518,7 @@ or extend the contract but do not redefine it.
 | Injected `assert` / `require` builder API                  | `@overkill/test`                                               | Public first-party assertion surface.                                                                                                                          |
 | Test doubles (`testDouble`, `when`, helpers)               | `@overkill/doubles`                                            | See [Doubles](../authoring/doubles.md).                                                                                                                        |
 | Typed runtime / resource composition                       | `@overkill/resources`                                          | Lifecycle scopes, execution requirements.                                                                                                                      |
-| Discovery, filtering, runner profiles                      | `@overkill/run`                                                | Reads config, freezes `RunPlan`.                                                                                                                               |
+| Discovery, filtering, runner profiles                      | `@overkill/run`                                                | Reads configuration, freezes `RunPlan`.                                                                                                                        |
 | Selection filter grammar                                   | `@overkill/run`                                                | Spec in [Metadata And Selection](./metadata-and-selection.md).                                                                                                 |
 | Sharding                                                   | `@overkill/run`                                                | Stable identity-hash partitioning.                                                                                                                             |
 | Reporter event stream contract                             | `@overkill/engine`                                             | The `ReporterEvent` ADT.                                                                                                                                       |
@@ -533,7 +533,7 @@ or extend the contract but do not redefine it.
 | Witness file format                                        | `@overkill/engine`                                             | Schema in engine; producers/consumers across families.                                                                                                         |
 | Failure artifacts (storage + schema)                       | `@overkill/engine` (schema) + `@overkill/run` (storage policy) | Storage layout owned by orchestration.                                                                                                                         |
 | Metadata propagation rules                                 | `@overkill/engine`                                             | Set merge, array replace-flag, capabilities intersect.                                                                                                         |
-| Configuration loading                                      | `@overkill/run`                                                | Reads root `overkill.config.ts`; engine has no config.                                                                                                         |
+| Configuration loading                                      | `@overkill/run`                                                | Reads root `overkill.config.ts`; engine has no configuration.                                                                                                  |
 | Test facade creation / assertion extension                 | project code + `@overkill/test`                                | Facades compose suite-local authoring surfaces and assertion extensions.                                                                                       |
 | CLI entry, terminal capability detection                   | `@overkill/run`                                                | The first-party CLI remains part of `@overkill/run`.                                                                                                           |
 | Test debug mode artifact                                   | `@overkill/run`                                                | Activation, storage, retention; see [Test Debug Mode](../authoring/debug-mode.md).                                                                             |
@@ -550,7 +550,7 @@ are the answer to that convenience need.
 Bundles are a distribution convenience. Fine-grained packages remain the
 architectural truth. That means:
 
--   docs describe packages first
+-   documentation describes packages first
 -   bundles are documented as curated entrypoints
 -   a user can always drop down to explicit composition
 
@@ -580,7 +580,7 @@ Bundles must not:
 
 ### Concept Direction
 
-The docs should preserve both:
+The documentation should preserve both:
 
 -   expert-friendly explicit composition
 -   team-friendly curated bundles

@@ -267,7 +267,7 @@ keeping the cold path short and not requiring a hot daemon to feel fast.
     inventing custom bytecode-cache layers unless measurement later proves
     they are worth the complexity.
 -   **Inotify-driven run targeting.** When the watcher fires, classify the
-    change (test file / source file / config / fixture) and run only the
+    change (test file / source file / configuration / fixture) and run only the
     relevant subset.
 -   **No transitive plugin imports at startup.** Plugin manifests register
     capabilities lazily; their implementation modules import only when a test

@@ -67,9 +67,9 @@ Status labels used below:
 -   idea donor
 -   reject for foundation use
 
-## Current Repo Note
+## Current Repository Note
 
-The current repo uses:
+The current repository uses:
 
 -   `kleur`
 -   `figures`
@@ -475,7 +475,7 @@ What it is:
 
 Pros:
 
--   current docs explicitly describe more accurate V8 coverage remapping
+-   current documentation explicitly describes more accurate V8 coverage remapping
 -   useful as an idea donor even if Overkill does not reuse Vitest internals directly
 
 Cons:

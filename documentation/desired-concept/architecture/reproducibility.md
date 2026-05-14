@@ -118,7 +118,7 @@ Artifact-related operations should also be reproducible where practical:
 -   baseline lookup (deterministic given `ArtifactId`)
 -   stale-baseline detection (deterministic given the collected identity
     set and the on-disk artifact set)
--   benchmark budget resolution (deterministic given workload and env)
+-   benchmark budget resolution (deterministic given workload and environment)
 -   failure artifact association (artifacts attach to a single
     `CaseId + AttemptId`)
 

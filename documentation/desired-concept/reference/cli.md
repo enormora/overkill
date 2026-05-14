@@ -9,7 +9,7 @@ and flags. It is a reading aid: the canonical behavior of each option
 lives in the relevant domain doc and is linked here.
 
 The CLI surface follows [Principles § One First-Party Path Per Layer](../decisions/principles.md#one-first-party-path-per-layer): per-run intent lives on the CLI, persistent project policy lives
-in the config file ([Configuration](../architecture/configuration.md)), and no setting is reachable
+in the configuration file ([Configuration](../architecture/configuration.md)), and no setting is reachable
 from both surfaces.
 
 This does **not** mean the CLI is the only programmatic path. The CLI should
@@ -40,7 +40,7 @@ not run tests.
 The runner trusts the verb the user typed. `update`, `apply`,
 and `bootstrap` write to disk regardless of the host
 environment; if a CI workflow runs them, that is what the workflow
-author intended. There is no env-var opt-in or environment-based
+author intended. There is no environment-variable opt-in or environment-based
 gate.
 
 | Command                                  | Behavior                                                                                                                 | Reference                                                                                            |
