@@ -183,7 +183,7 @@ record; replay-witness (`overkill replay-witness <path>`) reads the
 witness directly.
 
 If the user had explicitly enabled debug for this case — typically via
-`--debug-test <id>` or a narrowly filtered `--debug` run — a
+`--debug-scope <selector>` or a narrowly filtered `--debug` run — a
 `TestDebugArtifact` (see [Test Debug Mode](./debug-mode.md))
 would also exist at
 `.overkill/runs/<run-id>/debug/<case-id>.debug.json`, with the

@@ -24,17 +24,22 @@ conclusion. A debug artifact never affects the verdict.
 
 Activation is always explicit:
 
--   `--debug-test <id-or-pattern>` debugs one specific test (or
-    several matching the same selector grammar as `--filter`) without
-    pulling unrelated tests into debug mode
+-   `--debug-scope <selector>` debugs the tests matching the selector
+    (using the same selector grammar as `--filter`) without pulling
+    unrelated tests into debug mode and without narrowing what runs.
+    It is standalone — it does not require `--debug` — and it is
+    mutually exclusive with `--debug`: the two are CLI spellings of one
+    underlying setting (`RunPlan.debugMode` `'selected'` versus
+    `'all'`), so passing both is a usage error.
 -   `--debug` debugs every test in the resolved set; pair with
     `--filter`, `--name`, `--id`, or `--file` to scope
 -   per-test metadata `{ debug: true }` debugs that one test on every
     run, regardless of CLI flags
 
-`--debug-test` is the typical interactive form: "I want to know what
-this _one_ test is doing." `--debug` is for run-wide investigations
-(e.g. "everything tagged slow").
+`--debug-scope` is the typical interactive form: "I want to know what
+this _one_ test is doing" while the rest of the run still executes
+around it. `--debug` is for run-wide investigations (e.g. "everything
+tagged slow").
 
 Activation does **not** change profile, capability boundaries, or
 scheduling. A debugged microtest is still a microtest with the same
@@ -122,9 +127,9 @@ microtest run does not write one artifact file per test case, and it
 does not have to persist a run record unless another active workflow
 requires one. The ordinary path keeps failure data in memory and in the
 reporter/event stream only. Per-test debug files exist solely for tests the user
-explicitly put into debug mode (`--debug` or `--debug-test`), and the
+explicitly put into debug mode (`--debug` or `--debug-scope`), and the
 expected microtest workflow is to scope that mode narrowly with
-`--debug-test`, `--id`, `--name`, `--file`, or `--filter`.
+`--debug-scope`, `--id`, `--name`, `--file`, or `--filter`.
 
 ## Reporter Interaction
 
@@ -190,7 +195,7 @@ recovered cleanly or limped.
 artifacts for the replayed run. The original artifacts already exist
 in the source run's directory; replay reads them rather than
 regenerating them. To debug a replayed run from scratch, pass
-`--debug` (or `--debug-test`) explicitly on the replay command —
+`--debug` (or `--debug-scope`) explicitly on the replay command —
 that produces a fresh set in the new run's directory.
 
 ## Issues The Artifact Surfaces

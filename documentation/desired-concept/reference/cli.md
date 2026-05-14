@@ -106,12 +106,12 @@ entrypoints rather than as hidden boolean flags.
 
 ## Lifecycle And Edge Cases
 
-| Flag                | Behavior                                                             | Reference                                               |
-| ------------------- | -------------------------------------------------------------------- | ------------------------------------------------------- |
-| `--seed <n>`        | Override the run seed (for reproducible randomization).              | [Reproducibility](../architecture/reproducibility.md)   |
-| `--order lexical`   | Disable seeded shuffling and use deterministic collection order.     | [Runtime Behavior](../architecture/runtime-behavior.md) |
-| `--debug`           | Emit a structured debug artifact for every test in the resolved set. | [Test Debug Mode](../authoring/debug-mode.md)           |
-| `--debug-test <id>` | Emit a debug artifact for a single test by ID or selector pattern.   | same                                                    |
+| Flag                       | Behavior                                                             | Reference                                               |
+| -------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------- |
+| `--seed <n>`               | Override the run seed (for reproducible randomization).              | [Reproducibility](../architecture/reproducibility.md)   |
+| `--order lexical`          | Disable seeded shuffling and use deterministic collection order.     | [Runtime Behavior](../architecture/runtime-behavior.md) |
+| `--debug`                  | Emit a structured debug artifact for every test in the resolved set. | [Test Debug Mode](../authoring/debug-mode.md)           |
+| `--debug-scope <selector>` | Emit a debug artifact for tests matching a selector.                 | same                                                    |
 
 This list intentionally omits flags that are still under design (e.g.
 `--since <ref>`); when those land, this table is the

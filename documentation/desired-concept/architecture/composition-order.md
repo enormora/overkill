@@ -67,7 +67,7 @@ the body. Outermost first:
 3.  **Timeout watchdog.** Per-attempt soft and (where supported)
     hard deadlines. Sets up the `AbortSignal` and the optional
     watchdog timer. See [Runtime Behavior § Timeouts](./runtime-behavior.md#timeouts).
-4.  **Debug recording** (when `--debug` / `--debug-test` /
+4.  **Debug recording** (when `--debug` / `--debug-scope` /
     `{ debug: true }`). Begins capturing the timeline, handle
     events, module loads, heap baseline. See
     [Test Debug Mode](../authoring/debug-mode.md).

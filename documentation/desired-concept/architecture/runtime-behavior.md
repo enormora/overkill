@@ -239,7 +239,7 @@ In-process modes intentionally lack hard termination — see
 Debug mode is the opt-in switch that keeps per-test diagnostic data
 (timeline, handle events, module loads, heap snapshots, active-handle
 deltas) and emits it as a structured artifact regardless of outcome.
-Activation is always explicit (`--debug`, `--debug-test`, or per-test
+Activation is always explicit (`--debug`, `--debug-scope`, or per-test
 metadata) and never affects the verdict.
 
 The full spec — activation, `TestDebugArtifact` shape, storage,

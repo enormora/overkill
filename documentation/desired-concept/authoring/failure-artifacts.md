@@ -128,7 +128,7 @@ per failed case. The default microtest path stays cheap: assertion
 results, concise diffs, and runner diagnostics live in the run record
 and event stream. Separate per-test files are reserved for artifacts
 whose value survives the run (witnesses, baselines) or for explicitly
-requested diagnostic modes such as `--debug` / `--debug-test`.
+requested diagnostic modes such as `--debug` / `--debug-scope`.
 
 ## Storage Policy
 
