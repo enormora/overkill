@@ -38,13 +38,20 @@ A first-party assertion layer offers a clean place to provide:
 -   baseline-aware serializers
 
 Most tests should not need to import a separate assertion package at all.
-The main user-facing API comes from `@overkill/test` context injection. The
-underlying assertion layer still needs a home for:
+The main user-facing API may come from direct engine consumers or from an
+authoring layer such as `@overkill/test`, but the underlying assertion layer
+still lives directly in `@overkill/engine`. The engine is the home for:
 
 -   assertion-count and plan tracking
 -   diffing and serializer logic
 -   internal assertion-protocol values used between authoring and engine
--   implementation shared between the high-level builder API and the engine
+-   implementation shared between default test facades and direct
+    engine-level consumers
+
+`@overkill/assert` is still useful as a smaller companion package for
+reusable assertion-extension helpers such as `defineCompositeAssertion(...)`
+or foreign-assertion bridge builders. It should plug into the engine-owned
+assertion context rather than replace it.
 
 ## API Constraints To Avoid Lint-Rule Patchwork
 
@@ -574,20 +581,20 @@ Registration must reject collisions. A custom assertion may not shadow:
 -   a built-in first-party assertion
 -   another registered custom assertion
 
-Such collisions should fail during facade creation or suite startup rather
+Such collisions should fail during assertion-context construction or suite startup rather
 than silently overriding anything.
 
-### Assertion Extensions And Test Facades
+### Assertion Extensions And Engine Context
 
 Custom assertions should no longer be registered in root runner configuration.
-Instead, they belong to **test facade creation**, because assertion
-registration changes the authoring surface and therefore the static type of
-`case.assert`.
+Instead, they belong to the **engine-owned assertion context**, because
+assertion registration changes what `case.assert` exposes even when a
+project is not using `@overkill/test`.
 
 Recommended shape:
 
 ```ts
-import { createTestFacade, defineCompositeAssertion } from '@overkill/test';
+import { defineCompositeAssertion } from '@overkill/assert';
 import type { TestDouble } from '@overkill/doubles';
 
 const calledOnceWith = defineCompositeAssertion(
@@ -596,33 +603,10 @@ const calledOnceWith = defineCompositeAssertion(
         return check.group([check.calledOnce(sut), check.calledWith(sut, expected)]);
     },
 );
-
-export const { test, suite, table } = createTestFacade({
-    assertions: [calledOnceWith],
-});
 ```
 
-The settled facade contract is narrow:
-
--   `createTestFacade(...)` accepts assertion extensions only
--   it returns the typed core authoring helpers for that suite family:
-    `test`, `suite`, `table`, `defineMacro`, and `runIfMain`
--   configuration loading, reporters, discovery, and other runner concerns stay in
-    `@overkill/run`
--   higher-layer helpers are re-exported alongside the facade from a stable
-    project alias rather than configured through facade creation
-
-This follows the Playwright-style facade pattern:
-
--   one facade defines one stable authoring surface
--   type information comes from the facade directly
--   projects can have different facades for different suite families
-    (microtest, integration, browser, etc.) without global type pollution
-
-For good DX, projects should expose such facades through stable package
-aliases rather than through varying relative paths. See
-[Tests As Values](./tests-as-values.md) and
-[Package Architecture](../architecture/package-architecture.md).
+Authoring layers such as `@overkill/test` may re-expose the resulting
+engine-backed assertion context, but they do not own assertion registration.
 
 ### Composite Assertions
 
@@ -638,7 +622,7 @@ This is distinct from a test macro:
 Definition shape:
 
 ```ts
-import { createTestFacade, defineCompositeAssertion } from '@overkill/test';
+import { defineCompositeAssertion } from '@overkill/assert';
 import type { TestDouble } from '@overkill/doubles';
 
 const calledOnceWith = defineCompositeAssertion(
@@ -647,10 +631,6 @@ const calledOnceWith = defineCompositeAssertion(
         return check.group([check.calledOnce(sut), check.calledWith(sut, expected)]);
     },
 );
-
-export const { test, suite, table } = createTestFacade({
-    assertions: [calledOnceWith],
-});
 ```
 
 Registered composite assertions then appear as ordinary high-level
@@ -714,7 +694,7 @@ Overkill boundary remains explicit and stable.
 Example direction:
 
 ```ts
-import { defineCompositeAssertion } from '@overkill/test';
+import { defineCompositeAssertion } from '@overkill/assert';
 
 export const hasResourceProperties = defineCompositeAssertion(
     'hasResourceProperties',
@@ -756,12 +736,9 @@ That package should expose facade-ready assertion extensions such as:
 Usage direction:
 
 ```ts
-import { createTestFacade } from '@overkill/test';
 import { cdkAssertions } from '@overkill/aws-cdk';
 
-export const { test, suite } = createTestFacade({
-    assertions: [cdkAssertions],
-});
+export const assertionExtensions = [cdkAssertions];
 ```
 
 Then ordinary tests use a native Overkill surface:
@@ -826,8 +803,11 @@ For the product concept:
 
 -   core supports structured assertion results and explicit throwing-mode
     tests
--   first-party assertions primarily live in the injected `case.assert` /
-    `case.require` model exposed by `@overkill/test`
+-   first-party assertion semantics live in `@overkill/engine`
+-   reusable assertion-extension helpers such as
+    `defineCompositeAssertion(...)` live in `@overkill/assert`
+-   `@overkill/test` may re-expose that engine-owned assertion surface, but it
+    is not required for assertion usage
 -   primary authoring shape: builder/context API with explicit
     `return case.assert.done()`
 -   `AssertionNode` may still exist as an internal protocol term, but not as
