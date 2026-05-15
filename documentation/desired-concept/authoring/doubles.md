@@ -285,7 +285,7 @@ The first release concept should not depend on complex matcher machinery.
 
 `@overkill/doubles` should create and track doubles.
 
-The first-party assertion layer in `@overkill/test` should remain
+The first-party assertion layer in `@overkill/engine` should remain
 responsible for assertions about them, such as:
 
 -   call count
@@ -299,7 +299,7 @@ That separation keeps the doubles package smaller and avoids turning it into a w
 One useful pattern here is a registered composite assertion:
 
 ```ts
-import { defineCompositeAssertion } from '@overkill/test';
+import { defineCompositeAssertion } from '@overkill/assert';
 import type { TestDouble } from '@overkill/doubles';
 
 export const calledOnceWith = defineCompositeAssertion(
