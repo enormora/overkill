@@ -1,4 +1,4 @@
-import type { FinalResultReporter } from './reporter.js';
+import type { FinalResultReporter } from '../engine/reporter.js';
 
 export function createNullReporter(): FinalResultReporter {
     return {

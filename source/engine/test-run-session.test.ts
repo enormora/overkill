@@ -4,8 +4,8 @@ import type { SinonSpy } from 'sinon';
 import sinon from 'sinon';
 import type { TestRunSessionProvider, TestRunSessionProviderDependencies } from './test-run-session.js';
 import { createTestRunSessionProvider } from './test-run-session.js';
-import type { InMemoryReporter } from './reporter/in-memory-reporter.js';
-import { createInMemoryFinalResultReporter, createInMemoryRealTimeReporter } from './reporter/in-memory-reporter.js';
+import type { InMemoryReporter } from '../reporters/in-memory-reporter.js';
+import { createInMemoryFinalResultReporter, createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.js';
 
 function noop() {}
 

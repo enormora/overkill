@@ -2,9 +2,11 @@ import { test } from 'uvu';
 import * as assert from 'uvu/assert';
 import type { SinonSpy } from 'sinon';
 import sinon from 'sinon';
+import kleur from 'kleur';
+import figures from 'figures';
 import type { LineReporterDependencies } from './line-reporter.js';
 import { createLineReporter } from './line-reporter.js';
-import type { RealTimeReporter } from './reporter.js';
+import type { RealTimeReporter } from '../engine/reporter.js';
 
 interface Overrides {
     readonly log?: SinonSpy;
@@ -17,6 +19,10 @@ function lineReporterFactory(overrides: Overrides = {}): RealTimeReporter {
 
     return createLineReporter(fakeDependencies);
 }
+
+const infoSymbol = kleur.cyan(figures.info);
+const successSymbol = kleur.green(figures.tick);
+const errorSymbol = kleur.red(figures.cross);
 
 test('reports the start', async () => {
     const log = sinon.fake();
@@ -36,7 +42,7 @@ test('reports the start', async () => {
     });
 
     assert.is(log.callCount, 1);
-    assert.equal(log.firstCall.args, ['\u001b[36mℹ\u001b[39m', 'Test run started (0 / 123)']);
+    assert.equal(log.firstCall.args, [infoSymbol, 'Test run started (0 / 123)']);
 });
 
 test('prints a line when the test run progresses with a failed test', async () => {
@@ -63,7 +69,7 @@ test('prints a line when the test run progresses with a failed test', async () =
     );
 
     assert.is(log.callCount, 1);
-    assert.equal(log.firstCall.args, ['\u001b[31m✘\u001b[39m foo']);
+    assert.equal(log.firstCall.args, [`${errorSymbol} foo`]);
 });
 
 test('prints a line when the test run progresses with a succeeded test', async () => {
@@ -90,7 +96,7 @@ test('prints a line when the test run progresses with a succeeded test', async (
     );
 
     assert.is(log.callCount, 1);
-    assert.equal(log.firstCall.args, ['\u001b[32m✔\u001b[39m foo']);
+    assert.equal(log.firstCall.args, [`${successSymbol} foo`]);
 });
 
 test('prints a three-line summary once the test run finishes', async () => {
@@ -111,9 +117,9 @@ test('prints a three-line summary once the test run finishes', async () => {
     });
 
     assert.is(log.callCount, 3);
-    assert.equal(log.firstCall.args, ['\u001b[36mℹ\u001b[39m', 'Total: 3']);
-    assert.equal(log.secondCall.args, ['\u001b[32m✔\u001b[39m', 'Succeeded: 2']);
-    assert.equal(log.thirdCall.args, ['\u001b[31m✘\u001b[39m', 'Failed: 1']);
+    assert.equal(log.firstCall.args, [infoSymbol, 'Total: 3']);
+    assert.equal(log.secondCall.args, [successSymbol, 'Succeeded: 2']);
+    assert.equal(log.thirdCall.args, [errorSymbol, 'Failed: 1']);
 });
 
 test.run();

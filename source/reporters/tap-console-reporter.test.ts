@@ -4,7 +4,7 @@ import type { SinonSpy } from 'sinon';
 import sinon from 'sinon';
 import type { TapConsoleReporterDependencies } from './tap-console-reporter.js';
 import { createTapConsoleReporter } from './tap-console-reporter.js';
-import type { FinalResultReporter } from './reporter.js';
+import type { FinalResultReporter } from '../engine/reporter.js';
 
 interface Overrides {
     readonly log?: SinonSpy;

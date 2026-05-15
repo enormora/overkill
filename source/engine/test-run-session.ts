@@ -1,5 +1,5 @@
-import type { Reporter } from './reporter/reporter.js';
-import { isRealTimeReportingSession } from './reporter/reporter.js';
+import type { Reporter } from './reporter.js';
+import { isRealTimeReportingSession } from './reporter.js';
 import type { TestRunResult } from './test-run-result.js';
 import { updateTestRunResult, calculateSummary } from './test-run-result.js';
 import type { TestCase } from './test-case.js';
