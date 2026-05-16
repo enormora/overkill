@@ -165,19 +165,19 @@ wiring, benchmark metric collectors, baseline policy, or type-test
 adapters. The detailed package-boundary matrix lives in
 [Package Architecture](./package-architecture.md).
 
-## Assertion Registration Belongs To Test Facades
+## Assertion Registration Belongs To The Engine Assertion Context
 
 Custom assertion registration should not live in root runner configuration. It
-changes the static authoring surface, so it belongs to test facade creation
-instead.
+changes what the injected engine assertion context exposes, so it belongs to
+engine-level assertion setup instead.
 
-The root configuration still owns orchestration. The test facade owns what
-`case.assert` and `case.require` expose in a given suite family.
+The root configuration still owns orchestration. The engine-owned assertion
+context owns what `case.assert` and `case.require` expose.
 
 Example direction:
 
 ```ts
-import { createTestFacade, defineCompositeAssertion } from '@overkill/test';
+import { defineCompositeAssertion } from '@overkill/assert';
 import type { TestDouble } from '@overkill/doubles';
 
 const calledOnceWith = defineCompositeAssertion(
@@ -186,15 +186,11 @@ const calledOnceWith = defineCompositeAssertion(
         return check.group([check.calledOnce(sut), check.calledWith(sut, expected)]);
     },
 );
-
-export const { test, suite, table } = createTestFacade({
-    assertions: [calledOnceWith],
-});
 ```
 
-That surface can then be re-exported through a stable import alias such as
-`#tests/integration`, keeping per-file DX acceptable without global type
-augmentation or per-assertion local opt-in noise.
+That resulting assertion surface may then be re-exposed by higher-level
+authoring layers, but registration itself does not belong to runner config
+or to `@overkill/test`.
 
 ## Configuration Versus Plugins
 
@@ -237,5 +233,6 @@ magical for configuration too.
 -   higher layers may contribute configuration domains even when the runner
     owns the top-level loading step
 -   the surface should stay small and orchestration-focused
--   custom assertion registration belongs to test facade creation, not root
+-   custom assertion registration belongs to the engine-owned assertion
+    context, not root
     configuration

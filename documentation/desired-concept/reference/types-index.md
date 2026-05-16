@@ -209,10 +209,6 @@ type ForeignAssertionBridge = {
     fromThrowable(label: string, body: () => void | Promise<void>): unknown;
 };
 
-type CreateTestFacadeOptions = {
-    readonly assertions?: ReadonlyArray<AssertionExtension>;
-};
-
 type TestBody = (case: unknown) => unknown;
 
 type TestFacade = {
