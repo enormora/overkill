@@ -136,7 +136,7 @@ Assessment:
 
 -   idea donor and secondary candidate
 -   worth studying closely, but probably not the direct foundation for the
-    built-in assertion surface in `@overkill/test`
+    built-in assertion surface in `@overkill/engine`
 
 Source:
 
@@ -197,7 +197,9 @@ Source:
 
 Recommended direction:
 
--   keep the public assertion surface in `@overkill/test`
+-   keep the public assertion surface in `@overkill/engine`
+-   use `@overkill/assert` for reusable assertion-extension helpers and
+    adapter-building utilities
 -   treat low-level normalization and diff protocol as internal
 -   borrow ideas from `tcompare`, `earljs`, `chai`, and `unexpected`
 -   do not adopt a whole third-party assertion framework as the foundation
