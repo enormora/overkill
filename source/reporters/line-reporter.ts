@@ -1,5 +1,5 @@
-import type { TestCaseResult } from '../test-case-executor.js';
-import type { RealTimeReporter } from './reporter.js';
+import type { TestCaseResult } from '../engine/test-case-executor.js';
+import type { RealTimeReporter } from '../engine/reporter.js';
 import kleur from 'kleur';
 import figures from 'figures';
 

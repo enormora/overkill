@@ -1,19 +1,12 @@
 {
     "name": "overkill",
     "version": "0.0.1",
-    "description": "Simple, easy and fast test framework",
+    "private": true,
+    "description": "Overkill monorepo coordination package",
     "type": "module",
-    "exports": {
-        ".": {
-            "import": "./target/build/source/index.js"
-        }
-    },
-    "bin": {
-        "overkill": "target/build/source/bin.js"
-    },
     "repository": {
         "type": "git",
-        "url": "git+ssh://git@github.com/screendriver/overkill.git"
+        "url": "git+ssh://git@github.com/enormora/overkill.git"
     },
     "keywords": [
         "test",
@@ -23,15 +16,16 @@
     "author": "Christian Rackerseder <git@echooff.de>",
     "license": "MIT",
     "bugs": {
-        "url": "https://github.com/screendriver/overkill/issues"
+        "url": "https://github.com/enormora/overkill/issues"
     },
-    "homepage": "https://github.com/screendriver/overkill#readme",
+    "homepage": "https://github.com/enormora/overkill#readme",
     "scripts": {
         "compile": "tsc --build",
         "eslint": "eslint source --ext '.js,.ts' --cache --cache-location './target/.eslintcache'",
         "prettier": "prettier '**/*.(yml|json|yaml|md)'",
         "lint": "npm run eslint && npm run prettier -- --check && ls-lint",
         "lint:fix": "npm run eslint -- --fix && npm run prettier -- --write",
+        "packtory:dry-run": "npm run compile && packtory publish",
         "test:unit": "NODE_OPTIONS='--loader ts-node/esm --no-warnings' TS_NODE_PROJECT=source/tsconfig.unit-tests.json uvu 'source' '.*\\.test\\.ts$'"
     },
     "dependencies": {
@@ -41,6 +35,7 @@
     },
     "devDependencies": {
         "@ls-lint/ls-lint": "2.3.1",
+        "@packtory/cli": "0.0.8",
         "@types/sinon": "10.0.20",
         "@typescript-eslint/eslint-plugin": "5.62.0",
         "@typescript-eslint/parser": "5.62.0",
