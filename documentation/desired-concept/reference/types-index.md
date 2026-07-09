@@ -209,7 +209,15 @@ type ForeignAssertionBridge = {
     fromThrowable(label: string, body: () => void | Promise<void>): unknown;
 };
 
-type TestBody = (case: unknown) => unknown;
+declare const testCompletionBrand: unique symbol;
+
+type TestCompletion = {
+    readonly [testCompletionBrand]: true;
+};
+
+type BuilderTestBody = (case: unknown) => TestCompletion | Promise<TestCompletion>;
+type ThrowingTestBody = (case: unknown) => void | Promise<void>;
+type TestBody = BuilderTestBody | ThrowingTestBody;
 
 type TestFacade = {
     readonly test: (name: string, body: TestBody) => TestCase;

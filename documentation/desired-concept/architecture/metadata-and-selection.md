@@ -44,6 +44,15 @@ type Metadata = {
 `extra` is a typed escape hatch for third-party extensions. The first-party
 fields are stable; `extra` may diverge per package.
 
+Metadata and option objects are closed at their declared boundary. Unknown
+first-party keys are collection errors, including in JavaScript projects
+where TypeScript cannot catch a typo. Extension data belongs under `extra`
+or under a package-owned typed extension field, not beside first-party keys.
+
+This rule applies to test, suite, table, runtime, and skip options. A typo
+such as `{ skp: true }` must fail loudly instead of silently running the test
+with the default behavior.
+
 ## Metadata Propagation
 
 Metadata cascades from suite to test, with override semantics:
