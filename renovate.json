@@ -1,7 +1,11 @@
 {
-    "extends": ["config:base", "group:monorepos"],
-    "labels": ["renovate"],
-    "rebaseStalePrs": false,
+    "extends": ["config:recommended", "group:monorepos", "helpers:pinGitHubActionDigests"],
+    "labels": ["renovate", "upgrade"],
+    "dependencyDashboard": false,
+    "rebaseWhen": "behind-base-branch",
+    "minimumReleaseAge": "3 days",
+    "automerge": true,
+    "automergeType": "pr",
     "lockFileMaintenance": {
         "enabled": true,
         "automerge": true
@@ -11,16 +15,19 @@
     },
     "packageRules": [
         {
-            "depTypeList": ["dependencies", "devDependencies"],
-            "updateTypes": ["minor", "patch"],
-            "automerge": true,
-            "automergeType": "branch"
+            "matchPackageNames": [
+                "/^@enormora\\/eslint-config/",
+                "/^@eslint\\//",
+                "/^@typescript-eslint\\//",
+                "/^eslint($|-)/"
+            ],
+            "groupName": "ESLint packages",
+            "groupSlug": "eslint"
         },
         {
-            "packagePatterns": ["eslint"],
-            "groupName": "eslint packages",
-            "automerge": true,
-            "automergeType": "branch"
+            "matchPackageNames": ["/^@packtory\\//"],
+            "groupName": "@packtory dependencies",
+            "groupSlug": "packtory"
         }
     ]
 }
