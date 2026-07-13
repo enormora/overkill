@@ -1,0 +1,15 @@
+{
+    "$schema": "https://unpkg.com/knip@5/schema.json",
+    "entry": [
+        "source/**/*.test.ts",
+        "source/packages/**/*.ts",
+        "source/reporters/null-reporter.ts",
+        "packtory.config.js"
+    ],
+    "project": [
+        "source/**/*.ts!",
+        "*.js",
+        "!source/**/*.test.ts!"
+    ],
+    "ignoreDependencies": ["@ls-lint/ls-lint", "@packtory/cli"]
+}

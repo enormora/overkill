@@ -35,6 +35,7 @@
         "@types/node": "26.1.1",
         "@types/sinon": "10.0.20",
         "eslint": "10.7.0",
+        "knip": "6.24.0",
         "rust-just": "1.55.1",
         "sinon": "14.0.2",
         "typescript": "6.0.3"
