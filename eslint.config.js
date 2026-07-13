@@ -17,12 +17,6 @@ export default [
         files: [ '**/*.ts' ]
     },
     {
-        files: [ '**/*.ts' ],
-        rules: {
-            'restricted-syntax/no-empty-function-body': 'off'
-        }
-    },
-    {
         ...testSupportConfig,
         files: [ '**/*.test.ts' ],
         rules: {

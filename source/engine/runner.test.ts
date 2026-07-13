@@ -1,10 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { noop } from 'noop-esm';
 import sinon, { type SinonSpy } from 'sinon';
 import { createRunner, type Runner, type RunnerDependencies } from './runner.ts';
 import { createSuite } from './suite.ts';
-
-function noop(): void {}
 
 type FakeTestRunSessionOverrides = {
     readonly start?: SinonSpy;

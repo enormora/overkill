@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { noop } from 'noop-esm';
 import sinon, { type SinonSpy } from 'sinon';
 import {
     createInMemoryFinalResultReporter,
@@ -11,8 +12,6 @@ import {
     type TestRunSessionProvider,
     type TestRunSessionProviderDependencies
 } from './test-run-session.ts';
-
-function noop(): void {}
 
 type Overrides = {
     readonly execute?: SinonSpy;
