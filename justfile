@@ -14,7 +14,10 @@ eslint-fix: (eslint '--fix')
 lint-filename:
     ls-lint
 
-lint: eslint lint-filename
+lint-unused-code:
+    knip
+
+lint: eslint lint-filename lint-unused-code
 
 lint-fix: eslint-fix
 
