@@ -1,13 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { asyncNoop, noop } from 'noop-esm';
 import sinon, { type SinonStub } from 'sinon';
 import {
     createTestCaseExecutor,
     type TestCaseExecutor,
     type TestCaseExecutorDependencies
 } from './test-case-executor.ts';
-
-function successTestFunction(): void {}
 
 function errorTestFunction(): never {
     throw new Error('failed with error');
@@ -31,14 +30,14 @@ function executorFactory(overrides: Overrides = {}): TestCaseExecutor {
 
 test('returns "success" when the given test function doesn’t throw', async function () {
     const executor = executorFactory();
-    const result = await executor.execute(successTestFunction);
+    const result = await executor.execute(noop);
 
     assert.deepStrictEqual(result, { status: 'success', duration: 0 });
 });
 
 test('returns "success" when the given async test function doesn’t reject', async function () {
     const executor = executorFactory();
-    const result = await executor.execute(async function () {});
+    const result = await executor.execute(asyncNoop);
 
     assert.deepStrictEqual(result, { status: 'success', duration: 0 });
 });
@@ -75,7 +74,7 @@ test('returns "failure" when the given async test function rejects an error', as
 test('returns the correct duration when a test was successful', async function () {
     const now = sinon.stub().onFirstCall().returns(10).onSecondCall().returns(30);
     const executor = executorFactory({ now });
-    const result = await executor.execute(successTestFunction);
+    const result = await executor.execute(noop);
 
     assert.deepStrictEqual(result, { status: 'success', duration: 20 });
 });
