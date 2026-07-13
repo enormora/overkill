@@ -42,7 +42,9 @@ Why `testDouble()`:
 The core should be a typed function double with:
 
 -   a function signature
+-   a constructor signature when the dependency is invoked with `new`
 -   recorded calls and results
+-   recorded construction attempts and constructed instances
 -   DX-friendly introspection on the instance itself
 -   optional behavior rules
 -   an optional fallback answer
@@ -87,20 +89,24 @@ const loadUser = testDouble<(id: string) => Promise<User>>({
 Rule helpers are namespaced under a single `rule` import rather than exported
 individually. This avoids shadowing common user-side names like `when` and
 `returns`, and keeps the rule-construction surface visible at every call site.
-Inside the namespace the shape is fluent: `rule.when(...args)` and
-`rule.onCall(n)` start a rule and the terminator (`.returns`, `.resolves`,
-`.rejects`, `.throws`, `.calls`) attaches the behavior. Behavior factories
-(`rule.returns`, `rule.resolves`, `rule.rejects`, `rule.throws`, `rule.calls`,
-`rule.sequence`) are also reachable directly for use in `fallback:` and as
-arguments to other helpers.
+Inside the namespace the shape is fluent: `rule.when(...args)`,
+`rule.whenConstructedWith(...args)`, and `rule.onCall(n)` start a rule and the
+terminator (`.returns`, `.constructs`, `.resolves`, `.rejects`, `.throws`,
+`.calls`) attaches the behavior. Behavior factories (`rule.returns`,
+`rule.constructs`, `rule.resolves`, `rule.rejects`, `rule.throws`,
+`rule.calls`, `rule.sequence`) are also reachable directly for use in
+`fallback:` and as arguments to other helpers. `fallback` may be a single
+behavior or a list of behavior rules when one double supports both call and
+construction fallback behavior.
 
 This gives one concept that handles:
 
 -   simple fixed returns
 -   promise resolution and rejection
+-   constructor simulation
 -   per-call sequencing
 -   per-argument behavior
--   fallback behavior for unexpected calls
+-   fallback behavior for unexpected invocations
 
 If no explicit function type is provided, `testDouble()` should still be
 valid. The default untyped path should use `unknown` rather than `any`, so
@@ -117,6 +123,10 @@ That means a test double instance should expose obvious information directly, fo
 -   `firstCall`
 -   `lastCall`
 -   `nthCall(n)`
+-   `constructionCount`
+-   `constructions`
+-   `firstConstruction`
+-   `lastConstruction`
 -   `results`
 -   `firstResult`
 -   `lastResult`
@@ -132,6 +142,74 @@ case.assert.equal(saveUser.lastResult.status, 'returned');
 ```
 
 This is one of the places where Sinon remains strong: the instance objects are easy to inspect. Overkill should preserve that strength while keeping the rest of the API smaller and more coherent.
+
+## Constructor Doubles
+
+Some dependencies are constructor functions rather than plain functions. The
+doubles concept should support them directly so tests can explicitly inject a
+constructable collaborator without patching modules or classes.
+
+The same `testDouble()` concept should cover constructor signatures:
+
+```ts
+type ClientConstructor = new (baseUrl: string) => Client;
+
+const client = createClientFixture();
+const Client = testDouble<ClientConstructor>().constructs(client);
+
+const service = createService({ Client });
+
+service.connect();
+
+case.assert.calledOnceWithNew(Client, 'https://api.example.test');
+case.assert.equal(Client.firstConstruction.instance, client);
+```
+
+Constructor behavior should use construction-specific rule names so call
+behavior and construction behavior stay distinct:
+
+```ts
+const primaryClient = createClientFixture();
+const fallbackClient = createClientFixture();
+
+const Client = testDouble<ClientConstructor>({
+    rules: [rule.whenConstructedWith('https://primary.example.test').constructs(primaryClient)],
+    fallback: rule.constructs(fallbackClient),
+});
+```
+
+If a JavaScript dependency is both callable and constructable, the double should
+record the invocation mode for every interaction:
+
+```ts
+type ClientFactory = {
+    (baseUrl: string): Client;
+    new (baseUrl: string): Client;
+};
+
+const Client = testDouble<ClientFactory>({
+    fallback: [rule.returns(fallbackClient), rule.constructs(primaryClient)],
+});
+
+const calledClient = Client('https://api.example.test');
+const constructedClient = new Client('https://api.example.test');
+
+case.assert.calledWithoutNew(Client);
+case.assert.calledWithNew(Client);
+case.assert.equal(calledClient, fallbackClient);
+case.assert.equal(constructedClient, primaryClient);
+```
+
+The assertion layer should expose both broad invocation-mode assertions and
+argument-specific constructor assertions. Recommended names:
+
+-   `case.assert.calledWithoutNew(double)`
+-   `case.assert.calledWithNew(double)`
+-   `case.assert.calledOnceWithNew(double, ...args)`
+
+These assertions should read construction records, not infer constructor usage
+from return values. A double can return any object from a normal call, and that
+must not count as construction.
 
 ## Why Not A Sinon-Style Surface
 
@@ -171,9 +249,11 @@ Overkill direction of one main doubles concept instead of category sprawl.
 The minimal shape worth exploring is:
 
 -   `testDouble<Fn>(config?)`
--   `rule.when(...args)` for arg-specific rules — fluent terminator attaches behavior
--   `rule.onCall(index)` for ordered rules — fluent terminator attaches behavior
+-   `rule.when(...args)` for arg-specific rules, with a fluent terminator that attaches behavior
+-   `rule.whenConstructedWith(...args)` for constructor-specific argument rules
+-   `rule.onCall(index)` for ordered rules, with a fluent terminator that attaches behavior
 -   `rule.returns(value)`
+-   `rule.constructs(instance)`
 -   `rule.resolves(value)`
 -   `rule.rejects(error)`
 -   `rule.throws(error)`
@@ -218,8 +298,8 @@ const read = testDouble<(path: string) => Promise<string>>({
 
 The mental model should be:
 
-1. create a function-like double
-2. give it rules or an answer
+1. create a callable or constructable double
+2. give it call rules, construction rules, or an answer
 3. inject it explicitly
 4. assert on its recorded interactions
 
@@ -241,6 +321,9 @@ That means:
 -   `rule.returns()` should type-check against the return type of `Fn`
 -   `rule.resolves()` and `rule.rejects()` should work naturally for async function signatures
 -   recorded calls should preserve the argument tuple type
+-   constructor signatures should preserve constructor argument tuples and instance types
+-   `rule.whenConstructedWith()` should type-check constructor argument tuples
+-   `rule.constructs()` should type-check against the constructed instance type
 -   the untyped default should be `unknown`, not `any`
 
 The target shape is:
@@ -290,6 +373,9 @@ responsible for assertions about them, such as:
 
 -   call count
 -   call arguments
+-   constructor invocation mode
+-   construction arguments
+-   constructed instances
 -   returned values
 -   thrown errors
 -   ordering where that is actually relevant
@@ -333,9 +419,9 @@ This is a better fit for Overkill than APIs that replace methods on already-crea
 
 ## Relationship To Capability Handles
 
-The boundary between `@overkill/doubles` and capability handles —
+The boundary between `@overkill/doubles` and capability handles,
 when to reach for which, how they compose, why both refuse module-graph
-patching — is documented in
+patching, is documented in
 [Capability Handles § Connection To `@overkill/doubles`](./capability-handles.md#connection-to-overkilldoubles).
 
 Short version: handles model multi-method effect interfaces from a
@@ -349,12 +435,12 @@ Recommended direction:
 
 -   package name: `@overkill/doubles`
 -   primary abstraction: `testDouble()`
--   primary API shape: configuration object plus rule composition
--   strong direct introspection on each instance, such as `callCount`, `firstCall`, `lastCall`, and typed call/result records
+-   primary API shape: configuration object plus call and construction rule composition
+-   strong direct introspection on each instance, such as `callCount`, `constructionCount`, `firstCall`, `firstConstruction`, `lastCall`, `lastConstruction`, and typed call/result records
 -   advanced escape hatch: `answer(call)` configuration field or `rule.calls(fn)`
--   common-case sugar: instance methods (`.returns`, `.resolves`, `.rejects`, `.throws`) on the simple path; `rule.returns`, `rule.resolves`, `rule.rejects`, `rule.throws`, `rule.sequence` for advanced rules
--   advanced-path behavior still configured through `rules`, `fallback`, and
-    `answer` on the configuration object, with rules built via the `rule.*` namespace
+-   constructor behavior: `.constructs(instance)`, `rule.constructs(instance)`, and `rule.whenConstructedWith(...)`
+-   common-case sugar: instance methods (`.returns`, `.constructs`, `.resolves`, `.rejects`, `.throws`) on the simple path; `rule.returns`, `rule.constructs`, `rule.resolves`, `rule.rejects`, `rule.throws`, `rule.sequence` for advanced rules
+-   advanced-path behavior still configured through `rules`, `fallback`, and `answer` on the configuration object, with rules built via the `rule.*` namespace
 -   no object-method replacement API in the first-party concept
 -   no module replacement API in the first-party concept
 
