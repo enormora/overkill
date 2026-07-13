@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { SinonSpy } from 'sinon';
-import sinon from 'sinon';
+import sinon, { type SinonSpy } from 'sinon';
 import type { FinalResultReporter } from '../engine/reporter.ts';
-import type { TapConsoleReporterDependencies } from './tap-console-reporter.ts';
-import { createTapConsoleReporter } from './tap-console-reporter.ts';
+import { createTapConsoleReporter, type TapConsoleReporterDependencies } from './tap-console-reporter.ts';
 
 type Overrides = {
     readonly log?: SinonSpy;

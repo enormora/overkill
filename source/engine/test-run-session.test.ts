@@ -1,11 +1,16 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { SinonSpy } from 'sinon';
-import sinon from 'sinon';
-import type { InMemoryReporter } from '../reporters/in-memory-reporter.ts';
-import { createInMemoryFinalResultReporter, createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
-import type { TestRunSessionProvider, TestRunSessionProviderDependencies } from './test-run-session.ts';
-import { createTestRunSessionProvider } from './test-run-session.ts';
+import sinon, { type SinonSpy } from 'sinon';
+import {
+    createInMemoryFinalResultReporter,
+    createInMemoryRealTimeReporter,
+    type InMemoryReporter
+} from '../reporters/in-memory-reporter.ts';
+import {
+    createTestRunSessionProvider,
+    type TestRunSessionProvider,
+    type TestRunSessionProviderDependencies
+} from './test-run-session.ts';
 
 function noop() {}
 

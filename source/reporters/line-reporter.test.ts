@@ -1,12 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { SinonSpy } from 'sinon';
-import sinon from 'sinon';
+import sinon, { type SinonSpy } from 'sinon';
 import kleur from 'kleur';
 import figures from 'figures';
 import type { RealTimeReporter } from '../engine/reporter.ts';
-import type { LineReporterDependencies } from './line-reporter.ts';
-import { createLineReporter } from './line-reporter.ts';
+import { createLineReporter, type LineReporterDependencies } from './line-reporter.ts';
 
 type Overrides = {
     readonly log?: SinonSpy;
