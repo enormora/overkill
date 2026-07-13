@@ -1,11 +1,11 @@
-import { test } from 'uvu';
-import * as assert from 'uvu/assert';
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import type { SinonSpy } from 'sinon';
 import sinon from 'sinon';
-import type { InMemoryReporter } from '../reporters/in-memory-reporter.js';
-import { createInMemoryFinalResultReporter, createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.js';
-import type { TestRunSessionProvider, TestRunSessionProviderDependencies } from './test-run-session.js';
-import { createTestRunSessionProvider } from './test-run-session.js';
+import type { InMemoryReporter } from '../reporters/in-memory-reporter.ts';
+import { createInMemoryFinalResultReporter, createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
+import type { TestRunSessionProvider, TestRunSessionProviderDependencies } from './test-run-session.ts';
+import { createTestRunSessionProvider } from './test-run-session.ts';
 
 function noop() {}
 
@@ -34,8 +34,8 @@ test('runSingleTestCase() executes the given test case', async function () {
 
     await session.runSingleTestCase({ title: 'foo', testFunction: noop, suiteTitle: 'bar' }, 0);
 
-    assert.is(execute.callCount, 1);
-    assert.equal(execute.firstCall.args, [ noop ]);
+    assert.strictEqual(execute.callCount, 1);
+    assert.deepStrictEqual(execute.firstCall.args, [ noop ]);
 });
 
 test('runSingleTestCase() reports the progress to the current reporter when it is a real-time reporter', async function () {
@@ -46,7 +46,7 @@ test('runSingleTestCase() reports the progress to the current reporter when it i
 
     await session.runSingleTestCase({ title: 'foo', testFunction: noop, suiteTitle: 'bar' }, 0);
 
-    assert.equal(reporter.getRecordedEntries(), [
+    assert.deepStrictEqual(reporter.getRecordedEntries(), [
         {
             sessionId: 42,
             type: 'progress',
@@ -82,7 +82,7 @@ test('runSingleTestCase() doesn’t report the progress to the current reporter 
 
     await session.runSingleTestCase({ title: 'foo', testFunction: noop, suiteTitle: 'bar' }, 0);
 
-    assert.equal(reporter.getRecordedEntries(), []);
+    assert.deepStrictEqual(reporter.getRecordedEntries(), []);
 });
 
 test('runSingleTestCase() updates the current test-run result when multiple tests are executed and sends it to the reporter when it is a real-time reporter', async function () {
@@ -99,7 +99,7 @@ test('runSingleTestCase() updates the current test-run result when multiple test
     await session.runSingleTestCase({ title: 'foo', testFunction: noop, suiteTitle: 'suite1' }, 0);
     await session.runSingleTestCase({ title: 'bar', testFunction: noop, suiteTitle: 'suite2' }, 1);
 
-    assert.equal(reporter.getRecordedEntries(), [
+    assert.deepStrictEqual(reporter.getRecordedEntries(), [
         {
             sessionId: 42,
             type: 'progress',
@@ -150,7 +150,7 @@ test('start() reports the initial test-run result to the current reporter when i
 
     await session.start();
 
-    assert.equal(reporter.getRecordedEntries(), [
+    assert.deepStrictEqual(reporter.getRecordedEntries(), [
         {
             sessionId: 42,
             type: 'start',
@@ -176,7 +176,7 @@ test('start() doesn’t report anything to the current reporter when it is NOT a
 
     await session.start();
 
-    assert.equal(reporter.getRecordedEntries(), []);
+    assert.deepStrictEqual(reporter.getRecordedEntries(), []);
 });
 
 test('done() returns the aggregated result of all given test cases', async function () {
@@ -194,7 +194,7 @@ test('done() returns the aggregated result of all given test cases', async funct
         }
     ]);
 
-    assert.equal(finalResult, {
+    assert.deepStrictEqual(finalResult, {
         progress: 'completed',
         summary: {
             totalCount: 2,
@@ -232,7 +232,7 @@ test('done() reports the aggregated result the the current reporter when it is a
         }
     ]);
 
-    assert.equal(reporter.getRecordedEntries(), [
+    assert.deepStrictEqual(reporter.getRecordedEntries(), [
         {
             sessionId: 42,
             type: 'done',
@@ -276,7 +276,7 @@ test('done() reports the aggregated result the the current reporter when it is N
         }
     ]);
 
-    assert.equal(reporter.getRecordedEntries(), [
+    assert.deepStrictEqual(reporter.getRecordedEntries(), [
         {
             sessionId: 42,
             type: 'done',
@@ -313,7 +313,7 @@ test('multiple messages are sent to the real-time reporter', async function () {
     await session.start();
     await session.runSingleTestCase({ title: 'foo', testFunction: noop, suiteTitle: 'the-suite' }, 0);
 
-    assert.equal(reporter.getRecordedEntries(), [
+    assert.deepStrictEqual(reporter.getRecordedEntries(), [
         {
             sessionId: 42,
             type: 'start',
@@ -352,7 +352,7 @@ test('multiple messages are sent to the reporter but separated by session when r
 
     await Promise.all([ firstSession.start(), secondSession.start() ]);
 
-    assert.equal(reporter.getRecordedEntries(), [
+    assert.deepStrictEqual(reporter.getRecordedEntries(), [
         {
             sessionId: 1,
             type: 'start',
@@ -373,5 +373,3 @@ test('multiple messages are sent to the reporter but separated by session when r
         }
     ]);
 });
-
-test.run();

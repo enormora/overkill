@@ -1,14 +1,14 @@
 import kleur from 'kleur';
 import figures from 'figures';
-import type { TestCaseResult } from '../engine/test-case-executor.js';
-import type { RealTimeReporter } from '../engine/reporter.js';
+import type { TestCaseResult } from '../engine/test-case-executor.ts';
+import type { RealTimeReporter } from '../engine/reporter.ts';
 
 const successSymbol = kleur.green(figures.tick);
 const errorSymbol = kleur.red(figures.cross);
 const infoSymbol = kleur.cyan(figures.info);
 
 export type LineReporterDependencies = {
-    readonly stdoutConsole: Pick<Console, 'log'>;
+    readonly stdoutConsole: Pick<typeof console, 'log'>;
 };
 
 function formatTestResult(testCaseResult: TestCaseResult): string {

@@ -1,4 +1,4 @@
-import type { TestCase, TestCaseInput } from './test-case.js';
+import type { TestCase, TestCaseInput } from './test-case.ts';
 
 export type Suite = {
     readonly testCases: readonly TestCaseInput[];

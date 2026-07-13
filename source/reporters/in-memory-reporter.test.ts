@@ -1,6 +1,6 @@
-import { test } from 'uvu';
-import * as assert from 'uvu/assert';
-import { createInMemoryRealTimeReporter, createInMemoryFinalResultReporter } from './in-memory-reporter.js';
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { createInMemoryRealTimeReporter, createInMemoryFinalResultReporter } from './in-memory-reporter.ts';
 
 const testRunResult = {
     progress: 'pending',
@@ -14,7 +14,7 @@ test('in-memory real-time reporter reports a session start', async function () {
 
     await session.start(testRunResult);
 
-    assert.equal(reporter.getRecordedEntries(), [ { sessionId: 42, type: 'start', testRunResult } ]);
+    assert.deepStrictEqual(reporter.getRecordedEntries(), [ { sessionId: 42, type: 'start', testRunResult } ]);
 });
 
 test('in-memory real-time reporter reports progress', async function () {
@@ -27,7 +27,12 @@ test('in-memory real-time reporter reports progress', async function () {
 
     await session.progress(testRunResult, testCaseResult);
 
-    assert.equal(reporter.getRecordedEntries(), [ { sessionId: 42, type: 'progress', testRunResult, testCaseResult } ]);
+    assert.deepStrictEqual(reporter.getRecordedEntries(), [ {
+        sessionId: 42,
+        type: 'progress',
+        testRunResult,
+        testCaseResult
+    } ]);
 });
 
 test('in-memory real-time reporter reports when the session finished', async function () {
@@ -36,7 +41,7 @@ test('in-memory real-time reporter reports when the session finished', async fun
 
     await session.done(testRunResult);
 
-    assert.equal(reporter.getRecordedEntries(), [ { sessionId: 42, type: 'done', testRunResult } ]);
+    assert.deepStrictEqual(reporter.getRecordedEntries(), [ { sessionId: 42, type: 'done', testRunResult } ]);
 });
 
 test('in-memory real-time reporter collects reports from multiple sessions', async function () {
@@ -47,7 +52,7 @@ test('in-memory real-time reporter collects reports from multiple sessions', asy
     await firstSession.start(testRunResult);
     await secondSession.start(testRunResult);
 
-    assert.equal(reporter.getRecordedEntries(), [
+    assert.deepStrictEqual(reporter.getRecordedEntries(), [
         { sessionId: 1, type: 'start', testRunResult },
         { sessionId: 2, type: 'start', testRunResult }
     ]);
@@ -60,7 +65,7 @@ test('in-memory real-time reporter collects multiple reports for one session', a
     await session.start(testRunResult);
     await session.done(testRunResult);
 
-    assert.equal(reporter.getRecordedEntries(), [
+    assert.deepStrictEqual(reporter.getRecordedEntries(), [
         { sessionId: 42, type: 'start', testRunResult },
         { sessionId: 42, type: 'done', testRunResult }
     ]);
@@ -72,7 +77,7 @@ test('in-memory final-result reporter reports when the session finished', async 
 
     await session.report(testRunResult);
 
-    assert.equal(reporter.getRecordedEntries(), [ { sessionId: 42, type: 'done', testRunResult } ]);
+    assert.deepStrictEqual(reporter.getRecordedEntries(), [ { sessionId: 42, type: 'done', testRunResult } ]);
 });
 
 test('in-memory final-result reporter collects reports from multiple sessions', async function () {
@@ -83,10 +88,8 @@ test('in-memory final-result reporter collects reports from multiple sessions', 
     await firstSession.report(testRunResult);
     await secondSession.report(testRunResult);
 
-    assert.equal(reporter.getRecordedEntries(), [
+    assert.deepStrictEqual(reporter.getRecordedEntries(), [
         { sessionId: 1, type: 'done', testRunResult },
         { sessionId: 2, type: 'done', testRunResult }
     ]);
 });
-
-test.run();

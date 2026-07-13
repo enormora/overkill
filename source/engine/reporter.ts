@@ -1,5 +1,5 @@
-import type { TestRunResult } from './test-run-result.js';
-import type { TestCaseResult } from './test-case-executor.js';
+import type { TestRunResult } from './test-run-result.ts';
+import type { TestCaseResult } from './test-case-executor.ts';
 
 type RealTimeReportingSession = {
     start: (currentTestRunResult: TestRunResult) => Promise<void>;

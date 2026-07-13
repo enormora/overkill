@@ -1,9 +1,9 @@
-import type { TestRunResult } from '../engine/test-run-result.js';
-import type { TestCaseResult } from '../engine/test-case-executor.js';
-import type { FinalResultReporter } from '../engine/reporter.js';
+import type { TestRunResult } from '../engine/test-run-result.ts';
+import type { TestCaseResult } from '../engine/test-case-executor.ts';
+import type { FinalResultReporter } from '../engine/reporter.ts';
 
 export type TapConsoleReporterDependencies = {
-    readonly stdoutConsole: Pick<Console, 'log'>;
+    readonly stdoutConsole: Pick<typeof console, 'log'>;
 };
 
 function formatTestCaseResultAsTapTestPoint(testCaseResult: TestCaseResult): string {

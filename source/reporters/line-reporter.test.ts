@@ -1,12 +1,12 @@
-import { test } from 'uvu';
-import * as assert from 'uvu/assert';
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import type { SinonSpy } from 'sinon';
 import sinon from 'sinon';
 import kleur from 'kleur';
 import figures from 'figures';
-import type { RealTimeReporter } from '../engine/reporter.js';
-import type { LineReporterDependencies } from './line-reporter.js';
-import { createLineReporter } from './line-reporter.js';
+import type { RealTimeReporter } from '../engine/reporter.ts';
+import type { LineReporterDependencies } from './line-reporter.ts';
+import { createLineReporter } from './line-reporter.ts';
 
 type Overrides = {
     readonly log?: SinonSpy;
@@ -41,8 +41,8 @@ test('reports the start', async function () {
         testCaseResults: []
     });
 
-    assert.is(log.callCount, 1);
-    assert.equal(log.firstCall.args, [ infoSymbol, 'Test run started (0 / 123)' ]);
+    assert.strictEqual(log.callCount, 1);
+    assert.deepStrictEqual(log.firstCall.args, [ infoSymbol, 'Test run started (0 / 123)' ]);
 });
 
 test('prints a line when the test run progresses with a failed test', async function () {
@@ -68,8 +68,8 @@ test('prints a line when the test run progresses with a failed test', async func
         }
     );
 
-    assert.is(log.callCount, 1);
-    assert.equal(log.firstCall.args, [ `${errorSymbol} foo` ]);
+    assert.strictEqual(log.callCount, 1);
+    assert.deepStrictEqual(log.firstCall.args, [ `${errorSymbol} foo` ]);
 });
 
 test('prints a line when the test run progresses with a succeeded test', async function () {
@@ -95,8 +95,8 @@ test('prints a line when the test run progresses with a succeeded test', async f
         }
     );
 
-    assert.is(log.callCount, 1);
-    assert.equal(log.firstCall.args, [ `${successSymbol} foo` ]);
+    assert.strictEqual(log.callCount, 1);
+    assert.deepStrictEqual(log.firstCall.args, [ `${successSymbol} foo` ]);
 });
 
 test('prints a three-line summary once the test run finishes', async function () {
@@ -116,10 +116,8 @@ test('prints a three-line summary once the test run finishes', async function ()
         testCaseResults: []
     });
 
-    assert.is(log.callCount, 3);
-    assert.equal(log.firstCall.args, [ infoSymbol, 'Total: 3' ]);
-    assert.equal(log.secondCall.args, [ successSymbol, 'Succeeded: 2' ]);
-    assert.equal(log.thirdCall.args, [ errorSymbol, 'Failed: 1' ]);
+    assert.strictEqual(log.callCount, 3);
+    assert.deepStrictEqual(log.firstCall.args, [ infoSymbol, 'Total: 3' ]);
+    assert.deepStrictEqual(log.secondCall.args, [ successSymbol, 'Succeeded: 2' ]);
+    assert.deepStrictEqual(log.thirdCall.args, [ errorSymbol, 'Failed: 1' ]);
 });
-
-test.run();
