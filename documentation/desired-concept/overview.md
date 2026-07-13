@@ -43,32 +43,32 @@ Overkill is a monorepo with fine-grained packages as the architectural truth.
 
 Core package families:
 
-- `@overkill/engine`: runner contracts, test definitions, frozen plans,
+- `@overkill-dev/engine`: runner contracts, test definitions, frozen plans,
   execution sessions, events, results, reporter integration points, and
   the first-party injected assertion surface
-- `@overkill/assert`: reusable assertion-extension helpers such as
+- `@overkill-dev/assert`: reusable assertion-extension helpers such as
   composite assertion builders, foreign-assertion bridges, and packaged
   assertion adapters that plug into the engine-owned assertion context
-- `@overkill/test`: default first-party authoring layer built on top of the
+- `@overkill-dev/test`: default first-party authoring layer built on top of the
   engine, focused on authoring ergonomics rather than owning assertions
-- `@overkill/doubles`: explicit, function-first test doubles centered on a single `testDouble()` concept
-- `@overkill/resources`: typed runtimes, resource composition, and execution requirements
+- `@overkill-dev/doubles`: explicit, function-first test doubles centered on a single `testDouble()` concept
+- `@overkill-dev/resources`: typed runtimes, resource composition, and execution requirements
 - higher-layer runtime patterns for deterministic services, browser page
   objects, explicit attachments, and runtime scenarios
-- small advanced ergonomics in `@overkill/test`, such as harnesses,
+- small advanced ergonomics in `@overkill-dev/test`, such as harnesses,
   interaction transcripts, reusable multi-case macros, and async queue
   helpers
-- reporter packages such as `@overkill/reporter-line`, `@overkill/reporter-tap`, `@overkill/reporter-json`, and `@overkill/reporter-html`
-- `@overkill/run`: orchestration for discovery, filtering, seeds, shard
+- reporter packages such as `@overkill-dev/reporter-line`, `@overkill-dev/reporter-tap`, `@overkill-dev/reporter-json`, and `@overkill-dev/reporter-html`
+- `@overkill-dev/run`: orchestration for discovery, filtering, seeds, shard
   selection, debug/coverage/watch intent, and terminal workflows
-- `@overkill/baselines`: shared baseline model for snapshots and performance expectations
-- `@overkill/bench`: benchmark-specific package family
+- `@overkill-dev/baselines`: shared baseline model for snapshots and performance expectations
+- `@overkill-dev/bench`: benchmark-specific package family
 - type-test support through adapters or integrations rather than through a
   custom Overkill type-test engine
 - a first-party Stryker plugin
-- `@overkill/eslint-rule-test` for ESLint rule-suite authoring rather than
+- `@overkill-dev/eslint-rule-test` for ESLint rule-suite authoring rather than
   raw `RuleTester` as a core primitive
-- `@overkill/eslint-plugin` for Overkill-specific static authoring rules
+- `@overkill-dev/eslint-plugin` for Overkill-specific static authoring rules
 - coverage as an explicit, easy-to-enable capability rather than part of
   the default run mode
 - watch mode leaning on Node's built-in `--watch` wherever that is
@@ -184,9 +184,9 @@ They matter because TypeScript-first projects need to catch regressions in:
 
 Execution strategy should not be hard-coded by any one package. Different layers may place different demands on the run:
 
-- `@overkill/resources` may introduce resource-sharing or isolation requirements
-- `@overkill/doubles` should remain cheap enough for in-process microtests and should not force isolation by itself
-- `@overkill/bench` may want strict single-worker execution for measurement stability
+- `@overkill-dev/resources` may introduce resource-sharing or isolation requirements
+- `@overkill-dev/doubles` should remain cheap enough for in-process microtests and should not force isolation by itself
+- `@overkill-dev/bench` may want strict single-worker execution for measurement stability
 - browser or integration packages may prefer worker pools, file-level isolation, or one-process-per-runtime strategies
 
 The concept should therefore treat execution strategy as a negotiated run plan built from package-provided requirements and constraints, with orchestration resolving the final plan.

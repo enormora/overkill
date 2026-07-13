@@ -215,7 +215,7 @@ API would remove a real composition benefit of tests-as-values.
 ### Conditional registration is visible
 
 ```ts
-import { skippedTest, suite, test } from '@overkill/test';
+import { skippedTest, suite, test } from '@overkill-dev/test';
 
 const unameCase =
     process.platform === 'linux'
@@ -407,7 +407,7 @@ If a project wants a more explicit declaration form, the first-party
 ergonomics layer may also expose optional sugar such as `defineMacro(...)`:
 
 ```ts
-import { defineMacro, suite, test } from '@overkill/test';
+import { defineMacro, suite, test } from '@overkill-dev/test';
 
 const lawsOfMonoid = defineMacro(
     <T>(parameters: MonoidLaws<T>) => {
@@ -439,7 +439,7 @@ That helper should stay optional sugar only:
   declaration form, not a second macro system
 
 ```ts
-import { suite, test } from '@overkill/test';
+import { suite, test } from '@overkill-dev/test';
 
 function lawsOfMonoid<T>(parameters: MonoidLaws<T>): TestNode {
     const { name, empty, concat, gen, eq } = parameters;
@@ -660,8 +660,8 @@ free, rather than a reporter-output parser kludge.
 
 ## Recommendation
 
-- `@overkill/engine` exposes `TestNode` as a stable branded type
-- `@overkill/test` exports `suite`, `test`, `table`, and the imperative
+- `@overkill-dev/engine` exposes `TestNode` as a stable branded type
+- `@overkill-dev/test` exports `suite`, `test`, `table`, and the imperative
   sugar layer; both produce the same `TestNode` value
 - files export their root node as `default`
 - the runner walks the value; nothing relies on module-load side effects

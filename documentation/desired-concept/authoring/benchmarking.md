@@ -78,7 +78,7 @@ The benchmark-specific reporter offering should be considered settled too:
 
 - generic reporters may still render benchmark pass/fail and summary data
 - but Overkill should also ship a dedicated
-  `@overkill/reporter-benchmark-html` package for benchmark-oriented final
+  `@overkill-dev/reporter-benchmark-html` package for benchmark-oriented final
   reports
 
 That reporter should present:
@@ -91,7 +91,7 @@ That reporter should present:
 - visual comparison output such as distribution or workload plots
 
 It should be a separate reporter package rather than part of
-`@overkill/bench`, because the benchmark package owns benchmark execution and
+`@overkill-dev/bench`, because the benchmark package owns benchmark execution and
 result semantics while reporter packages own presentation.
 
 ## Benchmark Definition Model
@@ -117,7 +117,7 @@ This is closer to BenchmarkTools benchmark groups and to real workflow benchmark
 Example direction:
 
 ```ts
-import { benchmark, workload } from '@overkill/bench';
+import { benchmark, workload } from '@overkill-dev/bench';
 
 export const cliPublishBench = benchmark('publish command', {
     kind: 'responsiveness',
@@ -236,7 +236,7 @@ So the distinction should stay clear:
 
 The canonical policy helper name should be treated as settled too:
 
-- `slo(...)` in `@overkill/bench` expresses latency- or service-level
+- `slo(...)` in `@overkill-dev/bench` expresses latency- or service-level
   budget policy over measured benchmark results
 
 ## Execution Strategy
@@ -329,8 +329,8 @@ Examples:
 
 The implementation direction is:
 
-- a dedicated package above `@overkill/bench`:
-  `@overkill/browser-bench`
+- a dedicated package above `@overkill-dev/bench`:
+  `@overkill-dev/browser-bench`
 - driven by Playwright or another browser controller
 - with metric collection via browser APIs, WebDriver BiDi where it is
   sufficient, DevTools Protocol surfaces where deeper engine-specific
@@ -338,13 +338,13 @@ The implementation direction is:
 
 The package split should be:
 
-- `@overkill/bench` owns the generic workload, measurement, policy,
+- `@overkill-dev/bench` owns the generic workload, measurement, policy,
   baseline, and reporting contracts
-- `@overkill/browser-bench` owns browser runtime provisioning, page-flow
+- `@overkill-dev/browser-bench` owns browser runtime provisioning, page-flow
   workloads, browser-specific metric collectors, and browser-specific
   artifact capture
 
-Concept sketch for `@overkill/browser-bench`:
+Concept sketch for `@overkill-dev/browser-bench`:
 
 - benchmark author declares a browser workload through a helper such as
   `browserBenchmark(...)`

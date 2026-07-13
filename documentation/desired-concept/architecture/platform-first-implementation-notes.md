@@ -76,7 +76,7 @@ Why it matters:
 
 Architectural implication:
 
-- `@overkill/test` and `@overkill/run` should avoid assuming that a custom transpilation pipeline is always present
+- `@overkill-dev/test` and `@overkill-dev/run` should avoid assuming that a custom transpilation pipeline is always present
 
 Important caveats:
 
@@ -115,7 +115,7 @@ Node now has built-in globbing and path glob matching.
 
 Why it matters:
 
-- `@overkill/run` may not need `glob` at all for many discovery cases
+- `@overkill-dev/run` may not need `glob` at all for many discovery cases
 
 Architectural implication:
 
@@ -303,14 +303,14 @@ Very relevant right now.
 
 Potential Overkill uses:
 
-- resource lifetimes in `@overkill/resources`
+- resource lifetimes in `@overkill-dev/resources`
 - scoped cleanup
 - temporary benchmark or integration fixtures
 - scoped async context via `AsyncLocalStorage.withScope()`
 
 Architectural implication:
 
-- `@overkill/resources` should be designed so that explicit disposal is a natural fit, not an awkward add-on
+- `@overkill-dev/resources` should be designed so that explicit disposal is a natural fit, not an awkward add-on
 
 Current support note:
 
@@ -444,7 +444,7 @@ Statecharts are worth considering where behavior is truly stateful and externall
 - supervised execution profiles
 - benchmark pipeline control
 
-This is most relevant at the `@overkill/run` layer, not the core engine.
+This is most relevant at the `@overkill-dev/run` layer, not the core engine.
 
 If adopted, the question should be “does a state machine make this subsystem easier to reason about?” rather than “should we use XState everywhere?”
 
@@ -480,6 +480,6 @@ Today, the strongest platform-first leanings are:
 - use `AbortController` / `AbortSignal` as the default cancellation primitive
 - use `AsyncLocalStorage` where per-test async context actually helps
 - use `perf_hooks` before inventing custom timing infrastructure
-- design `@overkill/resources` with `using` / `Symbol.dispose` in mind
+- design `@overkill-dev/resources` with `using` / `Symbol.dispose` in mind
 - allow polyfills only where they support a platform-shaped abstraction without becoming the abstraction itself
 - treat emerging proposals as inspiration and future-proofing, not as baseline assumptions

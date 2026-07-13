@@ -268,7 +268,7 @@ interpretation patterns the artifact surfaces — lives in
 
 ## Parallelism Semantics
 
-Parallelism happens at multiple grains. The default for `@overkill/test`
+Parallelism happens at multiple grains. The default for `@overkill-dev/test`
 is **concurrent-in-process with seeded randomized scheduling**. Other
 modes remain available when the suite or resource model calls for them:
 
@@ -460,7 +460,7 @@ Minimal remote-execution sketch:
 
 The important architectural consequences are:
 
-- remote execution belongs above `@overkill/engine`, in orchestration /
+- remote execution belongs above `@overkill-dev/engine`, in orchestration /
   coordinator packages
 - stable `CaseId`, serializable `RunPlan`, and structured events are what
   make remote work possible; terminal output alone is not enough
@@ -536,7 +536,7 @@ This document is the runtime counterpart to several others. Cross-links:
 - [Platform-First Implementation Notes](./platform-first-implementation-notes.md) — `AbortSignal`, source maps,
   `AsyncLocalStorage`
 - [Package Architecture](./package-architecture.md) — execution strategy decisions live in
-  `@overkill/run`; this doc names the resulting runtime defaults
+  `@overkill-dev/run`; this doc names the resulting runtime defaults
 
 ## Resolved Edge Policies
 

@@ -143,7 +143,7 @@ truly needs both lifetimes — and coverage does not.
   claim suite-wide coverage; the run record (see
   [Metadata And Selection § Selection Model](./metadata-and-selection.md#selection-model)) records which
   cases were actually executed so reports remain interpretable.
-- the programmatic API in `@overkill/run` accepts both the per-run
+- the programmatic API in `@overkill-dev/run` accepts both the per-run
   flag (`coverage: true`) and the policy values (formats,
   thresholds, etc.) in a single `run(config)` call — it is the
   unified target the CLI and configuration file both reduce to (see

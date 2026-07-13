@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document describes the concept for the `@overkill/doubles` package.
+This document describes the concept for the `@overkill-dev/doubles` package.
 
 The goal is not to recreate Sinon. The goal is to provide a small, TypeScript-first way to create explicit test doubles without pushing users toward method patching, module interception, or large mutable mock ecosystems.
 
@@ -74,7 +74,7 @@ The intended split is:
 Example direction:
 
 ```ts
-import { testDouble, rule } from '@overkill/doubles';
+import { testDouble, rule } from '@overkill-dev/doubles';
 
 const loadUser = testDouble<(id: string) => Promise<User>>({
     rules: [
@@ -370,9 +370,9 @@ The first release concept should not depend on complex matcher machinery.
 
 ## Relationship To Assertions
 
-`@overkill/doubles` should create and track doubles.
+`@overkill-dev/doubles` should create and track doubles.
 
-The first-party assertion layer in `@overkill/engine` should remain
+The first-party assertion layer in `@overkill-dev/engine` should remain
 responsible for assertions about them, such as:
 
 - call count
@@ -389,8 +389,8 @@ That separation keeps the doubles package smaller and avoids turning it into a w
 One useful pattern here is a registered composite assertion:
 
 ```ts
-import { defineCompositeAssertion } from '@overkill/assert';
-import type { TestDouble } from '@overkill/doubles';
+import { defineCompositeAssertion } from '@overkill-dev/assert';
+import type { TestDouble } from '@overkill-dev/doubles';
 
 export const calledOnceWith = defineCompositeAssertion(
     'calledOnceWith',
@@ -411,7 +411,7 @@ grouped child diagnostics.
 
 ## Relationship To Resources
 
-`@overkill/doubles` should work by explicit injection, so it should compose naturally with `@overkill/resources`.
+`@overkill-dev/doubles` should work by explicit injection, so it should compose naturally with `@overkill-dev/resources`.
 
 Examples:
 
@@ -423,10 +423,10 @@ This is a better fit for Overkill than APIs that replace methods on already-crea
 
 ## Relationship To Capability Handles
 
-The boundary between `@overkill/doubles` and capability handles,
+The boundary between `@overkill-dev/doubles` and capability handles,
 when to reach for which, how they compose, why both refuse module-graph
 patching, is documented in
-[Capability Handles § Connection To `@overkill/doubles`](./capability-handles.md#connection-to-overkilldoubles).
+[Capability Handles § Connection To `@overkill-dev/doubles`](./capability-handles.md#connection-to-overkilldoubles).
 
 Short version: handles model multi-method effect interfaces from a
 standard list; `testDouble()` models single-function doubles for
@@ -437,7 +437,7 @@ domain-specific collaborators. They compose; a handle's method can be a
 
 Recommended direction:
 
-- package name: `@overkill/doubles`
+- package name: `@overkill-dev/doubles`
 - primary abstraction: `testDouble()`
 - primary API shape: configuration object plus call and construction rule composition
 - strong direct introspection on each instance, such as `callCount`, `constructionCount`, `firstCall`, `firstConstruction`, `lastCall`, `lastConstruction`, and typed call/result records
@@ -450,4 +450,4 @@ Recommended direction:
 
 Object patching is outside the first-party doubles model. If someone wants
 it, it belongs in a separate extension package rather than in
-`@overkill/doubles`.
+`@overkill-dev/doubles`.

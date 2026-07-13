@@ -15,22 +15,22 @@ covers the package-family rationale; this is the interface.
 The current first-party reporter set should be treated as part of the
 settled concept:
 
-- `@overkill/reporter-dot`
+- `@overkill-dev/reporter-dot`
   - real-time, stdout
   - minimal progress output for local or CI runs where compactness matters
-- `@overkill/reporter-line`
+- `@overkill-dev/reporter-line`
   - real-time, stdout
   - default human reporter for ordinary test runs
-- `@overkill/reporter-tap`
+- `@overkill-dev/reporter-tap`
   - real-time, stdout
   - TAP-compatible stream for existing tooling ecosystems
-- `@overkill/reporter-json`
+- `@overkill-dev/reporter-json`
   - final-result
   - canonical machine-readable run result
-- `@overkill/reporter-html`
+- `@overkill-dev/reporter-html`
   - final-result
   - generic artifact/failure report for ordinary test families
-- `@overkill/reporter-benchmark-html`
+- `@overkill-dev/reporter-benchmark-html`
   - final-result
   - benchmark-specific report with metric tables, comparisons, baseline
     deltas, machine metadata, and plotting-oriented output
@@ -131,7 +131,7 @@ Resolution rules at run start:
   pointing at the same path is a configuration error
 - `memory` and `stream` sinks are always per-reporter-private
 
-The orchestration layer (`@overkill/run`) computes the conflict
+The orchestration layer (`@overkill-dev/run`) computes the conflict
 graph from declared sinks before starting any worker.
 
 ## Registration
@@ -149,9 +149,9 @@ mechanism is presentation.
 Config should prefer explicit imported values, for example:
 
 ```ts
-import { defineConfig } from '@overkill/run';
-import { createLineReporter } from '@overkill/reporter-line';
-import { createBenchmarkHtmlReporter } from '@overkill/reporter-benchmark-html';
+import { defineConfig } from '@overkill-dev/run';
+import { createLineReporter } from '@overkill-dev/reporter-line';
+import { createBenchmarkHtmlReporter } from '@overkill-dev/reporter-benchmark-html';
 
 export default defineConfig({
     reporters: [

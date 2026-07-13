@@ -136,7 +136,7 @@ Assessment:
 
 - idea donor and secondary candidate
 - worth studying closely, but probably not the direct foundation for the
-  built-in assertion surface in `@overkill/engine`
+  built-in assertion surface in `@overkill-dev/engine`
 
 Source:
 
@@ -197,8 +197,8 @@ Source:
 
 Recommended direction:
 
-- keep the public assertion surface in `@overkill/engine`
-- use `@overkill/assert` for reusable assertion-extension helpers and
+- keep the public assertion surface in `@overkill-dev/engine`
+- use `@overkill-dev/assert` for reusable assertion-extension helpers and
   adapter-building utilities
 - treat low-level normalization and diff protocol as internal
 - borrow ideas from `tcompare`, `earljs`, `chai`, and `unexpected`
@@ -297,7 +297,7 @@ Source:
 
 Recommended direction:
 
-- build `@overkill/doubles`
+- build `@overkill-dev/doubles`
 - study `testdouble` for `when()`-style ergonomics
 - study Node built-ins for call-tracking primitives
 - optionally study `tinyspy` for minimal implementation shape
@@ -404,7 +404,7 @@ Recommended direction:
 - evaluate `pure-rand` for the seeded/splittable randomness layer
 - treat `gentest` as an API-shape donor for keeping generator primitives
   small and compositional
-- do not commit the future `@overkill/property` package to `fast-check`'s
+- do not commit the future `@overkill-dev/property` package to `fast-check`'s
   current model if it conflicts with integrated shrinking, edge-case
   semantics, exhaustive finite domains, or witness/corpus workflows
 
@@ -959,7 +959,7 @@ Recommended direction:
 
 - evaluate `@tapjs/snapshot`
 - evaluate `@vitest/snapshot`
-- otherwise build `@overkill/baselines` on top of:
+- otherwise build `@overkill-dev/baselines` on top of:
   - `pretty-format`
   - `jest-diff`
   - Overkill-owned identity, update, and stale-detection logic
@@ -976,7 +976,7 @@ Pros:
 
 - current
 - explicit TypeScript typings
-- directly relevant to `@overkill/eslint-plugin` utility work such as
+- directly relevant to `@overkill-dev/eslint-plugin` utility work such as
   scope-aware binding analysis
 
 Cons:
@@ -1005,7 +1005,7 @@ What it is:
 Pros:
 
 - current
-- directly relevant to the future `@overkill/eslint-rule-test` adapter
+- directly relevant to the future `@overkill-dev/eslint-rule-test` adapter
 - useful reference for typed/parser-heavy rule-test cases
 
 Cons:
@@ -1033,9 +1033,9 @@ Source:
 Recommended direction:
 
 - evaluate `@eslint-community/eslint-utils` for the future
-  `@overkill/eslint-plugin`
+  `@overkill-dev/eslint-plugin`
 - study `@typescript-eslint/rule-tester` as the strongest current
-  compatibility reference for `@overkill/eslint-rule-test`
+  compatibility reference for `@overkill-dev/eslint-rule-test`
 - keep Overkill's public rule-test authoring surface macro/suite-based
   rather than exposing raw `RuleTester` as the first-class primitive
 
@@ -1216,7 +1216,7 @@ Recommended direction:
 - stop treating `kleur` as the default answer
 - evaluate `ansis` or `yoctocolors` for color output
 - evaluate `log-symbols` for simple status symbols
-- keep terminal rendering logic in reporter packages, not in `@overkill/engine`
+- keep terminal rendering logic in reporter packages, not in `@overkill-dev/engine`
 
 ## Stack Traces And Source Maps
 

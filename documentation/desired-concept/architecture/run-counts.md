@@ -22,7 +22,7 @@ reports those nodes; the developer interprets.
 
 ## Position
 
-This is an `@overkill/engine` concept. The new fields extend engine's
+This is an `@overkill-dev/engine` concept. The new fields extend engine's
 structured-results contract — `RunResult` and `RunSummary` — and the
 engine owns the bookkeeping needed to produce them:
 
@@ -32,9 +32,9 @@ engine owns the bookkeeping needed to produce them:
 - per-suite discovered/executed aggregation
 - the final summary fields
 
-`@overkill/run` still owns file discovery and module loading, but once it
+`@overkill-dev/run` still owns file discovery and module loading, but once it
 hands exported roots to engine, the meaning of run counts is fully engine
-owned. `@overkill/test` is not special here; it merely wraps the same
+owned. `@overkill-dev/test` is not special here; it merely wraps the same
 engine-owned node constructors that any other adapter must use if it wants
 run-count and orphan-detection support. The default human reporter extends
 its run-summary line to surface them. It is **not** an extension of test
@@ -67,7 +67,7 @@ collection, and it reports node identities, not just a count. It does
 is never constructed, so there is no runtime node to detect. That is
 not a gap in the count: a node that never came into existence is not a
 runtime orphan. The static counterpart is the `no-orphan-test-nodes`
-rule in `@overkill/eslint-plugin` (see
+rule in `@overkill-dev/eslint-plugin` (see
 [Higher Test Layers § Static Authoring Rules](../authoring/higher-test-layers.md#static-authoring-rules)),
 which inspects source rather than a run.
 
@@ -186,7 +186,7 @@ This is also where engine enforces node authenticity. `TestNode` is not
 instance with a private symbol, and engine rejects shape-compatible values
 that are missing that brand. That rule lets other adapters benefit from the
 same orphan-detection and identity bookkeeping without forcing them through
-`@overkill/test`, while still preventing forged plain objects from entering
+`@overkill-dev/test`, while still preventing forged plain objects from entering
 the run.
 
 `Constructed` is reset when collection starts and is recorded into only during

@@ -19,8 +19,8 @@ value rather than relying on registration side effects:
 
 ```ts
 // source/users.test.ts
-import { gen } from '@overkill/property'; // proposed package, see types-index
-import { suite, test } from '@overkill/test';
+import { gen } from '@overkill-dev/property'; // proposed package, see types-index
+import { suite, test } from '@overkill-dev/test';
 import { parse, serialize } from './users.ts';
 
 export const spec = suite('users', [

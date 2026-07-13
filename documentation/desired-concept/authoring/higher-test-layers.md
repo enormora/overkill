@@ -39,7 +39,7 @@ What Overkill should support:
 - shared-per-worker and per-case lifetimes
 - fixture composition without hook soup
 
-This reinforces `@overkill/resources` as a core higher-layer package.
+This reinforces `@overkill-dev/resources` as a core higher-layer package.
 
 ### Deterministic Local Services
 
@@ -169,9 +169,9 @@ direction, not merely “fancier unit tests”.
 
 The settled package split is:
 
-- `@overkill/property` for generator-driven property testing, shrinking,
+- `@overkill-dev/property` for generator-driven property testing, shrinking,
   edge cases, witness/corpus workflows, and generated-case reporting
-- `@overkill/model` for rule-based/state-machine testing above that
+- `@overkill-dev/model` for rule-based/state-machine testing above that
   property core
 
 Property-adjacent testing styles should be layered on top of that family
@@ -181,10 +181,10 @@ rather than treated as unrelated concepts:
   checks over transformed inputs and outputs, exposed through a helper
   such as `relation(...)`
 - differential testing belongs above the property family in
-  `@overkill/differential`, exposed through a helper such as
+  `@overkill-dev/differential`, exposed through a helper such as
   `differential(...)`
 - linearizability or consistency checking belongs above the model family
-  in `@overkill/linearizability`, exposed through a helper such as
+  in `@overkill-dev/linearizability`, exposed through a helper such as
   `linearizability(...)`
 
 These styles should reuse the same shrinking, witness, corpus, and
@@ -192,9 +192,9 @@ reporting infrastructure rather than inventing parallel systems.
 
 The canonical helper names for these layers should be treated as settled:
 
-- `relation(...)` in `@overkill/property`
-- `differential(...)` in `@overkill/differential`
-- `linearizability(...)` in `@overkill/linearizability`
+- `relation(...)` in `@overkill-dev/property`
+- `differential(...)` in `@overkill-dev/differential`
+- `linearizability(...)` in `@overkill-dev/linearizability`
 
 ### Contract-Oriented Suites
 
@@ -209,7 +209,7 @@ universal first-party framework. The settled direction is:
   but the concept does not commit to one vendor or one protocol family
 
 This keeps contract testing real without forcing every contract workflow
-through one mandatory `@overkill/contracts` abstraction.
+through one mandatory `@overkill-dev/contracts` abstraction.
 
 ### Mutation Integrations
 
@@ -233,11 +233,11 @@ Overkill should support this, but not by making raw ESLint `RuleTester` a
 core primitive. The better direction is a focused adapter package, with a
 narrow name such as:
 
-- `@overkill/eslint-rule-test`
+- `@overkill-dev/eslint-rule-test`
 
 This is distinct from:
 
-- `@overkill/eslint-plugin` for Overkill-specific static authoring rules
+- `@overkill-dev/eslint-plugin` for Overkill-specific static authoring rules
 
 The package should export ready-made macros or suite builders that turn
 RuleTester-style case objects into ordinary Overkill tests.
@@ -245,7 +245,7 @@ RuleTester-style case objects into ordinary Overkill tests.
 Example direction:
 
 ```ts
-import { eslintRuleSuite } from '@overkill/eslint-rule-test';
+import { eslintRuleSuite } from '@overkill-dev/eslint-rule-test';
 import rule from '../src/rules/no-foo.ts';
 
 export const spec = eslintRuleSuite({
@@ -269,7 +269,7 @@ This same adapter pattern should also cover domain-specific assertion
 ecosystems where the foreign library already carries valuable semantics.
 A concrete example is:
 
-- `@overkill/aws-cdk` wrapping `@aws-cdk/assertions` through Overkill's
+- `@overkill-dev/aws-cdk` wrapping `@aws-cdk/assertions` through Overkill's
   foreign-assertion bridge rather than trying to make third-party matcher
   interop a generic core feature
 
@@ -281,7 +281,7 @@ Why this belongs in an adapter package:
 - it can enforce stricter, more explicit rule-test case semantics at
   collection time
 - it avoids forcing framework-global `RuleTester` assumptions into
-  `@overkill/test`
+  `@overkill-dev/test`
 
 Default capability stance:
 
@@ -296,13 +296,13 @@ suite builder above.
 ### Static Authoring Rules
 
 The ESLint rule-test adapter should be complemented by a separate
-`@overkill/eslint-plugin` package.
+`@overkill-dev/eslint-plugin` package.
 
 Its purpose is different:
 
-- `@overkill/eslint-rule-test` adapts an external test-case DSL into
+- `@overkill-dev/eslint-rule-test` adapts an external test-case DSL into
   ordinary Overkill suites
-- `@overkill/eslint-plugin` statically enforces Overkill-specific
+- `@overkill-dev/eslint-plugin` statically enforces Overkill-specific
   authoring constraints
 
 The plugin should stay small and semantic, focusing on rules that the API
@@ -333,7 +333,7 @@ duplicating them in lint rules. For example, explicit matcher requirements
 for `throws` / `rejects` should come from the assertion signatures rather
 than from a dedicated lint rule.
 
-To make these rules work across `@overkill/test`, facades, `@overkill/bench`,
+To make these rules work across `@overkill-dev/test`, facades, `@overkill-dev/bench`,
 engine-level usage, and re-exports, the plugin should use a real
 binding-tracing utility rather than matching one import string literally.
 
@@ -360,9 +360,9 @@ That should cover:
 - external processes
 - PTYs and CLI harnesses
 
-`@overkill/resources` should therefore be understood as a resource and
+`@overkill-dev/resources` should therefore be understood as a resource and
 context composition layer, not merely a fixture helper for
-`@overkill/test`. It should be able to model:
+`@overkill-dev/test`. It should be able to model:
 
 - ordinary test context
 - shared or isolated resources
