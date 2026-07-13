@@ -19,20 +19,20 @@ _derived_ from the identity, not the other way around.
 
 Overkill distinguishes:
 
--   **engine identity** — the minimal stable identity known to
-    `@overkill/engine`, independent of files or any specific authoring DSL
--   **authoring identity** — the richer identity derived by a DSL or package
-    such as `@overkill/test`
--   **expanded case identity** — the concrete case after parameterization,
-    macro instantiation, and runtime-matrix multiplication
--   **runtime identity** — the resolved runtime target (browser variant,
-    OS, Node version, configuration profile)
--   **workload identity** — for benchmarks, the resolved workload
-    parameters
--   **attempt identity** — for retries (integration profiles only), the
-    attempt number
--   **artifact identity** — derived from the above, with a subtype tag
-    naming the artifact kind
+- **engine identity** — the minimal stable identity known to
+  `@overkill/engine`, independent of files or any specific authoring DSL
+- **authoring identity** — the richer identity derived by a DSL or package
+  such as `@overkill/test`
+- **expanded case identity** — the concrete case after parameterization,
+  macro instantiation, and runtime-matrix multiplication
+- **runtime identity** — the resolved runtime target (browser variant,
+  OS, Node version, configuration profile)
+- **workload identity** — for benchmarks, the resolved workload
+  parameters
+- **attempt identity** — for retries (integration profiles only), the
+  attempt number
+- **artifact identity** — derived from the above, with a subtype tag
+  naming the artifact kind
 
 ## Engine Versus DSL Identity
 
@@ -42,12 +42,12 @@ suite trees, or any one registration style.
 That means engine identity must stay generic. A higher-level package such as
 `@overkill/test` may then derive richer identities from:
 
--   file/module origin
--   explicit suite names
--   test names
--   parameterization keys
--   runtime metadata
--   workload metadata
+- file/module origin
+- explicit suite names
+- test names
+- parameterization keys
+- runtime metadata
+- workload metadata
 
 So the rest of this document should be read primarily as the **default
 identity derivation for `@overkill/test` and related first-party tooling**,
@@ -76,7 +76,7 @@ type WorkloadId = {
     readonly params?: Record<string, string>;
 };
 
-type AttemptId = { readonly index: number }; // 0-indexed
+type AttemptId = { readonly index: number; }; // 0-indexed
 
 type ArtifactSubtype =
     | 'content-snapshot'
@@ -110,11 +110,11 @@ support stale-baseline detection:
 
 with:
 
--   `__` as the separator (chosen to be unambiguous in filenames)
--   names URL-encoded for filesystem safety
--   missing optional parts collapsed (no trailing `__`)
--   subtype-specific extension (`.snap.json`, `.png`, `.benchmark.json`,
-    `.witness.json`, `.log`)
+- `__` as the separator (chosen to be unambiguous in filenames)
+- names URL-encoded for filesystem safety
+- missing optional parts collapsed (no trailing `__`)
+- subtype-specific extension (`.snap.json`, `.png`, `.benchmark.json`,
+  `.witness.json`, `.log`)
 
 Example:
 
@@ -130,21 +130,21 @@ but the canonical identity remains the structured value.
 
 To make identity stable across machines and runs:
 
--   **file paths** are repository-relative (relative to the resolved project
-    root for the run; see Resolved Identity Rules) and use forward
-    slashes regardless of OS
--   **suite paths** are ordered arrays; identity is structural, not
-    string-joined
--   **names** are taken verbatim from the source (no automatic
-    transformation), but disallow control characters
--   **params** are canonicalised by sorting object keys, then JSON-stringifying
-    with stable ordering; arrays preserve order
--   **runtime names** are taken from the runtime factory's declared name,
-    not derived from process state
--   **runtime dimensions** are sorted by key before path derivation and
-    serialization
--   **workload names** are taken from the workload definition, not from
-    fixture state
+- **file paths** are repository-relative (relative to the resolved project
+  root for the run; see Resolved Identity Rules) and use forward
+  slashes regardless of OS
+- **suite paths** are ordered arrays; identity is structural, not
+  string-joined
+- **names** are taken verbatim from the source (no automatic
+  transformation), but disallow control characters
+- **params** are canonicalised by sorting object keys, then JSON-stringifying
+  with stable ordering; arrays preserve order
+- **runtime names** are taken from the runtime factory's declared name,
+  not derived from process state
+- **runtime dimensions** are sorted by key before path derivation and
+  serialization
+- **workload names** are taken from the workload definition, not from
+  fixture state
 
 A change in canonicalisation rules is a baseline-breaking change and
 requires a migration; the rules should be considered stable.
@@ -153,18 +153,18 @@ requires a migration; the rules should be considered stable.
 
 Without stable identities, Overkill cannot do these cleanly:
 
--   stale-baseline detection (which baselines no longer correspond to
-    collected tests)
--   deterministic randomization replay (per-test seed derivation needs a
-    stable key)
--   benchmark budget lookup (a budget belongs to a workload + runtime, not a
-    file path)
--   multi-runtime reporting (the same logical test runs in many
-    runtimes)
--   failure artifact naming (witnesses, traces, captures)
--   IDE jump-to-test from a CI log
--   selection by structured filter
--   sharding partitions (sharding hashes the identity)
+- stale-baseline detection (which baselines no longer correspond to
+  collected tests)
+- deterministic randomization replay (per-test seed derivation needs a
+  stable key)
+- benchmark budget lookup (a budget belongs to a workload + runtime, not a
+  file path)
+- multi-runtime reporting (the same logical test runs in many
+  runtimes)
+- failure artifact naming (witnesses, traces, captures)
+- IDE jump-to-test from a CI log
+- selection by structured filter
+- sharding partitions (sharding hashes the identity)
 
 ## Identity Across Renames
 
@@ -173,7 +173,7 @@ renames, test-case renames, parameter-key changes.
 
 Recommended behavior:
 
--   old artifacts become stale rather than being silently reused
+- old artifacts become stale rather than being silently reused
 
 The important point is that the system should make stale state visible rather
 than trying to be clever about rename inference.
@@ -189,9 +189,9 @@ preserves all.
 Artifact identity preserves the attempt so that "first failure" and
 "final outcome" artifacts can coexist:
 
--   `__attempt=0.log` — captured output of the first attempt
--   `__attempt=1.log` — captured output of the retry
--   `__final.log` — symlink or pointer to the canonical final attempt
+- `__attempt=0.log` — captured output of the first attempt
+- `__attempt=1.log` — captured output of the retry
+- `__final.log` — symlink or pointer to the canonical final attempt
 
 ## Identity And Sharding
 
@@ -208,11 +208,11 @@ the same `CaseId` regardless of which shard it ran on.
 A run record includes the resolved set of identities. Replaying a run with
 `overkill replay <run-id>` restores:
 
--   the same selection
--   the same seed (per-test seeds are derived from the run seed plus
-    `CaseId`)
--   the same baseline lookup decisions
--   the same workload parameters
+- the same selection
+- the same seed (per-test seeds are derived from the run seed plus
+  `CaseId`)
+- the same baseline lookup decisions
+- the same workload parameters
 
 This is the practical meaning of [Reproducibility](./reproducibility.md)'s "reproducible run
 intent": the inputs to the plan are stable and the plan is replayable.
@@ -228,26 +228,26 @@ re-parsing the file.
 
 ## Resolved Identity Rules
 
--   Unicode normalisation uses **NFC** before identity hashing and path
-    derivation.
--   Suite path is **explicit only**. Folders contribute to `file`, not to
-    `suite`.
--   In monorepos, `file` remains **repository-relative** to the resolved project
-    root chosen for the run. There is no dedicated package/workspace field.
--   If the runner cannot determine the project root unambiguously, it should
-    fail rather than invent unstable identities.
--   The engine does **not** define a tiny generic `origin` shape right now.
-    Keep engine identity generic and let authoring packages attach origin
-    metadata explicitly.
+- Unicode normalisation uses **NFC** before identity hashing and path
+  derivation.
+- Suite path is **explicit only**. Folders contribute to `file`, not to
+  `suite`.
+- In monorepos, `file` remains **repository-relative** to the resolved project
+  root chosen for the run. There is no dedicated package/workspace field.
+- If the runner cannot determine the project root unambiguously, it should
+  fail rather than invent unstable identities.
+- The engine does **not** define a tiny generic `origin` shape right now.
+  Keep engine identity generic and let authoring packages attach origin
+  metadata explicitly.
 
 ## Influences
 
--   xUnit's class+method identity model
--   Playwright's project + test + step identity
--   Bazel's `//pkg:target` addressing
--   QuickCheck/Hedgehog's witness format
+- xUnit's class+method identity model
+- Playwright's project + test + step identity
+- Bazel's `//pkg:target` addressing
+- QuickCheck/Hedgehog's witness format
 
 ## Sources
 
--   [Playwright — Test reporter API (test ID)](https://playwright.dev/docs/api/class-testcase)
--   [Vitest — `expect.toMatchFileSnapshot` and identity](https://vitest.dev/guide/snapshot.html)
+- [Playwright — Test reporter API (test ID)](https://playwright.dev/docs/api/class-testcase)
+- [Vitest — `expect.toMatchFileSnapshot` and identity](https://vitest.dev/guide/snapshot.html)

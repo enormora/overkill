@@ -45,13 +45,13 @@ Source: [Package Architecture](../architecture/package-architecture.md), [Assert
 A closed enumeration that classifies the testing mode of a `TestNode`. The
 first-party kinds:
 
--   `microtest`
--   `integration`
--   `browser`
--   `benchmark`
--   `type-test`
--   `property`
--   `simulation` (deterministic-simulation tests)
+- `microtest`
+- `integration`
+- `browser`
+- `benchmark`
+- `type-test`
+- `property`
+- `simulation` (deterministic-simulation tests)
 
 Higher-level packages may extend the enumeration with additional kinds via
 the engine's metadata contract; the core kinds are stable.

@@ -28,20 +28,20 @@ It is **not** to claim a secure sandbox against malicious code.
 
 Out of scope for the microtest capability model:
 
--   defense against malicious test code (a malicious test can corrupt the
-    runner's own state, exfiltrate data via permitted channels, or
-    exhaust CPU)
--   defense against compromised dependencies (the dependency loaded into
-    the test process has the same authority the test does)
--   defense against the runner itself being malicious
--   container or VM-level isolation
+- defense against malicious test code (a malicious test can corrupt the
+  runner's own state, exfiltrate data via permitted channels, or
+  exhaust CPU)
+- defense against compromised dependencies (the dependency loaded into
+  the test process has the same authority the test does)
+- defense against the runner itself being malicious
+- container or VM-level isolation
 
 In scope:
 
--   prevention of _accidental_ I/O, network access, and process spawning
--   detection of accidental impurity early enough to remediate
--   keeping a hostile dependency from being able to silently change the
-    test's observable behavior through environmental side effects
+- prevention of _accidental_ I/O, network access, and process spawning
+- detection of accidental impurity early enough to remediate
+- keeping a hostile dependency from being able to silently change the
+  test's observable behavior through environmental side effects
 
 If stronger isolation is needed (untrusted code, multi-tenant CI), the
 appropriate tool is a container, a VM, or a Linux user namespace, not the
@@ -70,69 +70,69 @@ recognise free-form strings.
 
 Strict microtest mode denies, by default:
 
--   filesystem reads outside what Node needs to load the test program
-    (`fs-read` denied except for the loader's needs)
--   filesystem writes (`fs-write` denied except for runner-owned
-    escape hatches; see below)
--   network access (`net` denied)
--   child processes (`child-process` denied)
--   worker threads unless explicitly required by the runner (`worker`
-    denied)
--   addons (`addon` denied), WASI (`wasi` denied), and similar escape
-    hatches
--   `process.exit` (treated as a runner error if the test calls it;
-    `process-exit` capability denied)
--   `console.*` usage is reported as a microtest violation when
-    strict console diagnostics are enabled. `console.*` is **not**
-    listed as a capability above because Node's permission model does
-    not cover it; the boundary is enforced through runtime
-    observability, not permission flags.
+- filesystem reads outside what Node needs to load the test program
+  (`fs-read` denied except for the loader's needs)
+- filesystem writes (`fs-write` denied except for runner-owned
+  escape hatches; see below)
+- network access (`net` denied)
+- child processes (`child-process` denied)
+- worker threads unless explicitly required by the runner (`worker`
+  denied)
+- addons (`addon` denied), WASI (`wasi` denied), and similar escape
+  hatches
+- `process.exit` (treated as a runner error if the test calls it;
+  `process-exit` capability denied)
+- `console.*` usage is reported as a microtest violation when
+  strict console diagnostics are enabled. `console.*` is **not**
+  listed as a capability above because Node's permission model does
+  not cover it; the boundary is enforced through runtime
+  observability, not permission flags.
 
 The first enforcement mechanism is Node's permission model (Node 20+):
 
--   `--permission`
--   `--allow-fs-read`
--   `--allow-fs-write`
--   `--allow-net`
--   `--allow-child-process`
--   `--allow-worker`
+- `--permission`
+- `--allow-fs-read`
+- `--allow-fs-write`
+- `--allow-net`
+- `--allow-child-process`
+- `--allow-worker`
 
 Source: <https://nodejs.org/docs/latest-v20.x/api/permissions.html#file-system-permissions>
 
 How Overkill applies these flags:
 
--   **Path-scoped grants.** `--allow-fs-write=<path>` allows writes
-    only to the listed paths (repeated flags or comma-separated;
-    glob wildcards supported). The runner uses absolute paths.
--   **Non-existent directories require an explicit wildcard.** If a
-    granted directory doesn't exist at spawn time (e.g. a fresh
-    coverage or run-record directory), the path must end in `/*`
-    or Node will only allow writing the directory entry itself,
-    not files inside it.
--   **Permissions do not inherit.** Per Node's documentation, "the model does
-    not inherit to a child node process or a worker thread." Each
-    Overkill worker is spawned as a fresh Node process with its own
-    `--permission` flags; the parent overkill process does not need
-    to run under the permission model itself.
--   **Capability isolation requires `child_process`.** Worker threads
-    share the parent's permission set; subprocesses can each have
-    their own. Microtest workers are therefore separate Node
-    processes (see [Composition Order § Execution-Time Wrapping](../architecture/composition-order.md#execution-time-wrapping)).
--   **Launch path is irrelevant.** `npx overkill ...`, direct
-    invocation, and any other launcher all work identically — the
-    runner spawns workers explicitly with the right flags;
-    inheritance is not assumed.
+- **Path-scoped grants.** `--allow-fs-write=<path>` allows writes
+  only to the listed paths (repeated flags or comma-separated;
+  glob wildcards supported). The runner uses absolute paths.
+- **Non-existent directories require an explicit wildcard.** If a
+  granted directory doesn't exist at spawn time (e.g. a fresh
+  coverage or run-record directory), the path must end in `/*`
+  or Node will only allow writing the directory entry itself,
+  not files inside it.
+- **Permissions do not inherit.** Per Node's documentation, "the model does
+  not inherit to a child node process or a worker thread." Each
+  Overkill worker is spawned as a fresh Node process with its own
+  `--permission` flags; the parent overkill process does not need
+  to run under the permission model itself.
+- **Capability isolation requires `child_process`.** Worker threads
+  share the parent's permission set; subprocesses can each have
+  their own. Microtest workers are therefore separate Node
+  processes (see [Composition Order § Execution-Time Wrapping](../architecture/composition-order.md#execution-time-wrapping)).
+- **Launch path is irrelevant.** `npx overkill ...`, direct
+  invocation, and any other launcher all work identically — the
+  runner spawns workers explicitly with the right flags;
+  inheritance is not assumed.
 
 Caveats `console.*` and symbolic links:
 
--   `console.*` is not covered by the permission model. Strict
-    microtest handling of `console.*` relies on runtime
-    observability, not on permission flags.
--   Symbolic links are followed even when they escape granted paths.
-    The runner resolves granted paths and refuses to start workers
-    if any component is a symlink to outside the run record. The
-    Node documentation warns: "Relative symbolic links may allow access to
-    arbitrary files and directories."
+- `console.*` is not covered by the permission model. Strict
+  microtest handling of `console.*` relies on runtime
+  observability, not on permission flags.
+- Symbolic links are followed even when they escape granted paths.
+  The runner resolves granted paths and refuses to start workers
+  if any component is a symlink to outside the run record. The
+  Node documentation warns: "Relative symbolic links may allow access to
+  arbitrary files and directories."
 
 ## Important Limitation
 
@@ -150,7 +150,7 @@ makes it explicit.
 Some writes are necessary for the runner itself to function. These are
 narrow, runner-owned, and explicit in configuration and diagnostics:
 
--   coverage output directory (when coverage is enabled)
+- coverage output directory (when coverage is enabled)
 
 The runner enforces that these directories are the only paths writable
 under microtest profile, and surfaces unexpected writes as diagnostics.
@@ -168,11 +168,11 @@ or relaxed per individual test running in the same process.
 
 This means:
 
--   tests that share a worker share its capability set
--   if two tests need different capabilities, they must run in different
-    workers or processes
--   the orchestrator routes tests by their declared capabilities; tests
-    with incompatible declarations are scheduled to separate workers
+- tests that share a worker share its capability set
+- if two tests need different capabilities, they must run in different
+  workers or processes
+- the orchestrator routes tests by their declared capabilities; tests
+  with incompatible declarations are scheduled to separate workers
 
 ### Capability Propagation
 
@@ -190,8 +190,8 @@ perform effects whose handles it did not receive.
 
 Two layers of defense, complementary:
 
--   Node permission model — denies the _low-level_ OS access
--   Handle composition — denies the _typed_ effect surface
+- Node permission model — denies the _low-level_ OS access
+- Handle composition — denies the _typed_ effect surface
 
 A microtest written against a narrow injected runtime such as
 `{ clock, random }` literally cannot perform other effects through that
@@ -205,33 +205,33 @@ mode needs a narrow exception when coverage collection is enabled.
 
 Conceptually:
 
--   microtests remain side-effect-restricted
--   coverage output is a runner-owned escape hatch
--   writes are limited to a dedicated coverage artifact directory
--   the exception is explicit in configuration and diagnostics
+- microtests remain side-effect-restricted
+- coverage output is a runner-owned escape hatch
+- writes are limited to a dedicated coverage artifact directory
+- the exception is explicit in configuration and diagnostics
 
 Sources:
 
--   <https://nodejs.org/api/v8.html>
--   <https://nodejs.org/dist/latest/docs/api/cli.html#node_v8_coveragedir>
+- <https://nodejs.org/api/v8.html>
+- <https://nodejs.org/dist/latest/docs/api/cli.html#node_v8_coveragedir>
 
 ## Runner Profiles
 
 Standard public runner profiles (see [Glossary](../reference/glossary.md)):
 
--   `microtest` — default microtest profile; capability-restricted,
-    concurrent-in-process, seeded randomized order
--   `microtest-supervised` — same microtest boundary, but with subprocess
-    supervision for crash-only recovery
--   `microtest-with-coverage` — microtest profile plus the narrow coverage
-    write exception; runs single-threaded when coverage is active (see
-    [Coverage](../architecture/coverage.md))
--   `integration` — allows FS write within a per-test temporary directory,
-    loopback net, and child process use
--   `benchmark` — integration-style capability envelope plus
-    single-worker serialization
--   `simulation` — deterministic-simulation profile, with adapter-owned
-    execution/runtime details
+- `microtest` — default microtest profile; capability-restricted,
+  concurrent-in-process, seeded randomized order
+- `microtest-supervised` — same microtest boundary, but with subprocess
+  supervision for crash-only recovery
+- `microtest-with-coverage` — microtest profile plus the narrow coverage
+  write exception; runs single-threaded when coverage is active (see
+  [Coverage](../architecture/coverage.md))
+- `integration` — allows FS write within a per-test temporary directory,
+  loopback net, and child process use
+- `benchmark` — integration-style capability envelope plus
+  single-worker serialization
+- `simulation` — deterministic-simulation profile, with adapter-owned
+  execution/runtime details
 
 These public names resolve to lower-level capability presets and execution
 strategies. Implementation details (exact permission flag set, exact
@@ -247,18 +247,18 @@ carry some overhead, so profiles should keep it explicit.
 
 Distinguish between:
 
--   leak detection after a test finishes
--   soft timeout detection while a test is still making progress
--   hard forced termination of a hung test
+- leak detection after a test finishes
+- soft timeout detection while a test is still making progress
+- hard forced termination of a hung test
 
 These are not equivalent.
 
 For example:
 
--   never-closing servers, timers, ports, or listeners are detectable as
-    leftover resources via `process._getActiveHandles()` snapshots
--   a `while (true)` loop in the current thread is not reliably
-    recoverable without an external isolation boundary
+- never-closing servers, timers, ports, or listeners are detectable as
+  leftover resources via `process._getActiveHandles()` snapshots
+- a `while (true)` loop in the current thread is not reliably
+  recoverable without an external isolation boundary
 
 That means strict microtest mode does not promise hard hang recovery if
 it runs in-process. If Overkill wants force-quit behavior, that is
@@ -267,14 +267,14 @@ boundary.
 
 Concept direction:
 
--   in-process microtests: allow soft timeouts and optional resource-leak
-    diagnostics, but do not promise hard recovery from CPU-bound hangs
--   supervised microtests: allow crash-only supervision, where a watchdog
-    may kill the disposable test process or worker if it wedges. _This
-    requires subprocess isolation_, since worker threads inherit the
-    parent's permissions and can be CPU-stuck without parent recourse.
--   isolated integration, browser, or benchmark modes: allow a supervisor
-    to terminate a stuck worker or process
+- in-process microtests: allow soft timeouts and optional resource-leak
+  diagnostics, but do not promise hard recovery from CPU-bound hangs
+- supervised microtests: allow crash-only supervision, where a watchdog
+  may kill the disposable test process or worker if it wedges. _This
+  requires subprocess isolation_, since worker threads inherit the
+  parent's permissions and can be CPU-stuck without parent recourse.
+- isolated integration, browser, or benchmark modes: allow a supervisor
+  to terminate a stuck worker or process
 
 This preserves the low-overhead microtest path while still allowing
 stronger guarantees in isolated execution profiles.
@@ -300,22 +300,22 @@ mechanism instead.
 
 ## Cross-References
 
--   [Capability Handles](./capability-handles.md) — language-level capability boundary
-    complementing the OS-level one
--   [Runtime Behavior](../architecture/runtime-behavior.md) — process-wide consequences of the capability
-    profile
--   [Fast Feedback Loops](../architecture/fast-feedback-loops.md) — fast microtest feedback loops are the
-    motivation for the strict profile
--   [Tests As Values](./tests-as-values.md) — microtests as data; macros instead of hooks
--   [Assertions And Results § Protocol Layer](./assertions-and-results.md#protocol-layer-structured-outcomes) — returned outcomes mean less stack-walk
-    overhead in the success path
--   [Glossary](../reference/glossary.md) — canonical definitions of capability profile, runner
-    profile, microtest
+- [Capability Handles](./capability-handles.md) — language-level capability boundary
+  complementing the OS-level one
+- [Runtime Behavior](../architecture/runtime-behavior.md) — process-wide consequences of the capability
+  profile
+- [Fast Feedback Loops](../architecture/fast-feedback-loops.md) — fast microtest feedback loops are the
+  motivation for the strict profile
+- [Tests As Values](./tests-as-values.md) — microtests as data; macros instead of hooks
+- [Assertions And Results § Protocol Layer](./assertions-and-results.md#protocol-layer-structured-outcomes) — returned outcomes mean less stack-walk
+  overhead in the success path
+- [Glossary](../reference/glossary.md) — canonical definitions of capability profile, runner
+  profile, microtest
 
 ## Sources
 
--   [Node permissions](https://nodejs.org/api/permissions.html)
--   [Node V8 coverage](https://nodejs.org/api/v8.html)
--   [Node `NODE_V8_COVERAGE`](https://nodejs.org/dist/latest/docs/api/cli.html#node_v8_coveragedir)
--   [Vitest in-source testing](https://vitest.dev/guide/in-source)
--   [Rust `#[cfg(test)] mod tests`](https://doc.rust-lang.org/book/ch11-03-test-organization.html)
+- [Node permissions](https://nodejs.org/api/permissions.html)
+- [Node V8 coverage](https://nodejs.org/api/v8.html)
+- [Node `NODE_V8_COVERAGE`](https://nodejs.org/dist/latest/docs/api/cli.html#node_v8_coveragedir)
+- [Vitest in-source testing](https://vitest.dev/guide/in-source)
+- [Rust `#[cfg(test)] mod tests`](https://doc.rust-lang.org/book/ch11-03-test-organization.html)

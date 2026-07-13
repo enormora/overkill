@@ -42,7 +42,7 @@ type WorkloadId = {
     readonly params?: Record<string, string>;
 };
 
-type AttemptId = { readonly index: number }; // 0-indexed
+type AttemptId = { readonly index: number; }; // 0-indexed
 
 type ArtifactSubtype =
     | 'content-snapshot'
@@ -91,7 +91,7 @@ type Table = {
     readonly kind: 'table';
     readonly name: string;
     readonly metadata?: Metadata;
-    readonly cases: ReadonlyArray<{ params: Record<string, unknown>; body: TestBody }>;
+    readonly cases: ReadonlyArray<{ params: Record<string, unknown>; body: TestBody; }>;
 };
 
 type Metadata = {
@@ -137,16 +137,16 @@ run inputs unless they were created by engine-owned constructors.
 ```ts
 type TestOutcome = Pass | Fail | Skip | Inconclusive;
 
-type Pass = { kind: 'pass' };
+type Pass = { kind: 'pass'; };
 
 type Fail = {
     kind: 'fail';
     checks: ReadonlyArray<FailedCheck>;
 };
 
-type Skip = { kind: 'skip'; reason: string };
+type Skip = { kind: 'skip'; reason: string; };
 
-type Inconclusive = { kind: 'inconclusive'; reason: string };
+type Inconclusive = { kind: 'inconclusive'; reason: string; };
 
 type FailedCheck = {
     readonly id: string;
@@ -159,16 +159,16 @@ type FailedCheck = {
 };
 
 type Diff =
-    | { kind: 'value'; expected: SerializedValue; actual: SerializedValue }
-    | { kind: 'string'; expected: string; actual: string; hunks: ReadonlyArray<Hunk> }
-    | { kind: 'object'; ops: ReadonlyArray<DiffOperation> }
-    | { kind: 'array'; ops: ReadonlyArray<DiffOperation> }
-    | { kind: 'binary'; expectedSize: number; actualSize: number; expectedHash: string; actualHash: string };
+    | { kind: 'value'; expected: SerializedValue; actual: SerializedValue; }
+    | { kind: 'string'; expected: string; actual: string; hunks: ReadonlyArray<Hunk>; }
+    | { kind: 'object'; ops: ReadonlyArray<DiffOperation>; }
+    | { kind: 'array'; ops: ReadonlyArray<DiffOperation>; }
+    | { kind: 'binary'; expectedSize: number; actualSize: number; expectedHash: string; actualHash: string; };
 
 type DiffOperation =
-    | { operation: 'add'; path: ReadonlyArray<string | number>; value: SerializedValue }
-    | { operation: 'remove'; path: ReadonlyArray<string | number>; value: SerializedValue }
-    | { operation: 'replace'; path: ReadonlyArray<string | number>; from: SerializedValue; to: SerializedValue };
+    | { operation: 'add'; path: ReadonlyArray<string | number>; value: SerializedValue; }
+    | { operation: 'remove'; path: ReadonlyArray<string | number>; value: SerializedValue; }
+    | { operation: 'replace'; path: ReadonlyArray<string | number>; from: SerializedValue; to: SerializedValue; };
 
 type Hunk = {
     readonly line: number;
@@ -249,7 +249,7 @@ type RunRequest = {
         readonly id?: CaseId;
         readonly lastFailed?: boolean;
     };
-    readonly shard?: { readonly index: number; readonly total: number };
+    readonly shard?: { readonly index: number; readonly total: number; };
     readonly profile?: RunnerProfileName;
     readonly execution?: {
         readonly mode?: string; // see runtime-behavior.md
@@ -274,8 +274,8 @@ type RunPlan = {
     readonly capabilityProfile: string;
     readonly baselineUpdateMode: 'none' | 'update' | 'apply' | 'bootstrap' | 'diff';
     readonly metadataResolved: ReadonlyMap<string, Metadata>;
-    readonly loaderConfig: { stripMode: 'strip-only' | 'transform'; sourceMaps: boolean };
-    readonly versions: { engine: string; node: string; packages: ReadonlyMap<string, string> };
+    readonly loaderConfig: { stripMode: 'strip-only' | 'transform'; sourceMaps: boolean; };
+    readonly versions: { engine: string; node: string; packages: ReadonlyMap<string, string>; };
     // debug mode plumbing — see runtime-behavior.md § Test Debug Mode
     readonly debugMode: 'off' | 'all' | 'selected';
     readonly debuggedCases?: ReadonlyArray<CaseId>; // present when debugMode === 'selected'
@@ -286,7 +286,7 @@ type ResolvedRuntime = {
     readonly nodeVersion?: string;
     readonly os?: string;
     readonly machineClass?: string;
-    readonly adapters: ReadonlyArray<{ name: string; version: string }>;
+    readonly adapters: ReadonlyArray<{ name: string; version: string; }>;
 };
 
 type RunRecord = {
@@ -295,7 +295,7 @@ type RunRecord = {
     readonly plan: RunPlan;
     readonly identities: ReadonlyArray<CaseId>;
     readonly runtime: ResolvedRuntime;
-    readonly versions: { engine: string; node: string; packages: ReadonlyMap<string, string> };
+    readonly versions: { engine: string; node: string; packages: ReadonlyMap<string, string>; };
     readonly startedAt: string; // ISO 8601
     readonly result?: RunResult;
 };
@@ -309,9 +309,9 @@ type RunResult = {
         skipped: number;
         inconclusive: number;
     };
-    readonly perTest: ReadonlyArray<{ id: CaseId; outcome: TestOutcome; verdict: string }>;
-    readonly bySuite: Record<string, { discovered: number; executed: number }>;
-    readonly orphans: ReadonlyArray<{ file: string; name: string; kind: 'test' | 'suite' | 'table' }>;
+    readonly perTest: ReadonlyArray<{ id: CaseId; outcome: TestOutcome; verdict: string; }>;
+    readonly bySuite: Record<string, { discovered: number; executed: number; }>;
+    readonly orphans: ReadonlyArray<{ file: string; name: string; kind: 'test' | 'suite' | 'table'; }>;
     readonly runnerErrors: ReadonlyArray<RunnerError>;
     readonly artifacts: ReadonlyArray<ArtifactId>;
     readonly wallTimeMs: number;
@@ -373,11 +373,11 @@ type FileSystem = unknown; // placeholder; out of concept scope
 type HttpClient = unknown; // placeholder; out of concept scope
 
 type RecordedEvent =
-    | { kind: 'clock.now'; at: bigint }
-    | { kind: 'random.uuid'; produced: string }
-    | { kind: 'fs.write'; path: string; bytes: number; contentHash: string }
-    | { kind: 'log.info'; msg: string; fields?: Fields }
-    | { kind: 'http.request'; method: string; url: string; bodyHash?: string };
+    | { kind: 'clock.now'; at: bigint; }
+    | { kind: 'random.uuid'; produced: string; }
+    | { kind: 'fs.write'; path: string; bytes: number; contentHash: string; }
+    | { kind: 'log.info'; msg: string; fields?: Fields; }
+    | { kind: 'http.request'; method: string; url: string; bodyHash?: string; };
 
 type RuntimeSnapshot = unknown; // adapter-specific replay payload
 ```
@@ -419,20 +419,20 @@ type TestDebugArtifact = {
         readonly cachedHit: boolean;
         readonly resolveMs: number;
     }>;
-    readonly heap: { beforeBytes: number; afterBytes: number; peakBytes: number };
+    readonly heap: { beforeBytes: number; afterBytes: number; peakBytes: number; };
     readonly activeHandlesDelta: number;
-    readonly plan?: { declared: number; recorded: number };
+    readonly plan?: { declared: number; recorded: number; };
     readonly stats: DebugStats;
 };
 
 // Discriminated union; mirrors RecordedEvent's pattern.
 type TimelineEntry =
-    | { readonly kind: 'body-start'; readonly at: bigint }
-    | { readonly kind: 'assert'; readonly at: bigint; readonly label?: string; readonly location?: SourceLocation }
-    | { readonly kind: 'require'; readonly at: bigint; readonly label?: string; readonly location?: SourceLocation }
-    | { readonly kind: 'plan'; readonly at: bigint; readonly declared: number }
-    | { readonly kind: 'body-end'; readonly at: bigint }
-    | { readonly kind: 'rejection'; readonly at: bigint; readonly reason: unknown };
+    | { readonly kind: 'body-start'; readonly at: bigint; }
+    | { readonly kind: 'assert'; readonly at: bigint; readonly label?: string; readonly location?: SourceLocation; }
+    | { readonly kind: 'require'; readonly at: bigint; readonly label?: string; readonly location?: SourceLocation; }
+    | { readonly kind: 'plan'; readonly at: bigint; readonly declared: number; }
+    | { readonly kind: 'body-end'; readonly at: bigint; }
+    | { readonly kind: 'rejection'; readonly at: bigint; readonly reason: unknown; };
 
 type DebugStats = {
     readonly assertCount: number;
@@ -449,13 +449,13 @@ type DebugStats = {
 // see failure-artifacts.md § Witnesses And Replay Artifacts
 type WitnessFile = {
     readonly version: 1;
-    readonly producedBy: { library: string; libraryVersion: string };
+    readonly producedBy: { library: string; libraryVersion: string; };
     readonly case: CaseId;
     readonly kind: 'property' | 'simulation';
     readonly seed: bigint;
     readonly shrinkPath?: ReadonlyArray<unknown>;
     readonly counterexample?: unknown;
-    readonly adapter?: { name: string; payload: unknown };
+    readonly adapter?: { name: string; payload: unknown; };
     readonly scenario?: string;
     readonly runtimeSnapshot?: RuntimeSnapshot;
     readonly faultConfiguration?: unknown;
@@ -470,7 +470,7 @@ Canonical: [Failure Artifacts](../authoring/failure-artifacts.md).
 type SimulationAdapter = {
     readonly name: string;
     readonly executionRequirements?: ReadonlyArray<ExecutionRequirement>;
-    start(options: { seed?: bigint; scenario?: string; signal: AbortSignal }): Promise<SimulationSession>;
+    start(options: { seed?: bigint; scenario?: string; signal: AbortSignal; }): Promise<SimulationSession>;
 };
 
 type SimulationSession = {
@@ -491,10 +491,10 @@ type SimulationOptions = {
 type WithSimulation = (adapter: SimulationAdapter, options: SimulationOptions, body: TestBody) => TestBody;
 
 type ExecutionRequirement =
-    | { kind: 'serial' }
-    | { kind: 'single-worker' }
-    | { kind: 'exclusive-resource'; name: string }
-    | { kind: 'startup-budget-ms'; min: number };
+    | { kind: 'serial'; }
+    | { kind: 'single-worker'; }
+    | { kind: 'exclusive-resource'; name: string; }
+    | { kind: 'startup-budget-ms'; min: number; };
 ```
 
 Canonical: [Deterministic Simulation Testing](../authoring/deterministic-simulation.md).
@@ -505,11 +505,11 @@ These names appear in code samples to keep the example readable. They are
 not part of the Overkill API surface; treat them as `unknown` unless the
 sample explicitly defines them.
 
--   `User`, `UserInput`, `Saved` — appear in [Capability Handles](../authoring/capability-handles.md)'s
-    illustrative `saveUser` example
--   `arbitrary.user`, `arbitrary.bytes`, `gen.user` — placeholder generator
-    references in property-test snippets
--   `relation`, `differential`, `linearizability`, `browserBenchmark`,
-    `slo()` — settled helper names for higher-layer families; owning
-    documentation defines the package home and concept-level semantics, but
-    this index does not own their full signatures
+- `User`, `UserInput`, `Saved` — appear in [Capability Handles](../authoring/capability-handles.md)'s
+  illustrative `saveUser` example
+- `arbitrary.user`, `arbitrary.bytes`, `gen.user` — placeholder generator
+  references in property-test snippets
+- `relation`, `differential`, `linearizability`, `browserBenchmark`,
+  `slo()` — settled helper names for higher-layer families; owning
+  documentation defines the package home and concept-level semantics, but
+  this index does not own their full signatures

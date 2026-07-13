@@ -85,12 +85,12 @@ export const spec = suite('saveUser', [
 
 Key properties:
 
--   handles are typed values, not modules patched at runtime
--   the recording is structured data, asserted with normal equality
--   determinism is built in: `virtualClock` and `seededRandom` reproduce
-    bit-for-bit
--   the test reads as a transcript: input + runtime → output + effect log
--   no `jest.mock`, no `vi.spyOn`, no patching, no restore registry
+- handles are typed values, not modules patched at runtime
+- the recording is structured data, asserted with normal equality
+- determinism is built in: `virtualClock` and `seededRandom` reproduce
+  bit-for-bit
+- the test reads as a transcript: input + runtime → output + effect log
+- no `jest.mock`, no `vi.spyOn`, no patching, no restore registry
 
 ## Why This Is Better Than Mocking
 
@@ -161,9 +161,9 @@ This does **not** mean Overkill must ship a first-party world package or
 predefined application runtime.
 The current concept direction is:
 
--   document the pattern clearly
--   make custom handles easy to author
--   keep Overkill itself on the testing side of the production/test boundary
+- document the pattern clearly
+- make custom handles easy to author
+- keep Overkill itself on the testing side of the production/test boundary
 
 This is _not_ a service-locator. There is no global lookup. The handles are
 parameters. A test in microtest profile can construct a runtime with only
@@ -173,16 +173,16 @@ parameters. A test in microtest profile can construct a runtime with only
 
 A recording handle does two things:
 
-1.  Implements the interface (in-memory, deterministic).
-2.  Records every invocation as a typed event in an in-memory log.
+1. Implements the interface (in-memory, deterministic).
+2. Records every invocation as a typed event in an in-memory log.
 
 ```ts
 type RecordedEvent =
-    | { kind: 'clock.now'; at: bigint }
-    | { kind: 'random.uuid'; produced: string }
-    | { kind: 'fs.write'; path: string; bytes: number; contentHash: string }
-    | { kind: 'log.info'; msg: string; fields?: Fields }
-    | { kind: 'http.request'; method: string; url: string; bodyHash?: string };
+    | { kind: 'clock.now'; at: bigint; }
+    | { kind: 'random.uuid'; produced: string; }
+    | { kind: 'fs.write'; path: string; bytes: number; contentHash: string; }
+    | { kind: 'log.info'; msg: string; fields?: Fields; }
+    | { kind: 'http.request'; method: string; url: string; bodyHash?: string; };
 
 type RecordingRuntime = AppRuntime & {
     recorded(): ReadonlyArray<RecordedEvent>;
@@ -230,15 +230,15 @@ links here rather than restating it.
 
 The two concepts serve different shapes:
 
--   capability handles model **collaborators with multiple methods** — full
-    effect interfaces such as `Clock` with `now`/`sleep`/`monotonic`,
-    `HttpClient` with `request`/`fetch`, `Logger` with `info`/`warn`. A
-    recording handle covers the whole interface; a test asserts on the
-    structured event log.
--   `testDouble()` models **single-function doubles** passed explicitly —
-    application-specific service interfaces, callback parameters,
-    higher-order function arguments. Not part of the standard handle set,
-    and not worth a whole interface.
+- capability handles model **collaborators with multiple methods** — full
+  effect interfaces such as `Clock` with `now`/`sleep`/`monotonic`,
+  `HttpClient` with `request`/`fetch`, `Logger` with `info`/`warn`. A
+  recording handle covers the whole interface; a test asserts on the
+  structured event log.
+- `testDouble()` models **single-function doubles** passed explicitly —
+  application-specific service interfaces, callback parameters,
+  higher-order function arguments. Not part of the standard handle set,
+  and not worth a whole interface.
 
 They compose. A handle's method can be a `testDouble()` for fine-grained
 per-call control: a test might use an injected runtime object for standard
@@ -263,8 +263,8 @@ its injected runtime only contains the handles it asked for.
 
 Two layers of defense:
 
--   Node permission model — denies the _low-level_ OS access
--   Handle composition — denies the _typed_ effect surface
+- Node permission model — denies the _low-level_ OS access
+- Handle composition — denies the _typed_ effect surface
 
 A microtest that constructs a narrow runtime object such as `{ clock, random }`
 literally cannot perform other effects through that object, because the
@@ -301,12 +301,12 @@ reproducible.
 
 Capability handles are not a religion. The following are _not_ required:
 
--   you do not need to wrap pure data structures in handles — `lodash`-like
-    utilities should remain ordinary functions
--   you do not need to pass a runtime object through every function — most internals
-    can stay pure and only the effect-performing edges take a handle
--   you do not need a global "register a capability" container — that is
-    exactly the service-locator pattern this doc rejects
+- you do not need to wrap pure data structures in handles — `lodash`-like
+  utilities should remain ordinary functions
+- you do not need to pass a runtime object through every function — most internals
+  can stay pure and only the effect-performing edges take a handle
+- you do not need a global "register a capability" container — that is
+  exactly the service-locator pattern this doc rejects
 
 A reasonable rule of thumb: any function that, in production, performs I/O,
 reads time, generates randomness, or writes a log takes a handle. Functions
@@ -327,16 +327,16 @@ strictly cheaper at runtime. They also keep the loader hooks discussed in
 
 The current concept is intentionally narrow:
 
--   Overkill documents capability handles as a valid and often good
-    architecture pattern.
--   Overkill does **not** currently ship a first-class `@overkill/world`
-    package or first-party production-facing handle helpers.
--   `testDouble()` remains the main official first-party tool for
-    dependency replacement in tests.
--   Explicit parameter passing is the preferred integration shape for
-    microtests and deterministic simulation.
--   `AsyncLocalStorage` may still be useful for legacy adapters or
-    attribution, but it is not the primary capability-handle story.
+- Overkill documents capability handles as a valid and often good
+  architecture pattern.
+- Overkill does **not** currently ship a first-class `@overkill/world`
+  package or first-party production-facing handle helpers.
+- `testDouble()` remains the main official first-party tool for
+  dependency replacement in tests.
+- Explicit parameter passing is the preferred integration shape for
+  microtests and deterministic simulation.
+- `AsyncLocalStorage` may still be useful for legacy adapters or
+  attribution, but it is not the primary capability-handle story.
 
 Questions such as eager versus lazy recording, reusable scheduler handles,
 or first-party helper packages are not part of the settled concept unless
@@ -344,18 +344,18 @@ the “no Overkill in consumer production code” rule is explicitly reopened.
 
 ## Influences
 
--   Haskell `IO` separation — effects are visible in types
--   ZIO `R` environment — effects are typed dependencies
--   PureScript `Effect` / `Aff` — sync vs async effect distinction
--   Elm `Cmd` / `Sub` — programs return effect descriptions
--   `effect-ts` (TypeScript) — current state of the art for TS effect
-    systems; useful idea donor even if Overkill prefers a lighter shape
--   `splitmix` (Haskell) — splittable PRNGs
+- Haskell `IO` separation — effects are visible in types
+- ZIO `R` environment — effects are typed dependencies
+- PureScript `Effect` / `Aff` — sync vs async effect distinction
+- Elm `Cmd` / `Sub` — programs return effect descriptions
+- `effect-ts` (TypeScript) — current state of the art for TS effect
+  systems; useful idea donor even if Overkill prefers a lighter shape
+- `splitmix` (Haskell) — splittable PRNGs
 
 ## Sources
 
--   [Steele, Lea, Flood — Fast Splittable Pseudorandom Number Generators (OOPSLA 2014)](https://gee.cs.oswego.edu/dl/papers/oopsla14.pdf)
--   [Effect-TS — documentation](https://effect.website)
--   [ZIO Test — Why ZIO Test](https://zio.dev/reference/test/why-zio-test/)
--   [The Elm Architecture](https://guide.elm-lang.org/architecture/)
--   [PureScript — Effect and Aff documentation](https://pursuit.purescript.org/packages/purescript-effect)
+- [Steele, Lea, Flood — Fast Splittable Pseudorandom Number Generators (OOPSLA 2014)](https://gee.cs.oswego.edu/dl/papers/oopsla14.pdf)
+- [Effect-TS — documentation](https://effect.website)
+- [ZIO Test — Why ZIO Test](https://zio.dev/reference/test/why-zio-test/)
+- [The Elm Architecture](https://guide.elm-lang.org/architecture/)
+- [PureScript — Effect and Aff documentation](https://pursuit.purescript.org/packages/purescript-effect)

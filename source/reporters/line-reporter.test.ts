@@ -4,13 +4,13 @@ import type { SinonSpy } from 'sinon';
 import sinon from 'sinon';
 import kleur from 'kleur';
 import figures from 'figures';
+import type { RealTimeReporter } from '../engine/reporter.js';
 import type { LineReporterDependencies } from './line-reporter.js';
 import { createLineReporter } from './line-reporter.js';
-import type { RealTimeReporter } from '../engine/reporter.js';
 
-interface Overrides {
+type Overrides = {
     readonly log?: SinonSpy;
-}
+};
 
 function lineReporterFactory(overrides: Overrides = {}): RealTimeReporter {
     const { log = sinon.fake() } = overrides;
@@ -24,7 +24,7 @@ const infoSymbol = kleur.cyan(figures.info);
 const successSymbol = kleur.green(figures.tick);
 const errorSymbol = kleur.red(figures.cross);
 
-test('reports the start', async () => {
+test('reports the start', async function () {
     const log = sinon.fake();
     const reporter = lineReporterFactory({ log });
     const session = reporter.createSession(42);
@@ -36,16 +36,16 @@ test('reports the start', async () => {
             successCount: 0,
             totalCount: 123,
             completedCount: 0,
-            pendingCount: 0,
+            pendingCount: 0
         },
-        testCaseResults: [],
+        testCaseResults: []
     });
 
     assert.is(log.callCount, 1);
-    assert.equal(log.firstCall.args, [infoSymbol, 'Test run started (0 / 123)']);
+    assert.equal(log.firstCall.args, [ infoSymbol, 'Test run started (0 / 123)' ]);
 });
 
-test('prints a line when the test run progresses with a failed test', async () => {
+test('prints a line when the test run progresses with a failed test', async function () {
     const log = sinon.fake();
     const reporter = lineReporterFactory({ log });
     const session = reporter.createSession(42);
@@ -58,21 +58,21 @@ test('prints a line when the test run progresses with a failed test', async () =
                 successCount: 0,
                 totalCount: 123,
                 completedCount: 0,
-                pendingCount: 0,
+                pendingCount: 0
             },
-            testCaseResults: [],
+            testCaseResults: []
         },
         {
             testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'bar' },
-            result: { status: 'failure', reason: 'the-reason', duration: 100 },
-        },
+            result: { status: 'failure', reason: 'the-reason', duration: 100 }
+        }
     );
 
     assert.is(log.callCount, 1);
-    assert.equal(log.firstCall.args, [`${errorSymbol} foo`]);
+    assert.equal(log.firstCall.args, [ `${errorSymbol} foo` ]);
 });
 
-test('prints a line when the test run progresses with a succeeded test', async () => {
+test('prints a line when the test run progresses with a succeeded test', async function () {
     const log = sinon.fake();
     const reporter = lineReporterFactory({ log });
     const session = reporter.createSession(42);
@@ -85,21 +85,21 @@ test('prints a line when the test run progresses with a succeeded test', async (
                 successCount: 0,
                 totalCount: 123,
                 completedCount: 0,
-                pendingCount: 0,
+                pendingCount: 0
             },
-            testCaseResults: [],
+            testCaseResults: []
         },
         {
             testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'bar' },
-            result: { status: 'success', duration: 100 },
-        },
+            result: { status: 'success', duration: 100 }
+        }
     );
 
     assert.is(log.callCount, 1);
-    assert.equal(log.firstCall.args, [`${successSymbol} foo`]);
+    assert.equal(log.firstCall.args, [ `${successSymbol} foo` ]);
 });
 
-test('prints a three-line summary once the test run finishes', async () => {
+test('prints a three-line summary once the test run finishes', async function () {
     const log = sinon.fake();
     const reporter = lineReporterFactory({ log });
     const session = reporter.createSession(42);
@@ -111,15 +111,15 @@ test('prints a three-line summary once the test run finishes', async () => {
             successCount: 2,
             totalCount: 3,
             completedCount: 3,
-            pendingCount: 0,
+            pendingCount: 0
         },
-        testCaseResults: [],
+        testCaseResults: []
     });
 
     assert.is(log.callCount, 3);
-    assert.equal(log.firstCall.args, [infoSymbol, 'Total: 3']);
-    assert.equal(log.secondCall.args, [successSymbol, 'Succeeded: 2']);
-    assert.equal(log.thirdCall.args, [errorSymbol, 'Failed: 1']);
+    assert.equal(log.firstCall.args, [ infoSymbol, 'Total: 3' ]);
+    assert.equal(log.secondCall.args, [ successSymbol, 'Succeeded: 2' ]);
+    assert.equal(log.thirdCall.args, [ errorSymbol, 'Failed: 1' ]);
 });
 
 test.run();

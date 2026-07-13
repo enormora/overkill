@@ -10,17 +10,17 @@ const packageMetadata = {
     homepage: rootPackageJson.homepage,
     keywords: rootPackageJson.keywords,
     license: rootPackageJson.license,
-    repository: rootPackageJson.repository,
+    repository: rootPackageJson.repository
 };
 
 export const config = {
     registrySettings: {
-        token: process.env.NPM_TOKEN ?? 'packtory-dry-run-token',
+        token: process.env.NPM_TOKEN ?? 'packtory-dry-run-token'
     },
     commonPackageSettings: {
         sourcesFolder: path.join(projectFolder, 'target/build/source'),
         mainPackageJson: rootPackageJson,
-        additionalFiles: [{ sourceFilePath: path.join(projectFolder, 'LICENSE'), targetFilePath: 'LICENSE' }],
+        additionalFiles: [ { sourceFilePath: path.join(projectFolder, 'LICENSE'), targetFilePath: 'LICENSE' } ]
     },
     packages: [
         {
@@ -28,13 +28,13 @@ export const config = {
             entryPoints: [
                 {
                     js: 'packages/engine/entry-point.js',
-                    declarationFile: 'packages/engine/entry-point.d.ts',
-                },
+                    declarationFile: 'packages/engine/entry-point.d.ts'
+                }
             ],
             additionalPackageJsonAttributes: {
                 ...packageMetadata,
-                description: 'Core Overkill engine primitives and execution model.',
-            },
-        },
-    ],
+                description: 'Core Overkill engine primitives and execution model.'
+            }
+        }
+    ]
 };

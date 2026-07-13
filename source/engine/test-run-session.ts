@@ -5,20 +5,20 @@ import { updateTestRunResult, calculateSummary } from './test-run-result.js';
 import type { TestCase } from './test-case.js';
 import type { TestCaseExecutor, TestCaseResult } from './test-case-executor.js';
 
-export interface TestRunSessionProviderDependencies {
+export type TestRunSessionProviderDependencies = {
     readonly testCaseExecutor: TestCaseExecutor;
     readonly reporter: Reporter;
-}
+};
 
-interface TestRunSession {
-    start(): Promise<void>;
-    runSingleTestCase(testCase: TestCase, index: number): Promise<TestCaseResult>;
-    done(testCaseResults: readonly TestCaseResult[]): Promise<TestRunResult>;
-}
+type TestRunSession = {
+    start: () => Promise<void>;
+    runSingleTestCase: (testCase: TestCase, index: number) => Promise<TestCaseResult>;
+    done: (testCaseResults: readonly TestCaseResult[]) => Promise<TestRunResult>;
+};
 
-export interface TestRunSessionProvider {
-    createTestRunSession(sessionId: number, totalCount: number): TestRunSession;
-}
+export type TestRunSessionProvider = {
+    createTestRunSession: (sessionId: number, totalCount: number) => TestRunSession;
+};
 
 export function createTestRunSessionProvider(dependencies: TestRunSessionProviderDependencies): TestRunSessionProvider {
     const { testCaseExecutor, reporter } = dependencies;
@@ -28,7 +28,7 @@ export function createTestRunSessionProvider(dependencies: TestRunSessionProvide
             let currentTestRunResult: TestRunResult = {
                 progress: 'pending',
                 summary: calculateSummary([], totalCount),
-                testCaseResults: [],
+                testCaseResults: []
             };
             const reportingSession = reporter.createSession(sessionId);
 
@@ -56,7 +56,7 @@ export function createTestRunSessionProvider(dependencies: TestRunSessionProvide
                     const finalResult: TestRunResult = {
                         progress: 'completed',
                         summary: calculateSummary(testCaseResults, totalCount),
-                        testCaseResults,
+                        testCaseResults
                     };
 
                     if (isRealTimeReportingSession(reportingSession)) {
@@ -66,8 +66,8 @@ export function createTestRunSessionProvider(dependencies: TestRunSessionProvide
                     }
 
                     return finalResult;
-                },
+                }
             };
-        },
+        }
     };
 }

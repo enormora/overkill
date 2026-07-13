@@ -12,44 +12,44 @@ family. The owning documents named below carry the detailed mechanics.
 
 Microtests are:
 
--   small in scope
--   deterministic
--   local in dependencies
--   side-effect-restricted by default
+- small in scope
+- deterministic
+- local in dependencies
+- side-effect-restricted by default
 
 Typical use:
 
--   pure logic
--   parser behavior
--   data transformation
--   local state transitions
+- pure logic
+- parser behavior
+- data transformation
+- local state transitions
 
 Microtests should not casually depend on:
 
--   filesystem I/O
--   network I/O
--   subprocesses
--   worker orchestration
--   mutable global environment
+- filesystem I/O
+- network I/O
+- subprocesses
+- worker orchestration
+- mutable global environment
 
 ## Integration Tests
 
 Integration tests verify that multiple components cooperate correctly. They may legitimately use:
 
--   filesystem state
--   HTTP or IPC
--   generated fixtures
--   snapshots or baselines
--   external services started locally
+- filesystem state
+- HTTP or IPC
+- generated fixtures
+- snapshots or baselines
+- external services started locally
 
 They need stronger runtime and orchestration support than microtests.
 
 The most repeated integration pattern is an owned fixture or runtime wrapper
 such as:
 
--   start a deterministic app server, yield a base URL, then stop it
--   start a temporary registry, yield auth details, then clean up storage
--   create a page-object runtime and validate it after the test
+- start a deterministic app server, yield a base URL, then stop it
+- start a temporary registry, yield auth details, then clean up storage
+- create a page-object runtime and validate it after the test
 
 That means Overkill should treat typed resource and runtime composition as
 the main integration primitive rather than trying to stretch microtest
@@ -57,9 +57,9 @@ helpers upward.
 
 Integration-style runs may also legitimately use:
 
--   retries
--   richer failure artifacts
--   stability-marked tests
+- retries
+- richer failure artifacts
+- stability-marked tests
 
 Those should remain visible runner concepts rather than hidden defaults.
 
@@ -72,28 +72,28 @@ Playwright replacement.
 
 The central model is runtime-driven execution, often with:
 
--   matrixed runtimes
--   screenshots or structural snapshots
--   process or browser lifecycle
--   richer diagnostics
+- matrixed runtimes
+- screenshots or structural snapshots
+- process or browser lifecycle
+- richer diagnostics
 
 Concrete browser-layer needs include:
 
--   browser-executed microtests or component-style tests
--   page objects as test-facing handles only in richer adapter-driven layers
--   transport-level request and event transcripts
--   explicit attachments such as accessibility scan JSON
--   visual baselines across browser and resolution matrices
+- browser-executed microtests or component-style tests
+- page objects as test-facing handles only in richer adapter-driven layers
+- transport-level request and event transcripts
+- explicit attachments such as accessibility scan JSON
+- visual baselines across browser and resolution matrices
 
 These should be modeled above the engine through browser-oriented runtimes,
 fixtures, and baseline adapters.
 
 The important boundary is:
 
--   Overkill should have a first-party browser-execution story
--   richer end-to-end browser automation should come through integrations or
-    adapters, with Playwright the obvious example, rather than through
-    Overkill reimplementing that entire stack
+- Overkill should have a first-party browser-execution story
+- richer end-to-end browser automation should come through integrations or
+  adapters, with Playwright the obvious example, rather than through
+  Overkill reimplementing that entire stack
 
 ## Baseline-Driven Tests
 
@@ -101,10 +101,10 @@ Some tests compare current output against checked-in baseline artifacts.
 
 Subtypes:
 
--   serialized content snapshots
--   accessibility or structural snapshots
--   terminal rendering baselines
--   screenshot baselines
+- serialized content snapshots
+- accessibility or structural snapshots
+- terminal rendering baselines
+- screenshot baselines
 
 These are usually better suited to integration-oriented packages than to the microtest default.
 
@@ -116,11 +116,11 @@ budgets, baselines, and policies.
 
 Benchmarks may measure:
 
--   runtime
--   throughput
--   latency percentiles
--   responsiveness
--   domain-specific metrics captured during execution
+- runtime
+- throughput
+- latency percentiles
+- responsiveness
+- domain-specific metrics captured during execution
 
 SLO or latency-sensitive checks belong in this family too: benchmarks
 measure, and SLO policies decide whether the measured latency or
@@ -134,10 +134,10 @@ They are a real test family for a TypeScript-first ecosystem, but Overkill shoul
 
 Typical concerns:
 
--   inference behavior
--   overload selection
--   conditional and mapped type behavior
--   public declaration ergonomics
+- inference behavior
+- overload selection
+- conditional and mapped type behavior
+- public declaration ergonomics
 
 They should be able to participate in run planning, reporting, and selection even if the underlying checking engine is external.
 
@@ -150,8 +150,8 @@ search.
 
 The settled package split is:
 
--   `@overkill/property` for generator-driven property testing
--   `@overkill/model` for rule-based/state-machine testing above that core
+- `@overkill/property` for generator-driven property testing
+- `@overkill/model` for rule-based/state-machine testing above that core
 
 Related advanced styles such as metamorphic, differential, and
 linearizability-oriented testing also belong in that higher-layer family.

@@ -1,8 +1,8 @@
 import { test } from 'uvu';
-import { calculateSummary, updateTestRunResult } from './test-run-result.js';
 import * as assert from 'uvu/assert';
+import { calculateSummary, updateTestRunResult } from './test-run-result.js';
 
-test('calculateSummary() returns the correct result when there are no results', () => {
+test('calculateSummary() returns the correct result when there are no results', function () {
     const result = calculateSummary([], 42);
 
     assert.equal(result, {
@@ -10,19 +10,19 @@ test('calculateSummary() returns the correct result when there are no results', 
         successCount: 0,
         totalCount: 42,
         completedCount: 0,
-        pendingCount: 42,
+        pendingCount: 42
     });
 });
 
-test('calculateSummary() returns the correct when there is one success result', () => {
+test('calculateSummary() returns the correct when there is one success result', function () {
     const result = calculateSummary(
         [
             {
                 testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
-                result: { status: 'success', duration: 100 },
-            },
+                result: { status: 'success', duration: 100 }
+            }
         ],
-        42,
+        42
     );
 
     assert.equal(result, {
@@ -30,19 +30,19 @@ test('calculateSummary() returns the correct when there is one success result', 
         successCount: 1,
         totalCount: 42,
         completedCount: 1,
-        pendingCount: 41,
+        pendingCount: 41
     });
 });
 
-test('calculateSummary() returns the correct when there is one failed result', () => {
+test('calculateSummary() returns the correct when there is one failed result', function () {
     const result = calculateSummary(
         [
             {
                 testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
-                result: { status: 'failure', reason: 'the-reason', duration: 100 },
-            },
+                result: { status: 'failure', reason: 'the-reason', duration: 100 }
+            }
         ],
-        42,
+        42
     );
 
     assert.equal(result, {
@@ -50,23 +50,23 @@ test('calculateSummary() returns the correct when there is one failed result', (
         successCount: 0,
         totalCount: 42,
         completedCount: 1,
-        pendingCount: 41,
+        pendingCount: 41
     });
 });
 
-test('calculateSummary() returns the correct when there is one failed and one success result', () => {
+test('calculateSummary() returns the correct when there is one failed and one success result', function () {
     const result = calculateSummary(
         [
             {
                 testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
-                result: { status: 'failure', reason: 'the-reason', duration: 100 },
+                result: { status: 'failure', reason: 'the-reason', duration: 100 }
             },
             {
                 testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'the-suite' },
-                result: { status: 'success', duration: 100 },
-            },
+                result: { status: 'success', duration: 100 }
+            }
         ],
-        42,
+        42
     );
 
     assert.equal(result, {
@@ -74,11 +74,11 @@ test('calculateSummary() returns the correct when there is one failed and one su
         successCount: 1,
         totalCount: 42,
         completedCount: 2,
-        pendingCount: 40,
+        pendingCount: 40
     });
 });
 
-test('updateTestRunResult() updates a given TestRunResult by adding the information of the given TestCaseResult', () => {
+test('updateTestRunResult() updates a given TestRunResult by adding the information of the given TestCaseResult', function () {
     const currentTestRunResult = {
         progress: 'pending',
         summary: {
@@ -86,18 +86,18 @@ test('updateTestRunResult() updates a given TestRunResult by adding the informat
             successCount: 1,
             totalCount: 42,
             completedCount: 1,
-            pendingCount: 41,
+            pendingCount: 41
         },
         testCaseResults: [
             {
                 testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
-                result: { status: 'success', duration: 100 },
-            },
-        ],
+                result: { status: 'success', duration: 100 }
+            }
+        ]
     } as const;
     const newTestCaseResult = {
         testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'the-suite' },
-        result: { status: 'failure', reason: 'the-reason', duration: 50 },
+        result: { status: 'failure', reason: 'the-reason', duration: 50 }
     } as const;
 
     const updatedResult = updateTestRunResult(currentTestRunResult, newTestCaseResult, 42);
@@ -109,18 +109,18 @@ test('updateTestRunResult() updates a given TestRunResult by adding the informat
             successCount: 1,
             totalCount: 42,
             completedCount: 2,
-            pendingCount: 40,
+            pendingCount: 40
         },
         testCaseResults: [
             {
                 testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
-                result: { status: 'success', duration: 100 },
+                result: { status: 'success', duration: 100 }
             },
             {
                 testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'the-suite' },
-                result: { status: 'failure', reason: 'the-reason', duration: 50 },
-            },
-        ],
+                result: { status: 'failure', reason: 'the-reason', duration: 50 }
+            }
+        ]
     });
 });
 

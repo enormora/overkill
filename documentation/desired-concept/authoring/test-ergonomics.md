@@ -23,10 +23,10 @@ test('loads user', async (case) => {
 
 Why `case`:
 
--   more meaningful than `t`
--   shorter than `testContext`
--   does not require inline destructuring by default
--   avoids awkward names like `test.test`
+- more meaningful than `t`
+- shorter than `testContext`
+- does not require inline destructuring by default
+- avoids awkward names like `test.test`
 
 Users can still choose other parameter names locally.
 
@@ -37,10 +37,10 @@ repeats across many real tests.
 
 The strongest candidates are:
 
--   dependency-injected test harnesses
--   interaction transcripts
--   reusable multi-case macros
--   small async-control helpers
+- dependency-injected test harnesses
+- interaction transcripts
+- reusable multi-case macros
+- small async-control helpers
 
 This does **not** justify a broad step/scenario DSL for ordinary
 first-party tests.
@@ -88,10 +88,10 @@ test('passes dry-run by default', async (case) => {
 
 This pattern is common enough to justify first-party support:
 
--   default doubles
--   sparse override support
--   returned subject plus handles
--   interaction assertions on the handles
+- default doubles
+- sparse override support
+- returned subject plus handles
+- interaction assertions on the handles
 
 That is broad enough to be a first-party concept rather than a local style.
 
@@ -109,16 +109,16 @@ const renderAccountPage = defineHarness(async (overrides) => {
 
     return {
         rendered,
-        loadAccount,
+        loadAccount
     };
 });
 ```
 
 The important part is not the exact overload list. The important part is:
 
--   object form for common dependency harnesses
--   function form for advanced or async harnesses
--   no hidden container behavior
+- object form for common dependency harnesses
+- function form for advanced or async harnesses
+- no hidden container behavior
 
 ## Interaction Transcripts
 
@@ -167,7 +167,7 @@ const events = recordEvents(emitter, {
             emitter.off('start', onStart);
             emitter.off('done', onDone);
         };
-    },
+    }
 });
 ```
 
@@ -179,15 +179,15 @@ const events = recordEvents(button, {
         const onClick = (event) => record(event.type);
         button.addEventListener('click', onClick);
         return () => button.removeEventListener('click', onClick);
-    },
+    }
 });
 ```
 
 The concept should be:
 
--   one transcript model
--   multiple adapters
--   no assumption that every source is a Node `EventEmitter`
+- one transcript model
+- multiple adapters
+- no assumption that every source is a Node `EventEmitter`
 
 ## Reusable Multi-Case Macros
 
@@ -197,9 +197,9 @@ return a whole suite tree rather than only one test.
 
 This is especially justified for:
 
--   schema field matrices
--   parser cases
--   reusable law or contract checks
+- schema field matrices
+- parser cases
+- reusable law or contract checks
 
 Example direction:
 
@@ -237,11 +237,11 @@ in [Tests As Values](./tests-as-values.md). This doc only keeps the
 ergonomic justification for using macros to remove repeated local
 choreography.
 
--   generated tests must have strong explicit names
--   helper failures and definition-site metadata should point back to the
-    user-authored macro application callsite where practical
--   the first-party concept should care about stack quality, not only about
-    case expansion
+- generated tests must have strong explicit names
+- helper failures and definition-site metadata should point back to the
+  user-authored macro application callsite where practical
+- the first-party concept should care about stack quality, not only about
+  case expansion
 
 This matters especially for schema, parser, and law-style generated suites,
 where failures must still point back to the meaningful authored callsite.
@@ -253,23 +253,23 @@ set of queue-control helpers.
 
 Recommended helpers:
 
--   `case.flushAsync()`
--   `case.microtasks()`
--   `case.immediate()`
+- `case.flushAsync()`
+- `case.microtasks()`
+- `case.immediate()`
 
 Suggested semantics:
 
--   `case.microtasks()` drains the current microtask queue once. Use it when
-    the code under test schedules follow-up work with `Promise.resolve()`,
-    `queueMicrotask`, or an already-resolved async continuation.
--   `case.immediate()` yields one event-loop turn. Use it when the code under
-    test crosses a macrotask boundary (`setImmediate`, message channel,
-    stream callback, next-turn event dispatch) and a microtask flush is not
-    enough.
--   `case.flushAsync()` is the bounded "settle what is already in flight"
-    helper. It repeatedly yields through the relevant queue boundaries until
-    the currently scheduled async work has drained, or until a small safety
-    limit is hit so the helper cannot spin forever on a live loop.
+- `case.microtasks()` drains the current microtask queue once. Use it when
+  the code under test schedules follow-up work with `Promise.resolve()`,
+  `queueMicrotask`, or an already-resolved async continuation.
+- `case.immediate()` yields one event-loop turn. Use it when the code under
+  test crosses a macrotask boundary (`setImmediate`, message channel,
+  stream callback, next-turn event dispatch) and a microtask flush is not
+  enough.
+- `case.flushAsync()` is the bounded "settle what is already in flight"
+  helper. It repeatedly yields through the relevant queue boundaries until
+  the currently scheduled async work has drained, or until a small safety
+  limit is hit so the helper cannot spin forever on a live loop.
 
 These are useful because they do **not** require global time monkey
 patching or a mandatory production-side clock abstraction.
@@ -279,11 +279,11 @@ dance found in controller, state-machine, and lock tests.
 
 Typical use:
 
--   `microtasks()` for promise-chains and "one more await" state updates
--   `immediate()` for observer/event-loop handoff where work lands on the
-    next turn rather than the current microtask queue
--   `flushAsync()` for queue-driven components where the test wants the
-    currently-triggered cascade to settle before asserting
+- `microtasks()` for promise-chains and "one more await" state updates
+- `immediate()` for observer/event-loop handoff where work lands on the
+  next turn rather than the current microtask queue
+- `flushAsync()` for queue-driven components where the test wants the
+  currently-triggered cascade to settle before asserting
 
 This should stay intentionally small. The first-party concept does not need
 an exhaustive scheduler DSL; it needs a few helpers that replace ad-hoc
@@ -309,9 +309,9 @@ test('logs fire-and-forget rejection', async (case) => {
 
 The important promise:
 
--   start now
--   inspect or assert later
--   avoid manual promise temp-variable choreography
+- start now
+- inspect or assert later
+- avoid manual promise temp-variable choreography
 
 This helper should stay narrowly scoped and clearly documented as advanced.
 
@@ -319,10 +319,10 @@ This helper should stay narrowly scoped and clearly documented as advanced.
 
 Overkill should **not** add:
 
--   a large first-party step/scenario DSL
--   a broad fake-time abstraction that assumes production-side clock handles
--   generic snapshot ergonomics for microtests
--   one-off helpers for every local testing idiom found in one codebase
+- a large first-party step/scenario DSL
+- a broad fake-time abstraction that assumes production-side clock handles
+- generic snapshot ergonomics for microtests
+- one-off helpers for every local testing idiom found in one codebase
 
 The ergonomics surface should stay small and only cover patterns that repeat
 across many tests.
@@ -331,10 +331,10 @@ across many tests.
 
 The current concept should preserve room for:
 
--   `defineHarness(...)`
--   transcript recording with generic subscription adapters
--   reusable multi-case macros
--   `flushAsync()` / `microtasks()` / `immediate()`
--   `inFlight(...)`
+- `defineHarness(...)`
+- transcript recording with generic subscription adapters
+- reusable multi-case macros
+- `flushAsync()` / `microtasks()` / `immediate()`
+- `inFlight(...)`
 
 These are the ergonomics helpers that belong in the first-party concept.

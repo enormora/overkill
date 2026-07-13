@@ -9,13 +9,13 @@ topic.
 
 Two categories live here:
 
--   **Settled rejections** — directions Overkill has decided against. Each
-    entry names what is rejected, why, where the rejection lives in the
-    canonical documentation, and the accepted alternative.
--   **Deferred with research** (see the section near the end) — directions
-    rejected for the _current_ concept but with a preserved record of the
-    research already done and the conditions under which the decision
-    would be revisited. `@overkill/world` and in-source tests live here.
+- **Settled rejections** — directions Overkill has decided against. Each
+  entry names what is rejected, why, where the rejection lives in the
+  canonical documentation, and the accepted alternative.
+- **Deferred with research** (see the section near the end) — directions
+  rejected for the _current_ concept but with a preserved record of the
+  research already done and the conditions under which the decision
+  would be revisited. `@overkill/world` and in-source tests live here.
 
 ## Authoring And API Shape
 
@@ -344,15 +344,15 @@ demonstrate the general shape works in compiled languages.
 
 Why deferred:
 
--   the JS tooling ecosystem treats tests as file-pattern-based; an
-    in-source model would have to fight that grain
--   production stripping requires a compiler step Overkill does not own;
-    a custom loader or transform fights the Node-builtins-first
-    direction
--   sentinel-based approaches such as `if (import.meta.test) { ... }`
-    put an Overkill-aware import in production code, breaking the
-    "consumer production code does not import Overkill" rule
--   the DX is not clearly better than separate test files
+- the JS tooling ecosystem treats tests as file-pattern-based; an
+  in-source model would have to fight that grain
+- production stripping requires a compiler step Overkill does not own;
+  a custom loader or transform fights the Node-builtins-first
+  direction
+- sentinel-based approaches such as `if (import.meta.test) { ... }`
+  put an Overkill-aware import in production code, breaking the
+  "consumer production code does not import Overkill" rule
+- the DX is not clearly better than separate test files
 
 What would change to revive: the JS shipping and tooling story changes
 materially (e.g. native in-source-test stripping in a runtime), or

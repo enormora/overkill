@@ -6,7 +6,7 @@
     "type": "module",
     "repository": {
         "type": "git",
-        "url": "git+ssh://git@github.com/enormora/overkill.git"
+        "url": "git+https://github.com/enormora/overkill.git"
     },
     "keywords": [
         "test",
@@ -21,10 +21,9 @@
     "homepage": "https://github.com/enormora/overkill#readme",
     "scripts": {
         "compile": "tsc --build",
-        "eslint": "eslint source --ext '.js,.ts' --cache --cache-location './target/.eslintcache'",
-        "prettier": "prettier '**/*.(yml|json|yaml|md)'",
-        "lint": "npm run eslint && npm run prettier -- --check && ls-lint",
-        "lint:fix": "npm run eslint -- --fix && npm run prettier -- --write",
+        "eslint": "eslint . --cache --cache-location './target/.eslintcache' --cache-strategy content --max-warnings 0",
+        "lint": "npm run eslint && ls-lint",
+        "lint:fix": "npm run eslint -- --fix",
         "packtory:dry-run": "npm run compile && packtory publish",
         "test:unit": "NODE_OPTIONS='--loader ts-node/esm --no-warnings' TS_NODE_PROJECT=source/tsconfig.unit-tests.json uvu 'source' '.*\\.test\\.ts$'"
     },
@@ -34,21 +33,19 @@
         "tslib": "2.8.1"
     },
     "devDependencies": {
+        "@enormora/eslint-config-base": "0.0.51",
+        "@enormora/eslint-config-node": "0.0.37",
+        "@enormora/eslint-config-typescript": "0.0.58",
         "@ls-lint/ls-lint": "2.3.1",
-        "@packtory/cli": "0.0.8",
+        "@packtory/cli": "0.0.65",
         "@types/sinon": "10.0.20",
-        "@typescript-eslint/eslint-plugin": "5.62.0",
-        "@typescript-eslint/parser": "5.62.0",
-        "eslint": "8.57.1",
-        "eslint-config-prettier": "8.10.2",
-        "eslint-import-resolver-typescript": "3.10.1",
-        "eslint-plugin-functional": "5.0.8",
-        "eslint-plugin-import": "2.32.0",
-        "eslint-plugin-prettier": "4.2.5",
-        "prettier": "2.8.8",
+        "eslint": "10.7.0",
         "sinon": "14.0.2",
         "ts-node": "10.9.2",
-        "typescript": "4.9.5",
+        "typescript": "6.0.3",
         "uvu": "0.5.6"
+    },
+    "engines": {
+        "node": "^26"
     }
 }

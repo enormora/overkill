@@ -14,15 +14,15 @@ ad-hoc naming conventions — the metadata-layer expression of
 
 Likely metadata categories:
 
--   **tags** — free-form labels (`'fast'`, `'flaky'`, `'auth'`)
--   **kind** — closed enumeration (see [Glossary § Test Kind](../reference/glossary.md#test-kind))
--   **runtimes** — declared runtime matrix entries
--   **capabilities** — required capability profile
--   **baselines** — baseline subtypes the test consumes
--   **ownership** — domain or team labels (`'@auth-team'`)
--   **stability** — `'stable' | 'flaky' | 'experimental'`
--   **priority** — `'critical' | 'standard' | 'optional'`
--   **debug** — pin [Test Debug Mode](../authoring/debug-mode.md) on for this test or subtree
+- **tags** — free-form labels (`'fast'`, `'flaky'`, `'auth'`)
+- **kind** — closed enumeration (see [Glossary § Test Kind](../reference/glossary.md#test-kind))
+- **runtimes** — declared runtime matrix entries
+- **capabilities** — required capability profile
+- **baselines** — baseline subtypes the test consumes
+- **ownership** — domain or team labels (`'@auth-team'`)
+- **stability** — `'stable' | 'flaky' | 'experimental'`
+- **priority** — `'critical' | 'standard' | 'optional'`
+- **debug** — pin [Test Debug Mode](../authoring/debug-mode.md) on for this test or subtree
 
 ## Concrete Type Sketch
 
@@ -57,24 +57,24 @@ with the default behavior.
 
 Metadata cascades from suite to test, with override semantics:
 
-1.  the file's default-export metadata applies to all tests in the file
-2.  a parent `Suite`'s metadata applies to all children
-3.  a child's metadata overrides the parent on a per-key basis
-4.  set-valued fields (`tags`) merge by union with the parent
-5.  array-valued fields (`runtimes`) merge unless the child sets
-    `replace: true` (rare)
-6.  enum and boolean fields (`kind`, `stability`, `priority`, `debug`) replace
+1. the file's default-export metadata applies to all tests in the file
+2. a parent `Suite`'s metadata applies to all children
+3. a child's metadata overrides the parent on a per-key basis
+4. set-valued fields (`tags`) merge by union with the parent
+5. array-valued fields (`runtimes`) merge unless the child sets
+   `replace: true` (rare)
+6. enum and boolean fields (`kind`, `stability`, `priority`, `debug`) replace
 
 Example:
 
 ```ts
-export const spec = suite('users', { tags: ['auth'], ownership: ['@auth'] }, [
-    test('login', { tags: ['critical'] }, body), // tags = {auth, critical}
+export const spec = suite('users', { tags: [ 'auth' ], ownership: [ '@auth' ] }, [
+    test('login', { tags: [ 'critical' ] }, body), // tags = {auth, critical}
     test('logout', body), // tags = {auth}
-    suite('admin', { tags: ['admin'] }, [
+    suite('admin', { tags: [ 'admin' ] }, [
         // tags = {auth, admin}
-        test('promote', body), // tags = {auth, admin}
-    ]),
+        test('promote', body) // tags = {auth, admin}
+    ])
 ]);
 ```
 
@@ -92,13 +92,13 @@ freeze lives in [Composition Order](./composition-order.md).
 
 Filterable dimensions:
 
--   test id (file, suite path, name, params)
--   file path (glob)
--   tag set (`--tag fast`, `--tag '!flaky'`)
--   metadata fields (`--kind microtest`, `--owner '@auth-team'`)
--   runtime (`--runtime 'browser-*'`)
--   workload (`--workload large`)
--   stability (`--stability stable`)
+- test id (file, suite path, name, params)
+- file path (glob)
+- tag set (`--tag fast`, `--tag '!flaky'`)
+- metadata fields (`--kind microtest`, `--owner '@auth-team'`)
+- runtime (`--runtime 'browser-*'`)
+- workload (`--workload large`)
+- stability (`--stability stable`)
 
 This is the conceptual replacement for relying on `.only`.
 
@@ -137,18 +137,18 @@ Examples:
 
 Rules:
 
--   space is AND (highest precedence after parens)
--   `|` is OR
--   `!` negates a single term
--   parentheses group
--   glob (`:`) supports `*`, `**`, and `?`
--   regex (`~`) is anchored at both ends only when the pattern starts
-    with `^` and ends with `$`
+- space is AND (highest precedence after parens)
+- `|` is OR
+- `!` negates a single term
+- parentheses group
+- glob (`:`) supports `*`, `**`, and `?`
+- regex (`~`) is anchored at both ends only when the pattern starts
+  with `^` and ends with `$`
 
 A programmatic API mirrors the grammar:
 
 ```ts
-runner.run({ filter: { all: [tag('fast'), not(tag('flaky'))] } });
+runner.run({ filter: { all: [ tag('fast'), not(tag('flaky')) ] } });
 ```
 
 Both forms produce the same internal predicate tree.
@@ -157,13 +157,13 @@ Both forms produce the same internal predicate tree.
 
 The replacement for `.only`:
 
--   `--name 'login'` runs tests whose name matches (substring or quoted
-    exact)
--   `--file source/auth/login.test.ts` runs only that file
--   `--id <stable-id>` runs the exact case (IDE integration emits this)
--   `--last-failed` runs tests that failed in the previous run
--   `--watch` reruns the selected suite on file change (uses Node's
-    built-in watcher; see [Runtime Behavior § Watch-Mode Targeting](./runtime-behavior.md#watch-mode-targeting))
+- `--name 'login'` runs tests whose name matches (substring or quoted
+  exact)
+- `--file source/auth/login.test.ts` runs only that file
+- `--id <stable-id>` runs the exact case (IDE integration emits this)
+- `--last-failed` runs tests that failed in the previous run
+- `--watch` reruns the selected suite on file change (uses Node's
+  built-in watcher; see [Runtime Behavior § Watch-Mode Targeting](./runtime-behavior.md#watch-mode-targeting))
 
 These are CLI conveniences over the same selection grammar. None modify
 the test source.
@@ -178,21 +178,21 @@ run record exists, the flag is a usage error rather than a silent no-op.
 
 The metadata is:
 
--   explicit
--   serializable
--   visible to reporters
--   visible to run planning
--   visible to artifact identity _for selection only_
--   stable enough to participate in identity hashing
+- explicit
+- serializable
+- visible to reporters
+- visible to run planning
+- visible to artifact identity _for selection only_
+- stable enough to participate in identity hashing
 
 ## Stability Markers
 
 Overkill distinguishes between:
 
--   `stable` (default) — failures gate
--   `flaky` — the test is suspected to be unstable; this is metadata, not
-    absolution
--   `experimental` — alpha tests still under development
+- `stable` (default) — failures gate
+- `flaky` — the test is suspected to be unstable; this is metadata, not
+  absolution
+- `experimental` — alpha tests still under development
 
 Microtests should not normalize retries or flaky markers. If a microtest is
 flaky, that is a design failure, not an expected state. For integration-style
@@ -220,7 +220,7 @@ Embedders (IDEs, MCP servers, CI tools) construct filters programmatically:
 ```ts
 import { tag, not, kind, file, all, any } from '@overkill/run/filters';
 
-const filter = all([tag('fast'), not(tag('flaky')), any([file('source/auth/**'), file('source/users/**')])]);
+const filter = all([ tag('fast'), not(tag('flaky')), any([ file('source/auth/**'), file('source/users/**') ]) ]);
 
 await runner.run({ filter });
 ```
@@ -229,7 +229,7 @@ The CLI grammar is sugar over this API; both produce identical predicates.
 
 ## Sources
 
--   [Pytest — markers](https://docs.pytest.org/en/stable/how-to/mark.html)
--   [JUnit5 — Tags and Filtering](https://junit.org/junit5/docs/current/user-guide/#writing-tests-tagging-and-filtering)
--   [Bazel — `tags` attribute](https://bazel.build/reference/be/common-definitions#common-attributes-tests)
--   [Playwright — projects and grep](https://playwright.dev/docs/test-projects)
+- [Pytest — markers](https://docs.pytest.org/en/stable/how-to/mark.html)
+- [JUnit5 — Tags and Filtering](https://junit.org/junit5/docs/current/user-guide/#writing-tests-tagging-and-filtering)
+- [Bazel — `tags` attribute](https://bazel.build/reference/be/common-definitions#common-attributes-tests)
+- [Playwright — projects and grep](https://playwright.dev/docs/test-projects)

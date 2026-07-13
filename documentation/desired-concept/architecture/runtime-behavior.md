@@ -23,27 +23,27 @@ The runner must decide what happens to that output.
 
 Default policy:
 
--   owned-boundary runs may capture stdout and stderr writes from inside a
-    test body and attribute them to the running test
--   same-process runs should not promise universal transparent capture of
-    every stdout/stderr write path
--   captured output is preserved as a structured failure artifact (see
-    [Failure Artifacts](../authoring/failure-artifacts.md)) — typed as `{ stream: 'stdout' | 'stderr', chunks: ReadonlyArray<{ at: bigint; bytes: Uint8Array }> }`
--   in the default reporter, captured output is **suppressed** for passing
-    tests and **printed** for failing tests immediately after the failure
-    summary
--   capture has a default cap (e.g. 1 MiB per test) beyond which output is
-    truncated with a marker; the cap is configurable
+- owned-boundary runs may capture stdout and stderr writes from inside a
+  test body and attribute them to the running test
+- same-process runs should not promise universal transparent capture of
+  every stdout/stderr write path
+- captured output is preserved as a structured failure artifact (see
+  [Failure Artifacts](../authoring/failure-artifacts.md)) — typed as `{ stream: 'stdout' | 'stderr', chunks: ReadonlyArray<{ at: bigint; bytes: Uint8Array }> }`
+- in the default reporter, captured output is **suppressed** for passing
+  tests and **printed** for failing tests immediately after the failure
+  summary
+- capture has a default cap (e.g. 1 MiB per test) beyond which output is
+  truncated with a marker; the cap is configurable
 
 Override surfaces:
 
--   `--no-capture` — pass everything through live (useful for debugging,
-    `console.log` driven exploration)
--   instrumented profiles may observe `console.*` through Node diagnostics
-    channels even in same-process runs
--   per-test metadata `{ capture: 'live' }` — opt out for one test
--   reporter-level configuration — choose to print captured output for passing
-    tests as well
+- `--no-capture` — pass everything through live (useful for debugging,
+  `console.log` driven exploration)
+- instrumented profiles may observe `console.*` through Node diagnostics
+  channels even in same-process runs
+- per-test metadata `{ capture: 'live' }` — opt out for one test
+- reporter-level configuration — choose to print captured output for passing
+  tests as well
 
 Capture must respect orderings within a test. Captured chunks are timestamped
 at capture time so reporters can render them interleaved with assertion
@@ -51,12 +51,12 @@ events.
 
 Important distinction:
 
--   boundary capture is the preferred default when the runner owns the worker
-    or subprocess
--   same-process console observability may use Node diagnostics channels in
-    modern Node
--   arbitrary raw `process.stdout.write(...)` observation still requires
-    stronger interception if a profile wants it
+- boundary capture is the preferred default when the runner owns the worker
+  or subprocess
+- same-process console observability may use Node diagnostics channels in
+  modern Node
+- arbitrary raw `process.stdout.write(...)` observation still requires
+  stronger interception if a profile wants it
 
 ## CLI Surface
 
@@ -100,11 +100,11 @@ microtests and controlled in higher-layer profiles.
 
 Default policy:
 
--   tests may read `process.env`
--   microtests must not assign to or delete from `process.env`
--   integration-style tests that need environment changes should use an
-    environment resource or per-worker process configuration
--   environment resources must restore previous values when their scope ends
+- tests may read `process.env`
+- microtests must not assign to or delete from `process.env`
+- integration-style tests that need environment changes should use an
+  environment resource or per-worker process configuration
+- environment resources must restore previous values when their scope ends
 
 This is intentionally separate from the capability enumeration. Node's
 permission model does not govern `process.env`, and Overkill can enforce this
@@ -124,13 +124,13 @@ selection as success.
 
 Async failures are messy. The runner's policy:
 
--   any unhandled rejection or uncaught exception emitted **during** a
-    test's `run` (including its async tail until the next test starts) is
-    attributed to that test as a **runner error** (see
-    [Failure Artifacts](../authoring/failure-artifacts.md))
--   any such error after the last test has finished but before the run
-    completes is attributed to the run itself
--   any such error from the runner's own machinery is a runner crash
+- any unhandled rejection or uncaught exception emitted **during** a
+  test's `run` (including its async tail until the next test starts) is
+  attributed to that test as a **runner error** (see
+  [Failure Artifacts](../authoring/failure-artifacts.md))
+- any such error after the last test has finished but before the run
+  completes is attributed to the run itself
+- any such error from the runner's own machinery is a runner crash
 
 Detection uses `process.on('unhandledRejection')` and
 `process.on('uncaughtException')` plus a per-test correlation via
@@ -147,14 +147,14 @@ rather than relying on the global hooks.
 
 `SIGINT` (Ctrl-C) and `SIGTERM` policy:
 
--   first signal: graceful cancellation. The runner emits an `AbortSignal`
-    at the run scope. Each running test sees its `AbortSignal` flip; tests
-    are expected to respect it. Reporters flush partial results.
-    Resources are disposed in reverse acquisition order.
--   second signal within 5 seconds: hard termination. Workers are killed.
-    Partial results are flushed if reachable, otherwise the run exits
-    with a runner-error result.
--   third signal: immediate `process.exit(130)`.
+- first signal: graceful cancellation. The runner emits an `AbortSignal`
+  at the run scope. Each running test sees its `AbortSignal` flip; tests
+  are expected to respect it. Reporters flush partial results.
+  Resources are disposed in reverse acquisition order.
+- second signal within 5 seconds: hard termination. Workers are killed.
+  Partial results are flushed if reachable, otherwise the run exits
+  with a runner-error result.
+- third signal: immediate `process.exit(130)`.
 
 Cancellation propagates via `AbortController` chains, in keeping with
 [Platform-First Implementation Notes](./platform-first-implementation-notes.md). Tests that ignore the abort
@@ -165,12 +165,12 @@ worker (see [Microtests And Capabilities § Hang Detection And Forced Terminatio
 
 When a worker process dies mid-test (segfault, OOM, native-addon crash):
 
--   the test that was running is recorded as a runner error with an
-    explicit `crash` cause
--   tests already enqueued to that worker are reassigned to other workers
--   the worker is replaced from the pool
--   if crashes exceed a budget (default 3 within a run), the run aborts
-    with a runner error to prevent infinite-replay loops
+- the test that was running is recorded as a runner error with an
+  explicit `crash` cause
+- tests already enqueued to that worker are reassigned to other workers
+- the worker is replaced from the pool
+- if crashes exceed a budget (default 3 within a run), the run aborts
+  with a runner error to prevent infinite-replay loops
 
 The crash report includes the captured output, the worker's exit signal,
 core-dump pointer where available, and the test identity that was active.
@@ -181,13 +181,13 @@ only supervision.
 
 Detection:
 
--   on-process: `process._getActiveHandles()` and `_getActiveRequests()`
-    snapshot before and after each test (in supported profiles); reported
-    as resource-leak diagnostics
--   AsyncLocalStorage-instrumented Promise tracking flags Promises whose
-    parent test has completed but which are not yet settled
--   the diagnostic is a _warning_ by default and a _failure_ in strict
-    profiles
+- on-process: `process._getActiveHandles()` and `_getActiveRequests()`
+  snapshot before and after each test (in supported profiles); reported
+  as resource-leak diagnostics
+- AsyncLocalStorage-instrumented Promise tracking flags Promises whose
+  parent test has completed but which are not yet settled
+- the diagnostic is a _warning_ by default and a _failure_ in strict
+  profiles
 
 This is the leak-vs-hang split named in [Microtests And Capabilities](../authoring/microtests-and-capabilities.md).
 The runner reports leaks as structured diagnostics, not as test failures
@@ -220,35 +220,35 @@ the worker.
 
 Override surfaces:
 
--   per-test metadata: `{ timeout: '500ms' }` shortens the soft
-    timeout for one test (cannot extend past the profile's hard
-    timeout)
--   profile configuration overrides set the soft and hard defaults for the
-    whole run
+- per-test metadata: `{ timeout: '500ms' }` shortens the soft
+  timeout for one test (cannot extend past the profile's hard
+  timeout)
+- profile configuration overrides set the soft and hard defaults for the
+  whole run
 
 Soft-timeout mechanics:
 
--   the test receives an `AbortSignal` linked to the run scope plus a
-    per-test deadline; firing the signal is the runner's first
-    cancellation step
--   a test body that does not respect the signal continues running
-    until the hard timeout fires (when available) or the worker is
-    abandoned at run completion
--   a test that exceeds the soft deadline is a **test failure**, not a
-    runner error: the outcome is `fail` with a synthetic `FailedCheck`
-    summarising `"exceeded soft timeout <deadline>"`. CI gates
-    uniformly on test failures (exit code 1). The runner is never the
-    culprit for a slow test — using a slow endpoint or doing extensive
-    I/O in a profile that should not is a test-author error.
+- the test receives an `AbortSignal` linked to the run scope plus a
+  per-test deadline; firing the signal is the runner's first
+  cancellation step
+- a test body that does not respect the signal continues running
+  until the hard timeout fires (when available) or the worker is
+  abandoned at run completion
+- a test that exceeds the soft deadline is a **test failure**, not a
+  runner error: the outcome is `fail` with a synthetic `FailedCheck`
+  summarising `"exceeded soft timeout <deadline>"`. CI gates
+  uniformly on test failures (exit code 1). The runner is never the
+  culprit for a slow test — using a slow endpoint or doing extensive
+  I/O in a profile that should not is a test-author error.
 
 Hard-timeout mechanics:
 
--   only available in profiles that own a worker or subprocess
-    boundary (supervised microtests, integration runs with workers,
-    benchmark, simulation)
--   the watchdog terminates the worker after the hard timeout; the
-    test is recorded as `crashed`
--   crash-budget rules (`Process Crash Handling`) apply
+- only available in profiles that own a worker or subprocess
+  boundary (supervised microtests, integration runs with workers,
+  benchmark, simulation)
+- the watchdog terminates the worker after the hard timeout; the
+  test is recorded as `crashed`
+- crash-budget rules (`Process Crash Handling`) apply
 
 In-process modes intentionally lack hard termination — see
 [Microtests And Capabilities § Hang Detection And Forced Termination](../authoring/microtests-and-capabilities.md#hang-detection-and-forced-termination) for the rationale and supervised-profile alternative.
@@ -288,54 +288,54 @@ work before resource constraints narrow the runnable set.
 
 Rationale for the default:
 
--   microtests should surface accidental coupling early; a concurrent
-    default is better at exposing hidden dependence on ambient global state,
-    fake timers, console ordering assumptions, and resource ownership leaks
--   same-process concurrency preserves the low cold-start budget while still
-    allowing unrelated async work to overlap
--   strict serialization remains useful, but it is a debugging and
-    determinism tool rather than the default shape for the suite
--   tests that genuinely require serialization should declare it through
-    resources or run under `--mode serial`, rather than relying on an
-    implicitly serialized suite
+- microtests should surface accidental coupling early; a concurrent
+  default is better at exposing hidden dependence on ambient global state,
+  fake timers, console ordering assumptions, and resource ownership leaks
+- same-process concurrency preserves the low cold-start budget while still
+  allowing unrelated async work to overlap
+- strict serialization remains useful, but it is a debugging and
+  determinism tool rather than the default shape for the suite
+- tests that genuinely require serialization should declare it through
+  resources or run under `--mode serial`, rather than relying on an
+  implicitly serialized suite
 
 Selection rules:
 
--   the runner profile names a default mode
--   resource execution requirements ([Higher Test Layers § Resource Factories](../authoring/higher-test-layers.md#1-resource-factories-as-the-main-higher-layer-primitive)) can
-    upgrade the mode (e.g. exclusive resource forces serialization within
-    its scope)
--   `--mode` overrides at the CLI
+- the runner profile names a default mode
+- resource execution requirements ([Higher Test Layers § Resource Factories](../authoring/higher-test-layers.md#1-resource-factories-as-the-main-higher-layer-primitive)) can
+  upgrade the mode (e.g. exclusive resource forces serialization within
+  its scope)
+- `--mode` overrides at the CLI
 
 ## Execution Order
 
 Execution order is a scheduling concern, not a property of source-file
 layout. The default scheduler is **seeded random order**:
 
--   after collection, metadata propagation, filtering, and sharding, the
-    selected case set is shuffled by a recorded seed
--   if the user does not pass `--seed <value>`, the runner chooses one,
-    prints it, and writes it into the `RunPlan` and final `RunRecord`
--   rerunning with the same seed and the same filtered case set reproduces
-    the same order
--   resources or execution constraints may force local serialization, but
-    they do not silently disable seeded ordering for unrelated tests
+- after collection, metadata propagation, filtering, and sharding, the
+  selected case set is shuffled by a recorded seed
+- if the user does not pass `--seed <value>`, the runner chooses one,
+  prints it, and writes it into the `RunPlan` and final `RunRecord`
+- rerunning with the same seed and the same filtered case set reproduces
+  the same order
+- resources or execution constraints may force local serialization, but
+  they do not silently disable seeded ordering for unrelated tests
 
 Why randomize by default:
 
--   fixed lexical order hides order-dependent tests for too long
--   a seed gives reproducibility without giving up the ability to shake out
-    unwanted coupling
--   the randomization happens at plan time, so IDEs, replay, and failure
-    artifacts can all report the exact realized order
+- fixed lexical order hides order-dependent tests for too long
+- a seed gives reproducibility without giving up the ability to shake out
+  unwanted coupling
+- the randomization happens at plan time, so IDEs, replay, and failure
+  artifacts can all report the exact realized order
 
 Override surfaces:
 
--   `--seed <value>` selects a specific shuffle
--   `--order lexical` disables shuffling and uses deterministic collection
-    order
--   runner profiles may choose stricter scheduling only where the test
-    family actually requires it (for example benchmarks)
+- `--seed <value>` selects a specific shuffle
+- `--order lexical` disables shuffling and uses deterministic collection
+  order
+- runner profiles may choose stricter scheduling only where the test
+  family actually requires it (for example benchmarks)
 
 Default worker count is `Math.min(cpus().length - 1, 8)` for worker-pool
 modes, capped to keep the host responsive. Override via `--workers N`.
@@ -355,10 +355,10 @@ Baseline CI mode should not assume that the CI system provides a native
 "collect once, distribute exact test plan" primitive. Instead, each shard
 performs deterministic self-planning:
 
--   every shard imports and collects the same candidate test set
--   every shard applies the same filters, seed handling, ordering, and
-    planning rules
--   every shard executes only its own partition from `--shard <i>/<n>`
+- every shard imports and collects the same candidate test set
+- every shard applies the same filters, seed handling, ordering, and
+  planning rules
+- every shard executes only its own partition from `--shard <i>/<n>`
 
 This works with ordinary matrix/parallel-job features in systems such as
 GitHub Actions, GitLab, CircleCI, and Buildkite because it only requires
@@ -366,21 +366,21 @@ shard identity, not a CI-native planner.
 
 Result collection then happens in two layers:
 
--   **baseline shard mode**
-    -   each shard is one independent Overkill run
-    -   each shard produces its own exit code and local reports/artifacts
-    -   any failing shard fails its CI job, so the overall workflow fails
--   **optional merged-results mode**
-    -   each shard emits a machine-readable result artifact
-    -   a later merge step combines those artifacts into one final report
-        and one overall run result
+- **baseline shard mode**
+  - each shard is one independent Overkill run
+  - each shard produces its own exit code and local reports/artifacts
+  - any failing shard fails its CI job, so the overall workflow fails
+- **optional merged-results mode**
+  - each shard emits a machine-readable result artifact
+  - a later merge step combines those artifacts into one final report
+    and one overall run result
 
 The merged overall result should be:
 
--   `pass` only if all shards pass
--   `fail` if any shard reports test failures
--   `error` / `inconclusive` if any shard crashes, is missing, or fails to
-    report a usable result
+- `pass` only if all shards pass
+- `fail` if any shard reports test failures
+- `error` / `inconclusive` if any shard crashes, is missing, or fails to
+  report a usable result
 
 CI integration: GitHub Actions, GitLab, CircleCI, and similar matrix systems
 map directly to `--shard`. Richer workflows may additionally run an explicit
@@ -392,41 +392,41 @@ JSON/HTML report.
 Multi-process execution does **not** change how tests are discovered.
 Collection still happens once in the orchestrator:
 
--   test files are imported in the planning process
--   the full `TestNode` tree is collected
--   metadata resolution, filtering, sharding, and ordering happen there
--   the resulting `RunPlan` is frozen before any worker executes a test
+- test files are imported in the planning process
+- the full `TestNode` tree is collected
+- metadata resolution, filtering, sharding, and ordering happen there
+- the resulting `RunPlan` is frozen before any worker executes a test
 
 Only after that does the runner hand work to workers or subprocesses.
 
 This has two important consequences:
 
--   workers never "register more tests later"
--   sharding is over the collected logical case set, not over whatever a
-    worker happens to discover locally
+- workers never "register more tests later"
+- sharding is over the collected logical case set, not over whatever a
+  worker happens to discover locally
 
 Assignment depends on execution strategy:
 
--   `concurrent-in-process`
-    -   one process owns the whole frozen plan
-    -   cases launch inside that process subject to resource constraints
--   `worker-pool`
-    -   the orchestrator assigns plan items to N workers
-    -   assignment may still group by file when that keeps imports cheaper or
-        respects runtime-sharing boundaries
--   `process-per-file`
-    -   the orchestrator groups the frozen case set by source file
-    -   each subprocess imports exactly the file(s) it was assigned and
-        executes only the planned subset from that file
--   `single-worker-serial`
-    -   one dedicated worker/process executes the whole frozen plan in order
+- `concurrent-in-process`
+  - one process owns the whole frozen plan
+  - cases launch inside that process subject to resource constraints
+- `worker-pool`
+  - the orchestrator assigns plan items to N workers
+  - assignment may still group by file when that keeps imports cheaper or
+    respects runtime-sharing boundaries
+- `process-per-file`
+  - the orchestrator groups the frozen case set by source file
+  - each subprocess imports exactly the file(s) it was assigned and
+    executes only the planned subset from that file
+- `single-worker-serial`
+  - one dedicated worker/process executes the whole frozen plan in order
 
 The worker input is therefore not "go discover tests." It is:
 
--   the frozen run identity (`runId`, seed, selected shard, ordering)
--   assigned case identities
--   runtime / capability / timeout requirements
--   reporter and artifact routing metadata
+- the frozen run identity (`runId`, seed, selected shard, ordering)
+- assigned case identities
+- runtime / capability / timeout requirements
+- reporter and artifact routing metadata
 
 Workers re-import code to obtain executable test-body references, but that
 re-import is execution-time plumbing, not a second discovery authority.
@@ -438,35 +438,35 @@ its shape.
 
 The core rule is the same as for local multi-process runs:
 
--   collection happens once in the coordinator
--   the coordinator freezes a `RunPlan`
--   remote workers execute assigned plan items; they do not recollect or
-    mutate the plan
+- collection happens once in the coordinator
+- the coordinator freezes a `RunPlan`
+- remote workers execute assigned plan items; they do not recollect or
+  mutate the plan
 
 Minimal remote-execution sketch:
 
-1.  The coordinator resolves the full plan locally.
-2.  The plan is partitioned into remote work units.
-3.  Each work unit contains:
-    -   case identities
-    -   ordering / seed data
-    -   required runtime adapters and capability envelope
-    -   artifact upload policy
-4.  A remote worker checks that it can satisfy the requested environment.
-5.  The worker imports the assigned test code, executes only the assigned
-    plan items, and streams structured events/results back.
-6.  The coordinator merges remote results into the same final `RunRecord`
-    shape used for local runs.
+1. The coordinator resolves the full plan locally.
+2. The plan is partitioned into remote work units.
+3. Each work unit contains:
+   - case identities
+   - ordering / seed data
+   - required runtime adapters and capability envelope
+   - artifact upload policy
+4. A remote worker checks that it can satisfy the requested environment.
+5. The worker imports the assigned test code, executes only the assigned
+   plan items, and streams structured events/results back.
+6. The coordinator merges remote results into the same final `RunRecord`
+   shape used for local runs.
 
 The important architectural consequences are:
 
--   remote execution belongs above `@overkill/engine`, in orchestration /
-    coordinator packages
--   stable `CaseId`, serializable `RunPlan`, and structured events are what
-    make remote work possible; terminal output alone is not enough
--   artifact identity cannot depend on which machine executed the case
--   capability and runtime requirements must be declarative enough for a
-    coordinator to decide placement before execution starts
+- remote execution belongs above `@overkill/engine`, in orchestration /
+  coordinator packages
+- stable `CaseId`, serializable `RunPlan`, and structured events are what
+  make remote work possible; terminal output alone is not enough
+- artifact identity cannot depend on which machine executed the case
+- capability and runtime requirements must be declarative enough for a
+  coordinator to decide placement before execution starts
 
 Remote execution should therefore be thought of as "another executor behind
 the same frozen-plan protocol," not as a separate discovery model.
@@ -490,8 +490,8 @@ Watch mode should stay simple by default and lean on Node `--watch`.
 
 Default behavior:
 
--   a watched rerun reruns the selected suite again
--   no custom module-graph logic is assumed in the default concept
+- a watched rerun reruns the selected suite again
+- no custom module-graph logic is assumed in the default concept
 
 If Overkill later adds smarter related-test reruns, that should be treated as
 an optional enhancement rather than the baseline promise.
@@ -512,11 +512,11 @@ affected. Test output is captured as bytes; rendering decodes as UTF-8.
 
 By profile ([Microtests And Capabilities](../authoring/microtests-and-capabilities.md) enumerates):
 
--   microtest: deny FS write, deny net, deny child process, deny worker
--   integration: allow FS write within a per-test temporary directory, allow
-    loopback net, allow child process
--   benchmark: allow as integration but with single-worker
-    serialization
+- microtest: deny FS write, deny net, deny child process, deny worker
+- integration: allow FS write within a per-test temporary directory, allow
+  loopback net, allow child process
+- benchmark: allow as integration but with single-worker
+  serialization
 
 The temporary-directory convention is `os.tmpdir() + /overkill-<run-id>/<test-id>/`,
 created lazily per test, removed on test completion (or run completion in
@@ -527,31 +527,31 @@ debug mode). This is one of the runner-owned escape hatches named in
 
 This document is the runtime counterpart to several others. Cross-links:
 
--   [Microtests And Capabilities](../authoring/microtests-and-capabilities.md) — capability profiles, hang
-    detection, supervision
--   [Failure Artifacts](../authoring/failure-artifacts.md) — output capture, runner-error vs test-failure
-    distinction
--   [Metadata And Selection](./metadata-and-selection.md) — selection rules sharding composes with
--   [Fast Feedback Loops](./fast-feedback-loops.md) — watch mode and cache behavior
--   [Platform-First Implementation Notes](./platform-first-implementation-notes.md) — `AbortSignal`, source maps,
-    `AsyncLocalStorage`
--   [Package Architecture](./package-architecture.md) — execution strategy decisions live in
-    `@overkill/run`; this doc names the resulting runtime defaults
+- [Microtests And Capabilities](../authoring/microtests-and-capabilities.md) — capability profiles, hang
+  detection, supervision
+- [Failure Artifacts](../authoring/failure-artifacts.md) — output capture, runner-error vs test-failure
+  distinction
+- [Metadata And Selection](./metadata-and-selection.md) — selection rules sharding composes with
+- [Fast Feedback Loops](./fast-feedback-loops.md) — watch mode and cache behavior
+- [Platform-First Implementation Notes](./platform-first-implementation-notes.md) — `AbortSignal`, source maps,
+  `AsyncLocalStorage`
+- [Package Architecture](./package-architecture.md) — execution strategy decisions live in
+  `@overkill/run`; this doc names the resulting runtime defaults
 
 ## Resolved Edge Policies
 
--   unhandled async errors are attributed to the originating test when the
-    runner can correlate them through owned task or async-resource context;
-    otherwise they are run-level runner errors labeled as unattributed async
-    leaks. The runner should not guess and blame a sibling test by timing
-    alone.
--   strict microtest profiles elevate leaked resources to failures by
-    default. Integration and benchmark-oriented profiles report leaks as
-    runner diagnostics by default, with policy able to escalate them.
--   monorepo cross-package fixture sharing is only valid through explicit
-    run-scope or shared resource definitions. It is never inferred from
-    package layout or discovery.
--   sharding for dynamic test generation works by collecting once, freezing
-    the resolved identities, and partitioning that collected set. Overkill
-    should not independently recollect dynamic test trees on each shard and
-    hope they match.
+- unhandled async errors are attributed to the originating test when the
+  runner can correlate them through owned task or async-resource context;
+  otherwise they are run-level runner errors labeled as unattributed async
+  leaks. The runner should not guess and blame a sibling test by timing
+  alone.
+- strict microtest profiles elevate leaked resources to failures by
+  default. Integration and benchmark-oriented profiles report leaks as
+  runner diagnostics by default, with policy able to escalate them.
+- monorepo cross-package fixture sharing is only valid through explicit
+  run-scope or shared resource definitions. It is never inferred from
+  package layout or discovery.
+- sharding for dynamic test generation works by collecting once, freezing
+  the resolved identities, and partitioning that collected set. Overkill
+  should not independently recollect dynamic test trees on each shard and
+  hope they match.

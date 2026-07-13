@@ -10,53 +10,53 @@ This document is not a market survey. It records the ideas that materially influ
 
 Useful lessons:
 
--   broad ecosystem adoption makes APIs familiar
--   multiple reporters and snapshots are practical necessities
--   serializer and matcher extension points are valuable
--   stale snapshot detection is a real requirement, not polish
+- broad ecosystem adoption makes APIs familiar
+- multiple reporters and snapshots are practical necessities
+- serializer and matcher extension points are valuable
+- stale snapshot detection is a real requirement, not polish
 
 Costs that Overkill should resist:
 
--   heavy dependence on magic around module behavior
--   encouraging module mocking as the path of least resistance
--   a tendency for the easiest API to hide the most important execution details
+- heavy dependence on magic around module behavior
+- encouraging module mocking as the path of least resistance
+- a tendency for the easiest API to hide the most important execution details
 
 Sources:
 
--   <https://jestjs.io/docs/snapshot-testing>
--   <https://vitest.dev/guide/snapshot.html>
+- <https://jestjs.io/docs/snapshot-testing>
+- <https://vitest.dev/guide/snapshot.html>
 
 ### Mocha and uvu
 
 Useful lessons:
 
--   library-first composition ages well
--   directness matters
--   tiny runners can stay understandable
+- library-first composition ages well
+- directness matters
+- tiny runners can stay understandable
 
 Costs:
 
--   globals and legacy shape in Mocha
--   incomplete modern story around typed runtimes, reporters, and orchestration
--   dormant ecosystem risk in very small tools
+- globals and legacy shape in Mocha
+- incomplete modern story around typed runtimes, reporters, and orchestration
+- dormant ecosystem risk in very small tools
 
 ### node:test, Deno, and Bun
 
 Useful lessons:
 
--   test registration at module load time can keep the authoring model simple
--   direct runtime execution is a credible workflow
--   seeded randomization is normal enough to be a first-class feature
--   single-process execution can still be a good default
+- test registration at module load time can keep the authoring model simple
+- direct runtime execution is a credible workflow
+- seeded randomization is normal enough to be a first-class feature
+- single-process execution can still be a good default
 
 Costs:
 
--   built-in runners tend to optimize for generality rather than a strong opinionated model
+- built-in runners tend to optimize for generality rather than a strong opinionated model
 
 Sources:
 
--   <https://docs.deno.com/api/deno/~/Deno.test>
--   <https://bun.sh/docs/test>
+- <https://docs.deno.com/api/deno/~/Deno.test>
+- <https://bun.sh/docs/test>
 
 ## Browser And Environment-Centric Testing
 
@@ -72,30 +72,30 @@ Two scope axes: `'test'` (default; setup per test) and `'worker'` (setup once pe
 
 What this proves:
 
--   typed parameter-injected DI scales to large codebases
--   coroutine setup/teardown beats paired hooks because teardown can never be orphaned
--   lazy instantiation eliminates "load-everything" overhead
--   `auto: true` fixtures are the right escape hatch for cross-cutting tracing
+- typed parameter-injected DI scales to large codebases
+- coroutine setup/teardown beats paired hooks because teardown can never be orphaned
+- lazy instantiation eliminates "load-everything" overhead
+- `auto: true` fixtures are the right escape hatch for cross-cutting tracing
 
 What this costs:
 
--   wiring is by string literal — VS Code rename does not propagate from `test.extend` keys to consumer destructuring; silent breakage
--   without explicit generics, parameter names are not type-checked at all
--   fixtures cannot be accessed from `describe` for data-driven loops without a `for` outside the suite
--   `auto: true` plus `option: true` plus `scope: 'worker'` overload one tuple shape; the API is dense
+- wiring is by string literal — VS Code rename does not propagate from `test.extend` keys to consumer destructuring; silent breakage
+- without explicit generics, parameter names are not type-checked at all
+- fixtures cannot be accessed from `describe` for data-driven loops without a `for` outside the suite
+- `auto: true` plus `option: true` plus `scope: 'worker'` overload one tuple shape; the API is dense
 
 Overkill direction:
 
--   keep the lazy DAG and coroutine lifecycle
--   replace string-name wiring with **symbol-keyed** fixtures (`fixture(authedApi)` imported, not destructured by name) so refactors propagate
--   keep the tuple form's option pattern but do not normalize `auto: true` as the place to put cross-cutting reporters
+- keep the lazy DAG and coroutine lifecycle
+- replace string-name wiring with **symbol-keyed** fixtures (`fixture(authedApi)` imported, not destructured by name) so refactors propagate
+- keep the tuple form's option pattern but do not normalize `auto: true` as the place to put cross-cutting reporters
 
 #### Projects, Project Dependencies, And Project Teardown
 
 Projects are top-level matrices. Each project has its own `use` (fixtures and configuration), `testMatch`, `testIgnore`, `fullyParallel`, `retries`, and crucially:
 
--   `dependencies: ['setup']` — must complete (and pass) before this project starts
--   `teardown: 'cleanup'` — runs after this project AND its dependents finish
+- `dependencies: ['setup']` — must complete (and pass) before this project starts
+- `teardown: 'cleanup'` — runs after this project AND its dependents finish
 
 The big idea: **setup is a project, not a hook**. `globalSetup` collapses into "a project that other projects depend on." Setup gets traces, fixtures, retries, parallelism, structured reporting "for free" because it is a real test.
 
@@ -105,9 +105,9 @@ This generalizes Buster's `extends` and pytest's session fixtures into one ortho
 
 Three independent layers:
 
-1.  **workers** — per-machine processes (`workers: 4`)
-2.  **fullyParallel** — distributes individual _tests_ to workers, not files; without it, file is the scheduling unit
-3.  **shards** — `--shard=1/3` deterministic partition across machines; `blob` reporter + `merge-reports` post-hoc
+1. **workers** — per-machine processes (`workers: 4`)
+2. **fullyParallel** — distributes individual _tests_ to workers, not files; without it, file is the scheduling unit
+3. **shards** — `--shard=1/3` deterministic partition across machines; `blob` reporter + `merge-reports` post-hoc
 
 The interaction with worker-scoped fixtures: worker fixtures setup _once per worker process_, not per shard. A 4-shard × 4-worker run pays setup cost 16 times. Worker reuse across files happens only when worker-fixture parameters match — implicit invalidation rules that surprise users.
 
@@ -152,10 +152,10 @@ Caveat: soft is bolted on as a flag on the matcher chain, not a different
 type. Overkill should make aggregation explicit rather than a hidden matcher
 suffix. The chosen direction is:
 
--   builder-style `assert.*` for recorded non-gating assertions
--   builder-style `require.*` for gating assertions and narrowing
--   explicit aggregation blocks such as `assert.all(() => { ... })` when a
-    suite wants "run all" semantics
+- builder-style `assert.*` for recorded non-gating assertions
+- builder-style `require.*` for gating assertions and narrowing
+- explicit aggregation blocks such as `assert.all(() => { ... })` when a
+  suite wants "run all" semantics
 
 That keeps the richer result protocol without making soft or non-fail-fast
 behavior the invisible default. See [Assertions And Results](../authoring/assertions-and-results.md) and
@@ -192,25 +192,25 @@ Steps are nestable, named, and appear in the trace and HTML report as the natura
 
 #### What Playwright Does Less Well
 
--   `expect` matchers are narrower than Vitest's; users stack libraries
--   parameter-name injection breaks rename refactors silently
--   project configuration interactions (`fullyParallel`, `dependencies`, `teardown`, `use`, `testMatch`) are non-obvious
--   worker-reuse rules across files depend on worker-fixture parameter equality — surprising invalidation
--   `test.use` for fixture override is positional and untyped against the project's options shape unless authors thread types manually
+- `expect` matchers are narrower than Vitest's; users stack libraries
+- parameter-name injection breaks rename refactors silently
+- project configuration interactions (`fullyParallel`, `dependencies`, `teardown`, `use`, `testMatch`) are non-obvious
+- worker-reuse rules across files depend on worker-fixture parameter equality — surprising invalidation
+- `test.use` for fixture override is positional and untyped against the project's options shape unless authors thread types manually
 
 Sources:
 
--   <https://playwright.dev/docs/test-fixtures>
--   <https://playwright.dev/docs/test-projects>
--   <https://playwright.dev/docs/test-global-setup-teardown>
--   <https://playwright.dev/docs/test-parallel>
--   <https://playwright.dev/docs/test-sharding>
--   <https://playwright.dev/docs/actionability>
--   <https://playwright.dev/docs/test-assertions>
--   <https://playwright.dev/docs/trace-viewer>
--   <https://playwright.dev/docs/api/class-reporter>
--   <https://playwright.dev/docs/test-annotations>
--   <https://playwright.dev/docs/api/class-testinfo>
+- <https://playwright.dev/docs/test-fixtures>
+- <https://playwright.dev/docs/test-projects>
+- <https://playwright.dev/docs/test-global-setup-teardown>
+- <https://playwright.dev/docs/test-parallel>
+- <https://playwright.dev/docs/test-sharding>
+- <https://playwright.dev/docs/actionability>
+- <https://playwright.dev/docs/test-assertions>
+- <https://playwright.dev/docs/trace-viewer>
+- <https://playwright.dev/docs/api/class-reporter>
+- <https://playwright.dev/docs/test-annotations>
+- <https://playwright.dev/docs/api/class-testinfo>
 
 ### Folio
 
@@ -218,16 +218,16 @@ Folio is the Playwright-team predecessor you were referring to. It described its
 
 Its most important lessons for Overkill are:
 
--   the framework should expose a builder layer, not only a finished DSL
--   fixture and runtime composition can produce a custom exported test API
--   higher-level packages can be built from a reusable lower-level engine
+- the framework should expose a builder layer, not only a finished DSL
+- fixture and runtime composition can produce a custom exported test API
+- higher-level packages can be built from a reusable lower-level engine
 
 That maps closely to Overkill’s desired split between `@overkill/engine`, first-party DSLs, and resource packages.
 
 Sources:
 
--   <https://github.com/microsoft/folio>
--   <https://www.infoq.com/news/2020/11/microsoft-playwright-test-runner/>
+- <https://github.com/microsoft/folio>
+- <https://www.infoq.com/news/2020/11/microsoft-playwright-test-runner/>
 
 ## Historical Modular Systems
 
@@ -269,35 +269,35 @@ For ESM with `await import()` and dynamic registration, the explicit-start patte
 
 #### Why Buster Died (And What To Avoid)
 
-1.  **Stuck in beta** — no 1.0 ever shipped. Issue #171 (multi-configuration) milestoned for 1.0 in 2012, archived 2018 unfixed.
-2.  **Capture-server friction** — users had to install a server, run it, capture browsers manually before tests could run. Karma did the capture automatically; PhantomJS made headless trivial. Buster's killer feature became its onboarding cliff.
-3.  **Too modular** — 14+ packages with cross-version drift. A `buster-test` bug needed coordinated releases across half the ecosystem.
-4.  **One-author bottleneck** — Christian Johansen put his maintenance attention into Sinon (which lives) and consultancy work; rough edges (hung hybrid Node+browser test runs) stayed rough.
-5.  **Headless+Jest wave** — 2014-2016 brought Jest, headless Chrome, jsdom. Buster's evented capture model became a curiosity.
+1. **Stuck in beta** — no 1.0 ever shipped. Issue #171 (multi-configuration) milestoned for 1.0 in 2012, archived 2018 unfixed.
+2. **Capture-server friction** — users had to install a server, run it, capture browsers manually before tests could run. Karma did the capture automatically; PhantomJS made headless trivial. Buster's killer feature became its onboarding cliff.
+3. **Too modular** — 14+ packages with cross-version drift. A `buster-test` bug needed coordinated releases across half the ecosystem.
+4. **One-author bottleneck** — Christian Johansen put his maintenance attention into Sinon (which lives) and consultancy work; rough edges (hung hybrid Node+browser test runs) stayed rough.
+5. **Headless+Jest wave** — 2014-2016 brought Jest, headless Chrome, jsdom. Buster's evented capture model became a curiosity.
 
 Survivors: **Sinon.js** (decoupled from Buster years ago, alive at sinonjs.org) and **referee** (assertions, low traffic but in the `sinonjs` org). Concepts (evented reporting, generic-substrate-not-aware-of-tests, multi-environment named groups, static HTML test runners, controllable run start) exist in modern frameworks individually; none recombines them.
 
 #### Lessons For Overkill
 
--   modularity is right, but ship as **one cohesive workspace with one version line** — Buster's lesson, painful version
--   substrate first, test-aware second — keep `@overkill/transport`, `@overkill/event-stream`, `@overkill/identity` substrate generic
--   evented reporting is the right shape, but typed
--   onboarding must be `git clone && npm i && overkill` in 60s — anything else fails
+- modularity is right, but ship as **one cohesive workspace with one version line** — Buster's lesson, painful version
+- substrate first, test-aware second — keep `@overkill/transport`, `@overkill/event-stream`, `@overkill/identity` substrate generic
+- evented reporting is the right shape, but typed
+- onboarding must be `git clone && npm i && overkill` in 60s — anything else fails
 
 #### What To Reject
 
--   Buster also normalized hooks, globals, and Sinon-centric mocking. Overkill rejects all three.
--   the AMD-era extension model (`buster-amd`, `buster-resources`) is obsolete; ESM is the right substrate
+- Buster also normalized hooks, globals, and Sinon-centric mocking. Overkill rejects all three.
+- the AMD-era extension model (`buster-amd`, `buster-resources`) is obsolete; ESM is the right substrate
 
 Sources:
 
--   <https://busterjs.readthedocs.io/en/latest/>
--   <https://busterjs.readthedocs.io/en/v0.6.x/overview/>
--   <http://docs.busterjs.org/en/v0.6.x/developers/architecture/>
--   <https://github.com/busterjs/buster-test>
--   <https://github.com/busterjs/ramp>
--   <https://github.com/busterjs/buster-static>
--   <https://sinonjs.org/>
+- <https://busterjs.readthedocs.io/en/latest/>
+- <https://busterjs.readthedocs.io/en/v0.6.x/overview/>
+- <http://docs.busterjs.org/en/v0.6.x/developers/architecture/>
+- <https://github.com/busterjs/buster-test>
+- <https://github.com/busterjs/ramp>
+- <https://github.com/busterjs/buster-static>
+- <https://sinonjs.org/>
 
 ## Cross-Language Testing Models
 
@@ -307,31 +307,31 @@ The biggest DSL lesson from outside mainstream JS is that the interesting
 design axis is usually **not** whether the surface says `describe()` or
 `context()` or `it()`. The deeper choices are:
 
--   how tests are discovered
--   whether tests are side effects or values
--   whether examples, properties, models, and documentation are separate families
--   whether setup is hidden lifecycle machinery or ordinary composable code
+- how tests are discovered
+- whether tests are side effects or values
+- whether examples, properties, models, and documentation are separate families
+- whether setup is hidden lifecycle machinery or ordinary composable code
 
 Across ecosystems, at least these distinct DSL families show up:
 
--   **function or attribute discovery**
-    -   Rust `#[test]`
-    -   Go `TestXxx`, `BenchmarkXxx`, `FuzzXxx`, `ExampleXxx`
-    -   JUnit `@Test`, `@ParameterizedTest`, `@TestFactory`
--   **registration DSLs**
-    -   Jest, Vitest, Mocha, ExUnit
--   **tests-as-values / tree DSLs**
-    -   Haskell `tasty`
-    -   RackUnit suites as values
--   **submodule-based colocated tests**
-    -   Racket `module+ test`
--   **documentation/example DSLs**
-    -   Go `ExampleXxx`
-    -   Rust doctests
--   **property / model / relation DSLs**
-    -   QuickCheck-style properties
-    -   model-based testing DSLs
-    -   metamorphic relations
+- **function or attribute discovery**
+  - Rust `#[test]`
+  - Go `TestXxx`, `BenchmarkXxx`, `FuzzXxx`, `ExampleXxx`
+  - JUnit `@Test`, `@ParameterizedTest`, `@TestFactory`
+- **registration DSLs**
+  - Jest, Vitest, Mocha, ExUnit
+- **tests-as-values / tree DSLs**
+  - Haskell `tasty`
+  - RackUnit suites as values
+- **submodule-based colocated tests**
+  - Racket `module+ test`
+- **documentation/example DSLs**
+  - Go `ExampleXxx`
+  - Rust doctests
+- **property / model / relation DSLs**
+  - QuickCheck-style properties
+  - model-based testing DSLs
+  - metamorphic relations
 
 Overkill should therefore avoid treating TDD/BDD trees as the only serious
 shape. The architecture should be able to host multiple authoring families
@@ -343,14 +343,14 @@ Go’s table-driven style remains one of the clearest examples of low-magic test
 
 Source:
 
--   <https://go.dev/blog/subtests>
+- <https://go.dev/blog/subtests>
 
 Go also demonstrates a more radical idea that JS frameworks often underuse:
 
--   tests
--   benchmarks
--   fuzz targets
--   executable examples
+- tests
+- benchmarks
+- fuzz targets
+- executable examples
 
 are separate top-level DSL families, not just modifiers on one universal
 `test()` primitive. That separation gives clearer execution policy and
@@ -360,15 +360,15 @@ clearer user intent.
 
 Rust shows two valuable things:
 
--   a simple failure model based on panic or explicit `Result`
--   a compiler-supported path toward custom harnesses
+- a simple failure model based on panic or explicit `Result`
+- a compiler-supported path toward custom harnesses
 
 That supports Overkill’s decision to keep the core outcome contract flexible rather than forcing one assertion system.
 
 Sources:
 
--   <https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html>
--   <https://doc.rust-lang.org/nightly/unstable-book/language-features/custom-test-frameworks.html>
+- <https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html>
+- <https://doc.rust-lang.org/nightly/unstable-book/language-features/custom-test-frameworks.html>
 
 Rust doctests are another important reminder that documentation examples are
 their own DSL family with their own tradeoffs. They should not be modeled as
@@ -376,7 +376,7 @@ ordinary unit tests by default.
 
 Source:
 
--   <https://doc.rust-lang.org/rustdoc/write-documentation/documentation-tests.html>
+- <https://doc.rust-lang.org/rustdoc/write-documentation/documentation-tests.html>
 
 ### Racket and RackUnit
 
@@ -398,8 +398,8 @@ the distinction.
 
 Sources:
 
--   <https://docs.racket-lang.org/guide/Module_Syntax.html>
--   <https://docs.racket-lang.org/raco/test.html>
+- <https://docs.racket-lang.org/guide/Module_Syntax.html>
+- <https://docs.racket-lang.org/raco/test.html>
 
 #### RackUnit Suites As Values
 
@@ -412,7 +412,7 @@ This is very close to the direction documented in
 
 Source:
 
--   <https://docs.racket-lang.org/rackunit/api.html>
+- <https://docs.racket-lang.org/rackunit/api.html>
 
 ### Haskell `tasty`
 
@@ -420,7 +420,7 @@ Source:
 
 The important type is:
 
--   `TestTree`
+- `TestTree`
 
 and providers such as `tasty-hunit`, `tasty-quickcheck`, and others lift
 their specific tests into that tree.
@@ -437,31 +437,31 @@ testGroup "users"
 
 So the structure is:
 
--   named groups
--   leaf tests from different providers
--   one compositional tree consumed by the runner
+- named groups
+- leaf tests from different providers
+- one compositional tree consumed by the runner
 
 This is exactly the kind of lower-level unification Overkill should preserve:
 different authoring families can still lower into one execution tree.
 
 Sources:
 
--   <https://hackage.haskell.org/package/tasty-0.6/docs/Test-Tasty.html>
--   <https://hackage-content.haskell.org/package/tasty-hunit-0.10.2/docs/Test-Tasty-HUnit.html>
+- <https://hackage.haskell.org/package/tasty-0.6/docs/Test-Tasty.html>
+- <https://hackage-content.haskell.org/package/tasty-hunit-0.10.2/docs/Test-Tasty-HUnit.html>
 
 ### Swift Testing
 
 Swift Testing is interesting because it combines:
 
--   parameterization
--   metadata and traits
--   stronger output ergonomics
+- parameterization
+- metadata and traits
+- stronger output ergonomics
 
 The main transferable idea is trait-based test customization. The main non-transferable part is macro-heavy syntax.
 
 Source:
 
--   <https://developer.apple.com/xcode/swift-testing/>
+- <https://developer.apple.com/xcode/swift-testing/>
 
 Swift Testing also proves that macro-based DSLs can make metadata and
 parameterization feel lightweight without requiring a registration-tree API.
@@ -475,12 +475,12 @@ attributes, decorators, and factory hooks instead of nested BDD trees.
 
 Important ideas:
 
--   JUnit `@TestFactory` dynamic tests are produced by factory methods, not
-    only by fixed annotations
--   pytest parametrization and `pytest_generate_tests` push test expansion
-    into decorators and collection hooks
--   both frameworks make metadata and generation first-class without needing
-    `describe()` as the universal grouping concept
+- JUnit `@TestFactory` dynamic tests are produced by factory methods, not
+  only by fixed annotations
+- pytest parametrization and `pytest_generate_tests` push test expansion
+  into decorators and collection hooks
+- both frameworks make metadata and generation first-class without needing
+  `describe()` as the universal grouping concept
 
 This matters for Overkill because it suggests the DSL space is broader than
 "tree of imperative registration calls" versus "flat test functions". There
@@ -488,8 +488,8 @@ is also a serious **factory / generation** axis.
 
 Sources:
 
--   <https://docs.junit.org/5.10.1/user-guide/index.html>
--   <https://pytest.org/en/8.1.x/how-to/parametrize.html>
+- <https://docs.junit.org/5.10.1/user-guide/index.html>
+- <https://pytest.org/en/8.1.x/how-to/parametrize.html>
 
 ### ZIO Test
 
@@ -499,25 +499,25 @@ This is a strong conceptual influence on Overkill’s modifier/trait layer.
 
 Sources:
 
--   <https://zio.dev/reference/test/aspects/>
--   <https://zio.dev/reference/test/why-zio-test/>
+- <https://zio.dev/reference/test/aspects/>
+- <https://zio.dev/reference/test/why-zio-test/>
 
 ## Snapshot And Baseline Systems
 
 Snapshot systems in Jest, Vitest, and Playwright establish several baseline truths:
 
--   snapshots must be reviewable
--   updates must be explicit
--   CI should fail on stale or obsolete entries
--   custom serializers or domain adapters are necessary for real projects
+- snapshots must be reviewable
+- updates must be explicit
+- CI should fail on stale or obsolete entries
+- custom serializers or domain adapters are necessary for real projects
 
 Vitest is especially relevant because it now distinguishes custom serializers from domain-specific snapshot adapters. That supports Overkill’s idea of a broader baseline abstraction instead of a one-size-fits-all snapshot string model.
 
 Sources:
 
--   <https://jestjs.io/docs/snapshot-testing>
--   <https://vitest.dev/guide/snapshot.html>
--   <https://playwright.dev/docs/aria-snapshots>
+- <https://jestjs.io/docs/snapshot-testing>
+- <https://vitest.dev/guide/snapshot.html>
+- <https://playwright.dev/docs/aria-snapshots>
 
 ## Benchmarking And Performance Tooling
 
@@ -527,17 +527,17 @@ JMH’s main lesson is humility: benchmarking requires harness support, controll
 
 The most important JMH concepts for Overkill are:
 
--   **forks** as an explicit isolation boundary
--   **warmup** versus **measurement** iterations
--   parameterized benchmarks
--   distinct run strategies for cold-start versus steady-state questions
+- **forks** as an explicit isolation boundary
+- **warmup** versus **measurement** iterations
+- parameterized benchmarks
+- distinct run strategies for cold-start versus steady-state questions
 
 JMH is also strong evidence that a benchmark DSL should make execution policy
 part of the definition, not an afterthought.
 
 Source:
 
--   <https://github.com/openjdk/jmh>
+- <https://github.com/openjdk/jmh>
 
 ### Criterion.rs
 
@@ -546,18 +546,18 @@ ergonomic and statistically serious.
 
 The most important concepts are:
 
--   benchmark groups
--   benchmark IDs and parameterized cases
--   throughput annotations
--   custom measurement backends
+- benchmark groups
+- benchmark IDs and parameterized cases
+- throughput annotations
+- custom measurement backends
 
 The custom measurement story is especially relevant to Overkill because it
 points toward a benchmark API that is not hard-wired to wall-clock timing.
 
 Sources:
 
--   <https://bheisler.github.io/criterion.rs/book/user_guide/advanced_configuration.html>
--   <https://bheisler.github.io/criterion.rs/book/user_guide/custom_measurements.html>
+- <https://bheisler.github.io/criterion.rs/book/user_guide/advanced_configuration.html>
+- <https://bheisler.github.io/criterion.rs/book/user_guide/custom_measurements.html>
 
 ### BenchmarkDotNet
 
@@ -566,51 +566,51 @@ BenchmarkDotNet contributes a concept Overkill should likely steal directly:
 
 Its useful ideas include:
 
--   `Throughput`, `ColdStart`, and `Monitoring` run strategies
--   explicit launch, warmup, and iteration counts
--   diagnosers and exporters
--   environment comparison as a first-class concern
+- `Throughput`, `ColdStart`, and `Monitoring` run strategies
+- explicit launch, warmup, and iteration counts
+- diagnosers and exporters
+- environment comparison as a first-class concern
 
 That maps well to Overkill's distinction between benchmark shape, execution
 constraints, and reporting.
 
 Sources:
 
--   <https://benchmarkdotnet.org/articles/configs/jobs.html>
--   <https://benchmarkdotnet.org/articles/configs/configs.html>
+- <https://benchmarkdotnet.org/articles/configs/jobs.html>
+- <https://benchmarkdotnet.org/articles/configs/configs.html>
 
 ### pytest-benchmark
 
 pytest-benchmark is valuable less for raw timing and more for its surrounding
 workflow:
 
--   pedantic mode
--   compare mode
--   histograms
--   machine-info hooks
--   structured result export
+- pedantic mode
+- compare mode
+- histograms
+- machine-info hooks
+- structured result export
 
 This is strong support for Overkill's position that benchmarking needs
 comparison/reporting/policy features, not just a timer.
 
 Source:
 
--   <https://pytest-benchmark.readthedocs.io/en/latest/>
+- <https://pytest-benchmark.readthedocs.io/en/latest/>
 
 ### BenchmarkTools.jl
 
 BenchmarkTools is valuable because it models:
 
--   benchmark groups
--   setup and teardown per sample
--   benchmark parameter tuning
--   comparison of benchmark results over time
+- benchmark groups
+- setup and teardown per sample
+- benchmark parameter tuning
+- comparison of benchmark results over time
 
 It also explicitly discusses environmental noise and CPU shielding, which supports Overkill’s decision to treat calibration and normalization as first-class benchmark concerns.
 
 Source:
 
--   <https://juliaci.github.io/BenchmarkTools.jl/stable/manual/>
+- <https://juliaci.github.io/BenchmarkTools.jl/stable/manual/>
 
 ### Hyperfine
 
@@ -619,27 +619,27 @@ the primary use case rather than as an awkward edge case.
 
 Its most relevant concepts are:
 
--   `--warmup`
--   `--setup`
--   `--prepare`
--   `--conclude`
--   `--cleanup`
--   parameter scans
--   easy machine-readable exports
+- `--warmup`
+- `--setup`
+- `--prepare`
+- `--conclude`
+- `--cleanup`
+- parameter scans
+- easy machine-readable exports
 
 These map directly onto Overkill's desired external-process benchmark story.
 
 Source:
 
--   <https://github.com/sharkdp/hyperfine>
+- <https://github.com/sharkdp/hyperfine>
 
 ### Google Benchmark
 
 Google Benchmark is useful as a reference for:
 
--   fixture benchmarks
--   counters and rates
--   benchmark-context metadata
+- fixture benchmarks
+- counters and rates
+- benchmark-context metadata
 
 The counter model is especially relevant because it shows how secondary
 metrics can be first-class reporting citizens rather than comments attached
@@ -647,42 +647,42 @@ to runtime numbers.
 
 Source:
 
--   <https://github.com/google/benchmark/blob/main/docs/user_guide.md>
+- <https://github.com/google/benchmark/blob/main/docs/user_guide.md>
 
 ### Browser Performance Tooling
 
 Browser performance tooling is relevant to Overkill benchmarking because many
 real frontend teams care about:
 
--   frame pacing and jank
--   paint timing
--   responsiveness
--   event-loop blocking
--   bundle-size budgets
+- frame pacing and jank
+- paint timing
+- responsiveness
+- event-loop blocking
+- bundle-size budgets
 
 The key lesson is that these are still benchmark problems, just with a
 browser runtime and richer metric sources.
 
 Two especially relevant influences:
 
--   **WebDriver BiDi**
-    -   important long-term cross-browser automation/control direction
-    -   good fit for portable event-driven browser benchmarking
-    -   not obviously sufficient on its own yet for the deepest
-        engine-specific performance/tracing metrics
--   **Chrome DevTools Protocol**
-    -   exposes performance metrics programmatically
-    -   useful for browser-oriented benchmark adapters
--   **Lighthouse / DevTools performance workflows**
-    -   validate the idea of user-flow and timespan performance analysis
-    -   support the broader concept of workflow benchmarks rather than only
-        single-step microbenchmarks
+- **WebDriver BiDi**
+  - important long-term cross-browser automation/control direction
+  - good fit for portable event-driven browser benchmarking
+  - not obviously sufficient on its own yet for the deepest
+    engine-specific performance/tracing metrics
+- **Chrome DevTools Protocol**
+  - exposes performance metrics programmatically
+  - useful for browser-oriented benchmark adapters
+- **Lighthouse / DevTools performance workflows**
+  - validate the idea of user-flow and timespan performance analysis
+  - support the broader concept of workflow benchmarks rather than only
+    single-step microbenchmarks
 
 Sources:
 
--   <https://www.w3.org/TR/webdriver-bidi/>
--   <https://chromedevtools.github.io/devtools-protocol/tot/Performance/>
--   <https://developer.chrome.com/docs/devtools/performance/overview>
+- <https://www.w3.org/TR/webdriver-bidi/>
+- <https://chromedevtools.github.io/devtools-protocol/tot/Performance/>
+- <https://developer.chrome.com/docs/devtools/performance/overview>
 
 ### Tinybench
 
@@ -690,7 +690,7 @@ Tinybench is a useful reference for JS-specific timing and statistics APIs, but 
 
 Source:
 
--   <https://github.com/tinylibs/tinybench>
+- <https://github.com/tinylibs/tinybench>
 
 ## Property-Based, Model-Based, And Verified Testing
 
@@ -698,30 +698,30 @@ These systems matter because they show that “test runner” can mean more than
 
 Important lessons:
 
--   properties are executable specifications
--   generators and shrinking are core user experience, not add-ons
--   model-based testing can express workflow validity better than brittle examples
--   metamorphic relations are a real alternative to example-by-example
-    oracle assertions
--   testing code itself can be wrong, so richer structure sometimes matters
+- properties are executable specifications
+- generators and shrinking are core user experience, not add-ons
+- model-based testing can express workflow validity better than brittle examples
+- metamorphic relations are a real alternative to example-by-example
+  oracle assertions
+- testing code itself can be wrong, so richer structure sometimes matters
 
 These ideas should shape future Overkill package families even if they do not enter the first default DSL.
 
 Sources:
 
--   Foundational Property-Based Testing: <https://lemonidas.github.io/pdf/Foundational.pdf>
--   Property-based testing of web services from business-rule models: <https://link.springer.com/article/10.1007/s10270-017-0647-0>
--   Improved semantics and implementation through property-based testing with QuickCheck: <https://kar.kent.ac.uk/42307/>
--   Software Testing with QuickCheck: <https://www.researchgate.net/publication/225219256_Software_Testing_with_QuickCheck>
--   DSL Composition for model-based test generation: <https://eceasst.org/index.php/eceasst/article/view/1579>
+- Foundational Property-Based Testing: <https://lemonidas.github.io/pdf/Foundational.pdf>
+- Property-based testing of web services from business-rule models: <https://link.springer.com/article/10.1007/s10270-017-0647-0>
+- Improved semantics and implementation through property-based testing with QuickCheck: <https://kar.kent.ac.uk/42307/>
+- Software Testing with QuickCheck: <https://www.researchgate.net/publication/225219256_Software_Testing_with_QuickCheck>
+- DSL Composition for model-based test generation: <https://eceasst.org/index.php/eceasst/article/view/1579>
 
 ## Node Capability Model
 
 Node’s permission model is highly relevant for Overkill microtests:
 
--   it is stable in current Node
--   it can deny filesystem, network, child processes, workers, addons, WASI, and inspector
--   Node explicitly describes it as a “seat belt” rather than a hostile-code sandbox
+- it is stable in current Node
+- it can deny filesystem, network, child processes, workers, addons, WASI, and inspector
+- Node explicitly describes it as a “seat belt” rather than a hostile-code sandbox
 
 This is close to Overkill’s needs. It supports accidental-impurity prevention without overclaiming security guarantees.
 
@@ -729,32 +729,32 @@ Coverage is the key complication: Node’s V8 coverage flow still writes to disk
 
 Sources:
 
--   <https://nodejs.org/api/permissions.html>
--   <https://nodejs.org/api/v8.html>
--   <https://nodejs.org/dist/latest/docs/api/cli.html#node_v8_coveragedir>
+- <https://nodejs.org/api/permissions.html>
+- <https://nodejs.org/api/v8.html>
+- <https://nodejs.org/dist/latest/docs/api/cli.html#node_v8_coveragedir>
 
 ## Research Conclusions
 
 The main conclusions for Overkill are:
 
--   keep the core small and event-driven
--   do not assume TDD/BDD registration trees are the only serious DSL shape
--   support multiple authoring families that lower into one engine model
--   let microtests and integration tests have different default capability models
--   prefer explicit typed context over hidden fixture lookup
--   adopt a first-class modifier or trait model for cross-cutting behavior
--   treat baselines as a broader concept than string snapshots
--   treat benchmarking as its own package family
--   absorb benchmark concepts such as benchmark groups, warmup, forks,
-    diagnosers, parameter scans, setup/prepare/cleanup phases, and custom
-    measurements rather than exposing only a timer loop
--   treat browser performance metrics and bundle-size budgets as natural
-    extensions of the benchmark family
--   keep browser benchmark collection backend-agnostic: BiDi where possible,
-    CDP/Lighthouse where deeper metric access is required
--   keep room for tests-as-values, property DSLs, model/state-machine DSLs,
-    and documentation/example test DSLs
--   explore future DSLs and package families without forcing them into the first default runner
+- keep the core small and event-driven
+- do not assume TDD/BDD registration trees are the only serious DSL shape
+- support multiple authoring families that lower into one engine model
+- let microtests and integration tests have different default capability models
+- prefer explicit typed context over hidden fixture lookup
+- adopt a first-class modifier or trait model for cross-cutting behavior
+- treat baselines as a broader concept than string snapshots
+- treat benchmarking as its own package family
+- absorb benchmark concepts such as benchmark groups, warmup, forks,
+  diagnosers, parameter scans, setup/prepare/cleanup phases, and custom
+  measurements rather than exposing only a timer loop
+- treat browser performance metrics and bundle-size budgets as natural
+  extensions of the benchmark family
+- keep browser benchmark collection backend-agnostic: BiDi where possible,
+  CDP/Lighthouse where deeper metric access is required
+- keep room for tests-as-values, property DSLs, model/state-machine DSLs,
+  and documentation/example test DSLs
+- explore future DSLs and package families without forcing them into the first default runner
 
 ## Influences
 
@@ -769,58 +769,58 @@ say so.
 
 ### Testing And DSL Design
 
--   **AVA** — macros as a serious reuse model rather than a novelty;
-    assertion-count discipline and failure on zero assertions as a quality
-    signal.
--   **Swift Testing** — the explicit split between ordinary assertions and
-    gating checks inspired Overkill's `assert` / `require` distinction.
--   **Haskell `tasty`** — tests as explicit values and unified trees consumed
-    by one runner.
--   **RackUnit / Racket** — tests as suites-as-values and the broader idea
-    that authoring does not need to begin from side-effectful registration.
--   **Rust** — structured test outcomes and the idea that throwing/panic-style
-    tests can coexist with richer result models.
+- **AVA** — macros as a serious reuse model rather than a novelty;
+  assertion-count discipline and failure on zero assertions as a quality
+  signal.
+- **Swift Testing** — the explicit split between ordinary assertions and
+  gating checks inspired Overkill's `assert` / `require` distinction.
+- **Haskell `tasty`** — tests as explicit values and unified trees consumed
+  by one runner.
+- **RackUnit / Racket** — tests as suites-as-values and the broader idea
+  that authoring does not need to begin from side-effectful registration.
+- **Rust** — structured test outcomes and the idea that throwing/panic-style
+  tests can coexist with richer result models.
 
 ### Doubles And Interaction Testing
 
--   **Sinon** — strong direct introspection on doubles (`callCount`,
-    `firstCall`, ordering); small behavior helpers such as `returns`,
-    `resolves`, `rejects`, `throws`. Overkill intentionally borrows these
-    strengths while rejecting the larger surface and patching culture.
--   **testdouble.js** — useful precedent for argument-based behavior
-    definitions such as `when(...)`.
+- **Sinon** — strong direct introspection on doubles (`callCount`,
+  `firstCall`, ordering); small behavior helpers such as `returns`,
+  `resolves`, `rejects`, `throws`. Overkill intentionally borrows these
+  strengths while rejecting the larger surface and patching culture.
+- **testdouble.js** — useful precedent for argument-based behavior
+  definitions such as `when(...)`.
 
 ### Property, Model, And Advanced Testing
 
--   **QuickCheck and related property-testing work** — the importance of
-    generators, shrinking, and properties as a distinct testing family.
--   **Model-based and metamorphic testing literature** — the idea that
-    relation-based checks matter more than surface-level DSL style in
-    advanced testing.
+- **QuickCheck and related property-testing work** — the importance of
+  generators, shrinking, and properties as a distinct testing family.
+- **Model-based and metamorphic testing literature** — the idea that
+  relation-based checks matter more than surface-level DSL style in
+  advanced testing.
 
 ### Browser, Runtime, And Platform Philosophy
 
--   **Platform-first web framework work** — the broader philosophy of
-    building on platform primitives rather than replacing them with
-    framework-local concepts.
--   **Node.js and Web Platform APIs** — direct use of platform capabilities
-    such as `AbortSignal`, diagnostics channels, `perf_hooks`, and typed
-    runtime contexts.
+- **Platform-first web framework work** — the broader philosophy of
+  building on platform primitives rather than replacing them with
+  framework-local concepts.
+- **Node.js and Web Platform APIs** — direct use of platform capabilities
+  such as `AbortSignal`, diagnostics channels, `perf_hooks`, and typed
+  runtime contexts.
 
 ### Benchmarking
 
--   **JMH** — warmup / measurement separation and execution policy as part of
-    the benchmark definition; forks, measurement iterations, and harness
-    discipline against misleading numbers.
--   **Criterion.rs** — grouped benchmarks, parameterized benchmark identities,
-    and richer measurement vocabulary; throughput annotations and custom
-    measurement backends.
--   **BenchmarkDotNet** — benchmark jobs / execution profiles and
-    diagnoser-style metric collection; multiple run strategies such as
-    `Throughput` and `ColdStart`.
--   **pytest-benchmark** — compare mode, pedantic/manual control mode, and
-    benchmark-result JSON with machine metadata.
--   **hyperfine** — external-process benchmarking as a primary workflow.
--   **Real-world benchmark suites** — practical evidence that projects need
-    workload files, checked-in thresholds, PTY-aware CLI benchmarks, and
-    richer metrics than runtime alone.
+- **JMH** — warmup / measurement separation and execution policy as part of
+  the benchmark definition; forks, measurement iterations, and harness
+  discipline against misleading numbers.
+- **Criterion.rs** — grouped benchmarks, parameterized benchmark identities,
+  and richer measurement vocabulary; throughput annotations and custom
+  measurement backends.
+- **BenchmarkDotNet** — benchmark jobs / execution profiles and
+  diagnoser-style metric collection; multiple run strategies such as
+  `Throughput` and `ColdStart`.
+- **pytest-benchmark** — compare mode, pedantic/manual control mode, and
+  benchmark-result JSON with machine metadata.
+- **hyperfine** — external-process benchmarking as a primary workflow.
+- **Real-world benchmark suites** — practical evidence that projects need
+  workload files, checked-in thresholds, PTY-aware CLI benchmarks, and
+  richer metrics than runtime alone.

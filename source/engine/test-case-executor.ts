@@ -2,27 +2,27 @@ import type { TestCaseDetails, TestFunction } from './test-case.js';
 
 export type TestResultStatus = 'failure' | 'success';
 
-interface BaseTestResult {
+type BaseTestResult = {
     readonly status: TestResultStatus;
     readonly duration: number;
-}
+};
 
-export interface FailureTestResult extends BaseTestResult {
+export type FailureTestResult = BaseTestResult & {
     readonly status: 'failure';
     readonly reason: string;
-}
+};
 
-export interface SuccessTestResult extends BaseTestResult {
+export type SuccessTestResult = BaseTestResult & {
     readonly status: 'success';
     readonly reason?: undefined;
-}
+};
 
 export type TestResult = FailureTestResult | SuccessTestResult;
 
-export interface TestCaseResult {
+export type TestCaseResult = {
     readonly testCaseDetails: TestCaseDetails;
     readonly result: TestResult;
-}
+};
 
 function extractErrorMessage(error: unknown): string {
     if (error instanceof Error) {
@@ -32,13 +32,21 @@ function extractErrorMessage(error: unknown): string {
     return 'Unknown error';
 }
 
-export interface TestCaseExecutorDependencies {
-    readonly timingApi: Performance;
+async function runTestFunction(testFunction: TestFunction): Promise<void> {
+    const promise = testFunction();
+
+    if (promise !== undefined) {
+        await promise;
+    }
 }
 
-export interface TestCaseExecutor {
-    execute(testFunction: TestFunction): Promise<TestResult>;
-}
+export type TestCaseExecutorDependencies = {
+    readonly timingApi: Performance;
+};
+
+export type TestCaseExecutor = {
+    execute: (testFunction: TestFunction) => Promise<TestResult>;
+};
 
 export function createTestCaseExecutor(dependencies: TestCaseExecutorDependencies): TestCaseExecutor {
     const { timingApi } = dependencies;
@@ -53,23 +61,19 @@ export function createTestCaseExecutor(dependencies: TestCaseExecutorDependencie
             const startTime = timingApi.now();
 
             try {
-                const promise = testFunction();
-
-                if (typeof promise !== 'undefined') {
-                    await promise;
-                }
+                await runTestFunction(testFunction);
 
                 return {
                     status: 'success',
-                    duration: calculateDuration(startTime),
+                    duration: calculateDuration(startTime)
                 };
             } catch (error: unknown) {
                 return {
                     status: 'failure',
                     duration: calculateDuration(startTime),
-                    reason: extractErrorMessage(error),
+                    reason: extractErrorMessage(error)
                 };
             }
-        },
+        }
     };
 }

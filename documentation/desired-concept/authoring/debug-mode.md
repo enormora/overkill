@@ -24,17 +24,17 @@ conclusion. A debug artifact never affects the verdict.
 
 Activation is always explicit:
 
--   `--debug-scope <selector>` debugs the tests matching the selector
-    (using the same selector grammar as `--filter`) without pulling
-    unrelated tests into debug mode and without narrowing what runs.
-    It is standalone — it does not require `--debug` — and it is
-    mutually exclusive with `--debug`: the two are CLI spellings of one
-    underlying setting (`RunPlan.debugMode` `'selected'` versus
-    `'all'`), so passing both is a usage error.
--   `--debug` debugs every test in the resolved set; pair with
-    `--filter`, `--name`, `--id`, or `--file` to scope
--   per-test metadata `{ debug: true }` debugs that one test on every
-    run, regardless of CLI flags
+- `--debug-scope <selector>` debugs the tests matching the selector
+  (using the same selector grammar as `--filter`) without pulling
+  unrelated tests into debug mode and without narrowing what runs.
+  It is standalone — it does not require `--debug` — and it is
+  mutually exclusive with `--debug`: the two are CLI spellings of one
+  underlying setting (`RunPlan.debugMode` `'selected'` versus
+  `'all'`), so passing both is a usage error.
+- `--debug` debugs every test in the resolved set; pair with
+  `--filter`, `--name`, `--id`, or `--file` to scope
+- per-test metadata `{ debug: true }` debugs that one test on every
+  run, regardless of CLI flags
 
 `--debug-scope` is the typical interactive form: "I want to know what
 this _one_ test is doing" while the rest of the run still executes
@@ -63,9 +63,9 @@ type TestDebugArtifact = {
         readonly cachedHit: boolean;
         readonly resolveMs: number;
     }>;
-    readonly heap: { beforeBytes: number; afterBytes: number; peakBytes: number };
+    readonly heap: { beforeBytes: number; afterBytes: number; peakBytes: number; };
     readonly activeHandlesDelta: number;
-    readonly plan?: { declared: number; recorded: number };
+    readonly plan?: { declared: number; recorded: number; };
     readonly stats: DebugStats;
 };
 
@@ -88,12 +88,12 @@ type DebugStats = {
 // capability-handles.md. `at` is monotonic nanoseconds since the
 // test body started; every variant carries it.
 type TimelineEntry =
-    | { readonly kind: 'body-start'; readonly at: bigint }
-    | { readonly kind: 'assert'; readonly at: bigint; readonly label?: string; readonly location?: SourceLocation }
-    | { readonly kind: 'require'; readonly at: bigint; readonly label?: string; readonly location?: SourceLocation }
-    | { readonly kind: 'plan'; readonly at: bigint; readonly declared: number }
-    | { readonly kind: 'body-end'; readonly at: bigint }
-    | { readonly kind: 'rejection'; readonly at: bigint; readonly reason: unknown };
+    | { readonly kind: 'body-start'; readonly at: bigint; }
+    | { readonly kind: 'assert'; readonly at: bigint; readonly label?: string; readonly location?: SourceLocation; }
+    | { readonly kind: 'require'; readonly at: bigint; readonly label?: string; readonly location?: SourceLocation; }
+    | { readonly kind: 'plan'; readonly at: bigint; readonly declared: number; }
+    | { readonly kind: 'body-end'; readonly at: bigint; }
+    | { readonly kind: 'rejection'; readonly at: bigint; readonly reason: unknown; };
 ```
 
 Both types are sketched in [Types Index](../reference/types-index.md).
@@ -147,12 +147,12 @@ disk; reporters are a presentation choice.
 
 Debug mode is opt-in because it has cost:
 
--   timestamping each timeline entry is nanoseconds per event but
-    accumulates with high event counts
--   `process.memoryUsage()` and active-handle snapshots add a few
-    microseconds each
--   module-load tracking requires a `module.registerHooks#load` hook
-    for the run; that hook is not installed when debug is off
+- timestamping each timeline entry is nanoseconds per event but
+  accumulates with high event counts
+- `process.memoryUsage()` and active-handle snapshots add a few
+  microseconds each
+- module-load tracking requires a `module.registerHooks#load` hook
+  for the run; that hook is not installed when debug is off
 
 These costs are negligible per test but can defeat the cold-start
 budget at scale. Debug mode is therefore never on by default and is
@@ -165,16 +165,16 @@ Debug mode applies to failures the same way it applies to passes;
 the artifact is written either way. Two failure shapes are
 particularly worth debugging:
 
--   **Soft-timeout failures.** The test exceeded its deadline. The
-    timeline shows which awaited operation consumed the budget;
-    `handleEvents` (when present) name the specific handle call.
-    "This test is slow" becomes "this `http.request` call took 480
-    ms of the 500 ms budget."
--   **Assertion failures with surprising timing.** A `fail` outcome
-    sits next to a normal-looking timeline; that is information.
-    Conversely, a `fail` outcome with one giant gap before the
-    failing `assert` points at a slow setup operation that should
-    move out of the test body.
+- **Soft-timeout failures.** The test exceeded its deadline. The
+  timeline shows which awaited operation consumed the budget;
+  `handleEvents` (when present) name the specific handle call.
+  "This test is slow" becomes "this `http.request` call took 480
+  ms of the 500 ms budget."
+- **Assertion failures with surprising timing.** A `fail` outcome
+  sits next to a normal-looking timeline; that is information.
+  Conversely, a `fail` outcome with one giant gap before the
+  failing `assert` points at a slow setup operation that should
+  move out of the test body.
 
 For crash failures the artifact is best-effort: the runner flushes
 whatever it had recorded up to the crash, marked with a
@@ -206,40 +206,40 @@ specific values _can_ signal, not judgments the runner emits. CI
 post-processors, custom reporters, and reviewers turn these signals
 into action; the runner stays neutral.
 
--   `stats.assertCount === 0 && stats.requireCount === 0` — the test
-    produced no assertions. The engine already fails this case (see
-    [Assertions And Results § Zero-Assertion Detection As Default Failure](./assertions-and-results.md#zero-assertion-detection-as-default-failure)); the
-    artifact makes the absence visible across runs.
--   `stats.handleCallCount === 0` in a profile that expects effects
-    — the test exercised no recorded effects. Often intentional for
-    pure-logic tests; suspicious when the test name implies I/O.
--   `stats.unaccountedGapMs / wallTimeMs > 0.5` — more than half of
-    the wall time was not captured by handle calls or assertion
-    activity. Suggests external I/O bypassing the handle layer, or
-    a slow synchronous block worth profiling.
--   `stats.uncachedModuleLoadCount` high — the test pulled in many
-    modules from cold; first-run cost may dominate. Look for imports
-    inside the body that should move to the file scope.
--   `stats.heapGrowthBytes > 0` — the test grew the heap and did not
-    return it. Not necessarily a leak (V8 GC is lazy), but worth
-    inspection when the value is large or grows across runs.
--   `stats.handleLeakCount > 0` — unfinished active handles after
-    the body returned. Same data the leak diagnostics in
-    [Runtime Behavior § Leaked Promises, Timers, And Handles](../architecture/runtime-behavior.md#leaked-promises-timers-and-handles)
-    use, surfaced for any test rather than only on failure.
--   `stats.softTimeoutHeadroomMs` close to zero or negative — the
-    test is fragile against slower machines or noisy CI hosts. A
-    test with 30 ms headroom against a 500 ms soft deadline will
-    flake on a busy laptop. Either profile a faster path or
-    re-categorise the test.
--   Large gaps between adjacent timeline entries — a single awaited
-    operation took the time. `handleEvents` near that gap pin it to
-    a specific handle call; absence of `handleEvents` says the
-    operation went through code the runner does not see (raw
-    `fetch`, raw `fs`, etc.).
--   `plan.declared !== plan.recorded` — `plan(n)` mismatch. The
-    engine fails the test for the same reason; the artifact makes
-    the count visible at a glance.
+- `stats.assertCount === 0 && stats.requireCount === 0` — the test
+  produced no assertions. The engine already fails this case (see
+  [Assertions And Results § Zero-Assertion Detection As Default Failure](./assertions-and-results.md#zero-assertion-detection-as-default-failure)); the
+  artifact makes the absence visible across runs.
+- `stats.handleCallCount === 0` in a profile that expects effects
+  — the test exercised no recorded effects. Often intentional for
+  pure-logic tests; suspicious when the test name implies I/O.
+- `stats.unaccountedGapMs / wallTimeMs > 0.5` — more than half of
+  the wall time was not captured by handle calls or assertion
+  activity. Suggests external I/O bypassing the handle layer, or
+  a slow synchronous block worth profiling.
+- `stats.uncachedModuleLoadCount` high — the test pulled in many
+  modules from cold; first-run cost may dominate. Look for imports
+  inside the body that should move to the file scope.
+- `stats.heapGrowthBytes > 0` — the test grew the heap and did not
+  return it. Not necessarily a leak (V8 GC is lazy), but worth
+  inspection when the value is large or grows across runs.
+- `stats.handleLeakCount > 0` — unfinished active handles after
+  the body returned. Same data the leak diagnostics in
+  [Runtime Behavior § Leaked Promises, Timers, And Handles](../architecture/runtime-behavior.md#leaked-promises-timers-and-handles)
+  use, surfaced for any test rather than only on failure.
+- `stats.softTimeoutHeadroomMs` close to zero or negative — the
+  test is fragile against slower machines or noisy CI hosts. A
+  test with 30 ms headroom against a 500 ms soft deadline will
+  flake on a busy laptop. Either profile a faster path or
+  re-categorise the test.
+- Large gaps between adjacent timeline entries — a single awaited
+  operation took the time. `handleEvents` near that gap pin it to
+  a specific handle call; absence of `handleEvents` says the
+  operation went through code the runner does not see (raw
+  `fetch`, raw `fs`, etc.).
+- `plan.declared !== plan.recorded` — `plan(n)` mismatch. The
+  engine fails the test for the same reason; the artifact makes
+  the count visible at a glance.
 
 These signals compose: a microtest with `handleCallCount: 0`,
 `unaccountedGapMs: 480 ms`, and `softTimeoutHeadroomMs: 20 ms` is
@@ -249,24 +249,24 @@ linter) reads the pattern.
 
 ## What This Is Not
 
--   **Not a profiler.** For CPU or call-frame analysis use Node
-    `--prof` or `--inspect`. Debug mode tells you what _the test_
-    did, not what V8 did.
--   **Not a benchmark.** A single-run debug artifact is not
-    statistically meaningful; see [Benchmarking](./benchmarking.md) for
-    measurement-quality timing.
--   **Not advice.** No tips, hints, or recommended actions are
-    produced. The artifact reports facts; the developer interprets.
--   **Not a verdict input.** Whatever the artifact contains, it never
-    affects pass/fail.
+- **Not a profiler.** For CPU or call-frame analysis use Node
+  `--prof` or `--inspect`. Debug mode tells you what _the test_
+  did, not what V8 did.
+- **Not a benchmark.** A single-run debug artifact is not
+  statistically meaningful; see [Benchmarking](./benchmarking.md) for
+  measurement-quality timing.
+- **Not advice.** No tips, hints, or recommended actions are
+  produced. The artifact reports facts; the developer interprets.
+- **Not a verdict input.** Whatever the artifact contains, it never
+  affects pass/fail.
 
 ## Cross-References
 
--   Capability handle recording is owned by [Capability Handles](./capability-handles.md);
-    debug mode aggregates those events into the timeline rather than
-    duplicating the recording mechanism.
--   The module-load list overlaps with [Fast Feedback Loops § 4. Sharing parsed sources between tests in the same process](../architecture/fast-feedback-loops.md#4-sharing-parsed-sources-between-tests-in-the-same-process), but is
-    scoped per test rather than per run.
--   Heap and active-handle deltas extend the diagnostics in
-    [Runtime Behavior § Leaked Promises, Timers, And Handles](../architecture/runtime-behavior.md#leaked-promises-timers-and-handles),
-    made available even when the test passes.
+- Capability handle recording is owned by [Capability Handles](./capability-handles.md);
+  debug mode aggregates those events into the timeline rather than
+  duplicating the recording mechanism.
+- The module-load list overlaps with [Fast Feedback Loops § 4. Sharing parsed sources between tests in the same process](../architecture/fast-feedback-loops.md#4-sharing-parsed-sources-between-tests-in-the-same-process), but is
+  scoped per test rather than per run.
+- Heap and active-handle deltas extend the diagnostics in
+  [Runtime Behavior § Leaked Promises, Timers, And Handles](../architecture/runtime-behavior.md#leaked-promises-timers-and-handles),
+  made available even when the test passes.

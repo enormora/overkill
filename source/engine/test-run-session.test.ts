@@ -2,32 +2,32 @@ import { test } from 'uvu';
 import * as assert from 'uvu/assert';
 import type { SinonSpy } from 'sinon';
 import sinon from 'sinon';
-import type { TestRunSessionProvider, TestRunSessionProviderDependencies } from './test-run-session.js';
-import { createTestRunSessionProvider } from './test-run-session.js';
 import type { InMemoryReporter } from '../reporters/in-memory-reporter.js';
 import { createInMemoryFinalResultReporter, createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.js';
+import type { TestRunSessionProvider, TestRunSessionProviderDependencies } from './test-run-session.js';
+import { createTestRunSessionProvider } from './test-run-session.js';
 
 function noop() {}
 
-interface Overrides {
+type Overrides = {
     readonly execute?: SinonSpy;
     readonly reporter?: InMemoryReporter;
-}
+};
 
 function testRunSessionProviderFactory(overrides: Overrides = {}): TestRunSessionProvider {
     const { execute = sinon.fake.returns({}), reporter = createInMemoryFinalResultReporter() } = overrides;
 
     const fakeDependencies = {
         testCaseExecutor: {
-            execute,
+            execute
         },
-        reporter,
+        reporter
     } as unknown as TestRunSessionProviderDependencies;
 
     return createTestRunSessionProvider(fakeDependencies);
 }
 
-test('runSingleTestCase() executes the given test case', async () => {
+test('runSingleTestCase() executes the given test case', async function () {
     const execute = sinon.fake.returns({});
     const provider = testRunSessionProviderFactory({ execute });
     const session = provider.createTestRunSession(42, 21);
@@ -35,10 +35,10 @@ test('runSingleTestCase() executes the given test case', async () => {
     await session.runSingleTestCase({ title: 'foo', testFunction: noop, suiteTitle: 'bar' }, 0);
 
     assert.is(execute.callCount, 1);
-    assert.equal(execute.firstCall.args, [noop]);
+    assert.equal(execute.firstCall.args, [ noop ]);
 });
 
-test('runSingleTestCase() reports the progress to the current reporter when it is a real-time reporter', async () => {
+test('runSingleTestCase() reports the progress to the current reporter when it is a real-time reporter', async function () {
     const execute = sinon.fake.returns({ status: 'success', duration: 100 });
     const reporter = createInMemoryRealTimeReporter();
     const provider = testRunSessionProviderFactory({ execute, reporter });
@@ -57,24 +57,24 @@ test('runSingleTestCase() reports the progress to the current reporter when it i
                     successCount: 1,
                     totalCount: 21,
                     completedCount: 1,
-                    pendingCount: 20,
+                    pendingCount: 20
                 },
                 testCaseResults: [
                     {
                         testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'bar' },
-                        result: { status: 'success', duration: 100 },
-                    },
-                ],
+                        result: { status: 'success', duration: 100 }
+                    }
+                ]
             },
             testCaseResult: {
                 testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'bar' },
-                result: { status: 'success', duration: 100 },
-            },
-        },
+                result: { status: 'success', duration: 100 }
+            }
+        }
     ]);
 });
 
-test('runSingleTestCase() doesn’t report the progress to the current reporter when it is NOT a real-time reporter', async () => {
+test('runSingleTestCase() doesn’t report the progress to the current reporter when it is NOT a real-time reporter', async function () {
     const execute = sinon.fake.returns({ status: 'success', duration: 100 });
     const reporter = createInMemoryFinalResultReporter();
     const provider = testRunSessionProviderFactory({ execute, reporter });
@@ -85,7 +85,7 @@ test('runSingleTestCase() doesn’t report the progress to the current reporter 
     assert.equal(reporter.getRecordedEntries(), []);
 });
 
-test('runSingleTestCase() updates the current test-run result when multiple tests are executed and sends it to the reporter when it is a real-time reporter', async () => {
+test('runSingleTestCase() updates the current test-run result when multiple tests are executed and sends it to the reporter when it is a real-time reporter', async function () {
     const execute = sinon
         .stub()
         .onFirstCall()
@@ -109,14 +109,14 @@ test('runSingleTestCase() updates the current test-run result when multiple test
                 testCaseResults: [
                     {
                         testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'suite1' },
-                        result: { status: 'success', duration: 100 },
-                    },
-                ],
+                        result: { status: 'success', duration: 100 }
+                    }
+                ]
             },
             testCaseResult: {
                 testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'suite1' },
-                result: { status: 'success', duration: 100 },
-            },
+                result: { status: 'success', duration: 100 }
+            }
         },
         {
             sessionId: 42,
@@ -127,23 +127,23 @@ test('runSingleTestCase() updates the current test-run result when multiple test
                 testCaseResults: [
                     {
                         testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'suite1' },
-                        result: { status: 'success', duration: 100 },
+                        result: { status: 'success', duration: 100 }
                     },
                     {
                         testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'suite2' },
-                        result: { status: 'failure', duration: 50 },
-                    },
-                ],
+                        result: { status: 'failure', duration: 50 }
+                    }
+                ]
             },
             testCaseResult: {
                 testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'suite2' },
-                result: { status: 'failure', duration: 50 },
-            },
-        },
+                result: { status: 'failure', duration: 50 }
+            }
+        }
     ]);
 });
 
-test('start() reports the initial test-run result to the current reporter when it is a real-time reporter', async () => {
+test('start() reports the initial test-run result to the current reporter when it is a real-time reporter', async function () {
     const reporter = createInMemoryRealTimeReporter();
     const provider = testRunSessionProviderFactory({ reporter });
     const session = provider.createTestRunSession(42, 21);
@@ -161,15 +161,15 @@ test('start() reports the initial test-run result to the current reporter when i
                     successCount: 0,
                     totalCount: 21,
                     completedCount: 0,
-                    pendingCount: 21,
+                    pendingCount: 21
                 },
-                testCaseResults: [],
-            },
-        },
+                testCaseResults: []
+            }
+        }
     ]);
 });
 
-test('start() doesn’t report anything to the current reporter when it is NOT a real-time reporter', async () => {
+test('start() doesn’t report anything to the current reporter when it is NOT a real-time reporter', async function () {
     const reporter = createInMemoryFinalResultReporter();
     const provider = testRunSessionProviderFactory({ reporter });
     const session = provider.createTestRunSession(42, 21);
@@ -179,19 +179,19 @@ test('start() doesn’t report anything to the current reporter when it is NOT a
     assert.equal(reporter.getRecordedEntries(), []);
 });
 
-test('done() returns the aggregated result of all given test cases', async () => {
+test('done() returns the aggregated result of all given test cases', async function () {
     const provider = testRunSessionProviderFactory();
     const session = provider.createTestRunSession(42, 2);
 
     const finalResult = await session.done([
         {
             testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
-            result: { status: 'success', duration: 20 },
+            result: { status: 'success', duration: 20 }
         },
         {
             testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'the-suite' },
-            result: { status: 'failure', reason: 'any-reason', duration: 40 },
-        },
+            result: { status: 'failure', reason: 'any-reason', duration: 40 }
+        }
     ]);
 
     assert.equal(finalResult, {
@@ -201,22 +201,22 @@ test('done() returns the aggregated result of all given test cases', async () =>
             failedCount: 1,
             successCount: 1,
             completedCount: 2,
-            pendingCount: 0,
+            pendingCount: 0
         },
         testCaseResults: [
             {
                 testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
-                result: { status: 'success', duration: 20 },
+                result: { status: 'success', duration: 20 }
             },
             {
                 testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'the-suite' },
-                result: { status: 'failure', reason: 'any-reason', duration: 40 },
-            },
-        ],
+                result: { status: 'failure', reason: 'any-reason', duration: 40 }
+            }
+        ]
     });
 });
 
-test('done() reports the aggregated result the the current reporter when it is a real-time reporter', async () => {
+test('done() reports the aggregated result the the current reporter when it is a real-time reporter', async function () {
     const reporter = createInMemoryRealTimeReporter();
     const provider = testRunSessionProviderFactory({ reporter });
     const session = provider.createTestRunSession(42, 2);
@@ -224,12 +224,12 @@ test('done() reports the aggregated result the the current reporter when it is a
     await session.done([
         {
             testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
-            result: { status: 'success', duration: 20 },
+            result: { status: 'success', duration: 20 }
         },
         {
             testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'the-suite' },
-            result: { status: 'failure', reason: 'any-reason', duration: 40 },
-        },
+            result: { status: 'failure', reason: 'any-reason', duration: 40 }
+        }
     ]);
 
     assert.equal(reporter.getRecordedEntries(), [
@@ -243,24 +243,24 @@ test('done() reports the aggregated result the the current reporter when it is a
                     failedCount: 1,
                     successCount: 1,
                     completedCount: 2,
-                    pendingCount: 0,
+                    pendingCount: 0
                 },
                 testCaseResults: [
                     {
                         testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
-                        result: { status: 'success', duration: 20 },
+                        result: { status: 'success', duration: 20 }
                     },
                     {
                         testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'the-suite' },
-                        result: { status: 'failure', reason: 'any-reason', duration: 40 },
-                    },
-                ],
-            },
-        },
+                        result: { status: 'failure', reason: 'any-reason', duration: 40 }
+                    }
+                ]
+            }
+        }
     ]);
 });
 
-test('done() reports the aggregated result the the current reporter when it is NOT a real-time reporter', async () => {
+test('done() reports the aggregated result the the current reporter when it is NOT a real-time reporter', async function () {
     const reporter = createInMemoryFinalResultReporter();
     const provider = testRunSessionProviderFactory({ reporter });
     const session = provider.createTestRunSession(42, 2);
@@ -268,12 +268,12 @@ test('done() reports the aggregated result the the current reporter when it is N
     await session.done([
         {
             testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
-            result: { status: 'success', duration: 20 },
+            result: { status: 'success', duration: 20 }
         },
         {
             testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'the-suite' },
-            result: { status: 'failure', reason: 'any-reason', duration: 40 },
-        },
+            result: { status: 'failure', reason: 'any-reason', duration: 40 }
+        }
     ]);
 
     assert.equal(reporter.getRecordedEntries(), [
@@ -287,24 +287,24 @@ test('done() reports the aggregated result the the current reporter when it is N
                     failedCount: 1,
                     successCount: 1,
                     completedCount: 2,
-                    pendingCount: 0,
+                    pendingCount: 0
                 },
                 testCaseResults: [
                     {
                         testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
-                        result: { status: 'success', duration: 20 },
+                        result: { status: 'success', duration: 20 }
                     },
                     {
                         testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'the-suite' },
-                        result: { status: 'failure', reason: 'any-reason', duration: 40 },
-                    },
-                ],
-            },
-        },
+                        result: { status: 'failure', reason: 'any-reason', duration: 40 }
+                    }
+                ]
+            }
+        }
     ]);
 });
 
-test('multiple messages are sent to the real-time reporter', async () => {
+test('multiple messages are sent to the real-time reporter', async function () {
     const execute = sinon.fake.returns({ status: 'success', duration: 100 });
     const reporter = createInMemoryRealTimeReporter();
     const provider = testRunSessionProviderFactory({ execute, reporter });
@@ -320,8 +320,8 @@ test('multiple messages are sent to the real-time reporter', async () => {
             testRunResult: {
                 progress: 'pending',
                 summary: { failedCount: 0, successCount: 0, totalCount: 21, completedCount: 0, pendingCount: 21 },
-                testCaseResults: [],
-            },
+                testCaseResults: []
+            }
         },
         {
             sessionId: 42,
@@ -332,25 +332,25 @@ test('multiple messages are sent to the real-time reporter', async () => {
                 testCaseResults: [
                     {
                         testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
-                        result: { status: 'success', duration: 100 },
-                    },
-                ],
+                        result: { status: 'success', duration: 100 }
+                    }
+                ]
             },
             testCaseResult: {
                 testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
-                result: { status: 'success', duration: 100 },
-            },
-        },
+                result: { status: 'success', duration: 100 }
+            }
+        }
     ]);
 });
 
-test('multiple messages are sent to the reporter but separated by session when running multiple sessions', async () => {
+test('multiple messages are sent to the reporter but separated by session when running multiple sessions', async function () {
     const reporter = createInMemoryRealTimeReporter();
     const provider = testRunSessionProviderFactory({ reporter });
     const firstSession = provider.createTestRunSession(1, 21);
     const secondSession = provider.createTestRunSession(2, 21);
 
-    await Promise.all([firstSession.start(), secondSession.start()]);
+    await Promise.all([ firstSession.start(), secondSession.start() ]);
 
     assert.equal(reporter.getRecordedEntries(), [
         {
@@ -359,8 +359,8 @@ test('multiple messages are sent to the reporter but separated by session when r
             testRunResult: {
                 progress: 'pending',
                 summary: { failedCount: 0, successCount: 0, totalCount: 21, completedCount: 0, pendingCount: 21 },
-                testCaseResults: [],
-            },
+                testCaseResults: []
+            }
         },
         {
             sessionId: 2,
@@ -368,9 +368,9 @@ test('multiple messages are sent to the reporter but separated by session when r
             testRunResult: {
                 progress: 'pending',
                 summary: { failedCount: 0, successCount: 0, totalCount: 21, completedCount: 0, pendingCount: 21 },
-                testCaseResults: [],
-            },
-        },
+                testCaseResults: []
+            }
+        }
     ]);
 });
 
