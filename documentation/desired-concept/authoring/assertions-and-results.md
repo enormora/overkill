@@ -50,8 +50,8 @@ A first-party assertion layer offers a clean place to provide:
 
 Most tests should not need to import a separate assertion package at all.
 The main user-facing API may come from direct engine consumers or from an
-authoring layer such as `@overkill/test`, but the underlying assertion layer
-still lives directly in `@overkill/engine`. The engine is the home for:
+authoring layer such as `@overkill-dev/test`, but the underlying assertion layer
+still lives directly in `@overkill-dev/engine`. The engine is the home for:
 
 - assertion-count and plan tracking
 - diffing and serializer logic
@@ -59,7 +59,7 @@ still lives directly in `@overkill/engine`. The engine is the home for:
 - implementation shared between default test facades and direct
   engine-level consumers
 
-`@overkill/assert` is still useful as a smaller companion package for
+`@overkill-dev/assert` is still useful as a smaller companion package for
 reusable assertion-extension helpers such as `defineCompositeAssertion(...)`
 or foreign-assertion bridge builders. It should plug into the engine-owned
 assertion context rather than replace it.
@@ -305,7 +305,7 @@ bundle.
 ## Property Tests And The Assertion Boundary
 
 Property primitives like `case.forall(gen, body)` (proposed package
-`@overkill/property`) call `body` many times — once per generated
+`@overkill-dev/property`) call `body` many times — once per generated
 input — but count as **one assertion at the boundary** for both
 zero-assertion detection and `plan(n)`:
 
@@ -455,7 +455,7 @@ not need to travel through the same path as infrastructure errors. See
 
 ### Engine Flexibility
 
-The narrow `@overkill/engine` stays flexible enough to support:
+The narrow `@overkill-dev/engine` stays flexible enough to support:
 
 - builder/context authoring
 - explicit throwing mode
@@ -550,7 +550,7 @@ Key points:
 Throwing mode is still supported, but explicitly in the test API shape:
 
 ```ts
-import { throwingTest as test } from '@overkill/test';
+import { throwingTest as test } from '@overkill-dev/test';
 
 test('legacy flow', (case) => {
     case.assert.equal(add(2, 3), 5);
@@ -600,13 +600,13 @@ than silently overriding anything.
 Custom assertions should no longer be registered in root runner configuration.
 Instead, they belong to the **engine-owned assertion context**, because
 assertion registration changes what `case.assert` exposes even when a
-project is not using `@overkill/test`.
+project is not using `@overkill-dev/test`.
 
 Recommended shape:
 
 ```ts
-import { defineCompositeAssertion } from '@overkill/assert';
-import type { TestDouble } from '@overkill/doubles';
+import { defineCompositeAssertion } from '@overkill-dev/assert';
+import type { TestDouble } from '@overkill-dev/doubles';
 
 const calledOnceWith = defineCompositeAssertion(
     'calledOnceWith',
@@ -616,7 +616,7 @@ const calledOnceWith = defineCompositeAssertion(
 );
 ```
 
-Authoring layers such as `@overkill/test` may re-expose the resulting
+Authoring layers such as `@overkill-dev/test` may re-expose the resulting
 engine-backed assertion context, but they do not own assertion registration.
 
 ### Composite Assertions
@@ -633,8 +633,8 @@ This is distinct from a test macro:
 Definition shape:
 
 ```ts
-import { defineCompositeAssertion } from '@overkill/assert';
-import type { TestDouble } from '@overkill/doubles';
+import { defineCompositeAssertion } from '@overkill-dev/assert';
+import type { TestDouble } from '@overkill-dev/doubles';
 
 const calledOnceWith = defineCompositeAssertion(
     'calledOnceWith',
@@ -705,7 +705,7 @@ Overkill boundary remains explicit and stable.
 Example direction:
 
 ```ts
-import { defineCompositeAssertion } from '@overkill/assert';
+import { defineCompositeAssertion } from '@overkill-dev/assert';
 
 export const hasResourceProperties = defineCompositeAssertion(
     'hasResourceProperties',
@@ -734,7 +734,7 @@ are not worth rewriting. `@aws-cdk/assertions` is a good example.
 
 The preferred Overkill direction is a focused adapter package such as:
 
-- `@overkill/aws-cdk`
+- `@overkill-dev/aws-cdk`
 
 That package should expose facade-ready assertion extensions such as:
 
@@ -747,7 +747,7 @@ That package should expose facade-ready assertion extensions such as:
 Usage direction:
 
 ```ts
-import { cdkAssertions } from '@overkill/aws-cdk';
+import { cdkAssertions } from '@overkill-dev/aws-cdk';
 
 export const assertionExtensions = [ cdkAssertions ];
 ```
@@ -814,10 +814,10 @@ For the product concept:
 
 - core supports structured assertion results and explicit throwing-mode
   tests
-- first-party assertion semantics live in `@overkill/engine`
+- first-party assertion semantics live in `@overkill-dev/engine`
 - reusable assertion-extension helpers such as
-  `defineCompositeAssertion(...)` live in `@overkill/assert`
-- `@overkill/test` may re-expose that engine-owned assertion surface, but it
+  `defineCompositeAssertion(...)` live in `@overkill-dev/assert`
+- `@overkill-dev/test` may re-expose that engine-owned assertion surface, but it
   is not required for assertion usage
 - primary authoring shape: builder/context API with explicit
   `return case.assert.done()`

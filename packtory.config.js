@@ -25,7 +25,7 @@ export const config = {
     },
     packages: [
         {
-            name: '@overkill/engine',
+            name: '@overkill-dev/engine',
             roots: {
                 main: {
                     js: 'packages/engine/entry-point.js',

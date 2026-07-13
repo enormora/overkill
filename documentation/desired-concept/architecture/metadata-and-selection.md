@@ -218,7 +218,7 @@ operates on the result. See [Composition Order](./composition-order.md) and
 Embedders (IDEs, MCP servers, CI tools) construct filters programmatically:
 
 ```ts
-import { tag, not, kind, file, all, any } from '@overkill/run/filters';
+import { tag, not, kind, file, all, any } from '@overkill-dev/run/filters';
 
 const filter = all([ tag('fast'), not(tag('flaky')), any([ file('source/auth/**'), file('source/users/**') ]) ]);
 

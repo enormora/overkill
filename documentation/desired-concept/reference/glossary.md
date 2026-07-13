@@ -25,7 +25,7 @@ Source: [Tests As Values](../authoring/tests-as-values.md).
 
 ## Case Context
 
-The injected context object passed to a first-party `@overkill/test` body.
+The injected context object passed to a first-party `@overkill-dev/test` body.
 Docs prefer the local variable name `case`. It may expose `assert`,
 `require`, `plan`, and selected helper methods.
 
@@ -69,7 +69,7 @@ Source: [Microtests And Capabilities](../authoring/microtests-and-capabilities.m
 ## Execution Strategy
 
 A resolved decision about how tests execute: process model, worker count,
-isolation grain, and scheduling policy. It is resolved by `@overkill/run`
+isolation grain, and scheduling policy. It is resolved by `@overkill-dev/run`
 from package constraints and runner configuration, and it is distinct from
 capability profile.
 
@@ -215,7 +215,7 @@ Source: [Package Architecture](../architecture/package-architecture.md), [Runtim
 
 A resolved, ordered description of what the runner will execute: expanded
 cases, identities, strategy, worker/process assignment, resource
-requirements, and run metadata. Produced by `@overkill/run` and preserved
+requirements, and run metadata. Produced by `@overkill-dev/run` and preserved
 for reproducibility.
 
 Source: [Package Architecture](../architecture/package-architecture.md), [Reproducibility](../architecture/reproducibility.md).

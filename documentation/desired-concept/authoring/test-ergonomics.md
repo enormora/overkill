@@ -204,7 +204,7 @@ This is especially justified for:
 Example direction:
 
 ```ts
-import { defineMacro, suite, test } from '@overkill/test';
+import { defineMacro, suite, test } from '@overkill-dev/test';
 
 const schemaValidationCases = [
     missingField('name'),

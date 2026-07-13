@@ -222,7 +222,7 @@ Its most important lessons for Overkill are:
 - fixture and runtime composition can produce a custom exported test API
 - higher-level packages can be built from a reusable lower-level engine
 
-That maps closely to Overkill’s desired split between `@overkill/engine`, first-party DSLs, and resource packages.
+That maps closely to Overkill’s desired split between `@overkill-dev/engine`, first-party DSLs, and resource packages.
 
 Sources:
 
@@ -239,7 +239,7 @@ Buster.JS (Christian Johansen + August Lilleaas, ~2010-2013, archived 2018) was 
 
 Critical insight: `ramp` and `capture-server` had **no concept of "a test."** They orchestrated browsers loading resource sets and streaming events back. A test run was one application of that substrate. A synced slideshow across devices was another POC. This is the cleanest separation of "test infrastructure" from "test concept" in JS history.
 
-For Overkill: package families like `@overkill/transport`, `@overkill/event-stream`, and `@overkill/identity` should be substrate that doesn't know about tests. The test-aware layer composes them.
+For Overkill: package families like `@overkill-dev/transport`, `@overkill-dev/event-stream`, and `@overkill-dev/identity` should be substrate that doesn't know about tests. The test-aware layer composes them.
 
 #### Tests As An Event Stream From Day One
 
@@ -280,7 +280,7 @@ Survivors: **Sinon.js** (decoupled from Buster years ago, alive at sinonjs.org) 
 #### Lessons For Overkill
 
 - modularity is right, but ship as **one cohesive workspace with one version line** — Buster's lesson, painful version
-- substrate first, test-aware second — keep `@overkill/transport`, `@overkill/event-stream`, `@overkill/identity` substrate generic
+- substrate first, test-aware second — keep `@overkill-dev/transport`, `@overkill-dev/event-stream`, `@overkill-dev/identity` substrate generic
 - evented reporting is the right shape, but typed
 - onboarding must be `git clone && npm i && overkill` in 60s — anything else fails
 

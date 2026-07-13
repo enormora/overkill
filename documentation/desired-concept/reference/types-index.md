@@ -384,7 +384,7 @@ type RuntimeSnapshot = unknown; // adapter-specific replay payload
 
 Source: [Capability Handles](../authoring/capability-handles.md). These are
 illustrative architecture patterns, not canonical contracts owned by
-`@overkill/engine`.
+`@overkill-dev/engine`.
 
 ## Failure Artifacts
 

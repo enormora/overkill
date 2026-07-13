@@ -11,7 +11,7 @@ source/
 |-- feature-a/               # generic example of a reusable feature folder
 `-- packages/
     |-- engine/
-    |   `-- entry-point.ts   # thin facade for the published @overkill/engine package
+    |   `-- entry-point.ts   # thin facade for the published @overkill-dev/engine package
     `-- package-a/
         `-- entry-point.ts   # generic example of a publish facade re-exporting feature code
 ```

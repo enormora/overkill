@@ -20,9 +20,9 @@ _derived_ from the identity, not the other way around.
 Overkill distinguishes:
 
 - **engine identity** — the minimal stable identity known to
-  `@overkill/engine`, independent of files or any specific authoring DSL
+  `@overkill-dev/engine`, independent of files or any specific authoring DSL
 - **authoring identity** — the richer identity derived by a DSL or package
-  such as `@overkill/test`
+  such as `@overkill-dev/test`
 - **expanded case identity** — the concrete case after parameterization,
   macro instantiation, and runtime-matrix multiplication
 - **runtime identity** — the resolved runtime target (browser variant,
@@ -36,11 +36,11 @@ Overkill distinguishes:
 
 ## Engine Versus DSL Identity
 
-`@overkill/engine` is API-only. It should not assume test files, modules,
+`@overkill-dev/engine` is API-only. It should not assume test files, modules,
 suite trees, or any one registration style.
 
 That means engine identity must stay generic. A higher-level package such as
-`@overkill/test` may then derive richer identities from:
+`@overkill-dev/test` may then derive richer identities from:
 
 - file/module origin
 - explicit suite names
@@ -50,8 +50,8 @@ That means engine identity must stay generic. A higher-level package such as
 - workload metadata
 
 So the rest of this document should be read primarily as the **default
-identity derivation for `@overkill/test` and related first-party tooling**,
-not as a hard requirement baked into `@overkill/engine`.
+identity derivation for `@overkill-dev/test` and related first-party tooling**,
+not as a hard requirement baked into `@overkill-dev/engine`.
 
 ## Concrete Type Sketch
 
@@ -221,7 +221,7 @@ intent": the inputs to the plan are stable and the plan is replayable.
 
 IDE plugins navigate from "a failure in CI" to "the source location" by
 parsing structured identity plus origin metadata, not the rendered failure
-message. In the default `@overkill/test` mapping, identity carries `file`
+message. In the default `@overkill-dev/test` mapping, identity carries `file`
 and (via the suite path + name) enough structure for source-location lookup;
 the IDE asks Overkill for the line number via the engine API rather than
 re-parsing the file.

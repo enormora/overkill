@@ -13,7 +13,7 @@ Overkill should not grow a second programming model in configuration.
 
 ## Core Rule
 
-`@overkill/engine` is API-only.
+`@overkill-dev/engine` is API-only.
 
 It does not need:
 
@@ -32,7 +32,7 @@ remains optional.
 
 That means:
 
-- configuration loading belongs above the engine, in `@overkill/run`
+- configuration loading belongs above the engine, in `@overkill-dev/run`
 - higher layers may contribute configuration domains even when they do not
   own file discovery
 - direct programmatic composition stays first-class
@@ -59,7 +59,7 @@ Configuration should mainly cover orchestration and package wiring:
 
 Configuration should avoid becoming the place where test logic lives.
 
-One important distinction: `@overkill/run` may be the place that loads,
+One important distinction: `@overkill-dev/run` may be the place that loads,
 merges, and validates configuration files, but it is not the semantic owner of
 every key. Browser, benchmark, assertion, baseline, or type-test packages
 may each contribute their own configuration surface above the engine. The
@@ -90,8 +90,8 @@ Overkill should avoid:
 The first-party shape is:
 
 ```ts
-import { defineConfig } from '@overkill/run';
-import { createLineReporter } from '@overkill/reporter-line';
+import { defineConfig } from '@overkill-dev/run';
+import { createLineReporter } from '@overkill-dev/reporter-line';
 
 export default defineConfig({
     include: [ 'source/**/*.test.ts' ],
@@ -116,7 +116,7 @@ So, for example:
 - `--profile <name>` chooses which runner profile to use for this run
 - `--coverage` chooses whether this run collects coverage
 - `run({ profile: 'microtest', coverage: true })` should express the same
-  intent directly through `@overkill/run`
+  intent directly through `@overkill-dev/run`
 - an optional global assertion budget policy lives in configuration because
   it is centrally enforced suite policy rather than per-test authoring
 - `coverage.formats`, `coverage.thresholds`, `coverage.include`, and
@@ -158,7 +158,7 @@ ad-hoc precedence rules.
 
 ## Relationship To Packages
 
-Configuration belongs above the engine. `@overkill/run` owns configuration
+Configuration belongs above the engine. `@overkill-dev/run` owns configuration
 file loading, discovery, and cross-package merging/validation. Higher-level
 packages may still contribute their own configuration domains such as browser
 wiring, benchmark metric collectors, baseline policy, or type-test
@@ -177,8 +177,8 @@ context owns what `case.assert` and `case.require` expose.
 Example direction:
 
 ```ts
-import { defineCompositeAssertion } from '@overkill/assert';
-import type { TestDouble } from '@overkill/doubles';
+import { defineCompositeAssertion } from '@overkill-dev/assert';
+import type { TestDouble } from '@overkill-dev/doubles';
 
 const calledOnceWith = defineCompositeAssertion(
     'calledOnceWith',
@@ -190,7 +190,7 @@ const calledOnceWith = defineCompositeAssertion(
 
 That resulting assertion surface may then be re-exposed by higher-level
 authoring layers, but registration itself does not belong to runner config
-or to `@overkill/test`.
+or to `@overkill-dev/test`.
 
 ## Configuration Versus Plugins
 
@@ -229,7 +229,7 @@ magical for configuration too.
 - higher-level configuration files are optional
 - JS/TS configuration is preferred
 - configuration loading and discovery live above the engine, in
-  `@overkill/run`
+  `@overkill-dev/run`
 - higher layers may contribute configuration domains even when the runner
   owns the top-level loading step
 - the surface should stay small and orchestration-focused

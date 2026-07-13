@@ -8,7 +8,7 @@ This is intentionally closer to the real modularity of Buster and the framework-
 
 ## Core
 
-`@overkill/engine` should define the stable contracts for:
+`@overkill-dev/engine` should define the stable contracts for:
 
 - test definitions
 - execution plans
@@ -34,15 +34,15 @@ adapters alike.
 
 The layer split should stay explicit:
 
-- `@overkill/engine` owns execution of an already-resolved plan
-- `@overkill/run` owns turning human or programmatic run intent into that
+- `@overkill-dev/engine` owns execution of an already-resolved plan
+- `@overkill-dev/run` owns turning human or programmatic run intent into that
   plan
 
 The CLI must not become a privileged control surface. Any meaningful
 run-intent flag should also exist as a typed programmatic field on the
 semantic owner package. In practice that means:
 
-- CLI flags that shape planning or orchestration map to `@overkill/run`
+- CLI flags that shape planning or orchestration map to `@overkill-dev/run`
   request fields
 - engine consumers can still bypass CLI and configuration entirely by constructing
   a `RunPlan` and calling `executePlan(...)` directly
@@ -50,8 +50,8 @@ semantic owner package. In practice that means:
 Recommended public split:
 
 ```ts
-import { executePlan } from '@overkill/engine';
-import { list, mergeResults, planRun, replay, replayWitness, run, watch } from '@overkill/run';
+import { executePlan } from '@overkill-dev/engine';
+import { list, mergeResults, planRun, replay, replayWitness, run, watch } from '@overkill-dev/run';
 ```
 
 Conceptually:
@@ -63,7 +63,7 @@ Conceptually:
 
 ## Default Test Authoring
 
-`@overkill/test` should be the single preferred first-party high-level
+`@overkill-dev/test` should be the single preferred first-party high-level
 authoring layer. It should favor:
 
 - exported suite values
@@ -102,7 +102,7 @@ families, the preferred pattern is a Playwright-style **test facade**:
 - `createTestFacade(...)` in project code composes one typed authoring
   surface
 - any custom assertion registration happens in the engine-owned assertion
-  layer below that facade, not in `@overkill/test` itself
+  layer below that facade, not in `@overkill-dev/test` itself
 - the project re-exports that facade through a stable alias such as
   `#tests/micro` or `#tests/integration`
 - test files import from that stable alias rather than from varying
@@ -127,8 +127,8 @@ turning it into a second plugin runtime.
 
 ## Assertions
 
-The first-party assertion layer should live in `@overkill/engine`, not in
-`@overkill/test`. The concept still needs a clear home for:
+The first-party assertion layer should live in `@overkill-dev/engine`, not in
+`@overkill-dev/test`. The concept still needs a clear home for:
 
 - `plan()`-style guarantees
 - assertion count tracking
@@ -141,12 +141,12 @@ The first-party assertion layer should live in `@overkill/engine`, not in
 Overkill should not expose a broad “mount any third-party matcher library
 into `case.assert`” surface. The extension boundary should stay narrower:
 
-- `@overkill/engine` owns the assertion model, built-ins, counting rules,
+- `@overkill-dev/engine` owns the assertion model, built-ins, counting rules,
   injected `case.assert` / `case.require`, and assertion extension hooks
-- `@overkill/assert` owns reusable helpers for defining assertion
+- `@overkill-dev/assert` owns reusable helpers for defining assertion
   extensions, such as composite-assertion builders and foreign-assertion
   bridges
-- `@overkill/test` may provide a higher-level authoring facade, but it does
+- `@overkill-dev/test` may provide a higher-level authoring facade, but it does
   not own assertion semantics or registration
 - adapter packages may wrap foreign throwable-style assertion libraries
   through the normalized bridge described in
@@ -154,7 +154,7 @@ into `case.assert`” surface. The extension boundary should stay narrower:
 
 This is the right place for focused adapter packages such as:
 
-- `@overkill/aws-cdk`
+- `@overkill-dev/aws-cdk`
 
 That package should bridge `@aws-cdk/assertions` into facade-ready Overkill
 assertions without making generic third-party assertion interop part of the
@@ -162,7 +162,7 @@ core model.
 
 ## Doubles
 
-`@overkill/doubles` should be a separate first-party package rather than an assertion side feature.
+`@overkill-dev/doubles` should be a separate first-party package rather than an assertion side feature.
 
 It should favor:
 
@@ -182,13 +182,13 @@ It should avoid:
 
 The conceptual split is:
 
-- `@overkill/doubles` owns programmable function doubles
-- `@overkill/engine` owns built-in assertions and the injected assertion
+- `@overkill-dev/doubles` owns programmable function doubles
+- `@overkill-dev/engine` owns built-in assertions and the injected assertion
   context
-- `@overkill/assert` owns reusable doubles-oriented assertion-extension
+- `@overkill-dev/assert` owns reusable doubles-oriented assertion-extension
   helpers
-- `@overkill/test` owns default authoring/facade composition only
-- doubles-specific assertions may be contributed by `@overkill/doubles`
+- `@overkill-dev/test` owns default authoring/facade composition only
+- doubles-specific assertions may be contributed by `@overkill-dev/doubles`
   when an engine-backed assertion context explicitly opts into them
 
 This keeps the creation of doubles separate from how tests assert on them.
@@ -200,7 +200,7 @@ Related first-party ergonomics above the doubles layer may include:
 
 ## Runtimes
 
-`@overkill/resources` should own:
+`@overkill-dev/resources` should own:
 
 - typed context composition
 - typed resource composition
@@ -211,10 +211,10 @@ Related first-party ergonomics above the doubles layer may include:
 - explicit artifact attachment from resources or runtimes
 - deterministic service and browser runtime composition
 
-`@overkill/resources` should be generic enough to serve multiple higher-level families:
+`@overkill-dev/resources` should be generic enough to serve multiple higher-level families:
 
-- `@overkill/test` for ordinary test context
-- `@overkill/bench` for temp dirs, registries, calibration resources, PTYs, and external processes
+- `@overkill-dev/test` for ordinary test context
+- `@overkill-dev/bench` for temp dirs, registries, calibration resources, PTYs, and external processes
 - browser packages for browser servers, contexts, pages, and device matrices
 
 This package family is the main place for supporting:
@@ -234,12 +234,12 @@ be strong enough to host them cleanly.
 
 Capability-handle or “world” style architecture remains compatible with this
 package family, but Overkill should not ship a first-class production-facing
-`@overkill/world` package in the current concept because consumer production
+`@overkill-dev/world` package in the current concept because consumer production
 code should not need Overkill dependencies.
 
 ## Orchestration
 
-`@overkill/run` should own:
+`@overkill-dev/run` should own:
 
 - file discovery
 - filtering
@@ -323,12 +323,12 @@ Reporter support should be modeled as a package family rather than one catch-all
 
 Examples:
 
-- `@overkill/reporter-dot`
-- `@overkill/reporter-line`
-- `@overkill/reporter-tap`
-- `@overkill/reporter-json`
-- `@overkill/reporter-html`
-- `@overkill/reporter-benchmark-html`
+- `@overkill-dev/reporter-dot`
+- `@overkill-dev/reporter-line`
+- `@overkill-dev/reporter-tap`
+- `@overkill-dev/reporter-json`
+- `@overkill-dev/reporter-html`
+- `@overkill-dev/reporter-benchmark-html`
 
 Multiple reporters should be attachable to one run.
 
@@ -348,7 +348,7 @@ The benchmark-specific HTML reporter is justified because benchmark suites
 need presentation that generic test reporters do not: workload comparisons,
 percentiles, baseline deltas, machine metadata, and plotting-oriented output.
 That reporter should therefore remain a separate reporter package rather than
-being hidden inside `@overkill/bench`.
+being hidden inside `@overkill-dev/bench`.
 
 Reporter loading should stay explicit and JS/TS-native:
 
@@ -368,7 +368,7 @@ Lifecycle, sink, delivery, and backpressure semantics live in
 
 ## Baselines
 
-`@overkill/baselines` should define the common concepts for:
+`@overkill-dev/baselines` should define the common concepts for:
 
 - locating baseline artifacts
 - collecting current output
@@ -414,8 +414,8 @@ runner patch points. That means:
 - benchmark packages contribute workloads, measurements, and policies
 
 Overkill does not need a giant global plugin container to be extensible.
-Stable package-level APIs, stable contracts in `@overkill/engine`, and
-orchestration-level composition in `@overkill/run` are enough for many
+Stable package-level APIs, stable contracts in `@overkill-dev/engine`, and
+orchestration-level composition in `@overkill-dev/run` are enough for many
 extension stories without inventing a heavy plugin runtime. See
 [Configuration § Configuration Versus Plugins](./configuration.md#configuration-versus-plugins)
 for how configuration-driven attachment composes with direct programmatic
@@ -443,9 +443,9 @@ Configuration belongs above the engine.
 
 The conceptual split is:
 
-- `@overkill/engine`
+- `@overkill-dev/engine`
   - programmatic options only
-- `@overkill/run`
+- `@overkill-dev/run`
   - optional configuration files, discovery, orchestration defaults
 - high-level packages
   - package-specific programmatic registration surfaces
@@ -470,7 +470,7 @@ The clearest current example is:
 - a first-party Stryker integration
 - a first-party ESLint rule-testing adapter package rather than baking
   `RuleTester` compatibility into the core authoring layer
-- a separate `@overkill/eslint-plugin` for static enforcement of
+- a separate `@overkill-dev/eslint-plugin` for static enforcement of
   Overkill-specific authoring conventions
 - an easy-to-enable coverage story based on explicit tooling rather than built-in default behavior
 - watch-mode support that reuses Node's built-in behavior where possible
@@ -498,7 +498,7 @@ What this means conceptually:
 
 ## Benchmarking
 
-`@overkill/bench` should be a distinct package family. It needs its own
+`@overkill-dev/bench` should be a distinct package family. It needs its own
 subpackages for:
 
 - workload definitions
@@ -512,7 +512,7 @@ subpackages for:
 
 Overkill should preserve an explicit builder-oriented layer for higher-level packages. This is where the Folio influence matters most: first-party and third-party packages should be able to assemble specialized test APIs from lower-level execution, runtime, and reporting contracts rather than forking the whole runner.
 
-Conceptually this layer sits above `@overkill/engine` and below finished
+Conceptually this layer sits above `@overkill-dev/engine` and below finished
 user-facing bundles or DSL packages.
 
 The important constraint is that Overkill should not ship multiple
@@ -525,38 +525,38 @@ This is a single-page lookup of which package owns each concept.
 Each concept has one canonical package; satellite packages may consume
 or extend the contract but do not redefine it.
 
-| Concept                                                           | Canonical package                                              | Notes                                                                                                                                                          |
-| ----------------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Test definitions, suites, cases                                   | `@overkill/engine`                                             | The `TestNode`/`TestCase`/`Suite` shapes; see [Tests As Values](../authoring/tests-as-values.md).                                                              |
-| `TestOutcome` ADT (engine result protocol)                        | `@overkill/engine`                                             | `Pass`/`Fail`/`Skip`/`Inconclusive`; see [Assertions And Results § Protocol Layer](../authoring/assertions-and-results.md#protocol-layer-structured-outcomes). |
-| Test verdict derivation (crashed, presentation mapping, …)        | `@overkill/run`                                                | Verdicts derived from `(outcome, metadata, runner-error?)`.                                                                                                    |
-| `RunPlan` and `RunRecord`                                         | `@overkill/run`                                                | `RunPlan` shape sketched in [Reproducibility](./reproducibility.md).                                                                                           |
-| `FailedCheck`, `Diff`, internal assertion protocol                | `@overkill/engine`                                             | Engine owns both the result schema and the first-party assertion behavior on top.                                                                              |
-| Injected `assert` / `require` builder API                         | `@overkill/engine`                                             | The engine owns the injected assertion surface directly.                                                                                                       |
-| Assertion extension helpers (`defineCompositeAssertion`, bridges) | `@overkill/assert`                                             | Reusable extension helpers plug into the engine-owned assertion context.                                                                                       |
-| Test doubles (`testDouble`, `when`, helpers)                      | `@overkill/doubles`                                            | See [Doubles](../authoring/doubles.md).                                                                                                                        |
-| Typed runtime / resource composition                              | `@overkill/resources`                                          | Lifecycle scopes, execution requirements.                                                                                                                      |
-| Discovery, filtering, runner profiles                             | `@overkill/run`                                                | Reads configuration, freezes `RunPlan`.                                                                                                                        |
-| Selection filter grammar                                          | `@overkill/run`                                                | Spec in [Metadata And Selection](./metadata-and-selection.md).                                                                                                 |
-| Sharding                                                          | `@overkill/run`                                                | Stable identity-hash partitioning.                                                                                                                             |
-| Reporter event stream contract                                    | `@overkill/engine`                                             | The `ReporterEvent` ADT.                                                                                                                                       |
-| Reporter rendering                                                | `@overkill/reporter-*`                                         | Each presentation choice is its own package.                                                                                                                   |
-| Sink declarations and conflict resolution                         | `@overkill/run`                                                | Computed before workers start.                                                                                                                                 |
-| Capability profile model                                          | `@overkill/run`                                                | Profile names; permission boundary applied at worker spawn.                                                                                                    |
-| Capability handle pattern (`AppRuntime`, …)                       | user code / adapter package                                    | No first-party `@overkill/world`; see [Capability Handles](../authoring/capability-handles.md).                                                                |
-| Baseline subtypes (snapshot, visual, perf)                        | `@overkill/baselines`                                          | Shared identity and stale detection.                                                                                                                           |
-| Baseline verbs (`update`/`apply`/…)                               | `@overkill/run`                                                | Verbs sit at the runner layer; semantics from `@overkill/baselines`.                                                                                           |
-| Benchmark workloads, measurements, policies                       | `@overkill/bench`                                              | Above the engine; contributes execution requirements.                                                                                                          |
-| Coverage instrumentation                                          | `@overkill/run`                                                | V8 native; microtest-only; opt-in.                                                                                                                             |
-| Witness file format                                               | `@overkill/engine`                                             | Schema in engine; producers/consumers across families.                                                                                                         |
-| Failure artifacts (storage + schema)                              | `@overkill/engine` (schema) + `@overkill/run` (storage policy) | Storage layout owned by orchestration.                                                                                                                         |
-| Metadata propagation rules                                        | `@overkill/engine`                                             | Set merge, array replace-flag, capabilities intersect.                                                                                                         |
-| Configuration loading                                             | `@overkill/run`                                                | Reads root `overkill.config.ts`; engine has no configuration.                                                                                                  |
-| Test facade creation                                              | project code + `@overkill/test`                                | `@overkill/test` owns facade creation for authoring ergonomics only.                                                                                           |
-| Assertion extension registration                                  | `@overkill/engine`                                             | Engine owns assertion registration and injection into the test context.                                                                                        |
-| CLI entry, terminal capability detection                          | `@overkill/run`                                                | The first-party CLI remains part of `@overkill/run`.                                                                                                           |
-| Test debug mode artifact                                          | `@overkill/run`                                                | Activation, storage, retention; see [Test Debug Mode](../authoring/debug-mode.md).                                                                             |
-| Reporter packages (`@overkill/reporter-line`, …)                  | `@overkill/reporter-*`                                         | Stable contract from `@overkill/engine`; presentation owned per-package.                                                                                       |
+| Concept                                                           | Canonical package                                                      | Notes                                                                                                                                                          |
+| ----------------------------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Test definitions, suites, cases                                   | `@overkill-dev/engine`                                                 | The `TestNode`/`TestCase`/`Suite` shapes; see [Tests As Values](../authoring/tests-as-values.md).                                                              |
+| `TestOutcome` ADT (engine result protocol)                        | `@overkill-dev/engine`                                                 | `Pass`/`Fail`/`Skip`/`Inconclusive`; see [Assertions And Results § Protocol Layer](../authoring/assertions-and-results.md#protocol-layer-structured-outcomes). |
+| Test verdict derivation (crashed, presentation mapping, …)        | `@overkill-dev/run`                                                    | Verdicts derived from `(outcome, metadata, runner-error?)`.                                                                                                    |
+| `RunPlan` and `RunRecord`                                         | `@overkill-dev/run`                                                    | `RunPlan` shape sketched in [Reproducibility](./reproducibility.md).                                                                                           |
+| `FailedCheck`, `Diff`, internal assertion protocol                | `@overkill-dev/engine`                                                 | Engine owns both the result schema and the first-party assertion behavior on top.                                                                              |
+| Injected `assert` / `require` builder API                         | `@overkill-dev/engine`                                                 | The engine owns the injected assertion surface directly.                                                                                                       |
+| Assertion extension helpers (`defineCompositeAssertion`, bridges) | `@overkill-dev/assert`                                                 | Reusable extension helpers plug into the engine-owned assertion context.                                                                                       |
+| Test doubles (`testDouble`, `when`, helpers)                      | `@overkill-dev/doubles`                                                | See [Doubles](../authoring/doubles.md).                                                                                                                        |
+| Typed runtime / resource composition                              | `@overkill-dev/resources`                                              | Lifecycle scopes, execution requirements.                                                                                                                      |
+| Discovery, filtering, runner profiles                             | `@overkill-dev/run`                                                    | Reads configuration, freezes `RunPlan`.                                                                                                                        |
+| Selection filter grammar                                          | `@overkill-dev/run`                                                    | Spec in [Metadata And Selection](./metadata-and-selection.md).                                                                                                 |
+| Sharding                                                          | `@overkill-dev/run`                                                    | Stable identity-hash partitioning.                                                                                                                             |
+| Reporter event stream contract                                    | `@overkill-dev/engine`                                                 | The `ReporterEvent` ADT.                                                                                                                                       |
+| Reporter rendering                                                | `@overkill-dev/reporter-*`                                             | Each presentation choice is its own package.                                                                                                                   |
+| Sink declarations and conflict resolution                         | `@overkill-dev/run`                                                    | Computed before workers start.                                                                                                                                 |
+| Capability profile model                                          | `@overkill-dev/run`                                                    | Profile names; permission boundary applied at worker spawn.                                                                                                    |
+| Capability handle pattern (`AppRuntime`, …)                       | user code / adapter package                                            | No first-party `@overkill-dev/world`; see [Capability Handles](../authoring/capability-handles.md).                                                            |
+| Baseline subtypes (snapshot, visual, perf)                        | `@overkill-dev/baselines`                                              | Shared identity and stale detection.                                                                                                                           |
+| Baseline verbs (`update`/`apply`/…)                               | `@overkill-dev/run`                                                    | Verbs sit at the runner layer; semantics from `@overkill-dev/baselines`.                                                                                       |
+| Benchmark workloads, measurements, policies                       | `@overkill-dev/bench`                                                  | Above the engine; contributes execution requirements.                                                                                                          |
+| Coverage instrumentation                                          | `@overkill-dev/run`                                                    | V8 native; microtest-only; opt-in.                                                                                                                             |
+| Witness file format                                               | `@overkill-dev/engine`                                                 | Schema in engine; producers/consumers across families.                                                                                                         |
+| Failure artifacts (storage + schema)                              | `@overkill-dev/engine` (schema) + `@overkill-dev/run` (storage policy) | Storage layout owned by orchestration.                                                                                                                         |
+| Metadata propagation rules                                        | `@overkill-dev/engine`                                                 | Set merge, array replace-flag, capabilities intersect.                                                                                                         |
+| Configuration loading                                             | `@overkill-dev/run`                                                    | Reads root `overkill.config.ts`; engine has no configuration.                                                                                                  |
+| Test facade creation                                              | project code + `@overkill-dev/test`                                    | `@overkill-dev/test` owns facade creation for authoring ergonomics only.                                                                                       |
+| Assertion extension registration                                  | `@overkill-dev/engine`                                                 | Engine owns assertion registration and injection into the test context.                                                                                        |
+| CLI entry, terminal capability detection                          | `@overkill-dev/run`                                                    | The first-party CLI remains part of `@overkill-dev/run`.                                                                                                       |
+| Test debug mode artifact                                          | `@overkill-dev/run`                                                    | Activation, storage, retention; see [Test Debug Mode](../authoring/debug-mode.md).                                                                             |
+| Reporter packages (`@overkill-dev/reporter-line`, …)              | `@overkill-dev/reporter-*`                                             | Stable contract from `@overkill-dev/engine`; presentation owned per-package.                                                                                   |
 
 ## Bundles
 
@@ -577,16 +577,16 @@ architectural truth. That means:
 
 Bundle examples that conceptually make sense:
 
-- `@overkill/micro`: engine + test + assert + selected reporters +
+- `@overkill-dev/micro`: engine + test + assert + selected reporters +
   microtest profile helpers. For projects that mainly want pure,
   capability-restricted microtests.
-- `@overkill/default`: engine + test + assert + resources + selected
+- `@overkill-dev/default`: engine + test + assert + resources + selected
   reporters + run + baselines. For teams that want one standard Overkill
   setup.
-- `@overkill/integration`: default bundle plus integration-oriented
+- `@overkill-dev/integration`: default bundle plus integration-oriented
   baseline and process features. For broader system and workflow
   testing.
-- `@overkill/all`: convenience meta-package for adoption or evaluation.
+- `@overkill-dev/all`: convenience meta-package for adoption or evaluation.
 
 ### Risks
 

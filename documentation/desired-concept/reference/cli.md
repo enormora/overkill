@@ -1,7 +1,7 @@
 # CLI Reference
 
 This doc captures the current CLI surface and CLI runtime behavior.
-The first-party CLI belongs to `@overkill/run`; packaging changes would not
+The first-party CLI belongs to `@overkill-dev/run`; packaging changes would not
 change the concept described here.
 
 This document enumerates Overkill's command-line interface — subcommands
@@ -13,7 +13,7 @@ in the configuration file ([Configuration](../architecture/configuration.md)), a
 from both surfaces.
 
 This does **not** mean the CLI is the only programmatic path. The CLI should
-desugar to the same typed request objects that `@overkill/run` exposes.
+desugar to the same typed request objects that `@overkill-dev/run` exposes.
 There should be no meaningful "CLI-only flag" whose behavior cannot also be
 requested through the public programmatic API.
 

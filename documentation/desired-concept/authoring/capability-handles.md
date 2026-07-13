@@ -17,7 +17,7 @@ support well, not a required Overkill programming model.
 
 Another important boundary: consumer production code should not need to
 import Overkill packages. So even though this document describes the
-pattern, it does **not** imply a first-class `@overkill/world` package in
+pattern, it does **not** imply a first-class `@overkill-dev/world` package in
 the current concept.
 
 It is heavily influenced by Haskell's `IO` separation, ZIO's `R` environment,
@@ -59,7 +59,7 @@ Instead of mocks, tests can use _recording_ implementations of the relevant
 handles:
 
 ```ts
-import { suite, test } from '@overkill/test';
+import { suite, test } from '@overkill-dev/test';
 
 export const spec = suite('saveUser', [
     test('records the effect transcript', async (case) => {
@@ -223,7 +223,7 @@ This becomes the foundation for the property-testing package family later.
 
 ## Cross-References
 
-### `@overkill/doubles`
+### `@overkill-dev/doubles`
 
 This is the canonical home for the handles ↔ doubles boundary; [Doubles](./doubles.md)
 links here rather than restating it.
@@ -250,7 +250,7 @@ The boundary, in one line: is this an effect on the standard list, or a
 domain-specific function? Handles for the former, doubles for the
 latter.
 
-`@overkill/doubles` remains the primary Overkill concept for test
+`@overkill-dev/doubles` remains the primary Overkill concept for test
 doubles. Capability handles, if they become part of the ecosystem,
 complement `testDouble()` rather than compete with it.
 
@@ -329,7 +329,7 @@ The current concept is intentionally narrow:
 
 - Overkill documents capability handles as a valid and often good
   architecture pattern.
-- Overkill does **not** currently ship a first-class `@overkill/world`
+- Overkill does **not** currently ship a first-class `@overkill-dev/world`
   package or first-party production-facing handle helpers.
 - `testDouble()` remains the main official first-party tool for
   dependency replacement in tests.

@@ -15,7 +15,7 @@ Two categories live here:
 - **Deferred with research** (see the section near the end) — directions
   rejected for the _current_ concept but with a preserved record of the
   research already done and the conditions under which the decision
-  would be revisited. `@overkill/world` and in-source tests live here.
+  would be revisited. `@overkill-dev/world` and in-source tests live here.
 
 ## Authoring And API Shape
 
@@ -28,7 +28,7 @@ opaque, and forces the runner to control every entry point.
 
 Where: [Principles § No Magic](./principles.md#no-magic), [Tests As Values § What It Looks Like](../authoring/tests-as-values.md#what-it-looks-like).
 
-Alternative: explicit imports from `@overkill/test`.
+Alternative: explicit imports from `@overkill-dev/test`.
 
 ### No first-party `.skip` / `.only`
 
@@ -48,7 +48,7 @@ Alternative: CLI selection (`--name`, `--file`, `--id`, `--last-failed`).
 
 ### No Sinon-style doubles surface
 
-`@overkill/doubles` does not ship `spy` / `fake` / `stub` / `mock` /
+`@overkill-dev/doubles` does not ship `spy` / `fake` / `stub` / `mock` /
 `sandbox` as separate concepts.
 
 Why: overlapping nouns and mutable chaining trade clarity for power.
@@ -295,8 +295,8 @@ Where: [Package Architecture § Extension Surfaces](../architecture/package-arch
 [Configuration § Configuration Versus Plugins](../architecture/configuration.md#configuration-versus-plugins),
 [Package Architecture § Bundles](../architecture/package-architecture.md#bundles).
 
-Alternative: stable APIs in `@overkill/engine`, orchestration-level
-composition in `@overkill/run`, and configuration-driven attachment for
+Alternative: stable APIs in `@overkill-dev/engine`, orchestration-level
+composition in `@overkill-dev/run`, and configuration-driven attachment for
 discovered surfaces (reporters, baseline adapters).
 
 ## Deferred With Research
@@ -306,7 +306,7 @@ not fully closed. Each preserves the research already done, names what
 would have to change for revival, and explains why the deferral is not
 just a parking-lot punt.
 
-### `@overkill/world` (production-facing capability container)
+### `@overkill-dev/world` (production-facing capability container)
 
 Status: rejected for the current concept; revisit if the production-code
 boundary changes.
@@ -318,7 +318,7 @@ helpers.
 
 Why deferred: consumer production code should not need to import Overkill
 packages (see [Principles § Keep Production Code Clean](./principles.md#keep-production-code-clean)). If
-`@overkill/world` became the canonical way to define application handles,
+`@overkill-dev/world` became the canonical way to define application handles,
 it would turn into a production-facing architecture dependency. That
 crosses a boundary the current concept will not cross.
 
@@ -330,7 +330,7 @@ Where: [Principles § Keep Production Code Clean](./principles.md#keep-productio
 [Capability Handles § Current Stance](../authoring/capability-handles.md#current-stance).
 
 Alternative: capability handles documented as a _user architecture_
-pattern; `@overkill/doubles` covers test-side function replacement.
+pattern; `@overkill-dev/doubles` covers test-side function replacement.
 
 ### In-source / colocated tests
 

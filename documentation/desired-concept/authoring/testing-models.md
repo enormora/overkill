@@ -150,8 +150,8 @@ search.
 
 The settled package split is:
 
-- `@overkill/property` for generator-driven property testing
-- `@overkill/model` for rule-based/state-machine testing above that core
+- `@overkill-dev/property` for generator-driven property testing
+- `@overkill-dev/model` for rule-based/state-machine testing above that core
 
 Related advanced styles such as metamorphic, differential, and
 linearizability-oriented testing also belong in that higher-layer family.
