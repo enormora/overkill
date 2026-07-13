@@ -1,5 +1,6 @@
 import { baseConfig } from '@enormora/eslint-config-base';
 import { nodeConfig, nodeConfigFileConfig, nodeEntryPointFileConfig } from '@enormora/eslint-config-node';
+import { testSupportConfig } from '@enormora/eslint-config-test-base';
 import { typescriptConfig } from '@enormora/eslint-config-typescript';
 
 export default [
@@ -23,11 +24,10 @@ export default [
         }
     },
     {
+        ...testSupportConfig,
         files: [ '**/*.test.ts' ],
         rules: {
-            '@stylistic/max-len': 'off',
-            '@typescript-eslint/explicit-function-return-type': 'off',
-            '@typescript-eslint/no-empty-function': 'off',
+            ...testSupportConfig.rules,
             '@typescript-eslint/no-floating-promises': [
                 'error',
                 {
@@ -39,11 +39,7 @@ export default [
                         }
                     ]
                 }
-            ],
-            '@typescript-eslint/no-magic-numbers': 'off',
-            '@typescript-eslint/no-unsafe-type-assertion': 'off',
-            '@typescript-eslint/only-throw-error': 'off',
-            'no-throw-literal': 'off'
+            ]
         }
     },
     {

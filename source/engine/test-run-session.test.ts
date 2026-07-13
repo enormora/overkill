@@ -7,7 +7,7 @@ import { createInMemoryFinalResultReporter, createInMemoryRealTimeReporter } fro
 import type { TestRunSessionProvider, TestRunSessionProviderDependencies } from './test-run-session.ts';
 import { createTestRunSessionProvider } from './test-run-session.ts';
 
-function noop() {}
+function noop(): void {}
 
 type Overrides = {
     readonly execute?: SinonSpy;

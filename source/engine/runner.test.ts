@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import sinon, { type SinonSpy } from 'sinon';
-import { createRunner, type RunnerDependencies } from './runner.ts';
+import { createRunner, type Runner, type RunnerDependencies } from './runner.ts';
 import { createSuite } from './suite.ts';
 
-function noop() {}
+function noop(): void {}
 
 type FakeTestRunSessionOverrides = {
     readonly start?: SinonSpy;
@@ -26,7 +26,7 @@ type Overrides = {
     readonly createTestRunSession?: SinonSpy;
 };
 
-function runnerFactory(overrides: Overrides = {}) {
+function runnerFactory(overrides: Overrides = {}): Runner {
     const { createTestRunSession = createFakeTestRunSession() } = overrides;
 
     const fakeDependencies = {
