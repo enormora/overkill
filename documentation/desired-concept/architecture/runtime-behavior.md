@@ -91,6 +91,25 @@ A test profile may opt out of capture-on-exit if the SUT genuinely needs to
 test process-exit behavior; that test should run in an isolated subprocess
 where `process.exit` is observable as the subprocess exit code.
 
+## Environment Variables
+
+`process.env` is shared mutable process state. Direct mutation inside a test
+body makes same-process tests order-dependent, especially under concurrent
+execution. Overkill should treat ambient environment mutation as invalid in
+microtests and controlled in higher-layer profiles.
+
+Default policy:
+
+-   tests may read `process.env`
+-   microtests must not assign to or delete from `process.env`
+-   integration-style tests that need environment changes should use an
+    environment resource or per-worker process configuration
+-   environment resources must restore previous values when their scope ends
+
+This is intentionally separate from the capability enumeration. Node's
+permission model does not govern `process.env`, and Overkill can enforce this
+as runtime state policy even before capability-restricted execution exists.
+
 ## Zero-Test Runs
 
 A run that collects zero tests is a **failure** by default. This catches

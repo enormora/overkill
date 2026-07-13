@@ -21,6 +21,17 @@ The core accepts two first-party styles:
 
 Both produce the same internal `TestOutcome` value.
 
+In builder/result mode, `case.assert.done()` should return a branded
+`TestCompletion` value, not a public `TestOutcome`. A builder test that
+returns any other concrete value is a test-author error. This keeps ordinary
+application return values from being mistaken for meaningful test completion
+signals.
+
+The engine still normalizes the builder log into `TestOutcome` internally.
+The brand is only a public API boundary: users complete builder tests through
+the assertion context, while reporters and integrations consume structured
+outcomes.
+
 Sources:
 
 -   [Rust by Example — Unit testing with `Result`](https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html)

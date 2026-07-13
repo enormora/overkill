@@ -371,6 +371,17 @@ Overkill's answer to shared setup is still resources, macros, and explicit
 composition rather than ever-deeper nested suite trees pretending to be
 fixture scopes.
 
+Runtime subtests are not part of the first-party concept. A test body should
+not be able to create new test cases through an API such as `case.test(...)`
+or `case.subtest(...)`. Any child cases must exist in the collected tree
+before execution starts, either as nested `suite(...)` values, `table(...)`
+expansions, or macro output.
+
+This is a deliberate boundary, not a missing convenience. Runtime subtests
+make completion, parent context ownership, cancellation, and reporting depend
+on behavior inside an already-running test. Overkill keeps those concerns in
+collection and planning instead.
+
 ## Relationship To Other DSLs
 
 Other DSLs may still be built on top of the same engine and tree model.
