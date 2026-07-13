@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import { asyncNoop, noop } from 'noop-esm';
 import sinon, { type SinonStub } from 'sinon';
+import { registerTest } from '../test-support/register-test.ts';
 import {
     createTestCaseExecutor,
     type TestCaseExecutor,
@@ -28,28 +28,28 @@ function executorFactory(overrides: Overrides = {}): TestCaseExecutor {
     return createTestCaseExecutor(fakeDependencies);
 }
 
-test('returns "success" when the given test function doesn’t throw', async function () {
+registerTest('returns "success" when the given test function doesn’t throw', async function () {
     const executor = executorFactory();
     const result = await executor.execute(noop);
 
     assert.deepStrictEqual(result, { status: 'success', duration: 0 });
 });
 
-test('returns "success" when the given async test function doesn’t reject', async function () {
+registerTest('returns "success" when the given async test function doesn’t reject', async function () {
     const executor = executorFactory();
     const result = await executor.execute(asyncNoop);
 
     assert.deepStrictEqual(result, { status: 'success', duration: 0 });
 });
 
-test('returns "failure" when the given test function throws an error', async function () {
+registerTest('returns "failure" when the given test function throws an error', async function () {
     const executor = executorFactory();
     const result = await executor.execute(errorTestFunction);
 
     assert.deepStrictEqual(result, { status: 'failure', reason: 'failed with error', duration: 0 });
 });
 
-test('returns "failure" when the given test function throws a non error', async function () {
+registerTest('returns "failure" when the given test function throws a non error', async function () {
     const executor = executorFactory();
     const nonErrorFailureTestFunction = async function (): Promise<void> {
         const result = Promise.withResolvers<undefined>();
@@ -62,7 +62,7 @@ test('returns "failure" when the given test function throws a non error', async 
     assert.deepStrictEqual(result, { status: 'failure', reason: 'Unknown error', duration: 0 });
 });
 
-test('returns "failure" when the given async test function rejects an error', async function () {
+registerTest('returns "failure" when the given async test function rejects an error', async function () {
     const executor = executorFactory();
     const result = await executor.execute(async function () {
         throw new Error('async error');
@@ -71,7 +71,7 @@ test('returns "failure" when the given async test function rejects an error', as
     assert.deepStrictEqual(result, { status: 'failure', reason: 'async error', duration: 0 });
 });
 
-test('returns the correct duration when a test was successful', async function () {
+registerTest('returns the correct duration when a test was successful', async function () {
     const now = sinon.stub().onFirstCall().returns(10).onSecondCall().returns(30);
     const executor = executorFactory({ now });
     const result = await executor.execute(noop);
@@ -79,7 +79,7 @@ test('returns the correct duration when a test was successful', async function (
     assert.deepStrictEqual(result, { status: 'success', duration: 20 });
 });
 
-test('returns the correct duration when a test failed', async function () {
+registerTest('returns the correct duration when a test failed', async function () {
     const now = sinon.stub().onFirstCall().returns(10).onSecondCall().returns(30);
     const executor = executorFactory({ now });
     const result = await executor.execute(errorTestFunction);

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { registerTest } from '../test-support/register-test.ts';
 import { createInMemoryRealTimeReporter, createInMemoryFinalResultReporter } from './in-memory-reporter.ts';
 
 const testRunResult = {
@@ -8,7 +8,7 @@ const testRunResult = {
     testCaseResults: []
 } as const;
 
-test('in-memory real-time reporter reports a session start', async function () {
+registerTest('in-memory real-time reporter reports a session start', async function () {
     const reporter = createInMemoryRealTimeReporter();
     const session = reporter.createSession(42);
 
@@ -17,7 +17,7 @@ test('in-memory real-time reporter reports a session start', async function () {
     assert.deepStrictEqual(reporter.getRecordedEntries(), [ { sessionId: 42, type: 'start', testRunResult } ]);
 });
 
-test('in-memory real-time reporter reports progress', async function () {
+registerTest('in-memory real-time reporter reports progress', async function () {
     const reporter = createInMemoryRealTimeReporter();
     const session = reporter.createSession(42);
     const testCaseResult = {
@@ -35,7 +35,7 @@ test('in-memory real-time reporter reports progress', async function () {
     } ]);
 });
 
-test('in-memory real-time reporter reports when the session finished', async function () {
+registerTest('in-memory real-time reporter reports when the session finished', async function () {
     const reporter = createInMemoryRealTimeReporter();
     const session = reporter.createSession(42);
 
@@ -44,7 +44,7 @@ test('in-memory real-time reporter reports when the session finished', async fun
     assert.deepStrictEqual(reporter.getRecordedEntries(), [ { sessionId: 42, type: 'done', testRunResult } ]);
 });
 
-test('in-memory real-time reporter collects reports from multiple sessions', async function () {
+registerTest('in-memory real-time reporter collects reports from multiple sessions', async function () {
     const reporter = createInMemoryRealTimeReporter();
     const firstSession = reporter.createSession(1);
     const secondSession = reporter.createSession(2);
@@ -58,7 +58,7 @@ test('in-memory real-time reporter collects reports from multiple sessions', asy
     ]);
 });
 
-test('in-memory real-time reporter collects multiple reports for one session', async function () {
+registerTest('in-memory real-time reporter collects multiple reports for one session', async function () {
     const reporter = createInMemoryRealTimeReporter();
     const session = reporter.createSession(42);
 
@@ -71,7 +71,7 @@ test('in-memory real-time reporter collects multiple reports for one session', a
     ]);
 });
 
-test('in-memory final-result reporter reports when the session finished', async function () {
+registerTest('in-memory final-result reporter reports when the session finished', async function () {
     const reporter = createInMemoryFinalResultReporter();
     const session = reporter.createSession(42);
 
@@ -80,7 +80,7 @@ test('in-memory final-result reporter reports when the session finished', async 
     assert.deepStrictEqual(reporter.getRecordedEntries(), [ { sessionId: 42, type: 'done', testRunResult } ]);
 });
 
-test('in-memory final-result reporter collects reports from multiple sessions', async function () {
+registerTest('in-memory final-result reporter collects reports from multiple sessions', async function () {
     const reporter = createInMemoryFinalResultReporter();
     const firstSession = reporter.createSession(1);
     const secondSession = reporter.createSession(2);

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import { noop } from 'noop-esm';
 import sinon, { type SinonSpy } from 'sinon';
+import { registerTest } from '../test-support/register-test.ts';
 import {
     createInMemoryFinalResultReporter,
     createInMemoryRealTimeReporter,
@@ -31,7 +31,7 @@ function testRunSessionProviderFactory(overrides: Overrides = {}): TestRunSessio
     return createTestRunSessionProvider(fakeDependencies);
 }
 
-test('runSingleTestCase() executes the given test case', async function () {
+registerTest('runSingleTestCase() executes the given test case', async function () {
     const execute = sinon.fake.returns({});
     const provider = testRunSessionProviderFactory({ execute });
     const session = provider.createTestRunSession(42, 21);
@@ -42,148 +42,163 @@ test('runSingleTestCase() executes the given test case', async function () {
     assert.deepStrictEqual(execute.firstCall.args, [ noop ]);
 });
 
-test('runSingleTestCase() reports the progress to the current reporter when it is a real-time reporter', async function () {
-    const execute = sinon.fake.returns({ status: 'success', duration: 100 });
-    const reporter = createInMemoryRealTimeReporter();
-    const provider = testRunSessionProviderFactory({ execute, reporter });
-    const session = provider.createTestRunSession(42, 21);
+registerTest(
+    'runSingleTestCase() reports the progress to the current reporter when it is a real-time reporter',
+    async function () {
+        const execute = sinon.fake.returns({ status: 'success', duration: 100 });
+        const reporter = createInMemoryRealTimeReporter();
+        const provider = testRunSessionProviderFactory({ execute, reporter });
+        const session = provider.createTestRunSession(42, 21);
 
-    await session.runSingleTestCase({ title: 'foo', testFunction: noop, suiteTitle: 'bar' }, 0);
+        await session.runSingleTestCase({ title: 'foo', testFunction: noop, suiteTitle: 'bar' }, 0);
 
-    assert.deepStrictEqual(reporter.getRecordedEntries(), [
-        {
-            sessionId: 42,
-            type: 'progress',
-            testRunResult: {
-                progress: 'pending',
-                summary: {
-                    failedCount: 0,
-                    successCount: 1,
-                    totalCount: 21,
-                    completedCount: 1,
-                    pendingCount: 20
-                },
-                testCaseResults: [
-                    {
-                        testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'bar' },
-                        result: { status: 'success', duration: 100 }
-                    }
-                ]
-            },
-            testCaseResult: {
-                testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'bar' },
-                result: { status: 'success', duration: 100 }
-            }
-        }
-    ]);
-});
-
-test('runSingleTestCase() doesn’t report the progress to the current reporter when it is NOT a real-time reporter', async function () {
-    const execute = sinon.fake.returns({ status: 'success', duration: 100 });
-    const reporter = createInMemoryFinalResultReporter();
-    const provider = testRunSessionProviderFactory({ execute, reporter });
-    const session = provider.createTestRunSession(42, 21);
-
-    await session.runSingleTestCase({ title: 'foo', testFunction: noop, suiteTitle: 'bar' }, 0);
-
-    assert.deepStrictEqual(reporter.getRecordedEntries(), []);
-});
-
-test('runSingleTestCase() updates the current test-run result when multiple tests are executed and sends it to the reporter when it is a real-time reporter', async function () {
-    const execute = sinon
-        .stub()
-        .onFirstCall()
-        .returns({ status: 'success', duration: 100 })
-        .onSecondCall()
-        .returns({ status: 'failure', duration: 50 });
-    const reporter = createInMemoryRealTimeReporter();
-    const provider = testRunSessionProviderFactory({ execute, reporter });
-    const session = provider.createTestRunSession(42, 2);
-
-    await session.runSingleTestCase({ title: 'foo', testFunction: noop, suiteTitle: 'suite1' }, 0);
-    await session.runSingleTestCase({ title: 'bar', testFunction: noop, suiteTitle: 'suite2' }, 1);
-
-    assert.deepStrictEqual(reporter.getRecordedEntries(), [
-        {
-            sessionId: 42,
-            type: 'progress',
-            testRunResult: {
-                progress: 'pending',
-                summary: { failedCount: 0, successCount: 1, totalCount: 2, completedCount: 1, pendingCount: 1 },
-                testCaseResults: [
-                    {
-                        testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'suite1' },
-                        result: { status: 'success', duration: 100 }
-                    }
-                ]
-            },
-            testCaseResult: {
-                testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'suite1' },
-                result: { status: 'success', duration: 100 }
-            }
-        },
-        {
-            sessionId: 42,
-            type: 'progress',
-            testRunResult: {
-                progress: 'pending',
-                summary: { failedCount: 1, successCount: 1, totalCount: 2, completedCount: 2, pendingCount: 0 },
-                testCaseResults: [
-                    {
-                        testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'suite1' },
-                        result: { status: 'success', duration: 100 }
+        assert.deepStrictEqual(reporter.getRecordedEntries(), [
+            {
+                sessionId: 42,
+                type: 'progress',
+                testRunResult: {
+                    progress: 'pending',
+                    summary: {
+                        failedCount: 0,
+                        successCount: 1,
+                        totalCount: 21,
+                        completedCount: 1,
+                        pendingCount: 20
                     },
-                    {
-                        testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'suite2' },
-                        result: { status: 'failure', duration: 50 }
-                    }
-                ]
-            },
-            testCaseResult: {
-                testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'suite2' },
-                result: { status: 'failure', duration: 50 }
-            }
-        }
-    ]);
-});
-
-test('start() reports the initial test-run result to the current reporter when it is a real-time reporter', async function () {
-    const reporter = createInMemoryRealTimeReporter();
-    const provider = testRunSessionProviderFactory({ reporter });
-    const session = provider.createTestRunSession(42, 21);
-
-    await session.start();
-
-    assert.deepStrictEqual(reporter.getRecordedEntries(), [
-        {
-            sessionId: 42,
-            type: 'start',
-            testRunResult: {
-                progress: 'pending',
-                summary: {
-                    failedCount: 0,
-                    successCount: 0,
-                    totalCount: 21,
-                    completedCount: 0,
-                    pendingCount: 21
+                    testCaseResults: [
+                        {
+                            testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'bar' },
+                            result: { status: 'success', duration: 100 }
+                        }
+                    ]
                 },
-                testCaseResults: []
+                testCaseResult: {
+                    testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'bar' },
+                    result: { status: 'success', duration: 100 }
+                }
             }
-        }
-    ]);
-});
+        ]);
+    }
+);
 
-test('start() doesn’t report anything to the current reporter when it is NOT a real-time reporter', async function () {
-    const reporter = createInMemoryFinalResultReporter();
-    const provider = testRunSessionProviderFactory({ reporter });
-    const session = provider.createTestRunSession(42, 21);
+registerTest(
+    'runSingleTestCase() doesn’t report the progress to the current reporter when it is NOT a real-time reporter',
+    async function () {
+        const execute = sinon.fake.returns({ status: 'success', duration: 100 });
+        const reporter = createInMemoryFinalResultReporter();
+        const provider = testRunSessionProviderFactory({ execute, reporter });
+        const session = provider.createTestRunSession(42, 21);
 
-    await session.start();
+        await session.runSingleTestCase({ title: 'foo', testFunction: noop, suiteTitle: 'bar' }, 0);
 
-    assert.deepStrictEqual(reporter.getRecordedEntries(), []);
-});
+        assert.deepStrictEqual(reporter.getRecordedEntries(), []);
+    }
+);
 
-test('done() returns the aggregated result of all given test cases', async function () {
+registerTest(
+    'runSingleTestCase() updates the current test-run result when multiple tests are executed and sends it to the reporter when it is a real-time reporter',
+    async function () {
+        const execute = sinon
+            .stub()
+            .onFirstCall()
+            .returns({ status: 'success', duration: 100 })
+            .onSecondCall()
+            .returns({ status: 'failure', duration: 50 });
+        const reporter = createInMemoryRealTimeReporter();
+        const provider = testRunSessionProviderFactory({ execute, reporter });
+        const session = provider.createTestRunSession(42, 2);
+
+        await session.runSingleTestCase({ title: 'foo', testFunction: noop, suiteTitle: 'suite1' }, 0);
+        await session.runSingleTestCase({ title: 'bar', testFunction: noop, suiteTitle: 'suite2' }, 1);
+
+        assert.deepStrictEqual(reporter.getRecordedEntries(), [
+            {
+                sessionId: 42,
+                type: 'progress',
+                testRunResult: {
+                    progress: 'pending',
+                    summary: { failedCount: 0, successCount: 1, totalCount: 2, completedCount: 1, pendingCount: 1 },
+                    testCaseResults: [
+                        {
+                            testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'suite1' },
+                            result: { status: 'success', duration: 100 }
+                        }
+                    ]
+                },
+                testCaseResult: {
+                    testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'suite1' },
+                    result: { status: 'success', duration: 100 }
+                }
+            },
+            {
+                sessionId: 42,
+                type: 'progress',
+                testRunResult: {
+                    progress: 'pending',
+                    summary: { failedCount: 1, successCount: 1, totalCount: 2, completedCount: 2, pendingCount: 0 },
+                    testCaseResults: [
+                        {
+                            testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'suite1' },
+                            result: { status: 'success', duration: 100 }
+                        },
+                        {
+                            testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'suite2' },
+                            result: { status: 'failure', duration: 50 }
+                        }
+                    ]
+                },
+                testCaseResult: {
+                    testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'suite2' },
+                    result: { status: 'failure', duration: 50 }
+                }
+            }
+        ]);
+    }
+);
+
+registerTest(
+    'start() reports the initial test-run result to the current reporter when it is a real-time reporter',
+    async function () {
+        const reporter = createInMemoryRealTimeReporter();
+        const provider = testRunSessionProviderFactory({ reporter });
+        const session = provider.createTestRunSession(42, 21);
+
+        await session.start();
+
+        assert.deepStrictEqual(reporter.getRecordedEntries(), [
+            {
+                sessionId: 42,
+                type: 'start',
+                testRunResult: {
+                    progress: 'pending',
+                    summary: {
+                        failedCount: 0,
+                        successCount: 0,
+                        totalCount: 21,
+                        completedCount: 0,
+                        pendingCount: 21
+                    },
+                    testCaseResults: []
+                }
+            }
+        ]);
+    }
+);
+
+registerTest(
+    'start() doesn’t report anything to the current reporter when it is NOT a real-time reporter',
+    async function () {
+        const reporter = createInMemoryFinalResultReporter();
+        const provider = testRunSessionProviderFactory({ reporter });
+        const session = provider.createTestRunSession(42, 21);
+
+        await session.start();
+
+        assert.deepStrictEqual(reporter.getRecordedEntries(), []);
+    }
+);
+
+registerTest('done() returns the aggregated result of all given test cases', async function () {
     const provider = testRunSessionProviderFactory();
     const session = provider.createTestRunSession(42, 2);
 
@@ -220,95 +235,101 @@ test('done() returns the aggregated result of all given test cases', async funct
     });
 });
 
-test('done() reports the aggregated result the the current reporter when it is a real-time reporter', async function () {
-    const reporter = createInMemoryRealTimeReporter();
-    const provider = testRunSessionProviderFactory({ reporter });
-    const session = provider.createTestRunSession(42, 2);
+registerTest(
+    'done() reports the aggregated result the the current reporter when it is a real-time reporter',
+    async function () {
+        const reporter = createInMemoryRealTimeReporter();
+        const provider = testRunSessionProviderFactory({ reporter });
+        const session = provider.createTestRunSession(42, 2);
 
-    await session.done([
-        {
-            testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
-            result: { status: 'success', duration: 20 }
-        },
-        {
-            testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'the-suite' },
-            result: { status: 'failure', reason: 'any-reason', duration: 40 }
-        }
-    ]);
-
-    assert.deepStrictEqual(reporter.getRecordedEntries(), [
-        {
-            sessionId: 42,
-            type: 'done',
-            testRunResult: {
-                progress: 'completed',
-                summary: {
-                    totalCount: 2,
-                    failedCount: 1,
-                    successCount: 1,
-                    completedCount: 2,
-                    pendingCount: 0
-                },
-                testCaseResults: [
-                    {
-                        testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
-                        result: { status: 'success', duration: 20 }
-                    },
-                    {
-                        testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'the-suite' },
-                        result: { status: 'failure', reason: 'any-reason', duration: 40 }
-                    }
-                ]
+        await session.done([
+            {
+                testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
+                result: { status: 'success', duration: 20 }
+            },
+            {
+                testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'the-suite' },
+                result: { status: 'failure', reason: 'any-reason', duration: 40 }
             }
-        }
-    ]);
-});
+        ]);
 
-test('done() reports the aggregated result the the current reporter when it is NOT a real-time reporter', async function () {
-    const reporter = createInMemoryFinalResultReporter();
-    const provider = testRunSessionProviderFactory({ reporter });
-    const session = provider.createTestRunSession(42, 2);
-
-    await session.done([
-        {
-            testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
-            result: { status: 'success', duration: 20 }
-        },
-        {
-            testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'the-suite' },
-            result: { status: 'failure', reason: 'any-reason', duration: 40 }
-        }
-    ]);
-
-    assert.deepStrictEqual(reporter.getRecordedEntries(), [
-        {
-            sessionId: 42,
-            type: 'done',
-            testRunResult: {
-                progress: 'completed',
-                summary: {
-                    totalCount: 2,
-                    failedCount: 1,
-                    successCount: 1,
-                    completedCount: 2,
-                    pendingCount: 0
-                },
-                testCaseResults: [
-                    {
-                        testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
-                        result: { status: 'success', duration: 20 }
+        assert.deepStrictEqual(reporter.getRecordedEntries(), [
+            {
+                sessionId: 42,
+                type: 'done',
+                testRunResult: {
+                    progress: 'completed',
+                    summary: {
+                        totalCount: 2,
+                        failedCount: 1,
+                        successCount: 1,
+                        completedCount: 2,
+                        pendingCount: 0
                     },
-                    {
-                        testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'the-suite' },
-                        result: { status: 'failure', reason: 'any-reason', duration: 40 }
-                    }
-                ]
+                    testCaseResults: [
+                        {
+                            testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
+                            result: { status: 'success', duration: 20 }
+                        },
+                        {
+                            testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'the-suite' },
+                            result: { status: 'failure', reason: 'any-reason', duration: 40 }
+                        }
+                    ]
+                }
             }
-        }
-    ]);
-});
+        ]);
+    }
+);
 
-test('multiple messages are sent to the real-time reporter', async function () {
+registerTest(
+    'done() reports the aggregated result the the current reporter when it is NOT a real-time reporter',
+    async function () {
+        const reporter = createInMemoryFinalResultReporter();
+        const provider = testRunSessionProviderFactory({ reporter });
+        const session = provider.createTestRunSession(42, 2);
+
+        await session.done([
+            {
+                testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
+                result: { status: 'success', duration: 20 }
+            },
+            {
+                testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'the-suite' },
+                result: { status: 'failure', reason: 'any-reason', duration: 40 }
+            }
+        ]);
+
+        assert.deepStrictEqual(reporter.getRecordedEntries(), [
+            {
+                sessionId: 42,
+                type: 'done',
+                testRunResult: {
+                    progress: 'completed',
+                    summary: {
+                        totalCount: 2,
+                        failedCount: 1,
+                        successCount: 1,
+                        completedCount: 2,
+                        pendingCount: 0
+                    },
+                    testCaseResults: [
+                        {
+                            testCaseDetails: { title: 'foo', index: 0, suiteTitle: 'the-suite' },
+                            result: { status: 'success', duration: 20 }
+                        },
+                        {
+                            testCaseDetails: { title: 'bar', index: 1, suiteTitle: 'the-suite' },
+                            result: { status: 'failure', reason: 'any-reason', duration: 40 }
+                        }
+                    ]
+                }
+            }
+        ]);
+    }
+);
+
+registerTest('multiple messages are sent to the real-time reporter', async function () {
     const execute = sinon.fake.returns({ status: 'success', duration: 100 });
     const reporter = createInMemoryRealTimeReporter();
     const provider = testRunSessionProviderFactory({ execute, reporter });
@@ -348,32 +369,35 @@ test('multiple messages are sent to the real-time reporter', async function () {
     ]);
 });
 
-test('multiple messages are sent to the reporter but separated by session when running multiple sessions', async function () {
-    const reporter = createInMemoryRealTimeReporter();
-    const provider = testRunSessionProviderFactory({ reporter });
-    const firstSession = provider.createTestRunSession(1, 21);
-    const secondSession = provider.createTestRunSession(2, 21);
+registerTest(
+    'multiple messages are sent to the reporter but separated by session when running multiple sessions',
+    async function () {
+        const reporter = createInMemoryRealTimeReporter();
+        const provider = testRunSessionProviderFactory({ reporter });
+        const firstSession = provider.createTestRunSession(1, 21);
+        const secondSession = provider.createTestRunSession(2, 21);
 
-    await Promise.all([ firstSession.start(), secondSession.start() ]);
+        await Promise.all([ firstSession.start(), secondSession.start() ]);
 
-    assert.deepStrictEqual(reporter.getRecordedEntries(), [
-        {
-            sessionId: 1,
-            type: 'start',
-            testRunResult: {
-                progress: 'pending',
-                summary: { failedCount: 0, successCount: 0, totalCount: 21, completedCount: 0, pendingCount: 21 },
-                testCaseResults: []
+        assert.deepStrictEqual(reporter.getRecordedEntries(), [
+            {
+                sessionId: 1,
+                type: 'start',
+                testRunResult: {
+                    progress: 'pending',
+                    summary: { failedCount: 0, successCount: 0, totalCount: 21, completedCount: 0, pendingCount: 21 },
+                    testCaseResults: []
+                }
+            },
+            {
+                sessionId: 2,
+                type: 'start',
+                testRunResult: {
+                    progress: 'pending',
+                    summary: { failedCount: 0, successCount: 0, totalCount: 21, completedCount: 0, pendingCount: 21 },
+                    testCaseResults: []
+                }
             }
-        },
-        {
-            sessionId: 2,
-            type: 'start',
-            testRunResult: {
-                progress: 'pending',
-                summary: { failedCount: 0, successCount: 0, totalCount: 21, completedCount: 0, pendingCount: 21 },
-                testCaseResults: []
-            }
-        }
-    ]);
-});
+        ]);
+    }
+);
