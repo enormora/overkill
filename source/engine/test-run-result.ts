@@ -1,4 +1,4 @@
-import type { TestCaseResult } from './test-case-executor.js';
+import type { TestCaseResult } from './test-case-executor.ts';
 
 type TestRunResultSummary = {
     readonly failedCount: number;

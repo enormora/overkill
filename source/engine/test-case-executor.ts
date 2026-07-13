@@ -1,4 +1,4 @@
-import type { TestCaseDetails, TestFunction } from './test-case.js';
+import type { TestCaseDetails, TestFunction } from './test-case.ts';
 
 export type TestResultStatus = 'failure' | 'success';
 

@@ -20,12 +20,12 @@
     },
     "homepage": "https://github.com/enormora/overkill#readme",
     "scripts": {
-        "compile": "tsc --build",
+        "compile": "tsc --build && find target/build/source -name '*.d.ts' -exec perl -0pi -e \"s/(\\bfrom\\s+['\\\"][^'\\\"]+)\\.ts(['\\\"])/\\$1.js\\$2/g\" {} +",
         "eslint": "eslint . --cache --cache-location './target/.eslintcache' --cache-strategy content --max-warnings 0",
         "lint": "npm run eslint && ls-lint",
         "lint:fix": "npm run eslint -- --fix",
         "packtory:dry-run": "npm run compile && packtory publish",
-        "test:unit": "NODE_OPTIONS='--loader ts-node/esm --no-warnings' TS_NODE_PROJECT=source/tsconfig.unit-tests.json uvu 'source' '.*\\.test\\.ts$'"
+        "test:unit": "node --test --test-isolation='none' source/**/*.test.ts"
     },
     "dependencies": {
         "figures": "6.1.0",
@@ -38,12 +38,11 @@
         "@enormora/eslint-config-typescript": "0.0.58",
         "@ls-lint/ls-lint": "2.3.1",
         "@packtory/cli": "0.0.65",
+        "@types/node": "26.1.1",
         "@types/sinon": "10.0.20",
         "eslint": "10.7.0",
         "sinon": "14.0.2",
-        "ts-node": "10.9.2",
-        "typescript": "6.0.3",
-        "uvu": "0.5.6"
+        "typescript": "6.0.3"
     },
     "engines": {
         "node": "^26"
