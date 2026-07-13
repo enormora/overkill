@@ -415,7 +415,7 @@ Source:
 
 - <https://tc39.es/proposal-type-annotations/>
 
-### Signals
+### TC39 Signals
 
 Worth tracking as a possible future state-management primitive, but not mature enough to anchor Overkill design today.
 

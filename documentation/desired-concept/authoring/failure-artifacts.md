@@ -134,7 +134,7 @@ requested diagnostic modes such as `--debug` / `--debug-scope`.
 
 Artifacts produced during a run live in a per-run directory by default:
 
-```
+```text
 .overkill/runs/<run-id>/artifacts/<case-id-derived-path>
 ```
 
@@ -207,7 +207,7 @@ type WitnessFile = {
 A witness is also a failure artifact — it attaches to the failing case via
 `ArtifactId` and is rendered by reporters as a replay command line:
 
-```
+```text
 overkill replay-witness .overkill/witnesses/users__round-trip__c0ffee.witness.json
 ```
 

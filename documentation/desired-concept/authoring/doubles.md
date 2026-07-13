@@ -426,7 +426,7 @@ This is a better fit for Overkill than APIs that replace methods on already-crea
 The boundary between `@overkill-dev/doubles` and capability handles,
 when to reach for which, how they compose, why both refuse module-graph
 patching, is documented in
-[Capability Handles § Connection To `@overkill-dev/doubles`](./capability-handles.md#connection-to-overkilldoubles).
+[Capability Handles § `@overkill-dev/doubles`](./capability-handles.md#overkill-devdoubles).
 
 Short version: handles model multi-method effect interfaces from a
 standard list; `testDouble()` models single-function doubles for

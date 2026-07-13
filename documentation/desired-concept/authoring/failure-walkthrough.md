@@ -150,7 +150,7 @@ const witnessId: ArtifactId = {
 
 Path derivation (canonical rule in [Artifact Identity § Path Derivation](../architecture/artifact-identity.md#path-derivation)):
 
-```
+```text
 .overkill/witnesses/source/users.test__users__round-trip-preserves-values.witness.json
 ```
 
@@ -198,7 +198,7 @@ Canonical: [Reproducibility](../architecture/reproducibility.md), [Failure Artif
 The default reporter receives the run events as they happen and
 prints the failure inline:
 
-```
+```text
 ✗ users › round-trip preserves values  source/users.test.ts:10
 
   expected deep equality at .name
@@ -222,7 +222,7 @@ Canonical: [Package Architecture § Reporters](../architecture/package-architect
 
 The next morning, on a different machine, the developer runs:
 
-```
+```text
 overkill replay-witness .overkill/witnesses/source/users.test__users__round-trip-preserves-values.witness.json
 ```
 
