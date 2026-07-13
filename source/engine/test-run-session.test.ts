@@ -12,7 +12,7 @@ import {
     type TestRunSessionProviderDependencies
 } from './test-run-session.ts';
 
-function noop() {}
+function noop(): void {}
 
 type Overrides = {
     readonly execute?: SinonSpy;

@@ -35,6 +35,7 @@
     "devDependencies": {
         "@enormora/eslint-config-base": "0.0.51",
         "@enormora/eslint-config-node": "0.0.37",
+        "@enormora/eslint-config-test-base": "0.0.21",
         "@enormora/eslint-config-typescript": "0.0.58",
         "@ls-lint/ls-lint": "2.3.1",
         "@packtory/cli": "0.0.65",

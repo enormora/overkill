@@ -1,23 +1,23 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import sinon, { type SinonStub } from 'sinon';
-import { createTestCaseExecutor, type TestCaseExecutorDependencies } from './test-case-executor.ts';
+import {
+    createTestCaseExecutor,
+    type TestCaseExecutor,
+    type TestCaseExecutorDependencies
+} from './test-case-executor.ts';
 
-function successTestFunction() {}
+function successTestFunction(): void {}
 
-function errorTestFunction() {
+function errorTestFunction(): never {
     throw new Error('failed with error');
-}
-
-function nonErrorFailureTestFunction() {
-    throw 'not-an-error';
 }
 
 type Overrides = {
     readonly now?: SinonStub;
 };
 
-function executorFactory(overrides: Overrides = {}) {
+function executorFactory(overrides: Overrides = {}): TestCaseExecutor {
     const { now = sinon.fake.returns(0) } = overrides;
 
     const fakeDependencies = {
@@ -52,6 +52,12 @@ test('returns "failure" when the given test function throws an error', async fun
 
 test('returns "failure" when the given test function throws a non error', async function () {
     const executor = executorFactory();
+    const nonErrorFailureTestFunction = async function (): Promise<void> {
+        const result = Promise.withResolvers<undefined>();
+        result.reject({ reason: 'not-an-error' });
+
+        await result.promise;
+    };
     const result = await executor.execute(nonErrorFailureTestFunction);
 
     assert.deepStrictEqual(result, { status: 'failure', reason: 'Unknown error', duration: 0 });
