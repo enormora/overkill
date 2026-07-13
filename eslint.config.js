@@ -18,7 +18,6 @@ export default [
     {
         files: [ '**/*.ts' ],
         rules: {
-            'no-duplicate-imports': 'off',
             'restricted-syntax/no-empty-function-body': 'off'
         }
     },

@@ -1,7 +1,5 @@
-import type { Reporter } from './reporter.ts';
-import { isRealTimeReportingSession } from './reporter.ts';
-import type { TestRunResult } from './test-run-result.ts';
-import { updateTestRunResult, calculateSummary } from './test-run-result.ts';
+import { isRealTimeReportingSession, type Reporter } from './reporter.ts';
+import { calculateSummary, type TestRunResult, updateTestRunResult } from './test-run-result.ts';
 import type { TestCase } from './test-case.ts';
 import type { TestCaseExecutor, TestCaseResult } from './test-case-executor.ts';
 
