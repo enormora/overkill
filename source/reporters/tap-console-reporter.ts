@@ -2,9 +2,9 @@ import type { TestRunResult } from '../engine/test-run-result.js';
 import type { TestCaseResult } from '../engine/test-case-executor.js';
 import type { FinalResultReporter } from '../engine/reporter.js';
 
-export interface TapConsoleReporterDependencies {
+export type TapConsoleReporterDependencies = {
     readonly stdoutConsole: Pick<Console, 'log'>;
-}
+};
 
 function formatTestCaseResultAsTapTestPoint(testCaseResult: TestCaseResult): string {
     const { title, index } = testCaseResult.testCaseDetails;
@@ -35,8 +35,8 @@ export function createTapConsoleReporter(dependencies: TapConsoleReporterDepende
             return {
                 async report(currentTestRunResult) {
                     stdoutConsole.log(formatResultAsTap(currentTestRunResult));
-                },
+                }
             };
-        },
+        }
     };
 }

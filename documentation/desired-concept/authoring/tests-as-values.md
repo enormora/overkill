@@ -14,15 +14,15 @@ addressable until the file has been evaluated.
 This works, and it has historical reasons (xUnit, RSpec, etc.). It is also
 the source of several recurring problems:
 
--   "discover only" without "execute" requires running the whole import
-    graph
--   ordering of `describe` / `test` calls becomes load-bearing in subtle
-    ways
--   conditional registration (`if (env) test('only on linux', ...)`) is
-    hidden from external tools
--   IDE outlines, MCP servers, mutation testers, coverage UIs all need to
-    re-evaluate the file or run a parser to see the test list
--   parallel collection from many files races over the same global registry
+- "discover only" without "execute" requires running the whole import
+  graph
+- ordering of `describe` / `test` calls becomes load-bearing in subtle
+  ways
+- conditional registration (`if (env) test('only on linux', ...)`) is
+  hidden from external tools
+- IDE outlines, MCP servers, mutation testers, coverage UIs all need to
+  re-evaluate the file or run a parser to see the test list
+- parallel collection from many files races over the same global registry
 
 The alternative, validated by `elm-test`, Haskell `tasty`, ZIO Test, and
 ScalaCheck: **tests are values**. A test file _exports_ a value describing
@@ -191,22 +191,22 @@ consumer uses:
 // helpers/user-cases.ts
 export const userCases = {
     roundTrip: test('round-trip', roundTripBody),
-    parseError: test('parse error', parseErrorBody),
+    parseError: test('parse error', parseErrorBody)
 };
 
 // users.test.ts
 import { userCases } from './helpers/user-cases.ts';
 
-export const spec = suite('users', [userCases.roundTrip]);
+export const spec = suite('users', [ userCases.roundTrip ]);
 ```
 
 This is valid and intentional. The runner should not treat every constructed
 node as an obligation to appear in every final suite tree. What matters is:
 
--   nodes are plain values that may be named, stored, exported, and reused
--   only nodes reachable from the exported root are part of the run
--   unreachable nodes may be a mistake, but they may also be a legitimate
-    unused subset of a reusable catalog
+- nodes are plain values that may be named, stored, exported, and reused
+- only nodes reachable from the exported root are part of the run
+- unreachable nodes may be a mistake, but they may also be a legitimate
+  unused subset of a reusable catalog
 
 That is why the value-oriented model is preferred over a more restrictive
 builder API that tries to make every detached node impossible. The stricter
@@ -311,11 +311,11 @@ walks the tree. The detailed collection-to-plan pipeline lives in
 
 The important typing rule is:
 
--   plain tests receive `TestContext`
--   parameterized/generated cases receive a refined context with
-    `case.parameters`
--   `parameters` is not part of the ordinary top-level case API for
-    non-parameterized tests
+- plain tests receive `TestContext`
+- parameterized/generated cases receive a refined context with
+  `case.parameters`
+- `parameters` is not part of the ordinary top-level case API for
+  non-parameterized tests
 
 ## Tables As Local Convenience
 
@@ -343,16 +343,16 @@ table({
 
 The settled semantics should be:
 
--   `title` names the table/group
--   `cases` is plain data, not a second row-wrapper DSL
--   `caseTitle` is optional and derives each expanded child case title
--   if `caseTitle` is omitted, Overkill generates deterministic fallback
-    names such as `case 1`, `case 2`, ...
--   the callback is named `test` and receives the ordinary `case` object
-    refined with `case.parameters`
--   tables are authoring sugar over the same underlying expansion model as
-    other parameterized helpers; whether that shares macro machinery
-    internally is an implementation detail
+- `title` names the table/group
+- `cases` is plain data, not a second row-wrapper DSL
+- `caseTitle` is optional and derives each expanded child case title
+- if `caseTitle` is omitted, Overkill generates deterministic fallback
+  names such as `case 1`, `case 2`, ...
+- the callback is named `test` and receives the ordinary `case` object
+  refined with `case.parameters`
+- tables are authoring sugar over the same underlying expansion model as
+  other parameterized helpers; whether that shares macro machinery
+  internally is an implementation detail
 
 After expansion, sibling concrete test titles must be unique. If two table
 cases, macro expansions, or generated cases produce the same final sibling
@@ -361,10 +361,10 @@ silently suffixing or deduplicating them.
 
 Nested suites are intentionally allowed. They are useful for:
 
--   grouping related behaviors under one named subtree
--   importing reusable suite fragments
--   macro-generated law/contract bundles
--   preserving a meaningful result tree for reporters and selection
+- grouping related behaviors under one named subtree
+- importing reusable suite fragments
+- macro-generated law/contract bundles
+- preserving a meaningful result tree for reporters and selection
 
 But they should stay a **structural** tool, not a lifecycle/setup tool.
 Overkill's answer to shared setup is still resources, macros, and explicit
@@ -388,10 +388,10 @@ Other DSLs may still be built on top of the same engine and tree model.
 
 But the first-party stance should stay strict:
 
--   tests-as-values is the chosen first-party high-level authoring model
--   alternative registration DSLs are valid third-party directions
--   Overkill should not ship several co-equal first-party DSLs at the same
-    level
+- tests-as-values is the chosen first-party high-level authoring model
+- alternative registration DSLs are valid third-party directions
+- Overkill should not ship several co-equal first-party DSLs at the same
+  level
 
 ## Macros And Parameterized Tests
 
@@ -432,11 +432,11 @@ const lawsOfMonoid = defineMacro(
 
 That helper should stay optional sugar only:
 
--   it does not register anything implicitly
--   it does not change execution semantics
--   plain functions returning `TestNode` remain equally valid macros
--   its value is clearer typing/tooling and a recognizable first-party
-    declaration form, not a second macro system
+- it does not register anything implicitly
+- it does not change execution semantics
+- plain functions returning `TestNode` remain equally valid macros
+- its value is clearer typing/tooling and a recognizable first-party
+  declaration form, not a second macro system
 
 ```ts
 import { suite, test } from '@overkill/test';
@@ -484,12 +484,12 @@ obvious later.
 
 The concept should therefore commit to this rule:
 
--   node-construction metadata is captured at macro application time
--   listings, failures, and tooling should prefer the macro application site
-    over the macro implementation site where practical
--   a generated subtree may have many internal test nodes, but the user-
-    authored application call remains the meaningful definition location for
-    the bundle as a whole
+- node-construction metadata is captured at macro application time
+- listings, failures, and tooling should prefer the macro application site
+  over the macro implementation site where practical
+- a generated subtree may have many internal test nodes, but the user-
+  authored application call remains the meaningful definition location for
+  the bundle as a whole
 
 This is a metadata-capture rule on `test(...)`, `suite(...)`, `table(...)`,
 and related helpers, not a reason to invent a second macro runtime type.
@@ -501,8 +501,12 @@ and so on. Tests-as-values makes the implementation trivial:
 
 ```ts
 function selected(node: TestNode, filter: Filter): TestNode | null {
-    if (node.kind === 'test') return filter.allows(node.metadata) ? node : null;
-    if (node.kind === 'table') return filter.allowsAny(node.metadata) ? node : null;
+    if (node.kind === 'test') {
+        return filter.allows(node.metadata) ? node : null;
+    }
+    if (node.kind === 'table') {
+        return filter.allowsAny(node.metadata) ? node : null;
+    }
     const kept = node.children.map((c) => selected(c, filter)).filter(Boolean);
     return kept.length === 0 ? null : { ...node, children: kept };
 }
@@ -518,9 +522,9 @@ need a co-equal first-party registration DSL at the same layer.
 
 The design goal is:
 
--   engine primitives for very small direct use
--   one preferred first-party value-oriented authoring layer
--   third-party freedom to build alternate DSLs on top of the same engine
+- engine primitives for very small direct use
+- one preferred first-party value-oriented authoring layer
+- third-party freedom to build alternate DSLs on top of the same engine
 
 This is the cleanest form of the "API-First" principle the overview names.
 
@@ -604,8 +608,8 @@ Tests-as-values composes with the returned-value outcome model: a test is a
 value with a `run` function returning a `TestOutcome` value. Both ends of
 the test lifecycle are pure data:
 
--   the test definition is data (the suite tree)
--   the test result is data (the outcome)
+- the test definition is data (the suite tree)
+- the test result is data (the outcome)
 
 The runner's job is `(SuiteTree, Filter, Profile) -> Promise<RunResult>` —
 a function from data to data. No global registry, no thrown exceptions on
@@ -617,7 +621,7 @@ Tests-as-values + capability handles + recording variants give a fully
 deterministic test as a function:
 
 ```ts
-type TestRun = (input: { runtime: RuntimeHandles; seed: bigint }) => Promise<{
+type TestRun = (input: { runtime: RuntimeHandles; seed: bigint; }) => Promise<{
     outcome: TestOutcome;
     effects: ReadonlyArray<RecordedEvent>;
     snapshot: RuntimeSnapshot;
@@ -632,11 +636,11 @@ out for free because every input is explicit.
 
 Because the test definitions are values, an external tool can:
 
--   import the file and walk `default` to enumerate tests
--   call `test.run(ctx)` for individual tests with custom context
--   compute a stable identity for each test (file + path-in-tree + name +
-    parameterization) without parsing source code
--   diff two runs by comparing tree shapes
+- import the file and walk `default` to enumerate tests
+- call `test.run(ctx)` for individual tests with custom context
+- compute a stable identity for each test (file + path-in-tree + name +
+  parameterization) without parsing source code
+- diff two runs by comparing tree shapes
 
 This makes Overkill's machine-readable surface (named in
 [Package Architecture § Extension Surfaces](../architecture/package-architecture.md#extension-surfaces)) genuinely
@@ -644,30 +648,30 @@ free, rather than a reporter-output parser kludge.
 
 ## Influences
 
--   Elm `elm-test` — the cleanest existing realization of tests-as-values in
-    a popular runner
--   Haskell `tasty` — `TestTree` is the canonical name for the same idea
--   ZIO Test — `Spec[R, E]` values
--   ScalaCheck — `Prop` values
--   Jane Street's `inline_test` — tests are first-class values registered by
-    a parsetree extension
--   Rust 1.0+ — `#[test]` produces values consumed by a test harness, not
-    registered into a global
+- Elm `elm-test` — the cleanest existing realization of tests-as-values in
+  a popular runner
+- Haskell `tasty` — `TestTree` is the canonical name for the same idea
+- ZIO Test — `Spec[R, E]` values
+- ScalaCheck — `Prop` values
+- Jane Street's `inline_test` — tests are first-class values registered by
+  a parsetree extension
+- Rust 1.0+ — `#[test]` produces values consumed by a test harness, not
+  registered into a global
 
 ## Recommendation
 
--   `@overkill/engine` exposes `TestNode` as a stable branded type
--   `@overkill/test` exports `suite`, `test`, `table`, and the imperative
-    sugar layer; both produce the same `TestNode` value
--   files export their root node as `default`
--   the runner walks the value; nothing relies on module-load side effects
--   listing, filtering, IDE introspection, MCP servers, and remote
-    execution all consume `TestNode` directly
+- `@overkill/engine` exposes `TestNode` as a stable branded type
+- `@overkill/test` exports `suite`, `test`, `table`, and the imperative
+  sugar layer; both produce the same `TestNode` value
+- files export their root node as `default`
+- the runner walks the value; nothing relies on module-load side effects
+- listing, filtering, IDE introspection, MCP servers, and remote
+  execution all consume `TestNode` directly
 
 ## Sources
 
--   [elm-test — `Test` and `Expect`](https://package.elm-lang.org/packages/elm-explorations/test/latest/Test)
--   [Haskell `tasty` — `TestTree`](https://github.com/UnkindPartition/tasty)
--   [ZIO Test — `Spec`](https://zio.dev/reference/test/why-zio-test/)
--   [TC39 `import defer` proposal](https://github.com/tc39/proposal-defer-import-eval)
--   [Jane Street `inline_test` documentation](https://blog.janestreet.com/automatically-generated-tests-and-property-based-testing/)
+- [elm-test — `Test` and `Expect`](https://package.elm-lang.org/packages/elm-explorations/test/latest/Test)
+- [Haskell `tasty` — `TestTree`](https://github.com/UnkindPartition/tasty)
+- [ZIO Test — `Spec`](https://zio.dev/reference/test/why-zio-test/)
+- [TC39 `import defer` proposal](https://github.com/tc39/proposal-defer-import-eval)
+- [Jane Street `inline_test` documentation](https://blog.janestreet.com/automatically-generated-tests-and-property-based-testing/)

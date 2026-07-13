@@ -1,18 +1,18 @@
 import type { TestCaseResult } from './test-case-executor.js';
 
-interface TestRunResultSummary {
+type TestRunResultSummary = {
     readonly failedCount: number;
     readonly successCount: number;
     readonly totalCount: number;
     readonly completedCount: number;
     readonly pendingCount: number;
-}
+};
 
-export interface TestRunResult {
-    readonly progress: 'pending' | 'completed';
+export type TestRunResult = {
+    readonly progress: 'completed' | 'pending';
     readonly summary: TestRunResultSummary;
     readonly testCaseResults: readonly TestCaseResult[];
-}
+};
 
 function addResultToSummary(summary: TestRunResultSummary, testCaseResult: TestCaseResult): TestRunResultSummary {
     let { failedCount, successCount } = summary;
@@ -28,7 +28,7 @@ function addResultToSummary(summary: TestRunResultSummary, testCaseResult: TestC
         successCount,
         totalCount: summary.totalCount,
         completedCount: summary.completedCount,
-        pendingCount: summary.pendingCount,
+        pendingCount: summary.pendingCount
     };
 }
 
@@ -39,7 +39,7 @@ export function calculateSummary(results: readonly TestCaseResult[], totalCount:
         successCount: 0,
         totalCount,
         completedCount,
-        pendingCount: totalCount - completedCount,
+        pendingCount: totalCount - completedCount
     };
 
     return results.reduce(addResultToSummary, initialSummary);
@@ -48,13 +48,13 @@ export function calculateSummary(results: readonly TestCaseResult[], totalCount:
 export function updateTestRunResult(
     testRunResult: TestRunResult,
     testResult: TestCaseResult,
-    totalCount: number,
+    totalCount: number
 ): TestRunResult {
-    const testCaseResults = [...testRunResult.testCaseResults, testResult];
+    const testCaseResults = [ ...testRunResult.testCaseResults, testResult ];
 
     return {
         progress: testRunResult.progress,
         summary: calculateSummary(testCaseResults, totalCount),
-        testCaseResults,
+        testCaseResults
     };
 }

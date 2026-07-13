@@ -1,15 +1,15 @@
-import type { TestCaseResult } from '../engine/test-case-executor.js';
-import type { RealTimeReporter } from '../engine/reporter.js';
 import kleur from 'kleur';
 import figures from 'figures';
+import type { TestCaseResult } from '../engine/test-case-executor.js';
+import type { RealTimeReporter } from '../engine/reporter.js';
 
 const successSymbol = kleur.green(figures.tick);
 const errorSymbol = kleur.red(figures.cross);
 const infoSymbol = kleur.cyan(figures.info);
 
-export interface LineReporterDependencies {
+export type LineReporterDependencies = {
     readonly stdoutConsole: Pick<Console, 'log'>;
-}
+};
 
 function formatTestResult(testCaseResult: TestCaseResult): string {
     if (testCaseResult.result.status === 'failure') {
@@ -29,7 +29,7 @@ export function createLineReporter(dependencies: LineReporterDependencies): Real
                     const { summary } = currentTestRunResult;
                     stdoutConsole.log(
                         infoSymbol,
-                        `Test run started (${summary.completedCount} / ${summary.totalCount})`,
+                        `Test run started (${summary.completedCount} / ${summary.totalCount})`
                     );
                 },
 
@@ -42,8 +42,8 @@ export function createLineReporter(dependencies: LineReporterDependencies): Real
                     stdoutConsole.log(infoSymbol, `Total: ${summary.totalCount}`);
                     stdoutConsole.log(successSymbol, `Succeeded: ${summary.successCount}`);
                     stdoutConsole.log(errorSymbol, `Failed: ${summary.failedCount}`);
-                },
+                }
             };
-        },
+        }
     };
 }

@@ -4,20 +4,20 @@
 
 Overkill needs a result model that is:
 
--   simple enough for the core
--   rich enough for integrations
--   flexible enough for assertion tracking
--   structured enough that reporters and IDEs do not parse prose
+- simple enough for the core
+- rich enough for integrations
+- flexible enough for assertion tracking
+- structured enough that reporters and IDEs do not parse prose
 
 ## Baseline Outcome Contract
 
 The core accepts two first-party styles:
 
--   **builder/result mode** — the primary concept; tests receive injected
-    `case.assert`, `case.require`, and `case.plan`, and must explicitly
-    return `case.assert.done()`
--   **throwing mode** — an explicit alternate test API such as
-    `throwingTest`; tests may return `void`
+- **builder/result mode** — the primary concept; tests receive injected
+  `case.assert`, `case.require`, and `case.plan`, and must explicitly
+  return `case.assert.done()`
+- **throwing mode** — an explicit alternate test API such as
+  `throwingTest`; tests may return `void`
 
 Both produce the same internal `TestOutcome` value.
 
@@ -34,30 +34,30 @@ outcomes.
 
 Sources:
 
--   [Rust by Example — Unit testing with `Result`](https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html)
--   [elm-test — `Test` and `Expect`](https://package.elm-lang.org/packages/elm-explorations/test/latest/Test)
+- [Rust by Example — Unit testing with `Result`](https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html)
+- [elm-test — `Test` and `Expect`](https://package.elm-lang.org/packages/elm-explorations/test/latest/Test)
 
 ## Why A First-Party Assertion Layer Still Makes Sense
 
 Assertion tracking is hard to do well if assertions are entirely external.
 A first-party assertion layer offers a clean place to provide:
 
--   assertion count tracking
--   `plan()`-style guarantees
--   zero-assertion detection (see policy below)
--   rich diffs and mismatch metadata
--   baseline-aware serializers
+- assertion count tracking
+- `plan()`-style guarantees
+- zero-assertion detection (see policy below)
+- rich diffs and mismatch metadata
+- baseline-aware serializers
 
 Most tests should not need to import a separate assertion package at all.
 The main user-facing API may come from direct engine consumers or from an
 authoring layer such as `@overkill/test`, but the underlying assertion layer
 still lives directly in `@overkill/engine`. The engine is the home for:
 
--   assertion-count and plan tracking
--   diffing and serializer logic
--   internal assertion-protocol values used between authoring and engine
--   implementation shared between default test facades and direct
-    engine-level consumers
+- assertion-count and plan tracking
+- diffing and serializer logic
+- internal assertion-protocol values used between authoring and engine
+- implementation shared between default test facades and direct
+  engine-level consumers
 
 `@overkill/assert` is still useful as a smaller companion package for
 reusable assertion-extension helpers such as `defineCompositeAssertion(...)`
@@ -70,26 +70,26 @@ One useful design pressure is to avoid assertion APIs that routinely need
 ESLint rules to compensate for ambiguity or weak defaults. The assertion
 concept should therefore commit to these constraints:
 
--   one strict assertion surface only; no loose/coercive equality variants
--   no positional overloading where a later argument might mean matcher,
-    options, or custom message depending on type
--   if human annotation support is provided, it should be a prefix assertion
-    context such as `case.assert.annotated('...').equal(actual, expected)`,
-    not an extra positional message argument and not a postfix
-    `.annotate(...)` on the result of an assertion call
--   no public import-style split between several overlapping assertion entry
-    points
--   semantic first-class assertions should be preferred over generic boolean
-    wrappers such as `ok(predicate())`
--   rich built-ins should exist for deep equality, partial matching, regex
-    matching, and call assertions so users do not need to encode intent via
-    low-signal boolean checks
--   async error assertions such as `throws` / `rejects` should avoid weak or
-    ambiguous forms; matcher requirements should be expressed explicitly by
-    signature or by separate APIs rather than by overloaded optional
-    arguments
--   custom assertions should follow the same rules: explicit names, no
-    collisions, and no silent shadowing of built-ins
+- one strict assertion surface only; no loose/coercive equality variants
+- no positional overloading where a later argument might mean matcher,
+  options, or custom message depending on type
+- if human annotation support is provided, it should be a prefix assertion
+  context such as `case.assert.annotated('...').equal(actual, expected)`,
+  not an extra positional message argument and not a postfix
+  `.annotate(...)` on the result of an assertion call
+- no public import-style split between several overlapping assertion entry
+  points
+- semantic first-class assertions should be preferred over generic boolean
+  wrappers such as `ok(predicate())`
+- rich built-ins should exist for deep equality, partial matching, regex
+  matching, and call assertions so users do not need to encode intent via
+  low-signal boolean checks
+- async error assertions such as `throws` / `rejects` should avoid weak or
+  ambiguous forms; matcher requirements should be expressed explicitly by
+  signature or by separate APIs rather than by overloaded optional
+  arguments
+- custom assertions should follow the same rules: explicit names, no
+  collisions, and no silent shadowing of built-ins
 
 This does not eliminate every possible lint rule. A team may still want
 policy rules, and generic equality-style APIs can still be misused by
@@ -105,13 +105,13 @@ or a placeholder. Treating it as a pass quietly hides defects.
 
 Default policy:
 
--   if a test body records no assertion at all, the runner reports it as
-    `fail` with reason `no-assertions`
--   there is no `plan(0, ...)` escape hatch in the current concept; plans
-    should describe a positive number of checks
--   tests that perform side-effect-only work and assert via the recorded
-    effect log are _not_ zero-assertion: the equality check on the
-    recorded log is itself an assertion
+- if a test body records no assertion at all, the runner reports it as
+  `fail` with reason `no-assertions`
+- there is no `plan(0, ...)` escape hatch in the current concept; plans
+  should describe a positive number of checks
+- tests that perform side-effect-only work and assert via the recorded
+  effect log are _not_ zero-assertion: the equality check on the
+  recorded log is itself an assertion
 
 There is no opt-out. A test that asserts nothing is broken; the
 default policy is the only policy. This is one of the smallest changes
@@ -135,13 +135,13 @@ test('parses three rows', (case) => {
 
 Semantics:
 
--   `plan(n)` must be the first call in the test body. Calling it after any
-    `assert.*` or `require.*` invocation, or calling it more than once, is a
-    test error
--   `n` must be greater than `0`
--   the test must record exactly `n` assertion boundaries before completion
--   both more and fewer fail
--   if the test never returns, timeout or crash handling applies instead
+- `plan(n)` must be the first call in the test body. Calling it after any
+  `assert.*` or `require.*` invocation, or calling it more than once, is a
+  test error
+- `n` must be greater than `0`
+- the test must record exactly `n` assertion boundaries before completion
+- both more and fewer fail
+- if the test never returns, timeout or crash handling applies instead
 
 For ordinary assertions, one call records one boundary. Composite
 assertions and property-family primitives such as `case.forall(...)` also
@@ -156,9 +156,9 @@ strict, and semantic.
 
 Two namespaces exist:
 
--   `case.assert.*` — broad assertion surface; records and continues
--   `case.require.*` — narrow gating surface; records and short-circuits,
-    primarily for type narrowing
+- `case.assert.*` — broad assertion surface; records and continues
+- `case.require.*` — narrow gating surface; records and short-circuits,
+  primarily for type narrowing
 
 ### `case.require`
 
@@ -167,17 +167,17 @@ to support useful TypeScript narrowing in straight-line tests.
 
 Recommended built-ins:
 
--   `defined(value)`
--   `null(value)`
--   `notNull(value)`
--   `string(value)`
--   `number(value)`
--   `boolean(value)`
--   `function(value)`
--   `object(value)`
--   `array(value)`
--   `instanceOf(value, ctor)`
--   `hasProperty(value, key)`
+- `defined(value)`
+- `null(value)`
+- `notNull(value)`
+- `string(value)`
+- `number(value)`
+- `boolean(value)`
+- `function(value)`
+- `object(value)`
+- `array(value)`
+- `instanceOf(value, ctor)`
+- `hasProperty(value, key)`
 
 `require` should not become a second full assertion DSL. Equality, regex,
 numeric comparison, and doubles-specific assertions belong on `assert`, not
@@ -190,60 +190,60 @@ test assertion vocabulary.
 
 Recommended built-ins:
 
--   equality
-    -   `equal(actual, expected)`
-    -   `notEqual(actual, expected)`
-    -   `deepEqual(actual, expected)`
-    -   `notDeepEqual(actual, expected)`
--   partial / subset
-    -   `partialDeepEqual(actual, expectedSubset)`
-    -   `arrayContainsPartial(actual, expectedSubset)`
-    -   `membersPartialDeepEqual(actual, expectedMembers)`
--   presence / boolean
-    -   `defined(value)`
-    -   `undefined(value)`
-    -   `null(value)`
-    -   `notNull(value)`
-    -   `true(value)`
-    -   `false(value)`
--   type / shape
-    -   `string(value)`
-    -   `number(value)`
-    -   `boolean(value)`
-    -   `function(value)`
-    -   `object(value)`
-    -   `array(value)`
-    -   `instanceOf(value, ctor)`
-    -   `hasProperty(value, key)`
--   numeric
-    -   `greaterThan(actual, threshold)`
-    -   `greaterThanOrEqual(actual, threshold)`
-    -   `lessThan(actual, threshold)`
-    -   `lessThanOrEqual(actual, threshold)`
-    -   `between(actual, min, max)`
--   string / regex
-    -   `match(actual, pattern)`
-    -   `notMatch(actual, pattern)`
-    -   `includes(actual, part)`
-    -   `startsWith(actual, prefix)`
-    -   `endsWith(actual, suffix)`
--   collection
-    -   `length(actual, expectedLength)`
-    -   `empty(value)`
-    -   `notEmpty(value)`
--   async error checks
-    -   `throws(fn, matcher)`
-    -   `rejects(thunk, matcher)`
--   control / metadata
-    -   `fail(reason?)`
-    -   `annotated(text).<assertion>(...)`
-    -   `done()`
+- equality
+  - `equal(actual, expected)`
+  - `notEqual(actual, expected)`
+  - `deepEqual(actual, expected)`
+  - `notDeepEqual(actual, expected)`
+- partial / subset
+  - `partialDeepEqual(actual, expectedSubset)`
+  - `arrayContainsPartial(actual, expectedSubset)`
+  - `membersPartialDeepEqual(actual, expectedMembers)`
+- presence / boolean
+  - `defined(value)`
+  - `undefined(value)`
+  - `null(value)`
+  - `notNull(value)`
+  - `true(value)`
+  - `false(value)`
+- type / shape
+  - `string(value)`
+  - `number(value)`
+  - `boolean(value)`
+  - `function(value)`
+  - `object(value)`
+  - `array(value)`
+  - `instanceOf(value, ctor)`
+  - `hasProperty(value, key)`
+- numeric
+  - `greaterThan(actual, threshold)`
+  - `greaterThanOrEqual(actual, threshold)`
+  - `lessThan(actual, threshold)`
+  - `lessThanOrEqual(actual, threshold)`
+  - `between(actual, min, max)`
+- string / regex
+  - `match(actual, pattern)`
+  - `notMatch(actual, pattern)`
+  - `includes(actual, part)`
+  - `startsWith(actual, prefix)`
+  - `endsWith(actual, suffix)`
+- collection
+  - `length(actual, expectedLength)`
+  - `empty(value)`
+  - `notEmpty(value)`
+- async error checks
+  - `throws(fn, matcher)`
+  - `rejects(thunk, matcher)`
+- control / metadata
+  - `fail(reason?)`
+  - `annotated(text).<assertion>(...)`
+  - `done()`
 
 The error assertions should stay strict:
 
--   no weak `throwsAny` / `rejectsAny` built-ins
--   no ambiguous positional matcher/message overloads
--   `rejects` should prefer a thunk over an already-awaited promise value
+- no weak `throwsAny` / `rejectsAny` built-ins
+- no ambiguous positional matcher/message overloads
+- `rejects` should prefer a thunk over an already-awaited promise value
 
 The matcher itself should be a small object contract:
 
@@ -276,9 +276,9 @@ await case.assert.rejects(
 
 This matcher should stay intentionally small:
 
--   no positional message argument
--   no predicate overloads
--   no arbitrary callback matcher DSL
+- no positional message argument
+- no predicate overloads
+- no arbitrary callback matcher DSL
 
 If a test needs custom matching logic, it should catch the error and use
 ordinary assertions on the resulting value instead of overloading the
@@ -293,10 +293,10 @@ assertions define sensible order-insensitive semantics for those types.
 
 The built-in first-party surface should **not** center:
 
--   loose equality variants
--   generic truthiness helpers such as `ok(...)`
--   weak "anything throws" forms
--   giant call-assertion catalogs tied to one doubles package
+- loose equality variants
+- generic truthiness helpers such as `ok(...)`
+- weak "anything throws" forms
+- giant call-assertion catalogs tied to one doubles package
 
 If a concept is package-specific, it should extend the assertion surface
 through a typed test facade rather than being forced into every default test
@@ -309,16 +309,16 @@ Property primitives like `case.forall(gen, body)` (proposed package
 input — but count as **one assertion at the boundary** for both
 zero-assertion detection and `plan(n)`:
 
--   on success: `case.forall` records one assertion's worth of
-    activity in the case's log; a property test that completes
-    successfully therefore satisfies § Zero-Assertion Detection
-    without forcing the author to write `case.plan(1)`
--   on failure: `case.forall` records exactly one `FailedCheck` for
-    the shrunk minimal counterexample, regardless of how many failing
-    inputs were seen during shrinking
--   `plan(n)` counts boundary assertions: a test with one
-    `case.forall` call satisfies `case.plan(1)`; a test with two
-    `case.forall` calls satisfies `case.plan(2)`
+- on success: `case.forall` records one assertion's worth of
+  activity in the case's log; a property test that completes
+  successfully therefore satisfies § Zero-Assertion Detection
+  without forcing the author to write `case.plan(1)`
+- on failure: `case.forall` records exactly one `FailedCheck` for
+  the shrunk minimal counterexample, regardless of how many failing
+  inputs were seen during shrinking
+- `plan(n)` counts boundary assertions: a test with one
+  `case.forall` call satisfies `case.plan(1)`; a test with two
+  `case.forall` calls satisfies `case.plan(2)`
 
 The body passed to `case.forall` should use an injected property-local
 assertion context rather than importing a separate low-level assertion
@@ -358,12 +358,12 @@ authoring style is the injected builder.
 Mainstream JS runners treat assertion failure as the normal exception
 path. That has several costs:
 
--   the success path still depends on exception-oriented machinery
--   stack walking becomes part of ordinary failure rendering
--   machine-readable integrations must reconstruct meaning from error
-    objects and strings
--   "test failed" and "runner could not execute the test correctly" are
-    easy to muddle together
+- the success path still depends on exception-oriented machinery
+- stack walking becomes part of ordinary failure rendering
+- machine-readable integrations must reconstruct meaning from error
+  objects and strings
+- "test failed" and "runner could not execute the test correctly" are
+  easy to muddle together
 
 Overkill's structured outcome model avoids that at the architectural
 level. Reporters, IDEs, MCP servers, and remote executors consume
@@ -379,7 +379,7 @@ The engine treats structured outcomes as canonical:
 // — see Glossary § Test Outcome / Test Verdict.
 type TestOutcome = Pass | Fail | Skip | Inconclusive;
 
-type Pass = { kind: 'pass' };
+type Pass = { kind: 'pass'; };
 
 type Fail = {
     kind: 'fail';
@@ -415,10 +415,10 @@ test('user shape', (case) => {
 });
 ```
 
--   `assert.*` records ordinary assertions
--   `require.*` records gating assertions and short-circuits on failure;
-    `require` exists because TypeScript narrowing matters in
-    straight-line tests
+- `assert.*` records ordinary assertions
+- `require.*` records gating assertions and short-circuits on failure;
+  `require` exists because TypeScript narrowing matters in
+  straight-line tests
 
 Builder mode does not invalidate the underlying result-oriented
 protocol — it is simply a friendlier way to produce it. `throwingTest`
@@ -434,19 +434,19 @@ need to be exposed as a separate first-party user package.
 
 The public concept therefore stays simpler:
 
--   day-to-day tests use injected `case.assert` / `case.require`
--   property helpers such as `case.forall(...)` use a nested injected
-    assertion context
--   the engine still receives structured `FailedCheck` data, diffs, and
-    counts without users constructing protocol nodes directly
+- day-to-day tests use injected `case.assert` / `case.require`
+- property helpers such as `case.forall(...)` use a nested injected
+  assertion context
+- the engine still receives structured `FailedCheck` data, diffs, and
+  counts without users constructing protocol nodes directly
 
 ### Error Separation
 
 The protocol model sharpens an important distinction:
 
--   **assertion failure** — structured test outcome
--   **runner error** — unexpected exception, rejection, crash, permission
-    denial, or runtime failure
+- **assertion failure** — structured test outcome
+- **runner error** — unexpected exception, rejection, crash, permission
+  denial, or runtime failure
 
 This separation is part of the core concept. Assertion failures should
 not need to travel through the same path as infrastructure errors. See
@@ -457,10 +457,10 @@ not need to travel through the same path as infrastructure errors. See
 
 The narrow `@overkill/engine` stays flexible enough to support:
 
--   builder/context authoring
--   explicit throwing mode
--   value-oriented suite trees and test nodes
--   higher-layer or extension packages that need compositional result values
+- builder/context authoring
+- explicit throwing mode
+- value-oriented suite trees and test nodes
+- higher-layer or extension packages that need compositional result values
 
 That is why the engine continues to speak structured outcomes natively,
 even though the default human-facing authoring experience is no longer
@@ -468,17 +468,17 @@ pure returned-value assertions.
 
 ### Influences
 
--   `elm-test` — expectations as values
--   ZIO Test — assertions as values
--   ScalaCheck — properties as values
--   Rust — coexistence of alternate test-result styles
+- `elm-test` — expectations as values
+- ZIO Test — assertions as values
+- ScalaCheck — properties as values
+- Rust — coexistence of alternate test-result styles
 
 Sources:
 
--   [elm-test — `Expect`](https://package.elm-lang.org/packages/elm-explorations/test/latest/Expect)
--   [ZIO Test — Why ZIO Test](https://zio.dev/reference/test/why-zio-test/)
--   [ScalaCheck — Properties](https://scalacheck.org/documentation.html)
--   [Rust by Example — Unit testing with `Result`](https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html)
+- [elm-test — `Expect`](https://package.elm-lang.org/packages/elm-explorations/test/latest/Expect)
+- [ZIO Test — Why ZIO Test](https://zio.dev/reference/test/why-zio-test/)
+- [ScalaCheck — Properties](https://scalacheck.org/documentation.html)
+- [Rust by Example — Unit testing with `Result`](https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html)
 
 ## `assert` Versus `require`
 
@@ -486,17 +486,17 @@ This split should be explicit in the documentation.
 
 `assert`:
 
--   records an assertion
--   returns `void` in the builder API
--   does not short-circuit the test body on failure
--   is suitable for the ordinary “check and continue” path
+- records an assertion
+- returns `void` in the builder API
+- does not short-circuit the test body on failure
+- is suitable for the ordinary “check and continue” path
 
 `require`:
 
--   records a gating assertion
--   supports narrowing-style APIs such as
-    `require.defined(value): asserts value is NonNullable<T>`
--   short-circuits the current flow on failure
+- records a gating assertion
+- supports narrowing-style APIs such as
+  `require.defined(value): asserts value is NonNullable<T>`
+- short-circuits the current flow on failure
 
 This is inspired in part by Swift Testing’s split between expectation-style
 and require-style checks.
@@ -536,14 +536,14 @@ test('saves and re-reads', async (case) => {
 
 Key points:
 
--   `assert` between awaits is fine; the test body keeps running on success
--   `require` between awaits short-circuits on failure: subsequent awaits
-    and assertions never run, the recorded log up to that point is reported
--   if an awaited operation rejects, that rejection is a runner error
-    (see [Failure Artifacts](./failure-artifacts.md)), not an assertion failure; the test
-    is recorded as such and the plan's expected count does not apply
--   the plan count covers only `assert.*` and `require.*` invocations;
-    awaits do not count
+- `assert` between awaits is fine; the test body keeps running on success
+- `require` between awaits short-circuits on failure: subsequent awaits
+  and assertions never run, the recorded log up to that point is reported
+- if an awaited operation rejects, that rejection is a runner error
+  (see [Failure Artifacts](./failure-artifacts.md)), not an assertion failure; the test
+  is recorded as such and the plan's expected count does not apply
+- the plan count covers only `assert.*` and `require.*` invocations;
+  awaits do not count
 
 ## Throwing Mode
 
@@ -576,10 +576,10 @@ test('returns a successful result', (case) => {
 
 These assertions should remain:
 
--   explicit
--   typed
--   registered through package wiring or JS/TS configuration
--   uniquely named across both first-party and registered custom assertions
+- explicit
+- typed
+- registered through package wiring or JS/TS configuration
+- uniquely named across both first-party and registered custom assertions
 
 They should extend the first-party assertion system, not replace it with an
 entirely separate assertion library.
@@ -589,8 +589,8 @@ mode flags.
 
 Registration must reject collisions. A custom assertion may not shadow:
 
--   a built-in first-party assertion
--   another registered custom assertion
+- a built-in first-party assertion
+- another registered custom assertion
 
 Such collisions should fail during assertion-context construction or suite startup rather
 than silently overriding anything.
@@ -611,8 +611,8 @@ import type { TestDouble } from '@overkill/doubles';
 const calledOnceWith = defineCompositeAssertion(
     'calledOnceWith',
     <TArg>(check, sut: TestDouble<[TArg], unknown>, expected: TArg) => {
-        return check.group([check.calledOnce(sut), check.calledWith(sut, expected)]);
-    },
+        return check.group([ check.calledOnce(sut), check.calledWith(sut, expected) ]);
+    }
 );
 ```
 
@@ -626,9 +626,9 @@ assertion**: one named assertion built from several existing checks.
 
 This is distinct from a test macro:
 
--   a test macro builds `TestNode`s
--   a composite assertion stays inside one existing test body and names one
-    reusable invariant
+- a test macro builds `TestNode`s
+- a composite assertion stays inside one existing test body and names one
+  reusable invariant
 
 Definition shape:
 
@@ -639,8 +639,8 @@ import type { TestDouble } from '@overkill/doubles';
 const calledOnceWith = defineCompositeAssertion(
     'calledOnceWith',
     <TArg>(check, sut: TestDouble<[TArg], unknown>, expected: TArg) => {
-        return check.group([check.calledOnce(sut), check.calledWith(sut, expected)]);
-    },
+        return check.group([ check.calledOnce(sut), check.calledWith(sut, expected) ]);
+    }
 );
 ```
 
@@ -661,10 +661,10 @@ test('publishes the release', async (case) => {
 
 Important rule:
 
--   a composite assertion counts as **one** assertion boundary for
-    zero-assertion detection and `plan(n)`
--   the child checks inside `check.group([...])` are grouped diagnostics, not
-    extra plan units
+- a composite assertion counts as **one** assertion boundary for
+  zero-assertion detection and `plan(n)`
+- the child checks inside `check.group([...])` are grouped diagnostics, not
+  extra plan units
 
 This keeps `plan(n)` stable and prevents assertion-counting from depending
 on how a custom assertion happens to be implemented internally.
@@ -676,12 +676,12 @@ libraries into `case.assert.*` wholesale.
 
 That would make too many core behaviors ambiguous:
 
--   assertion counting
--   `plan(n)` semantics
--   failure normalization
--   annotations
--   location metadata
--   `require`-style narrowing
+- assertion counting
+- `plan(n)` semantics
+- failure normalization
+- annotations
+- location metadata
+- `require`-style narrowing
 
 The better direction is one narrow bridge primitive for adapter authors:
 
@@ -694,10 +694,10 @@ type ForeignAssertionBridge = {
 That bridge converts a foreign throwable-style assertion callback into one
 Overkill assertion boundary:
 
--   success records one passed assertion boundary
--   failure records one `FailedCheck`
--   thrown foreign errors are normalized into Overkill's structured
-    diagnostics
+- success records one passed assertion boundary
+- failure records one `FailedCheck`
+- thrown foreign errors are normalized into Overkill's structured
+  diagnostics
 
 The callback may internally run a complex foreign assertion library, but the
 Overkill boundary remains explicit and stable.
@@ -714,7 +714,7 @@ export const hasResourceProperties = defineCompositeAssertion(
             const template = Template.fromStack(stack);
             template.hasResourceProperties(resourceType, expected);
         });
-    },
+    }
 );
 ```
 
@@ -723,9 +723,9 @@ detection, `plan(n)`, and assertion budgets.
 
 The rule should therefore be:
 
--   no generic third-party assertion plug-in surface
--   yes to package-specific adapters built on one normalized foreign
-    assertion bridge
+- no generic third-party assertion plug-in surface
+- yes to package-specific adapters built on one normalized foreign
+  assertion bridge
 
 ### Package-Specific Assertion Adapters
 
@@ -734,22 +734,22 @@ are not worth rewriting. `@aws-cdk/assertions` is a good example.
 
 The preferred Overkill direction is a focused adapter package such as:
 
--   `@overkill/aws-cdk`
+- `@overkill/aws-cdk`
 
 That package should expose facade-ready assertion extensions such as:
 
--   `matchesTemplate`
--   `hasResource`
--   `hasResourceProperties`
--   `resourceCountIs`
--   `hasOutput`
+- `matchesTemplate`
+- `hasResource`
+- `hasResourceProperties`
+- `resourceCountIs`
+- `hasOutput`
 
 Usage direction:
 
 ```ts
 import { cdkAssertions } from '@overkill/aws-cdk';
 
-export const assertionExtensions = [cdkAssertions];
+export const assertionExtensions = [ cdkAssertions ];
 ```
 
 Then ordinary tests use a native Overkill surface:
@@ -785,11 +785,11 @@ type FailedCheck = {
 };
 
 type Diff =
-    | { kind: 'value'; expected: SerializedValue; actual: SerializedValue }
-    | { kind: 'string'; expected: string; actual: string; hunks: ReadonlyArray<Hunk> }
-    | { kind: 'object'; ops: ReadonlyArray<DiffOperation> }
-    | { kind: 'array'; ops: ReadonlyArray<DiffOperation> }
-    | { kind: 'binary'; expectedSize: number; actualSize: number; expectedHash: string; actualHash: string };
+    | { kind: 'value'; expected: SerializedValue; actual: SerializedValue; }
+    | { kind: 'string'; expected: string; actual: string; hunks: ReadonlyArray<Hunk>; }
+    | { kind: 'object'; ops: ReadonlyArray<DiffOperation>; }
+    | { kind: 'array'; ops: ReadonlyArray<DiffOperation>; }
+    | { kind: 'binary'; expectedSize: number; actualSize: number; expectedHash: string; actualHash: string; };
 ```
 
 The `binary` kind covers cases where a meaningful structured diff is
@@ -812,45 +812,45 @@ data preserved in the JSON event stream regardless of terminal truncation.
 
 For the product concept:
 
--   core supports structured assertion results and explicit throwing-mode
-    tests
--   first-party assertion semantics live in `@overkill/engine`
--   reusable assertion-extension helpers such as
-    `defineCompositeAssertion(...)` live in `@overkill/assert`
--   `@overkill/test` may re-expose that engine-owned assertion surface, but it
-    is not required for assertion usage
--   primary authoring shape: builder/context API with explicit
-    `return case.assert.done()`
--   `AssertionNode` may still exist as an internal protocol term, but not as
-    a separate public-first authoring surface
--   zero-assertion detection: failure, no opt-out
--   `plan(n)` is the assertion-count contract; no `atMost`, no `atLeast`,
-    and `n > 0`
--   optional global assertion budgets are allowed as a centrally configured
-    policy; they count assertion boundaries, so composite assertions and
-    `case.forall(...)` each count as 1
--   diff data is structured, not stack-mined
--   ordinary async/app errors remain distinct from assertion failures
--   `require` exists because narrowing and straight-line ergonomics matter
--   builder control flow is explicit: `assert` records and continues;
-    `require` records and short-circuits
--   aggregate assertion composition should be explicit rather than the silent
-    default
+- core supports structured assertion results and explicit throwing-mode
+  tests
+- first-party assertion semantics live in `@overkill/engine`
+- reusable assertion-extension helpers such as
+  `defineCompositeAssertion(...)` live in `@overkill/assert`
+- `@overkill/test` may re-expose that engine-owned assertion surface, but it
+  is not required for assertion usage
+- primary authoring shape: builder/context API with explicit
+  `return case.assert.done()`
+- `AssertionNode` may still exist as an internal protocol term, but not as
+  a separate public-first authoring surface
+- zero-assertion detection: failure, no opt-out
+- `plan(n)` is the assertion-count contract; no `atMost`, no `atLeast`,
+  and `n > 0`
+- optional global assertion budgets are allowed as a centrally configured
+  policy; they count assertion boundaries, so composite assertions and
+  `case.forall(...)` each count as 1
+- diff data is structured, not stack-mined
+- ordinary async/app errors remain distinct from assertion failures
+- `require` exists because narrowing and straight-line ergonomics matter
+- builder control flow is explicit: `assert` records and continues;
+  `require` records and short-circuits
+- aggregate assertion composition should be explicit rather than the silent
+  default
 
 ## Influences
 
--   AVA — zero-assertion detection as default failure
--   `node-tap` — `t.plan()` precedent
--   `elm-test` — returned-value expectations as inspiration for the protocol
-    layer
--   ZIO Test — `Assertion` as a value
--   ScalaCheck — `Prop` as a value
--   Swift Testing — explicit split between non-gating and gating checks
+- AVA — zero-assertion detection as default failure
+- `node-tap` — `t.plan()` precedent
+- `elm-test` — returned-value expectations as inspiration for the protocol
+  layer
+- ZIO Test — `Assertion` as a value
+- ScalaCheck — `Prop` as a value
+- Swift Testing — explicit split between non-gating and gating checks
 
 ## Sources
 
--   [AVA — Assertion planning](https://github.com/avajs/ava/blob/main/docs/03-assertions.md)
--   [node-tap — `t.plan()`](https://node-tap.org/api/plan)
--   [elm-test — `Expect`](https://package.elm-lang.org/packages/elm-explorations/test/latest/Expect)
--   [Rust by Example — `Result` testing](https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html)
--   [Vitest — domain snapshot adapters](https://vitest.dev/guide/snapshot.html)
+- [AVA — Assertion planning](https://github.com/avajs/ava/blob/main/docs/03-assertions.md)
+- [node-tap — `t.plan()`](https://node-tap.org/api/plan)
+- [elm-test — `Expect`](https://package.elm-lang.org/packages/elm-explorations/test/latest/Expect)
+- [Rust by Example — `Result` testing](https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html)
+- [Vitest — domain snapshot adapters](https://vitest.dev/guide/snapshot.html)

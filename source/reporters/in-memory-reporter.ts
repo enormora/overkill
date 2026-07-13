@@ -2,16 +2,16 @@ import type { TestRunResult } from '../engine/test-run-result.js';
 import type { TestCaseResult } from '../engine/test-case-executor.js';
 import type { RealTimeReporter, FinalResultReporter } from '../engine/reporter.js';
 
-interface RecordedReportEntry {
+type RecordedReportEntry = {
     readonly sessionId: number;
-    readonly type: 'start' | 'progress' | 'done';
+    readonly type: 'done' | 'progress' | 'start';
     readonly testRunResult: TestRunResult;
     readonly testCaseResult?: TestCaseResult;
-}
+};
 
-interface InMemoryRealTimeReporter extends RealTimeReporter {
-    getRecordedEntries(): readonly RecordedReportEntry[];
-}
+type InMemoryRealTimeReporter = {
+    readonly getRecordedEntries: () => readonly RecordedReportEntry[];
+} & RealTimeReporter;
 
 export function createInMemoryRealTimeReporter(): InMemoryRealTimeReporter {
     const recordedEntries: RecordedReportEntry[] = [];
@@ -29,19 +29,19 @@ export function createInMemoryRealTimeReporter(): InMemoryRealTimeReporter {
 
                 async done(testRunResult) {
                     recordedEntries.push({ sessionId, type: 'done', testRunResult });
-                },
+                }
             };
         },
 
         getRecordedEntries() {
             return recordedEntries;
-        },
+        }
     };
 }
 
-interface InMemoryFinalResultReporter extends FinalResultReporter {
-    getRecordedEntries(): readonly RecordedReportEntry[];
-}
+type InMemoryFinalResultReporter = {
+    readonly getRecordedEntries: () => readonly RecordedReportEntry[];
+} & FinalResultReporter;
 
 export function createInMemoryFinalResultReporter(): InMemoryFinalResultReporter {
     const recordedEntries: RecordedReportEntry[] = [];
@@ -51,14 +51,14 @@ export function createInMemoryFinalResultReporter(): InMemoryFinalResultReporter
             return {
                 async report(testRunResult) {
                     recordedEntries.push({ sessionId, type: 'done', testRunResult });
-                },
+                }
             };
         },
 
         getRecordedEntries() {
             return recordedEntries;
-        },
+        }
     };
 }
 
-export type InMemoryReporter = InMemoryRealTimeReporter | InMemoryFinalResultReporter;
+export type InMemoryReporter = InMemoryFinalResultReporter | InMemoryRealTimeReporter;

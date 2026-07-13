@@ -4,9 +4,8 @@ export function createNullReporter(): FinalResultReporter {
     return {
         createSession() {
             return {
-                // eslint-disable-next-line @typescript-eslint/no-empty-function
-                async report() {},
+                async report() {}
             };
-        },
+        }
     };
 }

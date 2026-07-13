@@ -56,14 +56,14 @@ gate.
 A subcommand exists when the _primary artifact_ the user expects from
 the invocation is different from the default verdict:
 
--   `run` produces a verdict
--   `list` produces a printed plan
--   `replay` re-produces a past verdict
--   `replay-witness` re-produces a single failure
--   `baseline <verb>` produces or inspects baseline files (`update`,
-    `apply`, and `bootstrap` write; `list` and `diff` do not write
-    fresh content but operate inside the baseline namespace because
-    the user's primary artifact is still baselines, not a verdict)
+- `run` produces a verdict
+- `list` produces a printed plan
+- `replay` re-produces a past verdict
+- `replay-witness` re-produces a single failure
+- `baseline <verb>` produces or inspects baseline files (`update`,
+  `apply`, and `bootstrap` write; `list` and `diff` do not write
+  fresh content but operate inside the baseline namespace because
+  the user's primary artifact is still baselines, not a verdict)
 
 A flag refines or augments a `run`. It does not change what the user
 asks for — they still want a verdict; the flag just shapes how the run
@@ -121,11 +121,11 @@ place they should be registered.
 
 Color, animation, and progress UI obey:
 
--   `NO_COLOR` (any value) — disables color
--   `FORCE_COLOR` — forces color and chooses depth
--   `TERM=dumb` — disables ANSI control sequences
--   not-a-TTY (`stdout.isTTY === false`) — disables progress UI, defaults
-    to a non-animated reporter
+- `NO_COLOR` (any value) — disables color
+- `FORCE_COLOR` — forces color and chooses depth
+- `TERM=dumb` — disables ANSI control sequences
+- not-a-TTY (`stdout.isTTY === false`) — disables progress UI, defaults
+  to a non-animated reporter
 
 Terminal width detection uses `process.stdout.columns`; updates on
 `SIGWINCH`. Reporters wrap or truncate diff output accordingly.

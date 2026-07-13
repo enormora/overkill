@@ -61,12 +61,12 @@ const recorded: FailedCheck = {
     summary: 'expected deep equality',
     expected: { id: '42', name: 'Adäle' }, // NFC
     actual: { id: '42', name: 'Adäle' }, // NFD
-    path: ['name'],
+    path: [ 'name' ],
     location: { file: 'source/users.test.ts', line: 10 },
     diff: {
         kind: 'object',
-        ops: [{ operation: 'replace', path: ['name'], from: '"Adäle"', to: '"Adäle"' }],
-    },
+        ops: [ { operation: 'replace', path: [ 'name' ], from: '"Adäle"', to: '"Adäle"' } ]
+    }
 };
 ```
 
@@ -86,7 +86,7 @@ the case's recorded log and constructs the `TestOutcome` (see
 ```ts
 const outcome: TestOutcome = {
     kind: 'fail',
-    checks: [recorded],
+    checks: [ recorded ]
 };
 ```
 
@@ -115,8 +115,8 @@ and runner-error state to derive a reporter-facing **verdict** (see
 
 For this test:
 
--   outcome `kind === 'fail'`
--   no runner error during the body
+- outcome `kind === 'fail'`
+- no runner error during the body
 
 → verdict `fail`. Exit code 1 will follow at run completion (see
 [Runtime Behavior § Exit Codes And `process.exit`](../architecture/runtime-behavior.md#exit-codes-and-processexit)).
@@ -131,8 +131,8 @@ The test's stable identity is computed once at collection (see
 ```ts
 const caseId: CaseId = {
     file: 'source/users.test.ts',
-    suite: ['users'],
-    name: 'round-trip preserves values',
+    suite: [ 'users' ],
+    name: 'round-trip preserves values'
     // no params, no runtime, no workload
 };
 ```
@@ -144,7 +144,7 @@ seed and shrunk counterexample — alongside the failure. Its
 ```ts
 const witnessId: ArtifactId = {
     case: caseId,
-    subtype: 'witness',
+    subtype: 'witness'
 };
 ```
 
@@ -238,16 +238,16 @@ Canonical: [Failure Artifacts § Witnesses And Replay Artifacts](./failure-artif
 Reading the stages in sequence, the boundary contracts that have to
 hold for the path to work:
 
--   `FailedCheck` shape is the same in [Assertions And Results](./assertions-and-results.md)
-    and [Types Index](../reference/types-index.md)
--   `TestOutcome` is the engine ADT (4 cases); the verdict is the
-    derivation
--   `CaseId` is the only key threading test → outcome → artifact →
-    witness → run record → reporter
--   `WitnessFile` schema is the source of truth for replay; the
-    glossary and reproducibility documents cross-link it
--   `--debug` adds a parallel artifact stream without altering any
-    of the contracts above
+- `FailedCheck` shape is the same in [Assertions And Results](./assertions-and-results.md)
+  and [Types Index](../reference/types-index.md)
+- `TestOutcome` is the engine ADT (4 cases); the verdict is the
+  derivation
+- `CaseId` is the only key threading test → outcome → artifact →
+  witness → run record → reporter
+- `WitnessFile` schema is the source of truth for replay; the
+  glossary and reproducibility documents cross-link it
+- `--debug` adds a parallel artifact stream without altering any
+  of the contracts above
 
 If a later change breaks one of those contracts (renaming
 `FailedCheck`, splitting `TestOutcome`, dropping a required
@@ -258,11 +258,11 @@ visible first.
 
 This document is a reading aid; the canonical specs live in:
 
--   [Assertions And Results](./assertions-and-results.md) — assertion API, `FailedCheck`,
-    diff shape, plan, `TestOutcome` ADT
--   [Glossary](../reference/glossary.md) — outcome / verdict layering
--   [Artifact Identity](../architecture/artifact-identity.md) — identity types, path derivation
--   [Failure Artifacts](./failure-artifacts.md) — witnesses, run-record artifact list
--   [Reproducibility](../architecture/reproducibility.md) — `RunRecord`, replay
--   [Runtime Behavior](../architecture/runtime-behavior.md) — exit codes, debug mode
--   [Types Index](../reference/types-index.md) — every TS type used above
+- [Assertions And Results](./assertions-and-results.md) — assertion API, `FailedCheck`,
+  diff shape, plan, `TestOutcome` ADT
+- [Glossary](../reference/glossary.md) — outcome / verdict layering
+- [Artifact Identity](../architecture/artifact-identity.md) — identity types, path derivation
+- [Failure Artifacts](./failure-artifacts.md) — witnesses, run-record artifact list
+- [Reproducibility](../architecture/reproducibility.md) — `RunRecord`, replay
+- [Runtime Behavior](../architecture/runtime-behavior.md) — exit codes, debug mode
+- [Types Index](../reference/types-index.md) — every TS type used above

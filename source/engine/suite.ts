@@ -1,15 +1,15 @@
 import type { TestCase, TestCaseInput } from './test-case.js';
 
-export interface Suite {
+export type Suite = {
     readonly testCases: readonly TestCaseInput[];
     readonly title: string;
-}
+};
 
 export function extractTestCases(suite: Suite): readonly TestCase[] {
-    return suite.testCases.map((testCaseInput: TestCaseInput): TestCase => {
+    return suite.testCases.map(function (testCaseInput: TestCaseInput): TestCase {
         return {
             ...testCaseInput,
-            suiteTitle: suite.title,
+            suiteTitle: suite.title
         };
     });
 }

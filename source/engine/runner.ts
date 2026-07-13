@@ -2,14 +2,14 @@ import type { TestRunResult } from './test-run-result.js';
 import type { TestRunSessionProvider } from './test-run-session.js';
 import { extractTestCases, type Suite } from './suite.js';
 
-export interface RunnerDependencies {
+export type RunnerDependencies = {
     readonly testRunSessionProvider: TestRunSessionProvider;
-}
+};
 
-export interface Runner {
-    addSuite(suite: Suite): void;
-    runAll(): Promise<TestRunResult>;
-}
+export type Runner = {
+    addSuite: (suite: Suite) => void;
+    runAll: () => Promise<TestRunResult>;
+};
 
 export function createRunner(dependencies: RunnerDependencies): Runner {
     const { testRunSessionProvider } = dependencies;
@@ -31,6 +31,6 @@ export function createRunner(dependencies: RunnerDependencies): Runner {
             await testRunSession.start();
             const testCaseResults = await Promise.all(testCases.map(testRunSession.runSingleTestCase));
             return testRunSession.done(testCaseResults);
-        },
+        }
     };
 }
