@@ -60,13 +60,5 @@ export default [
             ...nodeEntryPointFileConfig.rules,
             'no-barrel-files/no-barrel-files': 'off'
         }
-    },
-    {
-        files: [ '**/*.md' ],
-        rules: {
-            'markdown/fenced-code-language': 'off',
-            'markdown/no-duplicate-headings': 'off',
-            'markdown-links/no-missing-path': 'off'
-        }
     }
 ];

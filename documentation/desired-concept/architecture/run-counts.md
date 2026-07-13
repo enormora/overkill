@@ -233,7 +233,7 @@ authored nodes the runner already has:
   The runner already performs this walk; it is the basis of
   `discovered`.
 
-```
+```text
 orphans = Constructed - Reached    (by node identity)
 ```
 
@@ -356,13 +356,13 @@ The default human reporter extends its end-of-run summary line to
 include `discovered`, and an orphan count when one exists. Suggested
 shape:
 
-```
+```text
 10000 discovered, 9000 executed (8800 pass, 100 fail, 100 skip)  in 4.2s
 ```
 
 with the orphan count appended when `orphans` is non-empty:
 
-```
+```text
 10000 discovered, 9000 executed (8800 pass, 100 fail, 100 skip), 3 orphaned  in 4.2s
 ```
 

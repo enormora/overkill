@@ -115,7 +115,7 @@ the rest of the artifact.
 
 Debug artifacts live alongside the run record:
 
-```
+```text
 .overkill/runs/<run-id>/debug/<case-id-derived>.debug.json
 ```
 
@@ -135,7 +135,7 @@ expected microtest workflow is to scope that mode narrowly with
 
 The default reporter adds a one-line summary on each debugged test:
 
-```
+```text
 ✓ users > round-trip [debug: 380 ms wall, 12 timeline entries, +3 KB heap]
 ```
 

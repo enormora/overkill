@@ -104,7 +104,7 @@ disk paths only as a derivation, never the canonical form.
 The default path derivation rule is deterministic and reversible enough to
 support stale-baseline detection:
 
-```
+```text
 <file-without-extension>__<suite-path>__<name>__<params?>__<runtime?>__<workload?>__<attempt?>.<subtype>.<ext>
 ```
 
@@ -118,7 +118,7 @@ with:
 
 Example:
 
-```
+```text
 source/users.test__crud__deletes-user__role=admin__node__os=linux__node=26__attempt=1.witness.json
 ```
 

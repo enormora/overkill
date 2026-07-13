@@ -101,7 +101,7 @@ reachable from both surfaces), the coverage surface splits this way:
 
 CLI — per-run intent, asks "do I want coverage on _this_ run":
 
-```
+```text
 overkill run --coverage --profile microtest
 ```
 
@@ -199,7 +199,7 @@ Microtest profiles deny filesystem writes by default. The
 coverage-enabled profile — grants `--allow-fs-write` scoped to the
 resolved coverage directory for the current run:
 
-```
+```text
 --allow-fs-write=<absolute-coverage-dir>/*
 ```
 

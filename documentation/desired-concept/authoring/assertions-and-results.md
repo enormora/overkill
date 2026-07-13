@@ -837,7 +837,7 @@ For the product concept:
 - aggregate assertion composition should be explicit rather than the silent
   default
 
-## Influences
+## Assertion Influences
 
 - AVA — zero-assertion detection as default failure
 - `node-tap` — `t.plan()` precedent

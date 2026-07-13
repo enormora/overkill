@@ -113,7 +113,7 @@ filtering or sharding.
 
 CLI filters use a small expression language:
 
-```
+```text
 expr     := term ( ' ' term )*           # space-separated → AND
 term     := dimension '=' value          # equality
          |  dimension '~' regex          # regex match
@@ -128,7 +128,7 @@ dimension := 'tag' | 'kind' | 'runtime' | 'owner' | 'stability'
 
 Examples:
 
-```
+```text
 --filter 'tag=fast !tag=flaky'                        # fast AND not flaky
 --filter 'kind=microtest | kind=property'             # microtests OR property tests
 --filter 'file:source/auth/* tag=critical'            # auth files, critical only
