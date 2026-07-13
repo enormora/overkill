@@ -1,8 +1,8 @@
-import fs from 'node:fs';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const projectFolder = process.cwd();
-const rootPackageJson = JSON.parse(fs.readFileSync(path.join(projectFolder, 'package.json'), 'utf8'));
+const rootPackageJson = JSON.parse(await fs.readFile(path.join(projectFolder, 'package.json'), 'utf8'));
 
 const packageMetadata = {
     author: rootPackageJson.author,

@@ -48,13 +48,14 @@ export default [
     },
     {
         ...nodeConfigFileConfig,
-        files: [ 'eslint.config.js', 'packtory.config.js' ]
+        files: [ 'eslint.config.js' ]
     },
     {
+        ...nodeEntryPointFileConfig,
         files: [ 'packtory.config.js' ],
         rules: {
-            'node/no-process-env': 'off',
-            'node/no-sync': 'off'
+            ...nodeConfigFileConfig.rules,
+            ...nodeEntryPointFileConfig.rules
         }
     },
     {
