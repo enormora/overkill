@@ -1,8 +1,8 @@
-import { test } from 'uvu';
-import * as assert from 'uvu/assert';
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import sinon, { type SinonSpy } from 'sinon';
-import { createRunner, type RunnerDependencies } from './runner.js';
-import { createSuite } from './suite.js';
+import { createRunner, type RunnerDependencies } from './runner.ts';
+import { createSuite } from './suite.ts';
 
 function noop() {}
 
@@ -51,13 +51,13 @@ test('runs all tests that have been added so far', async function () {
     );
     await runner.runAll();
 
-    assert.is(runSingleTestCase.callCount, 2);
-    assert.equal(runSingleTestCase.firstCall.firstArg, {
+    assert.strictEqual(runSingleTestCase.callCount, 2);
+    assert.deepStrictEqual(runSingleTestCase.firstCall.firstArg, {
         title: 'foo',
         testFunction: noop,
         suiteTitle: 'the-suite'
     });
-    assert.equal(runSingleTestCase.secondCall.firstArg, {
+    assert.deepStrictEqual(runSingleTestCase.secondCall.firstArg, {
         title: 'bar',
         testFunction: noop,
         suiteTitle: 'the-suite'
@@ -74,7 +74,7 @@ test('when calling runAll() a second time it runs all tests that have been added
     runner.addSuite(createSuite('suite-2', [ { title: 'bar', testFunction: noop } ]));
     await runner.runAll();
 
-    assert.is(runSingleTestCase.callCount, 3);
+    assert.strictEqual(runSingleTestCase.callCount, 3);
 });
 
 test('when calling runAll() it creates a new test-run session with a new id', async function () {
@@ -85,10 +85,10 @@ test('when calling runAll() it creates a new test-run session with a new id', as
     runner.addSuite(createSuite('the-suite', [ { title: 'foo', testFunction: noop } ]));
     await Promise.all([ runner.runAll(), runner.runAll() ]);
 
-    assert.is(createTestRunSession.callCount, 2);
-    assert.equal(createTestRunSession.firstCall.args, [ 0, 1 ]);
-    assert.equal(createTestRunSession.secondCall.args, [ 1, 1 ]);
-    assert.is(runSingleTestCase.callCount, 2);
+    assert.strictEqual(createTestRunSession.callCount, 2);
+    assert.deepStrictEqual(createTestRunSession.firstCall.args, [ 0, 1 ]);
+    assert.deepStrictEqual(createTestRunSession.secondCall.args, [ 1, 1 ]);
+    assert.strictEqual(runSingleTestCase.callCount, 2);
 });
 
 test('when calling runAll() a new test-run session is created with the exact amount of registered test cases', async function () {
@@ -104,8 +104,8 @@ test('when calling runAll() a new test-run session is created with the exact amo
     );
     await runner.runAll();
 
-    assert.is(createTestRunSession.callCount, 1);
-    assert.equal(createTestRunSession.firstCall.args, [ 0, 3 ]);
+    assert.strictEqual(createTestRunSession.callCount, 1);
+    assert.deepStrictEqual(createTestRunSession.firstCall.args, [ 0, 3 ]);
 });
 
 test('when calling runAll() the start method of the session is called', async function () {
@@ -115,7 +115,7 @@ test('when calling runAll() the start method of the session is called', async fu
 
     await runner.runAll();
 
-    assert.is(start.callCount, 1);
+    assert.strictEqual(start.callCount, 1);
 });
 
 test('when calling runAll() the done method of the session is called with all test-case results', async function () {
@@ -137,8 +137,8 @@ test('when calling runAll() the done method of the session is called with all te
     );
     await runner.runAll();
 
-    assert.is(done.callCount, 1);
-    assert.equal(done.firstCall.args, [ [ 'first-result', 'second-result' ] ]);
+    assert.strictEqual(done.callCount, 1);
+    assert.deepStrictEqual(done.firstCall.args, [ [ 'first-result', 'second-result' ] ]);
 });
 
 test('runAll() returns the final result calculated by done()', async function () {
@@ -148,7 +148,5 @@ test('runAll() returns the final result calculated by done()', async function ()
 
     const finalResult = await runner.runAll();
 
-    assert.equal(finalResult, 'the-final-result');
+    assert.deepStrictEqual(finalResult, 'the-final-result');
 });
-
-test.run();

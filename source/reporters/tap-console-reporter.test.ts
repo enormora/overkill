@@ -1,10 +1,10 @@
-import { test } from 'uvu';
-import * as assert from 'uvu/assert';
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import type { SinonSpy } from 'sinon';
 import sinon from 'sinon';
-import type { FinalResultReporter } from '../engine/reporter.js';
-import type { TapConsoleReporterDependencies } from './tap-console-reporter.js';
-import { createTapConsoleReporter } from './tap-console-reporter.js';
+import type { FinalResultReporter } from '../engine/reporter.ts';
+import type { TapConsoleReporterDependencies } from './tap-console-reporter.ts';
+import { createTapConsoleReporter } from './tap-console-reporter.ts';
 
 type Overrides = {
     readonly log?: SinonSpy;
@@ -35,8 +35,8 @@ test('reports the final result without any test cases formatted as TAP', async f
         testCaseResults: []
     });
 
-    assert.is(log.callCount, 1);
-    assert.equal(log.firstCall.args, [ 'TAP version 14\n1..0\n\n' ]);
+    assert.strictEqual(log.callCount, 1);
+    assert.deepStrictEqual(log.firstCall.args, [ 'TAP version 14\n1..0\n\n' ]);
 });
 
 test('reports the final result with succeeded and failed test cases formatted as TAP', async function () {
@@ -65,10 +65,8 @@ test('reports the final result with succeeded and failed test cases formatted as
         ]
     });
 
-    assert.is(log.callCount, 1);
-    assert.equal(log.firstCall.args, [
+    assert.strictEqual(log.callCount, 1);
+    assert.deepStrictEqual(log.firstCall.args, [
         'TAP version 14\n1..2\nok 1 - foo\nnot ok 2 - bar\n  ---\n  reason: the-reason\n  ...\n'
     ]);
 });
-
-test.run();

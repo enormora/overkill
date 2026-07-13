@@ -20,17 +20,18 @@ export const config = {
     commonPackageSettings: {
         sourcesFolder: path.join(projectFolder, 'target/build/source'),
         mainPackageJson: rootPackageJson,
+        publishSettings: { access: 'public' },
         additionalFiles: [ { sourceFilePath: path.join(projectFolder, 'LICENSE'), targetFilePath: 'LICENSE' } ]
     },
     packages: [
         {
             name: '@overkill/engine',
-            entryPoints: [
-                {
+            roots: {
+                main: {
                     js: 'packages/engine/entry-point.js',
                     declarationFile: 'packages/engine/entry-point.d.ts'
                 }
-            ],
+            },
             additionalPackageJsonAttributes: {
                 ...packageMetadata,
                 description: 'Core Overkill engine primitives and execution model.'

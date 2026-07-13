@@ -1,11 +1,11 @@
-import { test } from 'uvu';
-import * as assert from 'uvu/assert';
-import { calculateSummary, updateTestRunResult } from './test-run-result.js';
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { calculateSummary, updateTestRunResult } from './test-run-result.ts';
 
 test('calculateSummary() returns the correct result when there are no results', function () {
     const result = calculateSummary([], 42);
 
-    assert.equal(result, {
+    assert.deepStrictEqual(result, {
         failedCount: 0,
         successCount: 0,
         totalCount: 42,
@@ -25,7 +25,7 @@ test('calculateSummary() returns the correct when there is one success result', 
         42
     );
 
-    assert.equal(result, {
+    assert.deepStrictEqual(result, {
         failedCount: 0,
         successCount: 1,
         totalCount: 42,
@@ -45,7 +45,7 @@ test('calculateSummary() returns the correct when there is one failed result', f
         42
     );
 
-    assert.equal(result, {
+    assert.deepStrictEqual(result, {
         failedCount: 1,
         successCount: 0,
         totalCount: 42,
@@ -69,7 +69,7 @@ test('calculateSummary() returns the correct when there is one failed and one su
         42
     );
 
-    assert.equal(result, {
+    assert.deepStrictEqual(result, {
         failedCount: 1,
         successCount: 1,
         totalCount: 42,
@@ -102,7 +102,7 @@ test('updateTestRunResult() updates a given TestRunResult by adding the informat
 
     const updatedResult = updateTestRunResult(currentTestRunResult, newTestCaseResult, 42);
 
-    assert.equal(updatedResult, {
+    assert.deepStrictEqual(updatedResult, {
         progress: 'pending',
         summary: {
             failedCount: 1,
@@ -123,5 +123,3 @@ test('updateTestRunResult() updates a given TestRunResult by adding the informat
         ]
     });
 });
-
-test.run();

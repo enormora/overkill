@@ -1,6 +1,6 @@
-import type { TestRunResult } from './test-run-result.js';
-import type { TestRunSessionProvider } from './test-run-session.js';
-import { extractTestCases, type Suite } from './suite.js';
+import type { TestRunResult } from './test-run-result.ts';
+import type { TestRunSessionProvider } from './test-run-session.ts';
+import { extractTestCases, type Suite } from './suite.ts';
 
 export type RunnerDependencies = {
     readonly testRunSessionProvider: TestRunSessionProvider;

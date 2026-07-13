@@ -18,7 +18,6 @@ export default [
     {
         files: [ '**/*.ts' ],
         rules: {
-            'import/extensions': 'off',
             'no-duplicate-imports': 'off',
             'restricted-syntax/no-empty-function-body': 'off'
         }
@@ -29,6 +28,18 @@ export default [
             '@stylistic/max-len': 'off',
             '@typescript-eslint/explicit-function-return-type': 'off',
             '@typescript-eslint/no-empty-function': 'off',
+            '@typescript-eslint/no-floating-promises': [
+                'error',
+                {
+                    allowForKnownSafeCalls: [
+                        {
+                            from: 'package',
+                            name: 'test',
+                            package: 'node:test'
+                        }
+                    ]
+                }
+            ],
             '@typescript-eslint/no-magic-numbers': 'off',
             '@typescript-eslint/no-unsafe-type-assertion': 'off',
             '@typescript-eslint/only-throw-error': 'off',

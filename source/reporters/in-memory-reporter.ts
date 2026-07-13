@@ -1,6 +1,6 @@
-import type { TestRunResult } from '../engine/test-run-result.js';
-import type { TestCaseResult } from '../engine/test-case-executor.js';
-import type { RealTimeReporter, FinalResultReporter } from '../engine/reporter.js';
+import type { TestRunResult } from '../engine/test-run-result.ts';
+import type { TestCaseResult } from '../engine/test-case-executor.ts';
+import type { RealTimeReporter, FinalResultReporter } from '../engine/reporter.ts';
 
 type RecordedReportEntry = {
     readonly sessionId: number;
