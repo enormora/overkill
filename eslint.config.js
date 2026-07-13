@@ -59,7 +59,7 @@ export default [
     },
     {
         ...nodeEntryPointFileConfig,
-        files: [ 'source/packages/**/*.ts' ],
+        files: [ 'source/packages/engine/entry-point.ts' ],
         rules: {
             ...nodeEntryPointFileConfig.rules,
             'no-barrel-files/no-barrel-files': 'off'
