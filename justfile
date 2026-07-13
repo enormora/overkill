@@ -20,7 +20,10 @@ lint-unused-code:
 lint-dependencies:
     depcruise source --config dependency-cruiser.config.js
 
-lint: eslint lint-filename lint-unused-code lint-dependencies
+lint-duplication *OPTIONS:
+    jscpd source --config jscpd.json {{OPTIONS}}
+
+lint: eslint lint-filename lint-unused-code lint-dependencies lint-duplication
 
 lint-fix: eslint-fix
 
