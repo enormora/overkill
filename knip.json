@@ -12,5 +12,5 @@
         "*.js",
         "!source/**/*.test.ts!"
     ],
-    "ignoreDependencies": ["@ls-lint/ls-lint", "@packtory/cli", "jscpd"]
+    "ignoreDependencies": ["@ls-lint/ls-lint", "@packtory/cli", "c8", "jscpd"]
 }

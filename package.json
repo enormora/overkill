@@ -34,6 +34,7 @@
         "@packtory/cli": "0.0.65",
         "@types/node": "26.1.1",
         "@types/sinon": "10.0.20",
+        "c8": "11.0.0",
         "dependency-cruiser": "18.0.0",
         "eslint": "10.7.0",
         "jscpd": "5.0.11",
