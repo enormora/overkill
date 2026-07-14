@@ -4,6 +4,7 @@
         "source/**/*.test.ts",
         "source/packages/**/*.ts",
         "source/reporters/null-reporter.ts",
+        "dependency-cruiser.config.js",
         "packtory.config.js"
     ],
     "project": [

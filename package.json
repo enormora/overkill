@@ -34,6 +34,7 @@
         "@packtory/cli": "0.0.65",
         "@types/node": "26.1.1",
         "@types/sinon": "10.0.20",
+        "dependency-cruiser": "18.0.0",
         "eslint": "10.7.0",
         "knip": "6.24.0",
         "rust-just": "1.55.1",

@@ -17,7 +17,10 @@ lint-filename:
 lint-unused-code:
     knip
 
-lint: eslint lint-filename lint-unused-code
+lint-dependencies:
+    depcruise source --config dependency-cruiser.config.js
+
+lint: eslint lint-filename lint-unused-code lint-dependencies
 
 lint-fix: eslint-fix
 
