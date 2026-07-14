@@ -3,3 +3,5 @@ ls:
         .dir: kebab-case
         .ts: kebab-case
         .test.ts: kebab-case
+    source/packages/*:
+        .entry-point.ts: regex:[a-z0-9-]+
