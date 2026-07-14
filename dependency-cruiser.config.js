@@ -5,10 +5,11 @@ const configFiles = [
 ];
 
 const entryPointFiles = [ '^source/packages/.+/entry-point\\.ts$', '^source/reporters/' ];
+const testSupportFiles = [ '^source/test-support/' ];
 const testFiles = [ '\\.test\\.ts$' ];
 const excludedFiles = [ '^(\\./)?target/' ];
 
-const ignoreFromOrphans = [ ...configFiles, ...entryPointFiles, ...testFiles ];
+const ignoreFromOrphans = [ ...configFiles, ...entryPointFiles, ...testFiles, ...testSupportFiles ];
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 export default {
