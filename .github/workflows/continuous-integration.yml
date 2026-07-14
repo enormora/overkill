@@ -68,6 +68,8 @@ jobs:
               run: npm ci
             - name: Run unit tests
               run: npx just test-unit
+            - name: Check test coverage
+              run: npx just test-unit-with-coverage
 
     package-dry-run:
         runs-on: ubuntu-latest

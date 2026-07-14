@@ -30,5 +30,8 @@ lint-fix: eslint-fix
 test-unit:
     node --test --test-isolation='none' source/**/*.test.ts
 
+test-unit-with-coverage:
+    c8 --config .c8rc.json node --test --test-isolation='none' source/**/*.test.ts
+
 publish-dry-run: compile
     packtory publish

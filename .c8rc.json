@@ -1,0 +1,14 @@
+{
+    "all": true,
+    "extension": [".ts"],
+    "src": ["source"],
+    "exclude": ["source/**/*.test.ts", "source/packages/**/*.ts", "target/**"],
+    "check-coverage": true,
+    "lines": 93,
+    "functions": 95,
+    "statements": 93,
+    "branches": 96,
+    "reporter": ["lcov", "text-summary"],
+    "report-dir": "./target/coverage",
+    "temp-directory": "./target/c8_output"
+}
