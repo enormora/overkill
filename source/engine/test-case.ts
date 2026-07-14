@@ -6,7 +6,7 @@ export type TestCaseDetails = {
     readonly index: number;
 };
 
-export type TestCaseInput = {
+export type TestCaseDefinition = {
     readonly title: string;
     readonly testFunction: TestFunction;
 };
@@ -16,3 +16,7 @@ export type TestCase = {
     readonly title: string;
     readonly testFunction: TestFunction;
 };
+
+export function createTestCase(title: string, testFunction: TestFunction): TestCaseDefinition {
+    return { title, testFunction };
+}

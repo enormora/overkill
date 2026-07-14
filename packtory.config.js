@@ -28,8 +28,8 @@ export const config = {
             name: '@overkill-dev/engine',
             roots: {
                 main: {
-                    js: 'packages/engine/entry-point.js',
-                    declarationFile: 'packages/engine/entry-point.d.ts'
+                    js: 'packages/engine/engine.entry-point.js',
+                    declarationFile: 'packages/engine/engine.entry-point.d.ts'
                 }
             },
             additionalPackageJsonAttributes: {

@@ -4,7 +4,7 @@ const configFiles = [
     '^packtory\\.config\\.js$'
 ];
 
-const entryPointFiles = [ '^source/packages/.+/entry-point\\.ts$', '^source/reporters/' ];
+const entryPointFiles = [ '^source/packages/.+/.+\\.entry-point\\.ts$', '^source/reporters/' ];
 const testSupportFiles = [ '^source/test-support/' ];
 const testFiles = [ '\\.test\\.ts$' ];
 const excludedFiles = [ '^(\\./)?target/' ];
