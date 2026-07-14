@@ -18,22 +18,7 @@ export default [
     },
     {
         ...testSupportConfig,
-        files: [ '**/*.test.ts' ],
-        rules: {
-            ...testSupportConfig.rules,
-            '@typescript-eslint/no-floating-promises': [
-                'error',
-                {
-                    allowForKnownSafeCalls: [
-                        {
-                            from: 'package',
-                            name: 'test',
-                            package: 'node:test'
-                        }
-                    ]
-                }
-            ]
-        }
+        files: [ '**/*.test.ts' ]
     },
     {
         ...nodeConfigFileConfig,

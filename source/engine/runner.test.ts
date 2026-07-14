@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import { noop } from 'noop-esm';
 import sinon, { type SinonSpy } from 'sinon';
+import { registerTest } from '../test-support/register-test.ts';
 import { createRunner, type Runner, type RunnerDependencies } from './runner.ts';
 import { createSuite } from './suite.ts';
 
@@ -37,7 +37,7 @@ function runnerFactory(overrides: Overrides = {}): Runner {
     return createRunner(fakeDependencies);
 }
 
-test('runs all tests that have been added so far', async function () {
+registerTest('runs all tests that have been added so far', async function () {
     const runSingleTestCase = sinon.fake.resolves(undefined);
     const createTestRunSession = createFakeTestRunSession({ runSingleTestCase });
     const runner = runnerFactory({ createTestRunSession });
@@ -63,20 +63,23 @@ test('runs all tests that have been added so far', async function () {
     });
 });
 
-test('when calling runAll() a second time it runs all tests that have been added before and after the first run', async function () {
-    const runSingleTestCase = sinon.fake.resolves(undefined);
-    const createTestRunSession = createFakeTestRunSession({ runSingleTestCase });
-    const runner = runnerFactory({ createTestRunSession });
+registerTest(
+    'when calling runAll() a second time it runs all tests that have been added before and after the first run',
+    async function () {
+        const runSingleTestCase = sinon.fake.resolves(undefined);
+        const createTestRunSession = createFakeTestRunSession({ runSingleTestCase });
+        const runner = runnerFactory({ createTestRunSession });
 
-    runner.addSuite(createSuite('suite-1', [ { title: 'foo', testFunction: noop } ]));
-    await runner.runAll();
-    runner.addSuite(createSuite('suite-2', [ { title: 'bar', testFunction: noop } ]));
-    await runner.runAll();
+        runner.addSuite(createSuite('suite-1', [ { title: 'foo', testFunction: noop } ]));
+        await runner.runAll();
+        runner.addSuite(createSuite('suite-2', [ { title: 'bar', testFunction: noop } ]));
+        await runner.runAll();
 
-    assert.strictEqual(runSingleTestCase.callCount, 3);
-});
+        assert.strictEqual(runSingleTestCase.callCount, 3);
+    }
+);
 
-test('when calling runAll() it creates a new test-run session with a new id', async function () {
+registerTest('when calling runAll() it creates a new test-run session with a new id', async function () {
     const runSingleTestCase = sinon.fake.resolves(undefined);
     const createTestRunSession = createFakeTestRunSession({ runSingleTestCase });
     const runner = runnerFactory({ createTestRunSession });
@@ -90,24 +93,27 @@ test('when calling runAll() it creates a new test-run session with a new id', as
     assert.strictEqual(runSingleTestCase.callCount, 2);
 });
 
-test('when calling runAll() a new test-run session is created with the exact amount of registered test cases', async function () {
-    const createTestRunSession = createFakeTestRunSession();
-    const runner = runnerFactory({ createTestRunSession });
+registerTest(
+    'when calling runAll() a new test-run session is created with the exact amount of registered test cases',
+    async function () {
+        const createTestRunSession = createFakeTestRunSession();
+        const runner = runnerFactory({ createTestRunSession });
 
-    runner.addSuite(
-        createSuite('the-suite', [
-            { title: 'foo', testFunction: noop },
-            { title: 'bar', testFunction: noop },
-            { title: 'baz', testFunction: noop }
-        ])
-    );
-    await runner.runAll();
+        runner.addSuite(
+            createSuite('the-suite', [
+                { title: 'foo', testFunction: noop },
+                { title: 'bar', testFunction: noop },
+                { title: 'baz', testFunction: noop }
+            ])
+        );
+        await runner.runAll();
 
-    assert.strictEqual(createTestRunSession.callCount, 1);
-    assert.deepStrictEqual(createTestRunSession.firstCall.args, [ 0, 3 ]);
-});
+        assert.strictEqual(createTestRunSession.callCount, 1);
+        assert.deepStrictEqual(createTestRunSession.firstCall.args, [ 0, 3 ]);
+    }
+);
 
-test('when calling runAll() the start method of the session is called', async function () {
+registerTest('when calling runAll() the start method of the session is called', async function () {
     const start = sinon.fake.resolves(undefined);
     const createTestRunSession = createFakeTestRunSession({ start });
     const runner = runnerFactory({ createTestRunSession });
@@ -117,30 +123,33 @@ test('when calling runAll() the start method of the session is called', async fu
     assert.strictEqual(start.callCount, 1);
 });
 
-test('when calling runAll() the done method of the session is called with all test-case results', async function () {
-    const runSingleTestCase = sinon
-        .stub()
-        .onFirstCall()
-        .resolves('first-result')
-        .onSecondCall()
-        .resolves('second-result');
-    const done = sinon.fake.resolves(undefined);
-    const createTestRunSession = createFakeTestRunSession({ runSingleTestCase, done });
-    const runner = runnerFactory({ createTestRunSession });
+registerTest(
+    'when calling runAll() the done method of the session is called with all test-case results',
+    async function () {
+        const runSingleTestCase = sinon
+            .stub()
+            .onFirstCall()
+            .resolves('first-result')
+            .onSecondCall()
+            .resolves('second-result');
+        const done = sinon.fake.resolves(undefined);
+        const createTestRunSession = createFakeTestRunSession({ runSingleTestCase, done });
+        const runner = runnerFactory({ createTestRunSession });
 
-    runner.addSuite(
-        createSuite('the-suite', [
-            { title: 'foo', testFunction: noop },
-            { title: 'bar', testFunction: noop }
-        ])
-    );
-    await runner.runAll();
+        runner.addSuite(
+            createSuite('the-suite', [
+                { title: 'foo', testFunction: noop },
+                { title: 'bar', testFunction: noop }
+            ])
+        );
+        await runner.runAll();
 
-    assert.strictEqual(done.callCount, 1);
-    assert.deepStrictEqual(done.firstCall.args, [ [ 'first-result', 'second-result' ] ]);
-});
+        assert.strictEqual(done.callCount, 1);
+        assert.deepStrictEqual(done.firstCall.args, [ [ 'first-result', 'second-result' ] ]);
+    }
+);
 
-test('runAll() returns the final result calculated by done()', async function () {
+registerTest('runAll() returns the final result calculated by done()', async function () {
     const done = sinon.fake.resolves('the-final-result');
     const createTestRunSession = createFakeTestRunSession({ done });
     const runner = runnerFactory({ createTestRunSession });

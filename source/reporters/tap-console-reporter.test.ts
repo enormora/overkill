@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import sinon, { type SinonSpy } from 'sinon';
+import { registerTest } from '../test-support/register-test.ts';
 import type { FinalResultReporter } from '../engine/reporter.ts';
 import { createTapConsoleReporter, type TapConsoleReporterDependencies } from './tap-console-reporter.ts';
 
@@ -16,7 +16,7 @@ function tapConsoleReporterFactory(overrides: Overrides = {}): FinalResultReport
     return createTapConsoleReporter(fakeDependencies);
 }
 
-test('reports the final result without any test cases formatted as TAP', async function () {
+registerTest('reports the final result without any test cases formatted as TAP', async function () {
     const log = sinon.fake();
     const reporter = tapConsoleReporterFactory({ log });
     const session = reporter.createSession(42);
@@ -37,7 +37,7 @@ test('reports the final result without any test cases formatted as TAP', async f
     assert.deepStrictEqual(log.firstCall.args, [ 'TAP version 14\n1..0\n\n' ]);
 });
 
-test('reports the final result with succeeded and failed test cases formatted as TAP', async function () {
+registerTest('reports the final result with succeeded and failed test cases formatted as TAP', async function () {
     const log = sinon.fake();
     const reporter = tapConsoleReporterFactory({ log });
     const session = reporter.createSession(42);

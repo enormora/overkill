@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import sinon, { type SinonSpy } from 'sinon';
 import kleur from 'kleur';
 import figures from 'figures';
+import { registerTest } from '../test-support/register-test.ts';
 import type { RealTimeReporter } from '../engine/reporter.ts';
 import { createLineReporter, type LineReporterDependencies } from './line-reporter.ts';
 
@@ -22,7 +22,7 @@ const infoSymbol = kleur.cyan(figures.info);
 const successSymbol = kleur.green(figures.tick);
 const errorSymbol = kleur.red(figures.cross);
 
-test('reports the start', async function () {
+registerTest('reports the start', async function () {
     const log = sinon.fake();
     const reporter = lineReporterFactory({ log });
     const session = reporter.createSession(42);
@@ -43,7 +43,7 @@ test('reports the start', async function () {
     assert.deepStrictEqual(log.firstCall.args, [ infoSymbol, 'Test run started (0 / 123)' ]);
 });
 
-test('prints a line when the test run progresses with a failed test', async function () {
+registerTest('prints a line when the test run progresses with a failed test', async function () {
     const log = sinon.fake();
     const reporter = lineReporterFactory({ log });
     const session = reporter.createSession(42);
@@ -70,7 +70,7 @@ test('prints a line when the test run progresses with a failed test', async func
     assert.deepStrictEqual(log.firstCall.args, [ `${errorSymbol} foo` ]);
 });
 
-test('prints a line when the test run progresses with a succeeded test', async function () {
+registerTest('prints a line when the test run progresses with a succeeded test', async function () {
     const log = sinon.fake();
     const reporter = lineReporterFactory({ log });
     const session = reporter.createSession(42);
@@ -97,7 +97,7 @@ test('prints a line when the test run progresses with a succeeded test', async f
     assert.deepStrictEqual(log.firstCall.args, [ `${successSymbol} foo` ]);
 });
 
-test('prints a three-line summary once the test run finishes', async function () {
+registerTest('prints a three-line summary once the test run finishes', async function () {
     const log = sinon.fake();
     const reporter = lineReporterFactory({ log });
     const session = reporter.createSession(42);
