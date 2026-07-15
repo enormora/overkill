@@ -1,7 +1,7 @@
 import kleur from 'kleur';
 import figures from 'figures';
-import type { TestCaseResult } from '../engine/test-case-executor.ts';
 import type { RealTimeReporter } from '../engine/reporter.ts';
+import type { TestOutcome } from '../engine/run-result.ts';
 
 const successSymbol = kleur.green(figures.tick);
 const errorSymbol = kleur.red(figures.cross);
@@ -11,39 +11,37 @@ export type LineReporterDependencies = {
     readonly stdoutConsole: Pick<typeof console, 'log'>;
 };
 
-function formatTestResult(testCaseResult: TestCaseResult): string {
-    if (testCaseResult.result.status === 'failure') {
-        return `${errorSymbol} ${testCaseResult.testCaseDetails.title}`;
+function formatTestResult(id: string, outcome: TestOutcome): string {
+    if (outcome.kind === 'fail') {
+        return `${errorSymbol} ${id}`;
     }
 
-    return `${successSymbol} ${testCaseResult.testCaseDetails.title}`;
+    return `${successSymbol} ${id}`;
 }
 
 export function createLineReporter(dependencies: LineReporterDependencies): RealTimeReporter {
     const { stdoutConsole } = dependencies;
 
     return {
-        createSession() {
-            return {
-                async start(currentTestRunResult) {
-                    const { summary } = currentTestRunResult;
-                    stdoutConsole.log(
-                        infoSymbol,
-                        `Test run started (${summary.completedCount} / ${summary.totalCount})`
-                    );
-                },
+        kind: 'real-time',
+        name: 'line',
+        sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ],
 
-                async progress(_currentTestRunResult, testCaseResult) {
-                    stdoutConsole.log(formatTestResult(testCaseResult));
-                },
+        async onEvent(event) {
+            if (event.kind === 'run-start') {
+                stdoutConsole.log(infoSymbol, 'Test run started');
+            }
 
-                async done(finalResult) {
-                    const { summary } = finalResult;
-                    stdoutConsole.log(infoSymbol, `Total: ${summary.totalCount}`);
-                    stdoutConsole.log(successSymbol, `Succeeded: ${summary.successCount}`);
-                    stdoutConsole.log(errorSymbol, `Failed: ${summary.failedCount}`);
-                }
-            };
+            if (event.kind === 'test-end' && event.case !== null && event.outcome !== null) {
+                stdoutConsole.log(formatTestResult(event.case, event.outcome));
+            }
+        },
+
+        async onFinish(finalResult) {
+            const { summary } = finalResult;
+            stdoutConsole.log(infoSymbol, `Discovered: ${summary.discovered}`);
+            stdoutConsole.log(successSymbol, `Passed: ${summary.passed}`);
+            stdoutConsole.log(errorSymbol, `Failed: ${summary.failed}`);
         }
     };
 }

@@ -1,12 +1,12 @@
 import { asyncNoop } from 'noop-esm';
-import type { FinalResultReporter } from './reporter.ts';
+import type { LegacyReporter } from './reporter.ts';
 import { createRunner } from './runner.ts';
 import type { Suite } from './suite.ts';
 import { createTestCaseExecutor } from './test-case-executor.ts';
 import type { TestRunResult } from './test-run-result.ts';
 import { createTestRunSessionProvider } from './test-run-session.ts';
 
-function createSilentReporter(): FinalResultReporter {
+function createSilentReporter(): LegacyReporter {
     return {
         createSession() {
             return {

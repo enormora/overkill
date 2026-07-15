@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createInMemoryFinalResultReporter, createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import { registerTest } from '../test-support/register-test.ts';
 import { execute } from './execution.ts';
 import { createTestPlan } from './test-plan.ts';
@@ -198,4 +199,41 @@ registerTest('execute() records thrown test body errors', async function () {
 
     assert.equal(result.summary.failed, 1);
     assert.equal(result.perTest[0]?.outcome.checks[0]?.summary, 'boom');
+});
+
+registerTest('execute() delivers events and final results to reporters', async function () {
+    const realTimeReporter = createInMemoryRealTimeReporter();
+    const finalResultReporter = createInMemoryFinalResultReporter();
+    const testPlan = createTestPlan(
+        createSuite({
+            children: [
+                createTestCase({
+                    body(testContext) {
+                        return testContext.assert.ok(true, 'passes');
+                    },
+                    metadata: {},
+                    name: 'passes'
+                })
+            ],
+            metadata: {},
+            name: 'root'
+        })
+    );
+
+    const result = await execute(testPlan, {
+        reporters: [ realTimeReporter, finalResultReporter ],
+        runFacts: { seed: 42 },
+        startedAt: '2026-07-15T00:00:00.000Z'
+    });
+
+    assert.deepStrictEqual(
+        realTimeReporter.getRecordedEntries().map(function toType(entry) {
+            return entry.type;
+        }),
+        [ 'event', 'event', 'event', 'event', 'finish' ]
+    );
+    assert.deepStrictEqual(
+        finalResultReporter.getRecordedEntries(),
+        [ { event: null, result, type: 'result' } ]
+    );
 });
