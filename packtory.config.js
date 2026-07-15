@@ -32,9 +32,34 @@ export const config = {
                     declarationFile: 'packages/engine/engine.entry-point.d.ts'
                 }
             },
+            additionalFiles: [
+                {
+                    sourceFilePath: path.join(projectFolder, 'source/packages/engine/readme.md'),
+                    targetFilePath: 'readme.md'
+                }
+            ],
             additionalPackageJsonAttributes: {
                 ...packageMetadata,
                 description: 'Core Overkill engine primitives and execution model.'
+            }
+        },
+        {
+            name: '@overkill-dev/run',
+            roots: {
+                main: {
+                    js: 'packages/run/run.entry-point.js',
+                    declarationFile: 'packages/run/run.entry-point.d.ts'
+                }
+            },
+            additionalFiles: [
+                {
+                    sourceFilePath: path.join(projectFolder, 'source/packages/run/readme.md'),
+                    targetFilePath: 'readme.md'
+                }
+            ],
+            additionalPackageJsonAttributes: {
+                ...packageMetadata,
+                description: 'Overkill run resolution and orchestration.'
             }
         }
     ]

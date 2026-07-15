@@ -237,7 +237,7 @@ type TestFacade = {
 
 Canonical: [Assertions And Results](../authoring/assertions-and-results.md).
 
-## Run Request, Plan, And Record
+## Run Request, Resolution, And Record
 
 ```ts
 type RunRequest = {
@@ -266,7 +266,18 @@ type RunRequest = {
     readonly configPath?: string;
 };
 
-type RunPlan = {
+type TestPlanCase = {
+    readonly id: CaseId;
+    readonly suitePath: ReadonlyArray<string>;
+    readonly metadata: Metadata;
+    readonly body: TestBody;
+};
+
+type TestPlan = {
+    readonly cases: ReadonlyArray<TestPlanCase>;
+};
+
+type RunFacts = {
     readonly seed: bigint;
     readonly identities: ReadonlyArray<CaseId>;
     readonly runtimes: ReadonlyArray<ResolvedRuntime>;
@@ -281,6 +292,13 @@ type RunPlan = {
     readonly debuggedCases?: ReadonlyArray<CaseId>; // present when debugMode === 'selected'
 };
 
+type ResolvedRun = {
+    readonly request: RunRequest;
+    readonly facts: RunFacts;
+    readonly testPlan: TestPlan;
+    readonly reporters: ReadonlyArray<Reporter>;
+};
+
 type ResolvedRuntime = {
     readonly id: RuntimeId;
     readonly nodeVersion?: string;
@@ -292,7 +310,7 @@ type ResolvedRuntime = {
 type RunRecord = {
     readonly id: string; // ULID
     readonly seed: bigint;
-    readonly plan: RunPlan;
+    readonly facts: RunFacts;
     readonly identities: ReadonlyArray<CaseId>;
     readonly runtime: ResolvedRuntime;
     readonly versions: { engine: string; node: string; packages: ReadonlyMap<string, string>; };
@@ -332,7 +350,8 @@ type RunnerError = {
 };
 ```
 
-Canonical: [Reproducibility](../architecture/reproducibility.md) for `RunPlan` and `RunRecord`,
+Canonical: [Reproducibility](../architecture/reproducibility.md) for `RunFacts` and `RunRecord`,
+[Package Architecture](../architecture/package-architecture.md) for `RunRequest`, `ResolvedRun`, and `TestPlan`,
 [Failure Artifacts](../authoring/failure-artifacts.md) for `RunnerError`.
 
 ## Illustrative Capability-Handle Types

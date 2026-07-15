@@ -11,7 +11,7 @@ can be re-created with meaningfully the same inputs, ordering, runtimes,
 and artifact expectations.
 
 The strongest form Overkill commits to is **reproducible run intent and
-plan**. Bit-for-bit reproducibility across machines is not promised in the
+facts**. Bit-for-bit reproducibility across machines is not promised in the
 general case; deterministic-simulation tests reach close to it, ordinary
 integration tests do not.
 
@@ -35,10 +35,12 @@ A reproducible run captures, at minimum:
   hooks)
 - the Overkill engine and package versions
 
-Together these form a `RunPlan` value preserved as part of the run record.
+Together these form a `RunFacts` value preserved as part of the run record.
+The executable `TestPlan` is in-memory only because it contains callable
+test bodies.
 
 For sharded CI runs, the baseline model is that each shard independently
-reconstructs the same `RunPlan` and then executes only its own shard
+reconstructs the same `RunFacts` and then executes only its own shard
 partition. A richer two-phase planner/executor workflow may still exist, but
 it is an optimization, not the required cross-CI baseline.
 
@@ -48,7 +50,7 @@ it is an optimization, not the required cross-CI baseline.
 type RunRecord = {
     readonly id: string; // ULID
     readonly seed: bigint;
-    readonly plan: RunPlan;
+    readonly facts: RunFacts;
     readonly identities: ReadonlyArray<CaseId>;
     readonly runtime: ResolvedRuntime; // see types-index.md
     readonly versions: { engine: string; node: string; packages: ReadonlyMap<string, string>; };
@@ -67,7 +69,7 @@ should not be mandatory on the hottest microtest path.
 
 So the settled direction should be:
 
-- every run has an in-memory run plan/result model
+- every run has an in-memory `ResolvedRun` plus result model
 - persisted `RunRecord`s are written only when an active workflow needs
   them
 - examples include explicit replay/recording workflows, debug-mode

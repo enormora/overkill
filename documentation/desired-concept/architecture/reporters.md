@@ -85,7 +85,7 @@ implementation.
 
 ```ts
 type ReporterEvent =
-    | { kind: 'run-start'; plan: RunPlan; startedAt: string; }
+    | { kind: 'run-start'; facts: RunFacts; startedAt: string; }
     | { kind: 'suite-start'; case: CaseId; }
     | { kind: 'test-start'; case: CaseId; attempt: number; }
     | { kind: 'test-progress'; case: CaseId; attempt: number; note: string; }
@@ -255,7 +255,7 @@ preferable.)
 ## Compatibility
 
 Not every reporter is meaningful for every run family. Reporters may declare
-compatibility requirements over the resolved run plan or result shape.
+compatibility requirements over the resolved run facts or result shape.
 
 Examples:
 
@@ -274,5 +274,5 @@ to render nonsense.
 - [Runtime Behavior § Console Output Capture](./runtime-behavior.md#console-output-capture) — how reporters
   interact with captured stdout/stderr
 - [Failure Artifacts](../authoring/failure-artifacts.md) — the artifacts reporters consume
-- [Types Index](../reference/types-index.md) — `RunPlan`, `RunResult`, `TestOutcome`,
+- [Types Index](../reference/types-index.md) - `RunFacts`, `RunResult`, `TestOutcome`,
   `RunnerError`, `CaseId`, `TestDebugArtifact`
