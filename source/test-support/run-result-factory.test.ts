@@ -23,3 +23,24 @@ registerTest('runResultFactory builds nested result data', function () {
     assert.equal(outcome.checks[0]?.summary, 'custom failure');
     assert.equal(runResult.runnerErrors[0]?.message, 'custom runner error');
 });
+
+registerTest('runResultFactory builds non-failing outcome variants', function () {
+    const runResult = runResultFactory.build({
+        perTest: [
+            { outcome: { kind: 'pass' } },
+            { outcome: { kind: 'skip' } },
+            { outcome: { kind: 'inconclusive' } }
+        ]
+    });
+
+    assert.deepStrictEqual(
+        runResult.perTest.map(function toOutcome(testResult) {
+            return testResult.outcome;
+        }),
+        [
+            { kind: 'pass' },
+            { kind: 'skip', reason: 'Skipped' },
+            { kind: 'inconclusive', reason: 'Inconclusive' }
+        ]
+    );
+});
