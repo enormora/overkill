@@ -239,6 +239,11 @@ Canonical: [Assertions And Results](../authoring/assertions-and-results.md).
 
 ## Run Request, Resolution, And Record
 
+Direct engine consumers can create `TestCase` values with `createTestCase`,
+attach them to a root `Suite` with `createSuite`, build the executable
+`TestPlan` with `createTestPlan(root)`, then pass it to
+`execute(testPlan): Promise<RunResult>`.
+
 ```ts
 type RunRequest = {
     readonly paths?: ReadonlyArray<string>;

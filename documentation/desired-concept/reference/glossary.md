@@ -220,9 +220,11 @@ Source: [Package Architecture](../architecture/package-architecture.md), [Reprod
 
 ## TestPlan
 
-The engine-owned executable test plan. It contains the selected in-process
-case entries and callable bodies that `execute(testPlan)` can run. It is not
-persisted as a run record because functions are not serializable.
+The engine-owned executable test plan. It contains selected in-process case
+entries and callable bodies that `execute(testPlan)` can run. It is not
+persisted as a run record because functions are not serializable. Direct
+engine execution does not involve `@overkill-dev/run`, discovery,
+configuration loading, or CLI behavior.
 
 Source: [Package Architecture](../architecture/package-architecture.md), [Reproducibility](../architecture/reproducibility.md).
 
