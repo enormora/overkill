@@ -28,10 +28,10 @@ lint: eslint lint-filename lint-unused-code lint-dependencies lint-duplication
 lint-fix: eslint-fix
 
 test-unit:
-    find source -path source/integration-tests -prune -o -name '*.test.ts' -print | sort | xargs node --test --test-isolation='none'
+    find source -path source/integration-tests -prune -o -name '*.test.ts' -exec node --test --test-isolation='none' {} +
 
 test-unit-with-coverage:
-    find source -path source/integration-tests -prune -o -name '*.test.ts' -print | sort | xargs c8 --config .c8rc.json node --test --test-isolation='none'
+    find source -path source/integration-tests -prune -o -name '*.test.ts' -exec c8 --config .c8rc.json node --test --test-isolation='none' {} +
 
 test-package-smoke: compile
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
