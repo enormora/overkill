@@ -1,6 +1,4 @@
 import type { RunResult, TestOutcome } from './run-result.ts';
-import type { TestCaseResult } from './test-case-executor.ts';
-import type { TestRunResult } from './test-run-result.ts';
 
 export type SinkDeclaration = {
     readonly conflictPolicy: 'exclusive' | 'shared';
@@ -19,20 +17,6 @@ export type ReporterEvent = {
     readonly wallTimeMs: number | null;
 };
 
-export type ReportingSession = {
-    readonly report: (testRunResult: TestRunResult) => Promise<void> | void;
-};
-
-export type RealTimeReportingSession = ReportingSession & {
-    readonly done: (testRunResult: TestRunResult) => Promise<void> | void;
-    readonly progress: (testRunResult: TestRunResult, testCaseResult: TestCaseResult) => Promise<void> | void;
-    readonly start: (testRunResult: TestRunResult) => Promise<void> | void;
-};
-
-export type LegacyReporter = {
-    readonly createSession: (sessionId: number) => ReportingSession;
-};
-
 export type RealTimeReporter = {
     readonly kind: 'real-time';
     readonly name: string;
@@ -49,16 +33,6 @@ export type FinalResultReporter = {
 };
 
 export type Reporter = FinalResultReporter | RealTimeReporter;
-
-export function isRealTimeReportingSession(
-    reportingSession: ReportingSession
-): reportingSession is RealTimeReportingSession {
-    return (
-        Object.hasOwn(reportingSession, 'done') &&
-        Object.hasOwn(reportingSession, 'progress') &&
-        Object.hasOwn(reportingSession, 'start')
-    );
-}
 
 export async function reportEvent(reporters: readonly Reporter[], event: ReporterEvent): Promise<void> {
     for (const reporter of reporters) {
