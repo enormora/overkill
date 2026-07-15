@@ -16,6 +16,34 @@ registerTest('createTestCase() creates a branded test node', function () {
     assert.equal(testCase.name, 'passes');
 });
 
+registerTest('createTestCase() rejects an empty name', function () {
+    assert.throws(
+        function createUnnamedTestCase() {
+            createTestCase({
+                body(testContext) {
+                    return testContext.assert.ok(true, 'passes');
+                },
+                metadata: {},
+                name: ' '
+            });
+        },
+        { message: 'Test node name must not be empty.' }
+    );
+});
+
+registerTest('createSuite() rejects non-object metadata', function () {
+    assert.throws(
+        function createInvalidSuite() {
+            createSuite({
+                children: [],
+                metadata: null as never,
+                name: 'suite'
+            });
+        },
+        { message: 'Test node metadata must be an object.' }
+    );
+});
+
 registerTest('createSuite() rejects plain object test nodes', function () {
     assert.throws(
         function createInvalidSuite() {
