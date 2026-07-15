@@ -239,9 +239,10 @@ Canonical: [Assertions And Results](../authoring/assertions-and-results.md).
 
 ## Run Request, Resolution, And Record
 
-Direct engine consumers can create a `TestPlan` with `createSuite`,
-`createTestCase`, and `createTestPlan` from `@overkill-dev/engine`, then pass
-it to `execute(testPlan): Promise<RunResult>`.
+Direct engine consumers can create `TestCase` values with `createTestCase`,
+attach them to a root `Suite` with `createSuite`, build the executable
+`TestPlan` with `createTestPlan(root)`, then pass it to
+`execute(testPlan): Promise<RunResult>`.
 
 ```ts
 type RunRequest = {
