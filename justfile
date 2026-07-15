@@ -33,6 +33,9 @@ test-unit:
 test-unit-with-coverage:
     find source -path source/integration-tests -prune -o -name '*.test.ts' -exec c8 --config .c8rc.json node --test --test-isolation='none' {} +
 
+test-types:
+    tstyche
+
 test-package-smoke: compile
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
     mkdir -p target/build/source/integration-tests/package-smoke/node_modules/@overkill-dev

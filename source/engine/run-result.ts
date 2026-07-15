@@ -1,16 +1,48 @@
 import type { FailedCheck } from './test-node.ts';
 
-export type TestOutcome = {
-    readonly checks: readonly FailedCheck[];
-    readonly kind: 'fail' | 'inconclusive' | 'pass' | 'skip';
-    readonly reason: string | null;
+type RunnerErrorSubtypeByName = {
+    readonly attributionDrift: 'attribution-drift';
+    readonly crash: 'crash';
+    readonly fixture: 'fixture';
+    readonly loader: 'loader';
+    readonly permission: 'permission';
+    readonly reporter: 'reporter';
+    readonly unhandledRejection: 'unhandled-rejection';
 };
+
+type RunnerErrorSubtype = RunnerErrorSubtypeByName[keyof RunnerErrorSubtypeByName];
+
+export type PassOutcome = {
+    readonly checks?: never;
+    readonly kind: 'pass';
+    readonly reason?: never;
+};
+
+export type FailOutcome = {
+    readonly checks: readonly FailedCheck[];
+    readonly kind: 'fail';
+    readonly reason?: never;
+};
+
+export type SkipOutcome = {
+    readonly checks?: never;
+    readonly kind: 'skip';
+    readonly reason: string;
+};
+
+export type InconclusiveOutcome = {
+    readonly checks?: never;
+    readonly kind: 'inconclusive';
+    readonly reason: string;
+};
+
+export type TestOutcome = FailOutcome | InconclusiveOutcome | PassOutcome | SkipOutcome;
 
 export type RunnerError = {
     readonly attributedTo: string | null;
     readonly cause: unknown;
     readonly message: string;
-    readonly subtype: string;
+    readonly subtype: RunnerErrorSubtype;
 };
 
 export type RunSummary = {
@@ -25,7 +57,7 @@ export type RunSummary = {
 export type PerTestResult = {
     readonly id: string;
     readonly outcome: TestOutcome;
-    readonly verdict: 'fail' | 'inconclusive' | 'pass' | 'skip';
+    readonly verdict: TestOutcome['kind'];
 };
 
 export type SuiteRunCounts = {

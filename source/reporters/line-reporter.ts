@@ -16,7 +16,11 @@ function formatTestResult(id: string, outcome: TestOutcome): string {
         return `${errorSymbol} ${id}`;
     }
 
-    return `${successSymbol} ${id}`;
+    if (outcome.kind === 'pass') {
+        return `${successSymbol} ${id}`;
+    }
+
+    return `${infoSymbol} ${id}`;
 }
 
 export function createLineReporter(dependencies: LineReporterDependencies): RealTimeReporter {

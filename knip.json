@@ -2,15 +2,18 @@
     "$schema": "https://unpkg.com/knip@5/schema.json",
     "entry": [
         "source/**/*.test.ts",
+        "source/**/*.type-test.ts",
         "source/packages/**/*.ts",
         "source/reporters/null-reporter.ts",
         "dependency-cruiser.config.js",
-        "packtory.config.js"
+        "packtory.config.js",
+        "tstyche.json"
     ],
     "project": [
         "source/**/*.ts!",
         "*.js",
-        "!source/**/*.test.ts!"
+        "!source/**/*.test.ts!",
+        "!source/**/*.type-test.ts!"
     ],
     "ignoreDependencies": ["@ls-lint/ls-lint", "@packtory/cli", "c8", "jscpd"]
 }
