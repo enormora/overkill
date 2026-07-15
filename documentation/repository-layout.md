@@ -5,7 +5,7 @@ Overkill uses a feature-oriented monorepo layout.
 ```text
 source/
 |-- engine/                  # current engine-owned runtime, contracts, core execution code
-|-- integration-tests/       # package-level smoke tests that run against packed output
+|-- integration-tests/       # integration tests outside the unit-test suite
 |-- reporters/               # current concrete reporter implementations
 |-- authoring/               # future shared test-authoring code
 |-- runtimes/                # future shared resource/runtime code
