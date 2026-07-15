@@ -6,5 +6,6 @@
         "types": ["node"]
     },
     "references": [{ "path": "./tsconfig.sources.json" }],
-    "include": ["./**/*.test.ts", "./test-support/**/*.ts"]
+    "include": ["./**/*.test.ts", "./test-support/**/*.ts"],
+    "exclude": ["./integration-tests/**/*.ts"]
 }

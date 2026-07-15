@@ -28,10 +28,16 @@ lint: eslint lint-filename lint-unused-code lint-dependencies lint-duplication
 lint-fix: eslint-fix
 
 test-unit:
-    node --test --test-isolation='none' source/**/*.test.ts
+    find source -path source/integration-tests -prune -o -name '*.test.ts' -print | sort | xargs node --test --test-isolation='none'
 
 test-unit-with-coverage:
-    c8 --config .c8rc.json node --test --test-isolation='none' source/**/*.test.ts
+    find source -path source/integration-tests -prune -o -name '*.test.ts' -print | sort | xargs c8 --config .c8rc.json node --test --test-isolation='none'
+
+test-package-smoke: compile
+    rm -rf target/build/source/integration-tests/package-smoke/node_modules
+    mkdir -p target/build/source/integration-tests/package-smoke/node_modules/@overkill-dev
+    packtory pack @overkill-dev/engine --format folder --out target/build/source/integration-tests/package-smoke/node_modules/@overkill-dev/engine
+    node --test target/build/source/integration-tests/package-smoke/**/*.test.js
 
 publish-dry-run: compile
     packtory publish

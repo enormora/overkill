@@ -1,0 +1,13 @@
+{
+    "extends": "../tsconfig.base.json",
+    "compilerOptions": {
+        "paths": {
+            "@overkill-dev/engine": ["./packages/engine/engine.entry-point.ts"]
+        },
+        "rootDir": "..",
+        "tsBuildInfoFile": "../target/buildcache/integration-tests.tsbuildinfo",
+        "types": ["node"]
+    },
+    "references": [{ "path": "./tsconfig.sources.json" }],
+    "include": ["./integration-tests/**/*.ts"]
+}

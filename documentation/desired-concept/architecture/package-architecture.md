@@ -21,10 +21,11 @@ This is intentionally closer to the real modularity of Buster and the framework-
 
 It should not assume one assertion library, one snapshot format, or one benchmark model.
 
-For tiny projects, this layer should already be usable directly. A single
-file should be able to build tests with engine-level primitives such as
-`createSuite(...)`, `createTestCase(...)`, and an `execute(testPlan)` call
-without pulling in the higher-level DSL.
+For tiny projects, this layer should already be usable directly. A consumer
+can import `createSuite`, `createTestCase`, `createTestPlan`, and `execute`
+from `@overkill-dev/engine`, build a suite, freeze it into a `TestPlan`, and
+call `execute(testPlan)` to receive a `RunResult` without pulling in the
+higher-level DSL.
 
 Those primitives should also be the only way to create valid engine
 `TestNode`s. Shape-compatible plain objects are not enough: engine-branded
@@ -44,8 +45,9 @@ semantic owner package. In practice that means:
 
 - CLI flags that shape planning or orchestration map to `@overkill-dev/run`
   request fields
-- engine consumers can still bypass CLI and configuration entirely by constructing
-  a `TestPlan` and calling `execute(testPlan)` directly
+- engine consumers can still bypass CLI, configuration loading, discovery,
+  and `@overkill-dev/run` entirely by constructing a `TestPlan` and calling
+  `execute(testPlan)` directly
 
 Recommended public split:
 
@@ -59,7 +61,7 @@ Conceptually:
 - `resolveRun(request)` returns a frozen `ResolvedRun`
 - `run(request)` is shorthand for planning plus execution
 - `execute(testPlan)` is the lower-level engine entrypoint once planning is
-  already done
+  already done, and it returns a `RunResult`
 
 ## Default Test Authoring
 

@@ -223,6 +223,10 @@ Source: [Package Architecture](../architecture/package-architecture.md), [Reprod
 The engine-owned executable test plan. It contains the selected in-process
 case entries and callable bodies that `execute(testPlan)` can run. It is not
 persisted as a run record because functions are not serializable.
+Consumers may build one directly with `createSuite`, `createTestCase`, and
+`createTestPlan` from `@overkill-dev/engine`; no `@overkill-dev/run`
+discovery, configuration loading, or CLI is involved in that direct engine
+flow.
 
 Source: [Package Architecture](../architecture/package-architecture.md), [Reproducibility](../architecture/reproducibility.md).
 
