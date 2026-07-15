@@ -1,12 +1,10 @@
-import type { TestRunResult } from '../engine/test-run-result.ts';
-import type { TestCaseResult } from '../engine/test-case-executor.ts';
-import type { RealTimeReporter, FinalResultReporter } from '../engine/reporter.ts';
+import type { RunResult } from '../engine/run-result.ts';
+import type { FinalResultReporter, RealTimeReporter, ReporterEvent } from '../engine/reporter.ts';
 
 type RecordedReportEntry = {
-    readonly sessionId: number;
-    readonly type: 'done' | 'progress' | 'start';
-    readonly testRunResult: TestRunResult;
-    readonly testCaseResult?: TestCaseResult;
+    readonly event: ReporterEvent | null;
+    readonly result: RunResult | null;
+    readonly type: 'event' | 'finish' | 'result';
 };
 
 type InMemoryRealTimeReporter = {
@@ -17,20 +15,16 @@ export function createInMemoryRealTimeReporter(): InMemoryRealTimeReporter {
     const recordedEntries: RecordedReportEntry[] = [];
 
     return {
-        createSession(sessionId) {
-            return {
-                async start(testRunResult) {
-                    recordedEntries.push({ sessionId, type: 'start', testRunResult });
-                },
+        kind: 'real-time',
+        name: 'in-memory-real-time',
+        sinks: [],
 
-                async progress(testRunResult, testCaseResult) {
-                    recordedEntries.push({ sessionId, type: 'progress', testRunResult, testCaseResult });
-                },
+        async onEvent(event) {
+            recordedEntries.push({ event, result: null, type: 'event' });
+        },
 
-                async done(testRunResult) {
-                    recordedEntries.push({ sessionId, type: 'done', testRunResult });
-                }
-            };
+        async onFinish(result) {
+            recordedEntries.push({ event: null, result, type: 'finish' });
         },
 
         getRecordedEntries() {
@@ -47,12 +41,12 @@ export function createInMemoryFinalResultReporter(): InMemoryFinalResultReporter
     const recordedEntries: RecordedReportEntry[] = [];
 
     return {
-        createSession(sessionId) {
-            return {
-                async report(testRunResult) {
-                    recordedEntries.push({ sessionId, type: 'done', testRunResult });
-                }
-            };
+        kind: 'final-result',
+        name: 'in-memory-final-result',
+        sinks: [],
+
+        async onResult(result) {
+            recordedEntries.push({ event: null, result, type: 'result' });
         },
 
         getRecordedEntries() {
@@ -60,5 +54,3 @@ export function createInMemoryFinalResultReporter(): InMemoryFinalResultReporter
         }
     };
 }
-
-export type InMemoryReporter = InMemoryFinalResultReporter | InMemoryRealTimeReporter;

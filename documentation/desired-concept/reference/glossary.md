@@ -211,14 +211,37 @@ A typed output target a reporter writes to, such as `stdout`, `stderr`,
 
 Source: [Package Architecture](../architecture/package-architecture.md), [Runtime Behavior](../architecture/runtime-behavior.md).
 
-## Execution Plan
+## Run
 
-A resolved, ordered description of what the runner will execute: expanded
-cases, identities, strategy, worker/process assignment, resource
-requirements, and run metadata. Produced by `@overkill-dev/run` and preserved
-for reproducibility.
+One Overkill invocation, from caller intent through resolution, execution,
+reporting, and optional record persistence.
 
 Source: [Package Architecture](../architecture/package-architecture.md), [Reproducibility](../architecture/reproducibility.md).
+
+## TestPlan
+
+The engine-owned executable test plan. It contains the selected in-process
+case entries and callable bodies that `execute(testPlan)` can run. It is not
+persisted as a run record because functions are not serializable.
+
+Source: [Package Architecture](../architecture/package-architecture.md), [Reproducibility](../architecture/reproducibility.md).
+
+## RunFacts
+
+The serializable facts that describe one resolved invocation for reports,
+records, replay, and remote work assignment: seed, identities, runtime
+matrix, execution strategy, capability profile, loader configuration,
+versions, and debug selection.
+
+Source: [Reproducibility](../architecture/reproducibility.md), [Types Index](./types-index.md).
+
+## ResolvedRun
+
+The in-memory value returned by `resolveRun(request)`. It links the original
+`RunRequest`, serializable `RunFacts`, executable `TestPlan`, and reporter
+instances for one invocation.
+
+Source: [Package Architecture](../architecture/package-architecture.md), [Types Index](./types-index.md).
 
 ## Execution Requirement
 
@@ -283,17 +306,17 @@ deterministic-simulation layer may virtualise both.
 
 Source: [Deterministic Simulation Testing](../authoring/deterministic-simulation.md).
 
-## RunPlan
+## RunRequest
 
-The frozen, machine-readable description of one run before any test body
-executes. It captures the resolved run intent and becomes the input to
-execution and replay.
+Caller intent for one Overkill invocation. It is owned by
+`@overkill-dev/run` and mirrors meaningful CLI run flags as typed
+programmatic fields.
 
-Source: [Reproducibility](../architecture/reproducibility.md), [Types Index](./types-index.md).
+Source: [Package Architecture](../architecture/package-architecture.md), [Types Index](./types-index.md).
 
 ## RunRecord
 
-The persisted artifact describing one completed run: the `RunPlan` plus
+The persisted artifact describing one completed run: the `RunFacts` plus
 per-test outcomes/verdicts, artifacts, summary, runner errors, and runtime
 metadata.
 

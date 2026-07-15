@@ -315,7 +315,7 @@ layout. The default scheduler is **seeded random order**:
 - after collection, metadata propagation, filtering, and sharding, the
   selected case set is shuffled by a recorded seed
 - if the user does not pass `--seed <value>`, the runner chooses one,
-  prints it, and writes it into the `RunPlan` and final `RunRecord`
+  prints it, and writes it into `RunFacts` and the final `RunRecord`
 - rerunning with the same seed and the same filtered case set reproduces
   the same order
 - resources or execution constraints may force local serialization, but
@@ -395,7 +395,8 @@ Collection still happens once in the orchestrator:
 - test files are imported in the planning process
 - the full `TestNode` tree is collected
 - metadata resolution, filtering, sharding, and ordering happen there
-- the resulting `RunPlan` is frozen before any worker executes a test
+- the resulting `RunFacts` and executable `TestPlan` are frozen before
+  any worker executes a test
 
 Only after that does the runner hand work to workers or subprocesses.
 
@@ -439,7 +440,7 @@ its shape.
 The core rule is the same as for local multi-process runs:
 
 - collection happens once in the coordinator
-- the coordinator freezes a `RunPlan`
+- the coordinator freezes `RunFacts`
 - remote workers execute assigned plan items; they do not recollect or
   mutate the plan
 
@@ -462,7 +463,7 @@ The important architectural consequences are:
 
 - remote execution belongs above `@overkill-dev/engine`, in orchestration /
   coordinator packages
-- stable `CaseId`, serializable `RunPlan`, and structured events are what
+- stable `CaseId`, serializable `RunFacts`, and structured events are what
   make remote work possible; terminal output alone is not enough
 - artifact identity cannot depend on which machine executed the case
 - capability and runtime requirements must be declarative enough for a

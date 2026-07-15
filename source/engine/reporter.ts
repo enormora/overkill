@@ -1,32 +1,53 @@
-import type { TestRunResult } from './test-run-result.ts';
-import type { TestCaseResult } from './test-case-executor.ts';
+import type { RunResult, TestOutcome } from './run-result.ts';
 
-type RealTimeReportingSession = {
-    start: (currentTestRunResult: TestRunResult) => Promise<void>;
-    progress: (currentTestRunResult: TestRunResult, testCaseResult: TestCaseResult) => Promise<void>;
-    done: (finalResult: TestRunResult) => Promise<void>;
-    readonly report?: undefined;
+export type SinkDeclaration = {
+    readonly conflictPolicy: 'exclusive' | 'shared';
+    readonly kind: 'stderr' | 'stdout';
 };
 
-type FinalResultReportingSession = {
-    readonly start?: undefined;
-    readonly progress?: undefined;
-    readonly done?: undefined;
-    report: (finalResult: TestRunResult) => Promise<void>;
+export type ReporterEvent = {
+    readonly attempt: number | null;
+    readonly case: string | null;
+    readonly facts: Readonly<Record<string, unknown>> | null;
+    readonly kind: 'run-end' | 'run-start' | 'test-end' | 'test-start';
+    readonly outcome: TestOutcome | null;
+    readonly result: RunResult | null;
+    readonly startedAt: string | null;
+    readonly verdict: string | null;
+    readonly wallTimeMs: number | null;
 };
-
-export type ReportingSession = FinalResultReportingSession | RealTimeReportingSession;
 
 export type RealTimeReporter = {
-    createSession: (sessionId: number) => RealTimeReportingSession;
+    readonly kind: 'real-time';
+    readonly name: string;
+    readonly sinks: readonly SinkDeclaration[];
+    readonly onEvent: (event: ReporterEvent) => Promise<void> | void;
+    readonly onFinish: (result: RunResult) => Promise<void> | void;
 };
 
 export type FinalResultReporter = {
-    createSession: (sessionId: number) => FinalResultReportingSession;
+    readonly kind: 'final-result';
+    readonly name: string;
+    readonly sinks: readonly SinkDeclaration[];
+    readonly onResult: (result: RunResult) => Promise<void> | void;
 };
 
-export function isRealTimeReportingSession(session: ReportingSession): session is RealTimeReportingSession {
-    return typeof session.start === 'function';
+export type Reporter = FinalResultReporter | RealTimeReporter;
+
+export async function reportEvent(reporters: readonly Reporter[], event: ReporterEvent): Promise<void> {
+    for (const reporter of reporters) {
+        if (reporter.kind === 'real-time') {
+            await reporter.onEvent(event);
+        }
+    }
 }
 
-export type Reporter = FinalResultReporter | RealTimeReporter;
+export async function reportResult(reporters: readonly Reporter[], result: RunResult): Promise<void> {
+    for (const reporter of reporters) {
+        if (reporter.kind === 'final-result') {
+            await reporter.onResult(result);
+        } else {
+            await reporter.onFinish(result);
+        }
+    }
+}
