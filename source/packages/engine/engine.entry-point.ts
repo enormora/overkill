@@ -1,5 +1,4 @@
 export { execute } from '../../engine/execution.ts';
-export { executeSuite } from '../../engine/execute-suite.ts';
 export type {
     FinalResultReporter,
     RealTimeReporter,
@@ -37,9 +36,3 @@ export type {
 } from '../../engine/test-node.ts';
 export { createTestPlan } from '../../engine/test-plan.ts';
 export type { TestPlan, TestPlanCase, TestPlanCaseBody } from '../../engine/test-plan.ts';
-export type {
-    FailureTestResult,
-    SuccessTestResult,
-    TestResult,
-    TestResultStatus
-} from '../../engine/test-case-executor.ts';
