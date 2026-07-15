@@ -11,7 +11,7 @@ This is intentionally closer to the real modularity of Buster and the framework-
 `@overkill-dev/engine` should define the stable contracts for:
 
 - test definitions
-- execution plans
+- executable test plans
 - execution requirements and scheduling constraints
 - run sessions
 - structured events
@@ -23,7 +23,7 @@ It should not assume one assertion library, one snapshot format, or one benchmar
 
 For tiny projects, this layer should already be usable directly. A single
 file should be able to build tests with engine-level primitives such as
-`createSuite(...)`, `createTestCase(...)`, and an `executePlan(...)` call
+`createSuite(...)`, `createTestCase(...)`, and an `execute(testPlan)` call
 without pulling in the higher-level DSL.
 
 Those primitives should also be the only way to create valid engine
@@ -45,20 +45,20 @@ semantic owner package. In practice that means:
 - CLI flags that shape planning or orchestration map to `@overkill-dev/run`
   request fields
 - engine consumers can still bypass CLI and configuration entirely by constructing
-  a `RunPlan` and calling `executePlan(...)` directly
+  a `TestPlan` and calling `execute(testPlan)` directly
 
 Recommended public split:
 
 ```ts
-import { executePlan } from '@overkill-dev/engine';
-import { list, mergeResults, planRun, replay, replayWitness, run, watch } from '@overkill-dev/run';
+import { execute } from '@overkill-dev/engine';
+import { list, mergeResults, replay, replayWitness, resolveRun, run, watch } from '@overkill-dev/run';
 ```
 
 Conceptually:
 
-- `planRun(request)` returns a frozen `RunPlan`
+- `resolveRun(request)` returns a frozen `ResolvedRun`
 - `run(request)` is shorthand for planning plus execution
-- `executePlan(plan)` is the lower-level engine entrypoint once planning is
+- `execute(testPlan)` is the lower-level engine entrypoint once planning is
   already done
 
 ## Default Test Authoring
@@ -305,7 +305,7 @@ Execution strategy should be modeled as resolved planning, not a fixed trait of 
 - serialization requirements for measurement reliability
 
 In all of these modes, discovery stays centralized. The orchestrator
-collects tests once, freezes a `RunPlan`, and then assigns already-known
+collects tests once, freezes `RunFacts`, and then assigns already-known
 plan items to local workers, subprocesses, or remote executors.
 Execution boundaries may change; discovery authority does not.
 
@@ -530,13 +530,14 @@ or extend the contract but do not redefine it.
 | Test definitions, suites, cases                                   | `@overkill-dev/engine`                                                 | The `TestNode`/`TestCase`/`Suite` shapes; see [Tests As Values](../authoring/tests-as-values.md).                                                              |
 | `TestOutcome` ADT (engine result protocol)                        | `@overkill-dev/engine`                                                 | `Pass`/`Fail`/`Skip`/`Inconclusive`; see [Assertions And Results § Protocol Layer](../authoring/assertions-and-results.md#protocol-layer-structured-outcomes). |
 | Test verdict derivation (crashed, presentation mapping, …)        | `@overkill-dev/run`                                                    | Verdicts derived from `(outcome, metadata, runner-error?)`.                                                                                                    |
-| `RunPlan` and `RunRecord`                                         | `@overkill-dev/run`                                                    | `RunPlan` shape sketched in [Reproducibility](./reproducibility.md).                                                                                           |
+| `RunRequest`, `RunFacts`, `ResolvedRun`, and `RunRecord`          | `@overkill-dev/run`                                                    | `RunFacts` shape sketched in [Reproducibility](./reproducibility.md).                                                                                          |
+| `TestPlan`                                                        | `@overkill-dev/engine`                                                 | Executable in-process case plan consumed by `execute(testPlan)`.                                                                                               |
 | `FailedCheck`, `Diff`, internal assertion protocol                | `@overkill-dev/engine`                                                 | Engine owns both the result schema and the first-party assertion behavior on top.                                                                              |
 | Injected `assert` / `require` builder API                         | `@overkill-dev/engine`                                                 | The engine owns the injected assertion surface directly.                                                                                                       |
 | Assertion extension helpers (`defineCompositeAssertion`, bridges) | `@overkill-dev/assert`                                                 | Reusable extension helpers plug into the engine-owned assertion context.                                                                                       |
 | Test doubles (`testDouble`, `when`, helpers)                      | `@overkill-dev/doubles`                                                | See [Doubles](../authoring/doubles.md).                                                                                                                        |
 | Typed runtime / resource composition                              | `@overkill-dev/resources`                                              | Lifecycle scopes, execution requirements.                                                                                                                      |
-| Discovery, filtering, runner profiles                             | `@overkill-dev/run`                                                    | Reads configuration, freezes `RunPlan`.                                                                                                                        |
+| Discovery, filtering, runner profiles                             | `@overkill-dev/run`                                                    | Reads configuration, freezes `RunFacts`, and produces `ResolvedRun`.                                                                                           |
 | Selection filter grammar                                          | `@overkill-dev/run`                                                    | Spec in [Metadata And Selection](./metadata-and-selection.md).                                                                                                 |
 | Sharding                                                          | `@overkill-dev/run`                                                    | Stable identity-hash partitioning.                                                                                                                             |
 | Reporter event stream contract                                    | `@overkill-dev/engine`                                                 | The `ReporterEvent` ADT.                                                                                                                                       |

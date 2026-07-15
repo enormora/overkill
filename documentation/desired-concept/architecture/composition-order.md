@@ -19,10 +19,10 @@ The framing borrows from aspect-oriented programming literature
 ship AOP machinery — it does ship test wrappers and metadata
 resolution that compose, and they need a documented order.
 
-## Plan-Time Resolution
+## Resolve-Time Resolution
 
 When the runner starts, before any test body runs, the orchestration
-layer resolves the run plan in this order:
+layer resolves the run in this order:
 
 1. **Collection.** Test files are imported; the engine builds the
    `TestNode` tree (suites, tables, test cases). See
@@ -40,16 +40,16 @@ layer resolves the run plan in this order:
    deterministically by `CaseId` hash. See [Runtime Behavior § Sharding](./runtime-behavior.md#sharding).
 5. **Scheduling order.** The filtered, sharded case set is assigned
    an execution order. By default this is a seeded shuffle recorded
-   in the run plan; profiles or CLI flags may opt into lexical
+   in `RunFacts`; profiles or CLI flags may opt into lexical
    order. See [Runtime Behavior § Execution Order](./runtime-behavior.md#execution-order).
 6. **Worker assignment.** The execution strategy (resolved from
    profile + resource constraints) decides workers, processes,
    isolation grain. See [Runtime Behavior § Parallelism Semantics](./runtime-behavior.md#parallelism-semantics) and [Package Architecture § Orchestration](./package-architecture.md#orchestration).
-7. **Plan freeze.** The resulting `RunPlan` (see
-   [Reproducibility](./reproducibility.md)) is written to the run record and is the
-   canonical input for replay.
+7. **Resolution freeze.** The resulting `ResolvedRun` contains
+   serializable `RunFacts` for records and replay plus an executable
+   `TestPlan` for `execute(testPlan)`.
 
-After step 7, the plan does not change. New tests discovered during
+After step 7, the resolved run does not change. New tests discovered during
 execution are an error.
 
 ## Execution-Time Wrapping
@@ -91,26 +91,26 @@ Execution-Time Wrapping (in workers or subprocesses) is a deliberate
 choice, not just a forced consequence of how worker boundaries work.
 The split buys several capabilities:
 
-- `overkill list` prints the resolved plan without executing
+- `overkill list` prints the resolved facts without executing
   anything — possible only because collection has produced a
-  complete plan before any worker runs
+  complete resolved run before any worker runs
 - `--filter`, `--name`, `--last-failed`, and explicit file/id
   selection apply before
   any test runs; workers receive only the cases that survived
   selection, instead of importing-then-discarding
 - `--shard <i>/<n>` partitions deterministically across workers
   because the full plan is known upfront
-- seeded random order is part of the plan, not an execution-time
+- seeded random order is part of `RunFacts`, not an execution-time
   accident; replay and failure reports can name the actual realized
   order
-- the `RunPlan` is recorded as a serializable artifact (per
+- `RunFacts` are recorded as a serializable artifact (per
   [Principles § Data Over Side Effects](../decisions/principles.md#data-over-side-effects)), enabling replay and
   IDE / MCP introspection without running
 - capability profiles, runtime selection, and worker assignment
   resolve once in the main thread, not redundantly per worker
-- "plan freeze is total" — dynamically generated tests must be
+- "resolution freeze is total": dynamically generated tests must be
   discovered at collection (see § Why The Order Matters), which is
-  only enforceable if the plan is complete before execution starts
+  only enforceable if the `TestPlan` is complete before execution starts
 
 The cost is that in parallel modes each test file is imported
 **twice**:
@@ -173,7 +173,7 @@ the order isn't explicit:
 - **Randomization happens before worker assignment.** The seed
   orders the logical case set first; execution strategy then maps
   that order onto workers or in-process concurrency.
-- **Plan freeze is total.** Dynamically-generated tests
+- **Resolution freeze is total.** Dynamically-generated tests
   (`describe.each` style) must be discovered at collection.
   Generating new tests during execution is rejected at the engine
   layer.
@@ -214,5 +214,5 @@ dependency:
 - [Microtests And Capabilities](../authoring/microtests-and-capabilities.md) — capability intersection
 - [Runtime Behavior](./runtime-behavior.md) — sharding, parallelism, timeouts, debug
 - [Failure Artifacts](../authoring/failure-artifacts.md) — retry interaction
-- [Reproducibility](./reproducibility.md) — `RunPlan` freeze
+- [Reproducibility](./reproducibility.md) - `RunFacts` freeze
 - [Package Architecture](./package-architecture.md) — orchestration responsibilities

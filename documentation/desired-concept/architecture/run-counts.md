@@ -166,7 +166,7 @@ exist only at run scope.
 A case is counted as `executed` when it received any `TestOutcome`
 (pass, fail, skip, inconclusive) or crashed mid-run. Filtered-out and
 sharded-out cases do not count because they never entered the final
-`RunPlan`.
+`TestPlan`.
 
 Skipped tests count as executed: the runner processed them and
 recorded a skip verdict. Crashed cases count as executed: the runner

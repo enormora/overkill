@@ -29,7 +29,7 @@ Activation is always explicit:
   unrelated tests into debug mode and without narrowing what runs.
   It is standalone — it does not require `--debug` — and it is
   mutually exclusive with `--debug`: the two are CLI spellings of one
-  underlying setting (`RunPlan.debugMode` `'selected'` versus
+  underlying setting (`RunFacts.debugMode` `'selected'` versus
   `'all'`), so passing both is a usage error.
 - `--debug` debugs every test in the resolved set; pair with
   `--filter`, `--name`, `--id`, or `--file` to scope
@@ -45,7 +45,7 @@ Activation does **not** change profile, capability boundaries, or
 scheduling. A debugged microtest is still a microtest with the same
 permissions; debug mode only widens what the runner _records_, not
 what the test may _do_. Activation is reflected in the run record
-(see `RunPlan.debugMode` / `RunPlan.debuggedCases`) so a replay or
+(see `RunFacts.debugMode` / `RunFacts.debuggedCases`) so a replay or
 report can tell that the data was collected.
 
 ## Artifact Shape

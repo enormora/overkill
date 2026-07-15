@@ -4,6 +4,7 @@ export { createSuite } from '../../engine/suite.ts';
 export type { Suite } from '../../engine/suite.ts';
 export { createTestCase } from '../../engine/test-case.ts';
 export type { TestCaseDefinition, TestCaseDetails, TestFunction } from '../../engine/test-case.ts';
+export type { TestPlan, TestPlanCase, TestPlanCaseBody } from '../../engine/test-plan.ts';
 export type {
     FailureTestResult,
     SuccessTestResult,

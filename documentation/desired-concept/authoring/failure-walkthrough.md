@@ -188,7 +188,7 @@ If the user had explicitly enabled debug for this case — typically via
 would also exist at
 `.overkill/runs/<run-id>/debug/<case-id>.debug.json`, with the
 timeline showing `forall` iteration counts up to the failure. The
-`RunPlan.debugMode` field records that debug data was collected.
+`RunFacts.debugMode` field records that debug data was collected.
 
 Canonical: [Reproducibility](../architecture/reproducibility.md), [Failure Artifacts](./failure-artifacts.md),
 [Runtime Behavior](../architecture/runtime-behavior.md).
