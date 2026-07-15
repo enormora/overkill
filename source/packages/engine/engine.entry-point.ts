@@ -4,7 +4,26 @@ export { createSuite } from '../../engine/suite.ts';
 export type { Suite } from '../../engine/suite.ts';
 export { createTestCase } from '../../engine/test-case.ts';
 export type { TestCaseDefinition, TestCaseDetails, TestFunction } from '../../engine/test-case.ts';
+export { createTestCompletion } from '../../engine/test-node.ts';
+export type {
+    AssertionFacade,
+    FailedCheck,
+    SourceLocation,
+    TableCase,
+    TableCaseOptions,
+    TestCompletion,
+    TestContext
+} from '../../engine/test-node.ts';
 export type { TestPlan, TestPlanCase, TestPlanCaseBody } from '../../engine/test-plan.ts';
+export type {
+    OrphanedNode,
+    PerTestResult,
+    RunResult,
+    RunnerError,
+    RunSummary,
+    SuiteRunCounts,
+    TestOutcome
+} from '../../engine/run-result.ts';
 export type {
     FailureTestResult,
     SuccessTestResult,
