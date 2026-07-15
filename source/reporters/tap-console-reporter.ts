@@ -1,28 +1,26 @@
-import type { TestRunResult } from '../engine/test-run-result.ts';
-import type { TestCaseResult } from '../engine/test-case-executor.ts';
+import type { PerTestResult, RunResult } from '../engine/run-result.ts';
 import type { FinalResultReporter } from '../engine/reporter.ts';
 
 export type TapConsoleReporterDependencies = {
     readonly stdoutConsole: Pick<typeof console, 'log'>;
 };
 
-function formatTestCaseResultAsTapTestPoint(testCaseResult: TestCaseResult): string {
-    const { title, index } = testCaseResult.testCaseDetails;
+function formatTestCaseResultAsTapTestPoint(testCaseResult: PerTestResult, index: number): string {
     let status = 'ok';
     let yamlDiagnostics = '';
 
-    if (testCaseResult.result.status === 'failure') {
+    if (testCaseResult.outcome.kind === 'fail') {
         status = 'not ok';
-        yamlDiagnostics = `\n  ---\n  reason: ${testCaseResult.result.reason}\n  ...`;
+        yamlDiagnostics = `\n  ---\n  reason: ${testCaseResult.outcome.checks[0]?.summary ?? 'failed'}\n  ...`;
     }
 
-    return `${status} ${index + 1} - ${title}${yamlDiagnostics}`;
+    return `${status} ${index + 1} - ${testCaseResult.id}${yamlDiagnostics}`;
 }
 
-function formatResultAsTap(testRunResult: TestRunResult): string {
+function formatResultAsTap(testRunResult: RunResult): string {
     const version = 'TAP version 14';
-    const plan = `1..${testRunResult.summary.totalCount}`;
-    const testPoints = testRunResult.testCaseResults.map(formatTestCaseResultAsTapTestPoint);
+    const plan = `1..${testRunResult.summary.discovered}`;
+    const testPoints = testRunResult.perTest.map(formatTestCaseResultAsTapTestPoint);
 
     return `${version}\n${plan}\n${testPoints.join('\n')}\n`;
 }
@@ -31,12 +29,12 @@ export function createTapConsoleReporter(dependencies: TapConsoleReporterDepende
     const { stdoutConsole } = dependencies;
 
     return {
-        createSession() {
-            return {
-                async report(currentTestRunResult) {
-                    stdoutConsole.log(formatResultAsTap(currentTestRunResult));
-                }
-            };
+        kind: 'final-result',
+        name: 'tap',
+        sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ],
+
+        async onResult(currentTestRunResult) {
+            stdoutConsole.log(formatResultAsTap(currentTestRunResult));
         }
     };
 }

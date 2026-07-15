@@ -1,6 +1,12 @@
 export { execute } from '../../engine/execution.ts';
 export { executeSuite } from '../../engine/execute-suite.ts';
-export type { FinalResultReporter, RealTimeReporter, Reporter, ReportingSession } from '../../engine/reporter.ts';
+export type {
+    FinalResultReporter,
+    RealTimeReporter,
+    Reporter,
+    ReportingSession,
+    SinkDeclaration
+} from '../../engine/reporter.ts';
 export { createSuite } from '../../engine/suite.ts';
 export type { Suite } from '../../engine/suite.ts';
 export { createTestCase } from '../../engine/test-case.ts';

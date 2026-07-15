@@ -1,12 +1,13 @@
-import { asyncNoop } from 'noop-esm';
 import type { FinalResultReporter } from '../engine/reporter.ts';
 
 export function createNullReporter(): FinalResultReporter {
     return {
-        createSession() {
-            return {
-                report: asyncNoop
-            };
+        kind: 'final-result',
+        name: 'null',
+        sinks: [],
+
+        async onResult() {
+            return undefined;
         }
     };
 }

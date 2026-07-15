@@ -1,6 +1,21 @@
+import { type Reporter, reportEvent, reportResult } from './reporter.ts';
 import { type PerTestResult, type RunResult, type TestOutcome, verdictFromOutcome } from './run-result.ts';
 import { createTestCompletion, type FailedCheck, type TestCompletion, type TestContext } from './test-node.ts';
 import type { TestPlan, TestPlanCase } from './test-plan.ts';
+
+export type ExecuteOptions = {
+    readonly reporters: readonly Reporter[];
+    readonly runFacts: Readonly<Record<string, unknown>>;
+    readonly startedAt: string;
+};
+
+const epoch = new Date(0);
+
+const defaultExecuteOptions: ExecuteOptions = {
+    reporters: [],
+    runFacts: {},
+    startedAt: epoch.toISOString()
+};
 
 const failedOkValues = new Set<unknown>([ false, null, undefined, 0, '' ]);
 
@@ -156,14 +171,44 @@ function createOutcome(recorder: AssertionRecorder): TestOutcome {
     return { checks: failedChecks, kind: 'fail', reason: null };
 }
 
-async function executeCase(testCase: TestPlanCase): Promise<PerTestResult> {
+async function executeCase(
+    testCase: TestPlanCase,
+    attempt: number,
+    reporters: readonly Reporter[]
+): Promise<PerTestResult> {
+    await reportEvent(reporters, {
+        attempt,
+        case: testCase.id,
+        facts: null,
+        kind: 'test-start',
+        outcome: null,
+        result: null,
+        startedAt: null,
+        verdict: null,
+        wallTimeMs: null
+    });
+
     const recorder = createAssertionRecorder();
+    const startedAt = performance.now();
 
     await runCaseBody(testCase, recorder);
     recorder.validateAssertionCount();
 
     const outcome = createOutcome(recorder);
     const verdict = verdictFromOutcome(outcome);
+    const wallTimeMs = performance.now() - startedAt;
+
+    await reportEvent(reporters, {
+        attempt,
+        case: testCase.id,
+        facts: null,
+        kind: 'test-end',
+        outcome,
+        result: null,
+        startedAt: null,
+        verdict,
+        wallTimeMs
+    });
 
     return {
         id: testCase.id,
@@ -223,12 +268,26 @@ function countSuites(cases: readonly TestPlanCase[], perTest: readonly PerTestRe
     return counts;
 }
 
-export async function execute(testPlan: TestPlan): Promise<RunResult> {
+export async function execute(testPlan: TestPlan, options: ExecuteOptions = defaultExecuteOptions): Promise<RunResult> {
     const startedAtMs = performance.now();
+    const { reporters } = options;
+
+    await reportEvent(reporters, {
+        attempt: null,
+        case: null,
+        facts: options.runFacts,
+        kind: 'run-start',
+        outcome: null,
+        result: null,
+        startedAt: options.startedAt,
+        verdict: null,
+        wallTimeMs: null
+    });
+
     const perTest: PerTestResult[] = [];
 
-    for (const testCase of testPlan.cases) {
-        perTest.push(await executeCase(testCase));
+    for (const [ index, testCase ] of testPlan.cases.entries()) {
+        perTest.push(await executeCase(testCase, index, reporters));
     }
 
     const result: RunResult = {
@@ -240,6 +299,19 @@ export async function execute(testPlan: TestPlan): Promise<RunResult> {
         summary: countOutcomes(perTest),
         wallTimeMs: performance.now() - startedAtMs
     };
+
+    await reportEvent(reporters, {
+        attempt: null,
+        case: null,
+        facts: null,
+        kind: 'run-end',
+        outcome: null,
+        result,
+        startedAt: null,
+        verdict: null,
+        wallTimeMs: null
+    });
+    await reportResult(reporters, result);
 
     return result;
 }
