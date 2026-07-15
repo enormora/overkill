@@ -13,7 +13,7 @@ export type ReporterEvent = {
     readonly outcome: TestOutcome | null;
     readonly result: RunResult | null;
     readonly startedAt: string | null;
-    readonly verdict: string | null;
+    readonly verdict: TestOutcome['kind'] | null;
     readonly wallTimeMs: number | null;
 };
 

@@ -52,7 +52,7 @@ registerTest('line reporter prints a failed test-end event', async function () {
         case: 'root > fails',
         facts: null,
         kind: 'test-end',
-        outcome: { checks: [], kind: 'fail', reason: null },
+        outcome: { checks: [], kind: 'fail' },
         result: null,
         startedAt: null,
         verdict: 'fail',
@@ -72,7 +72,7 @@ registerTest('line reporter prints a passed test-end event', async function () {
         case: 'root > passes',
         facts: null,
         kind: 'test-end',
-        outcome: { checks: [], kind: 'pass', reason: null },
+        outcome: { kind: 'pass' },
         result: null,
         startedAt: null,
         verdict: 'pass',
@@ -81,6 +81,38 @@ registerTest('line reporter prints a passed test-end event', async function () {
 
     assert.strictEqual(log.callCount, 1);
     assert.deepStrictEqual(log.firstCall.args, [ `${successSymbol} root > passes` ]);
+});
+
+registerTest('line reporter prints neutral test-end events for skip and inconclusive outcomes', async function () {
+    const log = sinon.fake();
+    const reporter = lineReporterFactory({ log });
+
+    await reporter.onEvent({
+        attempt: 0,
+        case: 'root > skips',
+        facts: null,
+        kind: 'test-end',
+        outcome: { kind: 'skip', reason: 'not supported' },
+        result: null,
+        startedAt: null,
+        verdict: 'skip',
+        wallTimeMs: 1
+    });
+    await reporter.onEvent({
+        attempt: 1,
+        case: 'root > inconclusive',
+        facts: null,
+        kind: 'test-end',
+        outcome: { kind: 'inconclusive', reason: 'missing signal' },
+        result: null,
+        startedAt: null,
+        verdict: 'inconclusive',
+        wallTimeMs: 1
+    });
+
+    assert.strictEqual(log.callCount, 2);
+    assert.deepStrictEqual(log.firstCall.args, [ `${infoSymbol} root > skips` ]);
+    assert.deepStrictEqual(log.secondCall.args, [ `${infoSymbol} root > inconclusive` ]);
 });
 
 registerTest('line reporter prints a three-line summary once the run finishes', async function () {

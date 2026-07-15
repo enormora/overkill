@@ -42,8 +42,7 @@ registerTest('reports the final result with passed and failed test cases formatt
                     id: 'root > bar',
                     outcome: {
                         checks: [ { summary: 'the-reason' } ],
-                        kind: 'fail',
-                        reason: null
+                        kind: 'fail'
                     },
                     verdict: 'fail'
                 },

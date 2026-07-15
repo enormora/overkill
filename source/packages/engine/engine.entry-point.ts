@@ -7,11 +7,15 @@ export type {
     SinkDeclaration
 } from '../../engine/reporter.ts';
 export type {
+    FailOutcome,
+    InconclusiveOutcome,
     OrphanedNode,
+    PassOutcome,
     PerTestResult,
     RunResult,
     RunnerError,
     RunSummary,
+    SkipOutcome,
     SuiteRunCounts,
     TestOutcome
 } from '../../engine/run-result.ts';

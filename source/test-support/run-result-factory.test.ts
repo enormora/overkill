@@ -18,6 +18,8 @@ registerTest('runResultFactory builds nested result data', function () {
     });
 
     assert.equal(runResult.orphans[0]?.name, 'orphaned test');
-    assert.equal(runResult.perTest[0]?.outcome.checks[0]?.summary, 'custom failure');
+    const outcome = runResult.perTest[0]?.outcome;
+    assert.equal(outcome?.kind, 'fail');
+    assert.equal(outcome.checks[0]?.summary, 'custom failure');
     assert.equal(runResult.runnerErrors[0]?.message, 'custom runner error');
 });

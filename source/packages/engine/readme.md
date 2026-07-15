@@ -10,4 +10,4 @@ Top-level API:
 - `createTestPlan(root)`
 - `execute(testPlan)`
 - `Reporter`, `ReporterEvent`, `RealTimeReporter`, `FinalResultReporter`
-- `RunResult`, `TestOutcome`, `FailedCheck`, `RunnerError`
+- `RunResult`, `TestOutcome`, `PassOutcome`, `FailOutcome`, `SkipOutcome`, `InconclusiveOutcome`, `FailedCheck`, `RunnerError`

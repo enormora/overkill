@@ -75,8 +75,7 @@ registerTest('execute() fails tests with zero assertions', async function () {
                 summary: 'Expected at least one assertion.'
             }
         ],
-        kind: 'fail',
-        reason: null
+        kind: 'fail'
     });
 });
 
@@ -112,8 +111,7 @@ registerTest('execute() fails tests when assertion plan count does not match', a
                 summary: 'Assertion plan count did not match.'
             }
         ],
-        kind: 'fail',
-        reason: null
+        kind: 'fail'
     });
 });
 registerTest('execute() exposes assertion and requirement convenience methods', async function () {
@@ -172,6 +170,10 @@ registerTest('execute() fails the test when a requirement fails', async function
     assert.equal(result.summary.failed, 2);
     assert.deepStrictEqual(
         result.perTest.map(function toSummary(testResult) {
+            if (testResult.outcome.kind !== 'fail') {
+                return null;
+            }
+
             return testResult.outcome.checks[0]?.summary;
         }),
         [ 'required equality', 'required truth' ]
@@ -198,7 +200,9 @@ registerTest('execute() records thrown test body errors', async function () {
     const result = await execute(testPlan);
 
     assert.equal(result.summary.failed, 1);
-    assert.equal(result.perTest[0]?.outcome.checks[0]?.summary, 'boom');
+    const outcome = result.perTest[0]?.outcome;
+    assert.equal(outcome?.kind, 'fail');
+    assert.equal(outcome.checks[0]?.summary, 'boom');
 });
 
 registerTest('execute() delivers events and final results to reporters', async function () {

@@ -165,10 +165,10 @@ function createOutcome(recorder: AssertionRecorder): TestOutcome {
     const failedChecks = recorder.failedChecks();
 
     if (failedChecks.length === 0) {
-        return { checks: [], kind: 'pass', reason: null };
+        return { kind: 'pass' };
     }
 
-    return { checks: failedChecks, kind: 'fail', reason: null };
+    return { checks: failedChecks, kind: 'fail' };
 }
 
 async function executeCase(

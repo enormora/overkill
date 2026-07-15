@@ -32,6 +32,8 @@ jobs:
               run: npm ci
             - name: Run static analysis
               run: npx just lint
+            - name: Type tests
+              run: npx just test-types
 
     compile:
         runs-on: ubuntu-latest

@@ -7,5 +7,5 @@
     },
     "references": [{ "path": "./tsconfig.sources.json" }],
     "include": ["./**/*.test.ts", "./test-support/**/*.ts"],
-    "exclude": ["./integration-tests/**/*.ts"]
+    "exclude": ["./**/*.type-test.ts", "./integration-tests/**/*.ts"]
 }
