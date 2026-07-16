@@ -1,19 +1,19 @@
 import assert from 'node:assert/strict';
 import { registerTest } from '../test-support/register-test.ts';
-import { createTestPlan } from './test-plan.ts';
-import { createSuite, createTable, createTestCase } from './test-node.ts';
+import { createEngine } from './engine.ts';
 
 registerTest('createTestPlan() expands suites and tables into executable cases', function () {
-    const root = createSuite({
+    const engine = createEngine();
+    const root = engine.createSuite({
         children: [
-            createTestCase({
+            engine.createTestCase({
                 body(testContext) {
                     return testContext.assert.ok(true, 'passes');
                 },
                 metadata: { local: true },
                 name: 'first'
             }),
-            createTable({
+            engine.createTable({
                 cases: [
                     {
                         body(testContext) {
@@ -32,7 +32,7 @@ registerTest('createTestPlan() expands suites and tables into executable cases',
         name: 'root'
     });
 
-    const testPlan = createTestPlan(root);
+    const testPlan = engine.createTestPlan(root);
 
     assert.deepStrictEqual(
         testPlan.cases.map(function toComparableTestCase(testCase) {
@@ -44,15 +44,102 @@ registerTest('createTestPlan() expands suites and tables into executable cases',
         }),
         [
             {
-                id: 'root > first',
+                id: { file: null, name: 'first', params: null, suite: [ 'root' ] },
                 metadata: { inherited: true, local: true },
                 suitePath: [ 'root' ]
             },
             {
-                id: 'root > rows > row 1',
+                id: { file: null, name: 'row 1', params: null, suite: [ 'root', 'rows' ] },
                 metadata: { inherited: true, row: 1, table: true },
                 suitePath: [ 'root', 'rows' ]
             }
         ]
+    );
+    assert.deepStrictEqual(testPlan.discoveredCases, testPlan.cases);
+    assert.equal(testPlan.defined, 3);
+    assert.deepStrictEqual(testPlan.orphans, []);
+});
+
+registerTest('createTestPlan() reports constructed nodes that do not reach the root as orphans', function () {
+    const engine = createEngine();
+    const reached = engine.createTestCase({
+        body(testContext) {
+            return testContext.assert.ok(true, 'passes');
+        },
+        metadata: {},
+        name: 'reached'
+    });
+    engine.createTestCase({
+        body(testContext) {
+            return testContext.assert.ok(true, 'passes');
+        },
+        metadata: {},
+        name: 'unused test'
+    });
+    engine.createSuite({
+        children: [],
+        metadata: {},
+        name: 'unused suite'
+    });
+    const root = engine.createSuite({
+        children: [ reached ],
+        metadata: {},
+        name: 'root'
+    });
+
+    const testPlan = engine.createTestPlan(root);
+
+    assert.equal(testPlan.defined, 4);
+    assert.deepStrictEqual(testPlan.orphans, [
+        { file: null, kind: 'test', name: 'unused test' },
+        { file: null, kind: 'suite', name: 'unused suite' }
+    ]);
+});
+
+registerTest('createTestPlan() rejects duplicate full case identities', function () {
+    const engine = createEngine();
+    const root = engine.createSuite({
+        children: [
+            engine.createTestCase({
+                body(testContext) {
+                    return testContext.assert.ok(true, 'passes');
+                },
+                metadata: {},
+                name: 'same'
+            }),
+            engine.createTestCase({
+                body(testContext) {
+                    return testContext.assert.ok(true, 'passes');
+                },
+                metadata: {},
+                name: 'same'
+            })
+        ],
+        metadata: {},
+        name: 'root'
+    });
+
+    assert.throws(
+        function createPlanWithDuplicateIds() {
+            engine.createTestPlan(root);
+        },
+        { message: 'Duplicate test case identity: root > same.' }
+    );
+});
+
+registerTest('createTestPlan() rejects roots from another engine instance', function () {
+    const firstEngine = createEngine();
+    const secondEngine = createEngine();
+    const root = firstEngine.createSuite({
+        children: [],
+        metadata: {},
+        name: 'root'
+    });
+
+    assert.throws(
+        function createForeignPlan() {
+            secondEngine.createTestPlan(root);
+        },
+        { message: 'Test plan root must be created by the same engine instance.' }
     );
 });

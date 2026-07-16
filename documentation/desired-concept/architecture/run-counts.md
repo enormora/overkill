@@ -73,14 +73,16 @@ which inspects source rather than a run.
 
 ## Data Model
 
-Run counts add two fields to `RunResult.summary` — `discovered` and
-`defined` — and two top-level fields to `RunResult` — `bySuite` and
+Run counts add three fields to `RunResult.summary`: `discovered`,
+`planned`, and `defined`. They also add two top-level fields to `RunResult`:
+`bySuite` and
 `orphans`. The full shape is documented in
 [Types Index](../reference/types-index.md):
 
 ```ts
 type RunSummary = {
     readonly discovered: number;
+    readonly planned: number;
     readonly defined: number;
     readonly passed: number;
     readonly failed: number;
@@ -91,8 +93,8 @@ type RunSummary = {
 type RunResult = {
     readonly summary: RunSummary;
     readonly perTest: ReadonlyArray<{ id: CaseId; outcome: TestOutcome; verdict: string; }>;
-    readonly bySuite: Record<string, { discovered: number; executed: number; }>;
-    readonly orphans: ReadonlyArray<{ file: string; name: string; kind: 'test' | 'suite' | 'table'; }>;
+    readonly bySuite: Record<string, { discovered: number; planned: number; executed: number; }>;
+    readonly orphans: ReadonlyArray<{ file: string | null; name: string; kind: 'test' | 'suite' | 'table'; }>;
     readonly runnerErrors: ReadonlyArray<RunnerError>;
     readonly artifacts: ReadonlyArray<ArtifactId>;
     readonly wallTimeMs: number;
@@ -105,6 +107,12 @@ Count of `CaseId`s reachable from the run's test roots, after table
 expansion and runtime/workload matrix expansion, **before** filter
 application and sharding. In a sharded run this is the global count,
 identical on every shard's record.
+
+### `summary.planned`
+
+Count of `CaseId`s in the executable `TestPlan` after filtering, sharding,
+and ordering have selected this run's case set. Until those narrowing
+features exist, `planned` is equal to `discovered`.
 
 `executed` at run scope is intentionally not stored as an explicit
 field. It is derivable as `passed + failed + skipped + inconclusive + crashed` (where `crashed` is counted from `runnerErrors` with subtype
@@ -123,7 +131,8 @@ is not derivable from the other summary fields.
 ### `orphans`
 
 The list of constructed nodes that reach no run root. Each entry names
-the source `file`, the node `name`, and its `kind`. `orphaned` at run
+the source `file`, the node `name`, and its `kind`. `file` is `null`
+when the engine has no file origin for the node. `orphaned` at run
 scope is not stored — like `executed`, it is derived, here as
 `orphans.length`. The list carries identities because "you have 3
 orphans" is only actionable together with "...and here they are"; the
@@ -144,10 +153,12 @@ joins the path with a stable separator for readability:
 `'users'`, `'users > validation'`,
 `'users > validation > round-trip'`.
 
-Each entry has two integers:
+Each entry has three integers:
 
 - `discovered` — count of `CaseId`s reachable from this suite
   (pre-filter, pre-shard, post-expansion).
+- `planned`: count of those cases selected into this run's executable
+  plan.
 - `executed` — count of those cases that received any `TestOutcome`
   or crashed mid-run, on this record's scope (this shard's slice in
   sharded runs).
@@ -189,11 +200,13 @@ same orphan-detection and identity bookkeeping without forcing them through
 `@overkill-dev/test`, while still preventing forged plain objects from entering
 the run.
 
-`Constructed` is reset when collection starts and is recorded into only during
-the collection phase; constructions during test-body _execution_ are
-out of scope. Collection happens once, in the orchestrator, before any
-worker runs (see [Runtime Behavior](./runtime-behavior.md)), so the
-records are written single-threaded and need no synchronisation.
+`Constructed` belongs to an engine instance. Consumers that need isolated
+collection state create a fresh engine with `createEngine()`; the top-level
+engine exports are one default long-lived instance. Constructions during
+test-body _execution_ are out of scope for a resolved plan because they are
+not reachable from the collected root. Collection happens once, in the
+orchestrator, before any worker runs (see [Runtime Behavior](./runtime-behavior.md)),
+so the records are written single-threaded and need no synchronisation.
 
 ### Sharded Runs
 
@@ -321,17 +334,16 @@ single-threaded orchestrator collection.
 - **Re-evaluation per run.** A constructor records into `Constructed` only
   when it runs, which is on first module evaluation. For `defined`
   and `orphans` to stay accurate across repeated runs in one process
-  (watch mode), the runner must re-evaluate test modules each run
-  rather than serve them from the module cache. The runner does this
-  anyway for test isolation; orphan detection depends on it.
-- **Collection-phase scope.** `Constructed` is recorded into only during
-  collection. A `test(...)` call made from inside a running test
-  body is not collection-time construction and does not enter `Constructed`.
+  (watch mode), the runner must use a fresh engine instance and re-evaluate
+  test modules each run rather than serve them from the module cache.
+- **Collection scope.** `Constructed` is an engine-instance ledger used
+  when a plan is created. A `test(...)` call made from inside a running test
+  body is not reachable from the collected root and does not become
+  a discovered or planned case.
 - **Retention.** `Constructed` holds references to constructed nodes —
   including ones that would otherwise be unreachable garbage — for
-  the duration of collection. The cost is bounded by the size of the
-  authored test set and is released once the `RunResult` is
-  produced.
+  the duration of the engine instance. The cost is bounded by the size of the
+  authored test set for that instance.
 
 ## Surfacing
 
@@ -357,16 +369,16 @@ include `discovered`, and an orphan count when one exists. Suggested
 shape:
 
 ```text
-10000 discovered, 9000 executed (8800 pass, 100 fail, 100 skip)  in 4.2s
+10000 discovered, 9000 planned, 9000 executed (8800 pass, 100 fail, 100 skip)  in 4.2s
 ```
 
 with the orphan count appended when `orphans` is non-empty:
 
 ```text
-10000 discovered, 9000 executed (8800 pass, 100 fail, 100 skip), 3 orphaned  in 4.2s
+10000 discovered, 9000 planned, 9000 executed (8800 pass, 100 fail, 100 skip), 3 orphaned  in 4.2s
 ```
 
-`discovered` and the per-outcome counts render unconditionally, even
+`discovered`, `planned`, `executed`, and the per-outcome counts render unconditionally, even
 when zero, matching the existing summary precedent. The orphan figure
 is shown only when non-zero, and when shown the reporter lists the
 orphaned nodes (`file`, `name`, `kind`) below the summary line — the
@@ -374,7 +386,8 @@ identities are the actionable part, the bare count is not.
 
 Machine-readable reporters (JSON, TAP) emit the full structured data,
 including `defined` and the `orphans` list; the per-suite breakdown is
-available to consumers that want it.
+available to consumers that want it. TAP uses `planned` for the `1..N`
+plan because TAP test points represent the cases planned for this record.
 
 ## What Counts Surface In Practice
 

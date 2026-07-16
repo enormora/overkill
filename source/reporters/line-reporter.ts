@@ -1,5 +1,6 @@
 import kleur from 'kleur';
 import figures from 'figures';
+import { formatCaseId, type CaseId } from '../engine/identity.ts';
 import type { RealTimeReporter } from '../engine/reporter.ts';
 import type { TestOutcome } from '../engine/run-result.ts';
 
@@ -11,16 +12,18 @@ export type LineReporterDependencies = {
     readonly stdoutConsole: Pick<typeof console, 'log'>;
 };
 
-function formatTestResult(id: string, outcome: TestOutcome): string {
+function formatTestResult(id: CaseId, outcome: TestOutcome): string {
+    const formattedId = formatCaseId(id);
+
     if (outcome.kind === 'fail') {
-        return `${errorSymbol} ${id}`;
+        return `${errorSymbol} ${formattedId}`;
     }
 
     if (outcome.kind === 'pass') {
-        return `${successSymbol} ${id}`;
+        return `${successSymbol} ${formattedId}`;
     }
 
-    return `${infoSymbol} ${id}`;
+    return `${infoSymbol} ${formattedId}`;
 }
 
 export function createLineReporter(dependencies: LineReporterDependencies): RealTimeReporter {
@@ -44,8 +47,20 @@ export function createLineReporter(dependencies: LineReporterDependencies): Real
         async onFinish(finalResult) {
             const { summary } = finalResult;
             stdoutConsole.log(infoSymbol, `Discovered: ${summary.discovered}`);
+            stdoutConsole.log(infoSymbol, `Planned: ${summary.planned}`);
+            stdoutConsole.log(infoSymbol, `Executed: ${finalResult.perTest.length}`);
             stdoutConsole.log(successSymbol, `Passed: ${summary.passed}`);
             stdoutConsole.log(errorSymbol, `Failed: ${summary.failed}`);
+            stdoutConsole.log(infoSymbol, `Skipped: ${summary.skipped}`);
+            stdoutConsole.log(infoSymbol, `Inconclusive: ${summary.inconclusive}`);
+
+            if (finalResult.orphans.length > 0) {
+                stdoutConsole.log(infoSymbol, `Orphans: ${finalResult.orphans.length}`);
+                for (const orphan of finalResult.orphans) {
+                    const origin = orphan.file === null ? '<unknown>' : orphan.file;
+                    stdoutConsole.log(infoSymbol, `${orphan.kind}: ${orphan.name} (${origin})`);
+                }
+            }
         }
     };
 }

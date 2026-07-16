@@ -1,4 +1,5 @@
 const testNodeBrand: unique symbol = Symbol('OverkillTestNode');
+const testNodeOwnerBrand: unique symbol = Symbol('OverkillTestNodeOwner');
 const testCompletionBrand: unique symbol = Symbol('OverkillTestCompletion');
 
 export type Metadata = Readonly<Record<string, unknown>>;
@@ -38,6 +39,7 @@ export type TestBody = (testContext: TestContext) => Promise<TestCompletion | un
 
 export type TestCase = {
     readonly [testNodeBrand]: true;
+    readonly [testNodeOwnerBrand]: TestNodeOwner;
     readonly body: TestBody;
     readonly kind: 'test';
     readonly metadata: Metadata;
@@ -46,6 +48,7 @@ export type TestCase = {
 
 export type Suite = {
     readonly [testNodeBrand]: true;
+    readonly [testNodeOwnerBrand]: TestNodeOwner;
     readonly children: readonly TestNode[];
     readonly kind: 'suite';
     readonly metadata: Metadata;
@@ -61,6 +64,7 @@ export type TableCase = {
 
 export type Table = {
     readonly [testNodeBrand]: true;
+    readonly [testNodeOwnerBrand]: TestNodeOwner;
     readonly cases: readonly TableCase[];
     readonly kind: 'table';
     readonly metadata: Metadata;
@@ -68,6 +72,19 @@ export type Table = {
 };
 
 export type TestNode = Suite | Table | TestCase;
+
+export type TestNodeOwner = object;
+
+export type TestNodeFactory = {
+    readonly createSuite: (options: SuiteOptions) => Suite;
+    readonly createTable: (options: TableOptions) => Table;
+    readonly createTestCase: (options: TestCaseOptions) => TestCase;
+};
+
+export type TestNodeFactoryOptions = {
+    readonly owner: TestNodeOwner;
+    readonly recordConstructedNode: (node: TestNode) => void;
+};
 
 export type TestCaseOptions = {
     readonly body: TestBody;
@@ -120,61 +137,106 @@ export function isTestNode(value: unknown): value is TestNode {
     return typeof value === 'object' && value !== null && Object.hasOwn(value, testNodeBrand);
 }
 
-function ensureTestNode(value: unknown): asserts value is TestNode {
+function hasTestNodeOwner(value: TestNode, owner: TestNodeOwner): boolean {
+    return value[testNodeOwnerBrand] === owner;
+}
+
+export function ensureOwnedTestNode(
+    value: unknown,
+    owner: TestNodeOwner,
+    plainObjectMessage: string,
+    foreignNodeMessage: string
+): asserts value is TestNode {
     if (!isTestNode(value)) {
-        throw new TypeError('Suite children must be engine-created TestNode values.');
+        throw new TypeError(plainObjectMessage);
+    }
+
+    if (!hasTestNodeOwner(value, owner)) {
+        throw new TypeError(foreignNodeMessage);
     }
 }
 
-function toTestNode(value: unknown): TestNode {
-    ensureTestNode(value);
+function toTestNode(value: unknown, owner: TestNodeOwner): TestNode {
+    ensureOwnedTestNode(
+        value,
+        owner,
+        'Suite children must be engine-created TestNode values.',
+        'Suite children must be created by the same engine instance.'
+    );
     return value;
 }
 
-export function createTestCase(options: TestCaseOptions): TestCase {
-    ensureName(options.name);
-    ensureMetadata(options.metadata);
-    ensureTestBody(options.body);
+export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): TestNodeFactory {
+    const { owner, recordConstructedNode } = factoryOptions;
 
-    return {
-        [testNodeBrand]: true,
-        body: options.body,
-        kind: 'test',
-        metadata: options.metadata,
-        name: options.name
-    };
-}
+    function createTestCase(options: TestCaseOptions): TestCase {
+        ensureName(options.name);
+        ensureMetadata(options.metadata);
+        ensureTestBody(options.body);
 
-export function createSuite(options: SuiteOptions): Suite {
-    ensureName(options.name);
-    ensureMetadata(options.metadata);
-    const children = options.children.map(toTestNode);
+        const testCase: TestCase = {
+            [testNodeBrand]: true,
+            [testNodeOwnerBrand]: owner,
+            body: options.body,
+            kind: 'test',
+            metadata: options.metadata,
+            name: options.name
+        };
 
-    return {
-        [testNodeBrand]: true,
-        children,
-        kind: 'suite',
-        metadata: options.metadata,
-        name: options.name
-    };
-}
+        recordConstructedNode(testCase);
 
-export function createTable(options: TableOptions): Table {
-    ensureName(options.name);
-    ensureMetadata(options.metadata);
-    for (const tableCase of options.cases) {
-        ensureName(tableCase.name);
-        ensureMetadata(tableCase.metadata);
-        ensureMetadata(tableCase.parameters);
-        ensureTestBody(tableCase.body);
+        return testCase;
+    }
+
+    function createSuite(options: SuiteOptions): Suite {
+        ensureName(options.name);
+        ensureMetadata(options.metadata);
+        const children = options.children.map(function validateChild(child) {
+            return toTestNode(child, owner);
+        });
+
+        const suite: Suite = {
+            [testNodeBrand]: true,
+            [testNodeOwnerBrand]: owner,
+            children,
+            kind: 'suite',
+            metadata: options.metadata,
+            name: options.name
+        };
+
+        recordConstructedNode(suite);
+
+        return suite;
+    }
+
+    function createTable(options: TableOptions): Table {
+        ensureName(options.name);
+        ensureMetadata(options.metadata);
+        for (const tableCase of options.cases) {
+            ensureName(tableCase.name);
+            ensureMetadata(tableCase.metadata);
+            ensureMetadata(tableCase.parameters);
+            ensureTestBody(tableCase.body);
+        }
+
+        const table: Table = {
+            [testNodeBrand]: true,
+            [testNodeOwnerBrand]: owner,
+            cases: options.cases,
+            kind: 'table',
+            metadata: options.metadata,
+            name: options.name
+        };
+
+        recordConstructedNode(table);
+
+        return table;
     }
 
     return {
-        [testNodeBrand]: true,
-        cases: options.cases,
-        kind: 'table',
-        metadata: options.metadata,
-        name: options.name
+        createSuite,
+        createTable,
+        createTestCase
     };
 }
 

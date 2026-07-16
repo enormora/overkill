@@ -1,3 +1,4 @@
+import { formatCaseId } from '../engine/identity.ts';
 import type { PerTestResult, RunResult } from '../engine/run-result.ts';
 import type { FinalResultReporter } from '../engine/reporter.ts';
 
@@ -14,12 +15,12 @@ function formatTestCaseResultAsTapTestPoint(testCaseResult: PerTestResult, index
         yamlDiagnostics = `\n  ---\n  reason: ${testCaseResult.outcome.checks[0]?.summary ?? 'failed'}\n  ...`;
     }
 
-    return `${status} ${index + 1} - ${testCaseResult.id}${yamlDiagnostics}`;
+    return `${status} ${index + 1} - ${formatCaseId(testCaseResult.id)}${yamlDiagnostics}`;
 }
 
 function formatResultAsTap(testRunResult: RunResult): string {
     const version = 'TAP version 14';
-    const plan = `1..${testRunResult.summary.discovered}`;
+    const plan = `1..${testRunResult.summary.planned}`;
     const testPoints = testRunResult.perTest.map(formatTestCaseResultAsTapTestPoint);
 
     return `${version}\n${plan}\n${testPoints.join('\n')}\n`;

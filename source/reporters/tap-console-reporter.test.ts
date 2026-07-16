@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import sinon, { type SinonSpy } from 'sinon';
+import type { CaseId } from '../engine/identity.ts';
 import type { FinalResultReporter } from '../engine/reporter.ts';
 import { registerTest } from '../test-support/register-test.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -16,6 +17,10 @@ function tapConsoleReporterFactory(overrides: Overrides = {}): FinalResultReport
     return createTapConsoleReporter(fakeDependencies);
 }
 
+const failingCaseId: CaseId = { file: null, name: 'bar', params: null, suite: [ 'root' ] };
+const passingCaseId: CaseId = { file: null, name: 'foo', params: null, suite: [ 'root' ] };
+const fallbackCaseId: CaseId = { file: null, name: 'fails', params: null, suite: [ 'root' ] };
+
 registerTest('reports the final result without any test cases formatted as TAP', async function () {
     const log = sinon.fake();
     const reporter = tapConsoleReporterFactory({ log });
@@ -23,7 +28,7 @@ registerTest('reports the final result without any test cases formatted as TAP',
     await reporter.onResult(
         runResultFactory.build({
             perTest: [],
-            summary: { defined: 0, discovered: 0, failed: 0, inconclusive: 0, passed: 0, skipped: 0 }
+            summary: { defined: 0, discovered: 0, failed: 0, inconclusive: 0, passed: 0, planned: 0, skipped: 0 }
         })
     );
 
@@ -39,7 +44,7 @@ registerTest('reports the final result with passed and failed test cases formatt
         runResultFactory.build({
             perTest: [
                 {
-                    id: 'root > bar',
+                    id: failingCaseId,
                     outcome: {
                         checks: [ { summary: 'the-reason' } ],
                         kind: 'fail'
@@ -47,11 +52,11 @@ registerTest('reports the final result with passed and failed test cases formatt
                     verdict: 'fail'
                 },
                 {
-                    id: 'root > foo',
+                    id: passingCaseId,
                     verdict: 'pass'
                 }
             ],
-            summary: { defined: 2, discovered: 2, failed: 1, inconclusive: 0, passed: 1, skipped: 0 }
+            summary: { defined: 2, discovered: 4, failed: 1, inconclusive: 0, passed: 1, planned: 2, skipped: 0 }
         })
     );
 
@@ -69,7 +74,7 @@ registerTest('reports a failed TAP test point with a fallback diagnostic reason'
         runResultFactory.build({
             perTest: [
                 {
-                    id: 'root > fails',
+                    id: fallbackCaseId,
                     outcome: {
                         checks: [],
                         kind: 'fail'
@@ -77,7 +82,7 @@ registerTest('reports a failed TAP test point with a fallback diagnostic reason'
                     verdict: 'fail'
                 }
             ],
-            summary: { defined: 1, discovered: 1, failed: 1, inconclusive: 0, passed: 0, skipped: 0 }
+            summary: { defined: 1, discovered: 1, failed: 1, inconclusive: 0, passed: 0, planned: 1, skipped: 0 }
         })
     );
 

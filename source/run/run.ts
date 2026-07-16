@@ -1,3 +1,4 @@
+import type { CaseId } from '../engine/identity.ts';
 import type { Reporter } from '../engine/reporter.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 
@@ -41,7 +42,7 @@ export type RunRequest = {
 
 export type RunFacts = {
     readonly seed: bigint;
-    readonly identities: readonly string[];
+    readonly identities: readonly CaseId[];
     readonly executionStrategy: string;
     readonly capabilityProfile: string;
     readonly baselineUpdateMode: 'apply' | 'bootstrap' | 'diff' | 'none' | 'update';
@@ -59,7 +60,7 @@ export type RunFacts = {
 
 export type RunFactsDebug = {
     readonly mode: 'all' | 'off' | 'selected';
-    readonly caseIds: readonly string[];
+    readonly caseIds: readonly CaseId[];
 };
 
 export type ResolvedRun = {

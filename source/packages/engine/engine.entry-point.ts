@@ -1,4 +1,6 @@
-export { execute } from '../../engine/execution.ts';
+export { createEngine, createSuite, createTable, createTestCase, createTestPlan, execute, formatCaseId } from '../../engine/engine.ts';
+export type { Engine } from '../../engine/engine.ts';
+export type { CaseId, TestId } from '../../engine/identity.ts';
 export type {
     FinalResultReporter,
     RealTimeReporter,
@@ -19,7 +21,6 @@ export type {
     SuiteRunCounts,
     TestOutcome
 } from '../../engine/run-result.ts';
-export { createSuite, createTable, createTestCase } from '../../engine/test-node.ts';
 export type {
     AssertionFacade,
     FailedCheck,
@@ -38,5 +39,4 @@ export type {
     TestCompletion,
     TestNode
 } from '../../engine/test-node.ts';
-export { createTestPlan } from '../../engine/test-plan.ts';
 export type { TestPlan, TestPlanCase, TestPlanCaseBody } from '../../engine/test-plan.ts';
