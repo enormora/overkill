@@ -1,3 +1,4 @@
+import { caseIdentityKey } from './identity.ts';
 import { type Reporter, reportEvent, reportResult } from './reporter.ts';
 import { type PerTestResult, type RunResult, type TestOutcome, verdictFromOutcome } from './run-result.ts';
 import { createTestCompletion, type FailedCheck, type TestCompletion, type TestContext } from './test-node.ts';
@@ -233,13 +234,14 @@ function wasSkipped(testResult: PerTestResult): boolean {
     return testResult.outcome.kind === 'skip';
 }
 
-function countOutcomes(perTest: readonly PerTestResult[]): RunResult['summary'] {
+function countOutcomes(testPlan: TestPlan, perTest: readonly PerTestResult[]): RunResult['summary'] {
     return {
-        defined: perTest.length,
-        discovered: perTest.length,
+        defined: testPlan.defined,
+        discovered: testPlan.discoveredCases.length,
         failed: perTest.filter(hasFailed).length,
         inconclusive: perTest.filter(isInconclusive).length,
         passed: perTest.filter(hasPassed).length,
+        planned: testPlan.cases.length,
         skipped: perTest.filter(wasSkipped).length
     };
 }
@@ -248,21 +250,57 @@ function suiteKey(suitePath: readonly string[]): string {
     return suitePath.join(' > ');
 }
 
-function countSuites(cases: readonly TestPlanCase[], perTest: readonly PerTestResult[]): RunResult['bySuite'] {
-    const counts: Record<string, { readonly discovered: number; readonly executed: number; }> = {};
+function emptySuiteRunCounts(): RunResult['bySuite'][string] {
+    return { discovered: 0, executed: 0, planned: 0 };
+}
+
+function incrementSuiteRunCounts(
+    counts: RunResult['bySuite'][string],
+    field: 'discovered' | 'executed' | 'planned'
+): RunResult['bySuite'][string] {
+    return {
+        discovered: counts.discovered + (field === 'discovered' ? 1 : 0),
+        executed: counts.executed + (field === 'executed' ? 1 : 0),
+        planned: counts.planned + (field === 'planned' ? 1 : 0)
+    };
+}
+
+function countSuitePath(
+    counts: RunResult['bySuite'],
+    suitePath: readonly string[],
+    field: 'discovered' | 'executed' | 'planned'
+): RunResult['bySuite'] {
+    let updatedCounts = counts;
+
+    for (let pathLength = 1; pathLength <= suitePath.length; pathLength += 1) {
+        const key = suiteKey(suitePath.slice(0, pathLength));
+        updatedCounts = {
+            ...updatedCounts,
+            [key]: incrementSuiteRunCounts(updatedCounts[key] ?? emptySuiteRunCounts(), field)
+        };
+    }
+
+    return updatedCounts;
+}
+
+function countSuites(testPlan: TestPlan, perTest: readonly PerTestResult[]): RunResult['bySuite'] {
+    let counts: RunResult['bySuite'] = {};
     const executedIds = new Set(
         perTest.map(function toId(result) {
-            return result.id;
+            return caseIdentityKey(result.id);
         })
     );
 
-    for (const testCase of cases) {
-        const key = suiteKey(testCase.suitePath);
-        const current = counts[key] ?? { discovered: 0, executed: 0 };
-        counts[key] = {
-            discovered: current.discovered + 1,
-            executed: current.executed + (executedIds.has(testCase.id) ? 1 : 0)
-        };
+    for (const testCase of testPlan.discoveredCases) {
+        counts = countSuitePath(counts, testCase.suitePath, 'discovered');
+    }
+
+    for (const testCase of testPlan.cases) {
+        counts = countSuitePath(counts, testCase.suitePath, 'planned');
+
+        if (executedIds.has(caseIdentityKey(testCase.id))) {
+            counts = countSuitePath(counts, testCase.suitePath, 'executed');
+        }
     }
 
     return counts;
@@ -292,11 +330,11 @@ export async function execute(testPlan: TestPlan, options: ExecuteOptions = defa
 
     const result: RunResult = {
         artifacts: [],
-        bySuite: countSuites(testPlan.cases, perTest),
-        orphans: [],
+        bySuite: countSuites(testPlan, perTest),
+        orphans: testPlan.orphans,
         perTest,
         runnerErrors: [],
-        summary: countOutcomes(perTest),
+        summary: countOutcomes(testPlan, perTest),
         wallTimeMs: performance.now() - startedAtMs
     };
 

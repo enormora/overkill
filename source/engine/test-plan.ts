@@ -1,56 +1,98 @@
-import { mergeMetadata, type Metadata, type Table, type TestBody, type TestCase, type TestNode } from './test-node.ts';
+import { caseIdentityKey, createCaseId, formatCaseId, type CaseId } from './identity.ts';
+import type { OrphanedNode } from './run-result.ts';
+import {
+    ensureOwnedTestNode,
+    mergeMetadata,
+    type Metadata,
+    type Table,
+    type TestBody,
+    type TestCase,
+    type TestNode,
+    type TestNodeOwner
+} from './test-node.ts';
 
 export type TestPlanCaseBody = TestBody;
 
 export type TestPlanCase = {
-    readonly id: string;
+    readonly id: CaseId;
     readonly suitePath: readonly string[];
     readonly metadata: Metadata;
     readonly body: TestPlanCaseBody;
 };
 
 export type TestPlan = {
+    readonly defined: number;
     readonly cases: readonly TestPlanCase[];
+    readonly discoveredCases: readonly TestPlanCase[];
+    readonly orphans: readonly OrphanedNode[];
 };
 
-function caseId(suitePath: readonly string[], name: string): string {
-    return [ ...suitePath, name ].join(' > ');
-}
+export type TestPlanFactory = (root: TestNode) => TestPlan;
+
+type CollectedTestCases = {
+    readonly cases: readonly TestPlanCase[];
+    readonly reachedNodes: readonly TestNode[];
+};
 
 function collectTestCase(
     testCase: TestCase,
     suitePath: readonly string[],
     metadata: Metadata
-): readonly TestPlanCase[] {
+): CollectedTestCases {
     const resolvedMetadata = mergeMetadata(metadata, testCase.metadata);
 
-    return [
-        {
-            body: testCase.body,
-            id: caseId(suitePath, testCase.name),
-            metadata: resolvedMetadata,
-            suitePath
-        }
-    ];
+    return {
+        cases: [
+            {
+                body: testCase.body,
+                id: createCaseId(suitePath, testCase.name, null),
+                metadata: resolvedMetadata,
+                suitePath
+            }
+        ],
+        reachedNodes: [ testCase ]
+    };
 }
 
-function collectTable(table: Table, suitePath: readonly string[], metadata: Metadata): readonly TestPlanCase[] {
+function collectTable(
+    table: Table,
+    suitePath: readonly string[],
+    metadata: Metadata
+): CollectedTestCases {
     const tablePath = [ ...suitePath, table.name ];
     const tableMetadata = mergeMetadata(metadata, table.metadata);
 
-    return table.cases.map(function collectTableCase(tableCase): TestPlanCase {
-        const resolvedMetadata = mergeMetadata(tableMetadata, tableCase.metadata);
+    return {
+        cases: table.cases.map(function collectTableCase(tableCase): TestPlanCase {
+            const resolvedMetadata = mergeMetadata(tableMetadata, tableCase.metadata);
 
-        return {
-            body: tableCase.body,
-            id: caseId(tablePath, tableCase.name),
-            metadata: resolvedMetadata,
-            suitePath: tablePath
-        };
-    });
+            return {
+                body: tableCase.body,
+                id: createCaseId(tablePath, tableCase.name, null),
+                metadata: resolvedMetadata,
+                suitePath: tablePath
+            };
+        }),
+        reachedNodes: [ table ]
+    };
 }
 
-function collectNode(node: TestNode, suitePath: readonly string[], metadata: Metadata): readonly TestPlanCase[] {
+function mergeCollectedTestCases(collections: readonly CollectedTestCases[]): CollectedTestCases {
+    return {
+        cases: collections.flatMap(function collectCases(collection) {
+            return collection.cases;
+        }),
+        reachedNodes: collections.flatMap(function collectReachedNodes(collection) {
+            return collection.reachedNodes;
+        })
+    };
+}
+
+function collectNode(
+    node: TestNode,
+    suitePath: readonly string[],
+    metadata: Metadata
+): CollectedTestCases {
     if (node.kind === 'test') {
         return collectTestCase(node, suitePath, metadata);
     }
@@ -61,14 +103,74 @@ function collectNode(node: TestNode, suitePath: readonly string[], metadata: Met
 
     const childPath = [ ...suitePath, node.name ];
     const childMetadata = mergeMetadata(metadata, node.metadata);
-
-    return node.children.flatMap(function collectChild(child) {
+    const children = mergeCollectedTestCases(node.children.map(function collectChild(child) {
         return collectNode(child, childPath, childMetadata);
-    });
+    }));
+
+    return {
+        cases: children.cases,
+        reachedNodes: [ node, ...children.reachedNodes ]
+    };
 }
 
-export function createTestPlan(root: TestNode): TestPlan {
+function toReachedNodeSet(reachedNodes: readonly TestNode[]): ReadonlySet<TestNode> {
+    return new Set(reachedNodes);
+}
+
+function createOrphanedNode(node: TestNode): OrphanedNode {
     return {
-        cases: collectNode(root, [], {})
+        file: null,
+        kind: node.kind,
+        name: node.name
+    };
+}
+
+function collectOrphans(
+    constructedNodes: ReadonlySet<TestNode>,
+    reachedNodes: readonly TestNode[]
+): readonly OrphanedNode[] {
+    const reachedNodeSet = toReachedNodeSet(reachedNodes);
+
+    return Array
+        .from(constructedNodes)
+        .filter(function isOrphan(node) {
+            return !reachedNodeSet.has(node);
+        })
+        .map(createOrphanedNode);
+}
+
+function assertUniqueCaseIds(cases: readonly TestPlanCase[]): void {
+    const seenCaseIds = new Set<string>();
+
+    for (const testCase of cases) {
+        const key = caseIdentityKey(testCase.id);
+
+        if (seenCaseIds.has(key)) {
+            throw new TypeError(`Duplicate test case identity: ${formatCaseId(testCase.id)}.`);
+        }
+
+        seenCaseIds.add(key);
+    }
+}
+
+export function createTestPlanFactory(owner: TestNodeOwner, constructedNodes: ReadonlySet<TestNode>): TestPlanFactory {
+    return function createTestPlan(root: TestNode): TestPlan {
+        ensureOwnedTestNode(
+            root,
+            owner,
+            'Test plan root must be an engine-created TestNode value.',
+            'Test plan root must be created by the same engine instance.'
+        );
+
+        const collection = collectNode(root, [], {});
+        const { cases: discoveredCases, reachedNodes } = collection;
+        assertUniqueCaseIds(discoveredCases);
+
+        return {
+            cases: discoveredCases,
+            defined: constructedNodes.size,
+            discoveredCases,
+            orphans: collectOrphans(constructedNodes, reachedNodes)
+        };
     };
 }

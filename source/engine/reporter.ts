@@ -1,3 +1,4 @@
+import type { CaseId } from './identity.ts';
 import type { RunResult, TestOutcome } from './run-result.ts';
 
 export type SinkDeclaration = {
@@ -7,7 +8,7 @@ export type SinkDeclaration = {
 
 export type ReporterEvent = {
     readonly attempt: number | null;
-    readonly case: string | null;
+    readonly case: CaseId | null;
     readonly facts: Readonly<Record<string, unknown>> | null;
     readonly kind: 'run-end' | 'run-start' | 'test-end' | 'test-start';
     readonly outcome: TestOutcome | null;

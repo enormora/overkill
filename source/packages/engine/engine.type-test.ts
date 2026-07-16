@@ -1,9 +1,11 @@
 import { describe, expect, test } from 'tstyche';
 import type {
+    CaseId,
     FailedCheck,
     PerTestResult,
     ReporterEvent,
     RunnerError,
+    RunSummary,
     TestOutcome
 } from './engine.entry-point.ts';
 
@@ -27,6 +29,12 @@ type ExpectedRunnerErrorSubtypeByName = {
     readonly unhandledRejection: 'unhandled-rejection';
 };
 type ExpectedRunnerErrorSubtype = ExpectedRunnerErrorSubtypeByName[keyof ExpectedRunnerErrorSubtypeByName];
+type CaseIdFixture = {
+    readonly file: null;
+    readonly name: 'case';
+    readonly params: null;
+    readonly suite: readonly ['suite'];
+};
 
 describe('TestOutcome', function () {
     test('accepts public outcome shapes', function () {
@@ -80,6 +88,35 @@ describe('run result verdicts', function () {
     test('per-test and reporter verdicts accept only outcome kinds', function () {
         expect<PerTestResult['verdict']>().type.toBe<OutcomeKind>();
         expect<ReporterEvent['verdict']>().type.toBe<OutcomeKind | null>();
+    });
+});
+
+describe('CaseId', function () {
+    test('accepts structured public identity shapes', function () {
+        expect<CaseId>().type.toBeAssignableFrom<CaseIdFixture>();
+        expect<PerTestResult['id']>().type.toBe<CaseId>();
+        expect<ReporterEvent['case']>().type.toBe<CaseId | null>();
+        expect<RunnerError['attributedTo']>().type.toBe<CaseId | null>();
+    });
+
+    test('requires explicit nullable identity fields', function () {
+        expect<CaseId>().type.not.toBeAssignableFrom<{
+            readonly name: 'case';
+            readonly suite: readonly ['suite'];
+        }>();
+        expect<CaseId>().type.not.toBeAssignableFrom<{
+            readonly file: null;
+            readonly name: 'case';
+            readonly suite: readonly ['suite'];
+        }>();
+    });
+});
+
+describe('RunSummary', function () {
+    test('includes planned as a public run count', function () {
+        expect<keyof RunSummary>().type.toBe<
+            'defined' | 'discovered' | 'failed' | 'inconclusive' | 'passed' | 'planned' | 'skipped'
+        >();
     });
 });
 

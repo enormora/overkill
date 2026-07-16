@@ -2,10 +2,14 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createFactory } from '@enormora/objectory';
 import {
+    createEngine,
     createSuite,
+    createTable,
     createTestCase,
     createTestPlan,
     execute,
+    formatCaseId,
+    type Engine,
     type RunResult,
     type TestCase
 } from '@overkill-dev/engine';
@@ -24,8 +28,8 @@ const smokeCaseDefinitionFactory = createFactory<SmokeCaseDefinition>(function c
     };
 });
 
-function createSmokeCase(definition: SmokeCaseDefinition): TestCase {
-    return createTestCase({
+function createSmokeCase(engine: Engine, definition: SmokeCaseDefinition): TestCase {
+    return engine.createTestCase({
         body(testContext) {
             if (definition.expectedVerdict === 'pass') {
                 return testContext.assert.ok(true, definition.assertionSummary);
@@ -38,7 +42,7 @@ function createSmokeCase(definition: SmokeCaseDefinition): TestCase {
     });
 }
 
-await test('consumer imports @overkill-dev/engine and executes a TestPlan', async function () {
+async function executeSmokePlan(engine: Engine): Promise<RunResult> {
     const cases = [
         smokeCaseDefinitionFactory.build(),
         smokeCaseDefinitionFactory.build({
@@ -47,20 +51,27 @@ await test('consumer imports @overkill-dev/engine and executes a TestPlan', asyn
             name: 'fails'
         })
     ];
-    const root = createSuite({
-        children: cases.map(createSmokeCase),
+    const root = engine.createSuite({
+        children: cases.map(function toSmokeCase(smokeCase) {
+            return createSmokeCase(engine, smokeCase);
+        }),
         metadata: {},
         name: 'root'
     });
-    const testPlan = createTestPlan(root);
 
-    const result: RunResult = await execute(testPlan);
+    return engine.execute(engine.createTestPlan(root));
+}
 
-    assert.equal(result.summary.defined, 2);
+function assertSmokeResult(result: RunResult): void {
+    const passingCaseId = { file: null, name: 'passes', params: null, suite: [ 'root' ] };
+    const failingCaseId = { file: null, name: 'fails', params: null, suite: [ 'root' ] };
+
+    assert.equal(result.summary.defined, 3);
     assert.equal(result.summary.discovered, 2);
+    assert.equal(result.summary.planned, 2);
     assert.equal(result.summary.passed, 1);
     assert.equal(result.summary.failed, 1);
-    assert.deepStrictEqual(result.bySuite.root, { discovered: 2, executed: 2 });
+    assert.deepStrictEqual(result.bySuite.root, { discovered: 2, executed: 2, planned: 2 });
     assert.deepStrictEqual(
         result.perTest.map(function toPublicResultShape(testResult) {
             return {
@@ -70,9 +81,9 @@ await test('consumer imports @overkill-dev/engine and executes a TestPlan', asyn
             };
         }),
         [
-            { id: 'root > passes', outcome: { kind: 'pass' }, verdict: 'pass' },
+            { id: passingCaseId, outcome: { kind: 'pass' }, verdict: 'pass' },
             {
-                id: 'root > fails',
+                id: failingCaseId,
                 outcome: {
                     checks: [
                         {
@@ -90,4 +101,27 @@ await test('consumer imports @overkill-dev/engine and executes a TestPlan', asyn
             }
         ]
     );
+    assert.deepStrictEqual(
+        result.perTest.map(function toFormattedId(testResult) {
+            return formatCaseId(testResult.id);
+        }),
+        [ 'root > passes', 'root > fails' ]
+    );
+}
+
+await test('consumer imports top-level @overkill-dev/engine exports and executes a TestPlan', async function () {
+    const topLevelEngine: Engine = {
+        createSuite,
+        createTable,
+        createTestCase,
+        createTestPlan,
+        execute,
+        formatCaseId
+    };
+
+    assertSmokeResult(await executeSmokePlan(topLevelEngine));
+});
+
+await test('consumer imports createEngine() and executes a TestPlan', async function () {
+    assertSmokeResult(await executeSmokePlan(createEngine()));
 });

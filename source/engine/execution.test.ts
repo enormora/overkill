@@ -1,22 +1,21 @@
 import assert from 'node:assert/strict';
 import { createInMemoryFinalResultReporter, createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import { registerTest } from '../test-support/register-test.ts';
-import { execute } from './execution.ts';
-import { createTestPlan } from './test-plan.ts';
-import { createSuite, createTestCase } from './test-node.ts';
+import { createEngine } from './engine.ts';
 
 registerTest('execute() returns passing and failing outcomes with run counts', async function () {
-    const testPlan = createTestPlan(
-        createSuite({
+    const engine = createEngine();
+    const testPlan = engine.createTestPlan(
+        engine.createSuite({
             children: [
-                createTestCase({
+                engine.createTestCase({
                     body(testContext) {
                         return testContext.assert.ok(true, 'passes');
                     },
                     metadata: {},
                     name: 'passes'
                 }),
-                createTestCase({
+                engine.createTestCase({
                     body(testContext) {
                         return testContext.assert.equal(1, 2, 'numbers differ');
                     },
@@ -29,13 +28,14 @@ registerTest('execute() returns passing and failing outcomes with run counts', a
         })
     );
 
-    const result = await execute(testPlan);
+    const result = await engine.execute(testPlan);
 
     assert.equal(result.summary.discovered, 2);
-    assert.equal(result.summary.defined, 2);
+    assert.equal(result.summary.planned, 2);
+    assert.equal(result.summary.defined, 3);
     assert.equal(result.summary.passed, 1);
     assert.equal(result.summary.failed, 1);
-    assert.deepStrictEqual(result.bySuite.root, { discovered: 2, executed: 2 });
+    assert.deepStrictEqual(result.bySuite.root, { discovered: 2, executed: 2, planned: 2 });
     assert.deepStrictEqual(
         result.perTest.map(function toVerdict(testResult) {
             return testResult.verdict;
@@ -44,11 +44,42 @@ registerTest('execute() returns passing and failing outcomes with run counts', a
     );
 });
 
+registerTest('execute() carries orphaned nodes from the plan', async function () {
+    const engine = createEngine();
+    const reached = engine.createTestCase({
+        body(testContext) {
+            return testContext.assert.ok(true, 'passes');
+        },
+        metadata: {},
+        name: 'reached'
+    });
+    engine.createTable({
+        cases: [],
+        metadata: {},
+        name: 'unused rows'
+    });
+    const testPlan = engine.createTestPlan(
+        engine.createSuite({
+            children: [ reached ],
+            metadata: {},
+            name: 'root'
+        })
+    );
+
+    const result = await engine.execute(testPlan);
+
+    assert.deepStrictEqual(result.orphans, [ { file: null, kind: 'table', name: 'unused rows' } ]);
+    assert.equal(result.summary.defined, 3);
+    assert.equal(result.summary.discovered, 1);
+    assert.equal(result.summary.planned, 1);
+});
+
 registerTest('execute() fails tests with zero assertions', async function () {
-    const testPlan = createTestPlan(
-        createSuite({
+    const engine = createEngine();
+    const testPlan = engine.createTestPlan(
+        engine.createSuite({
             children: [
-                createTestCase({
+                engine.createTestCase({
                     body() {
                         return undefined;
                     },
@@ -61,7 +92,7 @@ registerTest('execute() fails tests with zero assertions', async function () {
         })
     );
 
-    const result = await execute(testPlan);
+    const result = await engine.execute(testPlan);
 
     assert.equal(result.summary.failed, 1);
     assert.deepStrictEqual(result.perTest[0]?.outcome, {
@@ -80,10 +111,11 @@ registerTest('execute() fails tests with zero assertions', async function () {
 });
 
 registerTest('execute() fails tests when assertion plan count does not match', async function () {
-    const testPlan = createTestPlan(
-        createSuite({
+    const engine = createEngine();
+    const testPlan = engine.createTestPlan(
+        engine.createSuite({
             children: [
-                createTestCase({
+                engine.createTestCase({
                     body(testContext) {
                         testContext.plan(2);
                         return testContext.assert.ok(true, 'one');
@@ -97,7 +129,7 @@ registerTest('execute() fails tests when assertion plan count does not match', a
         })
     );
 
-    const result = await execute(testPlan);
+    const result = await engine.execute(testPlan);
 
     assert.equal(result.summary.failed, 1);
     assert.deepStrictEqual(result.perTest[0]?.outcome, {
@@ -115,10 +147,11 @@ registerTest('execute() fails tests when assertion plan count does not match', a
     });
 });
 registerTest('execute() exposes assertion and requirement convenience methods', async function () {
-    const testPlan = createTestPlan(
-        createSuite({
+    const engine = createEngine();
+    const testPlan = engine.createTestPlan(
+        engine.createSuite({
             children: [
-                createTestCase({
+                engine.createTestCase({
                     body(testContext) {
                         testContext.assert.done();
                         testContext.require.done();
@@ -136,23 +169,24 @@ registerTest('execute() exposes assertion and requirement convenience methods', 
         })
     );
 
-    const result = await execute(testPlan);
+    const result = await engine.execute(testPlan);
 
     assert.equal(result.summary.passed, 1);
 });
 
 registerTest('execute() fails the test when a requirement fails', async function () {
-    const testPlan = createTestPlan(
-        createSuite({
+    const engine = createEngine();
+    const testPlan = engine.createTestPlan(
+        engine.createSuite({
             children: [
-                createTestCase({
+                engine.createTestCase({
                     body(testContext) {
                         return testContext.require.equal(1, 2, 'required equality');
                     },
                     metadata: {},
                     name: 'requires equality'
                 }),
-                createTestCase({
+                engine.createTestCase({
                     body(testContext) {
                         return testContext.require.ok(false, 'required truth');
                     },
@@ -165,7 +199,7 @@ registerTest('execute() fails the test when a requirement fails', async function
         })
     );
 
-    const result = await execute(testPlan);
+    const result = await engine.execute(testPlan);
 
     assert.equal(result.summary.failed, 2);
     assert.deepStrictEqual(
@@ -181,10 +215,11 @@ registerTest('execute() fails the test when a requirement fails', async function
 });
 
 registerTest('execute() records thrown test body errors', async function () {
-    const testPlan = createTestPlan(
-        createSuite({
+    const engine = createEngine();
+    const testPlan = engine.createTestPlan(
+        engine.createSuite({
             children: [
-                createTestCase({
+                engine.createTestCase({
                     body() {
                         throw new Error('boom');
                     },
@@ -197,7 +232,7 @@ registerTest('execute() records thrown test body errors', async function () {
         })
     );
 
-    const result = await execute(testPlan);
+    const result = await engine.execute(testPlan);
 
     assert.equal(result.summary.failed, 1);
     const outcome = result.perTest[0]?.outcome;
@@ -206,12 +241,13 @@ registerTest('execute() records thrown test body errors', async function () {
 });
 
 registerTest('execute() delivers events and final results to reporters', async function () {
+    const engine = createEngine();
     const realTimeReporter = createInMemoryRealTimeReporter();
     const finalResultReporter = createInMemoryFinalResultReporter();
-    const testPlan = createTestPlan(
-        createSuite({
+    const testPlan = engine.createTestPlan(
+        engine.createSuite({
             children: [
-                createTestCase({
+                engine.createTestCase({
                     body(testContext) {
                         return testContext.assert.ok(true, 'passes');
                     },
@@ -224,7 +260,7 @@ registerTest('execute() delivers events and final results to reporters', async f
         })
     );
 
-    const result = await execute(testPlan, {
+    const result = await engine.execute(testPlan, {
         reporters: [ realTimeReporter, finalResultReporter ],
         runFacts: { seed: 42 },
         startedAt: '2026-07-15T00:00:00.000Z'

@@ -57,13 +57,13 @@ not as a hard requirement baked into `@overkill-dev/engine`.
 
 ```ts
 type TestId = {
-    readonly file: string; // canonical source file path, repository-relative
-    readonly suite?: ReadonlyArray<string>; // ordered suite names, root → leaf
+    readonly file: string | null; // canonical source file path, repository-relative; null when unknown to engine
+    readonly suite: ReadonlyArray<string>; // ordered suite names, root to leaf
     readonly name: string; // test name within its parent
 };
 
 type CaseId = TestId & {
-    readonly params?: string; // canonical case key for parameterized tests
+    readonly params: string | null; // canonical case key for parameterized tests
 };
 
 type RuntimeId = {

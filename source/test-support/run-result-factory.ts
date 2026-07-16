@@ -1,3 +1,4 @@
+import type { CaseId } from '../engine/identity.ts';
 import type { FailedCheck, SourceLocation } from '../engine/test-node.ts';
 import type {
     OrphanedNode,
@@ -41,7 +42,7 @@ type TestOutcomeOverrideByKind = {
 type TestOutcomeOverrides = TestOutcomeOverrideByKind[keyof TestOutcomeOverrideByKind];
 
 type PerTestResultOverrides = {
-    readonly id?: string;
+    readonly id?: CaseId;
     readonly outcome?: TestOutcomeOverrides;
     readonly verdict?: TestOutcome['kind'];
 };
@@ -72,7 +73,15 @@ const defaultSummary: RunSummary = {
     failed: 0,
     inconclusive: 0,
     passed: 0,
+    planned: 0,
     skipped: 0
+};
+
+const defaultCaseId: CaseId = {
+    file: null,
+    name: 'passes',
+    params: null,
+    suite: [ 'root' ]
 };
 
 const defaultFailedCheck: FailedCheck = {
@@ -135,7 +144,7 @@ function buildPerTestResult(overrides: PerTestResultOverrides = {}): RunResult['
     const outcome = buildOutcome(overrides.outcome);
 
     return {
-        id: overrides.id ?? 'root > passes',
+        id: overrides.id ?? defaultCaseId,
         outcome,
         verdict: overrides.verdict ?? outcome.kind
     };
@@ -143,7 +152,7 @@ function buildPerTestResult(overrides: PerTestResultOverrides = {}): RunResult['
 
 function buildOrphanedNode(overrides: OrphanedNodeOverrides = {}): OrphanedNode {
     return {
-        file: overrides.file ?? 'source/example.test.ts',
+        file: overrides.file === undefined ? 'source/example.test.ts' : overrides.file,
         kind: overrides.kind ?? 'test',
         name: overrides.name ?? 'orphaned test'
     };

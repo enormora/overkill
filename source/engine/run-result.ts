@@ -1,3 +1,4 @@
+import type { CaseId } from './identity.ts';
 import type { FailedCheck } from './test-node.ts';
 
 type RunnerErrorSubtypeByName = {
@@ -39,7 +40,7 @@ export type InconclusiveOutcome = {
 export type TestOutcome = FailOutcome | InconclusiveOutcome | PassOutcome | SkipOutcome;
 
 export type RunnerError = {
-    readonly attributedTo: string | null;
+    readonly attributedTo: CaseId | null;
     readonly cause: unknown;
     readonly message: string;
     readonly subtype: RunnerErrorSubtype;
@@ -51,11 +52,12 @@ export type RunSummary = {
     readonly failed: number;
     readonly inconclusive: number;
     readonly passed: number;
+    readonly planned: number;
     readonly skipped: number;
 };
 
 export type PerTestResult = {
-    readonly id: string;
+    readonly id: CaseId;
     readonly outcome: TestOutcome;
     readonly verdict: TestOutcome['kind'];
 };
@@ -63,10 +65,11 @@ export type PerTestResult = {
 export type SuiteRunCounts = {
     readonly discovered: number;
     readonly executed: number;
+    readonly planned: number;
 };
 
 export type OrphanedNode = {
-    readonly file: string;
+    readonly file: string | null;
     readonly kind: 'suite' | 'table' | 'test';
     readonly name: string;
 };

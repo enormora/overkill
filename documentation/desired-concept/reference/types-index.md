@@ -23,13 +23,13 @@ the doc does not blur canonical shared types with illustrative sample names.
 
 ```ts
 type TestId = {
-    readonly file: string; // canonical source file path, repository-relative
-    readonly suite?: ReadonlyArray<string>; // ordered suite names, root → leaf
+    readonly file: string | null; // canonical source file path, repository-relative; null when unknown to engine
+    readonly suite: ReadonlyArray<string>; // ordered suite names, root to leaf
     readonly name: string; // test name within its parent
 };
 
 type CaseId = TestId & {
-    readonly params?: string; // canonical case key for parameterized tests
+    readonly params: string | null; // canonical case key for parameterized tests
 };
 
 type RuntimeId = {
@@ -279,7 +279,10 @@ type TestPlanCase = {
 };
 
 type TestPlan = {
+    readonly defined: number;
+    readonly discoveredCases: ReadonlyArray<TestPlanCase>;
     readonly cases: ReadonlyArray<TestPlanCase>;
+    readonly orphans: ReadonlyArray<{ file: string | null; name: string; kind: 'test' | 'suite' | 'table'; }>;
 };
 
 type RunFacts = {
@@ -326,6 +329,7 @@ type RunRecord = {
 type RunResult = {
     readonly summary: {
         discovered: number;
+        planned: number;
         defined: number; // TestNodes constructed during collection; orphaned = orphans.length
         passed: number;
         failed: number;
@@ -333,8 +337,8 @@ type RunResult = {
         inconclusive: number;
     };
     readonly perTest: ReadonlyArray<{ id: CaseId; outcome: TestOutcome; verdict: string; }>;
-    readonly bySuite: Record<string, { discovered: number; executed: number; }>;
-    readonly orphans: ReadonlyArray<{ file: string; name: string; kind: 'test' | 'suite' | 'table'; }>;
+    readonly bySuite: Record<string, { discovered: number; planned: number; executed: number; }>;
+    readonly orphans: ReadonlyArray<{ file: string | null; name: string; kind: 'test' | 'suite' | 'table'; }>;
     readonly runnerErrors: ReadonlyArray<RunnerError>;
     readonly artifacts: ReadonlyArray<ArtifactId>;
     readonly wallTimeMs: number;
@@ -349,7 +353,7 @@ type RunnerError = {
         | 'loader'
         | 'reporter'
         | 'attribution-drift';
-    readonly attributedTo?: CaseId; // missing when run-level
+    readonly attributedTo: CaseId | null; // null when run-level
     readonly message: string;
     readonly cause?: unknown;
 };
