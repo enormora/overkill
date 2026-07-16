@@ -1,12 +1,24 @@
 import { caseIdentityKey } from './identity.ts';
-import { type Reporter, reportEvent, reportResult } from './reporter.ts';
-import { type PerTestResult, type RunResult, type TestOutcome, verdictFromOutcome } from './run-result.ts';
+import {
+    type Reporter,
+    type RunFacts,
+    reportEvent,
+    reportResult,
+    validateReporterSinks
+} from './reporter.ts';
+import {
+    type PerTestResult,
+    type RunResult,
+    type RunnerError,
+    type TestOutcome,
+    verdictFromOutcome
+} from './run-result.ts';
 import { createTestCompletion, type FailedCheck, type TestCompletion, type TestContext } from './test-node.ts';
 import type { TestPlan, TestPlanCase } from './test-plan.ts';
 
 export type ExecuteOptions = {
     readonly reporters: readonly Reporter[];
-    readonly runFacts: Readonly<Record<string, unknown>>;
+    readonly runFacts: RunFacts;
     readonly startedAt: string;
 };
 
@@ -172,23 +184,22 @@ function createOutcome(recorder: AssertionRecorder): TestOutcome {
     return { checks: failedChecks, kind: 'fail' };
 }
 
-async function executeCase(
-    testCase: TestPlanCase,
-    attempt: number,
-    reporters: readonly Reporter[]
-): Promise<PerTestResult> {
-    await reportEvent(reporters, {
-        attempt,
-        case: testCase.id,
-        facts: null,
-        kind: 'test-start',
-        outcome: null,
-        result: null,
-        startedAt: null,
-        verdict: null,
-        wallTimeMs: null
-    });
+type ExecutedCase = {
+    readonly result: PerTestResult;
+    readonly wallTimeMs: number;
+};
 
+type ExecutedTestPlan = {
+    readonly perTest: readonly PerTestResult[];
+    readonly reporterErrors: readonly RunnerError[];
+};
+
+type ReportedCase = {
+    readonly reporterErrors: readonly RunnerError[];
+    readonly result: PerTestResult;
+};
+
+async function runTestCase(testCase: TestPlanCase): Promise<ExecutedCase> {
     const recorder = createAssertionRecorder();
     const startedAt = performance.now();
 
@@ -197,24 +208,40 @@ async function executeCase(
 
     const outcome = createOutcome(recorder);
     const verdict = verdictFromOutcome(outcome);
-    const wallTimeMs = performance.now() - startedAt;
 
-    await reportEvent(reporters, {
+    return {
+        result: {
+            id: testCase.id,
+            outcome,
+            verdict
+        },
+        wallTimeMs: performance.now() - startedAt
+    };
+}
+
+async function executeCase(
+    testCase: TestPlanCase,
+    attempt: number,
+    reporters: readonly Reporter[]
+): Promise<ReportedCase> {
+    const startErrors = await reportEvent(reporters, {
         attempt,
         case: testCase.id,
-        facts: null,
+        kind: 'test-start'
+    });
+    const executedCase = await runTestCase(testCase);
+    const endErrors = await reportEvent(reporters, {
+        attempt,
+        case: testCase.id,
         kind: 'test-end',
-        outcome,
-        result: null,
-        startedAt: null,
-        verdict,
-        wallTimeMs
+        outcome: executedCase.result.outcome,
+        verdict: executedCase.result.verdict,
+        wallTimeMs: executedCase.wallTimeMs
     });
 
     return {
-        id: testCase.id,
-        outcome,
-        verdict
+        reporterErrors: [ ...startErrors, ...endErrors ],
+        result: executedCase.result
     };
 }
 
@@ -306,48 +333,104 @@ function countSuites(testPlan: TestPlan, perTest: readonly PerTestResult[]): Run
     return counts;
 }
 
-export async function execute(testPlan: TestPlan, options: ExecuteOptions = defaultExecuteOptions): Promise<RunResult> {
-    const startedAtMs = performance.now();
-    const { reporters } = options;
+function commonSuitePrefixLength(firstSuitePath: readonly string[], secondSuitePath: readonly string[]): number {
+    const shortestLength = Math.min(firstSuitePath.length, secondSuitePath.length);
+    let prefixLength = 0;
 
-    await reportEvent(reporters, {
-        attempt: null,
-        case: null,
-        facts: options.runFacts,
-        kind: 'run-start',
-        outcome: null,
-        result: null,
-        startedAt: options.startedAt,
-        verdict: null,
-        wallTimeMs: null
-    });
-
-    const perTest: PerTestResult[] = [];
-
-    for (const [ index, testCase ] of testPlan.cases.entries()) {
-        perTest.push(await executeCase(testCase, index, reporters));
+    while (prefixLength < shortestLength && firstSuitePath[prefixLength] === secondSuitePath[prefixLength]) {
+        prefixLength += 1;
     }
 
+    return prefixLength;
+}
+
+async function reportSuiteTransition(
+    reporters: readonly Reporter[],
+    currentSuitePath: readonly string[],
+    nextSuitePath: readonly string[]
+): Promise<readonly RunnerError[]> {
+    let reporterErrors: readonly RunnerError[] = [];
+    const sharedPrefixLength = commonSuitePrefixLength(currentSuitePath, nextSuitePath);
+
+    for (let pathLength = currentSuitePath.length; pathLength > sharedPrefixLength; pathLength -= 1) {
+        reporterErrors = [
+            ...reporterErrors,
+            ...await reportEvent(reporters, {
+                kind: 'suite-end',
+                suitePath: currentSuitePath.slice(0, pathLength)
+            })
+        ];
+    }
+
+    for (let pathLength = sharedPrefixLength + 1; pathLength <= nextSuitePath.length; pathLength += 1) {
+        reporterErrors = [
+            ...reporterErrors,
+            ...await reportEvent(reporters, {
+                kind: 'suite-start',
+                suitePath: nextSuitePath.slice(0, pathLength)
+            })
+        ];
+    }
+
+    return reporterErrors;
+}
+
+async function executeTestPlanCases(testPlan: TestPlan, reporters: readonly Reporter[]): Promise<ExecutedTestPlan> {
+    let perTest: readonly PerTestResult[] = [];
+    let reporterErrors: readonly RunnerError[] = [];
+    let currentSuitePath: readonly string[] = [];
+
+    for (const testCase of testPlan.cases) {
+        const suiteErrors = await reportSuiteTransition(reporters, currentSuitePath, testCase.suitePath);
+        currentSuitePath = testCase.suitePath;
+
+        const testRun = await executeCase(testCase, 0, reporters);
+        reporterErrors = [ ...reporterErrors, ...suiteErrors, ...testRun.reporterErrors ];
+        perTest = [ ...perTest, testRun.result ];
+    }
+
+    return {
+        perTest,
+        reporterErrors: [ ...reporterErrors, ...await reportSuiteTransition(reporters, currentSuitePath, []) ]
+    };
+}
+
+function createRunResult(
+    testPlan: TestPlan,
+    perTest: readonly PerTestResult[],
+    reporterErrors: readonly RunnerError[],
+    startedAtMs: number
+): RunResult {
     const result: RunResult = {
         artifacts: [],
         bySuite: countSuites(testPlan, perTest),
         orphans: testPlan.orphans,
         perTest,
-        runnerErrors: [],
+        runnerErrors: reporterErrors,
         summary: countOutcomes(testPlan, perTest),
         wallTimeMs: performance.now() - startedAtMs
     };
 
+    return result;
+}
+
+export async function execute(testPlan: TestPlan, options: ExecuteOptions = defaultExecuteOptions): Promise<RunResult> {
+    validateReporterSinks(options.reporters);
+
+    const startedAtMs = performance.now();
+    const { reporters } = options;
+    const startErrors = await reportEvent(reporters, {
+        facts: options.runFacts,
+        kind: 'run-start',
+        startedAt: options.startedAt
+    });
+    const executedTestPlan = await executeTestPlanCases(testPlan, reporters);
+    const reporterErrors = [ ...startErrors, ...executedTestPlan.reporterErrors ];
+    const result = createRunResult(testPlan, executedTestPlan.perTest, reporterErrors, startedAtMs);
+
     await reportEvent(reporters, {
-        attempt: null,
-        case: null,
-        facts: null,
         kind: 'run-end',
-        outcome: null,
-        result,
-        startedAt: null,
-        verdict: null,
-        wallTimeMs: null
+        result
     });
     await reportResult(reporters, result);
 

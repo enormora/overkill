@@ -26,12 +26,19 @@ export { execute } from '../../engine/execution.ts';
 export { formatCaseId } from '../../engine/identity.ts';
 export type { CaseId, TestId } from '../../engine/identity.ts';
 export type {
+    DirectorySinkDeclaration,
+    FileSinkDeclaration,
     FinalResultReporter,
+    MemorySinkDeclaration,
     RealTimeReporter,
     Reporter,
     ReporterEvent,
-    SinkDeclaration
+    RunFacts,
+    SinkDeclaration,
+    StandardOutputSinkDeclaration,
+    StreamSinkDeclaration
 } from '../../engine/reporter.ts';
+export { validateReporterSinks } from '../../engine/reporter.ts';
 export type {
     FailOutcome,
     InconclusiveOutcome,
@@ -63,4 +70,4 @@ export type {
     TestCompletion,
     TestNode
 } from '../../engine/test-node.ts';
-export type { TestPlan, TestPlanCase, TestPlanCaseBody } from '../../engine/test-plan.ts';
+export type { NonEmptyReadonlyArray, TestPlan, TestPlanCase, TestPlanCaseBody } from '../../engine/test-plan.ts';

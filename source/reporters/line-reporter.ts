@@ -63,9 +63,7 @@ export function createLineReporter(dependencies: LineReporterDependencies): Real
         async onEvent(event) {
             if (event.kind === 'run-start') {
                 stdoutConsole.log(infoSymbol, 'Test run started');
-            }
-
-            if (event.kind === 'test-end' && event.case !== null && event.outcome !== null) {
+            } else if (event.kind === 'test-end') {
                 stdoutConsole.log(formatTestResult(event.case, event.outcome));
             }
         },

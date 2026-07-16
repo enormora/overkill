@@ -96,6 +96,44 @@ registerTest('createTestPlan() reports constructed nodes that do not reach the r
     ]);
 });
 
+registerTest('createTestPlan() rejects reachable empty suites', function () {
+    const engine = createEngine();
+    const root = engine.createSuite({
+        children: [],
+        metadata: {},
+        name: 'root'
+    });
+
+    assert.throws(
+        function createPlanWithEmptySuite() {
+            engine.createTestPlan(root);
+        },
+        { message: 'Suite must contain at least one child: root.' }
+    );
+});
+
+registerTest('createTestPlan() rejects reachable empty tables', function () {
+    const engine = createEngine();
+    const root = engine.createSuite({
+        children: [
+            engine.createTable({
+                cases: [],
+                metadata: {},
+                name: 'rows'
+            })
+        ],
+        metadata: {},
+        name: 'root'
+    });
+
+    assert.throws(
+        function createPlanWithEmptyTable() {
+            engine.createTestPlan(root);
+        },
+        { message: 'Table must contain at least one case: root > rows.' }
+    );
+});
+
 registerTest('createTestPlan() rejects duplicate full case identities', function () {
     const engine = createEngine();
     const root = engine.createSuite({

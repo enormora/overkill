@@ -7,7 +7,7 @@ type RecordedReportEntry = {
     readonly type: 'event' | 'finish' | 'result';
 };
 
-type InMemoryRealTimeReporter = {
+export type InMemoryRealTimeReporter = {
     readonly getRecordedEntries: () => readonly RecordedReportEntry[];
 } & RealTimeReporter;
 

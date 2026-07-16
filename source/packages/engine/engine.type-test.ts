@@ -2,10 +2,18 @@ import { describe, expect, test } from 'tstyche';
 import type {
     CaseId,
     FailedCheck,
+    FinalResultReporter,
+    NonEmptyReadonlyArray,
     PerTestResult,
+    RealTimeReporter,
     ReporterEvent,
+    RunFacts,
+    RunResult,
     RunnerError,
     RunSummary,
+    SinkDeclaration,
+    TestPlan,
+    TestPlanCase,
     TestOutcome
 } from './engine.entry-point.ts';
 
@@ -35,6 +43,9 @@ type CaseIdFixture = {
     readonly params: null;
     readonly suite: readonly ['suite'];
 };
+type TestEndReporterEvent = Extract<ReporterEvent, { readonly kind: 'test-end'; }>;
+type TestStartReporterEvent = Extract<ReporterEvent, { readonly kind: 'test-start'; }>;
+type SuiteStartReporterEvent = Extract<ReporterEvent, { readonly kind: 'suite-start'; }>;
 
 describe('TestOutcome', function () {
     test('accepts public outcome shapes', function () {
@@ -87,7 +98,7 @@ describe('TestOutcome', function () {
 describe('run result verdicts', function () {
     test('per-test and reporter verdicts accept only outcome kinds', function () {
         expect<PerTestResult['verdict']>().type.toBe<OutcomeKind>();
-        expect<ReporterEvent['verdict']>().type.toBe<OutcomeKind | null>();
+        expect<TestEndReporterEvent['verdict']>().type.toBe<OutcomeKind>();
     });
 });
 
@@ -95,7 +106,8 @@ describe('CaseId', function () {
     test('accepts structured public identity shapes', function () {
         expect<CaseId>().type.toBeAssignableFrom<CaseIdFixture>();
         expect<PerTestResult['id']>().type.toBe<CaseId>();
-        expect<ReporterEvent['case']>().type.toBe<CaseId | null>();
+        expect<TestStartReporterEvent['case']>().type.toBe<CaseId>();
+        expect<SuiteStartReporterEvent['suitePath']>().type.toBe<readonly string[]>();
         expect<RunnerError['attributedTo']>().type.toBe<CaseId | null>();
     });
 
@@ -123,5 +135,22 @@ describe('RunSummary', function () {
 describe('RunnerError', function () {
     test('subtype is the documented union', function () {
         expect<RunnerError['subtype']>().type.toBe<ExpectedRunnerErrorSubtype>();
+    });
+});
+
+describe('Reporter contract', function () {
+    test('uses explicit run facts and nullable finish callbacks', function () {
+        expect<RunFacts>().type.toBe<Readonly<Record<string, unknown>>>();
+        expect<RealTimeReporter['onFinish']>().type.toBe<((result: RunResult) => Promise<void> | void) | null>();
+        expect<FinalResultReporter['kind']>().type.toBe<'final-result'>();
+    });
+
+    test('exposes sink declarations for every supported sink kind', function () {
+        expect<SinkDeclaration['kind']>().type.toBe<'directory' | 'file' | 'memory' | 'stderr' | 'stdout' | 'stream'>();
+    });
+
+    test('exposes non-empty planned case arrays', function () {
+        expect<TestPlan['cases']>().type.toBe<NonEmptyReadonlyArray<TestPlanCase>>();
+        expect<TestPlan['discoveredCases']>().type.toBe<NonEmptyReadonlyArray<TestPlanCase>>();
     });
 });
