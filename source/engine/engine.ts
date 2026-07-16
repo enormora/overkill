@@ -1,6 +1,7 @@
 import { execute } from './execution.ts';
 import { formatCaseId } from './identity.ts';
 import {
+    createTestNodeOwner,
     createTestNodeFactory,
     type Suite,
     type SuiteOptions,
@@ -22,7 +23,7 @@ export type Engine = {
 };
 
 export function createEngine(): Engine {
-    const owner = {};
+    const owner = createTestNodeOwner();
     const constructedNodes = new Set<TestNode>();
     const nodeFactory = createTestNodeFactory({
         owner,
@@ -40,23 +41,3 @@ export function createEngine(): Engine {
         formatCaseId
     };
 }
-
-const defaultEngine = createEngine();
-
-export function createSuite(options: SuiteOptions): ReturnType<Engine['createSuite']> {
-    return defaultEngine.createSuite(options);
-}
-
-export function createTable(options: TableOptions): ReturnType<Engine['createTable']> {
-    return defaultEngine.createTable(options);
-}
-
-export function createTestCase(options: TestCaseOptions): ReturnType<Engine['createTestCase']> {
-    return defaultEngine.createTestCase(options);
-}
-
-export function createTestPlan(root: TestNode): ReturnType<Engine['createTestPlan']> {
-    return defaultEngine.createTestPlan(root);
-}
-
-export { execute, formatCaseId };

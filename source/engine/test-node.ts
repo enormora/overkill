@@ -1,5 +1,6 @@
 const testNodeBrand: unique symbol = Symbol('OverkillTestNode');
 const testNodeOwnerBrand: unique symbol = Symbol('OverkillTestNodeOwner');
+const testNodeOwnerIdentity: unique symbol = Symbol('OverkillTestNodeOwnerIdentity');
 const testCompletionBrand: unique symbol = Symbol('OverkillTestCompletion');
 
 export type Metadata = Readonly<Record<string, unknown>>;
@@ -73,7 +74,9 @@ export type Table = {
 
 export type TestNode = Suite | Table | TestCase;
 
-export type TestNodeOwner = object;
+export type TestNodeOwner = {
+    readonly [testNodeOwnerIdentity]: true;
+};
 
 export type TestNodeFactory = {
     readonly createSuite: (options: SuiteOptions) => Suite;
@@ -113,6 +116,10 @@ export type TableOptions = {
 
 export function createTestCompletion(): TestCompletion {
     return { [testCompletionBrand]: true };
+}
+
+export function createTestNodeOwner(): TestNodeOwner {
+    return { [testNodeOwnerIdentity]: true };
 }
 
 function ensureName(name: string): void {

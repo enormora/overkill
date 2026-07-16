@@ -29,68 +29,114 @@ export type TestPlan = {
 
 export type TestPlanFactory = (root: TestNode) => TestPlan;
 
+type CollectedTestCases = {
+    readonly cases: readonly TestPlanCase[];
+    readonly reachedNodes: readonly TestNode[];
+};
+
 function collectTestCase(
     testCase: TestCase,
-    reachedNodes: Set<TestNode>,
     suitePath: readonly string[],
     metadata: Metadata
-): readonly TestPlanCase[] {
-    reachedNodes.add(testCase);
+): CollectedTestCases {
     const resolvedMetadata = mergeMetadata(metadata, testCase.metadata);
 
-    return [
-        {
-            body: testCase.body,
-            id: createCaseId(suitePath, testCase.name, null),
-            metadata: resolvedMetadata,
-            suitePath
-        }
-    ];
+    return {
+        cases: [
+            {
+                body: testCase.body,
+                id: createCaseId(suitePath, testCase.name, null),
+                metadata: resolvedMetadata,
+                suitePath
+            }
+        ],
+        reachedNodes: [ testCase ]
+    };
 }
 
 function collectTable(
     table: Table,
-    reachedNodes: Set<TestNode>,
     suitePath: readonly string[],
     metadata: Metadata
-): readonly TestPlanCase[] {
-    reachedNodes.add(table);
+): CollectedTestCases {
     const tablePath = [ ...suitePath, table.name ];
     const tableMetadata = mergeMetadata(metadata, table.metadata);
 
-    return table.cases.map(function collectTableCase(tableCase): TestPlanCase {
-        const resolvedMetadata = mergeMetadata(tableMetadata, tableCase.metadata);
+    return {
+        cases: table.cases.map(function collectTableCase(tableCase): TestPlanCase {
+            const resolvedMetadata = mergeMetadata(tableMetadata, tableCase.metadata);
 
-        return {
-            body: tableCase.body,
-            id: createCaseId(tablePath, tableCase.name, null),
-            metadata: resolvedMetadata,
-            suitePath: tablePath
-        };
-    });
+            return {
+                body: tableCase.body,
+                id: createCaseId(tablePath, tableCase.name, null),
+                metadata: resolvedMetadata,
+                suitePath: tablePath
+            };
+        }),
+        reachedNodes: [ table ]
+    };
+}
+
+function mergeCollectedTestCases(collections: readonly CollectedTestCases[]): CollectedTestCases {
+    return {
+        cases: collections.flatMap(function collectCases(collection) {
+            return collection.cases;
+        }),
+        reachedNodes: collections.flatMap(function collectReachedNodes(collection) {
+            return collection.reachedNodes;
+        })
+    };
 }
 
 function collectNode(
     node: TestNode,
-    reachedNodes: Set<TestNode>,
     suitePath: readonly string[],
     metadata: Metadata
-): readonly TestPlanCase[] {
+): CollectedTestCases {
     if (node.kind === 'test') {
-        return collectTestCase(node, reachedNodes, suitePath, metadata);
+        return collectTestCase(node, suitePath, metadata);
     }
 
     if (node.kind === 'table') {
-        return collectTable(node, reachedNodes, suitePath, metadata);
+        return collectTable(node, suitePath, metadata);
     }
 
-    reachedNodes.add(node);
     const childPath = [ ...suitePath, node.name ];
     const childMetadata = mergeMetadata(metadata, node.metadata);
+    const children = mergeCollectedTestCases(node.children.map(function collectChild(child) {
+        return collectNode(child, childPath, childMetadata);
+    }));
 
-    return node.children.flatMap(function collectChild(child) {
-        return collectNode(child, reachedNodes, childPath, childMetadata);
-    });
+    return {
+        cases: children.cases,
+        reachedNodes: [ node, ...children.reachedNodes ]
+    };
+}
+
+function toReachedNodeSet(reachedNodes: readonly TestNode[]): ReadonlySet<TestNode> {
+    return new Set(reachedNodes);
+}
+
+function createOrphanedNode(node: TestNode): OrphanedNode {
+    return {
+        file: null,
+        kind: node.kind,
+        name: node.name
+    };
+}
+
+function collectOrphans(
+    constructedNodes: ReadonlySet<TestNode>,
+    reachedNodes: readonly TestNode[]
+): readonly OrphanedNode[] {
+    const reachedNodeSet = toReachedNodeSet(reachedNodes);
+
+    return Array
+        .from(constructedNodes)
+        .filter(function isOrphan(node) {
+            return !reachedNodeSet.has(node);
+        })
+        .map(createOrphanedNode);
 }
 
 function assertUniqueCaseIds(cases: readonly TestPlanCase[]): void {
@@ -107,26 +153,6 @@ function assertUniqueCaseIds(cases: readonly TestPlanCase[]): void {
     }
 }
 
-function createOrphanedNode(node: TestNode): OrphanedNode {
-    return {
-        file: null,
-        kind: node.kind,
-        name: node.name
-    };
-}
-
-function collectOrphans(constructedNodes: ReadonlySet<TestNode>, reachedNodes: ReadonlySet<TestNode>): readonly OrphanedNode[] {
-    const orphans: OrphanedNode[] = [];
-
-    for (const node of constructedNodes) {
-        if (!reachedNodes.has(node)) {
-            orphans.push(createOrphanedNode(node));
-        }
-    }
-
-    return orphans;
-}
-
 export function createTestPlanFactory(owner: TestNodeOwner, constructedNodes: ReadonlySet<TestNode>): TestPlanFactory {
     return function createTestPlan(root: TestNode): TestPlan {
         ensureOwnedTestNode(
@@ -136,8 +162,8 @@ export function createTestPlanFactory(owner: TestNodeOwner, constructedNodes: Re
             'Test plan root must be created by the same engine instance.'
         );
 
-        const reachedNodes = new Set<TestNode>();
-        const discoveredCases = collectNode(root, reachedNodes, [], {});
+        const collection = collectNode(root, [], {});
+        const { cases: discoveredCases, reachedNodes } = collection;
         assertUniqueCaseIds(discoveredCases);
 
         return {

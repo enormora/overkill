@@ -2,7 +2,7 @@ import kleur from 'kleur';
 import figures from 'figures';
 import { formatCaseId, type CaseId } from '../engine/identity.ts';
 import type { RealTimeReporter } from '../engine/reporter.ts';
-import type { TestOutcome } from '../engine/run-result.ts';
+import type { OrphanedNode, RunResult, TestOutcome } from '../engine/run-result.ts';
 
 const successSymbol = kleur.green(figures.tick);
 const errorSymbol = kleur.red(figures.cross);
@@ -26,6 +26,32 @@ function formatTestResult(id: CaseId, outcome: TestOutcome): string {
     return `${infoSymbol} ${formattedId}`;
 }
 
+function formatOrphan(orphan: OrphanedNode): string {
+    return `${orphan.kind}: ${orphan.name} (${orphan.file ?? '<unknown>'})`;
+}
+
+function logSummary(stdoutConsole: LineReporterDependencies['stdoutConsole'], result: RunResult): void {
+    const { summary } = result;
+    stdoutConsole.log(infoSymbol, `Discovered: ${summary.discovered}`);
+    stdoutConsole.log(infoSymbol, `Planned: ${summary.planned}`);
+    stdoutConsole.log(infoSymbol, `Executed: ${result.perTest.length}`);
+    stdoutConsole.log(successSymbol, `Passed: ${summary.passed}`);
+    stdoutConsole.log(errorSymbol, `Failed: ${summary.failed}`);
+    stdoutConsole.log(infoSymbol, `Skipped: ${summary.skipped}`);
+    stdoutConsole.log(infoSymbol, `Inconclusive: ${summary.inconclusive}`);
+}
+
+function logOrphans(stdoutConsole: LineReporterDependencies['stdoutConsole'], orphans: readonly OrphanedNode[]): void {
+    if (orphans.length === 0) {
+        return;
+    }
+
+    stdoutConsole.log(infoSymbol, `Orphans: ${orphans.length}`);
+    for (const orphan of orphans) {
+        stdoutConsole.log(infoSymbol, formatOrphan(orphan));
+    }
+}
+
 export function createLineReporter(dependencies: LineReporterDependencies): RealTimeReporter {
     const { stdoutConsole } = dependencies;
 
@@ -45,22 +71,8 @@ export function createLineReporter(dependencies: LineReporterDependencies): Real
         },
 
         async onFinish(finalResult) {
-            const { summary } = finalResult;
-            stdoutConsole.log(infoSymbol, `Discovered: ${summary.discovered}`);
-            stdoutConsole.log(infoSymbol, `Planned: ${summary.planned}`);
-            stdoutConsole.log(infoSymbol, `Executed: ${finalResult.perTest.length}`);
-            stdoutConsole.log(successSymbol, `Passed: ${summary.passed}`);
-            stdoutConsole.log(errorSymbol, `Failed: ${summary.failed}`);
-            stdoutConsole.log(infoSymbol, `Skipped: ${summary.skipped}`);
-            stdoutConsole.log(infoSymbol, `Inconclusive: ${summary.inconclusive}`);
-
-            if (finalResult.orphans.length > 0) {
-                stdoutConsole.log(infoSymbol, `Orphans: ${finalResult.orphans.length}`);
-                for (const orphan of finalResult.orphans) {
-                    const origin = orphan.file === null ? '<unknown>' : orphan.file;
-                    stdoutConsole.log(infoSymbol, `${orphan.kind}: ${orphan.name} (${origin})`);
-                }
-            }
+            logSummary(stdoutConsole, finalResult);
+            logOrphans(stdoutConsole, finalResult.orphans);
         }
     };
 }

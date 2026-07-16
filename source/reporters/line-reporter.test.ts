@@ -28,6 +28,17 @@ const passingCaseId: CaseId = { file: null, name: 'passes', params: null, suite:
 const skippedCaseId: CaseId = { file: null, name: 'skips', params: null, suite: [ 'root' ] };
 const inconclusiveCaseId: CaseId = { file: null, name: 'inconclusive', params: null, suite: [ 'root' ] };
 
+function assertSummaryLog(log: SinonSpy): void {
+    assert.strictEqual(log.callCount, 7);
+    assert.deepStrictEqual(log.firstCall.args, [ infoSymbol, 'Discovered: 3' ]);
+    assert.deepStrictEqual(log.secondCall.args, [ infoSymbol, 'Planned: 3' ]);
+    assert.deepStrictEqual(log.thirdCall.args, [ infoSymbol, 'Executed: 0' ]);
+    assert.deepStrictEqual(log.getCall(3).args, [ successSymbol, 'Passed: 2' ]);
+    assert.deepStrictEqual(log.getCall(4).args, [ errorSymbol, 'Failed: 1' ]);
+    assert.deepStrictEqual(log.getCall(5).args, [ infoSymbol, 'Skipped: 0' ]);
+    assert.deepStrictEqual(log.getCall(6).args, [ infoSymbol, 'Inconclusive: 0' ]);
+}
+
 registerTest('line reporter reports the start event', async function () {
     const log = sinon.fake();
     const reporter = lineReporterFactory({ log });
@@ -139,14 +150,7 @@ registerTest('line reporter prints the run count summary once the run finishes',
 
     await reporter.onFinish(runResult);
 
-    assert.strictEqual(log.callCount, 7);
-    assert.deepStrictEqual(log.firstCall.args, [ infoSymbol, 'Discovered: 3' ]);
-    assert.deepStrictEqual(log.secondCall.args, [ infoSymbol, 'Planned: 3' ]);
-    assert.deepStrictEqual(log.thirdCall.args, [ infoSymbol, 'Executed: 0' ]);
-    assert.deepStrictEqual(log.getCall(3).args, [ successSymbol, 'Passed: 2' ]);
-    assert.deepStrictEqual(log.getCall(4).args, [ errorSymbol, 'Failed: 1' ]);
-    assert.deepStrictEqual(log.getCall(5).args, [ infoSymbol, 'Skipped: 0' ]);
-    assert.deepStrictEqual(log.getCall(6).args, [ infoSymbol, 'Inconclusive: 0' ]);
+    assertSummaryLog(log);
 });
 
 registerTest('line reporter prints orphan details once the run finishes', async function () {

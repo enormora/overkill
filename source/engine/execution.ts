@@ -250,24 +250,41 @@ function suiteKey(suitePath: readonly string[]): string {
     return suitePath.join(' > ');
 }
 
+function emptySuiteRunCounts(): RunResult['bySuite'][string] {
+    return { discovered: 0, executed: 0, planned: 0 };
+}
+
+function incrementSuiteRunCounts(
+    counts: RunResult['bySuite'][string],
+    field: 'discovered' | 'executed' | 'planned'
+): RunResult['bySuite'][string] {
+    return {
+        discovered: counts.discovered + (field === 'discovered' ? 1 : 0),
+        executed: counts.executed + (field === 'executed' ? 1 : 0),
+        planned: counts.planned + (field === 'planned' ? 1 : 0)
+    };
+}
+
 function countSuitePath(
-    counts: Record<string, { readonly discovered: number; readonly executed: number; readonly planned: number; }>,
+    counts: RunResult['bySuite'],
     suitePath: readonly string[],
     field: 'discovered' | 'executed' | 'planned'
-): void {
+): RunResult['bySuite'] {
+    let updatedCounts = counts;
+
     for (let pathLength = 1; pathLength <= suitePath.length; pathLength += 1) {
         const key = suiteKey(suitePath.slice(0, pathLength));
-        const current = counts[key] ?? { discovered: 0, executed: 0, planned: 0 };
-        counts[key] = {
-            discovered: current.discovered + (field === 'discovered' ? 1 : 0),
-            executed: current.executed + (field === 'executed' ? 1 : 0),
-            planned: current.planned + (field === 'planned' ? 1 : 0)
+        updatedCounts = {
+            ...updatedCounts,
+            [key]: incrementSuiteRunCounts(updatedCounts[key] ?? emptySuiteRunCounts(), field)
         };
     }
+
+    return updatedCounts;
 }
 
 function countSuites(testPlan: TestPlan, perTest: readonly PerTestResult[]): RunResult['bySuite'] {
-    const counts: Record<string, { readonly discovered: number; readonly executed: number; readonly planned: number; }> = {};
+    let counts: RunResult['bySuite'] = {};
     const executedIds = new Set(
         perTest.map(function toId(result) {
             return caseIdentityKey(result.id);
@@ -275,14 +292,14 @@ function countSuites(testPlan: TestPlan, perTest: readonly PerTestResult[]): Run
     );
 
     for (const testCase of testPlan.discoveredCases) {
-        countSuitePath(counts, testCase.suitePath, 'discovered');
+        counts = countSuitePath(counts, testCase.suitePath, 'discovered');
     }
 
     for (const testCase of testPlan.cases) {
-        countSuitePath(counts, testCase.suitePath, 'planned');
+        counts = countSuitePath(counts, testCase.suitePath, 'planned');
 
         if (executedIds.has(caseIdentityKey(testCase.id))) {
-            countSuitePath(counts, testCase.suitePath, 'executed');
+            counts = countSuitePath(counts, testCase.suitePath, 'executed');
         }
     }
 

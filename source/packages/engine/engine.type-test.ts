@@ -33,7 +33,7 @@ type CaseIdFixture = {
     readonly file: null;
     readonly name: 'case';
     readonly params: null;
-    readonly suite: readonly [ 'suite' ];
+    readonly suite: readonly ['suite'];
 };
 
 describe('TestOutcome', function () {
@@ -102,12 +102,12 @@ describe('CaseId', function () {
     test('requires explicit nullable identity fields', function () {
         expect<CaseId>().type.not.toBeAssignableFrom<{
             readonly name: 'case';
-            readonly suite: readonly [ 'suite' ];
+            readonly suite: readonly ['suite'];
         }>();
         expect<CaseId>().type.not.toBeAssignableFrom<{
             readonly file: null;
             readonly name: 'case';
-            readonly suite: readonly [ 'suite' ];
+            readonly suite: readonly ['suite'];
         }>();
     });
 });
