@@ -23,6 +23,7 @@ export function createTestPlan(root: TestNode): ReturnType<Engine['createTestPla
 
 export type { Engine } from '../../engine/engine.ts';
 export { execute } from '../../engine/execution.ts';
+export type { ExecuteOptions } from '../../engine/execution.ts';
 export { formatCaseId } from '../../engine/identity.ts';
 export type { CaseId, TestId } from '../../engine/identity.ts';
 export type {

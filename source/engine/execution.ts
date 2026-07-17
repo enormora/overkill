@@ -1,3 +1,4 @@
+import { createWallClock, type WallClock } from '@enormora/wall-clock';
 import { caseIdentityKey } from './identity.ts';
 import {
     type Reporter,
@@ -20,6 +21,7 @@ export type ExecuteOptions = {
     readonly reporters: readonly Reporter[];
     readonly runFacts: RunFacts;
     readonly startedAt: string;
+    readonly wallClock: WallClock;
 };
 
 const epoch = new Date(0);
@@ -27,7 +29,8 @@ const epoch = new Date(0);
 const defaultExecuteOptions: ExecuteOptions = {
     reporters: [],
     runFacts: {},
-    startedAt: epoch.toISOString()
+    startedAt: epoch.toISOString(),
+    wallClock: createWallClock()
 };
 
 const failedOkValues = new Set<unknown>([ false, null, undefined, 0, '' ]);
@@ -199,9 +202,14 @@ type ReportedCase = {
     readonly result: PerTestResult;
 };
 
-async function runTestCase(testCase: TestPlanCase): Promise<ExecutedCase> {
+type RunResultTiming = {
+    readonly startedAtMs: number;
+    readonly wallClock: WallClock;
+};
+
+async function runTestCase(testCase: TestPlanCase, wallClock: WallClock): Promise<ExecutedCase> {
     const recorder = createAssertionRecorder();
-    const startedAt = performance.now();
+    const startedAt = wallClock.currentTimestampInMilliseconds;
 
     await runCaseBody(testCase, recorder);
     recorder.validateAssertionCount();
@@ -215,21 +223,22 @@ async function runTestCase(testCase: TestPlanCase): Promise<ExecutedCase> {
             outcome,
             verdict
         },
-        wallTimeMs: performance.now() - startedAt
+        wallTimeMs: wallClock.currentTimestampInMilliseconds - startedAt
     };
 }
 
 async function executeCase(
     testCase: TestPlanCase,
     attempt: number,
-    reporters: readonly Reporter[]
+    reporters: readonly Reporter[],
+    wallClock: WallClock
 ): Promise<ReportedCase> {
     const startErrors = await reportEvent(reporters, {
         attempt,
         case: testCase.id,
         kind: 'test-start'
-    });
-    const executedCase = await runTestCase(testCase);
+    }, wallClock);
+    const executedCase = await runTestCase(testCase, wallClock);
     const endErrors = await reportEvent(reporters, {
         attempt,
         case: testCase.id,
@@ -237,7 +246,7 @@ async function executeCase(
         outcome: executedCase.result.outcome,
         verdict: executedCase.result.verdict,
         wallTimeMs: executedCase.wallTimeMs
-    });
+    }, wallClock);
 
     return {
         reporterErrors: [ ...startErrors, ...endErrors ],
@@ -347,7 +356,8 @@ function commonSuitePrefixLength(firstSuitePath: readonly string[], secondSuiteP
 async function reportSuiteTransition(
     reporters: readonly Reporter[],
     currentSuitePath: readonly string[],
-    nextSuitePath: readonly string[]
+    nextSuitePath: readonly string[],
+    wallClock: WallClock
 ): Promise<readonly RunnerError[]> {
     let reporterErrors: readonly RunnerError[] = [];
     const sharedPrefixLength = commonSuitePrefixLength(currentSuitePath, nextSuitePath);
@@ -358,7 +368,7 @@ async function reportSuiteTransition(
             ...await reportEvent(reporters, {
                 kind: 'suite-end',
                 suitePath: currentSuitePath.slice(0, pathLength)
-            })
+            }, wallClock)
         ];
     }
 
@@ -368,30 +378,37 @@ async function reportSuiteTransition(
             ...await reportEvent(reporters, {
                 kind: 'suite-start',
                 suitePath: nextSuitePath.slice(0, pathLength)
-            })
+            }, wallClock)
         ];
     }
 
     return reporterErrors;
 }
 
-async function executeTestPlanCases(testPlan: TestPlan, reporters: readonly Reporter[]): Promise<ExecutedTestPlan> {
+async function executeTestPlanCases(
+    testPlan: TestPlan,
+    reporters: readonly Reporter[],
+    wallClock: WallClock
+): Promise<ExecutedTestPlan> {
     let perTest: readonly PerTestResult[] = [];
     let reporterErrors: readonly RunnerError[] = [];
     let currentSuitePath: readonly string[] = [];
 
     for (const testCase of testPlan.cases) {
-        const suiteErrors = await reportSuiteTransition(reporters, currentSuitePath, testCase.suitePath);
+        const suiteErrors = await reportSuiteTransition(reporters, currentSuitePath, testCase.suitePath, wallClock);
         currentSuitePath = testCase.suitePath;
 
-        const testRun = await executeCase(testCase, 0, reporters);
+        const testRun = await executeCase(testCase, 0, reporters, wallClock);
         reporterErrors = [ ...reporterErrors, ...suiteErrors, ...testRun.reporterErrors ];
         perTest = [ ...perTest, testRun.result ];
     }
 
     return {
         perTest,
-        reporterErrors: [ ...reporterErrors, ...await reportSuiteTransition(reporters, currentSuitePath, []) ]
+        reporterErrors: [
+            ...reporterErrors,
+            ...await reportSuiteTransition(reporters, currentSuitePath, [], wallClock)
+        ]
     };
 }
 
@@ -399,7 +416,7 @@ function createRunResult(
     testPlan: TestPlan,
     perTest: readonly PerTestResult[],
     reporterErrors: readonly RunnerError[],
-    startedAtMs: number
+    timing: RunResultTiming
 ): RunResult {
     const result: RunResult = {
         artifacts: [],
@@ -408,7 +425,7 @@ function createRunResult(
         perTest,
         runnerErrors: reporterErrors,
         summary: countOutcomes(testPlan, perTest),
-        wallTimeMs: performance.now() - startedAtMs
+        wallTimeMs: timing.wallClock.currentTimestampInMilliseconds - timing.startedAtMs
     };
 
     return result;
@@ -417,22 +434,22 @@ function createRunResult(
 export async function execute(testPlan: TestPlan, options: ExecuteOptions = defaultExecuteOptions): Promise<RunResult> {
     validateReporterSinks(options.reporters);
 
-    const startedAtMs = performance.now();
-    const { reporters } = options;
+    const { reporters, wallClock } = options;
+    const startedAtMs = wallClock.currentTimestampInMilliseconds;
     const startErrors = await reportEvent(reporters, {
         facts: options.runFacts,
         kind: 'run-start',
         startedAt: options.startedAt
-    });
-    const executedTestPlan = await executeTestPlanCases(testPlan, reporters);
+    }, wallClock);
+    const executedTestPlan = await executeTestPlanCases(testPlan, reporters, wallClock);
     const reporterErrors = [ ...startErrors, ...executedTestPlan.reporterErrors ];
-    const result = createRunResult(testPlan, executedTestPlan.perTest, reporterErrors, startedAtMs);
+    const result = createRunResult(testPlan, executedTestPlan.perTest, reporterErrors, { startedAtMs, wallClock });
 
     await reportEvent(reporters, {
         kind: 'run-end',
         result
-    });
-    await reportResult(reporters, result);
+    }, wallClock);
+    await reportResult(reporters, result, wallClock);
 
     return result;
 }

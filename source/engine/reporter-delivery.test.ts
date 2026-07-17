@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createDeterministicWallClock } from '@enormora/wall-clock';
 import { createInMemoryRealTimeReporter, type InMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import { registerTest } from '../test-support/register-test.ts';
 import { createEngine, type Engine } from './engine.ts';
@@ -43,6 +44,22 @@ function firstRunnerError(result: RunResult): RunnerError {
     return reporterError;
 }
 
+type ReporterSignal = {
+    readonly notify: () => void;
+    readonly promise: Promise<void>;
+};
+
+function createReporterSignal(): ReporterSignal {
+    let notify: () => void = function notifyUnsetSignal(): void {
+        return undefined;
+    };
+    const promise = new Promise<void>(function resolveOnNotify(resolve) {
+        notify = resolve;
+    });
+
+    return { notify, promise };
+}
+
 registerTest('execute() records reporter callback failures and notifies other real-time reporters', async function () {
     const engine = createEngine();
     const observer = createInMemoryRealTimeReporter();
@@ -63,7 +80,8 @@ registerTest('execute() records reporter callback failures and notifies other re
     const result = await engine.execute(createPassingPlan(engine), {
         reporters: [ failingReporter, observer ],
         runFacts: {},
-        startedAt: '2026-07-15T00:00:00.000Z'
+        startedAt: '2026-07-15T00:00:00.000Z',
+        wallClock: createDeterministicWallClock()
     });
 
     const reporterError = firstRunnerError(result);
@@ -106,7 +124,8 @@ registerTest('execute() does not recurse when a reporter fails while handling ru
     const result = await engine.execute(createPassingPlan(engine), {
         reporters: [ failingReporter, runnerErrorFailingReporter, observer ],
         runFacts: {},
-        startedAt: '2026-07-15T00:00:00.000Z'
+        startedAt: '2026-07-15T00:00:00.000Z',
+        wallClock: createDeterministicWallClock()
     });
 
     assert.deepStrictEqual(
@@ -120,11 +139,14 @@ registerTest('execute() does not recurse when a reporter fails while handling ru
 
 registerTest('execute() isolates reporter callback timeouts', async function () {
     const engine = createEngine();
+    const testStartSignal = createReporterSignal();
+    const wallClock = createDeterministicWallClock();
     const hangingReporter: RealTimeReporter = {
         kind: 'real-time',
         name: 'slow',
         onEvent(event): Promise<void> | void {
             if (event.kind === 'test-start') {
+                testStartSignal.notify();
                 return Promise.race<never>([]);
             }
 
@@ -134,14 +156,18 @@ registerTest('execute() isolates reporter callback timeouts', async function () 
         sinks: []
     };
 
-    const result = await engine.execute(createPassingPlan(engine), {
+    const execution = engine.execute(createPassingPlan(engine), {
         reporters: [ hangingReporter, createInMemoryRealTimeReporter() ],
         runFacts: {},
-        startedAt: '2026-07-15T00:00:00.000Z'
+        startedAt: '2026-07-15T00:00:00.000Z',
+        wallClock
     });
+    await testStartSignal.promise;
+    await Promise.resolve();
+    wallClock.advanceByMilliseconds(100);
+    const reporterError = firstRunnerError(await execution);
 
-    assert.equal(result.runnerErrors.length, 1);
-    assert.match(result.runnerErrors[0]?.message ?? '', /slow: slow reporter callback timed out after 100 ms\./);
+    assert.match(reporterError.message, /slow: slow reporter callback timed out after 100 ms\./);
 });
 
 registerTest('execute() emits late reporter errors without mutating the returned result', async function () {
@@ -159,7 +185,8 @@ registerTest('execute() emits late reporter errors without mutating the returned
     const result = await engine.execute(createPassingPlan(engine), {
         reporters: [ observer, failingFinalReporter ],
         runFacts: {},
-        startedAt: '2026-07-15T00:00:00.000Z'
+        startedAt: '2026-07-15T00:00:00.000Z',
+        wallClock: createDeterministicWallClock()
     });
 
     assert.deepStrictEqual(result.runnerErrors, []);

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createDeterministicWallClock } from '@enormora/wall-clock';
 import {
     createInMemoryFinalResultReporter,
     createInMemoryRealTimeReporter,
@@ -12,14 +13,6 @@ function recordedEvents(reporter: InMemoryRealTimeReporter): readonly ReporterEv
     return reporter.getRecordedEntries().flatMap(function toEvent(entry) {
         return entry.event === null ? [] : [ entry.event ];
     });
-}
-
-function comparableReporterEvent(event: ReporterEvent): unknown {
-    if (event.kind === 'test-end') {
-        return { ...event, wallTimeMs: typeof event.wallTimeMs };
-    }
-
-    return event;
 }
 
 registerTest('execute() returns passing and failing outcomes with run counts', async function () {
@@ -282,11 +275,12 @@ registerTest('execute() delivers events and final results to reporters', async f
     const result = await engine.execute(testPlan, {
         reporters: [ realTimeReporter, finalResultReporter ],
         runFacts: { seed: 42 },
-        startedAt: '2026-07-15T00:00:00.000Z'
+        startedAt: '2026-07-15T00:00:00.000Z',
+        wallClock: createDeterministicWallClock()
     });
 
     assert.deepStrictEqual(
-        recordedEvents(realTimeReporter).map(comparableReporterEvent),
+        recordedEvents(realTimeReporter),
         [
             { facts: { seed: 42 }, kind: 'run-start', startedAt: '2026-07-15T00:00:00.000Z' },
             { kind: 'suite-start', suitePath: [ 'root' ] },
@@ -297,7 +291,7 @@ registerTest('execute() delivers events and final results to reporters', async f
                 kind: 'test-end',
                 outcome: { kind: 'pass' },
                 verdict: 'pass',
-                wallTimeMs: 'number'
+                wallTimeMs: 0
             },
             { kind: 'suite-end', suitePath: [ 'root' ] },
             { kind: 'run-end', result }
@@ -345,7 +339,8 @@ registerTest('execute() emits suite events for table path segments', async funct
     await engine.execute(testPlan, {
         reporters: [ realTimeReporter ],
         runFacts: {},
-        startedAt: '2026-07-15T00:00:00.000Z'
+        startedAt: '2026-07-15T00:00:00.000Z',
+        wallClock: createDeterministicWallClock()
     });
 
     const suiteEvents = realTimeReporter.getRecordedEntries().flatMap(function toSuiteEvent(entry) {
@@ -402,7 +397,8 @@ registerTest('execute() rejects reporter sink conflicts before starting the run'
                     conflictingReporter
                 ],
                 runFacts: {},
-                startedAt: '2026-07-15T00:00:00.000Z'
+                startedAt: '2026-07-15T00:00:00.000Z',
+                wallClock: createDeterministicWallClock()
             });
         },
         { message: 'Reporter sink conflict: stdout is claimed exclusively.' }

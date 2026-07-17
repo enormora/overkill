@@ -12,7 +12,7 @@ Top-level API:
 - `createEngine()`
 - `formatCaseId(caseId)`
 - `validateReporterSinks(reporters)`
-- `CaseId`, `TestId`, `TestPlan`, `NonEmptyReadonlyArray`
+- `CaseId`, `TestId`, `TestPlan`, `ExecuteOptions`, `NonEmptyReadonlyArray`
 - `Reporter`, `ReporterEvent`, `RealTimeReporter`, `FinalResultReporter`, `RunFacts`, `SinkDeclaration`
 - `RunResult`, `TestOutcome`, `PassOutcome`, `FailOutcome`, `SkipOutcome`, `InconclusiveOutcome`, `FailedCheck`, `RunnerError`
 

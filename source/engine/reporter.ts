@@ -1,4 +1,4 @@
-import { clearTimeout as cancelTimer, setTimeout as startTimer } from 'node:timers';
+import type { WallClock } from '@enormora/wall-clock';
 import type { CaseId } from './identity.ts';
 import type { RunResult, RunnerError, TestOutcome } from './run-result.ts';
 
@@ -210,16 +210,16 @@ function timeoutError(reporter: Reporter): Error {
     return new Error(`${reporter.name} reporter callback timed out after ${callbackTimeoutMs} ms.`);
 }
 
-function createReporterTimeout(reporter: Reporter): ReporterTimeout {
+function createReporterTimeout(reporter: Reporter, wallClock: WallClock): ReporterTimeout {
     let cancel: () => void = function cancelUnsetTimeout() {
         return undefined;
     };
     const promise = new Promise<never>(function rejectOnTimeout(_resolve, reject) {
-        const timeout = startTimer(function rejectTimedOutCallback() {
+        const timeout = wallClock.setTimeout(function rejectTimedOutCallback() {
             reject(timeoutError(reporter));
         }, callbackTimeoutMs);
         cancel = function cancelReporterTimeout() {
-            cancelTimer(timeout);
+            wallClock.clearTimeout(timeout);
         };
     });
 
@@ -232,9 +232,10 @@ async function runReporterCallback(callback: () => Promise<void> | void): Promis
 
 async function awaitReporterCallback(
     reporter: Reporter,
+    wallClock: WallClock,
     callback: () => Promise<void> | void
 ): Promise<RunnerError | null> {
-    const reporterTimeout = createReporterTimeout(reporter);
+    const reporterTimeout = createReporterTimeout(reporter, wallClock);
     try {
         await Promise.race([ runReporterCallback(callback), reporterTimeout.promise ]);
 
@@ -248,9 +249,10 @@ async function awaitReporterCallback(
 
 async function reportEventToReporter(
     reporter: RealTimeReporter,
-    event: ReporterEvent
+    event: ReporterEvent,
+    wallClock: WallClock
 ): Promise<ReporterCallbackFailure | null> {
-    const error = await awaitReporterCallback(reporter, function sendReporterEvent(): Promise<void> | void {
+    const error = await awaitReporterCallback(reporter, wallClock, function sendReporterEvent(): Promise<void> | void {
         return reporter.onEvent(event);
     });
 
@@ -264,7 +266,8 @@ async function reportEventToReporter(
 async function reportRunnerErrorToOtherReporters(
     reporters: readonly Reporter[],
     failedReporter: Reporter,
-    error: RunnerError
+    error: RunnerError,
+    wallClock: WallClock
 ): Promise<readonly RunnerError[]> {
     const event: ReporterEvent = { error, kind: 'runner-error' };
     const failures = await Promise.all(
@@ -273,7 +276,7 @@ async function reportRunnerErrorToOtherReporters(
                 return null;
             }
 
-            return reportEventToReporter(reporter, event);
+            return reportEventToReporter(reporter, event, wallClock);
         })
     );
 
@@ -284,11 +287,12 @@ async function reportRunnerErrorToOtherReporters(
 
 async function collectReporterErrorsWithNotifications(
     reporters: readonly Reporter[],
-    reporterErrors: readonly ReporterCallbackFailure[]
+    reporterErrors: readonly ReporterCallbackFailure[],
+    wallClock: WallClock
 ): Promise<readonly RunnerError[]> {
     const notificationErrors = await Promise.all(
         reporterErrors.map(async function reportError(failure) {
-            return reportRunnerErrorToOtherReporters(reporters, failure.reporter, failure.error);
+            return reportRunnerErrorToOtherReporters(reporters, failure.reporter, failure.error, wallClock);
         })
     );
 
@@ -302,7 +306,8 @@ async function collectReporterErrorsWithNotifications(
 
 export async function reportEvent(
     reporters: readonly Reporter[],
-    event: ReporterEvent
+    event: ReporterEvent,
+    wallClock: WallClock
 ): Promise<readonly RunnerError[]> {
     const failures = await Promise.all(
         reporters.map(async function reportRealTimeEvent(reporter): Promise<ReporterCallbackFailure | null> {
@@ -310,7 +315,7 @@ export async function reportEvent(
                 return null;
             }
 
-            return reportEventToReporter(reporter, event);
+            return reportEventToReporter(reporter, event, wallClock);
         })
     );
 
@@ -324,16 +329,21 @@ export async function reportEvent(
         });
     }
 
-    return collectReporterErrorsWithNotifications(reporters, reporterErrors);
+    return collectReporterErrorsWithNotifications(reporters, reporterErrors, wallClock);
 }
 
-export async function reportResult(reporters: readonly Reporter[], result: RunResult): Promise<readonly RunnerError[]> {
+export async function reportResult(
+    reporters: readonly Reporter[],
+    result: RunResult,
+    wallClock: WallClock
+): Promise<readonly RunnerError[]> {
     const failures = await Promise.all(reporters.map(async function reportFinalResult(
         reporter
     ): Promise<ReporterCallbackFailure | null> {
         if (reporter.kind === 'final-result') {
             const error = await awaitReporterCallback(
                 reporter,
+                wallClock,
                 function reportResultToFinalReporter(): Promise<void> | void {
                     return reporter.onResult(result);
                 }
@@ -349,6 +359,7 @@ export async function reportResult(reporters: readonly Reporter[], result: RunRe
         const { onFinish } = reporter;
         const error = await awaitReporterCallback(
             reporter,
+            wallClock,
             function reportResultToRealTimeReporter(): Promise<void> | void {
                 return onFinish(result);
             }
@@ -361,5 +372,5 @@ export async function reportResult(reporters: readonly Reporter[], result: RunRe
         return failure === null ? [] : [ failure ];
     });
 
-    return collectReporterErrorsWithNotifications(reporters, reporterErrors);
+    return collectReporterErrorsWithNotifications(reporters, reporterErrors, wallClock);
 }
