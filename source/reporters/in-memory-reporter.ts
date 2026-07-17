@@ -11,8 +11,30 @@ export type InMemoryRealTimeReporter = {
     readonly getRecordedEntries: () => readonly RecordedReportEntry[];
 } & RealTimeReporter;
 
+export type InMemoryFinalResultReporter = {
+    readonly getRecordedEntries: () => readonly RecordedReportEntry[];
+} & FinalResultReporter;
+
+export type InMemoryReporterOptions = {
+    readonly mode: 'final-result' | 'real-time';
+};
+
+export type InMemoryRealTimeReporterOptions = {
+    readonly mode: 'real-time';
+};
+
+export type InMemoryFinalResultReporterOptions = {
+    readonly mode: 'final-result';
+};
+
+export type InMemoryReporter = InMemoryFinalResultReporter | InMemoryRealTimeReporter;
+
+function createRecordedEntries(): RecordedReportEntry[] {
+    return [];
+}
+
 export function createInMemoryRealTimeReporter(): InMemoryRealTimeReporter {
-    const recordedEntries: RecordedReportEntry[] = [];
+    const recordedEntries = createRecordedEntries();
 
     return {
         kind: 'real-time',
@@ -33,12 +55,8 @@ export function createInMemoryRealTimeReporter(): InMemoryRealTimeReporter {
     };
 }
 
-type InMemoryFinalResultReporter = {
-    readonly getRecordedEntries: () => readonly RecordedReportEntry[];
-} & FinalResultReporter;
-
 export function createInMemoryFinalResultReporter(): InMemoryFinalResultReporter {
-    const recordedEntries: RecordedReportEntry[] = [];
+    const recordedEntries = createRecordedEntries();
 
     return {
         kind: 'final-result',
@@ -53,4 +71,18 @@ export function createInMemoryFinalResultReporter(): InMemoryFinalResultReporter
             return recordedEntries;
         }
     };
+}
+
+export function createInMemoryReporter(
+    options: InMemoryRealTimeReporterOptions
+): InMemoryRealTimeReporter;
+export function createInMemoryReporter(
+    options: InMemoryFinalResultReporterOptions
+): InMemoryFinalResultReporter;
+export function createInMemoryReporter(options: InMemoryReporterOptions): InMemoryReporter {
+    if (options.mode === 'real-time') {
+        return createInMemoryRealTimeReporter();
+    }
+
+    return createInMemoryFinalResultReporter();
 }
