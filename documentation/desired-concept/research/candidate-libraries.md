@@ -71,12 +71,12 @@ Status labels used below:
 
 The current repository uses:
 
-- `kleur`
 - `figures`
+- `yoctocolors`
 
 Re-audit result:
 
-- `kleur` should no longer be treated as the preferred terminal-color choice
+- `yoctocolors` is the current terminal-color choice
 - `figures` is acceptable, but not special enough to anchor a long-term direction
 
 ## Assertions
