@@ -10,7 +10,8 @@ const packageMetadata = {
     homepage: rootPackageJson.homepage,
     keywords: rootPackageJson.keywords,
     license: rootPackageJson.license,
-    repository: rootPackageJson.repository
+    repository: rootPackageJson.repository,
+    engines: rootPackageJson.engines
 };
 
 export const config = {
