@@ -233,19 +233,17 @@ export function createReporterDispatcher(dependencies: ReporterDispatcherDepende
     const { wallClock } = dependencies;
 
     function createReporterTimeout(reporter: Reporter): ReporterTimeout {
-        let cancel: () => void = function cancelUnsetTimeout() {
-            return undefined;
-        };
-        const promise = new Promise<never>(function rejectOnTimeout(_resolve, reject) {
-            const timeout = wallClock.setTimeout(function rejectTimedOutCallback() {
-                reject(timeoutError(reporter));
-            }, callbackTimeoutMs);
-            cancel = function cancelReporterTimeout() {
-                wallClock.clearTimeout(timeout);
-            };
-        });
+        const { promise, reject } = Promise.withResolvers<never>();
+        const timeout = wallClock.setTimeout(function rejectTimedOutCallback() {
+            reject(timeoutError(reporter));
+        }, callbackTimeoutMs);
 
-        return { cancel, promise };
+        return {
+            cancel() {
+                wallClock.clearTimeout(timeout);
+            },
+            promise
+        };
     }
 
     async function awaitReporterCallback(
