@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { registerTest } from '../test-support/register-test.ts';
-import { createEngine } from './engine.ts';
+import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import { isTestNode } from './test-node.ts';
 
 registerTest('createTestCase() creates a branded test node', function () {

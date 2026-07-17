@@ -271,6 +271,8 @@ type RunRequest = {
     readonly configPath?: string;
 };
 
+type NonEmptyReadonlyArray<Item> = readonly [Item, ...(readonly Item[])];
+
 type TestPlanCase = {
     readonly id: CaseId;
     readonly suitePath: ReadonlyArray<string>;
@@ -280,8 +282,8 @@ type TestPlanCase = {
 
 type TestPlan = {
     readonly defined: number;
-    readonly discoveredCases: ReadonlyArray<TestPlanCase>;
-    readonly cases: ReadonlyArray<TestPlanCase>;
+    readonly discoveredCases: NonEmptyReadonlyArray<TestPlanCase>;
+    readonly cases: NonEmptyReadonlyArray<TestPlanCase>;
     readonly orphans: ReadonlyArray<{ file: string | null; name: string; kind: 'test' | 'suite' | 'table'; }>;
 };
 
@@ -336,7 +338,7 @@ type RunResult = {
         skipped: number;
         inconclusive: number;
     };
-    readonly perTest: ReadonlyArray<{ id: CaseId; outcome: TestOutcome; verdict: string; }>;
+    readonly perTest: ReadonlyArray<{ id: CaseId; outcome: TestOutcome; verdict: TestOutcome['kind']; }>;
     readonly bySuite: Record<string, { discovered: number; planned: number; executed: number; }>;
     readonly orphans: ReadonlyArray<{ file: string | null; name: string; kind: 'test' | 'suite' | 'table'; }>;
     readonly runnerErrors: ReadonlyArray<RunnerError>;

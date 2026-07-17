@@ -20,10 +20,12 @@ export type TestPlanCase = {
     readonly body: TestPlanCaseBody;
 };
 
+export type NonEmptyReadonlyArray<Item> = readonly [Item, ...(readonly Item[])];
+
 export type TestPlan = {
     readonly defined: number;
-    readonly cases: readonly TestPlanCase[];
-    readonly discoveredCases: readonly TestPlanCase[];
+    readonly cases: NonEmptyReadonlyArray<TestPlanCase>;
+    readonly discoveredCases: NonEmptyReadonlyArray<TestPlanCase>;
     readonly orphans: readonly OrphanedNode[];
 };
 
@@ -59,6 +61,10 @@ function collectTable(
     suitePath: readonly string[],
     metadata: Metadata
 ): CollectedTestCases {
+    if (table.cases.length === 0) {
+        throw new TypeError(`Table must contain at least one case: ${[ ...suitePath, table.name ].join(' > ')}.`);
+    }
+
     const tablePath = [ ...suitePath, table.name ];
     const tableMetadata = mergeMetadata(metadata, table.metadata);
 
@@ -99,6 +105,10 @@ function collectNode(
 
     if (node.kind === 'table') {
         return collectTable(node, suitePath, metadata);
+    }
+
+    if (node.children.length === 0) {
+        throw new TypeError(`Suite must contain at least one child: ${[ ...suitePath, node.name ].join(' > ')}.`);
     }
 
     const childPath = [ ...suitePath, node.name ];
@@ -153,6 +163,12 @@ function assertUniqueCaseIds(cases: readonly TestPlanCase[]): void {
     }
 }
 
+function assertNonEmptyCases(cases: readonly TestPlanCase[]): asserts cases is NonEmptyReadonlyArray<TestPlanCase> {
+    if (cases.length === 0) {
+        throw new TypeError('Test plan must contain at least one executable test case.');
+    }
+}
+
 export function createTestPlanFactory(owner: TestNodeOwner, constructedNodes: ReadonlySet<TestNode>): TestPlanFactory {
     return function createTestPlan(root: TestNode): TestPlan {
         ensureOwnedTestNode(
@@ -164,6 +180,7 @@ export function createTestPlanFactory(owner: TestNodeOwner, constructedNodes: Re
 
         const collection = collectNode(root, [], {});
         const { cases: discoveredCases, reachedNodes } = collection;
+        assertNonEmptyCases(discoveredCases);
         assertUniqueCaseIds(discoveredCases);
 
         return {

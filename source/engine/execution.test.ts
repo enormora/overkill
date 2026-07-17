@@ -1,7 +1,18 @@
 import assert from 'node:assert/strict';
-import { createInMemoryFinalResultReporter, createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
+import {
+    createInMemoryFinalResultReporter,
+    createInMemoryRealTimeReporter,
+    type InMemoryRealTimeReporter
+} from '../reporters/in-memory-reporter.ts';
 import { registerTest } from '../test-support/register-test.ts';
-import { createEngine } from './engine.ts';
+import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
+import type { RealTimeReporter, ReporterEvent } from './reporter.ts';
+
+function recordedEvents(reporter: InMemoryRealTimeReporter): readonly ReporterEvent[] {
+    return reporter.getRecordedEntries().flatMap(function toEvent(entry) {
+        return entry.event === null ? [] : [ entry.event ];
+    });
+}
 
 registerTest('execute() returns passing and failing outcomes with run counts', async function () {
     const engine = createEngine();
@@ -267,13 +278,127 @@ registerTest('execute() delivers events and final results to reporters', async f
     });
 
     assert.deepStrictEqual(
-        realTimeReporter.getRecordedEntries().map(function toType(entry) {
-            return entry.type;
-        }),
-        [ 'event', 'event', 'event', 'event', 'finish' ]
+        recordedEvents(realTimeReporter),
+        [
+            { facts: { seed: 42 }, kind: 'run-start', startedAt: '2026-07-15T00:00:00.000Z' },
+            { kind: 'suite-start', suitePath: [ 'root' ] },
+            { attempt: 0, case: { file: null, name: 'passes', params: null, suite: [ 'root' ] }, kind: 'test-start' },
+            {
+                attempt: 0,
+                case: { file: null, name: 'passes', params: null, suite: [ 'root' ] },
+                kind: 'test-end',
+                outcome: { kind: 'pass' },
+                verdict: 'pass',
+                wallTimeMs: 0
+            },
+            { kind: 'suite-end', suitePath: [ 'root' ] },
+            { kind: 'run-end', result }
+        ]
     );
     assert.deepStrictEqual(
         finalResultReporter.getRecordedEntries(),
         [ { event: null, result, type: 'result' } ]
     );
+});
+
+registerTest('execute() emits suite events for table path segments', async function () {
+    const engine = createEngine();
+    const realTimeReporter = createInMemoryRealTimeReporter();
+    const testPlan = engine.createTestPlan(
+        engine.createSuite({
+            children: [
+                engine.createTestCase({
+                    body(testContext) {
+                        return testContext.assert.ok(true, 'passes');
+                    },
+                    metadata: {},
+                    name: 'first'
+                }),
+                engine.createTable({
+                    cases: [
+                        {
+                            body(testContext) {
+                                return testContext.assert.ok(true, 'row passes');
+                            },
+                            metadata: {},
+                            name: 'row 1',
+                            parameters: {}
+                        }
+                    ],
+                    metadata: {},
+                    name: 'rows'
+                })
+            ],
+            metadata: {},
+            name: 'root'
+        })
+    );
+
+    await engine.execute(testPlan, {
+        reporters: [ realTimeReporter ],
+        runFacts: {},
+        startedAt: '2026-07-15T00:00:00.000Z'
+    });
+
+    const suiteEvents = realTimeReporter.getRecordedEntries().flatMap(function toSuiteEvent(entry) {
+        if (entry.event?.kind === 'suite-start' || entry.event?.kind === 'suite-end') {
+            return [ entry.event ];
+        }
+
+        return [];
+    });
+
+    assert.deepStrictEqual(suiteEvents, [
+        { kind: 'suite-start', suitePath: [ 'root' ] },
+        { kind: 'suite-start', suitePath: [ 'root', 'rows' ] },
+        { kind: 'suite-end', suitePath: [ 'root', 'rows' ] },
+        { kind: 'suite-end', suitePath: [ 'root' ] }
+    ]);
+});
+
+registerTest('execute() rejects reporter sink conflicts before starting the run', async function () {
+    const engine = createEngine();
+    let bodyRan = false;
+    const realTimeReporter = createInMemoryRealTimeReporter();
+    const conflictingReporter: RealTimeReporter = {
+        kind: 'real-time',
+        name: 'conflicting',
+        onEvent() {
+            return undefined;
+        },
+        onFinish: null,
+        sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ]
+    };
+    const testPlan = engine.createTestPlan(
+        engine.createSuite({
+            children: [
+                engine.createTestCase({
+                    body(testContext) {
+                        bodyRan = true;
+                        return testContext.assert.ok(true, 'passes');
+                    },
+                    metadata: {},
+                    name: 'passes'
+                })
+            ],
+            metadata: {},
+            name: 'root'
+        })
+    );
+
+    await assert.rejects(
+        async function executeWithConflictingReporters() {
+            await engine.execute(testPlan, {
+                reporters: [
+                    { ...realTimeReporter, sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ] },
+                    conflictingReporter
+                ],
+                runFacts: {},
+                startedAt: '2026-07-15T00:00:00.000Z'
+            });
+        },
+        { message: 'Reporter sink conflict: stdout is claimed exclusively.' }
+    );
+    assert.equal(bodyRan, false);
+    assert.deepStrictEqual(realTimeReporter.getRecordedEntries(), []);
 });

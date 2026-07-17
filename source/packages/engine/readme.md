@@ -11,8 +11,9 @@ Top-level API:
 - `execute(testPlan)`
 - `createEngine()`
 - `formatCaseId(caseId)`
-- `CaseId`, `TestId`, `TestPlan`
-- `Reporter`, `ReporterEvent`, `RealTimeReporter`, `FinalResultReporter`
+- `validateReporterSinks(reporters)`
+- `CaseId`, `TestId`, `TestPlan`, `ExecuteOptions`, `NonEmptyReadonlyArray`
+- `Reporter`, `ReporterEvent`, `RealTimeReporter`, `FinalResultReporter`, `RunFacts`, `SinkDeclaration`
 - `RunResult`, `TestOutcome`, `PassOutcome`, `FailOutcome`, `SkipOutcome`, `InconclusiveOutcome`, `FailedCheck`, `RunnerError`
 
 The top-level constructors share one default engine instance. Use

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { registerTest } from '../test-support/register-test.ts';
-import { createEngine } from './engine.ts';
+import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 
 registerTest('createTestPlan() expands suites and tables into executable cases', function () {
     const engine = createEngine();
@@ -94,6 +94,44 @@ registerTest('createTestPlan() reports constructed nodes that do not reach the r
         { file: null, kind: 'test', name: 'unused test' },
         { file: null, kind: 'suite', name: 'unused suite' }
     ]);
+});
+
+registerTest('createTestPlan() rejects reachable empty suites', function () {
+    const engine = createEngine();
+    const root = engine.createSuite({
+        children: [],
+        metadata: {},
+        name: 'root'
+    });
+
+    assert.throws(
+        function createPlanWithEmptySuite() {
+            engine.createTestPlan(root);
+        },
+        { message: 'Suite must contain at least one child: root.' }
+    );
+});
+
+registerTest('createTestPlan() rejects reachable empty tables', function () {
+    const engine = createEngine();
+    const root = engine.createSuite({
+        children: [
+            engine.createTable({
+                cases: [],
+                metadata: {},
+                name: 'rows'
+            })
+        ],
+        metadata: {},
+        name: 'root'
+    });
+
+    assert.throws(
+        function createPlanWithEmptyTable() {
+            engine.createTestPlan(root);
+        },
+        { message: 'Table must contain at least one case: root > rows.' }
+    );
 });
 
 registerTest('createTestPlan() rejects duplicate full case identities', function () {

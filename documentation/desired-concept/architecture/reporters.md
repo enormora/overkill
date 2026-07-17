@@ -59,7 +59,7 @@ type RealTimeReporter = {
     readonly name: string;
     readonly sinks: ReadonlyArray<SinkDeclaration>;
     onEvent(event: ReporterEvent): void | Promise<void>;
-    onFinish?(result: RunResult): void | Promise<void>;
+    onFinish: ((result: RunResult) => void | Promise<void>) | null;
 };
 
 type FinalResultReporter = {
@@ -71,8 +71,8 @@ type FinalResultReporter = {
 ```
 
 `RealTimeReporter` receives events as the run produces them; suitable
-for terminal renderers, IDE integrations, MCP servers. The optional
-`onFinish` lets a real-time reporter emit a final summary block.
+for terminal renderers, IDE integrations, MCP servers. `onFinish` is
+`null` when the reporter does not emit a final summary block.
 
 `FinalResultReporter` is invoked once with the completed `RunResult`;
 suitable for HTML reports, JSON dumps, archive writers.
@@ -86,18 +86,29 @@ implementation.
 ```ts
 type ReporterEvent =
     | { kind: 'run-start'; facts: RunFacts; startedAt: string; }
-    | { kind: 'suite-start'; case: CaseId; }
+    | { kind: 'suite-start'; suitePath: ReadonlyArray<string>; }
     | { kind: 'test-start'; case: CaseId; attempt: number; }
     | { kind: 'test-progress'; case: CaseId; attempt: number; note: string; }
-    | { kind: 'test-end'; case: CaseId; attempt: number; outcome: TestOutcome; verdict: string; wallTimeMs: number; }
-    | { kind: 'suite-end'; case: CaseId; }
-    | { kind: 'runner-error'; error: RunnerError; attributedTo?: CaseId; }
+    | {
+        kind: 'test-end';
+        case: CaseId;
+        attempt: number;
+        outcome: TestOutcome;
+        verdict: TestOutcome['kind'];
+        wallTimeMs: number;
+    }
+    | { kind: 'suite-end'; suitePath: ReadonlyArray<string>; }
+    | { kind: 'runner-error'; error: RunnerError; }
     | { kind: 'run-end'; result: RunResult; };
 ```
 
 Each event carries enough structured data that a reporter never has
 to parse another reporter's output. Event identity is via `kind`;
 new event variants are an additive change.
+
+`suite-start` and `suite-end` identify the grouping by `suitePath`.
+Tables contribute path segments because they are named groupings in
+the resolved plan and in `RunResult.bySuite`.
 
 `test-progress` is intentionally low-detail — just an opaque `note`
 string. Reporters that want richer progress data attach the
@@ -128,11 +139,12 @@ Resolution rules at run start:
   are allowed; they interleave on a per-line atomicity guarantee
   (no half-line bleed)
 - `file` and `directory` sinks are always exclusive; two reporters
-  pointing at the same path is a configuration error
+  pointing at the same exact declared path is a configuration error
 - `memory` and `stream` sinks are always per-reporter-private
 
-The orchestration layer (`@overkill-dev/run`) computes the conflict
-graph from declared sinks before starting any worker.
+Direct engine execution validates this subset before emitting
+`run-start`. The orchestration layer (`@overkill-dev/run`) computes
+the conflict graph from declared sinks before starting any worker.
 
 ## Registration
 

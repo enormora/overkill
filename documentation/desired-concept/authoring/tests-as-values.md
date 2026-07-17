@@ -568,6 +568,9 @@ malformed. Mitigation: validate the suite structurally in development mode
 on load (cheap), and provide a typed builder so most errors are caught by
 TypeScript itself.
 
+Reachable suites and tables must expand to at least one executable case.
+Planning rejects empty reachable suites and tables before execution.
+
 ### "What about randomized test order?"
 
 The suite array has natural order. Randomized order is a runner concern,

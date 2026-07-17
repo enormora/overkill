@@ -44,15 +44,9 @@ registerTest('line reporter reports the start event', async function () {
     const reporter = lineReporterFactory({ log });
 
     await reporter.onEvent({
-        attempt: null,
-        case: null,
         facts: {},
         kind: 'run-start',
-        outcome: null,
-        result: null,
-        startedAt: '2026-07-15T00:00:00.000Z',
-        verdict: null,
-        wallTimeMs: null
+        startedAt: '2026-07-15T00:00:00.000Z'
     });
 
     assert.strictEqual(log.callCount, 1);
@@ -66,11 +60,8 @@ registerTest('line reporter prints a failed test-end event', async function () {
     await reporter.onEvent({
         attempt: 0,
         case: failingCaseId,
-        facts: null,
         kind: 'test-end',
         outcome: { checks: [], kind: 'fail' },
-        result: null,
-        startedAt: null,
         verdict: 'fail',
         wallTimeMs: 1
     });
@@ -86,11 +77,8 @@ registerTest('line reporter prints a passed test-end event', async function () {
     await reporter.onEvent({
         attempt: 0,
         case: passingCaseId,
-        facts: null,
         kind: 'test-end',
         outcome: { kind: 'pass' },
-        result: null,
-        startedAt: null,
         verdict: 'pass',
         wallTimeMs: 1
     });
@@ -106,22 +94,16 @@ registerTest('line reporter prints neutral test-end events for skip and inconclu
     await reporter.onEvent({
         attempt: 0,
         case: skippedCaseId,
-        facts: null,
         kind: 'test-end',
         outcome: { kind: 'skip', reason: 'not supported' },
-        result: null,
-        startedAt: null,
         verdict: 'skip',
         wallTimeMs: 1
     });
     await reporter.onEvent({
         attempt: 1,
         case: inconclusiveCaseId,
-        facts: null,
         kind: 'test-end',
         outcome: { kind: 'inconclusive', reason: 'missing signal' },
-        result: null,
-        startedAt: null,
         verdict: 'inconclusive',
         wallTimeMs: 1
     });
@@ -147,8 +129,13 @@ registerTest('line reporter prints the run count summary once the run finishes',
         },
         wallTimeMs: 10
     });
+    const { onFinish } = reporter;
 
-    await reporter.onFinish(runResult);
+    if (onFinish === null) {
+        throw new TypeError('Expected line reporter to expose onFinish.');
+    }
+
+    await onFinish(runResult);
 
     assertSummaryLog(log);
 });
@@ -170,8 +157,13 @@ registerTest('line reporter prints orphan details once the run finishes', async 
             planned: 0
         }
     });
+    const { onFinish } = reporter;
 
-    await reporter.onFinish(runResult);
+    if (onFinish === null) {
+        throw new TypeError('Expected line reporter to expose onFinish.');
+    }
+
+    await onFinish(runResult);
 
     assert.strictEqual(log.callCount, 9);
     assert.deepStrictEqual(log.getCall(7).args, [ infoSymbol, 'Orphans: 1' ]);

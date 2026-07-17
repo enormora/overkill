@@ -1,4 +1,4 @@
-import { execute } from './execution.ts';
+import type { Execute } from './execution.ts';
 import { formatCaseId } from './identity.ts';
 import {
     createTestNodeOwner,
@@ -18,12 +18,17 @@ export type Engine = {
     readonly createTable: (options: TableOptions) => Table;
     readonly createTestCase: (options: TestCaseOptions) => TestCase;
     readonly createTestPlan: TestPlanFactory;
-    readonly execute: typeof execute;
+    readonly execute: Execute;
     readonly formatCaseId: typeof formatCaseId;
 };
 
-export function createEngine(): Engine {
+export type EngineDependencies = {
+    readonly execute: Execute;
+};
+
+export function createEngine(dependencies: EngineDependencies): Engine {
     const owner = createTestNodeOwner();
+    const { execute } = dependencies;
     const constructedNodes = new Set<TestNode>();
     const nodeFactory = createTestNodeFactory({
         owner,
