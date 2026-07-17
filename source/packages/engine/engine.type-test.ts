@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'tstyche';
-import type { WallClock } from '@enormora/wall-clock';
 import type {
     CaseId,
     ExecuteOptions,
@@ -142,7 +141,7 @@ describe('RunnerError', function () {
 
 describe('Reporter contract', function () {
     test('uses explicit run facts and nullable finish callbacks', function () {
-        expect<ExecuteOptions['wallClock']>().type.toBe<WallClock>();
+        expect<keyof ExecuteOptions>().type.toBe<'reporters' | 'runFacts' | 'startedAt'>();
         expect<RunFacts>().type.toBe<Readonly<Record<string, unknown>>>();
         expect<RealTimeReporter['onFinish']>().type.toBe<((result: RunResult) => Promise<void> | void) | null>();
         expect<FinalResultReporter['kind']>().type.toBe<'final-result'>();

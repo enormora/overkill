@@ -1,12 +1,11 @@
 import assert from 'node:assert/strict';
-import { createDeterministicWallClock } from '@enormora/wall-clock';
 import {
     createInMemoryFinalResultReporter,
     createInMemoryRealTimeReporter,
     type InMemoryRealTimeReporter
 } from '../reporters/in-memory-reporter.ts';
 import { registerTest } from '../test-support/register-test.ts';
-import { createEngine } from './engine.ts';
+import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { RealTimeReporter, ReporterEvent } from './reporter.ts';
 
 function recordedEvents(reporter: InMemoryRealTimeReporter): readonly ReporterEvent[] {
@@ -275,8 +274,7 @@ registerTest('execute() delivers events and final results to reporters', async f
     const result = await engine.execute(testPlan, {
         reporters: [ realTimeReporter, finalResultReporter ],
         runFacts: { seed: 42 },
-        startedAt: '2026-07-15T00:00:00.000Z',
-        wallClock: createDeterministicWallClock()
+        startedAt: '2026-07-15T00:00:00.000Z'
     });
 
     assert.deepStrictEqual(
@@ -339,8 +337,7 @@ registerTest('execute() emits suite events for table path segments', async funct
     await engine.execute(testPlan, {
         reporters: [ realTimeReporter ],
         runFacts: {},
-        startedAt: '2026-07-15T00:00:00.000Z',
-        wallClock: createDeterministicWallClock()
+        startedAt: '2026-07-15T00:00:00.000Z'
     });
 
     const suiteEvents = realTimeReporter.getRecordedEntries().flatMap(function toSuiteEvent(entry) {
@@ -397,8 +394,7 @@ registerTest('execute() rejects reporter sink conflicts before starting the run'
                     conflictingReporter
                 ],
                 runFacts: {},
-                startedAt: '2026-07-15T00:00:00.000Z',
-                wallClock: createDeterministicWallClock()
+                startedAt: '2026-07-15T00:00:00.000Z'
             });
         },
         { message: 'Reporter sink conflict: stdout is claimed exclusively.' }

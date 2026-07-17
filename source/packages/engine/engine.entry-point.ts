@@ -1,9 +1,12 @@
+import { createWallClock } from '@enormora/wall-clock';
 import { createEngine as createEngineInstance, type Engine } from '../../engine/engine.ts';
 import type { SuiteOptions, TableOptions, TestCaseOptions, TestNode } from '../../engine/test-node.ts';
 
-const defaultEngine = createEngineInstance();
+export function createEngine(): Engine {
+    return createEngineInstance({ wallClock: createWallClock() });
+}
 
-export { createEngine } from '../../engine/engine.ts';
+const defaultEngine = createEngine();
 
 export function createSuite(options: SuiteOptions): ReturnType<Engine['createSuite']> {
     return defaultEngine.createSuite(options);
@@ -23,7 +26,7 @@ export function createTestPlan(root: TestNode): ReturnType<Engine['createTestPla
 
 export type { Engine } from '../../engine/engine.ts';
 export { execute } from '../../engine/execution.ts';
-export type { ExecuteOptions } from '../../engine/execution.ts';
+export type { Execute, ExecuteOptions } from '../../engine/execution.ts';
 export { formatCaseId } from '../../engine/identity.ts';
 export type { CaseId, TestId } from '../../engine/identity.ts';
 export type {

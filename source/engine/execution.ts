@@ -21,6 +21,9 @@ export type ExecuteOptions = {
     readonly reporters: readonly Reporter[];
     readonly runFacts: RunFacts;
     readonly startedAt: string;
+};
+
+export type ExecuteDependencies = {
     readonly wallClock: WallClock;
 };
 
@@ -29,7 +32,10 @@ const epoch = new Date(0);
 const defaultExecuteOptions: ExecuteOptions = {
     reporters: [],
     runFacts: {},
-    startedAt: epoch.toISOString(),
+    startedAt: epoch.toISOString()
+};
+
+const defaultExecuteDependencies: ExecuteDependencies = {
     wallClock: createWallClock()
 };
 
@@ -431,25 +437,33 @@ function createRunResult(
     return result;
 }
 
-export async function execute(testPlan: TestPlan, options: ExecuteOptions = defaultExecuteOptions): Promise<RunResult> {
-    validateReporterSinks(options.reporters);
+export type Execute = (testPlan: TestPlan, options?: ExecuteOptions) => Promise<RunResult>;
 
-    const { reporters, wallClock } = options;
-    const startedAtMs = wallClock.currentTimestampInMilliseconds;
-    const startErrors = await reportEvent(reporters, {
-        facts: options.runFacts,
-        kind: 'run-start',
-        startedAt: options.startedAt
-    }, wallClock);
-    const executedTestPlan = await executeTestPlanCases(testPlan, reporters, wallClock);
-    const reporterErrors = [ ...startErrors, ...executedTestPlan.reporterErrors ];
-    const result = createRunResult(testPlan, executedTestPlan.perTest, reporterErrors, { startedAtMs, wallClock });
+export function createExecute(dependencies: ExecuteDependencies): Execute {
+    const { wallClock } = dependencies;
 
-    await reportEvent(reporters, {
-        kind: 'run-end',
-        result
-    }, wallClock);
-    await reportResult(reporters, result, wallClock);
+    return async function execute(testPlan, options = defaultExecuteOptions) {
+        validateReporterSinks(options.reporters);
 
-    return result;
+        const { reporters } = options;
+        const startedAtMs = wallClock.currentTimestampInMilliseconds;
+        const startErrors = await reportEvent(reporters, {
+            facts: options.runFacts,
+            kind: 'run-start',
+            startedAt: options.startedAt
+        }, wallClock);
+        const executedTestPlan = await executeTestPlanCases(testPlan, reporters, wallClock);
+        const reporterErrors = [ ...startErrors, ...executedTestPlan.reporterErrors ];
+        const result = createRunResult(testPlan, executedTestPlan.perTest, reporterErrors, { startedAtMs, wallClock });
+
+        await reportEvent(reporters, {
+            kind: 'run-end',
+            result
+        }, wallClock);
+        await reportResult(reporters, result, wallClock);
+
+        return result;
+    };
 }
+
+export const execute = createExecute(defaultExecuteDependencies);
