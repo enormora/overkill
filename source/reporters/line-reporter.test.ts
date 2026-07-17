@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import figures from 'figures';
-import kleur from 'kleur';
 import sinon, { type SinonSpy } from 'sinon';
+import colors from 'yoctocolors';
 import type { CaseId } from '../engine/identity.ts';
 import type { RealTimeReporter } from '../engine/reporter.ts';
 import type { RunResult } from '../engine/run-result.ts';
@@ -20,9 +20,9 @@ function lineReporterFactory(overrides: Overrides = {}): RealTimeReporter {
     return createLineReporter(fakeDependencies);
 }
 
-const errorSymbol = kleur.red(figures.cross);
-const infoSymbol = kleur.cyan(figures.info);
-const successSymbol = kleur.green(figures.tick);
+const errorSymbol = colors.red(figures.cross);
+const infoSymbol = colors.cyan(figures.info);
+const successSymbol = colors.green(figures.tick);
 const failingCaseId: CaseId = { file: null, name: 'fails', params: null, suite: [ 'root' ] };
 const passingCaseId: CaseId = { file: null, name: 'passes', params: null, suite: [ 'root' ] };
 const skippedCaseId: CaseId = { file: null, name: 'skips', params: null, suite: [ 'root' ] };

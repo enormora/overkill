@@ -1,12 +1,12 @@
-import kleur from 'kleur';
 import figures from 'figures';
+import colors from 'yoctocolors';
 import type { CaseId } from '../engine/identity.ts';
 import type { RealTimeReporter, ReporterEvent } from '../engine/reporter.ts';
 import type { OrphanedNode, RunResult, TestOutcome } from '../engine/run-result.ts';
 
-const successSymbol = kleur.green(figures.tick);
-const errorSymbol = kleur.red(figures.cross);
-const infoSymbol = kleur.cyan(figures.info);
+const successSymbol = colors.green(figures.tick);
+const errorSymbol = colors.red(figures.cross);
+const infoSymbol = colors.cyan(figures.info);
 
 export type LineReporterDependencies = {
     readonly stdoutConsole: Pick<typeof console, 'log'>;

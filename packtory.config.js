@@ -62,6 +62,26 @@ export const config = {
                 ...packageMetadata,
                 description: 'Overkill run resolution and orchestration.'
             }
+        },
+        {
+            name: '@overkill-dev/reporter-line',
+            bundlePeerDependencies: [ '@overkill-dev/engine' ],
+            roots: {
+                main: {
+                    js: 'packages/reporter-line/reporter-line.entry-point.js',
+                    declarationFile: 'packages/reporter-line/reporter-line.entry-point.d.ts'
+                }
+            },
+            additionalFiles: [
+                {
+                    sourceFilePath: path.join(projectFolder, 'source/packages/reporter-line/readme.md'),
+                    targetFilePath: 'readme.md'
+                }
+            ],
+            additionalPackageJsonAttributes: {
+                ...packageMetadata,
+                description: 'Human-readable Overkill line reporter.'
+            }
         }
     ]
 };
