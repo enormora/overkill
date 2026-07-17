@@ -1,6 +1,13 @@
 {
-    "extends": ["config:recommended", "group:monorepos", "helpers:pinGitHubActionDigests"],
-    "labels": ["renovate", "upgrade"],
+    "extends": [
+        "config:recommended",
+        "group:monorepos",
+        "helpers:pinGitHubActionDigests"
+    ],
+    "labels": [
+        "renovate",
+        "upgrade"
+    ],
     "dependencyDashboard": false,
     "rebaseWhen": "behind-base-branch",
     "minimumReleaseAge": "3 days",
@@ -25,9 +32,13 @@
             "groupSlug": "eslint"
         },
         {
-            "matchPackageNames": ["/^@packtory\\//"],
+            "matchPackageNames": [
+                "/^@packtory\\//"
+            ],
             "groupName": "@packtory dependencies",
             "groupSlug": "packtory"
         }
-    ]
+    ],
+    "platformAutomerge": false,
+    "automergeStrategy": "merge-commit"
 }
