@@ -271,7 +271,7 @@ type RunRequest = {
     readonly configPath?: string;
 };
 
-type NonEmptyReadonlyArray<Item> = readonly [Item, ...Item[]];
+type NonEmptyReadonlyArray<Item> = readonly [Item, ...(readonly Item[])];
 
 type TestPlanCase = {
     readonly id: CaseId;

@@ -20,7 +20,7 @@ export type TestPlanCase = {
     readonly body: TestPlanCaseBody;
 };
 
-export type NonEmptyReadonlyArray<Item> = readonly [Item, ...Item[]];
+export type NonEmptyReadonlyArray<Item> = readonly [Item, ...(readonly Item[])];
 
 export type TestPlan = {
     readonly defined: number;
