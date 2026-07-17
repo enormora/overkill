@@ -4,7 +4,8 @@ import { createInMemoryRealTimeReporter, type InMemoryRealTimeReporter } from '.
 import { registerTest } from '../test-support/register-test.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { createEngine, type Engine } from './engine.ts';
-import type { FinalResultReporter, RealTimeReporter } from './reporter.ts';
+import { createExecute } from './execution.ts';
+import { createReporterDispatcher, type FinalResultReporter, type RealTimeReporter } from './reporter.ts';
 import type { RunResult, RunnerError } from './run-result.ts';
 import type { TestPlan } from './test-plan.ts';
 
@@ -139,7 +140,12 @@ registerTest('execute() does not recurse when a reporter fails while handling ru
 registerTest('execute() isolates reporter callback timeouts', async function () {
     const testStartSignal = createReporterSignal();
     const wallClock = createDeterministicWallClock();
-    const engine = createEngine({ wallClock });
+    const engine = createEngine({
+        execute: createExecute({
+            reporterDispatcher: createReporterDispatcher({ wallClock }),
+            wallClock
+        })
+    });
     const hangingReporter: RealTimeReporter = {
         kind: 'real-time',
         name: 'slow',

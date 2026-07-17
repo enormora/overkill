@@ -1,9 +1,18 @@
 import { createWallClock } from '@enormora/wall-clock';
 import { createEngine as createEngineInstance, type Engine } from '../../engine/engine.ts';
+import { createExecute } from '../../engine/execution.ts';
+import { createReporterDispatcher } from '../../engine/reporter.ts';
 import type { SuiteOptions, TableOptions, TestCaseOptions, TestNode } from '../../engine/test-node.ts';
 
 export function createEngine(): Engine {
-    return createEngineInstance({ wallClock: createWallClock() });
+    const wallClock = createWallClock();
+
+    return createEngineInstance({
+        execute: createExecute({
+            reporterDispatcher: createReporterDispatcher({ wallClock }),
+            wallClock
+        })
+    });
 }
 
 const defaultEngine = createEngine();
@@ -24,8 +33,14 @@ export function createTestPlan(root: TestNode): ReturnType<Engine['createTestPla
     return defaultEngine.createTestPlan(root);
 }
 
+export async function execute(
+    testPlan: Parameters<Engine['execute']>[0],
+    options?: Parameters<Engine['execute']>[1]
+): ReturnType<Engine['execute']> {
+    return await defaultEngine.execute(testPlan, options);
+}
+
 export type { Engine } from '../../engine/engine.ts';
-export { execute } from '../../engine/execution.ts';
 export type { Execute, ExecuteOptions } from '../../engine/execution.ts';
 export { formatCaseId } from '../../engine/identity.ts';
 export type { CaseId, TestId } from '../../engine/identity.ts';

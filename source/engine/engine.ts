@@ -1,5 +1,4 @@
-import type { WallClock } from '@enormora/wall-clock';
-import { createExecute, type Execute } from './execution.ts';
+import type { Execute } from './execution.ts';
 import { formatCaseId } from './identity.ts';
 import {
     createTestNodeOwner,
@@ -24,12 +23,12 @@ export type Engine = {
 };
 
 export type EngineDependencies = {
-    readonly wallClock: WallClock;
+    readonly execute: Execute;
 };
 
 export function createEngine(dependencies: EngineDependencies): Engine {
     const owner = createTestNodeOwner();
-    const { wallClock } = dependencies;
+    const { execute } = dependencies;
     const constructedNodes = new Set<TestNode>();
     const nodeFactory = createTestNodeFactory({
         owner,
@@ -43,7 +42,7 @@ export function createEngine(dependencies: EngineDependencies): Engine {
         createTable: nodeFactory.createTable,
         createTestCase: nodeFactory.createTestCase,
         createTestPlan: createTestPlanFactory(owner, constructedNodes),
-        execute: createExecute({ wallClock }),
+        execute,
         formatCaseId
     };
 }

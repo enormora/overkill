@@ -109,6 +109,21 @@ export type FinalResultReporter = {
 
 export type Reporter = FinalResultReporter | RealTimeReporter;
 
+export type ReporterDispatcher = {
+    readonly reportEvent: (
+        reporters: readonly Reporter[],
+        event: ReporterEvent
+    ) => Promise<readonly RunnerError[]>;
+    readonly reportResult: (
+        reporters: readonly Reporter[],
+        result: RunResult
+    ) => Promise<readonly RunnerError[]>;
+};
+
+export type ReporterDispatcherDependencies = {
+    readonly wallClock: WallClock;
+};
+
 const callbackTimeoutMs = 100;
 
 type ReporterCallbackFailure = {
@@ -210,167 +225,165 @@ function timeoutError(reporter: Reporter): Error {
     return new Error(`${reporter.name} reporter callback timed out after ${callbackTimeoutMs} ms.`);
 }
 
-function createReporterTimeout(reporter: Reporter, wallClock: WallClock): ReporterTimeout {
-    let cancel: () => void = function cancelUnsetTimeout() {
-        return undefined;
-    };
-    const promise = new Promise<never>(function rejectOnTimeout(_resolve, reject) {
-        const timeout = wallClock.setTimeout(function rejectTimedOutCallback() {
-            reject(timeoutError(reporter));
-        }, callbackTimeoutMs);
-        cancel = function cancelReporterTimeout() {
-            wallClock.clearTimeout(timeout);
-        };
-    });
-
-    return { cancel, promise };
-}
-
 async function runReporterCallback(callback: () => Promise<void> | void): Promise<void> {
     await callback();
 }
 
-async function awaitReporterCallback(
-    reporter: Reporter,
-    wallClock: WallClock,
-    callback: () => Promise<void> | void
-): Promise<RunnerError | null> {
-    const reporterTimeout = createReporterTimeout(reporter, wallClock);
-    try {
-        await Promise.race([ runReporterCallback(callback), reporterTimeout.promise ]);
+export function createReporterDispatcher(dependencies: ReporterDispatcherDependencies): ReporterDispatcher {
+    const { wallClock } = dependencies;
 
-        return null;
-    } catch (error: unknown) {
-        return formatReporterError(reporter, error);
-    } finally {
-        reporterTimeout.cancel();
-    }
-}
+    function createReporterTimeout(reporter: Reporter): ReporterTimeout {
+        let cancel: () => void = function cancelUnsetTimeout() {
+            return undefined;
+        };
+        const promise = new Promise<never>(function rejectOnTimeout(_resolve, reject) {
+            const timeout = wallClock.setTimeout(function rejectTimedOutCallback() {
+                reject(timeoutError(reporter));
+            }, callbackTimeoutMs);
+            cancel = function cancelReporterTimeout() {
+                wallClock.clearTimeout(timeout);
+            };
+        });
 
-async function reportEventToReporter(
-    reporter: RealTimeReporter,
-    event: ReporterEvent,
-    wallClock: WallClock
-): Promise<ReporterCallbackFailure | null> {
-    const error = await awaitReporterCallback(reporter, wallClock, function sendReporterEvent(): Promise<void> | void {
-        return reporter.onEvent(event);
-    });
-
-    if (error === null) {
-        return null;
+        return { cancel, promise };
     }
 
-    return { error, reporter };
-}
+    async function awaitReporterCallback(
+        reporter: Reporter,
+        callback: () => Promise<void> | void
+    ): Promise<RunnerError | null> {
+        const reporterTimeout = createReporterTimeout(reporter);
+        try {
+            await Promise.race([ runReporterCallback(callback), reporterTimeout.promise ]);
 
-async function reportRunnerErrorToOtherReporters(
-    reporters: readonly Reporter[],
-    failedReporter: Reporter,
-    error: RunnerError,
-    wallClock: WallClock
-): Promise<readonly RunnerError[]> {
-    const event: ReporterEvent = { error, kind: 'runner-error' };
-    const failures = await Promise.all(
-        reporters.map(async function reportRunnerError(reporter): Promise<ReporterCallbackFailure | null> {
-            if (reporter.kind !== 'real-time' || reporter === failedReporter) {
-                return null;
-            }
+            return null;
+        } catch (error: unknown) {
+            return formatReporterError(reporter, error);
+        } finally {
+            reporterTimeout.cancel();
+        }
+    }
 
-            return reportEventToReporter(reporter, event, wallClock);
-        })
-    );
+    async function reportEventToReporter(
+        reporter: RealTimeReporter,
+        event: ReporterEvent
+    ): Promise<ReporterCallbackFailure | null> {
+        const error = await awaitReporterCallback(reporter, function sendReporterEvent(): Promise<void> | void {
+            return reporter.onEvent(event);
+        });
 
-    return failures.flatMap(function collectFailure(failure) {
-        return failure === null ? [] : [ failure.error ];
-    });
-}
+        if (error === null) {
+            return null;
+        }
 
-async function collectReporterErrorsWithNotifications(
-    reporters: readonly Reporter[],
-    reporterErrors: readonly ReporterCallbackFailure[],
-    wallClock: WallClock
-): Promise<readonly RunnerError[]> {
-    const notificationErrors = await Promise.all(
-        reporterErrors.map(async function reportError(failure) {
-            return reportRunnerErrorToOtherReporters(reporters, failure.reporter, failure.error, wallClock);
-        })
-    );
+        return { error, reporter };
+    }
 
-    return [
-        ...reporterErrors.map(function toError(failure) {
-            return failure.error;
-        }),
-        ...notificationErrors.flat()
-    ];
-}
+    async function reportRunnerErrorToOtherReporters(
+        reporters: readonly Reporter[],
+        failedReporter: Reporter,
+        error: RunnerError
+    ): Promise<readonly RunnerError[]> {
+        const event: ReporterEvent = { error, kind: 'runner-error' };
+        const failures = await Promise.all(
+            reporters.map(async function reportRunnerError(reporter): Promise<ReporterCallbackFailure | null> {
+                if (reporter.kind !== 'real-time' || reporter === failedReporter) {
+                    return null;
+                }
 
-export async function reportEvent(
-    reporters: readonly Reporter[],
-    event: ReporterEvent,
-    wallClock: WallClock
-): Promise<readonly RunnerError[]> {
-    const failures = await Promise.all(
-        reporters.map(async function reportRealTimeEvent(reporter): Promise<ReporterCallbackFailure | null> {
-            if (reporter.kind !== 'real-time') {
-                return null;
-            }
+                return reportEventToReporter(reporter, event);
+            })
+        );
 
-            return reportEventToReporter(reporter, event, wallClock);
-        })
-    );
-
-    const reporterErrors = failures.flatMap(function collectFailure(failure) {
-        return failure === null ? [] : [ failure ];
-    });
-
-    if (event.kind === 'runner-error') {
-        return reporterErrors.map(function toError(failure) {
-            return failure.error;
+        return failures.flatMap(function collectFailure(failure) {
+            return failure === null ? [] : [ failure.error ];
         });
     }
 
-    return collectReporterErrorsWithNotifications(reporters, reporterErrors, wallClock);
-}
+    async function collectReporterErrorsWithNotifications(
+        reporters: readonly Reporter[],
+        reporterErrors: readonly ReporterCallbackFailure[]
+    ): Promise<readonly RunnerError[]> {
+        const notificationErrors = await Promise.all(
+            reporterErrors.map(async function reportError(failure) {
+                return reportRunnerErrorToOtherReporters(reporters, failure.reporter, failure.error);
+            })
+        );
 
-export async function reportResult(
-    reporters: readonly Reporter[],
-    result: RunResult,
-    wallClock: WallClock
-): Promise<readonly RunnerError[]> {
-    const failures = await Promise.all(reporters.map(async function reportFinalResult(
-        reporter
-    ): Promise<ReporterCallbackFailure | null> {
-        if (reporter.kind === 'final-result') {
+        return [
+            ...reporterErrors.map(function toError(failure) {
+                return failure.error;
+            }),
+            ...notificationErrors.flat()
+        ];
+    }
+
+    async function reportEvent(
+        reporters: readonly Reporter[],
+        event: ReporterEvent
+    ): Promise<readonly RunnerError[]> {
+        const failures = await Promise.all(
+            reporters.map(async function reportRealTimeEvent(reporter): Promise<ReporterCallbackFailure | null> {
+                if (reporter.kind !== 'real-time') {
+                    return null;
+                }
+
+                return reportEventToReporter(reporter, event);
+            })
+        );
+
+        const reporterErrors = failures.flatMap(function collectFailure(failure) {
+            return failure === null ? [] : [ failure ];
+        });
+
+        if (event.kind === 'runner-error') {
+            return reporterErrors.map(function toError(failure) {
+                return failure.error;
+            });
+        }
+
+        return collectReporterErrorsWithNotifications(reporters, reporterErrors);
+    }
+
+    async function reportResult(
+        reporters: readonly Reporter[],
+        result: RunResult
+    ): Promise<readonly RunnerError[]> {
+        const failures = await Promise.all(reporters.map(async function reportFinalResult(
+            reporter
+        ): Promise<ReporterCallbackFailure | null> {
+            if (reporter.kind === 'final-result') {
+                const error = await awaitReporterCallback(
+                    reporter,
+                    function reportResultToFinalReporter(): Promise<void> | void {
+                        return reporter.onResult(result);
+                    }
+                );
+
+                return error === null ? null : { error, reporter };
+            }
+
+            if (reporter.onFinish === null) {
+                return null;
+            }
+
+            const { onFinish } = reporter;
             const error = await awaitReporterCallback(
                 reporter,
-                wallClock,
-                function reportResultToFinalReporter(): Promise<void> | void {
-                    return reporter.onResult(result);
+                function reportResultToRealTimeReporter(): Promise<void> | void {
+                    return onFinish(result);
                 }
             );
 
             return error === null ? null : { error, reporter };
-        }
+        }));
 
-        if (reporter.onFinish === null) {
-            return null;
-        }
+        const reporterErrors = failures.flatMap(function collectFailure(failure) {
+            return failure === null ? [] : [ failure ];
+        });
 
-        const { onFinish } = reporter;
-        const error = await awaitReporterCallback(
-            reporter,
-            wallClock,
-            function reportResultToRealTimeReporter(): Promise<void> | void {
-                return onFinish(result);
-            }
-        );
+        return collectReporterErrorsWithNotifications(reporters, reporterErrors);
+    }
 
-        return error === null ? null : { error, reporter };
-    }));
-
-    const reporterErrors = failures.flatMap(function collectFailure(failure) {
-        return failure === null ? [] : [ failure ];
-    });
-
-    return collectReporterErrorsWithNotifications(reporters, reporterErrors, wallClock);
+    return { reportEvent, reportResult };
 }

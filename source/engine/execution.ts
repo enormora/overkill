@@ -1,10 +1,9 @@
-import { createWallClock, type WallClock } from '@enormora/wall-clock';
+import type { WallClock } from '@enormora/wall-clock';
 import { caseIdentityKey } from './identity.ts';
 import {
     type Reporter,
+    type ReporterDispatcher,
     type RunFacts,
-    reportEvent,
-    reportResult,
     validateReporterSinks
 } from './reporter.ts';
 import {
@@ -24,20 +23,11 @@ export type ExecuteOptions = {
 };
 
 export type ExecuteDependencies = {
+    readonly reporterDispatcher: ReporterDispatcher;
     readonly wallClock: WallClock;
 };
 
 const epoch = new Date(0);
-
-const defaultExecuteOptions: ExecuteOptions = {
-    reporters: [],
-    runFacts: {},
-    startedAt: epoch.toISOString()
-};
-
-const defaultExecuteDependencies: ExecuteDependencies = {
-    wallClock: createWallClock()
-};
 
 const failedOkValues = new Set<unknown>([ false, null, undefined, 0, '' ]);
 
@@ -213,6 +203,11 @@ type RunResultTiming = {
     readonly wallClock: WallClock;
 };
 
+type ExecutionDependencies = {
+    readonly reporterDispatcher: ReporterDispatcher;
+    readonly wallClock: WallClock;
+};
+
 async function runTestCase(testCase: TestPlanCase, wallClock: WallClock): Promise<ExecutedCase> {
     const recorder = createAssertionRecorder();
     const startedAt = wallClock.currentTimestampInMilliseconds;
@@ -237,22 +232,22 @@ async function executeCase(
     testCase: TestPlanCase,
     attempt: number,
     reporters: readonly Reporter[],
-    wallClock: WallClock
+    dependencies: ExecutionDependencies
 ): Promise<ReportedCase> {
-    const startErrors = await reportEvent(reporters, {
+    const startErrors = await dependencies.reporterDispatcher.reportEvent(reporters, {
         attempt,
         case: testCase.id,
         kind: 'test-start'
-    }, wallClock);
-    const executedCase = await runTestCase(testCase, wallClock);
-    const endErrors = await reportEvent(reporters, {
+    });
+    const executedCase = await runTestCase(testCase, dependencies.wallClock);
+    const endErrors = await dependencies.reporterDispatcher.reportEvent(reporters, {
         attempt,
         case: testCase.id,
         kind: 'test-end',
         outcome: executedCase.result.outcome,
         verdict: executedCase.result.verdict,
         wallTimeMs: executedCase.wallTimeMs
-    }, wallClock);
+    });
 
     return {
         reporterErrors: [ ...startErrors, ...endErrors ],
@@ -361,9 +356,9 @@ function commonSuitePrefixLength(firstSuitePath: readonly string[], secondSuiteP
 
 async function reportSuiteTransition(
     reporters: readonly Reporter[],
+    dependencies: ExecutionDependencies,
     currentSuitePath: readonly string[],
-    nextSuitePath: readonly string[],
-    wallClock: WallClock
+    nextSuitePath: readonly string[]
 ): Promise<readonly RunnerError[]> {
     let reporterErrors: readonly RunnerError[] = [];
     const sharedPrefixLength = commonSuitePrefixLength(currentSuitePath, nextSuitePath);
@@ -371,20 +366,20 @@ async function reportSuiteTransition(
     for (let pathLength = currentSuitePath.length; pathLength > sharedPrefixLength; pathLength -= 1) {
         reporterErrors = [
             ...reporterErrors,
-            ...await reportEvent(reporters, {
+            ...await dependencies.reporterDispatcher.reportEvent(reporters, {
                 kind: 'suite-end',
                 suitePath: currentSuitePath.slice(0, pathLength)
-            }, wallClock)
+            })
         ];
     }
 
     for (let pathLength = sharedPrefixLength + 1; pathLength <= nextSuitePath.length; pathLength += 1) {
         reporterErrors = [
             ...reporterErrors,
-            ...await reportEvent(reporters, {
+            ...await dependencies.reporterDispatcher.reportEvent(reporters, {
                 kind: 'suite-start',
                 suitePath: nextSuitePath.slice(0, pathLength)
-            }, wallClock)
+            })
         ];
     }
 
@@ -394,17 +389,22 @@ async function reportSuiteTransition(
 async function executeTestPlanCases(
     testPlan: TestPlan,
     reporters: readonly Reporter[],
-    wallClock: WallClock
+    dependencies: ExecutionDependencies
 ): Promise<ExecutedTestPlan> {
     let perTest: readonly PerTestResult[] = [];
     let reporterErrors: readonly RunnerError[] = [];
     let currentSuitePath: readonly string[] = [];
 
     for (const testCase of testPlan.cases) {
-        const suiteErrors = await reportSuiteTransition(reporters, currentSuitePath, testCase.suitePath, wallClock);
+        const suiteErrors = await reportSuiteTransition(
+            reporters,
+            dependencies,
+            currentSuitePath,
+            testCase.suitePath
+        );
         currentSuitePath = testCase.suitePath;
 
-        const testRun = await executeCase(testCase, 0, reporters, wallClock);
+        const testRun = await executeCase(testCase, 0, reporters, dependencies);
         reporterErrors = [ ...reporterErrors, ...suiteErrors, ...testRun.reporterErrors ];
         perTest = [ ...perTest, testRun.result ];
     }
@@ -413,7 +413,7 @@ async function executeTestPlanCases(
         perTest,
         reporterErrors: [
             ...reporterErrors,
-            ...await reportSuiteTransition(reporters, currentSuitePath, [], wallClock)
+            ...await reportSuiteTransition(reporters, dependencies, currentSuitePath, [])
         ]
     };
 }
@@ -440,30 +440,33 @@ function createRunResult(
 export type Execute = (testPlan: TestPlan, options?: ExecuteOptions) => Promise<RunResult>;
 
 export function createExecute(dependencies: ExecuteDependencies): Execute {
-    const { wallClock } = dependencies;
+    return async function execute(testPlan, options) {
+        const executeOptions = options ?? {
+            reporters: [],
+            runFacts: {},
+            startedAt: epoch.toISOString()
+        };
+        validateReporterSinks(executeOptions.reporters);
 
-    return async function execute(testPlan, options = defaultExecuteOptions) {
-        validateReporterSinks(options.reporters);
-
-        const { reporters } = options;
-        const startedAtMs = wallClock.currentTimestampInMilliseconds;
-        const startErrors = await reportEvent(reporters, {
-            facts: options.runFacts,
+        const startedAtMs = dependencies.wallClock.currentTimestampInMilliseconds;
+        const startErrors = await dependencies.reporterDispatcher.reportEvent(executeOptions.reporters, {
+            facts: executeOptions.runFacts,
             kind: 'run-start',
-            startedAt: options.startedAt
-        }, wallClock);
-        const executedTestPlan = await executeTestPlanCases(testPlan, reporters, wallClock);
+            startedAt: executeOptions.startedAt
+        });
+        const executedTestPlan = await executeTestPlanCases(testPlan, executeOptions.reporters, dependencies);
         const reporterErrors = [ ...startErrors, ...executedTestPlan.reporterErrors ];
-        const result = createRunResult(testPlan, executedTestPlan.perTest, reporterErrors, { startedAtMs, wallClock });
+        const result = createRunResult(testPlan, executedTestPlan.perTest, reporterErrors, {
+            startedAtMs,
+            wallClock: dependencies.wallClock
+        });
 
-        await reportEvent(reporters, {
+        await dependencies.reporterDispatcher.reportEvent(executeOptions.reporters, {
             kind: 'run-end',
             result
-        }, wallClock);
-        await reportResult(reporters, result, wallClock);
+        });
+        await dependencies.reporterDispatcher.reportResult(executeOptions.reporters, result);
 
         return result;
     };
 }
-
-export const execute = createExecute(defaultExecuteDependencies);
