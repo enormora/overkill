@@ -8,6 +8,7 @@ import { registerTest } from '../test-support/register-test.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { RealTimeReporter, ReporterEvent } from './reporter.ts';
 import type { FailOutcome, RunResult } from './run-result.ts';
+import type { TestBody } from './test-node.ts';
 
 function recordedEvents(reporter: InMemoryRealTimeReporter): readonly ReporterEvent[] {
     return reporter.getRecordedEntries().flatMap(function toEvent(entry) {
@@ -29,6 +30,26 @@ function firstFailOutcome(result: RunResult): FailOutcome {
     }
 
     throw new TypeError('Expected first outcome to fail.');
+}
+
+async function executeSingleBody(body: TestBody): Promise<RunResult> {
+    const engine = createEngine();
+
+    return await engine.execute(
+        engine.createTestPlan(
+            engine.createSuite({
+                children: [
+                    engine.createTestCase({
+                        body,
+                        metadata: {},
+                        name: 'case'
+                    })
+                ],
+                metadata: {},
+                name: 'root'
+            })
+        )
+    );
 }
 
 registerTest('execute() returns passing and failing outcomes with run counts', async function () {
@@ -176,6 +197,35 @@ registerTest('execute() fails tests when assertion plan count does not match', a
         kind: 'fail'
     });
 });
+
+registerTest('execute() accepts a directly returned assertion node', async function () {
+    const result = await executeSingleBody(function body() {
+        return {
+            actual: true,
+            check: 'ok',
+            summary: 'direct assertion'
+        };
+    });
+
+    assert.equal(result.summary.passed, 1);
+});
+
+registerTest('execute() fails tests with invalid assertion plans', async function () {
+    const result = await executeSingleBody(function body(testContext) {
+        testContext.plan(0);
+        testContext.assert.ok(true, 'unreached');
+        return testContext.assert.done();
+    });
+
+    assert.deepStrictEqual(firstFailOutcome(result).failures[0], {
+        actual: 0,
+        code: 'invalid-plan',
+        expected: 'positive integer plan before assertions',
+        kind: 'test-contract',
+        summary: 'Assertion plan must be a positive integer before assertions.'
+    });
+});
+
 registerTest('execute() exposes assertion and requirement convenience methods', async function () {
     const engine = createEngine();
     const testPlan = engine.createTestPlan(
