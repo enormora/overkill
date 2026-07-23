@@ -1,11 +1,12 @@
 import type { CaseId } from '../engine/identity.ts';
-import type { FailedCheck, SourceLocation } from '../engine/test-node.ts';
+import type { FailedCheck, NonEmptyReadonlyArray, SourceLocation } from '../engine/test-node.ts';
 import type {
     OrphanedNode,
     RunnerError,
     RunResult,
     RunSummary,
     SuiteRunCounts,
+    TestFailure,
     TestOutcome
 } from '../engine/run-result.ts';
 
@@ -13,8 +14,35 @@ type FailedCheckOverrides = Partial<FailedCheck> & {
     readonly location?: Partial<SourceLocation>;
 };
 
+type AssertionTestFailureOverrides = {
+    readonly checks?: readonly FailedCheckOverrides[];
+    readonly kind?: 'assertion';
+};
+
+type BodyErrorTestFailureOverrides = {
+    readonly error?: Extract<TestFailure, { readonly kind: 'body-error'; }>['error'];
+    readonly kind: 'body-error';
+};
+
+type TestContractFailureOverrides = {
+    readonly actual?: unknown;
+    readonly code?: Extract<TestFailure, { readonly kind: 'test-contract'; }>['code'];
+    readonly expected?: string;
+    readonly kind: 'test-contract';
+    readonly summary?: string;
+};
+
+type TestFailureOverrideByKind = {
+    readonly assertion: AssertionTestFailureOverrides;
+    readonly bodyError: BodyErrorTestFailureOverrides;
+    readonly testContract: TestContractFailureOverrides;
+};
+
+type TestFailureOverrides = TestFailureOverrideByKind[keyof TestFailureOverrideByKind];
+
 type FailOutcomeOverrides = {
     readonly checks?: readonly FailedCheckOverrides[];
+    readonly failures?: readonly TestFailureOverrides[];
     readonly kind: 'fail';
 };
 
@@ -93,7 +121,11 @@ const defaultFailedCheck: FailedCheck = {
     summary: 'Check failed'
 };
 
-const emptyFailedCheckOverrides: readonly FailedCheckOverrides[] = [];
+const defaultTestFailure: TestFailure = {
+    checks: [ defaultFailedCheck ],
+    kind: 'assertion'
+};
+
 const emptyOrphanedNodeOverrides: readonly OrphanedNodeOverrides[] = [];
 const emptyPerTestResultOverrides: readonly PerTestResultOverrides[] = [];
 const emptyRunnerErrorOverrides: readonly RunnerErrorOverrides[] = [];
@@ -109,9 +141,91 @@ function buildFailedCheck(overrides: FailedCheckOverrides = {}): FailedCheck {
     };
 }
 
-function buildFailOutcome(overrides: FailOutcomeOverrides): TestOutcome {
+function buildFailedChecks(overrides: readonly FailedCheckOverrides[] | undefined): NonEmptyReadonlyArray<FailedCheck> {
+    const checks = (overrides ?? [ defaultFailedCheck ]).map(buildFailedCheck);
+
+    if (checks.length === 0) {
+        return [ defaultFailedCheck ];
+    }
+
+    const first = checks[0];
+
+    if (first === undefined) {
+        return [ defaultFailedCheck ];
+    }
+
+    return [ first, ...checks.slice(1) ];
+}
+
+function buildAssertionTestFailure(overrides: AssertionTestFailureOverrides): TestFailure {
     return {
-        checks: (overrides.checks ?? emptyFailedCheckOverrides).map(buildFailedCheck),
+        checks: buildFailedChecks(overrides.checks),
+        kind: 'assertion'
+    };
+}
+
+function buildBodyErrorTestFailure(overrides: BodyErrorTestFailureOverrides): TestFailure {
+    return {
+        error: overrides.error ?? {
+            message: 'Body error',
+            name: 'Error',
+            stack: null,
+            thrown: new Error('Body error')
+        },
+        kind: 'body-error'
+    };
+}
+
+function buildTestContractFailure(overrides: TestContractFailureOverrides): TestFailure {
+    return {
+        actual: overrides.actual ?? 0,
+        code: overrides.code ?? 'no-assertions',
+        expected: overrides.expected ?? 'at least one assertion',
+        kind: 'test-contract',
+        summary: overrides.summary ?? 'Expected at least one assertion.'
+    };
+}
+
+function buildTestFailure(overrides: TestFailureOverrides = {}): TestFailure {
+    if (overrides.kind === 'body-error') {
+        return buildBodyErrorTestFailure(overrides);
+    }
+
+    if (overrides.kind === 'test-contract') {
+        return buildTestContractFailure(overrides);
+    }
+
+    return buildAssertionTestFailure(overrides);
+}
+
+function buildTestFailures(overrides: readonly TestFailureOverrides[]): NonEmptyReadonlyArray<TestFailure> {
+    const failures = overrides.map(buildTestFailure);
+
+    if (failures.length === 0) {
+        return [ defaultTestFailure ];
+    }
+
+    const first = failures[0];
+
+    if (first === undefined) {
+        return [ defaultTestFailure ];
+    }
+
+    return [ first, ...failures.slice(1) ];
+}
+
+function buildFailOutcome(overrides: FailOutcomeOverrides): TestOutcome {
+    if (overrides.failures !== undefined) {
+        return {
+            failures: buildTestFailures(overrides.failures),
+            kind: 'fail'
+        };
+    }
+
+    const assertionFailureOverrides = overrides.checks === undefined ? {} : { checks: overrides.checks };
+
+    return {
+        failures: [ buildAssertionTestFailure(assertionFailureOverrides) ],
         kind: 'fail'
     };
 }

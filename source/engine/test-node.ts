@@ -1,7 +1,7 @@
 const testNodeBrand: unique symbol = Symbol('OverkillTestNode');
 const testNodeOwnerBrand: unique symbol = Symbol('OverkillTestNodeOwner');
 const testNodeOwnerIdentity: unique symbol = Symbol('OverkillTestNodeOwnerIdentity');
-const testCompletionBrand: unique symbol = Symbol('OverkillTestCompletion');
+export type NonEmptyReadonlyArray<Item> = readonly [Item, ...(readonly Item[])];
 
 export type Metadata = Readonly<Record<string, unknown>>;
 
@@ -20,23 +20,36 @@ export type FailedCheck = {
     readonly summary: string;
 };
 
+export type EqualAssertionNode = {
+    readonly actual: unknown;
+    readonly check: 'equal';
+    readonly expected: unknown;
+    readonly summary: string;
+};
+
+export type OkAssertionNode = {
+    readonly actual: unknown;
+    readonly check: 'ok';
+    readonly summary: string;
+};
+
+export type AssertionNode = EqualAssertionNode | OkAssertionNode;
+
+export type AssertionResult = AssertionNode | NonEmptyReadonlyArray<AssertionNode>;
+
 export type AssertionFacade = {
-    done: () => TestCompletion;
-    equal: (actual: unknown, expected: unknown, summary: string) => TestCompletion;
-    ok: (actual: unknown, summary: string) => TestCompletion;
+    done: () => NonEmptyReadonlyArray<AssertionNode>;
+    equal: (actual: unknown, expected: unknown, summary: string) => void;
+    ok: (actual: unknown, summary: string) => void;
 };
 
 export type TestContext = {
     readonly assert: AssertionFacade;
-    readonly plan: (count: number) => TestCompletion;
+    readonly plan: (count: number) => void;
     readonly require: AssertionFacade;
 };
 
-export type TestCompletion = {
-    readonly [testCompletionBrand]: true;
-};
-
-export type TestBody = (testContext: TestContext) => Promise<TestCompletion | undefined> | TestCompletion | undefined;
+export type TestBody = (testContext: TestContext) => AssertionResult | Promise<AssertionResult>;
 
 export type TestCase = {
     readonly [testNodeBrand]: true;
@@ -113,10 +126,6 @@ export type TableOptions = {
     readonly metadata: Metadata;
     readonly name: string;
 };
-
-export function createTestCompletion(): TestCompletion {
-    return { [testCompletionBrand]: true };
-}
 
 export function createTestNodeOwner(): TestNodeOwner {
     return { [testNodeOwnerIdentity]: true };

@@ -2,7 +2,8 @@ import figures from 'figures';
 import colors from 'yoctocolors';
 import type { CaseId } from '../engine/identity.ts';
 import type { RealTimeReporter, ReporterEvent } from '../engine/reporter.ts';
-import type { OrphanedNode, RunResult, TestOutcome } from '../engine/run-result.ts';
+import type { FailOutcome, OrphanedNode, RunResult, TestOutcome } from '../engine/run-result.ts';
+import { formatFailure } from './line-failure-rendering.ts';
 
 const successSymbol = colors.green(figures.tick);
 const errorSymbol = colors.red(figures.cross);
@@ -25,10 +26,6 @@ function formatCaseName(id: CaseId): string {
 }
 
 function outcomeReason(outcome: TestOutcome): string | null {
-    if (outcome.kind === 'fail') {
-        return outcome.checks[0]?.summary ?? 'failed';
-    }
-
     if (outcome.kind === 'skip' || outcome.kind === 'inconclusive') {
         return outcome.reason;
     }
@@ -64,15 +61,42 @@ function formatOrphan(orphan: OrphanedNode): string {
     return `${orphan.kind}: ${orphan.name} (${orphan.file ?? '<unknown>'})`;
 }
 
+function logFailures(
+    stdoutConsole: LineReporterDependencies['stdoutConsole'],
+    suiteDepth: number,
+    outcome: FailOutcome
+): void {
+    for (const failure of outcome.failures) {
+        for (const line of formatFailure(failure)) {
+            stdoutConsole.log(`${indent(suiteDepth + 1)}${line}`);
+        }
+    }
+}
+
 function logSummary(stdoutConsole: LineReporterDependencies['stdoutConsole'], result: RunResult): void {
     const { summary } = result;
-    stdoutConsole.log(infoSymbol, `Discovered: ${summary.discovered}`);
-    stdoutConsole.log(infoSymbol, `Planned: ${summary.planned}`);
-    stdoutConsole.log(infoSymbol, `Executed: ${result.perTest.length}`);
-    stdoutConsole.log(successSymbol, `Passed: ${summary.passed}`);
-    stdoutConsole.log(errorSymbol, `Failed: ${summary.failed}`);
-    stdoutConsole.log(infoSymbol, `Skipped: ${summary.skipped}`);
-    stdoutConsole.log(infoSymbol, `Inconclusive: ${summary.inconclusive}`);
+    const crashCount = result
+        .runnerErrors
+        .filter(function isCrash(error) {
+            return error.subtype === 'crash';
+        })
+        .length;
+    const executed = summary.passed + summary.failed + summary.skipped + summary.inconclusive + crashCount;
+    const outcomes = [
+        `${summary.passed} pass`,
+        `${summary.failed} fail`,
+        `${summary.skipped} skip`,
+        ...summary.inconclusive === 0 ? [] : [ `${summary.inconclusive} inconclusive` ],
+        ...crashCount === 0 ? [] : [ `${crashCount} crash` ]
+    ]
+        .join(', ');
+    const orphanSummary = result.orphans.length === 0 ? '' : `, ${result.orphans.length} orphaned`;
+    const countSummary = `${summary.discovered} discovered, ${summary.planned} planned, ${executed} executed`;
+
+    stdoutConsole.log(
+        infoSymbol,
+        `${countSummary} (${outcomes})${orphanSummary} in ${formatDuration(result.wallTimeMs)}`
+    );
 }
 
 function logOrphans(stdoutConsole: LineReporterDependencies['stdoutConsole'], orphans: readonly OrphanedNode[]): void {
@@ -80,7 +104,6 @@ function logOrphans(stdoutConsole: LineReporterDependencies['stdoutConsole'], or
         return;
     }
 
-    stdoutConsole.log(infoSymbol, `Orphans: ${orphans.length}`);
     for (const orphan of orphans) {
         stdoutConsole.log(infoSymbol, formatOrphan(orphan));
     }
@@ -94,6 +117,9 @@ export function createLineReporter(dependencies: LineReporterDependencies): Real
         const [ symbol, message ] = formatTestResult(event.case, event.outcome, event.wallTimeMs);
 
         stdoutConsole.log(symbol, `${indent(suiteDepth)}${message}`);
+        if (event.outcome.kind === 'fail') {
+            logFailures(stdoutConsole, suiteDepth, event.outcome);
+        }
     }
 
     function logSuiteStart(event: Extract<ReporterEvent, { readonly kind: 'suite-start'; }>): void {

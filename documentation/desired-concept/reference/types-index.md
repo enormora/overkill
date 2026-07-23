@@ -135,18 +135,42 @@ run inputs unless they were created by engine-owned constructors.
 ## Outcomes And Verdicts
 
 ```ts
+type NonEmptyReadonlyArray<Item> = readonly [Item, ...(readonly Item[])];
+
 type TestOutcome = Pass | Fail | Skip | Inconclusive;
 
 type Pass = { kind: 'pass'; };
 
 type Fail = {
     kind: 'fail';
-    checks: ReadonlyArray<FailedCheck>;
+    failures: NonEmptyReadonlyArray<TestFailure>;
 };
 
 type Skip = { kind: 'skip'; reason: string; };
 
 type Inconclusive = { kind: 'inconclusive'; reason: string; };
+
+type TestFailure =
+    | {
+        readonly kind: 'assertion';
+        readonly checks: NonEmptyReadonlyArray<FailedCheck>;
+    }
+    | {
+        readonly kind: 'body-error';
+        readonly error: {
+            readonly message: string;
+            readonly name: string;
+            readonly stack: string | null;
+            readonly thrown: unknown;
+        };
+    }
+    | {
+        readonly actual: unknown;
+        readonly code: 'invalid-plan' | 'no-assertions' | 'plan-mismatch';
+        readonly expected: string;
+        readonly kind: 'test-contract';
+        readonly summary: string;
+    };
 
 type FailedCheck = {
     readonly id: string;
@@ -186,7 +210,7 @@ type SourceLocation = {
 ```
 
 Canonical: [Assertions And Results § The Protocol Shape](../authoring/assertions-and-results.md#the-protocol-shape) for `TestOutcome`,
-[Assertions And Results](../authoring/assertions-and-results.md) for `FailedCheck`/`Diff`/`DiffOperation`/`Hunk`. The
+[Assertions And Results](../authoring/assertions-and-results.md) for `TestFailure`/`FailedCheck`/`Diff`/`DiffOperation`/`Hunk`. The
 `TestVerdict` reporter category is derived from outcome + metadata; see
 [Glossary § Test Verdict](./glossary.md#test-verdict).
 
@@ -209,13 +233,23 @@ type ForeignAssertionBridge = {
     fromThrowable(label: string, body: () => void | Promise<void>): unknown;
 };
 
-declare const testCompletionBrand: unique symbol;
-
-type TestCompletion = {
-    readonly [testCompletionBrand]: true;
+type EqualAssertionNode = {
+    readonly actual: unknown;
+    readonly check: 'equal';
+    readonly expected: unknown;
+    readonly summary: string;
 };
 
-type BuilderTestBody = (case: unknown) => TestCompletion | Promise<TestCompletion>;
+type OkAssertionNode = {
+    readonly actual: unknown;
+    readonly check: 'ok';
+    readonly summary: string;
+};
+
+type AssertionNode = EqualAssertionNode | OkAssertionNode;
+type AssertionResult = AssertionNode | NonEmptyReadonlyArray<AssertionNode>;
+
+type BuilderTestBody = (case: unknown) => AssertionResult | Promise<AssertionResult>;
 type ThrowingTestBody = (case: unknown) => void | Promise<void>;
 type TestBody = BuilderTestBody | ThrowingTestBody;
 
@@ -270,8 +304,6 @@ type RunRequest = {
     };
     readonly configPath?: string;
 };
-
-type NonEmptyReadonlyArray<Item> = readonly [Item, ...(readonly Item[])];
 
 type TestPlanCase = {
     readonly id: CaseId;

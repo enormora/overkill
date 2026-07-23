@@ -119,12 +119,21 @@ Source: [Assertions And Results § Protocol Layer](../authoring/assertions-and-r
 
 ## AssertionNode
 
-An internal assertion-protocol value used inside Overkill while normalizing
-checks into structured outcomes. The engine consumes those structured
-results; ordinary users interact with injected `case.assert` /
-`case.require` instead of constructing protocol nodes directly.
+A lazy assertion-protocol value consumed by the engine and normalized into
+structured outcomes. Direct engine consumers may return an `AssertionNode` or
+a non-empty list of them. Ordinary users interact with injected
+`case.assert` / `case.require` instead of constructing protocol nodes
+directly.
 
 Source: [Assertions And Results](../authoring/assertions-and-results.md).
+
+## TestFailure
+
+One structured cause inside a failing `TestOutcome`. Current causes separate
+assertion failures, ordinary test-body errors, and test-contract failures
+such as no assertions or a plan mismatch.
+
+Source: [Assertions And Results § Protocol Layer](../authoring/assertions-and-results.md#protocol-layer-structured-outcomes).
 
 ## Plan
 

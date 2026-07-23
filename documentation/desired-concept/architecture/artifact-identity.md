@@ -228,8 +228,8 @@ re-parsing the file.
 
 ## Resolved Identity Rules
 
-- Unicode normalisation uses **NFC** before identity hashing and path
-  derivation.
+- Unicode normalisation uses canonical composed form before identity hashing
+  and path derivation.
 - Suite path is **explicit only**. Folders contribute to `file`, not to
   `suite`.
 - In monorepos, `file` remains **repository-relative** to the resolved project

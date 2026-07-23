@@ -8,7 +8,8 @@ registerTest('createTestPlan() expands suites and tables into executable cases',
         children: [
             engine.createTestCase({
                 body(testContext) {
-                    return testContext.assert.ok(true, 'passes');
+                    testContext.assert.ok(true, 'passes');
+                    return testContext.assert.done();
                 },
                 metadata: { local: true },
                 name: 'first'
@@ -17,7 +18,8 @@ registerTest('createTestPlan() expands suites and tables into executable cases',
                 cases: [
                     {
                         body(testContext) {
-                            return testContext.assert.ok(true, 'row passes');
+                            testContext.assert.ok(true, 'row passes');
+                            return testContext.assert.done();
                         },
                         metadata: { row: 1 },
                         name: 'row 1',
@@ -64,14 +66,16 @@ registerTest('createTestPlan() reports constructed nodes that do not reach the r
     const engine = createEngine();
     const reached = engine.createTestCase({
         body(testContext) {
-            return testContext.assert.ok(true, 'passes');
+            testContext.assert.ok(true, 'passes');
+            return testContext.assert.done();
         },
         metadata: {},
         name: 'reached'
     });
     engine.createTestCase({
         body(testContext) {
-            return testContext.assert.ok(true, 'passes');
+            testContext.assert.ok(true, 'passes');
+            return testContext.assert.done();
         },
         metadata: {},
         name: 'unused test'
@@ -140,14 +144,16 @@ registerTest('createTestPlan() rejects duplicate full case identities', function
         children: [
             engine.createTestCase({
                 body(testContext) {
-                    return testContext.assert.ok(true, 'passes');
+                    testContext.assert.ok(true, 'passes');
+                    return testContext.assert.done();
                 },
                 metadata: {},
                 name: 'same'
             }),
             engine.createTestCase({
                 body(testContext) {
-                    return testContext.assert.ok(true, 'passes');
+                    testContext.assert.ok(true, 'passes');
+                    return testContext.assert.done();
                 },
                 metadata: {},
                 name: 'same'

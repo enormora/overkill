@@ -59,6 +59,8 @@ export type {
 } from '../../engine/reporter.ts';
 export { validateReporterSinks } from '../../engine/reporter.ts';
 export type {
+    AssertionTestFailure,
+    BodyErrorTestFailure,
     FailOutcome,
     InconclusiveOutcome,
     OrphanedNode,
@@ -69,12 +71,20 @@ export type {
     RunSummary,
     SkipOutcome,
     SuiteRunCounts,
+    TestContractFailure,
+    TestContractFailureCode,
+    TestFailure,
     TestOutcome
 } from '../../engine/run-result.ts';
 export type {
+    AssertionNode,
     AssertionFacade,
+    AssertionResult,
+    EqualAssertionNode,
     FailedCheck,
     Metadata,
+    NonEmptyReadonlyArray,
+    OkAssertionNode,
     SourceLocation,
     Suite,
     SuiteOptions,
@@ -86,7 +96,6 @@ export type {
     TestCase,
     TestCaseOptions,
     TestContext,
-    TestCompletion,
     TestNode
 } from '../../engine/test-node.ts';
-export type { NonEmptyReadonlyArray, TestPlan, TestPlanCase, TestPlanCaseBody } from '../../engine/test-plan.ts';
+export type { TestPlan, TestPlanCase, TestPlanCaseBody } from '../../engine/test-plan.ts';

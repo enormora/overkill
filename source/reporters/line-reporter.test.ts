@@ -29,14 +29,11 @@ const skippedCaseId: CaseId = { file: null, name: 'skips', params: null, suite: 
 const inconclusiveCaseId: CaseId = { file: null, name: 'inconclusive', params: null, suite: [ 'root' ] };
 
 function assertSummaryLog(log: SinonSpy): void {
-    assert.strictEqual(log.callCount, 7);
-    assert.deepStrictEqual(log.firstCall.args, [ infoSymbol, 'Discovered: 3' ]);
-    assert.deepStrictEqual(log.secondCall.args, [ infoSymbol, 'Planned: 3' ]);
-    assert.deepStrictEqual(log.thirdCall.args, [ infoSymbol, 'Executed: 0' ]);
-    assert.deepStrictEqual(log.getCall(3).args, [ successSymbol, 'Passed: 2' ]);
-    assert.deepStrictEqual(log.getCall(4).args, [ errorSymbol, 'Failed: 1' ]);
-    assert.deepStrictEqual(log.getCall(5).args, [ infoSymbol, 'Skipped: 0' ]);
-    assert.deepStrictEqual(log.getCall(6).args, [ infoSymbol, 'Inconclusive: 0' ]);
+    assert.strictEqual(log.callCount, 1);
+    assert.deepStrictEqual(log.firstCall.args, [
+        infoSymbol,
+        '3 discovered, 3 planned, 3 executed (2 pass, 1 fail, 0 skip) in 10 ms'
+    ]);
 }
 
 async function reportNestedSuiteRun(reporter: RealTimeReporter): Promise<void> {
@@ -76,7 +73,7 @@ registerTest('line reporter reports the start event', async function () {
     assert.deepStrictEqual(log.firstCall.args, [ infoSymbol, 'Test run started' ]);
 });
 
-registerTest('line reporter prints a failed test-end event with the first check summary', async function () {
+registerTest('line reporter prints assertion failure details for a failed test-end event', async function () {
     const log = sinon.fake();
     const reporter = lineReporterFactory({ log });
 
@@ -85,14 +82,19 @@ registerTest('line reporter prints a failed test-end event with the first check 
         case: failingCaseId,
         kind: 'test-end',
         outcome: {
-            checks: [
+            failures: [
                 {
-                    actual: 1,
-                    expected: 2,
-                    id: '1',
-                    location: { column: null, file: '', line: null },
-                    path: [],
-                    summary: 'numbers differ'
+                    checks: [
+                        {
+                            actual: 1,
+                            expected: 2,
+                            id: '1',
+                            location: { column: null, file: '', line: null },
+                            path: [],
+                            summary: 'numbers differ'
+                        }
+                    ],
+                    kind: 'assertion'
                 }
             ],
             kind: 'fail'
@@ -101,8 +103,144 @@ registerTest('line reporter prints a failed test-end event with the first check 
         wallTimeMs: 12
     });
 
-    assert.strictEqual(log.callCount, 1);
-    assert.deepStrictEqual(log.firstCall.args, [ errorSymbol, 'fails: numbers differ (12 ms)' ]);
+    assert.strictEqual(log.callCount, 4);
+    assert.deepStrictEqual(log.firstCall.args, [ errorSymbol, 'fails (12 ms)' ]);
+    assert.deepStrictEqual(log.secondCall.args, [ '  numbers differ' ]);
+    assert.deepStrictEqual(log.thirdCall.args, [ '  expected: 2' ]);
+    assert.deepStrictEqual(log.getCall(3).args, [ '  actual: 1' ]);
+});
+
+registerTest('line reporter prints unicode string mismatch hints', async function () {
+    const log = sinon.fake();
+    const reporter = lineReporterFactory({ log });
+    const composedName = 'Ad\u{00E4}le';
+    const decomposedName = 'Ada\u{0308}le';
+
+    await reporter.onEvent({
+        attempt: 0,
+        case: failingCaseId,
+        kind: 'test-end',
+        outcome: {
+            failures: [
+                {
+                    checks: [
+                        {
+                            actual: decomposedName,
+                            expected: composedName,
+                            id: '1',
+                            location: { column: 5, file: 'source/users.test.ts', line: 10 },
+                            path: [ 'name' ],
+                            summary: 'names differ'
+                        }
+                    ],
+                    kind: 'assertion'
+                }
+            ],
+            kind: 'fail'
+        },
+        verdict: 'fail',
+        wallTimeMs: 12
+    });
+
+    assert.deepStrictEqual(log.firstCall.args, [ errorSymbol, 'fails (12 ms)' ]);
+    assert.deepStrictEqual(log.secondCall.args, [ '  names differ' ]);
+    assert.deepStrictEqual(log.thirdCall.args, [ '  path: .name' ]);
+    assert.deepStrictEqual(log.getCall(3).args, [ '  location: source/users.test.ts:10:5' ]);
+    assert.deepStrictEqual(log.getCall(5).args, [ '  note: strings are equal after canonical Unicode normalization' ]);
+});
+
+registerTest('line reporter prints body error failures with a dimmed stack', async function () {
+    const log = sinon.fake();
+    const reporter = lineReporterFactory({ log });
+
+    await reporter.onEvent({
+        attempt: 0,
+        case: failingCaseId,
+        kind: 'test-end',
+        outcome: {
+            failures: [
+                {
+                    error: {
+                        message: 'boom',
+                        name: 'Error',
+                        stack: 'Error: boom\n    at source/users.test.ts:10:5',
+                        thrown: new Error('boom')
+                    },
+                    kind: 'body-error'
+                }
+            ],
+            kind: 'fail'
+        },
+        verdict: 'fail',
+        wallTimeMs: 12
+    });
+
+    assert.deepStrictEqual(log.firstCall.args, [ errorSymbol, 'fails (12 ms)' ]);
+    assert.deepStrictEqual(log.secondCall.args, [ '  Error: boom' ]);
+    assert.deepStrictEqual(log.thirdCall.args, [ `  ${colors.dim('Error: boom')}` ]);
+});
+
+registerTest('line reporter prints test-contract failures', async function () {
+    const log = sinon.fake();
+    const reporter = lineReporterFactory({ log });
+
+    await reporter.onEvent({
+        attempt: 0,
+        case: failingCaseId,
+        kind: 'test-end',
+        outcome: {
+            failures: [
+                {
+                    actual: 0,
+                    code: 'no-assertions',
+                    expected: 'at least one assertion',
+                    kind: 'test-contract',
+                    summary: 'Expected at least one assertion.'
+                }
+            ],
+            kind: 'fail'
+        },
+        verdict: 'fail',
+        wallTimeMs: 12
+    });
+
+    assert.deepStrictEqual(log.firstCall.args, [ errorSymbol, 'fails (12 ms)' ]);
+    assert.deepStrictEqual(log.secondCall.args, [ '  Expected at least one assertion. (no-assertions)' ]);
+    assert.deepStrictEqual(log.thirdCall.args, [ '  expected: at least one assertion' ]);
+    assert.deepStrictEqual(log.getCall(3).args, [ '  actual: 0' ]);
+});
+
+registerTest('line reporter prints object identity hints', async function () {
+    const log = sinon.fake();
+    const reporter = lineReporterFactory({ log });
+
+    await reporter.onEvent({
+        attempt: 0,
+        case: failingCaseId,
+        kind: 'test-end',
+        outcome: {
+            failures: [
+                {
+                    checks: [
+                        {
+                            actual: { id: 1, name: 'Grace' },
+                            expected: { id: 1, name: 'Ada' },
+                            id: '1',
+                            location: { column: null, file: '', line: null },
+                            path: [],
+                            summary: 'objects differ'
+                        }
+                    ],
+                    kind: 'assertion'
+                }
+            ],
+            kind: 'fail'
+        },
+        verdict: 'fail',
+        wallTimeMs: 12
+    });
+
+    assert.deepStrictEqual(log.getCall(2).args, [ '  reference differs; shallow differences: changed name' ]);
 });
 
 registerTest('line reporter prints a passed test-end event', async function () {
@@ -206,6 +344,36 @@ registerTest('line reporter prints the run count summary once the run finishes',
     assertSummaryLog(log);
 });
 
+registerTest('line reporter prints nonzero inconclusive and crash counts in the run summary', async function () {
+    const log = sinon.fake();
+    const reporter = lineReporterFactory({ log });
+
+    const runResult: RunResult = runResultFactory.build({
+        runnerErrors: [ { subtype: 'crash' } ],
+        summary: {
+            discovered: 4,
+            failed: 1,
+            inconclusive: 1,
+            passed: 1,
+            planned: 4,
+            skipped: 1
+        },
+        wallTimeMs: 15
+    });
+    const { onFinish } = reporter;
+
+    if (onFinish === null) {
+        throw new TypeError('Expected line reporter to expose onFinish.');
+    }
+
+    await onFinish(runResult);
+
+    assert.deepStrictEqual(log.firstCall.args, [
+        infoSymbol,
+        '4 discovered, 4 planned, 5 executed (1 pass, 1 fail, 1 skip, 1 inconclusive, 1 crash) in 15 ms'
+    ]);
+});
+
 registerTest('line reporter prints orphan details once the run finishes', async function () {
     const log = sinon.fake();
     const reporter = lineReporterFactory({ log });
@@ -231,7 +399,10 @@ registerTest('line reporter prints orphan details once the run finishes', async 
 
     await onFinish(runResult);
 
-    assert.strictEqual(log.callCount, 9);
-    assert.deepStrictEqual(log.getCall(7).args, [ infoSymbol, 'Orphans: 1' ]);
-    assert.deepStrictEqual(log.getCall(8).args, [ infoSymbol, 'test: unused (<unknown>)' ]);
+    assert.strictEqual(log.callCount, 2);
+    assert.deepStrictEqual(log.firstCall.args, [
+        infoSymbol,
+        '0 discovered, 0 planned, 0 executed (0 pass, 0 fail, 0 skip), 1 orphaned in 0 ms'
+    ]);
+    assert.deepStrictEqual(log.secondCall.args, [ infoSymbol, 'test: unused (<unknown>)' ]);
 });

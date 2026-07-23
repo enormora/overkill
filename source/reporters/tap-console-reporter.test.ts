@@ -49,14 +49,19 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
         case: failingCaseId,
         kind: 'test-end',
         outcome: {
-            checks: [
+            failures: [
                 {
-                    actual: 1,
-                    expected: 2,
-                    id: '1',
-                    location: { column: null, file: '', line: null },
-                    path: [],
-                    summary: 'the-reason'
+                    checks: [
+                        {
+                            actual: 1,
+                            expected: 2,
+                            id: '1',
+                            location: { column: null, file: '', line: null },
+                            path: [],
+                            summary: 'the-reason'
+                        }
+                    ],
+                    kind: 'assertion'
                 }
             ],
             kind: 'fail'
@@ -92,7 +97,7 @@ registerTest('reports the final result with passed and failed test cases formatt
                 {
                     id: failingCaseId,
                     outcome: {
-                        checks: [ { summary: 'the-reason' } ],
+                        failures: [ { checks: [ { summary: 'the-reason' } ], kind: 'assertion' } ],
                         kind: 'fail'
                     },
                     verdict: 'fail'
@@ -122,7 +127,15 @@ registerTest('reports a failed TAP test point with a fallback diagnostic reason'
                 {
                     id: fallbackCaseId,
                     outcome: {
-                        checks: [],
+                        failures: [
+                            {
+                                actual: 0,
+                                code: 'no-assertions',
+                                expected: 'at least one assertion',
+                                kind: 'test-contract',
+                                summary: 'Expected at least one assertion.'
+                            }
+                        ],
                         kind: 'fail'
                     },
                     verdict: 'fail'
@@ -134,7 +147,7 @@ registerTest('reports a failed TAP test point with a fallback diagnostic reason'
 
     assert.strictEqual(log.callCount, 1);
     assert.deepStrictEqual(log.firstCall.args, [
-        'TAP version 14\n1..1\nnot ok 1 - root > fails\n  ---\n  reason: failed\n  ...\n'
+        'TAP version 14\n1..1\nnot ok 1 - root > fails\n  ---\n  reason: Expected at least one assertion.\n  ...\n'
     ]);
 });
 

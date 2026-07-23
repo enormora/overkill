@@ -15,6 +15,7 @@ import type {
     SinkDeclaration,
     TestPlan,
     TestPlanCase,
+    TestFailure,
     TestOutcome
 } from './engine.entry-point.ts';
 
@@ -52,7 +53,12 @@ describe('TestOutcome', function () {
     test('accepts public outcome shapes', function () {
         expect<TestOutcome>().type.toBeAssignableFrom<{ readonly kind: 'pass'; }>();
         expect<TestOutcome>().type.toBeAssignableFrom<{
-            readonly checks: readonly [FailedCheckFixture];
+            readonly failures: readonly [
+                {
+                    readonly checks: readonly [FailedCheckFixture];
+                    readonly kind: 'assertion';
+                }
+            ];
             readonly kind: 'fail';
         }>();
         expect<TestOutcome>().type.toBeAssignableFrom<{ readonly kind: 'skip'; readonly reason: 'filtered'; }>();
@@ -87,12 +93,39 @@ describe('TestOutcome', function () {
             readonly kind: 'fail';
             readonly reason: null;
         }>();
+        expect<TestOutcome>().type.not.toBeAssignableFrom<{
+            readonly failures: readonly [];
+            readonly kind: 'fail';
+        }>();
         expect<TestOutcome>().type.not.toBeAssignableFrom<{ readonly kind: 'skip'; }>();
         expect<TestOutcome>().type.not.toBeAssignableFrom<{ readonly kind: 'inconclusive'; }>();
     });
 
     test('keeps failed checks free of diff fields', function () {
         expect<keyof FailedCheck>().type.toBe<'actual' | 'expected' | 'id' | 'location' | 'path' | 'summary'>();
+    });
+
+    test('accepts public test failure shapes', function () {
+        expect<TestFailure>().type.toBeAssignableFrom<{
+            readonly checks: readonly [FailedCheckFixture];
+            readonly kind: 'assertion';
+        }>();
+        expect<TestFailure>().type.toBeAssignableFrom<{
+            readonly error: {
+                readonly message: 'boom';
+                readonly name: 'Error';
+                readonly stack: null;
+                readonly thrown: unknown;
+            };
+            readonly kind: 'body-error';
+        }>();
+        expect<TestFailure>().type.toBeAssignableFrom<{
+            readonly actual: 1;
+            readonly code: 'plan-mismatch';
+            readonly expected: '2';
+            readonly kind: 'test-contract';
+            readonly summary: 'Assertion plan count did not match.';
+        }>();
     });
 });
 

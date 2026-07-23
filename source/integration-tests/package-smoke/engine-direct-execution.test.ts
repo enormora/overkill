@@ -32,10 +32,12 @@ function createSmokeCase(engine: Engine, definition: SmokeCaseDefinition): TestC
     return engine.createTestCase({
         body(testContext) {
             if (definition.expectedVerdict === 'pass') {
-                return testContext.assert.ok(true, definition.assertionSummary);
+                testContext.assert.ok(true, definition.assertionSummary);
+                return testContext.assert.done();
             }
 
-            return testContext.assert.equal(1, 2, definition.assertionSummary);
+            testContext.assert.equal(1, 2, definition.assertionSummary);
+            return testContext.assert.done();
         },
         metadata: { expectedVerdict: definition.expectedVerdict },
         name: definition.name
@@ -85,14 +87,19 @@ function assertSmokeResult(result: RunResult): void {
             {
                 id: failingCaseId,
                 outcome: {
-                    checks: [
+                    failures: [
                         {
-                            actual: 1,
-                            expected: 2,
-                            id: '1',
-                            location: { column: null, file: '', line: null },
-                            path: [],
-                            summary: 'numbers differ'
+                            checks: [
+                                {
+                                    actual: 1,
+                                    expected: 2,
+                                    id: '1',
+                                    location: { column: null, file: '', line: null },
+                                    path: [],
+                                    summary: 'numbers differ'
+                                }
+                            ],
+                            kind: 'assertion'
                         }
                     ],
                     kind: 'fail'
