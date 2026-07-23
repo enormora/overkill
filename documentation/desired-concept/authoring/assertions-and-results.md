@@ -21,16 +21,15 @@ The core accepts two first-party styles:
 
 Both produce the same internal `TestOutcome` value.
 
-In builder/result mode, `case.assert.done()` should return a branded
-`TestCompletion` value, not a public `TestOutcome`. A builder test that
-returns any other concrete value is a test-author error. This keeps ordinary
-application return values from being mistaken for meaningful test completion
-signals.
+In builder/result mode, `case.assert.done()` returns the non-empty assertion
+node list recorded by the injected assertion context, not a public
+`TestOutcome`. A builder test may also return one assertion node directly for
+the small direct-engine path. Returning ordinary application values is outside
+the supported builder contract.
 
-The engine still normalizes the builder log into `TestOutcome` internally.
-The brand is only a public API boundary: users complete builder tests through
-the assertion context, while reporters and integrations consume structured
-outcomes.
+The engine normalizes these lazy assertion nodes into `TestOutcome`
+internally. Users complete builder tests through the assertion context, while
+reporters and integrations consume structured outcomes.
 
 Sources:
 
@@ -383,7 +382,7 @@ type Pass = { kind: 'pass'; };
 
 type Fail = {
     kind: 'fail';
-    checks: ReadonlyArray<FailedCheck>;
+    failures: NonEmptyReadonlyArray<TestFailure>;
 };
 
 type Skip = {
@@ -395,12 +394,31 @@ type Inconclusive = {
     kind: 'inconclusive';
     reason: string;
 };
+
+type TestFailure =
+    | {
+        readonly kind: 'assertion';
+        readonly checks: NonEmptyReadonlyArray<FailedCheck>;
+    }
+    | {
+        readonly kind: 'body-error';
+        readonly error: {
+            readonly name: string;
+            readonly message: string;
+            readonly stack: string | null;
+        };
+    }
+    | {
+        readonly kind: 'test-contract';
+        readonly code: 'no-assertions' | 'plan-mismatch' | 'invalid-plan';
+        readonly message: string;
+    };
 ```
 
-The builder APIs normalize recorded checks into the same structured
-outcomes. Internally Overkill may still use assertion-protocol values while
-assembling those outcomes, but that protocol no longer needs to be a
-separate public authoring package.
+The builder APIs normalize recorded assertion nodes into the same structured
+outcomes. Assertion failures, body errors, and test-contract errors stay
+separate inside `failures` so reporters can render each cause without parsing
+prose.
 
 ### Builder Mode And Throwing Mode
 
@@ -428,29 +446,33 @@ reporters consume one failure model.
 
 ### Internal Protocol Versus Public API
 
-Overkill still benefits from an internal assertion protocol while moving
-checks between authoring helpers and the engine, but that protocol does not
-need to be exposed as a separate first-party user package.
+Overkill benefits from a lazy assertion-node protocol while moving checks
+between authoring helpers and the engine, but that protocol does not need to
+be exposed as a separate first-party user package.
 
 The public concept therefore stays simpler:
 
 - day-to-day tests use injected `case.assert` / `case.require`
 - property helpers such as `case.forall(...)` use a nested injected
   assertion context
-- the engine still receives structured `FailedCheck` data, diffs, and
-  counts without users constructing protocol nodes directly
+- the engine receives structured `AssertionNode` data and evaluates it into
+  `FailedCheck` failures, diffs, and counts without ordinary users
+  constructing protocol nodes directly
 
 ### Error Separation
 
 The protocol model sharpens an important distinction:
 
-- **assertion failure** — structured test outcome
-- **runner error** — unexpected exception, rejection, crash, permission
-  denial, or runtime failure
+- **assertion failure**: structured test outcome
+- **body error**: an ordinary exception or rejection from the test body
+- **test-contract error**: invalid assertion protocol usage such as no
+  assertions, invalid `plan(n)`, or plan mismatch
+- **runner error**: infrastructure failure outside the test outcome path,
+  such as reporter failure, crash, permission denial, or runtime failure
 
-This separation is part of the core concept. Assertion failures should
-not need to travel through the same path as infrastructure errors. See
-[Failure Artifacts](./failure-artifacts.md) and
+This separation is part of the core concept. Assertion failures, ordinary
+body errors, and runner infrastructure errors should not travel through the
+same path. See [Failure Artifacts](./failure-artifacts.md) and
 [Runtime Behavior](../architecture/runtime-behavior.md).
 
 ### Engine Flexibility

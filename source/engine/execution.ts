@@ -1,4 +1,5 @@
 import type { WallClock } from '@enormora/wall-clock';
+import { runTestCase } from './case-execution.ts';
 import { caseIdentityKey } from './identity.ts';
 import {
     type Reporter,
@@ -6,14 +7,7 @@ import {
     type RunFacts,
     validateReporterSinks
 } from './reporter.ts';
-import {
-    type PerTestResult,
-    type RunResult,
-    type RunnerError,
-    type TestOutcome,
-    verdictFromOutcome
-} from './run-result.ts';
-import { createTestCompletion, type FailedCheck, type TestCompletion, type TestContext } from './test-node.ts';
+import type { PerTestResult, RunResult, RunnerError } from './run-result.ts';
 import type { TestPlan, TestPlanCase } from './test-plan.ts';
 
 export type ExecuteOptions = {
@@ -28,165 +22,6 @@ export type ExecuteDependencies = {
 };
 
 const epoch = new Date(0);
-
-const failedOkValues = new Set<unknown>([ false, null, undefined, 0, '' ]);
-
-type AssertionRecorder = {
-    readonly done: () => TestCompletion;
-    readonly equal: (actual: unknown, expected: unknown, summary: string) => TestCompletion;
-    readonly failedChecks: () => readonly FailedCheck[];
-    readonly ok: (actual: unknown, summary: string) => TestCompletion;
-    readonly plan: (count: number) => TestCompletion;
-    readonly recordBodyError: (error: unknown) => void;
-    readonly requireEqual: (actual: unknown, expected: unknown, summary: string) => TestCompletion;
-    readonly requireOk: (actual: unknown, summary: string) => TestCompletion;
-    readonly validateAssertionCount: () => void;
-};
-
-function createAssertionRecorder(): AssertionRecorder {
-    const failedChecks: FailedCheck[] = [];
-    let nextCheckId = 0;
-    let plannedCount: number | null = null;
-    let recordedCount = 0;
-
-    function recordFailure(summary: string, expected: unknown, actual: unknown): void {
-        nextCheckId += 1;
-        failedChecks.push({
-            actual,
-            expected,
-            id: String(nextCheckId),
-            location: { column: null, file: '', line: null },
-            path: [],
-            summary
-        });
-    }
-
-    function recordAssertion(): void {
-        recordedCount += 1;
-    }
-
-    return {
-        done: createTestCompletion,
-
-        equal(actual, expected, summary) {
-            recordAssertion();
-            if (!Object.is(actual, expected)) {
-                recordFailure(summary, expected, actual);
-            }
-
-            return createTestCompletion();
-        },
-
-        failedChecks() {
-            return failedChecks;
-        },
-
-        ok(actual, summary) {
-            recordAssertion();
-            if (failedOkValues.has(actual)) {
-                recordFailure(summary, true, actual);
-            }
-
-            return createTestCompletion();
-        },
-
-        plan(count) {
-            plannedCount = count;
-            return createTestCompletion();
-        },
-
-        recordBodyError(error) {
-            recordFailure(
-                error instanceof Error ? error.message : 'Test body threw a non-error value.',
-                'no thrown error',
-                error
-            );
-        },
-
-        requireEqual(actual, expected, summary) {
-            recordAssertion();
-            if (!Object.is(actual, expected)) {
-                recordFailure(summary, expected, actual);
-                throw new Error(summary);
-            }
-
-            return createTestCompletion();
-        },
-
-        requireOk(actual, summary) {
-            recordAssertion();
-            if (failedOkValues.has(actual)) {
-                recordFailure(summary, true, actual);
-                throw new Error(summary);
-            }
-
-            return createTestCompletion();
-        },
-
-        validateAssertionCount() {
-            if (recordedCount === 0) {
-                recordFailure('Expected at least one assertion.', 'at least one assertion', 0);
-            }
-
-            if (plannedCount !== null && plannedCount !== recordedCount) {
-                recordFailure('Assertion plan count did not match.', plannedCount, recordedCount);
-            }
-        }
-    };
-}
-
-function createTestContext(recorder: AssertionRecorder): TestContext {
-    return {
-        assert: {
-            done() {
-                return recorder.done();
-            },
-            equal(actual, expected, summary) {
-                return recorder.equal(actual, expected, summary);
-            },
-            ok(actual, summary) {
-                return recorder.ok(actual, summary);
-            }
-        },
-        plan(count) {
-            return recorder.plan(count);
-        },
-        require: {
-            done() {
-                return recorder.done();
-            },
-            equal(actual, expected, summary) {
-                return recorder.requireEqual(actual, expected, summary);
-            },
-            ok(actual, summary) {
-                return recorder.requireOk(actual, summary);
-            }
-        }
-    };
-}
-
-async function runCaseBody(testCase: TestPlanCase, recorder: AssertionRecorder): Promise<void> {
-    try {
-        await testCase.body(createTestContext(recorder));
-    } catch (error: unknown) {
-        recorder.recordBodyError(error);
-    }
-}
-
-function createOutcome(recorder: AssertionRecorder): TestOutcome {
-    const failedChecks = recorder.failedChecks();
-
-    if (failedChecks.length === 0) {
-        return { kind: 'pass' };
-    }
-
-    return { checks: failedChecks, kind: 'fail' };
-}
-
-type ExecutedCase = {
-    readonly result: PerTestResult;
-    readonly wallTimeMs: number;
-};
 
 type ExecutedTestPlan = {
     readonly perTest: readonly PerTestResult[];
@@ -207,26 +42,6 @@ type ExecutionDependencies = {
     readonly reporterDispatcher: ReporterDispatcher;
     readonly wallClock: WallClock;
 };
-
-async function runTestCase(testCase: TestPlanCase, wallClock: WallClock): Promise<ExecutedCase> {
-    const recorder = createAssertionRecorder();
-    const startedAt = wallClock.currentTimestampInMilliseconds;
-
-    await runCaseBody(testCase, recorder);
-    recorder.validateAssertionCount();
-
-    const outcome = createOutcome(recorder);
-    const verdict = verdictFromOutcome(outcome);
-
-    return {
-        result: {
-            id: testCase.id,
-            outcome,
-            verdict
-        },
-        wallTimeMs: wallClock.currentTimestampInMilliseconds - startedAt
-    };
-}
 
 async function executeCase(
     testCase: TestPlanCase,

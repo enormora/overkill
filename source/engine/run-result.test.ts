@@ -24,7 +24,10 @@ function createFailedCheck(): FailedCheckFixture {
 }
 
 registerTest('verdictFromOutcome() returns the outcome kind as the verdict', function () {
-    const outcome: TestOutcome = { checks: [ createFailedCheck() ], kind: 'fail' };
+    const outcome: TestOutcome = {
+        failures: [ { checks: [ createFailedCheck() ], kind: 'assertion' } ],
+        kind: 'fail'
+    };
 
     assert.equal(verdictFromOutcome(outcome), 'fail');
 });

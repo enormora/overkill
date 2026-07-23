@@ -18,3 +18,11 @@ await execute(testPlan, {
 ```
 
 The reporter writes to `stdout` and declares that sink as exclusive.
+
+Rendering:
+
+- failed test headers show identity and duration only
+- all failure details come from structured `outcome.failures`
+- all failed checks are rendered
+- run summaries include discovered, planned, executed, pass, fail, and skip
+  counts, with inconclusive, crash, and orphan counts only when non-zero

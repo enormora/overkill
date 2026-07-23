@@ -1,5 +1,5 @@
 import { formatCaseId } from '../engine/identity.ts';
-import type { PerTestResult, RunResult } from '../engine/run-result.ts';
+import type { PerTestResult, RunResult, TestFailure } from '../engine/run-result.ts';
 import type { FinalResultReporter, RealTimeReporter, ReporterEvent } from '../engine/reporter.ts';
 
 export type TapConsoleReporterDependencies = {
@@ -19,9 +19,21 @@ function statusForOutcome(outcome: TapPoint['outcome']): 'not ok' | 'ok' {
     return 'ok';
 }
 
+function failureReason(failure: TestFailure): string {
+    if (failure.kind === 'assertion') {
+        return failure.checks[0].summary;
+    }
+
+    if (failure.kind === 'body-error') {
+        return failure.error.message;
+    }
+
+    return failure.summary;
+}
+
 function diagnosticReason(outcome: TapPoint['outcome']): string | null {
     if (outcome.kind === 'fail') {
-        return outcome.checks[0]?.summary ?? 'failed';
+        return failureReason(outcome.failures[0]);
     }
 
     if (outcome.kind === 'inconclusive') {

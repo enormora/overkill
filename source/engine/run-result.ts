@@ -1,5 +1,5 @@
 import type { CaseId } from './identity.ts';
-import type { FailedCheck } from './test-node.ts';
+import type { FailedCheck, NonEmptyReadonlyArray } from './test-node.ts';
 
 type RunnerErrorSubtypeByName = {
     readonly attributionDrift: 'attribution-drift';
@@ -19,8 +19,35 @@ export type PassOutcome = {
     readonly reason?: never;
 };
 
+export type AssertionTestFailure = {
+    readonly checks: NonEmptyReadonlyArray<FailedCheck>;
+    readonly kind: 'assertion';
+};
+
+export type BodyErrorTestFailure = {
+    readonly error: {
+        readonly message: string;
+        readonly name: string;
+        readonly stack: string | null;
+        readonly thrown: unknown;
+    };
+    readonly kind: 'body-error';
+};
+
+export type TestContractFailureCode = 'invalid-plan' | 'no-assertions' | 'plan-mismatch';
+
+export type TestContractFailure = {
+    readonly actual: unknown;
+    readonly code: TestContractFailureCode;
+    readonly expected: string;
+    readonly kind: 'test-contract';
+    readonly summary: string;
+};
+
+export type TestFailure = AssertionTestFailure | BodyErrorTestFailure | TestContractFailure;
+
 export type FailOutcome = {
-    readonly checks: readonly FailedCheck[];
+    readonly failures: NonEmptyReadonlyArray<TestFailure>;
     readonly kind: 'fail';
     readonly reason?: never;
 };

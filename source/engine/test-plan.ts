@@ -4,6 +4,7 @@ import {
     ensureOwnedTestNode,
     mergeMetadata,
     type Metadata,
+    type NonEmptyReadonlyArray,
     type Table,
     type TestBody,
     type TestCase,
@@ -19,8 +20,6 @@ export type TestPlanCase = {
     readonly metadata: Metadata;
     readonly body: TestPlanCaseBody;
 };
-
-export type NonEmptyReadonlyArray<Item> = readonly [Item, ...(readonly Item[])];
 
 export type TestPlan = {
     readonly defined: number;

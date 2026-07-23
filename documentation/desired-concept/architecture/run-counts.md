@@ -369,13 +369,13 @@ include `discovered`, and an orphan count when one exists. Suggested
 shape:
 
 ```text
-10000 discovered, 9000 planned, 9000 executed (8800 pass, 100 fail, 100 skip)  in 4.2s
+10000 discovered, 9000 planned, 9000 executed (8800 pass, 100 fail, 100 skip) in 4.2s
 ```
 
 with the orphan count appended when `orphans` is non-empty:
 
 ```text
-10000 discovered, 9000 planned, 9000 executed (8800 pass, 100 fail, 100 skip), 3 orphaned  in 4.2s
+10000 discovered, 9000 planned, 9000 executed (8800 pass, 100 fail, 100 skip), 3 orphaned in 4.2s
 ```
 
 `discovered`, `planned`, `executed`, and the per-outcome counts render unconditionally, even
@@ -383,6 +383,8 @@ when zero, matching the existing summary precedent. The orphan figure
 is shown only when non-zero, and when shown the reporter lists the
 orphaned nodes (`file`, `name`, `kind`) below the summary line — the
 identities are the actionable part, the bare count is not.
+`inconclusive` and `crash` counts are included in the parenthesized outcome
+breakdown only when non-zero.
 
 Machine-readable reporters (JSON, TAP) emit the full structured data,
 including `defined` and the `orphans` list; the per-suite breakdown is

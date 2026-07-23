@@ -7,11 +7,49 @@ import {
 import { registerTest } from '../test-support/register-test.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { RealTimeReporter, ReporterEvent } from './reporter.ts';
+import type { FailOutcome, RunResult } from './run-result.ts';
+import type { TestBody } from './test-node.ts';
 
 function recordedEvents(reporter: InMemoryRealTimeReporter): readonly ReporterEvent[] {
     return reporter.getRecordedEntries().flatMap(function toEvent(entry) {
         return entry.event === null ? [] : [ entry.event ];
     });
+}
+
+function firstFailOutcome(result: RunResult): FailOutcome {
+    const firstResult = result.perTest.at(0);
+
+    assert.notEqual(firstResult, undefined);
+
+    if (firstResult === undefined) {
+        throw new TypeError('Expected at least one test result.');
+    }
+
+    if (firstResult.outcome.kind === 'fail') {
+        return firstResult.outcome;
+    }
+
+    throw new TypeError('Expected first outcome to fail.');
+}
+
+async function executeSingleBody(body: TestBody): Promise<RunResult> {
+    const engine = createEngine();
+
+    return await engine.execute(
+        engine.createTestPlan(
+            engine.createSuite({
+                children: [
+                    engine.createTestCase({
+                        body,
+                        metadata: {},
+                        name: 'case'
+                    })
+                ],
+                metadata: {},
+                name: 'root'
+            })
+        )
+    );
 }
 
 registerTest('execute() returns passing and failing outcomes with run counts', async function () {
@@ -21,14 +59,16 @@ registerTest('execute() returns passing and failing outcomes with run counts', a
             children: [
                 engine.createTestCase({
                     body(testContext) {
-                        return testContext.assert.ok(true, 'passes');
+                        testContext.assert.ok(true, 'passes');
+                        return testContext.assert.done();
                     },
                     metadata: {},
                     name: 'passes'
                 }),
                 engine.createTestCase({
                     body(testContext) {
-                        return testContext.assert.equal(1, 2, 'numbers differ');
+                        testContext.assert.equal(1, 2, 'numbers differ');
+                        return testContext.assert.done();
                     },
                     metadata: {},
                     name: 'fails'
@@ -59,7 +99,8 @@ registerTest('execute() carries orphaned nodes from the plan', async function ()
     const engine = createEngine();
     const reached = engine.createTestCase({
         body(testContext) {
-            return testContext.assert.ok(true, 'passes');
+            testContext.assert.ok(true, 'passes');
+            return testContext.assert.done();
         },
         metadata: {},
         name: 'reached'
@@ -91,8 +132,8 @@ registerTest('execute() fails tests with zero assertions', async function () {
         engine.createSuite({
             children: [
                 engine.createTestCase({
-                    body() {
-                        return undefined;
+                    body(testContext) {
+                        return testContext.assert.done();
                     },
                     metadata: {},
                     name: 'empty'
@@ -107,13 +148,12 @@ registerTest('execute() fails tests with zero assertions', async function () {
 
     assert.equal(result.summary.failed, 1);
     assert.deepStrictEqual(result.perTest[0]?.outcome, {
-        checks: [
+        failures: [
             {
                 actual: 0,
+                code: 'no-assertions',
                 expected: 'at least one assertion',
-                id: '1',
-                location: { column: null, file: '', line: null },
-                path: [],
+                kind: 'test-contract',
                 summary: 'Expected at least one assertion.'
             }
         ],
@@ -129,7 +169,8 @@ registerTest('execute() fails tests when assertion plan count does not match', a
                 engine.createTestCase({
                     body(testContext) {
                         testContext.plan(2);
-                        return testContext.assert.ok(true, 'one');
+                        testContext.assert.ok(true, 'one');
+                        return testContext.assert.done();
                     },
                     metadata: {},
                     name: 'planned'
@@ -144,19 +185,47 @@ registerTest('execute() fails tests when assertion plan count does not match', a
 
     assert.equal(result.summary.failed, 1);
     assert.deepStrictEqual(result.perTest[0]?.outcome, {
-        checks: [
+        failures: [
             {
                 actual: 1,
-                expected: 2,
-                id: '1',
-                location: { column: null, file: '', line: null },
-                path: [],
+                code: 'plan-mismatch',
+                expected: '2',
+                kind: 'test-contract',
                 summary: 'Assertion plan count did not match.'
             }
         ],
         kind: 'fail'
     });
 });
+
+registerTest('execute() accepts a directly returned assertion node', async function () {
+    const result = await executeSingleBody(function body() {
+        return {
+            actual: true,
+            check: 'ok',
+            summary: 'direct assertion'
+        };
+    });
+
+    assert.equal(result.summary.passed, 1);
+});
+
+registerTest('execute() fails tests with invalid assertion plans', async function () {
+    const result = await executeSingleBody(function body(testContext) {
+        testContext.plan(0);
+        testContext.assert.ok(true, 'unreached');
+        return testContext.assert.done();
+    });
+
+    assert.deepStrictEqual(firstFailOutcome(result).failures[0], {
+        actual: 0,
+        code: 'invalid-plan',
+        expected: 'positive integer plan before assertions',
+        kind: 'test-contract',
+        summary: 'Assertion plan must be a positive integer before assertions.'
+    });
+});
+
 registerTest('execute() exposes assertion and requirement convenience methods', async function () {
     const engine = createEngine();
     const testPlan = engine.createTestPlan(
@@ -164,12 +233,11 @@ registerTest('execute() exposes assertion and requirement convenience methods', 
             children: [
                 engine.createTestCase({
                     body(testContext) {
-                        testContext.assert.done();
-                        testContext.require.done();
+                        testContext.assert.ok(true, 'one');
                         testContext.require.equal(1, 1, 'equal');
                         testContext.require.ok(true, 'ok');
-
-                        return testContext.assert.ok(true, 'passes');
+                        testContext.assert.ok(true, 'passes');
+                        return testContext.assert.done();
                     },
                     metadata: {},
                     name: 'uses context'
@@ -192,14 +260,16 @@ registerTest('execute() fails the test when a requirement fails', async function
             children: [
                 engine.createTestCase({
                     body(testContext) {
-                        return testContext.require.equal(1, 2, 'required equality');
+                        testContext.require.equal(1, 2, 'required equality');
+                        return testContext.assert.done();
                     },
                     metadata: {},
                     name: 'requires equality'
                 }),
                 engine.createTestCase({
                     body(testContext) {
-                        return testContext.require.ok(false, 'required truth');
+                        testContext.require.ok(false, 'required truth');
+                        return testContext.assert.done();
                     },
                     metadata: {},
                     name: 'requires truth'
@@ -219,7 +289,8 @@ registerTest('execute() fails the test when a requirement fails', async function
                 return null;
             }
 
-            return testResult.outcome.checks[0]?.summary;
+            const failure = testResult.outcome.failures[0];
+            return failure.kind === 'assertion' ? failure.checks[0].summary : null;
         }),
         [ 'required equality', 'required truth' ]
     );
@@ -246,9 +317,72 @@ registerTest('execute() records thrown test body errors', async function () {
     const result = await engine.execute(testPlan);
 
     assert.equal(result.summary.failed, 1);
-    const outcome = result.perTest[0]?.outcome;
-    assert.equal(outcome?.kind, 'fail');
-    assert.equal(outcome.checks[0]?.summary, 'boom');
+    const outcome = firstFailOutcome(result);
+    assert.deepStrictEqual(
+        outcome.failures.map(function toFailureKind(failure) {
+            return failure.kind;
+        }),
+        [ 'body-error' ]
+    );
+    const failure = outcome.failures[0];
+    assert.equal(failure.kind, 'body-error');
+    assert.equal(failure.error.name, 'Error');
+    assert.equal(failure.error.message, 'boom');
+});
+
+registerTest('execute() preserves assertions recorded before a thrown body error', async function () {
+    const engine = createEngine();
+    const testPlan = engine.createTestPlan(
+        engine.createSuite({
+            children: [
+                engine.createTestCase({
+                    body(testContext) {
+                        testContext.assert.equal(1, 2, 'numbers differ');
+                        throw new Error('boom');
+                    },
+                    metadata: {},
+                    name: 'asserts then throws'
+                })
+            ],
+            metadata: {},
+            name: 'root'
+        })
+    );
+
+    const result = await engine.execute(testPlan);
+    const outcome = firstFailOutcome(result);
+
+    assert.deepStrictEqual(
+        outcome.failures.map(function toFailureKind(failure) {
+            return failure.kind;
+        }),
+        [ 'assertion', 'body-error' ]
+    );
+});
+
+registerTest('execute() records rejected test body promises as body errors', async function () {
+    const engine = createEngine();
+    const testPlan = engine.createTestPlan(
+        engine.createSuite({
+            children: [
+                engine.createTestCase({
+                    async body() {
+                        await Promise.resolve();
+                        throw new Error('rejects');
+                    },
+                    metadata: {},
+                    name: 'rejects'
+                })
+            ],
+            metadata: {},
+            name: 'root'
+        })
+    );
+
+    const result = await engine.execute(testPlan);
+    const outcome = firstFailOutcome(result);
+
+    assert.equal(outcome.failures[0].kind, 'body-error');
 });
 
 registerTest('execute() delivers events and final results to reporters', async function () {
@@ -260,7 +394,8 @@ registerTest('execute() delivers events and final results to reporters', async f
             children: [
                 engine.createTestCase({
                     body(testContext) {
-                        return testContext.assert.ok(true, 'passes');
+                        testContext.assert.ok(true, 'passes');
+                        return testContext.assert.done();
                     },
                     metadata: {},
                     name: 'passes'
@@ -309,7 +444,8 @@ registerTest('execute() emits suite events for table path segments', async funct
             children: [
                 engine.createTestCase({
                     body(testContext) {
-                        return testContext.assert.ok(true, 'passes');
+                        testContext.assert.ok(true, 'passes');
+                        return testContext.assert.done();
                     },
                     metadata: {},
                     name: 'first'
@@ -318,7 +454,8 @@ registerTest('execute() emits suite events for table path segments', async funct
                     cases: [
                         {
                             body(testContext) {
-                                return testContext.assert.ok(true, 'row passes');
+                                testContext.assert.ok(true, 'row passes');
+                                return testContext.assert.done();
                             },
                             metadata: {},
                             name: 'row 1',
@@ -375,7 +512,8 @@ registerTest('execute() rejects reporter sink conflicts before starting the run'
                 engine.createTestCase({
                     body(testContext) {
                         bodyRan = true;
-                        return testContext.assert.ok(true, 'passes');
+                        testContext.assert.ok(true, 'passes');
+                        return testContext.assert.done();
                     },
                     metadata: {},
                     name: 'passes'

@@ -232,6 +232,33 @@ A reporter that needs serialized output (e.g. a TAP reporter writing
 to stdout) declares the sink as `exclusive`; a reporter that
 tolerates interleaving declares `shared`.
 
+## Default Line Reporter Rendering
+
+`@overkill-dev/reporter-line` is the default human terminal reporter. It
+renders the real-time event stream directly:
+
+- passing tests render one compact line with the case identity and duration
+- failing tests render a compact header, then one detail block for each
+  structured failure in `outcome.failures`
+- assertion failures render every failed check, not only the first check
+- body errors render the normalized name, message, and a capped dimmed stack
+- test-contract failures render the contract summary
+- captured stdout and stderr need a separate output concept and are not part
+  of the first failure-rendering pass
+
+The failure header intentionally omits the first assertion summary:
+
+```text
+✗ users › parses display name (12 ms)
+```
+
+The useful failure text belongs in the detail blocks below the header. Value
+rendering is focused in the first pass: primitives render exactly, strings
+show a grapheme-window mismatch with a JavaScript code-unit index and an
+canonical Unicode equivalence note when relevant, and arrays or objects add shallow
+identity-oriented hints. Terminal output is capped to keep local failures
+readable; machine-readable reporters still receive the structured result.
+
 ## Reporter Errors
 
 A reporter that throws synchronously, rejects, or exceeds its

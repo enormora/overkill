@@ -35,8 +35,8 @@ export const spec = suite('users', [
 
 The test passes for thousands of generated inputs, then fails on a
 shrunk minimal counterexample: a `User` whose `name` contains a
-combining accent. `parse(serialize(...))` roundtrips Unicode in NFD
-form when the input was NFC. The structures compare unequal.
+combining accent. `parse(serialize(...))` roundtrips Unicode in decomposed
+form when the input used composed form. The structures compare unequal.
 
 The important part for this walkthrough is not the property helper
 itself; it is the authoring shape around it: the file exports a suite
@@ -59,8 +59,8 @@ counterexample into the case's assertion log (see
 const recorded: FailedCheck = {
     id: '0001',
     summary: 'expected deep equality',
-    expected: { id: '42', name: 'Adäle' }, // NFC
-    actual: { id: '42', name: 'Adäle' }, // NFD
+    expected: { id: '42', name: 'Adäle' }, // composed
+    actual: { id: '42', name: 'Adäle' }, // decomposed
     path: [ 'name' ],
     location: { file: 'source/users.test.ts', line: 10 },
     diff: {
@@ -86,7 +86,12 @@ the case's recorded log and constructs the `TestOutcome` (see
 ```ts
 const outcome: TestOutcome = {
     kind: 'fail',
-    checks: [ recorded ]
+    failures: [
+        {
+            kind: 'assertion',
+            checks: [ recorded ]
+        }
+    ]
 };
 ```
 
@@ -172,7 +177,15 @@ When the active workflow persists a run record (see [Reproducibility § Run Reco
 ```ts
 {
     id: caseId,
-    outcome: { kind: 'fail', checks: [recorded] },
+    outcome: {
+        kind: 'fail',
+        failures: [
+            {
+                kind: 'assertion',
+                checks: [recorded],
+            },
+        ],
+    },
     verdict: 'fail',
 }
 ```
