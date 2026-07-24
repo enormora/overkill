@@ -93,6 +93,7 @@ type TestReporterEvent = TestEndReporterEvent | TestProgressReporterEvent | Test
 export type ReporterEvent = RunReporterEvent | SuiteReporterEvent | TestReporterEvent;
 
 export type RealTimeReporter = {
+    readonly dispose: (() => Promise<void> | void) | null;
     readonly kind: 'real-time';
     readonly name: string;
     readonly sinks: readonly SinkDeclaration[];
@@ -101,6 +102,7 @@ export type RealTimeReporter = {
 };
 
 export type FinalResultReporter = {
+    readonly dispose: (() => Promise<void> | void) | null;
     readonly kind: 'final-result';
     readonly name: string;
     readonly sinks: readonly SinkDeclaration[];
@@ -110,6 +112,9 @@ export type FinalResultReporter = {
 export type Reporter = FinalResultReporter | RealTimeReporter;
 
 export type ReporterDispatcher = {
+    readonly disposeReporters: (
+        reporters: readonly Reporter[]
+    ) => Promise<readonly RunnerError[]>;
     readonly reportEvent: (
         reporters: readonly Reporter[],
         event: ReporterEvent
@@ -383,5 +388,29 @@ export function createReporterDispatcher(dependencies: ReporterDispatcherDepende
         return collectReporterErrorsWithNotifications(reporters, reporterErrors);
     }
 
-    return { reportEvent, reportResult };
+    async function disposeReporters(reporters: readonly Reporter[]): Promise<readonly RunnerError[]> {
+        const failures = await Promise.all(reporters.map(async function disposeReporter(
+            reporter
+        ): Promise<ReporterCallbackFailure | null> {
+            if (reporter.dispose === null) {
+                return null;
+            }
+
+            const { dispose } = reporter;
+            const error = await awaitReporterCallback(
+                reporter,
+                function disposeReporterResources(): Promise<void> | void {
+                    return dispose();
+                }
+            );
+
+            return error === null ? null : { error, reporter };
+        }));
+
+        return failures.flatMap(function collectFailure(failure) {
+            return failure === null ? [] : [ failure.error ];
+        });
+    }
+
+    return { disposeReporters, reportEvent, reportResult };
 }

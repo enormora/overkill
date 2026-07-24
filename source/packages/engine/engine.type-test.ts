@@ -176,7 +176,9 @@ describe('Reporter contract', function () {
     test('uses explicit run facts and nullable finish callbacks', function () {
         expect<keyof ExecuteOptions>().type.toBe<'reporters' | 'runFacts' | 'startedAt'>();
         expect<RunFacts>().type.toBe<Readonly<Record<string, unknown>>>();
+        expect<RealTimeReporter['dispose']>().type.toBe<(() => Promise<void> | void) | null>();
         expect<RealTimeReporter['onFinish']>().type.toBe<((result: RunResult) => Promise<void> | void) | null>();
+        expect<FinalResultReporter['dispose']>().type.toBe<(() => Promise<void> | void) | null>();
         expect<FinalResultReporter['kind']>().type.toBe<'final-result'>();
     });
 

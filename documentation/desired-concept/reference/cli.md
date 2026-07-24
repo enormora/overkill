@@ -129,3 +129,7 @@ Color, animation, and progress UI obey:
 
 Terminal width detection uses `process.stdout.columns`; updates on
 `SIGWINCH`. Reporters wrap or truncate diff output accordingly.
+
+An explicitly configured `@overkill-dev/reporter-dot` still streams compact
+progress marks in non-interactive output. Non-interactive mode disables
+cursor-control reflow only; it does not silence dot progress.

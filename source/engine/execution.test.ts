@@ -498,6 +498,7 @@ registerTest('execute() rejects reporter sink conflicts before starting the run'
     let bodyRan = false;
     const realTimeReporter = createInMemoryRealTimeReporter();
     const conflictingReporter: RealTimeReporter = {
+        dispose: null,
         kind: 'real-time',
         name: 'conflicting',
         onEvent() {

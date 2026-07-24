@@ -37,6 +37,7 @@ export function createInMemoryRealTimeReporter(): InMemoryRealTimeReporter {
     const recordedEntries = createRecordedEntries();
 
     return {
+        dispose: null,
         kind: 'real-time',
         name: 'in-memory-real-time',
         sinks: [],
@@ -59,6 +60,7 @@ export function createInMemoryFinalResultReporter(): InMemoryFinalResultReporter
     const recordedEntries = createRecordedEntries();
 
     return {
+        dispose: null,
         kind: 'final-result',
         name: 'in-memory-final-result',
         sinks: [],

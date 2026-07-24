@@ -4,6 +4,7 @@ import type { CaseId } from '../engine/identity.ts';
 import type { RealTimeReporter, ReporterEvent } from '../engine/reporter.ts';
 import type { FailOutcome, OrphanedNode, RunResult, TestOutcome } from '../engine/run-result.ts';
 import { formatFailure } from './line-failure-rendering.ts';
+import { createTerminalLineLogger, type TerminalLineLogger } from './terminal.ts';
 
 const successSymbol = colors.green(figures.tick);
 const errorSymbol = colors.red(figures.cross);
@@ -62,18 +63,18 @@ function formatOrphan(orphan: OrphanedNode): string {
 }
 
 function logFailures(
-    stdoutConsole: LineReporterDependencies['stdoutConsole'],
+    terminal: TerminalLineLogger,
     suiteDepth: number,
     outcome: FailOutcome
 ): void {
     for (const failure of outcome.failures) {
         for (const line of formatFailure(failure)) {
-            stdoutConsole.log(`${indent(suiteDepth + 1)}${line}`);
+            terminal.line(`${indent(suiteDepth + 1)}${line}`);
         }
     }
 }
 
-function logSummary(stdoutConsole: LineReporterDependencies['stdoutConsole'], result: RunResult): void {
+function logSummary(terminal: TerminalLineLogger, result: RunResult): void {
     const { summary } = result;
     const crashCount = result
         .runnerErrors
@@ -93,48 +94,50 @@ function logSummary(stdoutConsole: LineReporterDependencies['stdoutConsole'], re
     const orphanSummary = result.orphans.length === 0 ? '' : `, ${result.orphans.length} orphaned`;
     const countSummary = `${summary.discovered} discovered, ${summary.planned} planned, ${executed} executed`;
 
-    stdoutConsole.log(
+    terminal.line(
         infoSymbol,
         `${countSummary} (${outcomes})${orphanSummary} in ${formatDuration(result.wallTimeMs)}`
     );
 }
 
-function logOrphans(stdoutConsole: LineReporterDependencies['stdoutConsole'], orphans: readonly OrphanedNode[]): void {
+function logOrphans(terminal: TerminalLineLogger, orphans: readonly OrphanedNode[]): void {
     if (orphans.length === 0) {
         return;
     }
 
     for (const orphan of orphans) {
-        stdoutConsole.log(infoSymbol, formatOrphan(orphan));
+        terminal.line(infoSymbol, formatOrphan(orphan));
     }
 }
 
 export function createLineReporter(dependencies: LineReporterDependencies): RealTimeReporter {
     const { stdoutConsole } = dependencies;
+    const terminal = createTerminalLineLogger({ stdoutConsole });
     let suiteDepth = 0;
 
     function logTestEnd(event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>): void {
         const [ symbol, message ] = formatTestResult(event.case, event.outcome, event.wallTimeMs);
 
-        stdoutConsole.log(symbol, `${indent(suiteDepth)}${message}`);
+        terminal.line(symbol, `${indent(suiteDepth)}${message}`);
         if (event.outcome.kind === 'fail') {
-            logFailures(stdoutConsole, suiteDepth, event.outcome);
+            logFailures(terminal, suiteDepth, event.outcome);
         }
     }
 
     function logSuiteStart(event: Extract<ReporterEvent, { readonly kind: 'suite-start'; }>): void {
-        stdoutConsole.log(infoSymbol, `${indent(suiteDepth)}${formatSuiteName(event)}`);
+        terminal.line(infoSymbol, `${indent(suiteDepth)}${formatSuiteName(event)}`);
         suiteDepth += 1;
     }
 
     return {
+        dispose: null,
         kind: 'real-time',
         name: 'line',
         sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ],
 
         async onEvent(event) {
             if (event.kind === 'run-start') {
-                stdoutConsole.log(infoSymbol, 'Test run started');
+                terminal.line(infoSymbol, 'Test run started');
             } else if (event.kind === 'suite-start') {
                 logSuiteStart(event);
             } else if (event.kind === 'suite-end') {
@@ -142,13 +145,13 @@ export function createLineReporter(dependencies: LineReporterDependencies): Real
             } else if (event.kind === 'test-end') {
                 logTestEnd(event);
             } else if (event.kind === 'runner-error') {
-                stdoutConsole.log(errorSymbol, `Runner error: ${event.error.message}`);
+                terminal.line(errorSymbol, `Runner error: ${event.error.message}`);
             }
         },
 
         async onFinish(finalResult) {
-            logSummary(stdoutConsole, finalResult);
-            logOrphans(stdoutConsole, finalResult.orphans);
+            logSummary(terminal, finalResult);
+            logOrphans(terminal, finalResult.orphans);
         }
     };
 }
