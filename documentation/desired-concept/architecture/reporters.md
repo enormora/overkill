@@ -55,6 +55,7 @@ already exists in [Package Architecture](./package-architecture.md) and is settl
 type Reporter = RealTimeReporter | FinalResultReporter;
 
 type RealTimeReporter = {
+    readonly dispose: (() => void | Promise<void>) | null;
     readonly kind: 'real-time';
     readonly name: string;
     readonly sinks: ReadonlyArray<SinkDeclaration>;
@@ -63,6 +64,7 @@ type RealTimeReporter = {
 };
 
 type FinalResultReporter = {
+    readonly dispose: (() => void | Promise<void>) | null;
     readonly kind: 'final-result';
     readonly name: string;
     readonly sinks: ReadonlyArray<SinkDeclaration>;
@@ -80,6 +82,11 @@ suitable for HTML reports, JSON dumps, archive writers.
 A reporter cannot be both: pick the lifecycle that matches your data
 shape. If you need both behaviours, ship two reporters that share an
 implementation.
+
+Reporter instances are single-use. The runner calls `dispose` exactly once
+when it is present, including after reporter validation failures and thrown
+execution paths. Cleanup uses the same 100 ms reporter callback timeout as
+event and result delivery.
 
 ## Reporter Events
 
@@ -259,6 +266,35 @@ canonical Unicode equivalence note when relevant, and arrays or objects add shal
 identity-oriented hints. Terminal output is capped to keep local failures
 readable; machine-readable reporters still receive the structured result.
 
+## Dot Reporter Rendering
+
+`@overkill-dev/reporter-dot` is a compact real-time stdout reporter for local
+and CI runs where progress density matters. It is an explicit reporter
+package, not an implicit `@overkill-dev/run` default.
+
+It emits one mark per completed test and runner error:
+
+- pass: green `figures.tick`
+- fail: red `figures.cross`
+- skip: cyan `°`
+- inconclusive: cyan `?`
+- runner error before finish: red `figures.warning`
+
+The reporter uses `yoctocolors` for color behavior and does not add custom
+`NO_COLOR`, `FORCE_COLOR`, or `TERM` parsing. It uses `is-interactive` to
+decide whether cursor-control reflow is allowed.
+
+Normal progress writes are O(1): each completed test appends one mark. In
+interactive output the reporter keeps the mark history, listens for terminal
+resize, and redraws the full progress block only on resize. Resize redraw is
+O(n) in completed marks. In non-interactive output it streams marks and
+disables cursor reflow.
+
+On finish, the progress block is persisted, then the reporter prints a compact
+summary and short detail lines for failed tests, inconclusive tests, and
+runner errors. If a `runner-error` arrives after finish, it prints
+`Runner error: <message>` below the summary.
+
 ## Reporter Errors
 
 A reporter that throws synchronously, rejects, or exceeds its
@@ -278,6 +314,12 @@ The faulting reporter is _not_ removed from subsequent events; the
 runner trusts it again until it fails again. (Removal would
 encourage silent reporter death; visible repeated errors are
 preferable.)
+
+`run-end`, `onResult`, `onFinish`, and `dispose` failures are recorded as
+reporter runner errors. `run-end` errors are added to the `RunResult` before
+final-result reporters and real-time `onFinish` callbacks receive it.
+`onResult` and `onFinish` callbacks remain concurrent; errors from that phase
+may be reported to real-time reporters after their finish output.
 
 ## What This Doc Is Not
 

@@ -82,6 +82,26 @@ export const config = {
                 ...packageMetadata,
                 description: 'Human-readable Overkill line reporter.'
             }
+        },
+        {
+            name: '@overkill-dev/reporter-dot',
+            bundlePeerDependencies: [ '@overkill-dev/engine' ],
+            roots: {
+                main: {
+                    js: 'packages/reporter-dot/reporter-dot.entry-point.js',
+                    declarationFile: 'packages/reporter-dot/reporter-dot.entry-point.d.ts'
+                }
+            },
+            additionalFiles: [
+                {
+                    sourceFilePath: path.join(projectFolder, 'source/packages/reporter-dot/readme.md'),
+                    targetFilePath: 'readme.md'
+                }
+            ],
+            additionalPackageJsonAttributes: {
+                ...packageMetadata,
+                description: 'Compact Overkill dot progress reporter.'
+            }
         }
     ]
 };

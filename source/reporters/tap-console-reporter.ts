@@ -88,6 +88,7 @@ export function createTapConsoleReporter(dependencies: TapConsoleReporterDepende
     const { stdoutConsole } = dependencies;
 
     return {
+        dispose: null,
         kind: 'final-result',
         name: 'tap',
         sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ],
@@ -103,6 +104,7 @@ export function createTapConsoleRealTimeReporter(dependencies: TapConsoleReporte
     let nextTestPointIndex = 0;
 
     return {
+        dispose: null,
         kind: 'real-time',
         name: 'tap-real-time',
         sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ],

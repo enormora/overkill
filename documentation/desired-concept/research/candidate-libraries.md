@@ -1185,6 +1185,65 @@ Source:
 
 - <https://www.npmjs.com/package/figures>
 
+### `ansi-escapes`
+
+Pros:
+
+- focused cursor and screen-control primitives
+- small API surface
+- suitable behind reporter-owned terminal rendering
+
+Freshness note:
+
+- `7.3.0`
+
+Assessment:
+
+- adopted for reporter terminal control
+
+Source:
+
+- <https://www.npmjs.com/package/ansi-escapes>
+
+### `string-width`
+
+Pros:
+
+- handles ANSI escapes and Unicode display width
+- avoids hand-rolled width calculation for wrapped progress output
+
+Freshness note:
+
+- `8.2.2`
+
+Assessment:
+
+- adopted for terminal width calculation
+
+Source:
+
+- <https://www.npmjs.com/package/string-width>
+
+### `is-interactive`
+
+Pros:
+
+- focused terminal interactivity detection
+- keeps `NO_COLOR`, `FORCE_COLOR`, `TERM`, TTY, and CI conventions out of
+  reporter-specific code
+
+Freshness note:
+
+- `2.0.0`
+
+Assessment:
+
+- adopted for deciding whether reporter cursor-control reflow is allowed
+
+Source:
+
+- <https://www.npmjs.com/package/is-interactive>
+
 ### `log-symbols`
 
 Pros:
@@ -1196,6 +1255,7 @@ Pros:
 Cons:
 
 - narrower than `figures`
+- log-level oriented rather than test-outcome oriented
 
 Freshness note:
 
@@ -1203,19 +1263,47 @@ Freshness note:
 
 Assessment:
 
-- strong candidate to evaluate
+- reject for dot progress marks
 
 Source:
 
 - <https://www.npmjs.com/package/log-symbols>
 
+### `log-update`
+
+Pros:
+
+- convenient full-frame terminal redraw API
+
+Cons:
+
+- redraws the frame on ordinary updates
+- too costly for dot progress in large suites where each completed test should
+  be an O(1) append
+
+Freshness note:
+
+- `7.0.1`
+
+Assessment:
+
+- reject for dot progress rendering
+
+Source:
+
+- <https://www.npmjs.com/package/log-update>
+
 ### Terminal Recommendation
 
 Recommended direction:
 
-- stop treating `kleur` as the default answer
-- evaluate `ansis` or `yoctocolors` for color output
-- evaluate `log-symbols` for simple status symbols
+- use `yoctocolors` for color output
+- reuse `figures` for common marks
+- use `ansi-escapes` for cursor control
+- use `string-width` for wrapped terminal measurement
+- use `is-interactive` to decide whether cursor-control reflow is allowed
+- reject `log-update` for dot progress because normal glyph writes must stay O(1)
+- reject `log-symbols` for dot progress because test outcomes are not log levels
 - keep terminal rendering logic in reporter packages, not in `@overkill-dev/engine`
 
 ## Stack Traces And Source Maps

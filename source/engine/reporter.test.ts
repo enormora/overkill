@@ -1,9 +1,17 @@
 import assert from 'node:assert/strict';
+import { createDeterministicWallClock } from '@enormora/wall-clock';
 import { registerTest } from '../test-support/register-test.ts';
-import { type FinalResultReporter, type SinkDeclaration, validateReporterSinks } from './reporter.ts';
+import {
+    createReporterDispatcher,
+    type FinalResultReporter,
+    type RealTimeReporter,
+    type SinkDeclaration,
+    validateReporterSinks
+} from './reporter.ts';
 
 function createFinalReporter(name: string, sinks: readonly SinkDeclaration[]): FinalResultReporter {
     return {
+        dispose: null,
         kind: 'final-result',
         name,
         onResult() {
@@ -62,3 +70,40 @@ registerTest('validateReporterSinks() treats memory and stream sinks as private'
         ])
     ]);
 });
+
+registerTest(
+    'reporter dispatcher records direct runner-error delivery failures without notification',
+    async function () {
+        const wallClock = createDeterministicWallClock();
+        const dispatcher = createReporterDispatcher({ wallClock });
+        const failingReporter: RealTimeReporter = {
+            dispose: null,
+            kind: 'real-time',
+            name: 'broken-runner-error',
+            onEvent(event) {
+                if (event.kind === 'runner-error') {
+                    throw new Error('cannot render runner error');
+                }
+            },
+            onFinish: null,
+            sinks: []
+        };
+
+        const errors = await dispatcher.reportEvent([ failingReporter ], {
+            error: {
+                attributedTo: null,
+                cause: new Error('original'),
+                message: 'original',
+                subtype: 'crash'
+            },
+            kind: 'runner-error'
+        });
+
+        assert.deepStrictEqual(
+            errors.map(function toMessage(error) {
+                return error.message;
+            }),
+            [ 'broken-runner-error: cannot render runner error' ]
+        );
+    }
+);

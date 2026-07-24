@@ -21,7 +21,10 @@
     "homepage": "https://github.com/enormora/overkill#readme",
     "dependencies": {
         "@enormora/wall-clock": "0.0.3",
+        "ansi-escapes": "7.3.0",
         "figures": "6.1.0",
+        "is-interactive": "2.0.0",
+        "string-width": "8.2.2",
         "tslib": "2.8.1",
         "yoctocolors": "2.1.2"
     },

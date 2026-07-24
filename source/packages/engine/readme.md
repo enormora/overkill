@@ -27,6 +27,9 @@ Reporter lifecycle:
   Use it for terminal output, IDE integrations, and other live consumers.
 - `FinalResultReporter` receives the completed `RunResult` once after the
   run finishes. Use it for reports, archives, and machine-readable output.
+- `dispose` is required and nullable on both reporter lifecycles. When
+  present, `execute()` calls it exactly once after the run or after reporter
+  validation fails.
 - A reporter has one lifecycle. If a package needs both modes, expose two
   reporters that share the same internal formatting or recording logic.
 

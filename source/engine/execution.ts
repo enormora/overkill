@@ -43,6 +43,10 @@ type ExecutionDependencies = {
     readonly wallClock: WallClock;
 };
 
+type ReporterDisposal = {
+    readonly disposeOnce: () => Promise<readonly RunnerError[]>;
+};
+
 async function executeCase(
     testCase: TestPlanCase,
     attempt: number,
@@ -252,36 +256,112 @@ function createRunResult(
     return result;
 }
 
+function appendRunnerErrors(result: RunResult, runnerErrors: readonly RunnerError[]): RunResult {
+    if (runnerErrors.length === 0) {
+        return result;
+    }
+
+    return {
+        ...result,
+        runnerErrors: [ ...result.runnerErrors, ...runnerErrors ]
+    };
+}
+
+function executeOptionsWithDefaults(options: ExecuteOptions | undefined): ExecuteOptions {
+    return options ?? {
+        reporters: [],
+        runFacts: {},
+        startedAt: epoch.toISOString()
+    };
+}
+
+function createReporterDisposal(
+    reporters: readonly Reporter[],
+    dependencies: ExecuteDependencies
+): ReporterDisposal {
+    let reportersDisposed = false;
+
+    return {
+        async disposeOnce() {
+            if (reportersDisposed) {
+                return [];
+            }
+
+            reportersDisposed = true;
+
+            return await dependencies.reporterDispatcher.disposeReporters(reporters);
+        }
+    };
+}
+
+async function createRunResultBeforeRunEnd(
+    testPlan: TestPlan,
+    options: ExecuteOptions,
+    dependencies: ExecuteDependencies
+): Promise<RunResult> {
+    const startedAtMs = dependencies.wallClock.currentTimestampInMilliseconds;
+    const startErrors = await dependencies.reporterDispatcher.reportEvent(options.reporters, {
+        facts: options.runFacts,
+        kind: 'run-start',
+        startedAt: options.startedAt
+    });
+    const executedTestPlan = await executeTestPlanCases(testPlan, options.reporters, dependencies);
+    const reporterErrors = [ ...startErrors, ...executedTestPlan.reporterErrors ];
+
+    return createRunResult(testPlan, executedTestPlan.perTest, reporterErrors, {
+        startedAtMs,
+        wallClock: dependencies.wallClock
+    });
+}
+
+async function executeRun(
+    testPlan: TestPlan,
+    options: ExecuteOptions,
+    dependencies: ExecuteDependencies,
+    reporterDisposal: ReporterDisposal
+): Promise<RunResult> {
+    validateReporterSinks(options.reporters);
+
+    const result = await createRunResultBeforeRunEnd(testPlan, options, dependencies);
+    const runEndErrors = await dependencies.reporterDispatcher.reportEvent(options.reporters, {
+        kind: 'run-end',
+        result
+    });
+    const resultForFinalReporting = appendRunnerErrors(result, runEndErrors);
+    const finalReporterErrors = await dependencies.reporterDispatcher.reportResult(
+        options.reporters,
+        resultForFinalReporting
+    );
+    const disposeErrors = await reporterDisposal.disposeOnce();
+
+    return appendRunnerErrors(resultForFinalReporting, [ ...finalReporterErrors, ...disposeErrors ]);
+}
+
+async function throwWithCleanupErrors(error: unknown, reporterDisposal: ReporterDisposal): Promise<never> {
+    const disposeErrors = await reporterDisposal.disposeOnce();
+
+    if (disposeErrors.length > 0) {
+        throw new AggregateError(
+            [ error, ...disposeErrors ],
+            'Execution failed and reporter cleanup failed.',
+            { cause: error }
+        );
+    }
+
+    throw error;
+}
+
 export type Execute = (testPlan: TestPlan, options?: ExecuteOptions) => Promise<RunResult>;
 
 export function createExecute(dependencies: ExecuteDependencies): Execute {
     return async function execute(testPlan, options) {
-        const executeOptions = options ?? {
-            reporters: [],
-            runFacts: {},
-            startedAt: epoch.toISOString()
-        };
-        validateReporterSinks(executeOptions.reporters);
+        const executeOptions = executeOptionsWithDefaults(options);
+        const reporterDisposal = createReporterDisposal(executeOptions.reporters, dependencies);
 
-        const startedAtMs = dependencies.wallClock.currentTimestampInMilliseconds;
-        const startErrors = await dependencies.reporterDispatcher.reportEvent(executeOptions.reporters, {
-            facts: executeOptions.runFacts,
-            kind: 'run-start',
-            startedAt: executeOptions.startedAt
-        });
-        const executedTestPlan = await executeTestPlanCases(testPlan, executeOptions.reporters, dependencies);
-        const reporterErrors = [ ...startErrors, ...executedTestPlan.reporterErrors ];
-        const result = createRunResult(testPlan, executedTestPlan.perTest, reporterErrors, {
-            startedAtMs,
-            wallClock: dependencies.wallClock
-        });
-
-        await dependencies.reporterDispatcher.reportEvent(executeOptions.reporters, {
-            kind: 'run-end',
-            result
-        });
-        await dependencies.reporterDispatcher.reportResult(executeOptions.reporters, result);
-
-        return result;
+        try {
+            return await executeRun(testPlan, executeOptions, dependencies, reporterDisposal);
+        } catch (error: unknown) {
+            return await throwWithCleanupErrors(error, reporterDisposal);
+        }
     };
 }
