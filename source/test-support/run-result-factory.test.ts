@@ -13,6 +13,7 @@ function defaultFailure(): unknown {
             line: null
         },
         path: [],
+        source: 'assert',
         summary: 'Check failed'
     };
 }

@@ -200,9 +200,18 @@ Recommended direction:
 - keep the public assertion surface in `@overkill-dev/engine`
 - use `@overkill-dev/assert` for reusable assertion-extension helpers and
   adapter-building utilities
-- treat low-level normalization and diff protocol as internal
+- expose low-level `AssertionNode` values from `@overkill-dev/engine` for
+  direct engine consumers, without adding a separate assertion-protocol
+  package yet
+- use `fast-equals` for built-in deep equality
 - borrow ideas from `tcompare`, `earljs`, `chai`, and `unexpected`
 - do not adopt a whole third-party assertion framework as the foundation
+
+Library decision:
+
+- `fast-equals@6.0.2` is the first runtime dependency for deep equality.
+  It is ESM-compatible, typed, MIT licensed, and focused enough to avoid
+  importing a whole assertion framework.
 
 ## Doubles And Spying
 

@@ -143,6 +143,7 @@ registerTest('dot reporter maps outcomes and runner errors to compact marks', as
                         id: 'check',
                         location: { column: null, file: '', line: null },
                         path: [],
+                        source: 'assert',
                         summary: 'numbers differ'
                     }
                 ],

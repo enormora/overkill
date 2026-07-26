@@ -32,11 +32,11 @@ function createSmokeCase(engine: Engine, definition: SmokeCaseDefinition): TestC
     return engine.createTestCase({
         body(testContext) {
             if (definition.expectedVerdict === 'pass') {
-                testContext.assert.ok(true, definition.assertionSummary);
+                testContext.assert.true(true, { message: definition.assertionSummary });
                 return testContext.assert.done();
             }
 
-            testContext.assert.equal(1, 2, definition.assertionSummary);
+            testContext.assert.equal(1, 2, { message: definition.assertionSummary });
             return testContext.assert.done();
         },
         metadata: { expectedVerdict: definition.expectedVerdict },
@@ -96,6 +96,7 @@ function assertSmokeResult(result: RunResult): void {
                                     id: '1',
                                     location: { column: null, file: '', line: null },
                                     path: [],
+                                    source: 'assert',
                                     summary: 'numbers differ'
                                 }
                             ],

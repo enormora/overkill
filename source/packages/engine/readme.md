@@ -42,11 +42,12 @@ Reporter sinks:
 
 Assertion bodies:
 
-- `case.assert.equal(...)` and `case.assert.ok(...)` record lazy assertion
-  nodes and continue.
-- `case.require.equal(...)` and `case.require.ok(...)` record a lazy
-  assertion node and short-circuit when it fails.
+- `case.assert.*` records non-gating assertion nodes and continues.
+- `case.require.*` records narrow gating assertion nodes and short-circuits
+  when one fails.
 - `case.assert.done()` returns the non-empty assertion list for the engine to
   evaluate.
 - `case.plan(count)` must be the first test-body call and must declare a
   positive integer assertion count.
+- `FailedCheck.source` reports whether a failed check came from `assert` or
+  `require`.

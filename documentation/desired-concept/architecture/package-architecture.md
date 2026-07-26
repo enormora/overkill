@@ -144,7 +144,8 @@ Overkill should not expose a broad “mount any third-party matcher library
 into `case.assert`” surface. The extension boundary should stay narrower:
 
 - `@overkill-dev/engine` owns the assertion model, built-ins, counting rules,
-  injected `case.assert` / `case.require`, and assertion extension hooks
+  public low-level `AssertionNode` protocol, injected `case.assert` /
+  `case.require`, and assertion extension hooks
 - `@overkill-dev/assert` owns reusable helpers for defining assertion
   extensions, such as composite-assertion builders and foreign-assertion
   bridges

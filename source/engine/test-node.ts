@@ -1,52 +1,19 @@
+import type {
+    AssertAssertionFacade,
+    AssertionResult,
+    RequireAssertionFacade
+} from '../assertion-protocol/types.ts';
+
 const testNodeBrand: unique symbol = Symbol('OverkillTestNode');
 const testNodeOwnerBrand: unique symbol = Symbol('OverkillTestNodeOwner');
 const testNodeOwnerIdentity: unique symbol = Symbol('OverkillTestNodeOwnerIdentity');
-export type NonEmptyReadonlyArray<Item> = readonly [Item, ...(readonly Item[])];
 
 export type Metadata = Readonly<Record<string, unknown>>;
 
-export type SourceLocation = {
-    readonly column: number | null;
-    readonly file: string;
-    readonly line: number | null;
-};
-
-export type FailedCheck = {
-    readonly actual: unknown;
-    readonly expected: unknown;
-    readonly id: string;
-    readonly location: SourceLocation;
-    readonly path: readonly (number | string)[];
-    readonly summary: string;
-};
-
-export type EqualAssertionNode = {
-    readonly actual: unknown;
-    readonly check: 'equal';
-    readonly expected: unknown;
-    readonly summary: string;
-};
-
-export type OkAssertionNode = {
-    readonly actual: unknown;
-    readonly check: 'ok';
-    readonly summary: string;
-};
-
-export type AssertionNode = EqualAssertionNode | OkAssertionNode;
-
-export type AssertionResult = AssertionNode | NonEmptyReadonlyArray<AssertionNode>;
-
-export type AssertionFacade = {
-    done: () => NonEmptyReadonlyArray<AssertionNode>;
-    equal: (actual: unknown, expected: unknown, summary: string) => void;
-    ok: (actual: unknown, summary: string) => void;
-};
-
 export type TestContext = {
-    readonly assert: AssertionFacade;
+    readonly assert: AssertAssertionFacade;
     readonly plan: (count: number) => void;
-    readonly require: AssertionFacade;
+    readonly require: RequireAssertionFacade;
 };
 
 export type TestBody = (testContext: TestContext) => AssertionResult | Promise<AssertionResult>;

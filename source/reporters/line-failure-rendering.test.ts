@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
+import type { FailedCheck } from '../assertion-protocol/types.ts';
 import type { TestFailure } from '../engine/run-result.ts';
-import type { FailedCheck } from '../engine/test-node.ts';
 import { registerTest } from '../test-support/register-test.ts';
 import { formatFailure } from './line-failure-rendering.ts';
 
@@ -11,6 +11,7 @@ function failedCheck(overrides: Partial<FailedCheck>): FailedCheck {
         id: '1',
         location: { column: null, file: '', line: null },
         path: [],
+        source: 'assert',
         summary: 'fails',
         ...overrides
     };
@@ -25,6 +26,7 @@ registerTest('line failure formatter renders multiple check labels and scalar va
                 id: '1',
                 location: { column: null, file: 'source/users.test.ts', line: null },
                 path: [ 0, 'display name' ],
+                source: 'assert',
                 summary: 'null differs'
             },
             {
@@ -33,6 +35,7 @@ registerTest('line failure formatter renders multiple check labels and scalar va
                 id: '2',
                 location: { column: null, file: 'source/users.test.ts', line: 12 },
                 path: [],
+                source: 'assert',
                 summary: 'symbol differs'
             }
         ],

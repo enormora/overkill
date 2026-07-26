@@ -91,6 +91,7 @@ registerTest('line reporter prints assertion failure details for a failed test-e
                             id: '1',
                             location: { column: null, file: '', line: null },
                             path: [],
+                            source: 'assert',
                             summary: 'numbers differ'
                         }
                     ],
@@ -130,6 +131,7 @@ registerTest('line reporter prints unicode string mismatch hints', async functio
                             id: '1',
                             location: { column: 5, file: 'source/users.test.ts', line: 10 },
                             path: [ 'name' ],
+                            source: 'assert',
                             summary: 'names differ'
                         }
                     ],
@@ -228,6 +230,7 @@ registerTest('line reporter prints object identity hints', async function () {
                             id: '1',
                             location: { column: null, file: '', line: null },
                             path: [],
+                            source: 'assert',
                             summary: 'objects differ'
                         }
                     ],

@@ -27,6 +27,12 @@ node list recorded by the injected assertion context, not a public
 the small direct-engine path. Returning ordinary application values is outside
 the supported builder contract.
 
+Direct engine consumers may return public low-level assert-source
+`AssertionNode` values. Normal builder completion still needs at least one
+returned assert-source node, even if successful `case.require.*` calls were
+recorded. Successful `require` entries count toward `plan(n)` only after a
+valid assert-source result exists.
+
 The engine normalizes these lazy assertion nodes into `TestOutcome`
 internally. Users complete builder tests through the assertion context, while
 reporters and integrations consume structured outcomes.
@@ -54,7 +60,7 @@ still lives directly in `@overkill-dev/engine`. The engine is the home for:
 
 - assertion-count and plan tracking
 - diffing and serializer logic
-- internal assertion-protocol values used between authoring and engine
+- public low-level assertion-protocol values used between authoring and engine
 - implementation shared between default test facades and direct
   engine-level consumers
 
@@ -444,20 +450,33 @@ remains a supported alternate authoring style, but the engine
 normalizes its result into the same structured `TestOutcome` shape so
 reporters consume one failure model.
 
-### Internal Protocol Versus Public API
+### Low-Level Protocol Versus Day-To-Day API
 
 Overkill benefits from a lazy assertion-node protocol while moving checks
-between authoring helpers and the engine, but that protocol does not need to
-be exposed as a separate first-party user package.
+between authoring helpers and the engine. That protocol is public as a
+low-level `@overkill-dev/engine` contract for direct engine consumers, but it
+does not need a separate first-party package yet.
 
 The public concept therefore stays simpler:
 
 - day-to-day tests use injected `case.assert` / `case.require`
 - property helpers such as `case.forall(...)` use a nested injected
   assertion context
-- the engine receives structured `AssertionNode` data and evaluates it into
-  `FailedCheck` failures, diffs, and counts without ordinary users
-  constructing protocol nodes directly
+- direct returned protocol nodes are assert-source only
+- engine-created require nodes are carried through the test session, count
+  toward `plan(n)` once the normal completion has a valid assert-source
+  result, and expose `source: 'require'` on failed checks
+- the engine evaluates structured `AssertionNode` data into `FailedCheck`
+  failures, diffs, and counts without ordinary users constructing protocol
+  nodes directly
+- a builder test that records assert nodes must return those same node
+  objects in order; dropping them is a `dead-builder-assertion` contract
+  failure
+
+Custom assertion protocol nodes remain a separate design question. Extension
+helpers may wrap built-ins, create composite assertion boundaries, or bridge
+foreign assertion systems later, but this concept does not yet choose that
+wire shape.
 
 ### Error Separation
 
@@ -843,8 +862,8 @@ For the product concept:
   is not required for assertion usage
 - primary authoring shape: builder/context API with explicit
   `return case.assert.done()`
-- `AssertionNode` may still exist as an internal protocol term, but not as
-  a separate public-first authoring surface
+- `AssertionNode` exists as a public low-level engine protocol, but not as a
+  separate package or the day-to-day authoring surface
 - zero-assertion detection: failure, no opt-out
 - `plan(n)` is the assertion-count contract; no `atMost`, no `atLeast`,
   and `n > 0`

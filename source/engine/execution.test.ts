@@ -8,7 +8,7 @@ import { registerTest } from '../test-support/register-test.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { RealTimeReporter, ReporterEvent } from './reporter.ts';
 import type { FailOutcome, RunResult } from './run-result.ts';
-import type { TestBody } from './test-node.ts';
+import type { TestBody, TestContext } from './test-node.ts';
 
 function recordedEvents(reporter: InMemoryRealTimeReporter): readonly ReporterEvent[] {
     return reporter.getRecordedEntries().flatMap(function toEvent(entry) {
@@ -58,16 +58,16 @@ registerTest('execute() returns passing and failing outcomes with run counts', a
         engine.createSuite({
             children: [
                 engine.createTestCase({
-                    body(testContext) {
-                        testContext.assert.ok(true, 'passes');
+                    body(testContext: TestContext) {
+                        testContext.assert.true(true, { message: 'passes' });
                         return testContext.assert.done();
                     },
                     metadata: {},
                     name: 'passes'
                 }),
                 engine.createTestCase({
-                    body(testContext) {
-                        testContext.assert.equal(1, 2, 'numbers differ');
+                    body(testContext: TestContext) {
+                        testContext.assert.equal(1, 2, { message: 'numbers differ' });
                         return testContext.assert.done();
                     },
                     metadata: {},
@@ -99,7 +99,7 @@ registerTest('execute() carries orphaned nodes from the plan', async function ()
     const engine = createEngine();
     const reached = engine.createTestCase({
         body(testContext) {
-            testContext.assert.ok(true, 'passes');
+            testContext.assert.true(true, { message: 'passes' });
             return testContext.assert.done();
         },
         metadata: {},
@@ -132,7 +132,7 @@ registerTest('execute() fails tests with zero assertions', async function () {
         engine.createSuite({
             children: [
                 engine.createTestCase({
-                    body(testContext) {
+                    body(testContext: TestContext) {
                         return testContext.assert.done();
                     },
                     metadata: {},
@@ -169,7 +169,7 @@ registerTest('execute() fails tests when assertion plan count does not match', a
                 engine.createTestCase({
                     body(testContext) {
                         testContext.plan(2);
-                        testContext.assert.ok(true, 'one');
+                        testContext.assert.true(true, { message: 'one' });
                         return testContext.assert.done();
                     },
                     metadata: {},
@@ -202,8 +202,9 @@ registerTest('execute() accepts a directly returned assertion node', async funct
     const result = await executeSingleBody(function body() {
         return {
             actual: true,
-            check: 'ok',
-            summary: 'direct assertion'
+            check: 'true',
+            message: 'direct assertion',
+            source: 'assert'
         };
     });
 
@@ -213,7 +214,7 @@ registerTest('execute() accepts a directly returned assertion node', async funct
 registerTest('execute() fails tests with invalid assertion plans', async function () {
     const result = await executeSingleBody(function body(testContext) {
         testContext.plan(0);
-        testContext.assert.ok(true, 'unreached');
+        testContext.assert.true(true, { message: 'unreached' });
         return testContext.assert.done();
     });
 
@@ -232,11 +233,11 @@ registerTest('execute() exposes assertion and requirement convenience methods', 
         engine.createSuite({
             children: [
                 engine.createTestCase({
-                    body(testContext) {
-                        testContext.assert.ok(true, 'one');
-                        testContext.require.equal(1, 1, 'equal');
-                        testContext.require.ok(true, 'ok');
-                        testContext.assert.ok(true, 'passes');
+                    body(testContext: TestContext) {
+                        testContext.assert.true(true, { message: 'one' });
+                        testContext.require.string('value', { message: 'string' });
+                        testContext.require.defined(true, { message: 'defined' });
+                        testContext.assert.true(true, { message: 'passes' });
                         return testContext.assert.done();
                     },
                     metadata: {},
@@ -259,16 +260,16 @@ registerTest('execute() fails the test when a requirement fails', async function
         engine.createSuite({
             children: [
                 engine.createTestCase({
-                    body(testContext) {
-                        testContext.require.equal(1, 2, 'required equality');
+                    body(testContext: TestContext) {
+                        testContext.require.string(1, { message: 'required string' });
                         return testContext.assert.done();
                     },
                     metadata: {},
                     name: 'requires equality'
                 }),
                 engine.createTestCase({
-                    body(testContext) {
-                        testContext.require.ok(false, 'required truth');
+                    body(testContext: TestContext) {
+                        testContext.require.defined(null, { message: 'required defined' });
                         return testContext.assert.done();
                     },
                     metadata: {},
@@ -292,7 +293,7 @@ registerTest('execute() fails the test when a requirement fails', async function
             const failure = testResult.outcome.failures[0];
             return failure.kind === 'assertion' ? failure.checks[0].summary : null;
         }),
-        [ 'required equality', 'required truth' ]
+        [ 'required string', 'required defined' ]
     );
 });
 
@@ -337,7 +338,7 @@ registerTest('execute() preserves assertions recorded before a thrown body error
             children: [
                 engine.createTestCase({
                     body(testContext) {
-                        testContext.assert.equal(1, 2, 'numbers differ');
+                        testContext.assert.equal(1, 2, { message: 'numbers differ' });
                         throw new Error('boom');
                     },
                     metadata: {},
@@ -394,7 +395,7 @@ registerTest('execute() delivers events and final results to reporters', async f
             children: [
                 engine.createTestCase({
                     body(testContext) {
-                        testContext.assert.ok(true, 'passes');
+                        testContext.assert.true(true, { message: 'passes' });
                         return testContext.assert.done();
                     },
                     metadata: {},
@@ -444,7 +445,7 @@ registerTest('execute() emits suite events for table path segments', async funct
             children: [
                 engine.createTestCase({
                     body(testContext) {
-                        testContext.assert.ok(true, 'passes');
+                        testContext.assert.true(true, { message: 'passes' });
                         return testContext.assert.done();
                     },
                     metadata: {},
@@ -454,7 +455,7 @@ registerTest('execute() emits suite events for table path segments', async funct
                     cases: [
                         {
                             body(testContext) {
-                                testContext.assert.ok(true, 'row passes');
+                                testContext.assert.true(true, { message: 'row passes' });
                                 return testContext.assert.done();
                             },
                             metadata: {},
@@ -513,7 +514,7 @@ registerTest('execute() rejects reporter sink conflicts before starting the run'
                 engine.createTestCase({
                     body(testContext) {
                         bodyRan = true;
-                        testContext.assert.ok(true, 'passes');
+                        testContext.assert.true(true, { message: 'passes' });
                         return testContext.assert.done();
                     },
                     metadata: {},

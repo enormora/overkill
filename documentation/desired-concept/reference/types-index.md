@@ -178,6 +178,7 @@ type FailedCheck = {
     readonly expected: unknown;
     readonly actual: unknown;
     readonly path: ReadonlyArray<string | number>;
+    readonly source: 'assert' | 'require';
     readonly location: SourceLocation;
     readonly diff?: Diff;
 };
@@ -204,8 +205,8 @@ type SerializedValue = unknown; // post-serializer JSON-compatible value
 
 type SourceLocation = {
     readonly file: string;
-    readonly line: number;
-    readonly column?: number;
+    readonly line: number | null;
+    readonly column: number | null;
 };
 ```
 
@@ -233,21 +234,36 @@ type ForeignAssertionBridge = {
     fromThrowable(label: string, body: () => void | Promise<void>): unknown;
 };
 
-type EqualAssertionNode = {
+type AssertionOptions = {
+    readonly message: string;
+};
+
+type AssertionSource = 'assert' | 'require';
+
+type EqualAssertionNode<Source extends AssertionSource = AssertionSource> = {
     readonly actual: unknown;
     readonly check: 'equal';
     readonly expected: unknown;
-    readonly summary: string;
+    readonly message: string | null;
+    readonly source: Source;
 };
 
-type OkAssertionNode = {
+type TrueAssertionNode<Source extends AssertionSource = AssertionSource> = {
     readonly actual: unknown;
-    readonly check: 'ok';
-    readonly summary: string;
+    readonly check: 'true';
+    readonly message: string | null;
+    readonly source: Source;
 };
 
-type AssertionNode = EqualAssertionNode | OkAssertionNode;
-type AssertionResult = AssertionNode | NonEmptyReadonlyArray<AssertionNode>;
+type AssertAssertionNode = EqualAssertionNode<'assert'> | TrueAssertionNode<'assert'>;
+type RequireAssertionNode = {
+    readonly actual: unknown;
+    readonly check: 'defined' | 'string';
+    readonly message: string | null;
+    readonly source: 'require';
+};
+type AssertionNode = AssertAssertionNode | RequireAssertionNode;
+type AssertionResult = AssertAssertionNode | NonEmptyReadonlyArray<AssertAssertionNode>;
 
 type BuilderTestBody = (case: unknown) => AssertionResult | Promise<AssertionResult>;
 type ThrowingTestBody = (case: unknown) => void | Promise<void>;

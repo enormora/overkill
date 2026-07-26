@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
+import type { FailedCheck, SourceLocation } from '../assertion-protocol/types.ts';
 import { registerTest } from '../test-support/register-test.ts';
-import type { FailedCheck, SourceLocation } from './test-node.ts';
 import { verdictFromOutcome, type TestOutcome } from './run-result.ts';
 
 type FailedCheckFixture = {
@@ -9,6 +9,7 @@ type FailedCheckFixture = {
     readonly id: FailedCheck['id'];
     readonly location: SourceLocation;
     readonly path: readonly string[];
+    readonly source: FailedCheck['source'];
     readonly summary: FailedCheck['summary'];
 };
 
@@ -19,6 +20,7 @@ function createFailedCheck(): FailedCheckFixture {
         id: 'check',
         location: { column: null, file: 'source/example.test.ts', line: null },
         path: [],
+        source: 'assert',
         summary: 'Check failed'
     };
 }

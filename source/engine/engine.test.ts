@@ -19,7 +19,7 @@ registerTest('engine.execute() invokes the injected execute dependency', async f
             children: [
                 engine.createTestCase({
                     body(testContext) {
-                        testContext.assert.ok(true, 'passes');
+                        testContext.assert.true(true, { message: 'passes' });
                         return testContext.assert.done();
                     },
                     metadata: {},
