@@ -10,10 +10,9 @@ export type LengthAssertionNode<Source extends AssertionSource = AssertionSource
     readonly source: Source;
 };
 
-export type EmptinessAssertionNode<Source extends AssertionSource = AssertionSource> = ActualAssertionNode<
-    Source,
-    'empty' | 'not-empty'
->;
+export type EmptinessAssertionNode<Source extends AssertionSource = AssertionSource> = {
+    readonly [Check in 'empty' | 'not-empty']: ActualAssertionNode<Source, Check>;
+}['empty' | 'not-empty'];
 
 export const collectionSummaryByCheck = {
     empty: 'Expected collection to be empty.',

@@ -2,17 +2,18 @@ import { assertionOutcome, type AssertionOutcome } from '../assertion-evaluation
 import type { AssertionSource, ExpectedAssertionNode } from '../assertion-node-shape.ts';
 
 export type MatchAssertionNode<Source extends AssertionSource = AssertionSource> = {
-    readonly actual: unknown;
-    readonly check: 'match' | 'not-match';
-    readonly message: string | null;
-    readonly pattern: RegExp;
-    readonly source: Source;
-};
+    readonly [Check in 'match' | 'not-match']: {
+        readonly actual: unknown;
+        readonly check: Check;
+        readonly message: string | null;
+        readonly pattern: RegExp;
+        readonly source: Source;
+    };
+}['match' | 'not-match'];
 
-export type StringContainsAssertionNode<Source extends AssertionSource = AssertionSource> = ExpectedAssertionNode<
-    Source,
-    'ends-with' | 'includes' | 'starts-with'
->;
+export type StringContainsAssertionNode<Source extends AssertionSource = AssertionSource> = {
+    readonly [Check in 'ends-with' | 'includes' | 'starts-with']: ExpectedAssertionNode<Source, Check>;
+}['ends-with' | 'includes' | 'starts-with'];
 
 export const stringSummaryByCheck = {
     'ends-with': 'Expected string to end with the value.',

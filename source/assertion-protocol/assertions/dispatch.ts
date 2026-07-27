@@ -68,245 +68,87 @@ import {
     type TypeAssertionNode
 } from './type-shape.ts';
 
-type AssertionNodeByCheck = {
-    readonly array: TypeAssertionNode;
+export type AssertionNodeByCheck = {
+    readonly array: Extract<TypeAssertionNode, { readonly check: 'array'; }>;
     readonly 'array-contains-partial': ArrayContainsPartialAssertionNode;
     readonly between: BetweenAssertionNode;
-    readonly boolean: TypeAssertionNode;
+    readonly boolean: Extract<TypeAssertionNode, { readonly check: 'boolean'; }>;
     readonly 'deep-equal': DeepEqualAssertionNode;
     readonly defined: DefinedAssertionNode;
-    readonly empty: EmptinessAssertionNode;
-    readonly 'ends-with': StringContainsAssertionNode;
+    readonly empty: Extract<EmptinessAssertionNode, { readonly check: 'empty'; }>;
+    readonly 'ends-with': Extract<StringContainsAssertionNode, { readonly check: 'ends-with'; }>;
     readonly equal: EqualAssertionNode;
     readonly fail: FailAssertionNode;
     readonly false: FalseAssertionNode;
-    readonly function: TypeAssertionNode;
-    readonly 'greater-than': NumericComparisonAssertionNode;
-    readonly 'greater-than-or-equal': NumericComparisonAssertionNode;
+    readonly function: Extract<TypeAssertionNode, { readonly check: 'function'; }>;
+    readonly 'greater-than': Extract<NumericComparisonAssertionNode, { readonly check: 'greater-than'; }>;
+    readonly 'greater-than-or-equal': Extract<
+        NumericComparisonAssertionNode,
+        { readonly check: 'greater-than-or-equal'; }
+    >;
     readonly 'has-property': HasPropertyAssertionNode;
-    readonly includes: StringContainsAssertionNode;
+    readonly includes: Extract<StringContainsAssertionNode, { readonly check: 'includes'; }>;
     readonly 'instance-of': InstanceOfAssertionNode;
     readonly length: LengthAssertionNode;
-    readonly 'less-than': NumericComparisonAssertionNode;
-    readonly 'less-than-or-equal': NumericComparisonAssertionNode;
-    readonly match: MatchAssertionNode;
+    readonly 'less-than': Extract<NumericComparisonAssertionNode, { readonly check: 'less-than'; }>;
+    readonly 'less-than-or-equal': Extract<NumericComparisonAssertionNode, { readonly check: 'less-than-or-equal'; }>;
+    readonly match: Extract<MatchAssertionNode, { readonly check: 'match'; }>;
     readonly 'members-partial-deep-equal': MembersPartialDeepEqualAssertionNode;
     readonly 'not-deep-equal': NotDeepEqualAssertionNode;
-    readonly 'not-empty': EmptinessAssertionNode;
+    readonly 'not-empty': Extract<EmptinessAssertionNode, { readonly check: 'not-empty'; }>;
     readonly 'not-equal': NotEqualAssertionNode;
-    readonly 'not-match': MatchAssertionNode;
+    readonly 'not-match': Extract<MatchAssertionNode, { readonly check: 'not-match'; }>;
     readonly 'not-null': NotNullAssertionNode;
     readonly null: NullAssertionNode;
-    readonly number: TypeAssertionNode;
-    readonly object: TypeAssertionNode;
+    readonly number: Extract<TypeAssertionNode, { readonly check: 'number'; }>;
+    readonly object: Extract<TypeAssertionNode, { readonly check: 'object'; }>;
     readonly 'partial-deep-equal': PartialDeepEqualAssertionNode;
-    readonly 'starts-with': StringContainsAssertionNode;
-    readonly string: TypeAssertionNode;
+    readonly 'starts-with': Extract<StringContainsAssertionNode, { readonly check: 'starts-with'; }>;
+    readonly string: Extract<TypeAssertionNode, { readonly check: 'string'; }>;
     readonly true: TrueAssertionNode;
     readonly undefined: UndefinedAssertionNode;
 };
 
 type AssertionCheck = keyof AssertionNodeByCheck;
 
-type DispatchableAssertionNode = AssertionNodeByCheck[AssertionCheck];
-
-type AssertionEvaluatorByCheck = Readonly<
-    Record<
-        AssertionCheck,
-        (assertion: DispatchableAssertionNode) => AssertionOutcome
-    >
->;
-
-function unexpectedAssertion(expected: AssertionCheck, assertion: DispatchableAssertionNode): never {
-    throw new TypeError(`Expected ${expected} assertion, got ${assertion.check}.`);
-}
-
-const assertionEvaluatorByCheck: AssertionEvaluatorByCheck = {
-    array(assertion) {
-        return assertion.check === 'array' ? evaluateArray(assertion) : unexpectedAssertion('array', assertion);
-    },
-
-    'array-contains-partial'(assertion) {
-        return assertion.check === 'array-contains-partial'
-            ? evaluateArrayContainsPartial(assertion)
-            : unexpectedAssertion('array-contains-partial', assertion);
-    },
-
-    between(assertion) {
-        return assertion.check === 'between' ? evaluateBetween(assertion) : unexpectedAssertion('between', assertion);
-    },
-
-    boolean(assertion) {
-        return assertion.check === 'boolean'
-            ? evaluateBoolean(assertion)
-            : unexpectedAssertion('boolean', assertion);
-    },
-
-    'deep-equal'(assertion) {
-        return assertion.check === 'deep-equal'
-            ? evaluateDeepEqual(assertion)
-            : unexpectedAssertion('deep-equal', assertion);
-    },
-
-    defined(assertion) {
-        return assertion.check === 'defined'
-            ? evaluateDefined(assertion)
-            : unexpectedAssertion('defined', assertion);
-    },
-
-    empty(assertion) {
-        return assertion.check === 'empty' ? evaluateEmpty(assertion) : unexpectedAssertion('empty', assertion);
-    },
-
-    'ends-with'(assertion) {
-        return assertion.check === 'ends-with'
-            ? evaluateEndsWith(assertion)
-            : unexpectedAssertion('ends-with', assertion);
-    },
-
-    equal(assertion) {
-        return assertion.check === 'equal' ? evaluateEqual(assertion) : unexpectedAssertion('equal', assertion);
-    },
-
-    fail(assertion) {
-        return assertion.check === 'fail' ? evaluateFail(assertion) : unexpectedAssertion('fail', assertion);
-    },
-
-    false(assertion) {
-        return assertion.check === 'false' ? evaluateFalse(assertion) : unexpectedAssertion('false', assertion);
-    },
-
-    function(assertion) {
-        return assertion.check === 'function'
-            ? evaluateFunction(assertion)
-            : unexpectedAssertion('function', assertion);
-    },
-
-    'greater-than'(assertion) {
-        return assertion.check === 'greater-than'
-            ? evaluateGreaterThan(assertion)
-            : unexpectedAssertion('greater-than', assertion);
-    },
-
-    'greater-than-or-equal'(assertion) {
-        return assertion.check === 'greater-than-or-equal'
-            ? evaluateGreaterThanOrEqual(assertion)
-            : unexpectedAssertion('greater-than-or-equal', assertion);
-    },
-
-    'has-property'(assertion) {
-        return assertion.check === 'has-property'
-            ? evaluateHasProperty(assertion)
-            : unexpectedAssertion('has-property', assertion);
-    },
-
-    includes(assertion) {
-        return assertion.check === 'includes'
-            ? evaluateIncludes(assertion)
-            : unexpectedAssertion('includes', assertion);
-    },
-
-    'instance-of'(assertion) {
-        return assertion.check === 'instance-of'
-            ? evaluateInstanceOf(assertion)
-            : unexpectedAssertion('instance-of', assertion);
-    },
-
-    length(assertion) {
-        return assertion.check === 'length' ? evaluateLength(assertion) : unexpectedAssertion('length', assertion);
-    },
-
-    'less-than'(assertion) {
-        return assertion.check === 'less-than'
-            ? evaluateLessThan(assertion)
-            : unexpectedAssertion('less-than', assertion);
-    },
-
-    'less-than-or-equal'(assertion) {
-        return assertion.check === 'less-than-or-equal'
-            ? evaluateLessThanOrEqual(assertion)
-            : unexpectedAssertion('less-than-or-equal', assertion);
-    },
-
-    match(assertion) {
-        return assertion.check === 'match' ? evaluateMatch(assertion) : unexpectedAssertion('match', assertion);
-    },
-
-    'members-partial-deep-equal'(assertion) {
-        return assertion.check === 'members-partial-deep-equal'
-            ? evaluateMembersPartialDeepEqual(assertion)
-            : unexpectedAssertion('members-partial-deep-equal', assertion);
-    },
-
-    'not-deep-equal'(assertion) {
-        return assertion.check === 'not-deep-equal'
-            ? evaluateNotDeepEqual(assertion)
-            : unexpectedAssertion('not-deep-equal', assertion);
-    },
-
-    'not-empty'(assertion) {
-        return assertion.check === 'not-empty'
-            ? evaluateNotEmpty(assertion)
-            : unexpectedAssertion('not-empty', assertion);
-    },
-
-    'not-equal'(assertion) {
-        return assertion.check === 'not-equal'
-            ? evaluateNotEqual(assertion)
-            : unexpectedAssertion('not-equal', assertion);
-    },
-
-    'not-match'(assertion) {
-        return assertion.check === 'not-match'
-            ? evaluateNotMatch(assertion)
-            : unexpectedAssertion('not-match', assertion);
-    },
-
-    'not-null'(assertion) {
-        return assertion.check === 'not-null'
-            ? evaluateNotNull(assertion)
-            : unexpectedAssertion('not-null', assertion);
-    },
-
-    null(assertion) {
-        return assertion.check === 'null' ? evaluateNull(assertion) : unexpectedAssertion('null', assertion);
-    },
-
-    number(assertion) {
-        return assertion.check === 'number' ? evaluateNumber(assertion) : unexpectedAssertion('number', assertion);
-    },
-
-    object(assertion) {
-        return assertion.check === 'object' ? evaluateObject(assertion) : unexpectedAssertion('object', assertion);
-    },
-
-    'partial-deep-equal'(assertion) {
-        return assertion.check === 'partial-deep-equal'
-            ? evaluatePartialDeepEqual(assertion)
-            : unexpectedAssertion('partial-deep-equal', assertion);
-    },
-
-    'starts-with'(assertion) {
-        return assertion.check === 'starts-with'
-            ? evaluateStartsWith(assertion)
-            : unexpectedAssertion('starts-with', assertion);
-    },
-
-    string(assertion) {
-        return assertion.check === 'string' ? evaluateString(assertion) : unexpectedAssertion('string', assertion);
-    },
-
-    true(assertion) {
-        return assertion.check === 'true' ? evaluateTrue(assertion) : unexpectedAssertion('true', assertion);
-    },
-
-    undefined(assertion) {
-        return assertion.check === 'undefined'
-            ? evaluateUndefined(assertion)
-            : unexpectedAssertion('undefined', assertion);
-    }
+export type AssertionEvaluatorByCheck = {
+    readonly [Check in AssertionCheck]: (assertion: AssertionNodeByCheck[Check]) => AssertionOutcome;
 };
 
-export function evaluateAssertionNode(assertion: DispatchableAssertionNode): AssertionOutcome {
-    return assertionEvaluatorByCheck[assertion.check](assertion);
-}
+export const assertionEvaluatorByCheck: AssertionEvaluatorByCheck = {
+    array: evaluateArray,
+    'array-contains-partial': evaluateArrayContainsPartial,
+    between: evaluateBetween,
+    boolean: evaluateBoolean,
+    'deep-equal': evaluateDeepEqual,
+    defined: evaluateDefined,
+    empty: evaluateEmpty,
+    'ends-with': evaluateEndsWith,
+    equal: evaluateEqual,
+    fail: evaluateFail,
+    false: evaluateFalse,
+    function: evaluateFunction,
+    'greater-than': evaluateGreaterThan,
+    'greater-than-or-equal': evaluateGreaterThanOrEqual,
+    'has-property': evaluateHasProperty,
+    includes: evaluateIncludes,
+    'instance-of': evaluateInstanceOf,
+    length: evaluateLength,
+    'less-than': evaluateLessThan,
+    'less-than-or-equal': evaluateLessThanOrEqual,
+    match: evaluateMatch,
+    'members-partial-deep-equal': evaluateMembersPartialDeepEqual,
+    'not-deep-equal': evaluateNotDeepEqual,
+    'not-empty': evaluateNotEmpty,
+    'not-equal': evaluateNotEqual,
+    'not-match': evaluateNotMatch,
+    'not-null': evaluateNotNull,
+    null: evaluateNull,
+    number: evaluateNumber,
+    object: evaluateObject,
+    'partial-deep-equal': evaluatePartialDeepEqual,
+    'starts-with': evaluateStartsWith,
+    string: evaluateString,
+    true: evaluateTrue,
+    undefined: evaluateUndefined
+};

@@ -1,15 +1,22 @@
 import type { AssertionOutcome } from './assertion-evaluation.ts';
 import { assertionSummary, type AssertionNode } from './assertion-node.ts';
 import type { FailedCheck } from './assertion-node-shape.ts';
-import { evaluateAssertionNode } from './assertions/dispatch.ts';
+import { assertionEvaluatorByCheck, type AssertionNodeByCheck } from './assertions/dispatch.ts';
 
 type AssertionEvaluation = AssertionOutcome & {
     readonly summary: string;
 };
 
+function evaluateAssertionNode<Check extends keyof AssertionNodeByCheck>(
+    check: Check,
+    assertion: AssertionNodeByCheck[Check]
+): AssertionOutcome {
+    return assertionEvaluatorByCheck[check](assertion);
+}
+
 function evaluate(assertion: AssertionNode): AssertionEvaluation {
     return {
-        ...evaluateAssertionNode(assertion),
+        ...evaluateAssertionNode(assertion.check, assertion),
         summary: assertionSummary(assertion)
     };
 }

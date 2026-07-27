@@ -1,10 +1,11 @@
 import { assertionOutcome, type AssertionOutcome } from '../assertion-evaluation.ts';
 import type { AssertionSource, ExpectedAssertionNode } from '../assertion-node-shape.ts';
 
-export type NumericComparisonAssertionNode<Source extends AssertionSource = AssertionSource> = ExpectedAssertionNode<
-    Source,
-    'greater-than' | 'greater-than-or-equal' | 'less-than' | 'less-than-or-equal'
->;
+type NumericComparisonCheck = 'greater-than' | 'greater-than-or-equal' | 'less-than' | 'less-than-or-equal';
+
+export type NumericComparisonAssertionNode<Source extends AssertionSource = AssertionSource> = {
+    readonly [Check in NumericComparisonCheck]: ExpectedAssertionNode<Source, Check>;
+}[NumericComparisonCheck];
 
 export type BetweenAssertionNode<Source extends AssertionSource = AssertionSource> = {
     readonly actual: unknown;

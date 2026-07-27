@@ -2,10 +2,11 @@ import { assertionOutcome, type AssertionOutcome } from '../assertion-evaluation
 import type { ActualAssertionNode, AssertionSource, InstanceConstructor } from '../assertion-node-shape.ts';
 import { isPlainObject } from '../partial-matching.ts';
 
-export type TypeAssertionNode<Source extends AssertionSource = AssertionSource> = ActualAssertionNode<
-    Source,
-    'array' | 'boolean' | 'function' | 'number' | 'object' | 'string'
->;
+type TypeAssertionCheck = 'array' | 'boolean' | 'function' | 'number' | 'object' | 'string';
+
+export type TypeAssertionNode<Source extends AssertionSource = AssertionSource> = {
+    readonly [Check in TypeAssertionCheck]: ActualAssertionNode<Source, Check>;
+}[TypeAssertionCheck];
 
 export type InstanceOfAssertionNode<Source extends AssertionSource = AssertionSource> = {
     readonly actual: unknown;
