@@ -1,5 +1,5 @@
-import type { AssertAssertionNode, RequireAssertionNode } from './assertion-node.ts';
-import type { AssertionOptions, InstanceConstructor } from './assertion-node-shape.ts';
+import type { AssertAssertionNode, RequireAssertionNode } from '../assertion-protocol/assertion-node.ts';
+import type { AssertionOptions, InstanceConstructor } from '../assertion-protocol/assertion-node-shape.ts';
 
 export type AssertAssertionFacade = {
     readonly annotated: (message: string) => AssertAssertionFacade;

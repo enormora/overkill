@@ -58,7 +58,7 @@ export type {
     StreamSinkDeclaration
 } from '../../engine/reporter.ts';
 export { validateReporterSinks } from '../../engine/reporter.ts';
-export type { AssertAssertionFacade, RequireAssertionFacade } from '../../assertion-protocol/catalog.ts';
+export type { AssertAssertionFacade, RequireAssertionFacade } from '../../engine/assertion-facade.ts';
 export type {
     AssertionOptions,
     AssertionSource,

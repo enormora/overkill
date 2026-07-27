@@ -664,7 +664,7 @@ return case.assert.done();
 
 Completes builder/result mode and returns the non-empty list of builder
 assertions recorded through `case.assert`. It is intentionally not available
-on the reusable `AssertAssertionFacade` protocol surface.
+on the reusable `case.assert` facade surface.
 
 The error assertions should stay strict:
 

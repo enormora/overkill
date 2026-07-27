@@ -1,15 +1,13 @@
 import assert from 'node:assert/strict';
 import { registerTest } from '../test-support/register-test.ts';
+import type { AssertAssertionNode, RequireAssertionNode } from '../assertion-protocol/assertion-node.ts';
+import type { AssertionSource } from '../assertion-protocol/assertion-node-shape.ts';
 import {
     createRecordingAssertFacade,
     createRecordingRequireFacade,
     type AssertAssertionFacade,
     type RequireAssertionFacade
-} from './catalog.ts';
-import { assertionSources } from './assertion-node-shape.ts';
-import type { AssertAssertionNode, RequireAssertionNode } from './assertion-node.ts';
-
-type AssertionSource = (typeof assertionSources)[number];
+} from './assertion-facade.ts';
 
 type AssertRecording = {
     readonly facade: AssertAssertionFacade;
@@ -323,10 +321,6 @@ registerTest('createRecordingAssertFacade() records every built-in assertion nod
     ]);
     assertRecordSources(recording.records, 'assert');
     assertAssertPayloads(recording.records);
-});
-
-registerTest('assertionSources declares the built-in assertion origins', function () {
-    assert.deepStrictEqual(assertionSources, [ 'assert', 'require' ]);
 });
 
 registerTest('createRecordingAssertFacade() applies annotated messages without requiring the builder API', function () {

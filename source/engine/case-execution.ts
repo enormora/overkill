@@ -1,5 +1,4 @@
 import type { WallClock } from '@enormora/wall-clock';
-import { createRecordingAssertFacade, createRecordingRequireFacade } from '../assertion-protocol/catalog.ts';
 import { assertionPasses, evaluateAssertion } from '../assertion-protocol/evaluation.ts';
 import type {
     AssertAssertionNode,
@@ -8,6 +7,7 @@ import type {
     RequireAssertionNode
 } from '../assertion-protocol/assertion-node.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import { createRecordingAssertFacade, createRecordingRequireFacade } from './assertion-facade.ts';
 import {
     type PerTestResult,
     type TestContractFailure,
