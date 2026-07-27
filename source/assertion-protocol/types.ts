@@ -1,6 +1,8 @@
+export const assertionSources = [ 'assert', 'require' ] as const;
+
 export type NonEmptyReadonlyArray<Item> = readonly [Item, ...(readonly Item[])];
 
-export type AssertionSource = 'assert' | 'require';
+export type AssertionSource = (typeof assertionSources)[number];
 
 export type AssertionOptions = {
     readonly message: string;
