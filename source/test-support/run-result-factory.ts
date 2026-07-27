@@ -1,5 +1,9 @@
 import type { CaseId } from '../engine/identity.ts';
-import type { FailedCheck, NonEmptyReadonlyArray, SourceLocation } from '../engine/test-node.ts';
+import type {
+    FailedCheck,
+    NonEmptyReadonlyArray,
+    SourceLocation
+} from '../assertion-protocol/assertion-node-shape.ts';
 import type {
     OrphanedNode,
     RunnerError,
@@ -118,6 +122,7 @@ const defaultFailedCheck: FailedCheck = {
     id: 'check',
     location: defaultLocation,
     path: [],
+    source: 'assert',
     summary: 'Check failed'
 };
 

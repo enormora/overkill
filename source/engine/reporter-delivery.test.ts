@@ -19,7 +19,7 @@ function createPassingPlan(engine: Engine): TestPlan {
             children: [
                 engine.createTestCase({
                     body(testContext) {
-                        testContext.assert.ok(true, 'passes');
+                        testContext.assert.true(true, { message: 'passes' });
                         return testContext.assert.done();
                     },
                     metadata: {},

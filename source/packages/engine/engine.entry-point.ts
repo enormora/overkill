@@ -58,6 +58,51 @@ export type {
     StreamSinkDeclaration
 } from '../../engine/reporter.ts';
 export { validateReporterSinks } from '../../engine/reporter.ts';
+export type { AssertAssertionFacade, RequireAssertionFacade } from '../../engine/assertion-facade.ts';
+export type {
+    AssertionOptions,
+    AssertionSource,
+    FailedCheck,
+    InstanceConstructor,
+    NonEmptyReadonlyArray,
+    SourceLocation
+} from '../../assertion-protocol/assertion-node-shape.ts';
+export type { FalseAssertionNode, TrueAssertionNode } from '../../assertion-protocol/assertions/boolean.ts';
+export type {
+    EmptinessAssertionNode,
+    LengthAssertionNode
+} from '../../assertion-protocol/assertions/collection.ts';
+export type {
+    DeepEqualAssertionNode,
+    EqualAssertionNode,
+    NotDeepEqualAssertionNode,
+    NotEqualAssertionNode
+} from '../../assertion-protocol/assertions/equality.ts';
+export type { FailAssertionNode } from '../../assertion-protocol/assertions/fail.ts';
+export type {
+    BetweenAssertionNode,
+    NumericComparisonAssertionNode
+} from '../../assertion-protocol/assertions/numeric.ts';
+export type {
+    ArrayContainsPartialAssertionNode,
+    MembersPartialDeepEqualAssertionNode,
+    PartialDeepEqualAssertionNode
+} from '../../assertion-protocol/assertions/partial.ts';
+export type {
+    DefinedAssertionNode,
+    NotNullAssertionNode,
+    NullAssertionNode,
+    UndefinedAssertionNode
+} from '../../assertion-protocol/assertions/presence.ts';
+export type {
+    MatchAssertionNode,
+    StringContainsAssertionNode
+} from '../../assertion-protocol/assertions/string.ts';
+export type {
+    HasPropertyAssertionNode,
+    InstanceOfAssertionNode,
+    TypeAssertionNode
+} from '../../assertion-protocol/assertions/type-shape.ts';
 export type {
     AssertionTestFailure,
     BodyErrorTestFailure,
@@ -77,15 +122,14 @@ export type {
     TestOutcome
 } from '../../engine/run-result.ts';
 export type {
+    AssertAssertionNode,
     AssertionNode,
-    AssertionFacade,
     AssertionResult,
-    EqualAssertionNode,
-    FailedCheck,
+    RequireAssertionNode
+} from '../../assertion-protocol/assertion-node.ts';
+export type {
+    CaseAssertContext,
     Metadata,
-    NonEmptyReadonlyArray,
-    OkAssertionNode,
-    SourceLocation,
     Suite,
     SuiteOptions,
     Table,

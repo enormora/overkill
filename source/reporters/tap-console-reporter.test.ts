@@ -58,6 +58,7 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
                             id: '1',
                             location: { column: null, file: '', line: null },
                             path: [],
+                            source: 'assert',
                             summary: 'the-reason'
                         }
                     ],

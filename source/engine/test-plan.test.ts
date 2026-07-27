@@ -8,7 +8,7 @@ registerTest('createTestPlan() expands suites and tables into executable cases',
         children: [
             engine.createTestCase({
                 body(testContext) {
-                    testContext.assert.ok(true, 'passes');
+                    testContext.assert.true(true, { message: 'passes' });
                     return testContext.assert.done();
                 },
                 metadata: { local: true },
@@ -18,7 +18,7 @@ registerTest('createTestPlan() expands suites and tables into executable cases',
                 cases: [
                     {
                         body(testContext) {
-                            testContext.assert.ok(true, 'row passes');
+                            testContext.assert.true(true, { message: 'row passes' });
                             return testContext.assert.done();
                         },
                         metadata: { row: 1 },
@@ -66,7 +66,7 @@ registerTest('createTestPlan() reports constructed nodes that do not reach the r
     const engine = createEngine();
     const reached = engine.createTestCase({
         body(testContext) {
-            testContext.assert.ok(true, 'passes');
+            testContext.assert.true(true, { message: 'passes' });
             return testContext.assert.done();
         },
         metadata: {},
@@ -74,7 +74,7 @@ registerTest('createTestPlan() reports constructed nodes that do not reach the r
     });
     engine.createTestCase({
         body(testContext) {
-            testContext.assert.ok(true, 'passes');
+            testContext.assert.true(true, { message: 'passes' });
             return testContext.assert.done();
         },
         metadata: {},
@@ -144,7 +144,7 @@ registerTest('createTestPlan() rejects duplicate full case identities', function
         children: [
             engine.createTestCase({
                 body(testContext) {
-                    testContext.assert.ok(true, 'passes');
+                    testContext.assert.true(true, { message: 'passes' });
                     return testContext.assert.done();
                 },
                 metadata: {},
@@ -152,7 +152,7 @@ registerTest('createTestPlan() rejects duplicate full case identities', function
             }),
             engine.createTestCase({
                 body(testContext) {
-                    testContext.assert.ok(true, 'passes');
+                    testContext.assert.true(true, { message: 'passes' });
                     return testContext.assert.done();
                 },
                 metadata: {},

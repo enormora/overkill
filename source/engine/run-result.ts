@@ -1,5 +1,5 @@
+import type { FailedCheck, NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import type { CaseId } from './identity.ts';
-import type { FailedCheck, NonEmptyReadonlyArray } from './test-node.ts';
 
 type RunnerErrorSubtypeByName = {
     readonly attributionDrift: 'attribution-drift';
@@ -34,7 +34,7 @@ export type BodyErrorTestFailure = {
     readonly kind: 'body-error';
 };
 
-export type TestContractFailureCode = 'invalid-plan' | 'no-assertions' | 'plan-mismatch';
+export type TestContractFailureCode = 'dead-builder-assertion' | 'invalid-plan' | 'no-assertions' | 'plan-mismatch';
 
 export type TestContractFailure = {
     readonly actual: unknown;

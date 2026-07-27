@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'tstyche';
 import type {
+    AssertAssertionFacade,
+    AssertAssertionNode,
+    AssertionNode,
+    AssertionOptions,
+    AssertionResult,
+    AssertionSource,
+    CaseAssertContext,
     CaseId,
     ExecuteOptions,
     FailedCheck,
@@ -13,8 +20,11 @@ import type {
     RunnerError,
     RunSummary,
     SinkDeclaration,
+    RequireAssertionFacade,
+    RequireAssertionNode,
     TestPlan,
     TestPlanCase,
+    TestContext,
     TestFailure,
     TestOutcome
 } from './engine.entry-point.ts';
@@ -25,6 +35,7 @@ type FailedCheckFixture = {
     readonly id: '1';
     readonly location: { readonly column: null; readonly file: ''; readonly line: null; };
     readonly path: readonly [];
+    readonly source: 'assert';
     readonly summary: 'numbers differ';
 };
 
@@ -48,6 +59,59 @@ type CaseIdFixture = {
 type TestEndReporterEvent = Extract<ReporterEvent, { readonly kind: 'test-end'; }>;
 type TestStartReporterEvent = Extract<ReporterEvent, { readonly kind: 'test-start'; }>;
 type SuiteStartReporterEvent = Extract<ReporterEvent, { readonly kind: 'suite-start'; }>;
+type ExpectedAssertFacadeKeys = keyof {
+    readonly annotated: true;
+    readonly array: true;
+    readonly arrayContainsPartial: true;
+    readonly between: true;
+    readonly boolean: true;
+    readonly deepEqual: true;
+    readonly defined: true;
+    readonly empty: true;
+    readonly endsWith: true;
+    readonly equal: true;
+    readonly fail: true;
+    readonly false: true;
+    readonly function: true;
+    readonly greaterThan: true;
+    readonly greaterThanOrEqual: true;
+    readonly hasProperty: true;
+    readonly includes: true;
+    readonly instanceOf: true;
+    readonly length: true;
+    readonly lessThan: true;
+    readonly lessThanOrEqual: true;
+    readonly match: true;
+    readonly membersPartialDeepEqual: true;
+    readonly notDeepEqual: true;
+    readonly notEmpty: true;
+    readonly notEqual: true;
+    readonly notMatch: true;
+    readonly notNull: true;
+    readonly null: true;
+    readonly number: true;
+    readonly object: true;
+    readonly partialDeepEqual: true;
+    readonly startsWith: true;
+    readonly string: true;
+    readonly true: true;
+    readonly undefined: true;
+};
+type ExpectedCaseAssertContextKeys = ExpectedAssertFacadeKeys | 'done';
+type ExpectedRequireFacadeKeys = keyof {
+    readonly annotated: true;
+    readonly array: true;
+    readonly boolean: true;
+    readonly defined: true;
+    readonly function: true;
+    readonly hasProperty: true;
+    readonly instanceOf: true;
+    readonly notNull: true;
+    readonly null: true;
+    readonly number: true;
+    readonly object: true;
+    readonly string: true;
+};
 
 describe('TestOutcome', function () {
     test('accepts public outcome shapes', function () {
@@ -102,7 +166,9 @@ describe('TestOutcome', function () {
     });
 
     test('keeps failed checks free of diff fields', function () {
-        expect<keyof FailedCheck>().type.toBe<'actual' | 'expected' | 'id' | 'location' | 'path' | 'summary'>();
+        expect<keyof FailedCheck>().type.toBe<
+            'actual' | 'expected' | 'id' | 'location' | 'path' | 'source' | 'summary'
+        >();
     });
 
     test('accepts public test failure shapes', function () {
@@ -126,6 +192,40 @@ describe('TestOutcome', function () {
             readonly kind: 'test-contract';
             readonly summary: 'Assertion plan count did not match.';
         }>();
+    });
+});
+
+describe('Assertion protocol', function () {
+    test('exports source-discriminated assertion nodes', function () {
+        expect<AssertionSource>().type.toBe<'assert' | 'require'>();
+        expect<AssertionNode>().type.toBe<AssertAssertionNode | RequireAssertionNode>();
+        expect<AssertionResult>().type.toBe<AssertAssertionNode | NonEmptyReadonlyArray<AssertAssertionNode>>();
+        expect<AssertionResult>().type.not.toBeAssignableFrom<readonly []>();
+        expect<AssertionResult>().type.not.toBeAssignableFrom<{
+            readonly actual: 'value';
+            readonly check: 'string';
+            readonly message: null;
+            readonly source: 'require';
+        }>();
+    });
+
+    test('exposes the concept assert catalog without ok', function () {
+        expect<keyof AssertAssertionFacade>().type.toBe<ExpectedAssertFacadeKeys>();
+        expect<keyof AssertAssertionFacade>().type.not.toBeAssignableFrom<'done'>();
+    });
+
+    test('keeps builder completion on the case assert context only', function () {
+        expect<keyof CaseAssertContext>().type.toBe<ExpectedCaseAssertContextKeys>();
+    });
+
+    test('exposes the narrow require catalog without equality or done', function () {
+        expect<keyof RequireAssertionFacade>().type.toBe<ExpectedRequireFacadeKeys>();
+    });
+
+    test('uses explicit message options and facades on test context', function () {
+        expect<AssertionOptions>().type.toBe<{ readonly message: string; }>();
+        expect<TestContext['assert']>().type.toBe<CaseAssertContext>();
+        expect<TestContext['require']>().type.toBe<RequireAssertionFacade>();
     });
 });
 

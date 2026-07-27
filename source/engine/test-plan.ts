@@ -1,10 +1,10 @@
+import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import { caseIdentityKey, createCaseId, formatCaseId, type CaseId } from './identity.ts';
 import type { OrphanedNode } from './run-result.ts';
 import {
     ensureOwnedTestNode,
     mergeMetadata,
     type Metadata,
-    type NonEmptyReadonlyArray,
     type Table,
     type TestBody,
     type TestCase,

@@ -27,6 +27,12 @@ node list recorded by the injected assertion context, not a public
 the small direct-engine path. Returning ordinary application values is outside
 the supported builder contract.
 
+Direct engine consumers may return public low-level assert-source
+`AssertionNode` values. Normal builder completion still needs at least one
+returned assert-source node, even if successful `case.require.*` calls were
+recorded. Successful `require` entries count toward `plan(n)` only after a
+valid assert-source result exists.
+
 The engine normalizes these lazy assertion nodes into `TestOutcome`
 internally. Users complete builder tests through the assertion context, while
 reporters and integrations consume structured outcomes.
@@ -54,7 +60,7 @@ still lives directly in `@overkill-dev/engine`. The engine is the home for:
 
 - assertion-count and plan tracking
 - diffing and serializer logic
-- internal assertion-protocol values used between authoring and engine
+- public low-level assertion-protocol values used between authoring and engine
 - implementation shared between default test facades and direct
   engine-level consumers
 
@@ -236,7 +242,429 @@ Recommended built-ins:
 - control / metadata
   - `fail(reason?)`
   - `annotated(text).<assertion>(...)`
-  - `done()`
+
+`case.assert.done()` is not an assertion protocol primitive. It belongs to
+builder/result mode only: it completes the injected case builder and returns
+the non-empty assert-source assertion list to the engine. A future reusable
+`@overkill-dev/assert` API should be able to reuse assertion semantics without
+carrying builder completion.
+
+`annotated(text)` creates a scoped assertion facade that applies `text` as the
+human-facing failure summary for the next assertion calls made through that
+facade:
+
+```ts
+case.assert.annotated('cart starts empty').empty(cart.items);
+case.require.annotated('user id must be present').string(input.userId);
+```
+
+The low-level assertion node still carries a nullable `message` field. That is
+protocol data, not a reason to add positional message overloads.
+
+### Current Built-In Assertion Reference
+
+Each signature below is available on `case.assert` unless noted otherwise.
+`case.require` intentionally exposes only the narrow gating subset listed in
+the `case.require` section.
+
+#### `annotated(text)`
+
+Signature: `annotated(text: string)`
+
+```ts
+case.assert.annotated('response includes account id').string(response.accountId);
+```
+
+Returns a scoped assertion facade that records `text` as the failure message
+for assertions made through it. It is a prefix context, so the assertion
+signature stays focused on assertion operands.
+
+#### `array(actual)`
+
+Signature: `array(actual: unknown)`
+
+```ts
+case.assert.array(rows);
+```
+
+Passes only when `actual` is an array. Also available on `case.require` for
+type narrowing.
+
+#### `arrayContainsPartial(actual, expectedSubset)`
+
+Signature: `arrayContainsPartial(actual: readonly unknown[], expectedSubset: unknown)`
+
+```ts
+case.assert.arrayContainsPartial(users, { id: 'u1', role: 'admin' });
+```
+
+Passes when at least one array item partially deep-matches `expectedSubset`.
+Extra properties on the matching item are allowed, so this is for finding a
+record by important fields rather than checking the whole collection.
+
+#### `between(actual, minimum, maximum)`
+
+Signature: `between(actual: number, minimum: number, maximum: number)`
+
+```ts
+case.assert.between(score, 0, 100);
+```
+
+Passes when `actual` is greater than or equal to `minimum` and less than or
+equal to `maximum`.
+
+#### `boolean(actual)`
+
+Signature: `boolean(actual: unknown)`
+
+```ts
+case.assert.boolean(flag);
+```
+
+Passes only when `actual` is a boolean. Also available on `case.require` for
+type narrowing.
+
+#### `deepEqual(actual, expected)`
+
+Signature: `deepEqual(actual: unknown, expected: unknown)`
+
+```ts
+case.assert.deepEqual(result, { ok: true, count: 2 });
+```
+
+Passes when `actual` and `expected` are deeply equal with strict semantics.
+This is the default full-structure equality assertion.
+
+#### `defined(actual)`
+
+Signature: `defined(actual: unknown)`
+
+```ts
+case.assert.defined(config.port);
+```
+
+Passes when `actual` is neither `null` nor `undefined`. Also available on
+`case.require` for type narrowing.
+
+#### `empty(actual)`
+
+Signature: `empty(actual: unknown)`
+
+```ts
+case.assert.empty(queue);
+```
+
+Passes when the value has a supported collection count of `0`. Supported
+values include strings, arrays, maps, sets, plain objects, and iterables.
+
+#### `endsWith(actual, expected)`
+
+Signature: `endsWith(actual: string, expected: string)`
+
+```ts
+case.assert.endsWith(filename, '.json');
+```
+
+Passes when `actual` ends with `expected`.
+
+#### `equal(actual, expected)`
+
+Signature: `equal(actual: unknown, expected: unknown)`
+
+```ts
+case.assert.equal(statusCode, 200);
+```
+
+Passes when `Object.is(actual, expected)` passes. Use it for scalar or
+identity equality, not for deep object comparison.
+
+#### `fail()`
+
+Signature: `fail()`
+
+```ts
+case.assert.annotated('unreachable branch executed').fail();
+```
+
+Always records a failed assertion. It is useful for impossible branches after
+the test has enough context to explain why reaching them is wrong.
+
+#### `false(actual)`
+
+Signature: `false(actual: unknown)`
+
+```ts
+case.assert.false(result.cached);
+```
+
+Passes only when `actual` is exactly `false`.
+
+#### `function(actual)`
+
+Signature: `function(actual: unknown)`
+
+```ts
+case.assert.function(plugin.load);
+```
+
+Passes only when `actual` is a function. Also available on `case.require` for
+type narrowing.
+
+#### `greaterThan(actual, expected)`
+
+Signature: `greaterThan(actual: number, expected: number)`
+
+```ts
+case.assert.greaterThan(durationMs, 0);
+```
+
+Passes when `actual` is strictly greater than `expected`.
+
+#### `greaterThanOrEqual(actual, expected)`
+
+Signature: `greaterThanOrEqual(actual: number, expected: number)`
+
+```ts
+case.assert.greaterThanOrEqual(retryCount, 1);
+```
+
+Passes when `actual` is greater than or equal to `expected`.
+
+#### `hasProperty(actual, key)`
+
+Signature: `hasProperty(actual: unknown, key: PropertyKey)`
+
+```ts
+case.assert.hasProperty(headers, 'content-type');
+```
+
+Passes when `actual` owns `key` directly. Also available on `case.require` for
+type narrowing to a record containing that property.
+
+#### `includes(actual, expected)`
+
+Signature: `includes(actual: string, expected: string)`
+
+```ts
+case.assert.includes(message, 'saved');
+```
+
+Passes when the string `actual` contains `expected`.
+
+#### `instanceOf(actual, ctor)`
+
+Signature: `instanceOf(actual: unknown, ctor: abstract new (...args: never[]) => unknown)`
+
+```ts
+case.assert.instanceOf(error, SyntaxError);
+```
+
+Passes when `actual instanceof ctor`. Also available on `case.require` for
+type narrowing.
+
+#### `length(actual, expectedLength)`
+
+Signature: `length(actual: unknown, expectedLength: number)`
+
+```ts
+case.assert.length(rows, 3);
+```
+
+Passes when the supported collection count equals `expectedLength`. Supported
+values match `empty`.
+
+#### `lessThan(actual, expected)`
+
+Signature: `lessThan(actual: number, expected: number)`
+
+```ts
+case.assert.lessThan(durationMs, 500);
+```
+
+Passes when `actual` is strictly less than `expected`.
+
+#### `lessThanOrEqual(actual, expected)`
+
+Signature: `lessThanOrEqual(actual: number, expected: number)`
+
+```ts
+case.assert.lessThanOrEqual(retryCount, 3);
+```
+
+Passes when `actual` is less than or equal to `expected`.
+
+#### `match(actual, pattern)`
+
+Signature: `match(actual: string, pattern: RegExp)`
+
+```ts
+case.assert.match(user.email, /^[^@]+@[^@]+$/u);
+```
+
+Passes when `pattern.test(actual)` passes.
+
+#### `membersPartialDeepEqual(actual, expectedMembers)`
+
+Signature: `membersPartialDeepEqual(actual: readonly unknown[], expectedMembers: readonly unknown[])`
+
+```ts
+case.assert.membersPartialDeepEqual(users, [
+    { id: 'u1', role: 'admin' },
+    { id: 'u2', role: 'viewer' },
+]);
+```
+
+Passes when every expected member has some actual array item that partially
+deep-matches it. This checks membership by important fields while allowing
+extra actual fields and ignoring array order.
+
+#### `notDeepEqual(actual, expected)`
+
+Signature: `notDeepEqual(actual: unknown, expected: unknown)`
+
+```ts
+case.assert.notDeepEqual(before, after);
+```
+
+Passes when `actual` and `expected` are not deeply equal.
+
+#### `notEmpty(actual)`
+
+Signature: `notEmpty(actual: unknown)`
+
+```ts
+case.assert.notEmpty(events);
+```
+
+Passes when the value has a supported collection count greater than `0`.
+
+#### `notEqual(actual, expected)`
+
+Signature: `notEqual(actual: unknown, expected: unknown)`
+
+```ts
+case.assert.notEqual(actualId, previousId);
+```
+
+Passes when `Object.is(actual, expected)` does not pass.
+
+#### `notMatch(actual, pattern)`
+
+Signature: `notMatch(actual: string, pattern: RegExp)`
+
+```ts
+case.assert.notMatch(output, /deprecated/u);
+```
+
+Passes when `pattern.test(actual)` does not pass.
+
+#### `notNull(actual)`
+
+Signature: `notNull(actual: unknown)`
+
+```ts
+case.assert.notNull(user);
+```
+
+Passes when `actual` is not `null`. Also available on `case.require` for type
+narrowing.
+
+#### `null(actual)`
+
+Signature: `null(actual: unknown)`
+
+```ts
+case.assert.null(cacheEntry);
+```
+
+Passes only when `actual` is exactly `null`. Also available on `case.require`
+for type narrowing.
+
+#### `number(actual)`
+
+Signature: `number(actual: unknown)`
+
+```ts
+case.assert.number(total);
+```
+
+Passes only when `actual` is a number. Also available on `case.require` for
+type narrowing.
+
+#### `object(actual)`
+
+Signature: `object(actual: unknown)`
+
+```ts
+case.assert.object(payload);
+```
+
+Passes when `actual` is a non-null object and not an array. Also available on
+`case.require` for type narrowing.
+
+#### `partialDeepEqual(actual, expectedSubset)`
+
+Signature: `partialDeepEqual(actual: unknown, expectedSubset: unknown)`
+
+```ts
+case.assert.partialDeepEqual(user, { profile: { locale: 'en-US' } });
+```
+
+Passes when `actual` contains the structure described by `expectedSubset`.
+Nested objects, arrays, maps, and sets are matched recursively.
+
+#### `startsWith(actual, expected)`
+
+Signature: `startsWith(actual: string, expected: string)`
+
+```ts
+case.assert.startsWith(route, '/api/');
+```
+
+Passes when `actual` starts with `expected`.
+
+#### `string(actual)`
+
+Signature: `string(actual: unknown)`
+
+```ts
+case.assert.string(name);
+```
+
+Passes only when `actual` is a string. Also available on `case.require` for
+type narrowing.
+
+#### `true(actual)`
+
+Signature: `true(actual: unknown)`
+
+```ts
+case.assert.true(result.ok);
+```
+
+Passes only when `actual` is exactly `true`.
+
+#### `undefined(actual)`
+
+Signature: `undefined(actual: unknown)`
+
+```ts
+case.assert.undefined(optionalValue);
+```
+
+Passes only when `actual` is exactly `undefined`.
+
+#### `case.assert.done()`
+
+Signature: `done()`
+
+```ts
+return case.assert.done();
+```
+
+Completes builder/result mode and returns the non-empty list of builder
+assertions recorded through `case.assert`. It is intentionally not available
+on the reusable `case.assert` facade surface.
 
 The error assertions should stay strict:
 
@@ -444,20 +872,33 @@ remains a supported alternate authoring style, but the engine
 normalizes its result into the same structured `TestOutcome` shape so
 reporters consume one failure model.
 
-### Internal Protocol Versus Public API
+### Low-Level Protocol Versus Day-To-Day API
 
 Overkill benefits from a lazy assertion-node protocol while moving checks
-between authoring helpers and the engine, but that protocol does not need to
-be exposed as a separate first-party user package.
+between authoring helpers and the engine. That protocol is public as a
+low-level `@overkill-dev/engine` contract for direct engine consumers, but it
+does not need a separate first-party package yet.
 
 The public concept therefore stays simpler:
 
 - day-to-day tests use injected `case.assert` / `case.require`
 - property helpers such as `case.forall(...)` use a nested injected
   assertion context
-- the engine receives structured `AssertionNode` data and evaluates it into
-  `FailedCheck` failures, diffs, and counts without ordinary users
-  constructing protocol nodes directly
+- direct returned protocol nodes are assert-source only
+- engine-created require nodes are carried through the test session, count
+  toward `plan(n)` once the normal completion has a valid assert-source
+  result, and expose `source: 'require'` on failed checks
+- the engine evaluates structured `AssertionNode` data into `FailedCheck`
+  failures, diffs, and counts without ordinary users constructing protocol
+  nodes directly
+- a builder test that records assert nodes must return those same node
+  objects in order; dropping them is a `dead-builder-assertion` contract
+  failure
+
+Custom assertion protocol nodes remain a separate design question. Extension
+helpers may wrap built-ins, create composite assertion boundaries, or bridge
+foreign assertion systems later, but this concept does not yet choose that
+wire shape.
 
 ### Error Separation
 
@@ -843,8 +1284,8 @@ For the product concept:
   is not required for assertion usage
 - primary authoring shape: builder/context API with explicit
   `return case.assert.done()`
-- `AssertionNode` may still exist as an internal protocol term, but not as
-  a separate public-first authoring surface
+- `AssertionNode` exists as a public low-level engine protocol, but not as a
+  separate package or the day-to-day authoring surface
 - zero-assertion detection: failure, no opt-out
 - `plan(n)` is the assertion-count contract; no `atMost`, no `atLeast`,
   and `n > 0`

@@ -15,7 +15,8 @@ Top-level API:
 - `CaseId`, `TestId`, `TestPlan`, `ExecuteOptions`, `NonEmptyReadonlyArray`
 - `Reporter`, `ReporterEvent`, `RealTimeReporter`, `FinalResultReporter`, `RunFacts`, `SinkDeclaration`
 - `RunResult`, `TestOutcome`, `PassOutcome`, `FailOutcome`, `SkipOutcome`, `InconclusiveOutcome`
-- `AssertionNode`, `AssertionResult`, `FailedCheck`, `TestFailure`, `RunnerError`
+- `AssertionNode`, `AssertionResult`, `AssertAssertionFacade`, `CaseAssertContext`
+- `RequireAssertionFacade`, `FailedCheck`, `TestFailure`, `RunnerError`
 
 The top-level constructors share one default engine instance. Use
 `createEngine()` when a collection needs isolated construction state for
@@ -42,11 +43,15 @@ Reporter sinks:
 
 Assertion bodies:
 
-- `case.assert.equal(...)` and `case.assert.ok(...)` record lazy assertion
-  nodes and continue.
-- `case.require.equal(...)` and `case.require.ok(...)` record a lazy
-  assertion node and short-circuit when it fails.
-- `case.assert.done()` returns the non-empty assertion list for the engine to
-  evaluate.
+- `case.assert.*` records non-gating assertion nodes and continues.
+- `case.require.*` records narrow gating assertion nodes and short-circuits
+  when one fails.
+- `case.assert.annotated(message).*` and `case.require.annotated(message).*`
+  record message-scoped checks without positional message overloads.
+- `case.assert.done()` is builder-only completion. It returns the non-empty
+  assertion list for the engine to evaluate, and is not part of
+  `AssertAssertionFacade`.
 - `case.plan(count)` must be the first test-body call and must declare a
   positive integer assertion count.
+- `FailedCheck.source` reports whether a failed check came from `assert` or
+  `require`.
