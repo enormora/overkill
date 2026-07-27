@@ -206,6 +206,7 @@ export type AssertionNode = AssertAssertionNode | RequireAssertionNode;
 export type AssertionResult = AssertAssertionNode | NonEmptyReadonlyArray<AssertAssertionNode>;
 
 export type AssertAssertionFacade = {
+    readonly annotated: (message: string) => AssertAssertionFacade;
     readonly array: (actual: unknown, options?: AssertionOptions) => void;
     readonly arrayContainsPartial: (
         actual: readonly unknown[],
@@ -216,7 +217,6 @@ export type AssertAssertionFacade = {
     readonly boolean: (actual: unknown, options?: AssertionOptions) => void;
     readonly deepEqual: (actual: unknown, expected: unknown, options?: AssertionOptions) => void;
     readonly defined: (actual: unknown, options?: AssertionOptions) => void;
-    readonly done: () => NonEmptyReadonlyArray<AssertAssertionNode>;
     readonly empty: (actual: unknown, options?: AssertionOptions) => void;
     readonly endsWith: (actual: string, expected: string, options?: AssertionOptions) => void;
     readonly equal: (actual: unknown, expected: unknown, options?: AssertionOptions) => void;
@@ -252,7 +252,12 @@ export type AssertAssertionFacade = {
     readonly undefined: (actual: unknown, options?: AssertionOptions) => void;
 };
 
+export type BuilderAssertAssertionFacade = AssertAssertionFacade & {
+    readonly done: () => NonEmptyReadonlyArray<AssertAssertionNode>;
+};
+
 export type RequireAssertionFacade = {
+    readonly annotated: (message: string) => RequireAssertionFacade;
     readonly array: (actual: unknown, options?: AssertionOptions) => asserts actual is readonly unknown[];
     readonly boolean: (actual: unknown, options?: AssertionOptions) => asserts actual is boolean;
     readonly defined: <Value>(actual: Value, options?: AssertionOptions) => asserts actual is NonNullable<Value>;

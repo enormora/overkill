@@ -3,25 +3,28 @@ import type {
     AssertAssertionNode,
     AssertionOptions,
     InstanceConstructor,
-    NonEmptyReadonlyArray,
     RequireAssertionFacade,
     RequireAssertionNode
-} from './types.ts';
+} from './assertions.ts';
 
-type AssertRecorder = (assertion: AssertAssertionNode) => void;
-type RequireRecorder = (assertion: RequireAssertionNode) => void;
+type AssertAssertionSink = (assertion: AssertAssertionNode) => void;
+type RequireAssertionSink = (assertion: RequireAssertionNode) => void;
 
-function messageFromOptions(options: AssertionOptions | undefined): string | null {
-    return options?.message ?? null;
+function messageFromOptions(options: AssertionOptions | undefined, annotation: string | null): string | null {
+    return options?.message ?? annotation;
 }
 
-export function createAssertAssertionFacade(
-    record: AssertRecorder,
-    done: () => NonEmptyReadonlyArray<AssertAssertionNode>
+export function createRecordingAssertFacade(
+    record: AssertAssertionSink,
+    annotation: string | null
 ): AssertAssertionFacade {
     return {
+        annotated(message) {
+            return createRecordingAssertFacade(record, message);
+        },
+
         array(actual, options) {
-            record({ actual, check: 'array', message: messageFromOptions(options), source: 'assert' });
+            record({ actual, check: 'array', message: messageFromOptions(options, annotation), source: 'assert' });
         },
 
         arrayContainsPartial(actual, expected, options) {
@@ -29,7 +32,7 @@ export function createAssertAssertionFacade(
                 actual,
                 check: 'array-contains-partial',
                 expected,
-                message: messageFromOptions(options),
+                message: messageFromOptions(options, annotation),
                 source: 'assert'
             });
         },
@@ -39,52 +42,74 @@ export function createAssertAssertionFacade(
                 actual,
                 check: 'between',
                 maximum,
-                message: messageFromOptions(options),
+                message: messageFromOptions(options, annotation),
                 minimum,
                 source: 'assert'
             });
         },
 
         boolean(actual, options) {
-            record({ actual, check: 'boolean', message: messageFromOptions(options), source: 'assert' });
+            record({ actual, check: 'boolean', message: messageFromOptions(options, annotation), source: 'assert' });
         },
 
         deepEqual(actual, expected, options) {
-            record({ actual, check: 'deep-equal', expected, message: messageFromOptions(options), source: 'assert' });
+            record({
+                actual,
+                check: 'deep-equal',
+                expected,
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         defined(actual, options) {
-            record({ actual, check: 'defined', message: messageFromOptions(options), source: 'assert' });
+            record({ actual, check: 'defined', message: messageFromOptions(options, annotation), source: 'assert' });
         },
 
-        done,
-
         empty(actual, options) {
-            record({ actual, check: 'empty', message: messageFromOptions(options), source: 'assert' });
+            record({ actual, check: 'empty', message: messageFromOptions(options, annotation), source: 'assert' });
         },
 
         endsWith(actual, expected, options) {
-            record({ actual, check: 'ends-with', expected, message: messageFromOptions(options), source: 'assert' });
+            record({
+                actual,
+                check: 'ends-with',
+                expected,
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         equal(actual, expected, options) {
-            record({ actual, check: 'equal', expected, message: messageFromOptions(options), source: 'assert' });
+            record({
+                actual,
+                check: 'equal',
+                expected,
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         fail(options) {
-            record({ check: 'fail', message: messageFromOptions(options), source: 'assert' });
+            record({ check: 'fail', message: messageFromOptions(options, annotation), source: 'assert' });
         },
 
         false(actual, options) {
-            record({ actual, check: 'false', message: messageFromOptions(options), source: 'assert' });
+            record({ actual, check: 'false', message: messageFromOptions(options, annotation), source: 'assert' });
         },
 
         function(actual, options) {
-            record({ actual, check: 'function', message: messageFromOptions(options), source: 'assert' });
+            record({ actual, check: 'function', message: messageFromOptions(options, annotation), source: 'assert' });
         },
 
         greaterThan(actual, expected, options) {
-            record({ actual, check: 'greater-than', expected, message: messageFromOptions(options), source: 'assert' });
+            record({
+                actual,
+                check: 'greater-than',
+                expected,
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         greaterThanOrEqual(actual, expected, options) {
@@ -92,29 +117,59 @@ export function createAssertAssertionFacade(
                 actual,
                 check: 'greater-than-or-equal',
                 expected,
-                message: messageFromOptions(options),
+                message: messageFromOptions(options, annotation),
                 source: 'assert'
             });
         },
 
         hasProperty(actual, key, options) {
-            record({ actual, check: 'has-property', key, message: messageFromOptions(options), source: 'assert' });
+            record({
+                actual,
+                check: 'has-property',
+                key,
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         includes(actual, expected, options) {
-            record({ actual, check: 'includes', expected, message: messageFromOptions(options), source: 'assert' });
+            record({
+                actual,
+                check: 'includes',
+                expected,
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         instanceOf(actual, expected, options) {
-            record({ actual, check: 'instance-of', expected, message: messageFromOptions(options), source: 'assert' });
+            record({
+                actual,
+                check: 'instance-of',
+                expected,
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         length(actual, expectedLength, options) {
-            record({ actual, check: 'length', expectedLength, message: messageFromOptions(options), source: 'assert' });
+            record({
+                actual,
+                check: 'length',
+                expectedLength,
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         lessThan(actual, expected, options) {
-            record({ actual, check: 'less-than', expected, message: messageFromOptions(options), source: 'assert' });
+            record({
+                actual,
+                check: 'less-than',
+                expected,
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         lessThanOrEqual(actual, expected, options) {
@@ -122,13 +177,19 @@ export function createAssertAssertionFacade(
                 actual,
                 check: 'less-than-or-equal',
                 expected,
-                message: messageFromOptions(options),
+                message: messageFromOptions(options, annotation),
                 source: 'assert'
             });
         },
 
         match(actual, pattern, options) {
-            record({ actual, check: 'match', message: messageFromOptions(options), pattern, source: 'assert' });
+            record({
+                actual,
+                check: 'match',
+                message: messageFromOptions(options, annotation),
+                pattern,
+                source: 'assert'
+            });
         },
 
         membersPartialDeepEqual(actual, expected, options) {
@@ -136,7 +197,7 @@ export function createAssertAssertionFacade(
                 actual,
                 check: 'members-partial-deep-equal',
                 expected,
-                message: messageFromOptions(options),
+                message: messageFromOptions(options, annotation),
                 source: 'assert'
             });
         },
@@ -146,37 +207,49 @@ export function createAssertAssertionFacade(
                 actual,
                 check: 'not-deep-equal',
                 expected,
-                message: messageFromOptions(options),
+                message: messageFromOptions(options, annotation),
                 source: 'assert'
             });
         },
 
         notEmpty(actual, options) {
-            record({ actual, check: 'not-empty', message: messageFromOptions(options), source: 'assert' });
+            record({ actual, check: 'not-empty', message: messageFromOptions(options, annotation), source: 'assert' });
         },
 
         notEqual(actual, expected, options) {
-            record({ actual, check: 'not-equal', expected, message: messageFromOptions(options), source: 'assert' });
+            record({
+                actual,
+                check: 'not-equal',
+                expected,
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         notMatch(actual, pattern, options) {
-            record({ actual, check: 'not-match', message: messageFromOptions(options), pattern, source: 'assert' });
+            record({
+                actual,
+                check: 'not-match',
+                message: messageFromOptions(options, annotation),
+                pattern,
+                source: 'assert'
+            });
         },
 
         notNull(actual, options) {
-            record({ actual, check: 'not-null', message: messageFromOptions(options), source: 'assert' });
+            record({ actual, check: 'not-null', message: messageFromOptions(options, annotation), source: 'assert' });
         },
 
         null(actual, options) {
-            record({ actual, check: 'null', message: messageFromOptions(options), source: 'assert' });
+            record({ actual, check: 'null', message: messageFromOptions(options, annotation), source: 'assert' });
         },
 
         number(actual, options) {
-            record({ actual, check: 'number', message: messageFromOptions(options), source: 'assert' });
+            record({ actual, check: 'number', message: messageFromOptions(options, annotation), source: 'assert' });
         },
 
         object(actual, options) {
-            record({ actual, check: 'object', message: messageFromOptions(options), source: 'assert' });
+            record({ actual, check: 'object', message: messageFromOptions(options, annotation), source: 'assert' });
         },
 
         partialDeepEqual(actual, expected, options) {
@@ -184,73 +257,98 @@ export function createAssertAssertionFacade(
                 actual,
                 check: 'partial-deep-equal',
                 expected,
-                message: messageFromOptions(options),
+                message: messageFromOptions(options, annotation),
                 source: 'assert'
             });
         },
 
         startsWith(actual, expected, options) {
-            record({ actual, check: 'starts-with', expected, message: messageFromOptions(options), source: 'assert' });
+            record({
+                actual,
+                check: 'starts-with',
+                expected,
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         string(actual, options) {
-            record({ actual, check: 'string', message: messageFromOptions(options), source: 'assert' });
+            record({ actual, check: 'string', message: messageFromOptions(options, annotation), source: 'assert' });
         },
 
         true(actual, options) {
-            record({ actual, check: 'true', message: messageFromOptions(options), source: 'assert' });
+            record({ actual, check: 'true', message: messageFromOptions(options, annotation), source: 'assert' });
         },
 
         undefined(actual, options) {
-            record({ actual, check: 'undefined', message: messageFromOptions(options), source: 'assert' });
+            record({ actual, check: 'undefined', message: messageFromOptions(options, annotation), source: 'assert' });
         }
     };
 }
 
-export function createRequireAssertionFacade(record: RequireRecorder): RequireAssertionFacade {
+export function createRecordingRequireFacade(
+    record: RequireAssertionSink,
+    annotation: string | null
+): RequireAssertionFacade {
     return {
+        annotated(message) {
+            return createRecordingRequireFacade(record, message);
+        },
+
         array(actual, options) {
-            record({ actual, check: 'array', message: messageFromOptions(options), source: 'require' });
+            record({ actual, check: 'array', message: messageFromOptions(options, annotation), source: 'require' });
         },
 
         boolean(actual, options) {
-            record({ actual, check: 'boolean', message: messageFromOptions(options), source: 'require' });
+            record({ actual, check: 'boolean', message: messageFromOptions(options, annotation), source: 'require' });
         },
 
         defined(actual, options) {
-            record({ actual, check: 'defined', message: messageFromOptions(options), source: 'require' });
+            record({ actual, check: 'defined', message: messageFromOptions(options, annotation), source: 'require' });
         },
 
         function(actual, options) {
-            record({ actual, check: 'function', message: messageFromOptions(options), source: 'require' });
+            record({ actual, check: 'function', message: messageFromOptions(options, annotation), source: 'require' });
         },
 
         hasProperty(actual, key, options) {
-            record({ actual, check: 'has-property', key, message: messageFromOptions(options), source: 'require' });
+            record({
+                actual,
+                check: 'has-property',
+                key,
+                message: messageFromOptions(options, annotation),
+                source: 'require'
+            });
         },
 
         instanceOf(actual, expected: InstanceConstructor, options) {
-            record({ actual, check: 'instance-of', expected, message: messageFromOptions(options), source: 'require' });
+            record({
+                actual,
+                check: 'instance-of',
+                expected,
+                message: messageFromOptions(options, annotation),
+                source: 'require'
+            });
         },
 
         notNull(actual, options) {
-            record({ actual, check: 'not-null', message: messageFromOptions(options), source: 'require' });
+            record({ actual, check: 'not-null', message: messageFromOptions(options, annotation), source: 'require' });
         },
 
         null(actual, options) {
-            record({ actual, check: 'null', message: messageFromOptions(options), source: 'require' });
+            record({ actual, check: 'null', message: messageFromOptions(options, annotation), source: 'require' });
         },
 
         number(actual, options) {
-            record({ actual, check: 'number', message: messageFromOptions(options), source: 'require' });
+            record({ actual, check: 'number', message: messageFromOptions(options, annotation), source: 'require' });
         },
 
         object(actual, options) {
-            record({ actual, check: 'object', message: messageFromOptions(options), source: 'require' });
+            record({ actual, check: 'object', message: messageFromOptions(options, annotation), source: 'require' });
         },
 
         string(actual, options) {
-            record({ actual, check: 'string', message: messageFromOptions(options), source: 'require' });
+            record({ actual, check: 'string', message: messageFromOptions(options, annotation), source: 'require' });
         }
     };
 }

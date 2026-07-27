@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import type { FailedCheck } from '../assertion-protocol/types.ts';
+import type { FailedCheck } from '../assertion-protocol/assertions.ts';
 import type { TestFailure } from '../engine/run-result.ts';
 import { registerTest } from '../test-support/register-test.ts';
 import { formatFailure } from './line-failure-rendering.ts';

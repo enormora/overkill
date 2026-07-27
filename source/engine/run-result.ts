@@ -1,4 +1,4 @@
-import type { FailedCheck, NonEmptyReadonlyArray } from '../assertion-protocol/types.ts';
+import type { FailedCheck, NonEmptyReadonlyArray } from '../assertion-protocol/assertions.ts';
 import type { CaseId } from './identity.ts';
 
 type RunnerErrorSubtypeByName = {

@@ -1,4 +1,4 @@
-import type { AssertionNode } from './types.ts';
+import type { AssertionNode } from './assertions.ts';
 
 const defaultSummaryByCheck: Readonly<Record<AssertionNode['check'], string>> = {
     array: 'Expected value to be an array.',

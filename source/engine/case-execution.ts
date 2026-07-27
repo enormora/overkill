@@ -1,5 +1,5 @@
 import type { WallClock } from '@enormora/wall-clock';
-import { createAssertAssertionFacade, createRequireAssertionFacade } from '../assertion-protocol/catalog.ts';
+import { createRecordingAssertFacade, createRecordingRequireFacade } from '../assertion-protocol/catalog.ts';
 import { assertionPasses, evaluateAssertion } from '../assertion-protocol/evaluation.ts';
 import type {
     AssertAssertionNode,
@@ -7,7 +7,7 @@ import type {
     AssertionResult,
     NonEmptyReadonlyArray,
     RequireAssertionNode
-} from '../assertion-protocol/types.ts';
+} from '../assertion-protocol/assertions.ts';
 import {
     type PerTestResult,
     type TestContractFailure,
@@ -360,20 +360,26 @@ function evaluatedAssertionFailure(assertions: readonly AssertionNode[]): TestFa
 
 function createTestContext(recorder: AssertionRecorder): TestContext {
     return {
-        assert: createAssertAssertionFacade(
-            function recordAssert(assertion) {
-                recorder.recordAssert(assertion);
-            },
-            function done() {
+        assert: {
+            ...createRecordingAssertFacade(
+                function recordAssert(assertion) {
+                    recorder.recordAssert(assertion);
+                },
+                null
+            ),
+            done() {
                 return recorder.done();
             }
-        ),
+        },
         plan(count) {
             recorder.plan(count);
         },
-        require: createRequireAssertionFacade(function recordRequire(assertion) {
-            recorder.recordRequire(assertion);
-        })
+        require: createRecordingRequireFacade(
+            function recordRequire(assertion) {
+                recorder.recordRequire(assertion);
+            },
+            null
+        )
     };
 }
 

@@ -1,5 +1,5 @@
 import type { CaseId } from '../engine/identity.ts';
-import type { FailedCheck, NonEmptyReadonlyArray, SourceLocation } from '../assertion-protocol/types.ts';
+import type { FailedCheck, NonEmptyReadonlyArray, SourceLocation } from '../assertion-protocol/assertions.ts';
 import type {
     OrphanedNode,
     RunnerError,

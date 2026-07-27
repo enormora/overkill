@@ -265,6 +265,16 @@ type RequireAssertionNode = {
 type AssertionNode = AssertAssertionNode | RequireAssertionNode;
 type AssertionResult = AssertAssertionNode | NonEmptyReadonlyArray<AssertAssertionNode>;
 
+type AssertAssertionFacade = {
+    readonly annotated: (message: string) => AssertAssertionFacade;
+    readonly equal: (actual: unknown, expected: unknown) => void;
+    readonly true: (actual: unknown) => void;
+};
+
+type BuilderAssertAssertionFacade = AssertAssertionFacade & {
+    readonly done: () => NonEmptyReadonlyArray<AssertAssertionNode>;
+};
+
 type BuilderTestBody = (case: unknown) => AssertionResult | Promise<AssertionResult>;
 type ThrowingTestBody = (case: unknown) => void | Promise<void>;
 type TestBody = BuilderTestBody | ThrowingTestBody;

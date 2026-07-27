@@ -85,6 +85,7 @@ export type {
     AssertionResult,
     AssertionSource,
     BetweenAssertionNode,
+    BuilderAssertAssertionFacade,
     DeepEqualAssertionNode,
     DefinedAssertionNode,
     EmptinessAssertionNode,
@@ -112,7 +113,7 @@ export type {
     TrueAssertionNode,
     TypeAssertionNode,
     UndefinedAssertionNode
-} from '../../assertion-protocol/types.ts';
+} from '../../assertion-protocol/assertions.ts';
 export type {
     Metadata,
     Suite,

@@ -6,6 +6,7 @@ import type {
     AssertionOptions,
     AssertionResult,
     AssertionSource,
+    BuilderAssertAssertionFacade,
     CaseId,
     ExecuteOptions,
     FailedCheck,
@@ -59,13 +60,13 @@ type TestEndReporterEvent = Extract<ReporterEvent, { readonly kind: 'test-end'; 
 type TestStartReporterEvent = Extract<ReporterEvent, { readonly kind: 'test-start'; }>;
 type SuiteStartReporterEvent = Extract<ReporterEvent, { readonly kind: 'suite-start'; }>;
 type ExpectedAssertFacadeKeys = keyof {
+    readonly annotated: true;
     readonly array: true;
     readonly arrayContainsPartial: true;
     readonly between: true;
     readonly boolean: true;
     readonly deepEqual: true;
     readonly defined: true;
-    readonly done: true;
     readonly empty: true;
     readonly endsWith: true;
     readonly equal: true;
@@ -96,7 +97,9 @@ type ExpectedAssertFacadeKeys = keyof {
     readonly true: true;
     readonly undefined: true;
 };
+type ExpectedBuilderAssertFacadeKeys = ExpectedAssertFacadeKeys | 'done';
 type ExpectedRequireFacadeKeys = keyof {
+    readonly annotated: true;
     readonly array: true;
     readonly boolean: true;
     readonly defined: true;
@@ -208,6 +211,11 @@ describe('Assertion protocol', function () {
 
     test('exposes the concept assert catalog without ok', function () {
         expect<keyof AssertAssertionFacade>().type.toBe<ExpectedAssertFacadeKeys>();
+        expect<keyof AssertAssertionFacade>().type.not.toBeAssignableFrom<'done'>();
+    });
+
+    test('keeps builder completion on the case assert builder only', function () {
+        expect<keyof BuilderAssertAssertionFacade>().type.toBe<ExpectedBuilderAssertFacadeKeys>();
     });
 
     test('exposes the narrow require catalog without equality or done', function () {
@@ -216,7 +224,7 @@ describe('Assertion protocol', function () {
 
     test('uses explicit message options and facades on test context', function () {
         expect<AssertionOptions>().type.toBe<{ readonly message: string; }>();
-        expect<TestContext['assert']>().type.toBe<AssertAssertionFacade>();
+        expect<TestContext['assert']>().type.toBe<BuilderAssertAssertionFacade>();
         expect<TestContext['require']>().type.toBe<RequireAssertionFacade>();
     });
 });

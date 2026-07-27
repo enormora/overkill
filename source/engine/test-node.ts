@@ -1,8 +1,8 @@
 import type {
-    AssertAssertionFacade,
     AssertionResult,
+    BuilderAssertAssertionFacade,
     RequireAssertionFacade
-} from '../assertion-protocol/types.ts';
+} from '../assertion-protocol/assertions.ts';
 
 const testNodeBrand: unique symbol = Symbol('OverkillTestNode');
 const testNodeOwnerBrand: unique symbol = Symbol('OverkillTestNodeOwner');
@@ -11,7 +11,7 @@ const testNodeOwnerIdentity: unique symbol = Symbol('OverkillTestNodeOwnerIdenti
 export type Metadata = Readonly<Record<string, unknown>>;
 
 export type TestContext = {
-    readonly assert: AssertAssertionFacade;
+    readonly assert: BuilderAssertAssertionFacade;
     readonly plan: (count: number) => void;
     readonly require: RequireAssertionFacade;
 };

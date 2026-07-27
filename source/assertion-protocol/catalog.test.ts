@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { registerTest } from '../test-support/register-test.ts';
-import { createAssertAssertionFacade, createRequireAssertionFacade } from './catalog.ts';
+import { createRecordingAssertFacade, createRecordingRequireFacade } from './catalog.ts';
 import {
     assertionSources,
     type AssertAssertionFacade,
@@ -8,7 +8,7 @@ import {
     type AssertionSource,
     type RequireAssertionFacade,
     type RequireAssertionNode
-} from './types.ts';
+} from './assertions.ts';
 
 type AssertRecording = {
     readonly facade: AssertAssertionFacade;
@@ -42,23 +42,18 @@ function assertRecordSources(
 
 function createAssertRecording(): AssertRecording {
     const records: AssertAssertionNode[] = [];
-    const facade = createAssertAssertionFacade(
-        function record(assertion) {
-            records.push(assertion);
-        },
-        function done() {
-            return [ records[0] as AssertAssertionNode, ...records.slice(1) ];
-        }
-    );
+    const facade = createRecordingAssertFacade(function record(assertion) {
+        records.push(assertion);
+    }, null);
 
     return { facade, records };
 }
 
 function createRequireRecording(): RequireRecording {
     const records: RequireAssertionNode[] = [];
-    const facade = createRequireAssertionFacade(function record(assertion) {
+    const facade = createRecordingRequireFacade(function record(assertion) {
         records.push(assertion);
-    });
+    }, null);
 
     return { facade, records };
 }
@@ -283,7 +278,7 @@ function recordRequireNodes(facade: RequireAssertionFacade): void {
     });
 }
 
-registerTest('createAssertAssertionFacade() records every built-in assertion node', function () {
+registerTest('createRecordingAssertFacade() records every built-in assertion node', function () {
     const recording = createAssertRecording();
 
     recordAssertNodes(recording.facade);
@@ -327,14 +322,28 @@ registerTest('createAssertAssertionFacade() records every built-in assertion nod
     ]);
     assertRecordSources(recording.records, 'assert');
     assertAssertPayloads(recording.records);
-    assert.deepStrictEqual(recording.facade.done(), recording.records);
 });
 
 registerTest('assertionSources declares the built-in assertion origins', function () {
     assert.deepStrictEqual(assertionSources, [ 'assert', 'require' ]);
 });
 
-registerTest('createRequireAssertionFacade() records every built-in requirement node', function () {
+registerTest('createRecordingAssertFacade() applies annotated messages without requiring the builder API', function () {
+    const recording = createAssertRecording();
+
+    recording.facade.annotated('annotated value').empty([]);
+    recording.facade.annotated('base message').empty([], { message: 'option value' });
+
+    assert.deepStrictEqual(
+        recording.records.map(function messageOf(record) {
+            return record.message;
+        }),
+        [ 'annotated value', 'option value' ]
+    );
+    assert.equal(Object.hasOwn(recording.facade, 'done'), false);
+});
+
+registerTest('createRecordingRequireFacade() records every built-in requirement node', function () {
     const recording = createRequireRecording();
 
     recordRequireNodes(recording.facade);
@@ -354,4 +363,20 @@ registerTest('createRequireAssertionFacade() records every built-in requirement 
     ]);
     assertRecordSources(recording.records, 'require');
     assertRequirePayloads(recording.records);
+});
+
+registerTest('createRecordingRequireFacade() applies annotated messages', function () {
+    const recording = createRequireRecording();
+    const requiredValue: RequireAssertionFacade = recording.facade.annotated('required value');
+    const optionValue: RequireAssertionFacade = recording.facade.annotated('base message');
+
+    requiredValue.string('value');
+    optionValue.string('value', { message: 'option value' });
+
+    assert.deepStrictEqual(
+        recording.records.map(function messageOf(record) {
+            return record.message;
+        }),
+        [ 'required value', 'option value' ]
+    );
 });

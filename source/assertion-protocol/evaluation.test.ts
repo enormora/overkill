@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { registerTest } from '../test-support/register-test.ts';
-import type { AssertAssertionNode } from './types.ts';
+import type { AssertAssertionNode } from './assertions.ts';
 import { evaluateAssertion } from './evaluation.ts';
 
 function* values(): Generator<number> {
