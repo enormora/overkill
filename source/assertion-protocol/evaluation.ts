@@ -1,8 +1,7 @@
 import { deepEqual } from 'fast-equals';
-import { assertionSummary } from './assertion-summary.ts';
 import { collectionCount } from './collection-count.ts';
 import { isPlainObject, partialDeepEqual } from './partial-matching.ts';
-import type { AssertionNode, FailedCheck } from './assertions.ts';
+import { assertionSummary, type AssertionNode, type FailedCheck } from './assertions.ts';
 
 type AssertionEvaluation = {
     readonly actual: unknown;

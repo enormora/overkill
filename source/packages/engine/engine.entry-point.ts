@@ -85,7 +85,6 @@ export type {
     AssertionResult,
     AssertionSource,
     BetweenAssertionNode,
-    BuilderAssertAssertionFacade,
     DeepEqualAssertionNode,
     DefinedAssertionNode,
     EmptinessAssertionNode,
@@ -115,6 +114,7 @@ export type {
     UndefinedAssertionNode
 } from '../../assertion-protocol/assertions.ts';
 export type {
+    CaseAssertContext,
     Metadata,
     Suite,
     SuiteOptions,

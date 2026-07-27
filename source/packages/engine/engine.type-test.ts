@@ -6,7 +6,7 @@ import type {
     AssertionOptions,
     AssertionResult,
     AssertionSource,
-    BuilderAssertAssertionFacade,
+    CaseAssertContext,
     CaseId,
     ExecuteOptions,
     FailedCheck,
@@ -97,7 +97,7 @@ type ExpectedAssertFacadeKeys = keyof {
     readonly true: true;
     readonly undefined: true;
 };
-type ExpectedBuilderAssertFacadeKeys = ExpectedAssertFacadeKeys | 'done';
+type ExpectedCaseAssertContextKeys = ExpectedAssertFacadeKeys | 'done';
 type ExpectedRequireFacadeKeys = keyof {
     readonly annotated: true;
     readonly array: true;
@@ -214,8 +214,8 @@ describe('Assertion protocol', function () {
         expect<keyof AssertAssertionFacade>().type.not.toBeAssignableFrom<'done'>();
     });
 
-    test('keeps builder completion on the case assert builder only', function () {
-        expect<keyof BuilderAssertAssertionFacade>().type.toBe<ExpectedBuilderAssertFacadeKeys>();
+    test('keeps builder completion on the case assert context only', function () {
+        expect<keyof CaseAssertContext>().type.toBe<ExpectedCaseAssertContextKeys>();
     });
 
     test('exposes the narrow require catalog without equality or done', function () {
@@ -224,7 +224,7 @@ describe('Assertion protocol', function () {
 
     test('uses explicit message options and facades on test context', function () {
         expect<AssertionOptions>().type.toBe<{ readonly message: string; }>();
-        expect<TestContext['assert']>().type.toBe<BuilderAssertAssertionFacade>();
+        expect<TestContext['assert']>().type.toBe<CaseAssertContext>();
         expect<TestContext['require']>().type.toBe<RequireAssertionFacade>();
     });
 });

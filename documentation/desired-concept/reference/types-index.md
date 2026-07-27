@@ -271,7 +271,7 @@ type AssertAssertionFacade = {
     readonly true: (actual: unknown) => void;
 };
 
-type BuilderAssertAssertionFacade = AssertAssertionFacade & {
+type CaseAssertContext = AssertAssertionFacade & {
     readonly done: () => NonEmptyReadonlyArray<AssertAssertionNode>;
 };
 

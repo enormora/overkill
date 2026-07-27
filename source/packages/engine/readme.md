@@ -15,7 +15,7 @@ Top-level API:
 - `CaseId`, `TestId`, `TestPlan`, `ExecuteOptions`, `NonEmptyReadonlyArray`
 - `Reporter`, `ReporterEvent`, `RealTimeReporter`, `FinalResultReporter`, `RunFacts`, `SinkDeclaration`
 - `RunResult`, `TestOutcome`, `PassOutcome`, `FailOutcome`, `SkipOutcome`, `InconclusiveOutcome`
-- `AssertionNode`, `AssertionResult`, `AssertAssertionFacade`, `BuilderAssertAssertionFacade`
+- `AssertionNode`, `AssertionResult`, `AssertAssertionFacade`, `CaseAssertContext`
 - `RequireAssertionFacade`, `FailedCheck`, `TestFailure`, `RunnerError`
 
 The top-level constructors share one default engine instance. Use
