@@ -40,14 +40,3 @@ export type ExpectedAssertionNode<Source extends AssertionSource, Check extends 
     readonly message: string | null;
     readonly source: Source;
 };
-
-export type AssertionCandidate = {
-    readonly check: string;
-};
-
-export function hasAssertionCheck<Assertion extends AssertionCandidate>(
-    assertion: AssertionCandidate,
-    check: Assertion['check']
-): assertion is Assertion {
-    return assertion.check === check;
-}

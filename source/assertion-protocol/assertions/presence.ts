@@ -1,10 +1,5 @@
 import { assertionOutcome, type AssertionOutcome } from '../assertion-evaluation.ts';
-import {
-    hasAssertionCheck,
-    type ActualAssertionNode,
-    type AssertionCandidate,
-    type AssertionSource
-} from '../assertion-node-shape.ts';
+import type { ActualAssertionNode, AssertionSource } from '../assertion-node-shape.ts';
 
 export type DefinedAssertionNode<Source extends AssertionSource = AssertionSource> = ActualAssertionNode<
     Source,
@@ -30,30 +25,22 @@ export const presenceSummaryByCheck = {
     undefined: 'Expected value to be undefined.'
 } as const;
 
-export function evaluateDefined(assertion: AssertionCandidate): AssertionOutcome | null {
-    return hasAssertionCheck<DefinedAssertionNode>(assertion, 'defined')
-        ? assertionOutcome(
-            assertion.actual,
-            'non-nullish value',
-            assertion.actual !== null && assertion.actual !== undefined
-        )
-        : null;
+export function evaluateDefined(assertion: DefinedAssertionNode): AssertionOutcome {
+    return assertionOutcome(
+        assertion.actual,
+        'non-nullish value',
+        assertion.actual !== null && assertion.actual !== undefined
+    );
 }
 
-export function evaluateNotNull(assertion: AssertionCandidate): AssertionOutcome | null {
-    return hasAssertionCheck<NotNullAssertionNode>(assertion, 'not-null')
-        ? assertionOutcome(assertion.actual, 'not null', assertion.actual !== null)
-        : null;
+export function evaluateNotNull(assertion: NotNullAssertionNode): AssertionOutcome {
+    return assertionOutcome(assertion.actual, 'not null', assertion.actual !== null);
 }
 
-export function evaluateNull(assertion: AssertionCandidate): AssertionOutcome | null {
-    return hasAssertionCheck<NullAssertionNode>(assertion, 'null')
-        ? assertionOutcome(assertion.actual, null, assertion.actual === null)
-        : null;
+export function evaluateNull(assertion: NullAssertionNode): AssertionOutcome {
+    return assertionOutcome(assertion.actual, null, assertion.actual === null);
 }
 
-export function evaluateUndefined(assertion: AssertionCandidate): AssertionOutcome | null {
-    return hasAssertionCheck<UndefinedAssertionNode>(assertion, 'undefined')
-        ? assertionOutcome(assertion.actual, undefined, assertion.actual === undefined)
-        : null;
+export function evaluateUndefined(assertion: UndefinedAssertionNode): AssertionOutcome {
+    return assertionOutcome(assertion.actual, undefined, assertion.actual === undefined);
 }

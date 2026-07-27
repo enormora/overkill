@@ -1,10 +1,5 @@
 import { assertionOutcome, type AssertionOutcome } from '../assertion-evaluation.ts';
-import {
-    hasAssertionCheck,
-    type ActualAssertionNode,
-    type AssertionCandidate,
-    type AssertionSource
-} from '../assertion-node-shape.ts';
+import type { ActualAssertionNode, AssertionSource } from '../assertion-node-shape.ts';
 import { collectionCount } from '../collection-count.ts';
 
 export type LengthAssertionNode<Source extends AssertionSource = AssertionSource> = {
@@ -26,11 +21,7 @@ export const collectionSummaryByCheck = {
     'not-empty': 'Expected collection not to be empty.'
 } as const;
 
-export function evaluateEmpty(assertion: AssertionCandidate): AssertionOutcome | null {
-    if (!hasAssertionCheck<EmptinessAssertionNode>(assertion, 'empty')) {
-        return null;
-    }
-
+export function evaluateEmpty(assertion: EmptinessAssertionNode): AssertionOutcome {
     const count = collectionCount(assertion.actual, 1);
 
     return assertionOutcome(
@@ -40,11 +31,7 @@ export function evaluateEmpty(assertion: AssertionCandidate): AssertionOutcome |
     );
 }
 
-export function evaluateLength(assertion: AssertionCandidate): AssertionOutcome | null {
-    if (!hasAssertionCheck<LengthAssertionNode>(assertion, 'length')) {
-        return null;
-    }
-
+export function evaluateLength(assertion: LengthAssertionNode): AssertionOutcome {
     const count = collectionCount(assertion.actual, assertion.expectedLength + 1);
     const validLength = Number.isSafeInteger(assertion.expectedLength) && assertion.expectedLength >= 0;
 
@@ -55,11 +42,7 @@ export function evaluateLength(assertion: AssertionCandidate): AssertionOutcome 
     );
 }
 
-export function evaluateNotEmpty(assertion: AssertionCandidate): AssertionOutcome | null {
-    if (!hasAssertionCheck<EmptinessAssertionNode>(assertion, 'not-empty')) {
-        return null;
-    }
-
+export function evaluateNotEmpty(assertion: EmptinessAssertionNode): AssertionOutcome {
     const count = collectionCount(assertion.actual, 1);
 
     return assertionOutcome(

@@ -1,10 +1,5 @@
 import { assertionOutcome, type AssertionOutcome } from '../assertion-evaluation.ts';
-import {
-    hasAssertionCheck,
-    type AssertionCandidate,
-    type AssertionSource,
-    type ExpectedAssertionNode
-} from '../assertion-node-shape.ts';
+import type { AssertionSource, ExpectedAssertionNode } from '../assertion-node-shape.ts';
 
 export type NumericComparisonAssertionNode<Source extends AssertionSource = AssertionSource> = ExpectedAssertionNode<
     Source,
@@ -32,11 +27,7 @@ function isFiniteNumber(value: unknown): value is number {
     return typeof value === 'number' && Number.isFinite(value);
 }
 
-export function evaluateBetween(assertion: AssertionCandidate): AssertionOutcome | null {
-    if (!hasAssertionCheck<BetweenAssertionNode>(assertion, 'between')) {
-        return null;
-    }
-
+export function evaluateBetween(assertion: BetweenAssertionNode): AssertionOutcome {
     const expected = `${assertion.minimum}..${assertion.maximum}`;
     const passed = isFiniteNumber(assertion.actual) &&
         assertion.actual >= assertion.minimum &&
@@ -45,11 +36,7 @@ export function evaluateBetween(assertion: AssertionCandidate): AssertionOutcome
     return assertionOutcome(assertion.actual, expected, passed);
 }
 
-export function evaluateGreaterThan(assertion: AssertionCandidate): AssertionOutcome | null {
-    if (!hasAssertionCheck<NumericComparisonAssertionNode>(assertion, 'greater-than')) {
-        return null;
-    }
-
+export function evaluateGreaterThan(assertion: NumericComparisonAssertionNode): AssertionOutcome {
     const passed = isFiniteNumber(assertion.actual) &&
         isFiniteNumber(assertion.expected) &&
         assertion.actual > assertion.expected;
@@ -57,11 +44,7 @@ export function evaluateGreaterThan(assertion: AssertionCandidate): AssertionOut
     return assertionOutcome(assertion.actual, `> ${assertion.expected}`, passed);
 }
 
-export function evaluateGreaterThanOrEqual(assertion: AssertionCandidate): AssertionOutcome | null {
-    if (!hasAssertionCheck<NumericComparisonAssertionNode>(assertion, 'greater-than-or-equal')) {
-        return null;
-    }
-
+export function evaluateGreaterThanOrEqual(assertion: NumericComparisonAssertionNode): AssertionOutcome {
     const passed = isFiniteNumber(assertion.actual) &&
         isFiniteNumber(assertion.expected) &&
         assertion.actual >= assertion.expected;
@@ -69,11 +52,7 @@ export function evaluateGreaterThanOrEqual(assertion: AssertionCandidate): Asser
     return assertionOutcome(assertion.actual, `>= ${assertion.expected}`, passed);
 }
 
-export function evaluateLessThan(assertion: AssertionCandidate): AssertionOutcome | null {
-    if (!hasAssertionCheck<NumericComparisonAssertionNode>(assertion, 'less-than')) {
-        return null;
-    }
-
+export function evaluateLessThan(assertion: NumericComparisonAssertionNode): AssertionOutcome {
     const passed = isFiniteNumber(assertion.actual) &&
         isFiniteNumber(assertion.expected) &&
         assertion.actual < assertion.expected;
@@ -81,11 +60,7 @@ export function evaluateLessThan(assertion: AssertionCandidate): AssertionOutcom
     return assertionOutcome(assertion.actual, `< ${assertion.expected}`, passed);
 }
 
-export function evaluateLessThanOrEqual(assertion: AssertionCandidate): AssertionOutcome | null {
-    if (!hasAssertionCheck<NumericComparisonAssertionNode>(assertion, 'less-than-or-equal')) {
-        return null;
-    }
-
+export function evaluateLessThanOrEqual(assertion: NumericComparisonAssertionNode): AssertionOutcome {
     const passed = isFiniteNumber(assertion.actual) &&
         isFiniteNumber(assertion.expected) &&
         assertion.actual <= assertion.expected;

@@ -1,10 +1,5 @@
 import { assertionOutcome, type AssertionOutcome } from '../assertion-evaluation.ts';
-import {
-    hasAssertionCheck,
-    type ActualAssertionNode,
-    type AssertionCandidate,
-    type AssertionSource
-} from '../assertion-node-shape.ts';
+import type { ActualAssertionNode, AssertionSource } from '../assertion-node-shape.ts';
 
 export type TrueAssertionNode<Source extends AssertionSource = AssertionSource> = ActualAssertionNode<Source, 'true'>;
 
@@ -15,14 +10,10 @@ export const booleanSummaryByCheck = {
     true: 'Expected value to be true.'
 } as const;
 
-export function evaluateFalse(assertion: AssertionCandidate): AssertionOutcome | null {
-    return hasAssertionCheck<FalseAssertionNode>(assertion, 'false')
-        ? assertionOutcome(assertion.actual, false, assertion.actual === false)
-        : null;
+export function evaluateFalse(assertion: FalseAssertionNode): AssertionOutcome {
+    return assertionOutcome(assertion.actual, false, assertion.actual === false);
 }
 
-export function evaluateTrue(assertion: AssertionCandidate): AssertionOutcome | null {
-    return hasAssertionCheck<TrueAssertionNode>(assertion, 'true')
-        ? assertionOutcome(assertion.actual, true, assertion.actual === true)
-        : null;
+export function evaluateTrue(assertion: TrueAssertionNode): AssertionOutcome {
+    return assertionOutcome(assertion.actual, true, assertion.actual === true);
 }

@@ -1,5 +1,5 @@
 import { assertionOutcome, type AssertionOutcome } from '../assertion-evaluation.ts';
-import { hasAssertionCheck, type AssertionCandidate, type AssertionSource } from '../assertion-node-shape.ts';
+import type { AssertionSource } from '../assertion-node-shape.ts';
 
 export type FailAssertionNode<Source extends AssertionSource = AssertionSource> = {
     readonly check: 'fail';
@@ -11,6 +11,6 @@ export const failSummaryByCheck = {
     fail: 'Assertion failed.'
 } as const;
 
-export function evaluateFail(assertion: AssertionCandidate): AssertionOutcome | null {
-    return hasAssertionCheck<FailAssertionNode>(assertion, 'fail') ? assertionOutcome('fail', 'pass', false) : null;
+export function evaluateFail(assertion: FailAssertionNode): AssertionOutcome {
+    return assertionOutcome(assertion.check, 'pass', false);
 }

@@ -1,10 +1,5 @@
 import { assertionOutcome, type AssertionOutcome } from '../assertion-evaluation.ts';
-import {
-    hasAssertionCheck,
-    type AssertionCandidate,
-    type AssertionSource,
-    type ExpectedAssertionNode
-} from '../assertion-node-shape.ts';
+import type { AssertionSource, ExpectedAssertionNode } from '../assertion-node-shape.ts';
 import { partialDeepEqual } from '../partial-matching.ts';
 
 export type PartialDeepEqualAssertionNode<Source extends AssertionSource = AssertionSource> = ExpectedAssertionNode<
@@ -26,11 +21,7 @@ export const partialSummaryByCheck = {
     'partial-deep-equal': 'Expected value to partially match.'
 } as const;
 
-export function evaluateArrayContainsPartial(assertion: AssertionCandidate): AssertionOutcome | null {
-    if (!hasAssertionCheck<ArrayContainsPartialAssertionNode>(assertion, 'array-contains-partial')) {
-        return null;
-    }
-
+export function evaluateArrayContainsPartial(assertion: ArrayContainsPartialAssertionNode): AssertionOutcome {
     if (!Array.isArray(assertion.actual)) {
         return assertionOutcome(assertion.actual, assertion.expected, false);
     }
@@ -42,11 +33,7 @@ export function evaluateArrayContainsPartial(assertion: AssertionCandidate): Ass
     return assertionOutcome(assertion.actual, assertion.expected, passed);
 }
 
-export function evaluateMembersPartialDeepEqual(assertion: AssertionCandidate): AssertionOutcome | null {
-    if (!hasAssertionCheck<MembersPartialDeepEqualAssertionNode>(assertion, 'members-partial-deep-equal')) {
-        return null;
-    }
-
+export function evaluateMembersPartialDeepEqual(assertion: MembersPartialDeepEqualAssertionNode): AssertionOutcome {
     if (!Array.isArray(assertion.actual) || !Array.isArray(assertion.expected)) {
         return assertionOutcome(assertion.actual, assertion.expected, false);
     }
@@ -62,12 +49,10 @@ export function evaluateMembersPartialDeepEqual(assertion: AssertionCandidate): 
     return assertionOutcome(assertion.actual, assertion.expected, passed);
 }
 
-export function evaluatePartialDeepEqual(assertion: AssertionCandidate): AssertionOutcome | null {
-    return hasAssertionCheck<PartialDeepEqualAssertionNode>(assertion, 'partial-deep-equal')
-        ? assertionOutcome(
-            assertion.actual,
-            assertion.expected,
-            partialDeepEqual(assertion.actual, assertion.expected)
-        )
-        : null;
+export function evaluatePartialDeepEqual(assertion: PartialDeepEqualAssertionNode): AssertionOutcome {
+    return assertionOutcome(
+        assertion.actual,
+        assertion.expected,
+        partialDeepEqual(assertion.actual, assertion.expected)
+    );
 }

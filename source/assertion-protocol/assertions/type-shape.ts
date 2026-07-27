@@ -1,11 +1,5 @@
 import { assertionOutcome, type AssertionOutcome } from '../assertion-evaluation.ts';
-import {
-    hasAssertionCheck,
-    type ActualAssertionNode,
-    type AssertionCandidate,
-    type AssertionSource,
-    type InstanceConstructor
-} from '../assertion-node-shape.ts';
+import type { ActualAssertionNode, AssertionSource, InstanceConstructor } from '../assertion-node-shape.ts';
 import { isPlainObject } from '../partial-matching.ts';
 
 export type TypeAssertionNode<Source extends AssertionSource = AssertionSource> = ActualAssertionNode<
@@ -48,54 +42,38 @@ function isSupportedObject(value: unknown): value is Readonly<Record<PropertyKey
     return typeof value === 'object' && value !== null;
 }
 
-export function evaluateArray(assertion: AssertionCandidate): AssertionOutcome | null {
-    return hasAssertionCheck<TypeAssertionNode>(assertion, 'array')
-        ? assertionOutcome(assertion.actual, 'array', Array.isArray(assertion.actual))
-        : null;
+export function evaluateArray(assertion: TypeAssertionNode): AssertionOutcome {
+    return assertionOutcome(assertion.actual, 'array', Array.isArray(assertion.actual));
 }
 
-export function evaluateBoolean(assertion: AssertionCandidate): AssertionOutcome | null {
-    return hasAssertionCheck<TypeAssertionNode>(assertion, 'boolean')
-        ? assertionOutcome(assertion.actual, 'boolean', typeof assertion.actual === 'boolean')
-        : null;
+export function evaluateBoolean(assertion: TypeAssertionNode): AssertionOutcome {
+    return assertionOutcome(assertion.actual, 'boolean', typeof assertion.actual === 'boolean');
 }
 
-export function evaluateFunction(assertion: AssertionCandidate): AssertionOutcome | null {
-    return hasAssertionCheck<TypeAssertionNode>(assertion, 'function')
-        ? assertionOutcome(assertion.actual, 'function', typeof assertion.actual === 'function')
-        : null;
+export function evaluateFunction(assertion: TypeAssertionNode): AssertionOutcome {
+    return assertionOutcome(assertion.actual, 'function', typeof assertion.actual === 'function');
 }
 
-export function evaluateHasProperty(assertion: AssertionCandidate): AssertionOutcome | null {
-    return hasAssertionCheck<HasPropertyAssertionNode>(assertion, 'has-property')
-        ? assertionOutcome(
-            assertion.actual,
-            `own property ${String(assertion.key)}`,
-            isSupportedObject(assertion.actual) && Object.hasOwn(assertion.actual, assertion.key)
-        )
-        : null;
+export function evaluateHasProperty(assertion: HasPropertyAssertionNode): AssertionOutcome {
+    return assertionOutcome(
+        assertion.actual,
+        `own property ${String(assertion.key)}`,
+        isSupportedObject(assertion.actual) && Object.hasOwn(assertion.actual, assertion.key)
+    );
 }
 
-export function evaluateInstanceOf(assertion: AssertionCandidate): AssertionOutcome | null {
-    return hasAssertionCheck<InstanceOfAssertionNode>(assertion, 'instance-of')
-        ? assertionOutcome(assertion.actual, assertion.expected, assertion.actual instanceof assertion.expected)
-        : null;
+export function evaluateInstanceOf(assertion: InstanceOfAssertionNode): AssertionOutcome {
+    return assertionOutcome(assertion.actual, assertion.expected, assertion.actual instanceof assertion.expected);
 }
 
-export function evaluateNumber(assertion: AssertionCandidate): AssertionOutcome | null {
-    return hasAssertionCheck<TypeAssertionNode>(assertion, 'number')
-        ? assertionOutcome(assertion.actual, 'finite number', isFiniteNumber(assertion.actual))
-        : null;
+export function evaluateNumber(assertion: TypeAssertionNode): AssertionOutcome {
+    return assertionOutcome(assertion.actual, 'finite number', isFiniteNumber(assertion.actual));
 }
 
-export function evaluateObject(assertion: AssertionCandidate): AssertionOutcome | null {
-    return hasAssertionCheck<TypeAssertionNode>(assertion, 'object')
-        ? assertionOutcome(assertion.actual, 'plain object', isPlainObject(assertion.actual))
-        : null;
+export function evaluateObject(assertion: TypeAssertionNode): AssertionOutcome {
+    return assertionOutcome(assertion.actual, 'plain object', isPlainObject(assertion.actual));
 }
 
-export function evaluateString(assertion: AssertionCandidate): AssertionOutcome | null {
-    return hasAssertionCheck<TypeAssertionNode>(assertion, 'string')
-        ? assertionOutcome(assertion.actual, 'string', typeof assertion.actual === 'string')
-        : null;
+export function evaluateString(assertion: TypeAssertionNode): AssertionOutcome {
+    return assertionOutcome(assertion.actual, 'string', typeof assertion.actual === 'string');
 }

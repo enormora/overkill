@@ -1,31 +1,23 @@
 import type { AssertionOutcome } from './assertion-evaluation.ts';
 import { assertionSummary, type AssertionNode } from './assertion-node.ts';
 import type { FailedCheck } from './assertion-node-shape.ts';
-import { assertionEvaluators } from './assertions/dispatch.ts';
+import { evaluateAssertionNode } from './assertions/dispatch.ts';
 
 type AssertionEvaluation = AssertionOutcome & {
     readonly summary: string;
 };
 
-function evaluate(assertion: AssertionNode): AssertionEvaluation | null {
-    for (const evaluateAssertionNode of assertionEvaluators) {
-        const outcome = evaluateAssertionNode(assertion);
-
-        if (outcome !== null) {
-            return {
-                ...outcome,
-                summary: assertionSummary(assertion)
-            };
-        }
-    }
-
-    return null;
+function evaluate(assertion: AssertionNode): AssertionEvaluation {
+    return {
+        ...evaluateAssertionNode(assertion),
+        summary: assertionSummary(assertion)
+    };
 }
 
 export function evaluateAssertion(assertion: AssertionNode, id: number): FailedCheck | null {
     const evaluation = evaluate(assertion);
 
-    if (evaluation === null || evaluation.passed) {
+    if (evaluation.passed) {
         return null;
     }
 
