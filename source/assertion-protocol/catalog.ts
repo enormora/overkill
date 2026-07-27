@@ -1,11 +1,81 @@
-import type {
-    AssertAssertionFacade,
-    AssertAssertionNode,
-    AssertionOptions,
-    InstanceConstructor,
-    RequireAssertionFacade,
-    RequireAssertionNode
-} from './assertions.ts';
+import type { AssertAssertionNode, RequireAssertionNode } from './assertion-node.ts';
+import type { AssertionOptions, InstanceConstructor } from './assertion-node-shape.ts';
+
+export type AssertAssertionFacade = {
+    readonly annotated: (message: string) => AssertAssertionFacade;
+    readonly array: (actual: unknown, options?: AssertionOptions) => void;
+    readonly arrayContainsPartial: (
+        actual: readonly unknown[],
+        expectedSubset: unknown,
+        options?: AssertionOptions
+    ) => void;
+    readonly between: (actual: number, minimum: number, maximum: number, options?: AssertionOptions) => void;
+    readonly boolean: (actual: unknown, options?: AssertionOptions) => void;
+    readonly deepEqual: (actual: unknown, expected: unknown, options?: AssertionOptions) => void;
+    readonly defined: (actual: unknown, options?: AssertionOptions) => void;
+    readonly empty: (actual: unknown, options?: AssertionOptions) => void;
+    readonly endsWith: (actual: string, expected: string, options?: AssertionOptions) => void;
+    readonly equal: (actual: unknown, expected: unknown, options?: AssertionOptions) => void;
+    readonly fail: (options?: AssertionOptions) => void;
+    readonly false: (actual: unknown, options?: AssertionOptions) => void;
+    readonly function: (actual: unknown, options?: AssertionOptions) => void;
+    readonly greaterThan: (actual: number, expected: number, options?: AssertionOptions) => void;
+    readonly greaterThanOrEqual: (actual: number, expected: number, options?: AssertionOptions) => void;
+    readonly hasProperty: (actual: unknown, key: PropertyKey, options?: AssertionOptions) => void;
+    readonly includes: (actual: string, expected: string, options?: AssertionOptions) => void;
+    readonly instanceOf: (actual: unknown, expected: InstanceConstructor, options?: AssertionOptions) => void;
+    readonly length: (actual: unknown, expectedLength: number, options?: AssertionOptions) => void;
+    readonly lessThan: (actual: number, expected: number, options?: AssertionOptions) => void;
+    readonly lessThanOrEqual: (actual: number, expected: number, options?: AssertionOptions) => void;
+    readonly match: (actual: string, pattern: RegExp, options?: AssertionOptions) => void;
+    readonly membersPartialDeepEqual: (
+        actual: readonly unknown[],
+        expectedMembers: readonly unknown[],
+        options?: AssertionOptions
+    ) => void;
+    readonly notDeepEqual: (actual: unknown, expected: unknown, options?: AssertionOptions) => void;
+    readonly notEmpty: (actual: unknown, options?: AssertionOptions) => void;
+    readonly notEqual: (actual: unknown, expected: unknown, options?: AssertionOptions) => void;
+    readonly notMatch: (actual: string, pattern: RegExp, options?: AssertionOptions) => void;
+    readonly notNull: (actual: unknown, options?: AssertionOptions) => void;
+    readonly null: (actual: unknown, options?: AssertionOptions) => void;
+    readonly number: (actual: unknown, options?: AssertionOptions) => void;
+    readonly object: (actual: unknown, options?: AssertionOptions) => void;
+    readonly partialDeepEqual: (actual: unknown, expectedSubset: unknown, options?: AssertionOptions) => void;
+    readonly startsWith: (actual: string, expected: string, options?: AssertionOptions) => void;
+    readonly string: (actual: unknown, options?: AssertionOptions) => void;
+    readonly true: (actual: unknown, options?: AssertionOptions) => void;
+    readonly undefined: (actual: unknown, options?: AssertionOptions) => void;
+};
+
+export type RequireAssertionFacade = {
+    readonly annotated: (message: string) => RequireAssertionFacade;
+    readonly array: (actual: unknown, options?: AssertionOptions) => asserts actual is readonly unknown[];
+    readonly boolean: (actual: unknown, options?: AssertionOptions) => asserts actual is boolean;
+    readonly defined: <Value>(actual: Value, options?: AssertionOptions) => asserts actual is NonNullable<Value>;
+    readonly function: (
+        actual: unknown,
+        options?: AssertionOptions
+    ) => asserts actual is (...parameters: readonly unknown[]) => unknown;
+    readonly hasProperty: <Key extends PropertyKey>(
+        actual: unknown,
+        key: Key,
+        options?: AssertionOptions
+    ) => asserts actual is Readonly<Record<Key, unknown>>;
+    readonly instanceOf: <Constructor extends InstanceConstructor>(
+        actual: unknown,
+        expected: Constructor,
+        options?: AssertionOptions
+    ) => asserts actual is InstanceType<Constructor>;
+    readonly notNull: <Value>(actual: Value, options?: AssertionOptions) => asserts actual is Exclude<Value, null>;
+    readonly null: (actual: unknown, options?: AssertionOptions) => asserts actual is null;
+    readonly number: (actual: unknown, options?: AssertionOptions) => asserts actual is number;
+    readonly object: (
+        actual: unknown,
+        options?: AssertionOptions
+    ) => asserts actual is Readonly<Record<PropertyKey, unknown>>;
+    readonly string: (actual: unknown, options?: AssertionOptions) => asserts actual is string;
+};
 
 type AssertAssertionSink = (assertion: AssertAssertionNode) => void;
 type RequireAssertionSink = (assertion: RequireAssertionNode) => void;

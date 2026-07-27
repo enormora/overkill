@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import type { AssertAssertionNode } from '../assertion-protocol/assertions.ts';
+import type { AssertAssertionNode } from '../assertion-protocol/assertion-node.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import { registerTest } from '../test-support/register-test.ts';
 import type { FailOutcome, RunResult } from './run-result.ts';

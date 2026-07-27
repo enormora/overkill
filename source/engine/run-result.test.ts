@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import type { FailedCheck, SourceLocation } from '../assertion-protocol/assertions.ts';
+import type { FailedCheck, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { registerTest } from '../test-support/register-test.ts';
 import { verdictFromOutcome, type TestOutcome } from './run-result.ts';
 

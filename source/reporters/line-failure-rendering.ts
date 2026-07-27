@@ -1,6 +1,6 @@
 import { inspect } from 'node:util';
 import colors from 'yoctocolors';
-import type { FailedCheck } from '../assertion-protocol/assertions.ts';
+import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import type { TestFailure } from '../engine/run-result.ts';
 
 const bytesPerBinaryKilobyte = 1024;

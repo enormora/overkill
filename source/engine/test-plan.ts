@@ -1,4 +1,4 @@
-import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertions.ts';
+import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import { caseIdentityKey, createCaseId, formatCaseId, type CaseId } from './identity.ts';
 import type { OrphanedNode } from './run-result.ts';
 import {

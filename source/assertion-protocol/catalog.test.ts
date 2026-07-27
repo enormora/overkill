@@ -1,14 +1,15 @@
 import assert from 'node:assert/strict';
 import { registerTest } from '../test-support/register-test.ts';
-import { createRecordingAssertFacade, createRecordingRequireFacade } from './catalog.ts';
 import {
-    assertionSources,
+    createRecordingAssertFacade,
+    createRecordingRequireFacade,
     type AssertAssertionFacade,
-    type AssertAssertionNode,
-    type AssertionSource,
-    type RequireAssertionFacade,
-    type RequireAssertionNode
-} from './assertions.ts';
+    type RequireAssertionFacade
+} from './catalog.ts';
+import { assertionSources } from './assertion-node-shape.ts';
+import type { AssertAssertionNode, RequireAssertionNode } from './assertion-node.ts';
+
+type AssertionSource = (typeof assertionSources)[number];
 
 type AssertRecording = {
     readonly facade: AssertAssertionFacade;

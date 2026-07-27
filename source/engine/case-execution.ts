@@ -5,9 +5,9 @@ import type {
     AssertAssertionNode,
     AssertionNode,
     AssertionResult,
-    NonEmptyReadonlyArray,
     RequireAssertionNode
-} from '../assertion-protocol/assertions.ts';
+} from '../assertion-protocol/assertion-node.ts';
+import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import {
     type PerTestResult,
     type TestContractFailure,

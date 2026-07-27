@@ -1,10 +1,9 @@
 import type {
-    AssertAssertionFacade,
     AssertAssertionNode,
-    AssertionResult,
-    NonEmptyReadonlyArray,
-    RequireAssertionFacade
-} from '../assertion-protocol/assertions.ts';
+    AssertionResult
+} from '../assertion-protocol/assertion-node.ts';
+import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import type { AssertAssertionFacade, RequireAssertionFacade } from '../assertion-protocol/catalog.ts';
 
 const testNodeBrand: unique symbol = Symbol('OverkillTestNode');
 const testNodeOwnerBrand: unique symbol = Symbol('OverkillTestNodeOwner');
