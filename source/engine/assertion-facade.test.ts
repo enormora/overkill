@@ -4,10 +4,10 @@ import type { AssertAssertionNode, RequireAssertionNode } from '../assertion-pro
 import type { AssertionSource } from '../assertion-protocol/assertion-node-shape.ts';
 import {
     createRecordingAssertFacade,
-    createRecordingRequireFacade,
     type AssertAssertionFacade,
     type RequireAssertionFacade
 } from './assertion-facade.ts';
+import { createRecordingRequireFacade } from './require-assertion-facade.ts';
 
 type AssertRecording = {
     readonly facade: AssertAssertionFacade;
@@ -41,8 +41,20 @@ function assertRecordSources(
 
 function createAssertRecording(): AssertRecording {
     const records: AssertAssertionNode[] = [];
-    const facade = createRecordingAssertFacade(function record(assertion) {
-        records.push(assertion);
+    const facade = createRecordingAssertFacade({
+        failContract(failure) {
+            throw new Error(failure.summary);
+        },
+        recordAssert(assertion) {
+            records.push(assertion);
+        },
+        recordPendingAssert() {
+            return {
+                resolve(assertion) {
+                    records.push(assertion);
+                }
+            };
+        }
     }, null);
 
     return { facade, records };
@@ -50,8 +62,13 @@ function createAssertRecording(): AssertRecording {
 
 function createRequireRecording(): RequireRecording {
     const records: RequireAssertionNode[] = [];
-    const facade = createRecordingRequireFacade(function record(assertion) {
-        records.push(assertion);
+    const facade = createRecordingRequireFacade({
+        failContract(failure) {
+            throw new Error(failure.summary);
+        },
+        recordRequire(assertion) {
+            records.push(assertion);
+        }
     }, null);
 
     return { facade, records };

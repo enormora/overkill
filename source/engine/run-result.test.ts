@@ -7,6 +7,7 @@ type FailedCheckFixture = {
     readonly actual: null;
     readonly expected: null;
     readonly id: FailedCheck['id'];
+    readonly kind: 'leaf';
     readonly location: SourceLocation;
     readonly path: readonly string[];
     readonly source: FailedCheck['source'];
@@ -18,6 +19,7 @@ function createFailedCheck(): FailedCheckFixture {
         actual: null,
         expected: null,
         id: 'check',
+        kind: 'leaf',
         location: { column: null, file: 'source/example.test.ts', line: null },
         path: [],
         source: 'assert',

@@ -1,43 +1,108 @@
 import { describe, expect, test } from 'tstyche';
-import type {
-    AssertAssertionFacade,
-    AssertAssertionNode,
-    AssertionNode,
-    AssertionOptions,
-    AssertionResult,
-    AssertionSource,
-    CaseAssertContext,
-    CaseId,
-    ExecuteOptions,
-    FailedCheck,
-    FinalResultReporter,
-    NonEmptyReadonlyArray,
-    PerTestResult,
-    RealTimeReporter,
-    ReporterEvent,
-    RunFacts,
-    RunResult,
-    RunnerError,
-    RunSummary,
-    SinkDeclaration,
-    RequireAssertionFacade,
-    RequireAssertionNode,
-    TestPlan,
-    TestPlanCase,
-    TestContext,
-    TestFailure,
-    TestOutcome
+import {
+    defineCompositeAssertion,
+    defineNarrowingCompositeAssertion,
+    type AssertAssertionFacade,
+    type AssertReferenceArguments,
+    type AssertReferenceReturn,
+    type AssertAssertionNode,
+    type AssertionNode,
+    type AssertionOptions,
+    type AssertionResult,
+    type AssertionSource,
+    type CaseAssertContext,
+    type CaseId,
+    type ExecuteOptions,
+    type FailedCheck,
+    type FailedCompositeCheck,
+    type FailedForeignCheck,
+    type FailedLeafCheck,
+    type FinalResultReporter,
+    type NonEmptyReadonlyArray,
+    type PerTestResult,
+    type RealTimeReporter,
+    type ReporterEvent,
+    type RequireAssertionFacade,
+    type RequireAssertionNode,
+    type RunFacts,
+    type RunResult,
+    type RunSummary,
+    type RunnerError,
+    type SinkDeclaration,
+    type TestContext,
+    type TestFailure,
+    type TestOutcome,
+    type TestPlan,
+    type TestPlanCase
 } from './engine.entry-point.ts';
 
 type FailedCheckFixture = {
     readonly actual: 'actual';
     readonly expected: 'expected';
     readonly id: '1';
+    readonly kind: 'leaf';
     readonly location: { readonly column: null; readonly file: ''; readonly line: null; };
     readonly path: readonly [];
     readonly source: 'assert';
     readonly summary: 'numbers differ';
 };
+
+type FailedCheckKeyByName = {
+    readonly id: true;
+    readonly kind: true;
+    readonly location: true;
+    readonly path: true;
+    readonly source: true;
+    readonly summary: true;
+};
+
+type FailedCheckKey = keyof FailedCheckKeyByName;
+
+type FailedLeafCheckKeyByName = FailedCheckKeyByName & {
+    readonly actual: true;
+    readonly expected: true;
+};
+
+type FailedLeafCheckKey = keyof FailedLeafCheckKeyByName;
+
+type FailedCompositeCheckKeyByName = FailedLeafCheckKeyByName & {
+    readonly children: true;
+};
+
+type FailedCompositeCheckKey = keyof FailedCompositeCheckKeyByName;
+
+type FailedForeignCheckKeyByName = FailedCheckKeyByName & {
+    readonly error: true;
+    readonly label: true;
+};
+
+type FailedForeignCheckKey = keyof FailedForeignCheckKeyByName;
+
+type SyncAssertionReturn = ReturnType<() => void>;
+
+const syncAssertion = defineCompositeAssertion({
+    assert(check, value: boolean) {
+        return check.true(value);
+    },
+    name: 'syncAssertion'
+});
+
+const asyncAssertion = defineCompositeAssertion({
+    async assert(check, value: boolean) {
+        await Promise.resolve();
+        return check.true(value);
+    },
+    name: 'asyncAssertion'
+});
+
+const narrowingAssertion = defineNarrowingCompositeAssertion({
+    name: 'narrowingAssertion',
+    narrows(value: unknown): value is string {
+        return typeof value === 'string';
+    }
+});
+
+declare const requireFacade: RequireAssertionFacade;
 
 type OutcomeKind = 'fail' | 'inconclusive' | 'pass' | 'skip';
 type ExpectedRunnerErrorSubtypeByName = {
@@ -166,9 +231,10 @@ describe('TestOutcome', function () {
     });
 
     test('keeps failed checks free of diff fields', function () {
-        expect<keyof FailedCheck>().type.toBe<
-            'actual' | 'expected' | 'id' | 'location' | 'path' | 'source' | 'summary'
-        >();
+        expect<keyof FailedCheck>().type.toBe<FailedCheckKey>();
+        expect<keyof FailedLeafCheck>().type.toBe<FailedLeafCheckKey>();
+        expect<keyof FailedCompositeCheck>().type.toBe<FailedCompositeCheckKey>();
+        expect<keyof FailedForeignCheck>().type.toBe<FailedForeignCheckKey>();
     });
 
     test('accepts public test failure shapes', function () {
@@ -226,6 +292,19 @@ describe('Assertion protocol', function () {
         expect<AssertionOptions>().type.toBe<{ readonly message: string; }>();
         expect<TestContext['assert']>().type.toBe<CaseAssertContext>();
         expect<TestContext['require']>().type.toBe<RequireAssertionFacade>();
+    });
+
+    test('infers callable custom assertion references', function () {
+        const value: unknown = null;
+
+        expect(syncAssertion).type.toBe<typeof syncAssertion>();
+        expect<AssertReferenceArguments<typeof syncAssertion>>().type.toBe<readonly [value: boolean]>();
+        expect<AssertReferenceReturn<typeof syncAssertion>>().type.toBe<SyncAssertionReturn>();
+        expect<AssertReferenceReturn<typeof asyncAssertion>>().type.toBe<Promise<void>>();
+        expect<AssertReferenceReturn<typeof narrowingAssertion>>().type.toBe<SyncAssertionReturn>();
+        expect(asyncAssertion).type.toBe<typeof asyncAssertion>();
+        requireFacade(narrowingAssertion, value);
+        expect(value).type.toBe<string>();
     });
 });
 

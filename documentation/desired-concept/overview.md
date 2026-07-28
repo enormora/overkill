@@ -48,7 +48,7 @@ Core package families:
   the first-party injected assertion surface
 - `@overkill-dev/assert`: reusable assertion-extension helpers such as
   composite assertion builders, foreign-assertion bridges, and packaged
-  assertion adapters that plug into the engine-owned assertion context
+  assertion adapters that produce imported assertion reference values
 - `@overkill-dev/test`: default first-party authoring layer built on top of the
   engine, focused on authoring ergonomics rather than owning assertions
 - `@overkill-dev/doubles`: explicit, function-first test doubles centered on a single `testDouble()` concept
@@ -132,8 +132,8 @@ Its assertion model should be explicit:
   TypeScript
   narrowing
 - explicit `return case.assert.done()` in builder mode
-- optional custom assertions for domain-specific types such as `Result` or
-  `Maybe`, composed through suite-specific test facades when needed
+- optional custom assertion references for domain-specific types such as
+  `Result` or `Maybe`, imported where tests need them
 
 ### Integration-Style Tests
 

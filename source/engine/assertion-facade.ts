@@ -1,7 +1,28 @@
-import type { AssertAssertionNode, RequireAssertionNode } from '../assertion-protocol/assertion-node.ts';
+import type {
+    CompositeAssertionReference,
+    CompositeAssertionReturn,
+    NarrowingCompositeAssertionReference
+} from '../assertion-protocol/assertion-reference.ts';
 import type { AssertionOptions, InstanceConstructor } from '../assertion-protocol/assertion-node-shape.ts';
+import {
+    recordAssertReference,
+    type AssertAssertionSink
+} from './custom-assertion-recording.ts';
 
 export type AssertAssertionFacade = {
+    <Arguments extends readonly unknown[], Result extends Promise<CompositeAssertionReturn<'assert'>>>(
+        reference: CompositeAssertionReference<Arguments, Result>,
+        ...parameters: Arguments
+    ): Promise<void>;
+    <Arguments extends readonly unknown[], Result extends CompositeAssertionReturn<'assert'>>(
+        reference: CompositeAssertionReference<Arguments, Result>,
+        ...parameters: Arguments
+    ): void;
+    <Actual, Narrowed extends Actual, Arguments extends readonly unknown[]>(
+        reference: NarrowingCompositeAssertionReference<Actual, Narrowed, Arguments>,
+        actual: Actual,
+        ...parameters: Arguments
+    ): void;
     readonly annotated: (message: string) => AssertAssertionFacade;
     readonly array: (actual: unknown, options?: AssertionOptions) => void;
     readonly arrayContainsPartial: (
@@ -49,6 +70,11 @@ export type AssertAssertionFacade = {
 };
 
 export type RequireAssertionFacade = {
+    <Actual, Narrowed extends Actual, Arguments extends readonly unknown[]>(
+        reference: NarrowingCompositeAssertionReference<Actual, Narrowed, Arguments>,
+        actual: Actual,
+        ...parameters: Arguments
+    ): asserts actual is Narrowed;
     readonly annotated: (message: string) => RequireAssertionFacade;
     readonly array: (actual: unknown, options?: AssertionOptions) => asserts actual is readonly unknown[];
     readonly boolean: (actual: unknown, options?: AssertionOptions) => asserts actual is boolean;
@@ -77,28 +103,49 @@ export type RequireAssertionFacade = {
     readonly string: (actual: unknown, options?: AssertionOptions) => asserts actual is string;
 };
 
-type AssertAssertionSink = (assertion: AssertAssertionNode) => void;
-type RequireAssertionSink = (assertion: RequireAssertionNode) => void;
+type AssertAssertionMethods = Pick<AssertAssertionFacade, keyof AssertAssertionFacade>;
 
 function messageFromOptions(options: AssertionOptions | undefined, annotation: string | null): string | null {
     return options?.message ?? annotation;
 }
 
+function isAssertMethodName(
+    methods: AssertAssertionMethods,
+    property: PropertyKey
+): property is keyof AssertAssertionMethods {
+    return typeof property === 'string' && Object.hasOwn(methods, property);
+}
+
+function isAssertAssertionFacade(
+    value: unknown,
+    methods: AssertAssertionMethods
+): value is AssertAssertionFacade {
+    return typeof value === 'function' &&
+        Object.keys(methods).every(function methodIsAvailable(methodName) {
+            return typeof Reflect.get(value, methodName) === 'function';
+        });
+}
+
 export function createRecordingAssertFacade(
-    record: AssertAssertionSink,
+    sink: AssertAssertionSink,
     annotation: string | null
 ): AssertAssertionFacade {
-    return {
+    const methods: AssertAssertionMethods = {
         annotated(message) {
-            return createRecordingAssertFacade(record, message);
+            return createRecordingAssertFacade(sink, message);
         },
 
         array(actual, options) {
-            record({ actual, check: 'array', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'array',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         arrayContainsPartial(actual, expected, options) {
-            record({
+            sink.recordAssert({
                 actual,
                 check: 'array-contains-partial',
                 expected,
@@ -108,7 +155,7 @@ export function createRecordingAssertFacade(
         },
 
         between(actual, minimum, maximum, options) {
-            record({
+            sink.recordAssert({
                 actual,
                 check: 'between',
                 maximum,
@@ -119,11 +166,16 @@ export function createRecordingAssertFacade(
         },
 
         boolean(actual, options) {
-            record({ actual, check: 'boolean', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'boolean',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         deepEqual(actual, expected, options) {
-            record({
+            sink.recordAssert({
                 actual,
                 check: 'deep-equal',
                 expected,
@@ -133,15 +185,25 @@ export function createRecordingAssertFacade(
         },
 
         defined(actual, options) {
-            record({ actual, check: 'defined', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'defined',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         empty(actual, options) {
-            record({ actual, check: 'empty', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'empty',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         endsWith(actual, expected, options) {
-            record({
+            sink.recordAssert({
                 actual,
                 check: 'ends-with',
                 expected,
@@ -151,7 +213,7 @@ export function createRecordingAssertFacade(
         },
 
         equal(actual, expected, options) {
-            record({
+            sink.recordAssert({
                 actual,
                 check: 'equal',
                 expected,
@@ -161,19 +223,29 @@ export function createRecordingAssertFacade(
         },
 
         fail(options) {
-            record({ check: 'fail', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({ check: 'fail', message: messageFromOptions(options, annotation), source: 'assert' });
         },
 
         false(actual, options) {
-            record({ actual, check: 'false', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'false',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         function(actual, options) {
-            record({ actual, check: 'function', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'function',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         greaterThan(actual, expected, options) {
-            record({
+            sink.recordAssert({
                 actual,
                 check: 'greater-than',
                 expected,
@@ -183,7 +255,7 @@ export function createRecordingAssertFacade(
         },
 
         greaterThanOrEqual(actual, expected, options) {
-            record({
+            sink.recordAssert({
                 actual,
                 check: 'greater-than-or-equal',
                 expected,
@@ -193,7 +265,7 @@ export function createRecordingAssertFacade(
         },
 
         hasProperty(actual, key, options) {
-            record({
+            sink.recordAssert({
                 actual,
                 check: 'has-property',
                 key,
@@ -203,7 +275,7 @@ export function createRecordingAssertFacade(
         },
 
         includes(actual, expected, options) {
-            record({
+            sink.recordAssert({
                 actual,
                 check: 'includes',
                 expected,
@@ -213,7 +285,7 @@ export function createRecordingAssertFacade(
         },
 
         instanceOf(actual, expected, options) {
-            record({
+            sink.recordAssert({
                 actual,
                 check: 'instance-of',
                 expected,
@@ -223,7 +295,7 @@ export function createRecordingAssertFacade(
         },
 
         length(actual, expectedLength, options) {
-            record({
+            sink.recordAssert({
                 actual,
                 check: 'length',
                 expectedLength,
@@ -233,7 +305,7 @@ export function createRecordingAssertFacade(
         },
 
         lessThan(actual, expected, options) {
-            record({
+            sink.recordAssert({
                 actual,
                 check: 'less-than',
                 expected,
@@ -243,7 +315,7 @@ export function createRecordingAssertFacade(
         },
 
         lessThanOrEqual(actual, expected, options) {
-            record({
+            sink.recordAssert({
                 actual,
                 check: 'less-than-or-equal',
                 expected,
@@ -253,7 +325,7 @@ export function createRecordingAssertFacade(
         },
 
         match(actual, pattern, options) {
-            record({
+            sink.recordAssert({
                 actual,
                 check: 'match',
                 message: messageFromOptions(options, annotation),
@@ -263,7 +335,7 @@ export function createRecordingAssertFacade(
         },
 
         membersPartialDeepEqual(actual, expected, options) {
-            record({
+            sink.recordAssert({
                 actual,
                 check: 'members-partial-deep-equal',
                 expected,
@@ -273,7 +345,7 @@ export function createRecordingAssertFacade(
         },
 
         notDeepEqual(actual, expected, options) {
-            record({
+            sink.recordAssert({
                 actual,
                 check: 'not-deep-equal',
                 expected,
@@ -283,11 +355,16 @@ export function createRecordingAssertFacade(
         },
 
         notEmpty(actual, options) {
-            record({ actual, check: 'not-empty', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'not-empty',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         notEqual(actual, expected, options) {
-            record({
+            sink.recordAssert({
                 actual,
                 check: 'not-equal',
                 expected,
@@ -297,7 +374,7 @@ export function createRecordingAssertFacade(
         },
 
         notMatch(actual, pattern, options) {
-            record({
+            sink.recordAssert({
                 actual,
                 check: 'not-match',
                 message: messageFromOptions(options, annotation),
@@ -307,23 +384,43 @@ export function createRecordingAssertFacade(
         },
 
         notNull(actual, options) {
-            record({ actual, check: 'not-null', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'not-null',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         null(actual, options) {
-            record({ actual, check: 'null', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'null',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         number(actual, options) {
-            record({ actual, check: 'number', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'number',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         object(actual, options) {
-            record({ actual, check: 'object', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'object',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         partialDeepEqual(actual, expected, options) {
-            record({
+            sink.recordAssert({
                 actual,
                 check: 'partial-deep-equal',
                 expected,
@@ -333,7 +430,7 @@ export function createRecordingAssertFacade(
         },
 
         startsWith(actual, expected, options) {
-            record({
+            sink.recordAssert({
                 actual,
                 check: 'starts-with',
                 expected,
@@ -343,82 +440,63 @@ export function createRecordingAssertFacade(
         },
 
         string(actual, options) {
-            record({ actual, check: 'string', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'string',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         true(actual, options) {
-            record({ actual, check: 'true', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'true',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         undefined(actual, options) {
-            record({ actual, check: 'undefined', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'undefined',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         }
     };
-}
 
-export function createRecordingRequireFacade(
-    record: RequireAssertionSink,
-    annotation: string | null
-): RequireAssertionFacade {
-    return {
-        annotated(message) {
-            return createRecordingRequireFacade(record, message);
-        },
+    function callAssertReference<
+        Arguments extends readonly unknown[],
+        Result extends Promise<CompositeAssertionReturn<'assert'>>
+    >(reference: CompositeAssertionReference<Arguments, Result>, ...parameters: Arguments): Promise<void>;
+    function callAssertReference<
+        Arguments extends readonly unknown[],
+        Result extends CompositeAssertionReturn<'assert'>
+    >(reference: CompositeAssertionReference<Arguments, Result>, ...parameters: Arguments): void;
+    function callAssertReference<Actual, Narrowed extends Actual, Arguments extends readonly unknown[]>(
+        reference: NarrowingCompositeAssertionReference<Actual, Narrowed, Arguments>,
+        actual: Actual,
+        ...parameters: Arguments
+    ): void;
+    function callAssertReference(reference: unknown, ...parameters: readonly unknown[]): Promise<void> | void {
+        return recordAssertReference(sink, annotation, reference, parameters);
+    }
 
-        array(actual, options) {
-            record({ actual, check: 'array', message: messageFromOptions(options, annotation), source: 'require' });
-        },
+    const facade = new Proxy(callAssertReference, {
+        get(target, property, receiver): unknown {
+            if (isAssertMethodName(methods, property)) {
+                return methods[property];
+            }
 
-        boolean(actual, options) {
-            record({ actual, check: 'boolean', message: messageFromOptions(options, annotation), source: 'require' });
-        },
-
-        defined(actual, options) {
-            record({ actual, check: 'defined', message: messageFromOptions(options, annotation), source: 'require' });
-        },
-
-        function(actual, options) {
-            record({ actual, check: 'function', message: messageFromOptions(options, annotation), source: 'require' });
-        },
-
-        hasProperty(actual, key, options) {
-            record({
-                actual,
-                check: 'has-property',
-                key,
-                message: messageFromOptions(options, annotation),
-                source: 'require'
-            });
-        },
-
-        instanceOf(actual, expected: InstanceConstructor, options) {
-            record({
-                actual,
-                check: 'instance-of',
-                expected,
-                message: messageFromOptions(options, annotation),
-                source: 'require'
-            });
-        },
-
-        notNull(actual, options) {
-            record({ actual, check: 'not-null', message: messageFromOptions(options, annotation), source: 'require' });
-        },
-
-        null(actual, options) {
-            record({ actual, check: 'null', message: messageFromOptions(options, annotation), source: 'require' });
-        },
-
-        number(actual, options) {
-            record({ actual, check: 'number', message: messageFromOptions(options, annotation), source: 'require' });
-        },
-
-        object(actual, options) {
-            record({ actual, check: 'object', message: messageFromOptions(options, annotation), source: 'require' });
-        },
-
-        string(actual, options) {
-            record({ actual, check: 'string', message: messageFromOptions(options, annotation), source: 'require' });
+            return Reflect.get(target, property, receiver);
         }
-    };
+    });
+
+    if (isAssertAssertionFacade(facade, methods)) {
+        return facade;
+    }
+
+    throw new TypeError('Failed to create assert facade.');
 }

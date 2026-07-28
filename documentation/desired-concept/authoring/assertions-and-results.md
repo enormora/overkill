@@ -64,10 +64,10 @@ still lives directly in `@overkill-dev/engine`. The engine is the home for:
 - implementation shared between default test facades and direct
   engine-level consumers
 
-`@overkill-dev/assert` is still useful as a smaller companion package for
-reusable assertion-extension helpers such as `defineCompositeAssertion(...)`
-or foreign-assertion bridge builders. It should plug into the engine-owned
-assertion context rather than replace it.
+`@overkill-dev/engine` owns the v1 assertion reference helpers.
+`@overkill-dev/assert` may later become a smaller companion package that
+hosts or re-exports helpers such as `defineCompositeAssertion(...)` and
+foreign-assertion bridge builders.
 
 ## API Constraints To Avoid Lint-Rule Patchwork
 
@@ -1022,99 +1022,107 @@ test('legacy flow', (case) => {
 
 ## Custom Assertions
 
-The assertion layer should support explicit extension with domain-specific
-assertion vocabularies exposed through the high-level test API.
+The assertion layer should support imported assertion reference values for
+domain-specific assertion vocabulary.
 
 This is especially useful for ecosystems that repeatedly work with wrappers
 such as `Result` or `Maybe`.
 
-Example direction:
+Primary syntax:
 
 ```ts
 test('returns a successful result', (case) => {
-    case.assert.resultOk(result);
+    case.assert(resultOk, result);
     return case.assert.done();
 });
 ```
 
-These assertions should remain:
-
-- explicit
-- typed
-- registered through package wiring or JS/TS configuration
-- uniquely named across both first-party and registered custom assertions
-
-They should extend the first-party assertion system, not replace it with an
-entirely separate assertion library.
-
-This keeps large throwing-style suites ergonomic without introducing global
-mode flags.
-
-Registration must reject collisions. A custom assertion may not shadow:
-
-- a built-in first-party assertion
-- another registered custom assertion
-
-Such collisions should fail during assertion-context construction or suite startup rather
-than silently overriding anything.
-
-### Assertion Extensions And Engine Context
-
-Custom assertions should no longer be registered in root runner configuration.
-Instead, they belong to the **engine-owned assertion context**, because
-assertion registration changes what `case.assert` exposes even when a
-project is not using `@overkill-dev/test`.
-
-Recommended shape:
+Built-in assertions remain named methods:
 
 ```ts
-import { defineCompositeAssertion } from '@overkill-dev/assert';
-import type { TestDouble } from '@overkill-dev/doubles';
-
-const calledOnceWith = defineCompositeAssertion(
-    'calledOnceWith',
-    <TArg>(check, sut: TestDouble<[TArg], unknown>, expected: TArg) => {
-        return check.group([ check.calledOnce(sut), check.calledWith(sut, expected) ]);
-    }
-);
+case.assert.equal(actual, expected);
+case.require.defined(value);
 ```
 
-Authoring layers such as `@overkill-dev/test` may re-expose the resulting
-engine-backed assertion context, but they do not own assertion registration.
+Custom assertions should remain:
+
+- explicit imports
+- typed values
+- engine-branded references
+- engine-normalized assertion boundaries
+
+They extend the first-party assertion system without creating registration
+order, global availability, or dot-method name collisions.
+
+### Assertion Reference Helpers
+
+The v1 helper surface lives in `@overkill-dev/engine`. A later
+`@overkill-dev/assert` package may host or re-export ergonomic helpers.
+
+Assert-only references use `defineCompositeAssertion(...)`:
+
+```ts
+import { defineCompositeAssertion } from '@overkill-dev/engine';
+
+export const resultValueDeepEqual = defineCompositeAssertion({
+    name: 'resultValueDeepEqual',
+
+    assert(check, result, expected) {
+        return check.group([
+            check.annotated('ok flag').true(result.ok),
+            check.annotated('value').deepEqual(result.value, expected)
+        ]);
+    }
+});
+```
+
+Narrowing references use `defineNarrowingCompositeAssertion(...)`:
+
+```ts
+export const resultOk = defineNarrowingCompositeAssertion({
+    name: 'resultOk',
+
+    narrows(result): result is Ok {
+        return result.ok;
+    }
+});
+```
+
+`case.assert(resultOk, result)` checks and continues. `case.require(resultOk,
+result)` checks, short-circuits on failure, and narrows the first operand.
+Narrowing references are synchronous.
 
 ### Composite Assertions
 
-A particularly useful subtype of custom assertion is the **composite
-assertion**: one named assertion built from several existing checks.
-
-This is distinct from a test macro:
+A composite assertion is one named assertion boundary built from one or more
+child diagnostics. It is distinct from a test macro:
 
 - a test macro builds `TestNode`s
-- a composite assertion stays inside one existing test body and names one
-  reusable invariant
+- a composite assertion stays inside one test body and names one reusable
+  invariant
 
 Definition shape:
 
 ```ts
-import { defineCompositeAssertion } from '@overkill-dev/assert';
+import { defineCompositeAssertion } from '@overkill-dev/engine';
 import type { TestDouble } from '@overkill-dev/doubles';
 
-const calledOnceWith = defineCompositeAssertion(
-    'calledOnceWith',
-    <TArg>(check, sut: TestDouble<[TArg], unknown>, expected: TArg) => {
+const calledOnceWith = defineCompositeAssertion({
+    name: 'calledOnceWith',
+
+    assert<TArg>(check, sut: TestDouble<[TArg], unknown>, expected: TArg) {
         return check.group([ check.calledOnce(sut), check.calledWith(sut, expected) ]);
     }
-);
+});
 ```
 
-Registered composite assertions then appear as ordinary high-level
-assertions:
+Composite references are ordinary imported values:
 
 ```ts
 test('publishes the release', async (case) => {
     await publishRelease(harness, 'v1.2.3');
 
-    case.assert.calledOnceWith(harness.buildAndPublishAll, {
+    case.assert(calledOnceWith, harness.buildAndPublishAll, {
         tag: 'v1.2.3',
     });
 
@@ -1150,7 +1158,8 @@ The better direction is one narrow bridge primitive for adapter authors:
 
 ```ts
 type ForeignAssertionBridge = {
-    fromThrowable(label: string, body: () => void | Promise<void>): unknown;
+    fromThrowable(label: string, body: () => void): unknown;
+    fromRejectable(label: string, body: () => Promise<void>): Promise<unknown>;
 };
 ```
 
@@ -1168,17 +1177,18 @@ Overkill boundary remains explicit and stable.
 Example direction:
 
 ```ts
-import { defineCompositeAssertion } from '@overkill-dev/assert';
+import { defineCompositeAssertion } from '@overkill-dev/engine';
 
-export const hasResourceProperties = defineCompositeAssertion(
-    'hasResourceProperties',
-    (check, stack, resourceType, expected) => {
+export const hasResourceProperties = defineCompositeAssertion({
+    name: 'hasResourceProperties',
+
+    assert(check, stack, resourceType, expected) {
         return check.fromThrowable('aws-cdk.assertions.hasResourceProperties', () => {
             const template = Template.fromStack(stack);
             template.hasResourceProperties(resourceType, expected);
         });
     }
-);
+});
 ```
 
 This still counts as **one** assertion boundary for zero-assertion
@@ -1199,7 +1209,7 @@ The preferred Overkill direction is a focused adapter package such as:
 
 - `@overkill-dev/aws-cdk`
 
-That package should expose facade-ready assertion extensions such as:
+That package should expose assertion references such as:
 
 - `matchesTemplate`
 - `hasResource`
@@ -1210,16 +1220,14 @@ That package should expose facade-ready assertion extensions such as:
 Usage direction:
 
 ```ts
-import { cdkAssertions } from '@overkill-dev/aws-cdk';
-
-export const assertionExtensions = [ cdkAssertions ];
+import { hasResourceProperties } from '@overkill-dev/aws-cdk';
 ```
 
-Then ordinary tests use a native Overkill surface:
+Then ordinary tests use imported references:
 
 ```ts
 test('defines versioned bucket', (case) => {
-    case.assert.hasResourceProperties(stack, 'AWS::S3::Bucket', {
+    case.assert(hasResourceProperties, stack, 'AWS::S3::Bucket', {
         VersioningConfiguration: { Status: 'Enabled' },
     });
 
@@ -1278,8 +1286,8 @@ For the product concept:
 - core supports structured assertion results and explicit throwing-mode
   tests
 - first-party assertion semantics live in `@overkill-dev/engine`
-- reusable assertion-extension helpers such as
-  `defineCompositeAssertion(...)` live in `@overkill-dev/assert`
+- reusable assertion reference helpers such as
+  `defineCompositeAssertion(...)` live in `@overkill-dev/engine` for v1
 - `@overkill-dev/test` may re-expose that engine-owned assertion surface, but it
   is not required for assertion usage
 - primary authoring shape: builder/context API with explicit

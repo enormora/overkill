@@ -94,6 +94,7 @@ function assertSmokeResult(result: RunResult): void {
                                     actual: 1,
                                     expected: 2,
                                     id: '1',
+                                    kind: 'leaf',
                                     location: { column: null, file: '', line: null },
                                     path: [],
                                     source: 'assert',
