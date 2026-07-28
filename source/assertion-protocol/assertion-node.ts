@@ -42,7 +42,13 @@ import {
     type TypeAssertionNode
 } from './assertions/type-shape.ts';
 import type { AssertionSource, NonEmptyReadonlyArray } from './assertion-node-shape.ts';
-import type { ThrownErrorRecord } from './thrown-error-record.ts';
+
+type ForeignAssertionErrorRecord = {
+    readonly message: string;
+    readonly name: string;
+    readonly stack: string | null;
+    readonly thrown: unknown;
+};
 
 type RequireAssertionNodeByName = {
     readonly defined: DefinedAssertionNode<'require'>;
@@ -81,12 +87,21 @@ type BuiltInAssertAssertionNodeByName<Source extends AssertionSource> = {
 
 type HasPropertyNode<Source extends AssertionSource> = HasPropertyAssertionNode<Source>;
 
-export type BuiltInAssertAssertionNode<Source extends AssertionSource = 'assert'> =
-    BuiltInAssertAssertionNodeByName<Source>[keyof BuiltInAssertAssertionNodeByName<Source>];
+export type BuiltInAssertAssertionNode<Source extends AssertionSource = 'assert'> = BuiltInAssertAssertionNodeByName<
+    Source
+>[keyof BuiltInAssertAssertionNodeByName<Source>];
 
-export type ForeignAssertionResult =
-    | { readonly error?: never; readonly passed: true; }
-    | { readonly error: ThrownErrorRecord; readonly passed: false; };
+type ForeignAssertionResultByOutcome = {
+    readonly fail: {
+        readonly error: ForeignAssertionErrorRecord;
+        readonly passed: false;
+    };
+    readonly pass: {
+        readonly passed: true;
+    };
+};
+
+export type ForeignAssertionResult = ForeignAssertionResultByOutcome[keyof ForeignAssertionResultByOutcome];
 
 export type ForeignAssertionNode<Source extends AssertionSource = AssertionSource> = {
     readonly check: 'foreign';
@@ -97,9 +112,13 @@ export type ForeignAssertionNode<Source extends AssertionSource = AssertionSourc
     readonly summary: string;
 };
 
+type CompositeAssertionChildNodeByKind<Source extends AssertionSource> = {
+    readonly builtIn: BuiltInAssertAssertionNode<Source>;
+    readonly foreign: ForeignAssertionNode<Source>;
+};
+
 export type CompositeAssertionChildNode<Source extends AssertionSource = AssertionSource> =
-    | BuiltInAssertAssertionNode<Source>
-    | ForeignAssertionNode<Source>;
+    CompositeAssertionChildNodeByKind<Source>[keyof CompositeAssertionChildNodeByKind<Source>];
 
 export type CompositeAssertionNode<Source extends AssertionSource = AssertionSource> = {
     readonly actual: unknown;
@@ -112,10 +131,13 @@ export type CompositeAssertionNode<Source extends AssertionSource = AssertionSou
     readonly summary: string;
 };
 
-export type RequireAssertionNode = RequireAssertionNodeByName[keyof RequireAssertionNodeByName] |
-    CompositeAssertionNode<'require'>;
+type RequireAssertionNodeByKind = RequireAssertionNodeByName & {
+    readonly composite: CompositeAssertionNode<'require'>;
+};
 
-export type AssertAssertionNode = BuiltInAssertAssertionNode<'assert'> | CompositeAssertionNode<'assert'>;
+export type RequireAssertionNode = RequireAssertionNodeByKind[keyof RequireAssertionNodeByKind];
+
+export type AssertAssertionNode = BuiltInAssertAssertionNode | CompositeAssertionNode<'assert'>;
 
 export type AssertionNode = AssertAssertionNode | RequireAssertionNode;
 
@@ -133,9 +155,11 @@ const defaultSummaryByCheck: Readonly<Record<BuiltInAssertAssertionNode['check']
     ...typeShapeSummaryByCheck
 };
 
-type SummarizedAssertionNode = AssertionNode | CompositeAssertionChildNode | CompositeAssertionNode<AssertionSource>;
+type SummarizedAssertionNode = AssertionNode | CompositeAssertionChildNode | CompositeAssertionNode;
 
-function isCompositeAssertion(assertion: SummarizedAssertionNode): assertion is CompositeAssertionNode<AssertionSource> {
+function isCompositeAssertion(
+    assertion: SummarizedAssertionNode
+): assertion is CompositeAssertionNode {
     return assertion.check === 'composite';
 }
 

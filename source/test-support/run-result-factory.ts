@@ -15,8 +15,15 @@ import type {
     TestOutcome
 } from '../engine/run-result.ts';
 
-type FailedCheckOverrides = Partial<Omit<FailedLeafCheck, 'location'>> & {
+type FailedCheckOverrides = {
+    readonly actual?: unknown;
+    readonly expected?: unknown;
+    readonly id?: string;
+    readonly kind?: 'leaf';
     readonly location?: Partial<SourceLocation>;
+    readonly path?: readonly (number | string)[];
+    readonly source?: 'assert' | 'require';
+    readonly summary?: string;
 };
 
 type AssertionTestFailureOverrides = {

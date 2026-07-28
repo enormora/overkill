@@ -65,6 +65,8 @@ export {
 } from '../../assertion-protocol/assertion-reference.ts';
 export type {
     AssertionReference,
+    AssertReferenceArguments,
+    AssertReferenceReturn,
     CompositeAssertionDefinition,
     CompositeAssertionGroup,
     CompositeAssertionReference,

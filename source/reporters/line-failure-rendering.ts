@@ -302,11 +302,11 @@ function formatFailedCheck(check: FailedCheck): readonly string[] {
             `foreign assertion: ${check.label}`,
             `${check.error.name}: ${check.error.message}`
         ]
-        : [
-            ...typeof check.expected === 'string' && typeof check.actual === 'string'
+        : Array.from(
+            typeof check.expected === 'string' && typeof check.actual === 'string'
                 ? formatStringComparison(check.expected, check.actual)
                 : formatNonStringCheckDetails(check)
-        ];
+        );
 
     return [
         check.summary,

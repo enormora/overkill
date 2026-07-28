@@ -111,7 +111,10 @@ function evaluateCompositeAssertion(assertion: CompositeAssertionNode, id: strin
     };
 }
 
-export function evaluateAssertion(assertion: AssertionNode | CompositeAssertionChildNode, id: number | string): FailedCheck | null {
+export function evaluateAssertion(
+    assertion: AssertionNode | CompositeAssertionChildNode,
+    id: number | string
+): FailedCheck | null {
     const checkId = String(id);
 
     if (assertion.check === 'composite') {

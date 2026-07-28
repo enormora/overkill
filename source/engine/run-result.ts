@@ -34,15 +34,18 @@ export type BodyErrorTestFailure = {
     readonly kind: 'body-error';
 };
 
-export type TestContractFailureCode =
-    | 'dead-builder-assertion'
-    | 'invalid-assertion-reference'
-    | 'invalid-composite-result'
-    | 'invalid-plan'
-    | 'invalid-require-reference'
-    | 'no-assertions'
-    | 'pending-async-assertion'
-    | 'plan-mismatch';
+type TestContractFailureCodeByName = {
+    readonly deadBuilderAssertion: 'dead-builder-assertion';
+    readonly invalidAssertionReference: 'invalid-assertion-reference';
+    readonly invalidCompositeResult: 'invalid-composite-result';
+    readonly invalidPlan: 'invalid-plan';
+    readonly invalidRequireReference: 'invalid-require-reference';
+    readonly noAssertions: 'no-assertions';
+    readonly pendingAsyncAssertion: 'pending-async-assertion';
+    readonly planMismatch: 'plan-mismatch';
+};
+
+export type TestContractFailureCode = TestContractFailureCodeByName[keyof TestContractFailureCodeByName];
 
 export type TestContractFailure = {
     readonly actual: unknown;

@@ -1,28 +1,28 @@
-import {
-    type AssertAssertionNode,
-    type CompositeAssertionChildNode,
-    type CompositeAssertionNode,
-    type RequireAssertionNode
-} from '../assertion-protocol/assertion-node.ts';
-import {
-    createCompositeCheckBuilder,
-    isAssertionReference,
-    isCompositeAssertionGroup,
-    isNarrowingAssertionReference,
-    type AssertReferenceArguments,
-    type AssertReferenceReturn,
-    type CompositeAssertionReference,
-    type CompositeAssertionReturn,
-    type NarrowingCompositeAssertionReference
+import type {
+    CompositeAssertionReference,
+    CompositeAssertionReturn,
+    NarrowingCompositeAssertionReference
 } from '../assertion-protocol/assertion-reference.ts';
 import type { AssertionOptions, InstanceConstructor } from '../assertion-protocol/assertion-node-shape.ts';
-import type { TestContractFailure } from './run-result.ts';
+import {
+    recordAssertReference,
+    type AssertAssertionSink
+} from './custom-assertion-recording.ts';
 
 export type AssertAssertionFacade = {
-    <Reference>(
-        reference: Reference,
-        ...arguments_: AssertReferenceArguments<Reference>
-    ): AssertReferenceReturn<Reference>;
+    <Arguments extends readonly unknown[], Result extends Promise<CompositeAssertionReturn<'assert'>>>(
+        reference: CompositeAssertionReference<Arguments, Result>,
+        ...parameters: Arguments
+    ): Promise<void>;
+    <Arguments extends readonly unknown[], Result extends CompositeAssertionReturn<'assert'>>(
+        reference: CompositeAssertionReference<Arguments, Result>,
+        ...parameters: Arguments
+    ): void;
+    <Actual, Narrowed extends Actual, Arguments extends readonly unknown[]>(
+        reference: NarrowingCompositeAssertionReference<Actual, Narrowed, Arguments>,
+        actual: Actual,
+        ...parameters: Arguments
+    ): void;
     readonly annotated: (message: string) => AssertAssertionFacade;
     readonly array: (actual: unknown, options?: AssertionOptions) => void;
     readonly arrayContainsPartial: (
@@ -73,7 +73,7 @@ export type RequireAssertionFacade = {
     <Actual, Narrowed extends Actual, Arguments extends readonly unknown[]>(
         reference: NarrowingCompositeAssertionReference<Actual, Narrowed, Arguments>,
         actual: Actual,
-        ...arguments_: Arguments
+        ...parameters: Arguments
     ): asserts actual is Narrowed;
     readonly annotated: (message: string) => RequireAssertionFacade;
     readonly array: (actual: unknown, options?: AssertionOptions) => asserts actual is readonly unknown[];
@@ -103,236 +103,27 @@ export type RequireAssertionFacade = {
     readonly string: (actual: unknown, options?: AssertionOptions) => asserts actual is string;
 };
 
-export type PendingAssertAssertionSink = {
-    readonly resolve: (assertion: AssertAssertionNode) => void;
-};
-
-export type AssertAssertionSink = {
-    readonly failContract: (failure: TestContractFailure) => never;
-    readonly recordAssert: (assertion: AssertAssertionNode) => void;
-    readonly recordPendingAssert: () => PendingAssertAssertionSink;
-};
-
-export type RequireAssertionSink = {
-    readonly failContract: (failure: TestContractFailure) => never;
-    readonly recordRequire: (assertion: RequireAssertionNode) => void;
-};
-
 type AssertAssertionMethods = Pick<AssertAssertionFacade, keyof AssertAssertionFacade>;
-type RequireAssertionMethods = Pick<RequireAssertionFacade, keyof RequireAssertionFacade>;
 
 function messageFromOptions(options: AssertionOptions | undefined, annotation: string | null): string | null {
     return options?.message ?? annotation;
 }
 
-function createInvalidAssertionReferenceFailure(actual: unknown): TestContractFailure {
-    return {
-        actual,
-        code: 'invalid-assertion-reference',
-        expected: 'engine-created assertion reference',
-        kind: 'test-contract',
-        summary: 'Expected an engine-created assertion reference.'
-    };
+function isAssertMethodName(
+    methods: AssertAssertionMethods,
+    property: PropertyKey
+): property is keyof AssertAssertionMethods {
+    return typeof property === 'string' && Object.hasOwn(methods, property);
 }
 
-function createInvalidRequireReferenceFailure(actual: unknown): TestContractFailure {
-    return {
-        actual,
-        code: 'invalid-require-reference',
-        expected: 'narrowing assertion reference',
-        kind: 'test-contract',
-        summary: 'Expected a narrowing assertion reference.'
-    };
-}
-
-function createInvalidCompositeResultFailure(actual: unknown): TestContractFailure {
-    return {
-        actual,
-        code: 'invalid-composite-result',
-        expected: 'composite assertion child or group',
-        kind: 'test-contract',
-        summary: 'Composite assertion returned an invalid result.'
-    };
-}
-
-function isPromiseLike<Source extends 'assert' | 'require'>(
-    value: CompositeAssertionReturn<Source> | Promise<CompositeAssertionReturn<Source>>
-): value is Promise<CompositeAssertionReturn<Source>> {
-    return typeof value === 'object'
-        && value !== null
-        && 'then' in value
-        && typeof value.then === 'function';
-}
-
-function assertionArguments(arguments_: readonly unknown[]): readonly [unknown, unknown] {
-    return [
-        arguments_[0],
-        arguments_.length >= 2 ? arguments_[1] : undefined
-    ];
-}
-
-function defaultCustomSummary(name: string): string {
-    return `Expected ${name} assertion to pass.`;
-}
-
-function customSummary(
-    reference: { readonly formatSummary: unknown; readonly name: string; },
-    source: 'assert' | 'require',
-    annotation: string | null,
-    arguments_: readonly unknown[]
-): string {
-    if (annotation !== null) {
-        return annotation;
-    }
-
-    if (reference.formatSummary !== null) {
-        const formatSummary = reference.formatSummary as (
-            context: { readonly name: string; readonly source: 'assert' | 'require'; },
-            ...summaryArguments: unknown[]
-        ) => string;
-
-        return formatSummary({ name: reference.name, source }, ...Array.from(arguments_));
-    }
-
-    return defaultCustomSummary(reference.name);
-}
-
-function normalizeCompositeChildren<Source extends 'assert' | 'require'>(
-    result: CompositeAssertionReturn<Source>,
-    failContract: (failure: TestContractFailure) => never
-): readonly [CompositeAssertionChildNode<Source>, ...(readonly CompositeAssertionChildNode<Source>[])] {
-    if (isCompositeAssertionGroup(result)) {
-        return result.children;
-    }
-
-    if (typeof result === 'object' && result !== null && 'check' in result) {
-        return [ result ];
-    }
-
-    failContract(createInvalidCompositeResultFailure(result));
-}
-
-function createCompositeAssertionNode<Source extends 'assert' | 'require'>(
-    source: Source,
-    annotation: string | null,
-    reference: { readonly formatSummary: unknown; readonly name: string; },
-    arguments_: readonly unknown[],
-    children: readonly [CompositeAssertionChildNode<Source>, ...(readonly CompositeAssertionChildNode<Source>[])]
-): CompositeAssertionNode<Source> {
-    const [ actual, expectedArgument ] = assertionArguments(arguments_);
-
-    return {
-        actual,
-        check: 'composite',
-        children,
-        expected: expectedArgument ?? reference.name,
-        message: annotation,
-        name: reference.name,
-        source,
-        summary: customSummary(reference, source, annotation, arguments_)
-    };
-}
-
-function createNarrowingCompositeAssertionNode<Source extends 'assert' | 'require'>(
-    source: Source,
-    annotation: string | null,
-    reference: NarrowingCompositeAssertionReference,
-    arguments_: readonly unknown[]
-): CompositeAssertionNode<Source> {
-    const passed = reference.narrows(arguments_[0], ...arguments_.slice(1));
-    const child = createCompositeCheckBuilder(source, `Expected ${reference.name} narrowing predicate to pass.`)
-        .true(passed);
-
-    return createCompositeAssertionNode(source, annotation, reference, arguments_, [ child ]);
-}
-
-function recordCompositeAssertion(
-    sink: AssertAssertionSink,
-    annotation: string | null,
-    reference: CompositeAssertionReference,
-    arguments_: readonly unknown[]
-): void | Promise<void> {
-    const result = reference.assert(createCompositeCheckBuilder('assert', null), ...arguments_);
-
-    if (!isPromiseLike(result)) {
-        sink.recordAssert(createCompositeAssertionNode(
-            'assert',
-            annotation,
-            reference,
-            arguments_,
-            normalizeCompositeChildren(result, sink.failContract)
-        ));
-        return undefined;
-    }
-
-    const pending = sink.recordPendingAssert();
-
-    return result.then(function recordResolvedComposite(resolved) {
-        pending.resolve(createCompositeAssertionNode(
-            'assert',
-            annotation,
-            reference,
-            arguments_,
-            normalizeCompositeChildren(resolved, sink.failContract)
-        ));
-    });
-}
-
-function recordAssertReference(
-    sink: AssertAssertionSink,
-    annotation: string | null,
-    reference: unknown,
-    arguments_: readonly unknown[]
-): void | Promise<void> {
-    if (!isAssertionReference(reference)) {
-        sink.failContract(createInvalidAssertionReferenceFailure(reference));
-    }
-
-    if (reference.kind === 'narrowing-composite') {
-        sink.recordAssert(createNarrowingCompositeAssertionNode(
-            'assert',
-            annotation,
-            reference as NarrowingCompositeAssertionReference,
-            arguments_
-        ));
-        return undefined;
-    }
-
-    return recordCompositeAssertion(sink, annotation, reference as CompositeAssertionReference, arguments_);
-}
-
-function recordRequireReference(
-    sink: RequireAssertionSink,
-    annotation: string | null,
-    reference: unknown,
-    arguments_: readonly unknown[]
-): void {
-    if (!isNarrowingAssertionReference(reference)) {
-        sink.failContract(isAssertionReference(reference)
-            ? createInvalidRequireReferenceFailure(reference.name)
-            : createInvalidAssertionReferenceFailure(reference));
-    }
-
-    sink.recordRequire(createNarrowingCompositeAssertionNode('require', annotation, reference, arguments_));
-}
-
-function createCallableFacade<Facade extends object>(
-    methods: object,
-    callAssertion: (reference: unknown, arguments_: readonly unknown[]) => unknown
-): Facade {
-    const callable = function assertionReferenceCall(reference: unknown, ...arguments_: readonly unknown[]): unknown {
-        return callAssertion(reference, arguments_);
-    };
-
-    return new Proxy(callable, {
-        get(target, property, receiver) {
-            if (property in methods) {
-                return methods[property as keyof typeof methods];
-            }
-
-            return Reflect.get(target, property, receiver);
-        }
-    }) as unknown as Facade;
+function isAssertAssertionFacade(
+    value: unknown,
+    methods: AssertAssertionMethods
+): value is AssertAssertionFacade {
+    return typeof value === 'function' &&
+        Object.keys(methods).every(function methodIsAvailable(methodName) {
+            return typeof Reflect.get(value, methodName) === 'function';
+        });
 }
 
 export function createRecordingAssertFacade(
@@ -345,7 +136,12 @@ export function createRecordingAssertFacade(
         },
 
         array(actual, options) {
-            sink.recordAssert({ actual, check: 'array', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'array',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         arrayContainsPartial(actual, expected, options) {
@@ -370,7 +166,12 @@ export function createRecordingAssertFacade(
         },
 
         boolean(actual, options) {
-            sink.recordAssert({ actual, check: 'boolean', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'boolean',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         deepEqual(actual, expected, options) {
@@ -384,11 +185,21 @@ export function createRecordingAssertFacade(
         },
 
         defined(actual, options) {
-            sink.recordAssert({ actual, check: 'defined', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'defined',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         empty(actual, options) {
-            sink.recordAssert({ actual, check: 'empty', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'empty',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         endsWith(actual, expected, options) {
@@ -416,11 +227,21 @@ export function createRecordingAssertFacade(
         },
 
         false(actual, options) {
-            sink.recordAssert({ actual, check: 'false', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'false',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         function(actual, options) {
-            sink.recordAssert({ actual, check: 'function', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'function',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         greaterThan(actual, expected, options) {
@@ -534,7 +355,12 @@ export function createRecordingAssertFacade(
         },
 
         notEmpty(actual, options) {
-            sink.recordAssert({ actual, check: 'not-empty', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'not-empty',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         notEqual(actual, expected, options) {
@@ -558,19 +384,39 @@ export function createRecordingAssertFacade(
         },
 
         notNull(actual, options) {
-            sink.recordAssert({ actual, check: 'not-null', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'not-null',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         null(actual, options) {
-            sink.recordAssert({ actual, check: 'null', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'null',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         number(actual, options) {
-            sink.recordAssert({ actual, check: 'number', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'number',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         object(actual, options) {
-            sink.recordAssert({ actual, check: 'object', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'object',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         partialDeepEqual(actual, expected, options) {
@@ -594,90 +440,63 @@ export function createRecordingAssertFacade(
         },
 
         string(actual, options) {
-            sink.recordAssert({ actual, check: 'string', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'string',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         true(actual, options) {
-            sink.recordAssert({ actual, check: 'true', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'true',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         },
 
         undefined(actual, options) {
-            sink.recordAssert({ actual, check: 'undefined', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                actual,
+                check: 'undefined',
+                message: messageFromOptions(options, annotation),
+                source: 'assert'
+            });
         }
     };
 
-    return createCallableFacade<AssertAssertionFacade>(methods, function callAssertReference(reference, arguments_) {
-        return recordAssertReference(sink, annotation, reference, arguments_);
-    });
-}
+    function callAssertReference<
+        Arguments extends readonly unknown[],
+        Result extends Promise<CompositeAssertionReturn<'assert'>>
+    >(reference: CompositeAssertionReference<Arguments, Result>, ...parameters: Arguments): Promise<void>;
+    function callAssertReference<
+        Arguments extends readonly unknown[],
+        Result extends CompositeAssertionReturn<'assert'>
+    >(reference: CompositeAssertionReference<Arguments, Result>, ...parameters: Arguments): void;
+    function callAssertReference<Actual, Narrowed extends Actual, Arguments extends readonly unknown[]>(
+        reference: NarrowingCompositeAssertionReference<Actual, Narrowed, Arguments>,
+        actual: Actual,
+        ...parameters: Arguments
+    ): void;
+    function callAssertReference(reference: unknown, ...parameters: readonly unknown[]): Promise<void> | void {
+        return recordAssertReference(sink, annotation, reference, parameters);
+    }
 
-export function createRecordingRequireFacade(
-    sink: RequireAssertionSink,
-    annotation: string | null
-): RequireAssertionFacade {
-    const methods: RequireAssertionMethods = {
-        annotated(message) {
-            return createRecordingRequireFacade(sink, message);
-        },
+    const facade = new Proxy(callAssertReference, {
+        get(target, property, receiver): unknown {
+            if (isAssertMethodName(methods, property)) {
+                return methods[property];
+            }
 
-        array(actual, options) {
-            sink.recordRequire({ actual, check: 'array', message: messageFromOptions(options, annotation), source: 'require' });
-        },
-
-        boolean(actual, options) {
-            sink.recordRequire({ actual, check: 'boolean', message: messageFromOptions(options, annotation), source: 'require' });
-        },
-
-        defined(actual, options) {
-            sink.recordRequire({ actual, check: 'defined', message: messageFromOptions(options, annotation), source: 'require' });
-        },
-
-        function(actual, options) {
-            sink.recordRequire({ actual, check: 'function', message: messageFromOptions(options, annotation), source: 'require' });
-        },
-
-        hasProperty(actual, key, options) {
-            sink.recordRequire({
-                actual,
-                check: 'has-property',
-                key,
-                message: messageFromOptions(options, annotation),
-                source: 'require'
-            });
-        },
-
-        instanceOf(actual, expected: InstanceConstructor, options) {
-            sink.recordRequire({
-                actual,
-                check: 'instance-of',
-                expected,
-                message: messageFromOptions(options, annotation),
-                source: 'require'
-            });
-        },
-
-        notNull(actual, options) {
-            sink.recordRequire({ actual, check: 'not-null', message: messageFromOptions(options, annotation), source: 'require' });
-        },
-
-        null(actual, options) {
-            sink.recordRequire({ actual, check: 'null', message: messageFromOptions(options, annotation), source: 'require' });
-        },
-
-        number(actual, options) {
-            sink.recordRequire({ actual, check: 'number', message: messageFromOptions(options, annotation), source: 'require' });
-        },
-
-        object(actual, options) {
-            sink.recordRequire({ actual, check: 'object', message: messageFromOptions(options, annotation), source: 'require' });
-        },
-
-        string(actual, options) {
-            sink.recordRequire({ actual, check: 'string', message: messageFromOptions(options, annotation), source: 'require' });
+            return Reflect.get(target, property, receiver);
         }
-    };
-
-    return createCallableFacade<RequireAssertionFacade>(methods, function callRequireReference(reference, arguments_) {
-        recordRequireReference(sink, annotation, reference, arguments_);
     });
+
+    if (isAssertAssertionFacade(facade, methods)) {
+        return facade;
+    }
+
+    throw new TypeError('Failed to create assert facade.');
 }

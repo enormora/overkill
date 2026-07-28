@@ -1070,7 +1070,7 @@ export const resultValueDeepEqual = defineCompositeAssertion({
     assert(check, result, expected) {
         return check.group([
             check.annotated('ok flag').true(result.ok),
-            check.annotated('value').deepEqual(result.value, expected),
+            check.annotated('value').deepEqual(result.value, expected)
         ]);
     }
 });
@@ -1084,7 +1084,7 @@ export const resultOk = defineNarrowingCompositeAssertion({
 
     narrows(result): result is Ok {
         return result.ok;
-    },
+    }
 });
 ```
 
@@ -1112,7 +1112,7 @@ const calledOnceWith = defineCompositeAssertion({
 
     assert<TArg>(check, sut: TestDouble<[TArg], unknown>, expected: TArg) {
         return check.group([ check.calledOnce(sut), check.calledWith(sut, expected) ]);
-    },
+    }
 });
 ```
 
@@ -1187,7 +1187,7 @@ export const hasResourceProperties = defineCompositeAssertion({
             const template = Template.fromStack(stack);
             template.hasResourceProperties(resourceType, expected);
         });
-    },
+    }
 });
 ```
 

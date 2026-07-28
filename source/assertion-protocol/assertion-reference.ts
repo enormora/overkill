@@ -19,9 +19,29 @@ export type CompositeAssertionGroup<Source extends AssertionSource = AssertionSo
     readonly children: NonEmptyReadonlyArray<CompositeAssertionChildNode<Source>>;
 };
 
-export type CompositeAssertionReturn<Source extends AssertionSource = AssertionSource> =
-    | CompositeAssertionChildNode<Source>
-    | CompositeAssertionGroup<Source>;
+type CompositeAssertionReturnByKind<Source extends AssertionSource> = {
+    readonly child: CompositeAssertionChildNode<Source>;
+    readonly group: CompositeAssertionGroup<Source>;
+};
+
+export type CompositeAssertionReturn<Source extends AssertionSource = AssertionSource> = CompositeAssertionReturnByKind<
+    Source
+>[keyof CompositeAssertionReturnByKind<Source>];
+
+type AssertCompositeAssertionReturn = CompositeAssertionReturn<'assert'> | Promise<CompositeAssertionReturn<'assert'>>;
+
+type SyncAssertionReturn = ReturnType<() => void>;
+
+type CompositeAssertionSummaryFormatter<Arguments extends readonly unknown[]> = (
+    context: CompositeAssertionSummaryContext,
+    ...parameters: Arguments
+) => string;
+
+type NarrowingCompositeAssertionSummaryFormatter<Actual, Arguments extends readonly unknown[]> = (
+    context: CompositeAssertionSummaryContext,
+    actual: Actual,
+    ...parameters: Arguments
+) => string;
 
 export type CompositeCheckBuilder<Source extends AssertionSource = AssertionSource> = {
     readonly annotated: (message: string) => CompositeCheckBuilder<Source>;
@@ -75,13 +95,11 @@ export type CompositeCheckBuilder<Source extends AssertionSource = AssertionSour
 
 export type CompositeAssertionDefinition<
     Arguments extends readonly unknown[],
-    Result extends CompositeAssertionReturn<'assert'> | Promise<CompositeAssertionReturn<'assert'>>
+    Result extends AssertCompositeAssertionReturn
 > = {
-    assert(check: CompositeCheckBuilder<'assert'>, ...arguments_: Arguments): Result;
-    readonly formatSummary?:
-        | ((context: CompositeAssertionSummaryContext, ...arguments_: Arguments) => string)
-        | undefined;
+    readonly formatSummary?: CompositeAssertionSummaryFormatter<Arguments>;
     readonly name: string;
+    readonly assert: (check: CompositeCheckBuilder<'assert'>, ...parameters: Arguments) => Result;
 };
 
 export type NarrowingCompositeAssertionDefinition<
@@ -89,26 +107,20 @@ export type NarrowingCompositeAssertionDefinition<
     Narrowed extends Actual,
     Arguments extends readonly unknown[]
 > = {
-    readonly formatSummary?:
-        | ((context: CompositeAssertionSummaryContext, actual: Actual, ...arguments_: Arguments) => string)
-        | undefined;
+    readonly formatSummary?: NarrowingCompositeAssertionSummaryFormatter<Actual, Arguments>;
     readonly name: string;
-    narrows(actual: Actual, ...arguments_: Arguments): actual is Narrowed;
+    readonly narrows: (actual: Actual, ...parameters: Arguments) => actual is Narrowed;
 };
 
 export type CompositeAssertionReference<
     Arguments extends readonly unknown[] = readonly unknown[],
-    Result extends CompositeAssertionReturn<'assert'> | Promise<CompositeAssertionReturn<'assert'>> =
-        | CompositeAssertionReturn<'assert'>
-        | Promise<CompositeAssertionReturn<'assert'>>
+    Result extends AssertCompositeAssertionReturn = AssertCompositeAssertionReturn
 > = {
     readonly [assertionReferenceIdentity]: true;
-    assert(check: CompositeCheckBuilder<'assert'>, ...arguments_: Arguments): Result;
-    readonly formatSummary:
-        | ((context: CompositeAssertionSummaryContext, ...arguments_: Arguments) => string)
-        | null;
+    readonly formatSummary: CompositeAssertionSummaryFormatter<Arguments> | null;
     readonly kind: 'composite';
     readonly name: string;
+    readonly assert: (check: CompositeCheckBuilder<'assert'>, ...parameters: Arguments) => Result;
 };
 
 export type NarrowingCompositeAssertionReference<
@@ -117,41 +129,50 @@ export type NarrowingCompositeAssertionReference<
     Arguments extends readonly unknown[] = readonly unknown[]
 > = {
     readonly [assertionReferenceIdentity]: true;
-    readonly formatSummary:
-        | ((context: CompositeAssertionSummaryContext, actual: Actual, ...arguments_: Arguments) => string)
-        | null;
+    readonly formatSummary: NarrowingCompositeAssertionSummaryFormatter<Actual, Arguments> | null;
     readonly kind: 'narrowing-composite';
     readonly name: string;
-    narrows(actual: Actual, ...arguments_: Arguments): actual is Narrowed;
+    readonly narrows: (actual: Actual, ...parameters: Arguments) => actual is Narrowed;
 };
 
-export type AssertionReference = {
-    readonly [assertionReferenceIdentity]: true;
-    readonly kind: 'composite' | 'narrowing-composite';
-    readonly name: string;
-};
+export type AssertionReference = CompositeAssertionReference | NarrowingCompositeAssertionReference;
 
-export type AssertReferenceArguments<Reference> =
-    Reference extends CompositeAssertionReference<infer Arguments, CompositeAssertionReturn<'assert'> | Promise<CompositeAssertionReturn<'assert'>>>
-        ? Arguments
-        : Reference extends NarrowingCompositeAssertionReference<infer Actual, infer Candidate, infer Arguments>
-            ? Candidate extends Actual
-                ? readonly [actual: Actual, ...arguments_: Arguments]
-                : never
-            : never;
+type NarrowingReferenceArguments<Actual, Arguments extends readonly unknown[]> = readonly [
+    actual: Actual,
+    ...parameters: Arguments
+];
 
-export type AssertReferenceReturn<Reference> =
-    Reference extends CompositeAssertionReference<infer Arguments, infer Result>
-        ? Arguments extends readonly unknown[]
-            ? Result extends Promise<CompositeAssertionReturn<'assert'>>
-                ? Promise<void>
-                : void
-            : never
-        : void;
+type ReferenceArguments<Reference> = Reference extends NarrowingCompositeAssertionReference<
+    infer Actual,
+    infer Narrowed,
+    infer Arguments
+> ? NarrowingReferenceArguments<Actual | Narrowed, Arguments>
+    : never;
+
+type ReferenceReturn<Result> = Result extends Promise<CompositeAssertionReturn<'assert'>> ? Promise<void>
+    : SyncAssertionReturn;
+
+type ReadonlyParameters<Arguments extends readonly unknown[]> = readonly [...Arguments];
+
+export type AssertReferenceArguments<Reference> = Reference extends CompositeAssertionReference<infer Arguments>
+    ? ReadonlyParameters<Arguments>
+    : ReferenceArguments<Reference>;
+
+export type AssertReferenceReturn<Reference> = Reference extends CompositeAssertionReference<
+    infer Arguments,
+    infer Result
+> ? Arguments extends readonly unknown[] ? ReferenceReturn<Result> : never
+    : SyncAssertionReturn;
+
+function ensureAssertionName(name: string): void {
+    if (name.trim().length === 0) {
+        throw new TypeError('Assertion reference name must not be empty.');
+    }
+}
 
 export function defineCompositeAssertion<
     Arguments extends readonly unknown[],
-    Result extends CompositeAssertionReturn<'assert'> | Promise<CompositeAssertionReturn<'assert'>>
+    Result extends AssertCompositeAssertionReturn
 >(definition: CompositeAssertionDefinition<Arguments, Result>): CompositeAssertionReference<Arguments, Result> {
     ensureAssertionName(definition.name);
 
@@ -191,47 +212,44 @@ export function isNarrowingAssertionReference(value: unknown): value is Narrowin
 }
 
 export function isCompositeAssertionGroup<Source extends AssertionSource>(
-    value: CompositeAssertionReturn<Source>
+    value: unknown
 ): value is CompositeAssertionGroup<Source> {
     return typeof value === 'object' && value !== null && Object.hasOwn(value, compositeGroupIdentity);
+}
+
+function createForeignAssertionNode<Source extends AssertionSource>(
+    source: Source,
+    message: string | null,
+    label: string,
+    result: ForeignAssertionNode<Source>['result']
+): ForeignAssertionNode<Source> {
+    return {
+        check: 'foreign',
+        label,
+        message,
+        result,
+        source,
+        summary: result.passed
+            ? `Expected foreign assertion ${label} to pass.`
+            : `${label}: ${result.error.message}`
+    };
 }
 
 export function createCompositeCheckBuilder<Source extends AssertionSource>(
     source: Source,
     message: string | null
 ): CompositeCheckBuilder<Source> {
-    function actualNode<Check extends BuiltInAssertAssertionNode<Source>['check']>(
-        check: Check,
-        actual: unknown
-    ): Extract<BuiltInAssertAssertionNode<Source>, { readonly check: Check; }> {
-        return { actual, check, message, source } as Extract<
-            BuiltInAssertAssertionNode<Source>,
-            { readonly check: Check; }
-        >;
-    }
-
-    function expectedNode<Check extends BuiltInAssertAssertionNode<Source>['check']>(
-        check: Check,
-        actual: unknown,
-        expected: unknown
-    ): Extract<BuiltInAssertAssertionNode<Source>, { readonly check: Check; }> {
-        return { actual, check, expected, message, source } as Extract<
-            BuiltInAssertAssertionNode<Source>,
-            { readonly check: Check; }
-        >;
-    }
-
     return {
         annotated(childMessage) {
             return createCompositeCheckBuilder(source, childMessage);
         },
 
         array(actual) {
-            return actualNode('array', actual);
+            return { actual, check: 'array', message, source };
         },
 
         arrayContainsPartial(actual, expected) {
-            return expectedNode('array-contains-partial', actual, expected);
+            return { actual, check: 'array-contains-partial', expected, message, source };
         },
 
         between(actual, minimum, maximum) {
@@ -239,27 +257,27 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
         },
 
         boolean(actual) {
-            return actualNode('boolean', actual);
+            return { actual, check: 'boolean', message, source };
         },
 
         deepEqual(actual, expected) {
-            return expectedNode('deep-equal', actual, expected);
+            return { actual, check: 'deep-equal', expected, message, source };
         },
 
         defined(actual) {
-            return actualNode('defined', actual);
+            return { actual, check: 'defined', message, source };
         },
 
         empty(actual) {
-            return actualNode('empty', actual);
+            return { actual, check: 'empty', message, source };
         },
 
         endsWith(actual, expected) {
-            return expectedNode('ends-with', actual, expected);
+            return { actual, check: 'ends-with', expected, message, source };
         },
 
         equal(actual, expected) {
-            return expectedNode('equal', actual, expected);
+            return { actual, check: 'equal', expected, message, source };
         },
 
         fail() {
@@ -267,7 +285,7 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
         },
 
         false(actual) {
-            return actualNode('false', actual);
+            return { actual, check: 'false', message, source };
         },
 
         async fromRejectable(label, body) {
@@ -297,15 +315,15 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
         },
 
         function(actual) {
-            return actualNode('function', actual);
+            return { actual, check: 'function', message, source };
         },
 
         greaterThan(actual, expected) {
-            return expectedNode('greater-than', actual, expected);
+            return { actual, check: 'greater-than', expected, message, source };
         },
 
         greaterThanOrEqual(actual, expected) {
-            return expectedNode('greater-than-or-equal', actual, expected);
+            return { actual, check: 'greater-than-or-equal', expected, message, source };
         },
 
         group(children) {
@@ -317,7 +335,7 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
         },
 
         includes(actual, expected) {
-            return expectedNode('includes', actual, expected);
+            return { actual, check: 'includes', expected, message, source };
         },
 
         instanceOf(actual, expected) {
@@ -329,11 +347,11 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
         },
 
         lessThan(actual, expected) {
-            return expectedNode('less-than', actual, expected);
+            return { actual, check: 'less-than', expected, message, source };
         },
 
         lessThanOrEqual(actual, expected) {
-            return expectedNode('less-than-or-equal', actual, expected);
+            return { actual, check: 'less-than-or-equal', expected, message, source };
         },
 
         match(actual, pattern) {
@@ -341,19 +359,19 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
         },
 
         membersPartialDeepEqual(actual, expected) {
-            return expectedNode('members-partial-deep-equal', actual, expected);
+            return { actual, check: 'members-partial-deep-equal', expected, message, source };
         },
 
         notDeepEqual(actual, expected) {
-            return expectedNode('not-deep-equal', actual, expected);
+            return { actual, check: 'not-deep-equal', expected, message, source };
         },
 
         notEmpty(actual) {
-            return actualNode('not-empty', actual);
+            return { actual, check: 'not-empty', message, source };
         },
 
         notEqual(actual, expected) {
-            return expectedNode('not-equal', actual, expected);
+            return { actual, check: 'not-equal', expected, message, source };
         },
 
         notMatch(actual, pattern) {
@@ -361,63 +379,39 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
         },
 
         notNull(actual) {
-            return actualNode('not-null', actual);
+            return { actual, check: 'not-null', message, source };
         },
 
         null(actual) {
-            return actualNode('null', actual);
+            return { actual, check: 'null', message, source };
         },
 
         number(actual) {
-            return actualNode('number', actual);
+            return { actual, check: 'number', message, source };
         },
 
         object(actual) {
-            return actualNode('object', actual);
+            return { actual, check: 'object', message, source };
         },
 
         partialDeepEqual(actual, expected) {
-            return expectedNode('partial-deep-equal', actual, expected);
+            return { actual, check: 'partial-deep-equal', expected, message, source };
         },
 
         startsWith(actual, expected) {
-            return expectedNode('starts-with', actual, expected);
+            return { actual, check: 'starts-with', expected, message, source };
         },
 
         string(actual) {
-            return actualNode('string', actual);
+            return { actual, check: 'string', message, source };
         },
 
         true(actual) {
-            return actualNode('true', actual);
+            return { actual, check: 'true', message, source };
         },
 
         undefined(actual) {
-            return actualNode('undefined', actual);
+            return { actual, check: 'undefined', message, source };
         }
     };
-}
-
-function createForeignAssertionNode<Source extends AssertionSource>(
-    source: Source,
-    message: string | null,
-    label: string,
-    result: ForeignAssertionNode<Source>['result']
-): ForeignAssertionNode<Source> {
-    return {
-        check: 'foreign',
-        label,
-        message,
-        result,
-        source,
-        summary: result.passed
-            ? `Expected foreign assertion ${label} to pass.`
-            : `${label}: ${result.error.message}`
-    };
-}
-
-function ensureAssertionName(name: string): void {
-    if (name.trim().length === 0) {
-        throw new TypeError('Assertion reference name must not be empty.');
-    }
 }

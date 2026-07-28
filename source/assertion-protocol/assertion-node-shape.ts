@@ -43,7 +43,7 @@ export type FailedForeignCheck = FailedCheckBase & {
     readonly label: string;
 };
 
-export type FailedCheck = FailedLeafCheck | FailedCompositeCheck | FailedForeignCheck;
+export type FailedCheck = FailedCompositeCheck | FailedForeignCheck | FailedLeafCheck;
 
 export type InstanceConstructor = abstract new (...args: never[]) => unknown;
 

@@ -8,7 +8,8 @@ import type {
 } from '../assertion-protocol/assertion-node.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import { createThrownErrorRecord, type ThrownErrorRecord } from '../assertion-protocol/thrown-error-record.ts';
-import { createRecordingAssertFacade, createRecordingRequireFacade } from './assertion-facade.ts';
+import { createRecordingAssertFacade } from './assertion-facade.ts';
+import { createRecordingRequireFacade } from './require-assertion-facade.ts';
 import {
     type PerTestResult,
     type TestContractFailure,
@@ -16,17 +17,21 @@ import {
     type TestOutcome,
     verdictFromOutcome
 } from './run-result.ts';
-import type { CaseAssertContext, TestContext } from './test-node.ts';
+import type { TestContext } from './test-node.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
 type RecordedAssertion = {
-    assertion: AssertionNode | null;
-    builderAssertion: AssertAssertionNode | null;
+    readonly assertion: AssertionNode | null;
+    readonly builderAssertion: AssertAssertionNode | null;
 };
 
 type RecordedRequireMergeStep = {
     readonly assertions: readonly AssertionNode[];
     readonly recordIndex: number;
+};
+
+type PendingRecordedAssert = {
+    readonly resolve: (assertion: AssertAssertionNode) => void;
 };
 
 type AssertionRecorder = {
@@ -35,7 +40,7 @@ type AssertionRecorder = {
     readonly failContract: (failure: TestContractFailure) => never;
     readonly plan: (count: number) => void;
     readonly recordAssert: (assertion: AssertAssertionNode) => void;
-    readonly recordPendingAssert: () => { readonly resolve: (assertion: AssertAssertionNode) => void; };
+    readonly recordPendingAssert: () => PendingRecordedAssert;
     readonly recordRequire: (assertion: RequireAssertionNode) => void;
     readonly requireFailed: () => boolean;
     readonly returnedAssertions: (assertionResult: AssertionResult) => TestContractFailure | readonly AssertionNode[];
@@ -172,6 +177,31 @@ function builderAssertionsInReturnedOrder(
     });
 }
 
+function recordContainsBuilderAssertion(
+    recorded: RecordedAssertion | undefined,
+    builderAssertion: AssertAssertionNode
+): recorded is RecordedAssertion {
+    return recorded?.builderAssertion === builderAssertion;
+}
+
+function requireAssertionFromRecord(recorded: RecordedAssertion | undefined): RequireAssertionNode | null {
+    if (recorded?.assertion?.source === 'require') {
+        return recorded.assertion;
+    }
+
+    return null;
+}
+
+function requireAssertionsFromRecord(recorded: RecordedAssertion | undefined): readonly RequireAssertionNode[] {
+    const requireAssertion = requireAssertionFromRecord(recorded);
+
+    if (requireAssertion !== null) {
+        return [ requireAssertion ];
+    }
+
+    return [];
+}
+
 function appendRecordedRequiresBeforeBuilderAssertion(
     recordedAssertions: readonly RecordedAssertion[],
     recordIndex: number,
@@ -183,13 +213,11 @@ function appendRecordedRequiresBeforeBuilderAssertion(
     while (nextRecordIndex < recordedAssertions.length) {
         const recorded = recordedAssertions[nextRecordIndex];
 
-        if (recorded?.builderAssertion === builderAssertion) {
+        if (recordContainsBuilderAssertion(recorded, builderAssertion)) {
             return { assertions, recordIndex: nextRecordIndex + 1 };
         }
 
-        if (recorded?.assertion?.source === 'require') {
-            assertions.push(recorded.assertion);
-        }
+        assertions.push(...requireAssertionsFromRecord(recorded));
 
         nextRecordIndex += 1;
     }
@@ -248,18 +276,12 @@ function createAssertionRecorder(): AssertionRecorder {
         return recordedAssertions.slice(0, failedRequireIndex + 1);
     }
 
-    function assertionCount(): number {
-        return recordedAssertions.length;
-    }
-
     function pendingAssertionExists(): boolean {
-        return builderAssertions.some(function isPending(assertion) {
-            return assertion === null;
-        });
+        return builderAssertions.includes(null);
     }
 
     function ensurePlanAllowed(count: number): void {
-        if (!Number.isSafeInteger(count) || count <= 0 || plannedCount !== null || assertionCount() > 0) {
+        if (!Number.isSafeInteger(count) || count <= 0 || plannedCount !== null || recordedAssertions.length > 0) {
             throw new TestContractSignalError(createInvalidPlanFailure(count), undefined);
         }
     }
@@ -394,27 +416,27 @@ function evaluatedAssertionFailure(assertions: readonly AssertionNode[]): TestFa
 }
 
 function createTestContext(recorder: AssertionRecorder): TestContext {
-    const assertContext = createRecordingAssertFacade(
+    const assertContext = Object.assign(
+        createRecordingAssertFacade(
+            {
+                failContract(failure) {
+                    return recorder.failContract(failure);
+                },
+                recordAssert(assertion) {
+                    recorder.recordAssert(assertion);
+                },
+                recordPendingAssert() {
+                    return recorder.recordPendingAssert();
+                }
+            },
+            null
+        ),
         {
-            failContract(failure) {
-                return recorder.failContract(failure);
-            },
-            recordAssert(assertion) {
-                recorder.recordAssert(assertion);
-            },
-            recordPendingAssert() {
-                return recorder.recordPendingAssert();
+            done() {
+                return recorder.done();
             }
-        },
-        null
-    ) as CaseAssertContext;
-
-    Object.defineProperty(assertContext, 'done', {
-        enumerable: true,
-        value() {
-            return recorder.done();
         }
-    });
+    );
 
     return {
         assert: assertContext,

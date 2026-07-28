@@ -4,10 +4,10 @@ import type { AssertAssertionNode, RequireAssertionNode } from '../assertion-pro
 import type { AssertionSource } from '../assertion-protocol/assertion-node-shape.ts';
 import {
     createRecordingAssertFacade,
-    createRecordingRequireFacade,
     type AssertAssertionFacade,
     type RequireAssertionFacade
 } from './assertion-facade.ts';
+import { createRecordingRequireFacade } from './require-assertion-facade.ts';
 
 type AssertRecording = {
     readonly facade: AssertAssertionFacade;
