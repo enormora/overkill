@@ -1,4 +1,8 @@
 import { describe, expect, test } from 'tstyche';
+import {
+    defineCompositeAssertion,
+    defineNarrowingCompositeAssertion
+} from './engine.entry-point.ts';
 import type {
     AssertAssertionFacade,
     AssertAssertionNode,
@@ -10,6 +14,9 @@ import type {
     CaseId,
     ExecuteOptions,
     FailedCheck,
+    FailedCompositeCheck,
+    FailedForeignCheck,
+    FailedLeafCheck,
     FinalResultReporter,
     NonEmptyReadonlyArray,
     PerTestResult,
@@ -33,6 +40,7 @@ type FailedCheckFixture = {
     readonly actual: 'actual';
     readonly expected: 'expected';
     readonly id: '1';
+    readonly kind: 'leaf';
     readonly location: { readonly column: null; readonly file: ''; readonly line: null; };
     readonly path: readonly [];
     readonly source: 'assert';
@@ -167,7 +175,43 @@ describe('TestOutcome', function () {
 
     test('keeps failed checks free of diff fields', function () {
         expect<keyof FailedCheck>().type.toBe<
-            'actual' | 'expected' | 'id' | 'location' | 'path' | 'source' | 'summary'
+            | 'id'
+            | 'kind'
+            | 'location'
+            | 'path'
+            | 'source'
+            | 'summary'
+        >();
+        expect<keyof FailedLeafCheck>().type.toBe<
+            | 'actual'
+            | 'expected'
+            | 'id'
+            | 'kind'
+            | 'location'
+            | 'path'
+            | 'source'
+            | 'summary'
+        >();
+        expect<keyof FailedCompositeCheck>().type.toBe<
+            | 'actual'
+            | 'children'
+            | 'expected'
+            | 'id'
+            | 'kind'
+            | 'location'
+            | 'path'
+            | 'source'
+            | 'summary'
+        >();
+        expect<keyof FailedForeignCheck>().type.toBe<
+            | 'error'
+            | 'id'
+            | 'kind'
+            | 'label'
+            | 'location'
+            | 'path'
+            | 'source'
+            | 'summary'
         >();
     });
 
@@ -226,6 +270,37 @@ describe('Assertion protocol', function () {
         expect<AssertionOptions>().type.toBe<{ readonly message: string; }>();
         expect<TestContext['assert']>().type.toBe<CaseAssertContext>();
         expect<TestContext['require']>().type.toBe<RequireAssertionFacade>();
+    });
+
+    test('infers callable custom assertion references', function () {
+        const syncAssertion = defineCompositeAssertion({
+            assert(check, value: boolean) {
+                return check.true(value);
+            },
+            name: 'syncAssertion'
+        });
+        const asyncAssertion = defineCompositeAssertion({
+            async assert(check, value: boolean) {
+                await Promise.resolve();
+                return check.true(value);
+            },
+            name: 'asyncAssertion'
+        });
+        const narrowingAssertion = defineNarrowingCompositeAssertion({
+            name: 'narrowingAssertion',
+            narrows(value: unknown): value is string {
+                return typeof value === 'string';
+            }
+        });
+        const assertFacade: AssertAssertionFacade = null as unknown as AssertAssertionFacade;
+        const requireFacade: RequireAssertionFacade = null as unknown as RequireAssertionFacade;
+        let value = null as unknown;
+
+        expect(assertFacade(syncAssertion, true)).type.toBe<void>();
+        expect(assertFacade(asyncAssertion, true)).type.toBe<Promise<void>>();
+        expect(assertFacade(narrowingAssertion, value)).type.toBe<void>();
+        requireFacade(narrowingAssertion, value);
+        expect(value).type.toBe<string>();
     });
 });
 

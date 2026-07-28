@@ -141,6 +141,7 @@ registerTest('dot reporter maps outcomes and runner errors to compact marks', as
                         actual: 1,
                         expected: 2,
                         id: 'check',
+                        kind: 'leaf',
                         location: { column: null, file: '', line: null },
                         path: [],
                         source: 'assert',

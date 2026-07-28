@@ -41,7 +41,8 @@ import {
     type InstanceOfAssertionNode,
     type TypeAssertionNode
 } from './assertions/type-shape.ts';
-import type { NonEmptyReadonlyArray } from './assertion-node-shape.ts';
+import type { AssertionSource, NonEmptyReadonlyArray } from './assertion-node-shape.ts';
+import type { ThrownErrorRecord } from './thrown-error-record.ts';
 
 type RequireAssertionNodeByName = {
     readonly defined: DefinedAssertionNode<'require'>;
@@ -52,41 +53,75 @@ type RequireAssertionNodeByName = {
     readonly type: TypeAssertionNode<'require'>;
 };
 
-type AssertAssertionNodeByName = {
-    readonly arrayContainsPartial: ArrayContainsPartialAssertionNode<'assert'>;
-    readonly between: BetweenAssertionNode<'assert'>;
-    readonly deepEqual: DeepEqualAssertionNode<'assert'>;
-    readonly defined: DefinedAssertionNode<'assert'>;
-    readonly emptiness: EmptinessAssertionNode<'assert'>;
-    readonly equal: EqualAssertionNode<'assert'>;
-    readonly fail: FailAssertionNode<'assert'>;
-    readonly false: FalseAssertionNode<'assert'>;
-    readonly hasProperty: HasPropertyAssertionNode<'assert'>;
-    readonly instanceOf: InstanceOfAssertionNode<'assert'>;
-    readonly length: LengthAssertionNode<'assert'>;
-    readonly match: MatchAssertionNode<'assert'>;
-    readonly membersPartialDeepEqual: MembersPartialDeepEqualAssertionNode<'assert'>;
-    readonly notDeepEqual: NotDeepEqualAssertionNode<'assert'>;
-    readonly notEqual: NotEqualAssertionNode<'assert'>;
-    readonly notNull: NotNullAssertionNode<'assert'>;
-    readonly null: NullAssertionNode<'assert'>;
-    readonly numericComparison: NumericComparisonAssertionNode<'assert'>;
-    readonly partialDeepEqual: PartialDeepEqualAssertionNode<'assert'>;
-    readonly stringContains: StringContainsAssertionNode<'assert'>;
-    readonly true: TrueAssertionNode<'assert'>;
-    readonly type: TypeAssertionNode<'assert'>;
-    readonly undefined: UndefinedAssertionNode<'assert'>;
+type BuiltInAssertAssertionNodeByName<Source extends AssertionSource> = {
+    readonly arrayContainsPartial: ArrayContainsPartialAssertionNode<Source>;
+    readonly between: BetweenAssertionNode<Source>;
+    readonly deepEqual: DeepEqualAssertionNode<Source>;
+    readonly defined: DefinedAssertionNode<Source>;
+    readonly emptiness: EmptinessAssertionNode<Source>;
+    readonly equal: EqualAssertionNode<Source>;
+    readonly fail: FailAssertionNode<Source>;
+    readonly false: FalseAssertionNode<Source>;
+    readonly hasProperty: HasPropertyNode<Source>;
+    readonly instanceOf: InstanceOfAssertionNode<Source>;
+    readonly length: LengthAssertionNode<Source>;
+    readonly match: MatchAssertionNode<Source>;
+    readonly membersPartialDeepEqual: MembersPartialDeepEqualAssertionNode<Source>;
+    readonly notDeepEqual: NotDeepEqualAssertionNode<Source>;
+    readonly notEqual: NotEqualAssertionNode<Source>;
+    readonly notNull: NotNullAssertionNode<Source>;
+    readonly null: NullAssertionNode<Source>;
+    readonly numericComparison: NumericComparisonAssertionNode<Source>;
+    readonly partialDeepEqual: PartialDeepEqualAssertionNode<Source>;
+    readonly stringContains: StringContainsAssertionNode<Source>;
+    readonly true: TrueAssertionNode<Source>;
+    readonly type: TypeAssertionNode<Source>;
+    readonly undefined: UndefinedAssertionNode<Source>;
 };
 
-export type RequireAssertionNode = RequireAssertionNodeByName[keyof RequireAssertionNodeByName];
+type HasPropertyNode<Source extends AssertionSource> = HasPropertyAssertionNode<Source>;
 
-export type AssertAssertionNode = AssertAssertionNodeByName[keyof AssertAssertionNodeByName];
+export type BuiltInAssertAssertionNode<Source extends AssertionSource = 'assert'> =
+    BuiltInAssertAssertionNodeByName<Source>[keyof BuiltInAssertAssertionNodeByName<Source>];
+
+export type ForeignAssertionResult =
+    | { readonly error?: never; readonly passed: true; }
+    | { readonly error: ThrownErrorRecord; readonly passed: false; };
+
+export type ForeignAssertionNode<Source extends AssertionSource = AssertionSource> = {
+    readonly check: 'foreign';
+    readonly label: string;
+    readonly message: string | null;
+    readonly result: ForeignAssertionResult;
+    readonly source: Source;
+    readonly summary: string;
+};
+
+export type CompositeAssertionChildNode<Source extends AssertionSource = AssertionSource> =
+    | BuiltInAssertAssertionNode<Source>
+    | ForeignAssertionNode<Source>;
+
+export type CompositeAssertionNode<Source extends AssertionSource = AssertionSource> = {
+    readonly actual: unknown;
+    readonly check: 'composite';
+    readonly children: NonEmptyReadonlyArray<CompositeAssertionChildNode<Source>>;
+    readonly expected: unknown;
+    readonly message: string | null;
+    readonly name: string;
+    readonly source: Source;
+    readonly summary: string;
+};
+
+export type RequireAssertionNode = RequireAssertionNodeByName[keyof RequireAssertionNodeByName] |
+    CompositeAssertionNode<'require'>;
+
+export type AssertAssertionNode = BuiltInAssertAssertionNode<'assert'> | CompositeAssertionNode<'assert'>;
 
 export type AssertionNode = AssertAssertionNode | RequireAssertionNode;
 
 export type AssertionResult = AssertAssertionNode | NonEmptyReadonlyArray<AssertAssertionNode>;
 
-const defaultSummaryByCheck: Readonly<Record<AssertionNode['check'], string>> = {
+const defaultSummaryByCheck: Readonly<Record<BuiltInAssertAssertionNode['check'], string>> = {
     ...booleanSummaryByCheck,
     ...collectionSummaryByCheck,
     ...equalitySummaryByCheck,
@@ -98,6 +133,20 @@ const defaultSummaryByCheck: Readonly<Record<AssertionNode['check'], string>> = 
     ...typeShapeSummaryByCheck
 };
 
-export function assertionSummary(assertion: AssertionNode): string {
+type SummarizedAssertionNode = AssertionNode | CompositeAssertionChildNode | CompositeAssertionNode<AssertionSource>;
+
+function isCompositeAssertion(assertion: SummarizedAssertionNode): assertion is CompositeAssertionNode<AssertionSource> {
+    return assertion.check === 'composite';
+}
+
+export function assertionSummary(assertion: SummarizedAssertionNode): string {
+    if (isCompositeAssertion(assertion)) {
+        return assertion.message ?? assertion.summary;
+    }
+
+    if (assertion.check === 'foreign') {
+        return assertion.message ?? assertion.summary;
+    }
+
     return assertion.message ?? defaultSummaryByCheck[assertion.check];
 }

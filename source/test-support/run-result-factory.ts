@@ -1,6 +1,7 @@
 import type { CaseId } from '../engine/identity.ts';
 import type {
     FailedCheck,
+    FailedLeafCheck,
     NonEmptyReadonlyArray,
     SourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
@@ -14,7 +15,7 @@ import type {
     TestOutcome
 } from '../engine/run-result.ts';
 
-type FailedCheckOverrides = Partial<FailedCheck> & {
+type FailedCheckOverrides = Partial<Omit<FailedLeafCheck, 'location'>> & {
     readonly location?: Partial<SourceLocation>;
 };
 
@@ -116,10 +117,11 @@ const defaultCaseId: CaseId = {
     suite: [ 'root' ]
 };
 
-const defaultFailedCheck: FailedCheck = {
+const defaultFailedCheck: FailedLeafCheck = {
     actual: null,
     expected: null,
     id: 'check',
+    kind: 'leaf',
     location: defaultLocation,
     path: [],
     source: 'assert',
@@ -135,19 +137,21 @@ const emptyOrphanedNodeOverrides: readonly OrphanedNodeOverrides[] = [];
 const emptyPerTestResultOverrides: readonly PerTestResultOverrides[] = [];
 const emptyRunnerErrorOverrides: readonly RunnerErrorOverrides[] = [];
 
-function buildFailedCheck(overrides: FailedCheckOverrides = {}): FailedCheck {
+function buildFailedCheck(overrides: FailedCheckOverrides = {}): FailedLeafCheck {
+    const { location, ...checkOverrides } = overrides;
+
     return {
         ...defaultFailedCheck,
-        ...overrides,
+        ...checkOverrides,
         location: {
             ...defaultLocation,
-            ...overrides.location
+            ...location
         }
     };
 }
 
 function buildFailedChecks(overrides: readonly FailedCheckOverrides[] | undefined): NonEmptyReadonlyArray<FailedCheck> {
-    const checks = (overrides ?? [ defaultFailedCheck ]).map(buildFailedCheck);
+    const checks = (overrides ?? [ {} ]).map(buildFailedCheck);
 
     if (checks.length === 0) {
         return [ defaultFailedCheck ];

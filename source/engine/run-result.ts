@@ -34,7 +34,15 @@ export type BodyErrorTestFailure = {
     readonly kind: 'body-error';
 };
 
-export type TestContractFailureCode = 'dead-builder-assertion' | 'invalid-plan' | 'no-assertions' | 'plan-mismatch';
+export type TestContractFailureCode =
+    | 'dead-builder-assertion'
+    | 'invalid-assertion-reference'
+    | 'invalid-composite-result'
+    | 'invalid-plan'
+    | 'invalid-require-reference'
+    | 'no-assertions'
+    | 'pending-async-assertion'
+    | 'plan-mismatch';
 
 export type TestContractFailure = {
     readonly actual: unknown;

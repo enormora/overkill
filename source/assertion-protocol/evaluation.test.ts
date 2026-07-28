@@ -261,6 +261,7 @@ registerTest('evaluateAssertion() preserves custom messages and assertion source
         actual: 1,
         expected: 2,
         id: '7',
+        kind: 'leaf',
         location: { column: null, file: '', line: null },
         path: [],
         source: 'assert',

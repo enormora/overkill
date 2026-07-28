@@ -103,8 +103,8 @@ families, the preferred pattern is a Playwright-style **test facade**:
 
 - `createTestFacade(...)` in project code composes one typed authoring
   surface
-- any custom assertion registration happens in the engine-owned assertion
-  layer below that facade, not in `@overkill-dev/test` itself
+- custom assertion vocabulary is normally imported as assertion reference
+  values, not registered into that facade
 - the project re-exports that facade through a stable alias such as
   `#tests/micro` or `#tests/integration`
 - test files import from that stable alias rather than from varying
@@ -116,7 +116,7 @@ magic, or noisy per-assertion local opt-in.
 The facade surface itself should stay narrow and settled:
 
 - `createTestFacade(...)` configures authoring ergonomics only; it should
-  not own assertion registration
+  not own assertion vocabulary registration
 - the returned facade re-exports the core authoring helpers:
   `test`, `suite`, `table`, `defineMacro`, and `runIfMain`
 - higher-layer helpers such as `property`, `browserBenchmark`, or
@@ -137,7 +137,7 @@ The first-party assertion layer should live in `@overkill-dev/engine`, not in
 - richer mismatch reporting
 - serializer hooks for baseline systems
 - built-in assertion vocabulary
-- test-facade-level registration of domain-specific assertion vocabularies
+- imported assertion references for domain-specific assertion vocabularies
   such as `Result` / `Maybe`
 
 Overkill should not expose a broad “mount any third-party matcher library
@@ -145,12 +145,12 @@ into `case.assert`” surface. The extension boundary should stay narrower:
 
 - `@overkill-dev/engine` owns the assertion model, built-ins, counting rules,
   public low-level `AssertionNode` protocol, injected `case.assert` /
-  `case.require`, and assertion extension hooks
+  `case.require`, and assertion reference execution
 - `@overkill-dev/assert` owns reusable helpers for defining assertion
   extensions, such as composite-assertion builders and foreign-assertion
   bridges
 - `@overkill-dev/test` may provide a higher-level authoring facade, but it does
-  not own assertion semantics or registration
+  not own assertion semantics or custom assertion availability
 - adapter packages may wrap foreign throwable-style assertion libraries
   through the normalized bridge described in
   [Assertions And Results](../authoring/assertions-and-results.md)
@@ -537,7 +537,7 @@ or extend the contract but do not redefine it.
 | `TestPlan`                                                        | `@overkill-dev/engine`                                                 | Executable in-process case plan consumed by `execute(testPlan)`.                                                                                               |
 | `AssertionNode`, `TestFailure`, `FailedCheck`, `Diff`             | `@overkill-dev/engine`                                                 | Engine owns assertion-node evaluation, failure schema, and the first-party assertion behavior on top.                                                          |
 | Injected `assert` / `require` builder API                         | `@overkill-dev/engine`                                                 | The engine owns the injected assertion surface directly.                                                                                                       |
-| Assertion extension helpers (`defineCompositeAssertion`, bridges) | `@overkill-dev/assert`                                                 | Reusable extension helpers plug into the engine-owned assertion context.                                                                                       |
+| Assertion reference helpers (`defineCompositeAssertion`, bridges) | `@overkill-dev/engine` now, later possibly `@overkill-dev/assert`       | Reusable helpers create imported assertion reference values.                                                                                                   |
 | Test doubles (`testDouble`, `when`, helpers)                      | `@overkill-dev/doubles`                                                | See [Doubles](../authoring/doubles.md).                                                                                                                        |
 | Typed runtime / resource composition                              | `@overkill-dev/resources`                                              | Lifecycle scopes, execution requirements.                                                                                                                      |
 | Discovery, filtering, runner profiles                             | `@overkill-dev/run`                                                    | Reads configuration, freezes `RunFacts`, and produces `ResolvedRun`.                                                                                           |
@@ -557,7 +557,7 @@ or extend the contract but do not redefine it.
 | Metadata propagation rules                                        | `@overkill-dev/engine`                                                 | Set merge, array replace-flag, capabilities intersect.                                                                                                         |
 | Configuration loading                                             | `@overkill-dev/run`                                                    | Reads root `overkill.config.ts`; engine has no configuration.                                                                                                  |
 | Test facade creation                                              | project code + `@overkill-dev/test`                                    | `@overkill-dev/test` owns facade creation for authoring ergonomics only.                                                                                       |
-| Assertion extension registration                                  | `@overkill-dev/engine`                                                 | Engine owns assertion registration and injection into the test context.                                                                                        |
+| Assertion reference execution                                     | `@overkill-dev/engine`                                                 | Engine owns callable assertion references, counting, `require` behavior, and result normalization.                                                             |
 | CLI entry, terminal capability detection                          | `@overkill-dev/run`                                                    | The first-party CLI remains part of `@overkill-dev/run`.                                                                                                       |
 | Test debug mode artifact                                          | `@overkill-dev/run`                                                    | Activation, storage, retention; see [Test Debug Mode](../authoring/debug-mode.md).                                                                             |
 | Reporter packages (`@overkill-dev/reporter-line`, …)              | `@overkill-dev/reporter-*`                                             | Stable contract from `@overkill-dev/engine`; presentation owned per-package.                                                                                   |

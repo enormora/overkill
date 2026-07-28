@@ -165,32 +165,23 @@ wiring, benchmark metric collectors, baseline policy, or type-test
 adapters. The detailed package-boundary matrix lives in
 [Package Architecture](./package-architecture.md).
 
-## Assertion Registration Belongs To The Engine Assertion Context
+## Custom Assertions Are Lexical Imports
 
-Custom assertion registration should not live in root runner configuration. It
-changes what the injected engine assertion context exposes, so it belongs to
-engine-level assertion setup instead.
-
-The root configuration still owns orchestration. The engine-owned assertion
-context owns what `case.assert` and `case.require` expose.
-
-Example direction:
+Custom assertions should not live in root runner configuration. Assertion
+references are ordinary imported values used inside tests:
 
 ```ts
-import { defineCompositeAssertion } from '@overkill-dev/assert';
-import type { TestDouble } from '@overkill-dev/doubles';
+import { calledOnceWith } from '@overkill-dev/doubles';
 
-const calledOnceWith = defineCompositeAssertion(
-    'calledOnceWith',
-    <TArg>(check, sut: TestDouble<[TArg], unknown>, expected: TArg) => {
-        return check.group([ check.calledOnce(sut), check.calledWith(sut, expected) ]);
-    }
-);
+test('publishes once', (case) => {
+    case.assert(calledOnceWith, harness.publish, expected);
+    return case.assert.done();
+});
 ```
 
-That resulting assertion surface may then be re-exposed by higher-level
-authoring layers, but registration itself does not belong to runner config
-or to `@overkill-dev/test`.
+The root configuration still owns orchestration. The engine owns assertion
+recording, counting, `require` short-circuiting, and result normalization.
+Custom assertion availability is lexical, not configuration-driven.
 
 ## Configuration Versus Plugins
 
@@ -233,6 +224,4 @@ magical for configuration too.
 - higher layers may contribute configuration domains even when the runner
   owns the top-level loading step
 - the surface should stay small and orchestration-focused
-- custom assertion registration belongs to the engine-owned assertion
-  context, not root
-  configuration
+- custom assertion references are imported values, not root configuration

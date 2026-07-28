@@ -281,6 +281,10 @@ function formatValueLines(label: 'actual' | 'expected', value: unknown): readonl
 }
 
 function formatNonStringCheckDetails(check: FailedCheck): readonly string[] {
+    if (check.kind === 'foreign') {
+        return [];
+    }
+
     const shallowHint = formatShallowHint(check.expected, check.actual);
 
     return [
@@ -293,14 +297,22 @@ function formatNonStringCheckDetails(check: FailedCheck): readonly string[] {
 function formatFailedCheck(check: FailedCheck): readonly string[] {
     const path = formatPath(check.path);
     const location = formatLocation(check.location);
+    const detailLines = check.kind === 'foreign'
+        ? [
+            `foreign assertion: ${check.label}`,
+            `${check.error.name}: ${check.error.message}`
+        ]
+        : [
+            ...typeof check.expected === 'string' && typeof check.actual === 'string'
+                ? formatStringComparison(check.expected, check.actual)
+                : formatNonStringCheckDetails(check)
+        ];
 
     return [
         check.summary,
         ...path.length === 0 ? [] : [ `path: ${path}` ],
         ...location === null ? [] : [ `location: ${location}` ],
-        ...typeof check.expected === 'string' && typeof check.actual === 'string'
-            ? formatStringComparison(check.expected, check.actual)
-            : formatNonStringCheckDetails(check)
+        ...detailLines
     ];
 }
 

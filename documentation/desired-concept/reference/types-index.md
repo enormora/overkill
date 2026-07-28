@@ -166,22 +166,49 @@ type TestFailure =
     }
     | {
         readonly actual: unknown;
-        readonly code: 'invalid-plan' | 'no-assertions' | 'plan-mismatch';
+        readonly code:
+            | 'invalid-assertion-reference'
+            | 'invalid-composite-result'
+            | 'invalid-plan'
+            | 'invalid-require-reference'
+            | 'no-assertions'
+            | 'pending-async-assertion'
+            | 'plan-mismatch';
         readonly expected: string;
         readonly kind: 'test-contract';
         readonly summary: string;
     };
 
-type FailedCheck = {
+type FailedCheckBase = {
     readonly id: string;
-    readonly summary: string;
-    readonly expected: unknown;
-    readonly actual: unknown;
+    readonly location: SourceLocation;
     readonly path: ReadonlyArray<string | number>;
     readonly source: 'assert' | 'require';
-    readonly location: SourceLocation;
-    readonly diff?: Diff;
+    readonly summary: string;
 };
+
+type FailedCheck =
+    | (FailedCheckBase & {
+        readonly actual: unknown;
+        readonly expected: unknown;
+        readonly kind: 'leaf';
+    })
+    | (FailedCheckBase & {
+        readonly actual: unknown;
+        readonly children: NonEmptyReadonlyArray<FailedCheck>;
+        readonly expected: unknown;
+        readonly kind: 'composite';
+    })
+    | (FailedCheckBase & {
+        readonly error: {
+            readonly message: string;
+            readonly name: string;
+            readonly stack: string | null;
+            readonly thrown: unknown;
+        };
+        readonly kind: 'foreign';
+        readonly label: string;
+    });
 
 type Diff =
     | { kind: 'value'; expected: SerializedValue; actual: SerializedValue; }
@@ -265,10 +292,27 @@ type RequireAssertionNode = {
 type AssertionNode = AssertAssertionNode | RequireAssertionNode;
 type AssertionResult = AssertAssertionNode | NonEmptyReadonlyArray<AssertAssertionNode>;
 
+type CompositeAssertionReference<Arguments extends readonly unknown[]> = unknown;
+type NarrowingCompositeAssertionReference<Actual, Narrowed extends Actual, Arguments extends readonly unknown[]> = unknown;
+
 type AssertAssertionFacade = {
+    <Reference extends CompositeAssertionReference<readonly unknown[]>>(
+        reference: Reference,
+        ...arguments_: readonly unknown[]
+    ): void | Promise<void>;
     readonly annotated: (message: string) => AssertAssertionFacade;
     readonly equal: (actual: unknown, expected: unknown) => void;
     readonly true: (actual: unknown) => void;
+};
+
+type RequireAssertionFacade = {
+    <Actual, Narrowed extends Actual, Arguments extends readonly unknown[]>(
+        reference: NarrowingCompositeAssertionReference<Actual, Narrowed, Arguments>,
+        actual: Actual,
+        ...arguments_: Arguments
+    ): asserts actual is Narrowed;
+    readonly defined: <Value>(actual: Value) => asserts actual is NonNullable<Value>;
+    readonly string: (actual: unknown) => asserts actual is string;
 };
 
 type CaseAssertContext = AssertAssertionFacade & {

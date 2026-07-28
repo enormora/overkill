@@ -59,10 +59,28 @@ export type {
 } from '../../engine/reporter.ts';
 export { validateReporterSinks } from '../../engine/reporter.ts';
 export type { AssertAssertionFacade, RequireAssertionFacade } from '../../engine/assertion-facade.ts';
+export {
+    defineCompositeAssertion,
+    defineNarrowingCompositeAssertion
+} from '../../assertion-protocol/assertion-reference.ts';
+export type {
+    AssertionReference,
+    CompositeAssertionDefinition,
+    CompositeAssertionGroup,
+    CompositeAssertionReference,
+    CompositeAssertionReturn,
+    CompositeAssertionSummaryContext,
+    CompositeCheckBuilder,
+    NarrowingCompositeAssertionDefinition,
+    NarrowingCompositeAssertionReference
+} from '../../assertion-protocol/assertion-reference.ts';
 export type {
     AssertionOptions,
     AssertionSource,
     FailedCheck,
+    FailedCompositeCheck,
+    FailedForeignCheck,
+    FailedLeafCheck,
     InstanceConstructor,
     NonEmptyReadonlyArray,
     SourceLocation
@@ -125,6 +143,10 @@ export type {
     AssertAssertionNode,
     AssertionNode,
     AssertionResult,
+    CompositeAssertionChildNode,
+    CompositeAssertionNode,
+    ForeignAssertionNode,
+    ForeignAssertionResult,
     RequireAssertionNode
 } from '../../assertion-protocol/assertion-node.ts';
 export type {

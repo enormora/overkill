@@ -12,6 +12,8 @@ Top-level API:
 - `createEngine()`
 - `formatCaseId(caseId)`
 - `validateReporterSinks(reporters)`
+- `defineCompositeAssertion(options)`
+- `defineNarrowingCompositeAssertion(options)`
 - `CaseId`, `TestId`, `TestPlan`, `ExecuteOptions`, `NonEmptyReadonlyArray`
 - `Reporter`, `ReporterEvent`, `RealTimeReporter`, `FinalResultReporter`, `RunFacts`, `SinkDeclaration`
 - `RunResult`, `TestOutcome`, `PassOutcome`, `FailOutcome`, `SkipOutcome`, `InconclusiveOutcome`
@@ -46,12 +48,22 @@ Assertion bodies:
 - `case.assert.*` records non-gating assertion nodes and continues.
 - `case.require.*` records narrow gating assertion nodes and short-circuits
   when one fails.
+- Custom assertions are imported assertion reference values:
+  `case.assert(resultOk, result)`. Narrowing references may also be used with
+  `case.require(resultOk, result)`.
+- `defineCompositeAssertion(...)` creates assert-only references.
+  `defineNarrowingCompositeAssertion(...)` creates sync references accepted by
+  both `case.assert` and `case.require`.
+- Async custom assertions must be awaited before `case.assert.done()`.
 - `case.assert.annotated(message).*` and `case.require.annotated(message).*`
   record message-scoped checks without positional message overloads.
+- `case.assert.annotated(message)(reference, ...)` annotates a custom
+  assertion boundary.
 - `case.assert.done()` is builder-only completion. It returns the non-empty
   assertion list for the engine to evaluate, and is not part of
   `AssertAssertionFacade`.
 - `case.plan(count)` must be the first test-body call and must declare a
   positive integer assertion count.
-- `FailedCheck.source` reports whether a failed check came from `assert` or
-  `require`.
+- `FailedCheck` is discriminated by `kind`. Leaf checks carry value
+  comparison data, composite checks carry child diagnostics, and foreign
+  checks carry normalized thrown-error data.

@@ -1,14 +1,15 @@
 import assert from 'node:assert/strict';
-import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
+import type { FailedLeafCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import type { TestFailure } from '../engine/run-result.ts';
 import { registerTest } from '../test-support/register-test.ts';
 import { formatFailure } from './line-failure-rendering.ts';
 
-function failedCheck(overrides: Partial<FailedCheck>): FailedCheck {
+function failedCheck(overrides: Partial<FailedLeafCheck>): FailedLeafCheck {
     return {
         actual: 1,
         expected: 2,
         id: '1',
+        kind: 'leaf',
         location: { column: null, file: '', line: null },
         path: [],
         source: 'assert',
@@ -24,6 +25,7 @@ registerTest('line failure formatter renders multiple check labels and scalar va
                 actual: undefined,
                 expected: null,
                 id: '1',
+                kind: 'leaf',
                 location: { column: null, file: 'source/users.test.ts', line: null },
                 path: [ 0, 'display name' ],
                 source: 'assert',
@@ -33,6 +35,7 @@ registerTest('line failure formatter renders multiple check labels and scalar va
                 actual: Symbol.for('actual'),
                 expected: 1n,
                 id: '2',
+                kind: 'leaf',
                 location: { column: null, file: 'source/users.test.ts', line: 12 },
                 path: [],
                 source: 'assert',
@@ -76,6 +79,41 @@ registerTest('line failure formatter renders collection shallow hints', function
     assert.ok(lines.includes('reference differs; shallow contents match'));
     assert.ok(lines.includes('reference differs; shallow differences: missing missing, extra extra'));
     assert.ok(lines.includes('reference differs; value types differ'));
+});
+
+registerTest('line failure formatter renders composite parents without child details', function () {
+    const lines = formatFailure({
+        checks: [
+            {
+                actual: { ok: false },
+                children: [
+                    failedCheck({
+                        actual: false,
+                        expected: true,
+                        id: '1.1',
+                        summary: 'child detail'
+                    })
+                ],
+                expected: 'resultOk',
+                id: '1',
+                kind: 'composite',
+                location: { column: null, file: '', line: null },
+                path: [],
+                source: 'assert',
+                summary: 'Expected resultOk assertion to pass.'
+            }
+        ],
+        kind: 'assertion'
+    });
+
+    assert.deepStrictEqual(lines, [
+        'Expected resultOk assertion to pass.',
+        'expected: "resultOk"',
+        'actual:',
+        '  {',
+        '    ok: false',
+        '  }'
+    ]);
 });
 
 registerTest('line failure formatter renders equal string diagnostics without normalization note', function () {

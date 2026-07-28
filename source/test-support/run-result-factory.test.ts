@@ -7,6 +7,7 @@ function defaultFailure(): unknown {
         actual: null,
         expected: null,
         id: 'check',
+        kind: 'leaf',
         location: {
             column: null,
             file: 'source/example.test.ts',
