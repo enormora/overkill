@@ -139,6 +139,8 @@ type NonEmptyReadonlyArray<Item> = readonly [Item, ...(readonly Item[])];
 
 type TestOutcome = Pass | Fail | Skip | Inconclusive;
 
+type TestVerdict = TestOutcome['kind'] | 'crashed' | 'resource-exhausted';
+
 type Pass = { kind: 'pass'; };
 
 type Fail = {
@@ -228,7 +230,7 @@ type Hunk = {
     readonly added: ReadonlyArray<string>;
 };
 
-type SerializedValue = unknown; // post-serializer JSON-compatible value
+type SerializedValue = unknown; // bounded JSON-compatible value, possibly carrying truncation metadata
 
 type SourceLocation = {
     readonly file: string;
@@ -366,8 +368,10 @@ type RunRequest = {
     };
     readonly coverage?: boolean;
     readonly capture?: 'buffered' | 'live';
+    readonly resourceBudgets: ResourceBudgetOverrides | null;
     readonly seed?: bigint;
     readonly order?: 'seeded' | 'lexical';
+    readonly verbose: boolean;
     readonly debug?: {
         readonly mode: 'off' | 'all' | 'selected';
         readonly selectors?: ReadonlyArray<string>;
@@ -396,6 +400,7 @@ type RunFacts = {
     readonly executionStrategy: string; // see runtime-behavior.md
     readonly capabilityProfile: string;
     readonly baselineUpdateMode: 'none' | 'update' | 'apply' | 'bootstrap' | 'diff';
+    readonly resourceBudgets: ResolvedResourceBudgets;
     readonly metadataResolved: ReadonlyMap<string, Metadata>;
     readonly loaderConfig: { stripMode: 'strip-only' | 'transform'; sourceMaps: boolean; };
     readonly versions: { engine: string; node: string; packages: ReadonlyMap<string, string>; };
@@ -439,8 +444,9 @@ type RunResult = {
         failed: number;
         skipped: number;
         inconclusive: number;
+        resourceExhausted: number;
     };
-    readonly perTest: ReadonlyArray<{ id: CaseId; outcome: TestOutcome; verdict: TestOutcome['kind']; }>;
+    readonly perTest: ReadonlyArray<{ id: CaseId; outcome: TestOutcome | null; verdict: TestVerdict; }>;
     readonly bySuite: Record<string, { discovered: number; planned: number; executed: number; }>;
     readonly orphans: ReadonlyArray<{ file: string | null; name: string; kind: 'test' | 'suite' | 'table'; }>;
     readonly runnerErrors: ReadonlyArray<RunnerError>;
@@ -456,10 +462,30 @@ type RunnerError = {
         | 'permission'
         | 'loader'
         | 'reporter'
-        | 'attribution-drift';
+        | 'attribution-drift'
+        | 'resource-exhaustion';
     readonly attributedTo: CaseId | null; // null when run-level
     readonly message: string;
     readonly cause?: unknown;
+};
+```
+
+```ts
+type ResourceBudgetOverrides = {
+    readonly v8HeapBytes: number | null;
+    readonly rssBytes: number | null;
+    readonly residentGrowthBytesPerSecond: number | null;
+    readonly activeResourceCount: number | null;
+    readonly enforcement: 'diagnostic' | 'supervised' | null;
+};
+
+type ResolvedResourceBudgets = {
+    readonly v8HeapBytes: number | null;
+    readonly rssBytes: number | null;
+    readonly residentGrowthBytesPerSecond: number | null;
+    readonly activeResourceCount: number | null;
+    readonly enforcement: 'diagnostic' | 'supervised';
+    readonly sampleIntervalMs: number;
 };
 ```
 
@@ -536,6 +562,22 @@ type WorkerCrash = {
     readonly activeCase?: CaseId;
     readonly nodeVersion?: string;
     readonly nativeAddons?: ReadonlyArray<string>;
+};
+
+type ResourceExhaustion = {
+    readonly timestamp: string; // ISO 8601
+    readonly metric:
+        | 'v8HeapBytes'
+        | 'rssBytes'
+        | 'residentGrowthBytesPerSecond'
+        | 'activeResourceCount'
+        | 'libuvHandleCount';
+    readonly budget: number;
+    readonly observed: number;
+    readonly enforcement: 'v8-heap-limit' | 'sampled' | 'post-test-diagnostic';
+    readonly sampleIntervalMs: number;
+    readonly workerId: string;
+    readonly activeCase: CaseId;
 };
 
 // see runtime-behavior.md § Test Debug Mode

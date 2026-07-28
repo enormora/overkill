@@ -1272,12 +1272,28 @@ richer comparison (visual diff for screenshots, percentile diff for
 performance) provide their own adapter-specific representations
 above this type — see [Baselines And Snapshots](./baselines-and-snapshots.md).
 
-Reporters render diffs from this structured shape. Truncation, colorization,
-and ANSI rendering are reporter concerns; the data stays raw.
+The engine bounds value serialization before reporters receive the structured
+shape. Assertion failure messages are built from user-controlled values, and a
+failing deep-equality assertion must not be able to allocate without bound while
+constructing diagnostic output.
+
+Default serializer budgets:
+
+- maximum depth: 8
+- maximum visited nodes per value: 2,000
+- maximum object entries per object: 100
+- maximum array entries per array: 100
+- maximum string bytes per string: 8 KiB
+- maximum serialized bytes per assertion operand: 64 KiB
+
+When a budget is hit, the serialized value includes an explicit truncation
+marker with the budget that was reached. Reporters render that marker plainly.
+Machine-readable reporters receive the same bounded structured data; they do
+not get an unbounded private copy.
 
 Default truncation: 100 lines per diff or 8 KiB per value, whichever is
-hit first, with explicit truncation markers in the rendered output. Full
-data preserved in the JSON event stream regardless of terminal truncation.
+hit first, with explicit truncation markers in the rendered output. This
+reporter cap is in addition to the engine serializer cap above.
 
 ## Settled Direction
 
@@ -1300,7 +1316,8 @@ For the product concept:
 - optional global assertion budgets are allowed as a centrally configured
   policy; they count assertion boundaries, so composite assertions and
   `case.forall(...)` each count as 1
-- diff data is structured, not stack-mined
+- diff data is structured, not stack-mined, and assertion value formatting is
+  resource-bounded before reporter delivery
 - ordinary async/app errors remain distinct from assertion failures
 - `require` exists because narrowing and straight-line ergonomics matter
 - builder control flow is explicit: `assert` records and continues;

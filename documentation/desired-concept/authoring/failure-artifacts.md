@@ -161,8 +161,10 @@ Size caps:
 - captured stdout/stderr per test: 1 MiB by default, truncated with
   marker
 - trace/event timeline per test: 10 MiB by default
-- structured diff payload: unbounded in JSON output, capped at 100
-  lines / 8 KiB in human reporter output
+- structured assertion value serialization: bounded by engine policy before
+  reporter delivery
+- structured diff rendering: capped at 100 lines / 8 KiB in human reporter
+  output
 
 All caps are configurable per profile.
 
@@ -282,6 +284,41 @@ When a worker process dies mid-test (segfault, OOM, native-addon crash):
 
 See [Runtime Behavior § Process Crash Handling](../architecture/runtime-behavior.md#process-crash-handling) for the run-level
 policy (replacement workers, crash-budget abort).
+
+## Resource Exhaustion Artifacts
+
+When a supervised worker exceeds an enforced resource budget:
+
+- the test is recorded with verdict `resource-exhausted`
+- a runner error with subtype `resource-exhaustion` is attributed to the
+  active test
+- captured output and the latest resource samples are preserved
+- a `ResourceExhaustion` artifact is attached
+
+```ts
+type ResourceExhaustion = {
+    readonly timestamp: string;
+    readonly metric:
+        | 'v8HeapBytes'
+        | 'rssBytes'
+        | 'residentGrowthBytesPerSecond'
+        | 'activeResourceCount'
+        | 'libuvHandleCount';
+    readonly budget: number;
+    readonly observed: number;
+    readonly enforcement: 'v8-heap-limit' | 'sampled' | 'post-test-diagnostic';
+    readonly sampleIntervalMs: number;
+    readonly workerId: string;
+    readonly activeCase: CaseId;
+};
+```
+
+The artifact must be legible without reading logs. It records the budget that
+was configured, the observed value that breached it, and whether the value came
+from a V8 heap ceiling, sampled Node telemetry, or completion-time diagnostics.
+
+See [Runtime Behavior § Resource Budgets](../architecture/runtime-behavior.md#resource-budgets) for
+the enforcement model.
 
 ## Sources
 

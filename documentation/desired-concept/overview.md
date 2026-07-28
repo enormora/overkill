@@ -284,6 +284,8 @@ The concept currently assumes:
 - ESM-first package shape
 - TypeScript focus rather than general JavaScript coverage
 - single-process concurrent execution by default for ordinary microtests
+- Node-first resource budgeting, with hard attribution requiring supervised
+  process boundaries
 - seeded randomized order by default, with lexical order as an explicit
   opt-out
 - stable identity and selection metadata as first-class concepts

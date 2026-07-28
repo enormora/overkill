@@ -51,6 +51,8 @@ Configuration should mainly cover orchestration and package wiring:
 - baseline policy (paths, write directory, explicit update behavior,
   no environment-based write gate)
 - coverage policy (formats, thresholds, include/exclude, output paths)
+- resource-budget policy (Node-first heap, RSS, resident-growth, and
+  active-resource limits by profile)
 - optional global assertion budget policy
 - mutation integration
 - type-test integration
@@ -115,10 +117,14 @@ So, for example:
 
 - `--profile <name>` chooses which runner profile to use for this run
 - `--coverage` chooses whether this run collects coverage
+- `--resource-budget <name=value>` chooses per-run resource-budget overrides
 - `run({ profile: 'microtest', coverage: true })` should express the same
   intent directly through `@overkill-dev/run`
 - an optional global assertion budget policy lives in configuration because
   it is centrally enforced suite policy rather than per-test authoring
+- resource-budget defaults live in configuration because they describe suite
+  policy; per-run overrides are allowed for intentionally heavy runs and must
+  be visible in failure messages
 - `coverage.formats`, `coverage.thresholds`, `coverage.include`, and
   `coverage.outputDir` live in configuration because they describe how
   coverage behaves once activated

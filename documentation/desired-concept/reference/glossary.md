@@ -113,6 +113,8 @@ Source: [Assertions And Results § Protocol Layer](../authoring/assertions-and-r
 The reporter-facing category for a test run. Verdicts are derived by
 orchestration from `TestOutcome` plus runner/error context. One additional
 common verdict is `crashed`, where the engine never produced an outcome.
+Another is `resource-exhausted`, where an enforced resource budget was
+breached while the test was active.
 
 Source: [Assertions And Results § Protocol Layer](../authoring/assertions-and-results.md#protocol-layer-structured-outcomes), [Failure Artifacts](../authoring/failure-artifacts.md),
 [Glossary § Test Outcome](#test-outcome).
@@ -347,6 +349,23 @@ The maximum number of worker process crashes Overkill tolerates in one run
 before aborting with a runner error.
 
 Source: [Runtime Behavior § Process Crash Handling](../architecture/runtime-behavior.md#process-crash-handling).
+
+## Resource Budget
+
+A per-profile ceiling for runtime resources such as V8 heap, RSS, resident
+growth, or active resource count. Node-first resource budgets are enforced in
+supervised process-boundary profiles and are diagnostic in single-process
+microtests.
+
+Source: [Runtime Behavior § Resource Budgets](../architecture/runtime-behavior.md#resource-budgets).
+
+## Resource Exhaustion
+
+A distinct test verdict and runner-error subtype used when an active test
+exceeds an enforced resource budget. It is not an assertion failure and not a
+timeout.
+
+Source: [Runtime Behavior § Resource Budgets](../architecture/runtime-behavior.md#resource-budgets), [Failure Artifacts § Resource Exhaustion Artifacts](../authoring/failure-artifacts.md#resource-exhaustion-artifacts).
 
 ## Attribution Drift
 
