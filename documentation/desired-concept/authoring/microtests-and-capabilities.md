@@ -151,6 +151,8 @@ Some writes are necessary for the runner itself to function. These are
 narrow, runner-owned, and explicit in configuration and diagnostics:
 
 - coverage output directory (when coverage is enabled)
+- diagnostic report directory (when supervised resource budgets enable
+  Node fatal reports)
 
 The runner enforces that these directories are the only paths writable
 under microtest profile, and surfaces unexpected writes as diagnostics.
@@ -220,9 +222,11 @@ Sources:
 Standard public runner profiles (see [Glossary](../reference/glossary.md)):
 
 - `microtest` — default microtest profile; capability-restricted,
-  concurrent-in-process, seeded randomized order
+  concurrent-in-process, seeded randomized order; resource budgets are
+  diagnostic except for bounded assertion formatting
 - `microtest-supervised` — same microtest boundary, but with subprocess
-  supervision for crash-only recovery
+  supervision for crash-only recovery and enforceable resource-budget
+  attribution
 - `microtest-with-coverage` — microtest profile plus the narrow coverage
   write exception; runs single-threaded when coverage is active (see
   [Coverage](../architecture/coverage.md))
@@ -265,14 +269,23 @@ it runs in-process. If Overkill wants force-quit behavior, that is
 attached to execution modes that already use a worker or subprocess
 boundary.
 
+The same boundary rule applies to resource exhaustion. The default
+single-process microtest profile can keep assertion formatting bounded and
+report post-test or between-tick resource diagnostics, but it cannot guarantee
+that the runner will survive a synchronous allocation that kills the process.
+Enforced resource budgets require the supervised microtest profile or another
+owned process boundary.
+
 Concept direction:
 
 - in-process microtests: allow soft timeouts and optional resource-leak
-  diagnostics, but do not promise hard recovery from CPU-bound hangs
+  diagnostics, but do not promise hard recovery from CPU-bound hangs or
+  synchronous resource exhaustion
 - supervised microtests: allow crash-only supervision, where a watchdog
-  may kill the disposable test process or worker if it wedges. _This
-  requires subprocess isolation_, since worker threads inherit the
-  parent's permissions and can be CPU-stuck without parent recourse.
+  may kill the disposable test process or worker if it wedges or exceeds
+  a resource budget. _This requires subprocess isolation_, since worker
+  threads inherit the parent's permissions and can be CPU-stuck without
+  parent recourse.
 - isolated integration, browser, or benchmark modes: allow a supervisor
   to terminate a stuck worker or process
 

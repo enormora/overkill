@@ -88,6 +88,7 @@ type RunSummary = {
     readonly failed: number;
     readonly skipped: number;
     readonly inconclusive: number;
+    readonly resourceExhausted: number;
 };
 
 type RunResult = {
@@ -115,9 +116,12 @@ and ordering have selected this run's case set. Until those narrowing
 features exist, `planned` is equal to `discovered`.
 
 `executed` at run scope is intentionally not stored as an explicit
-field. It is derivable as `passed + failed + skipped + inconclusive + crashed` (where `crashed` is counted from `runnerErrors` with subtype
-`crash`). The existing summary has no denormalised fields; run counts
-preserve that pattern.
+field. It is derivable as
+`passed + failed + skipped + inconclusive + resourceExhausted + crashed`
+(where `resourceExhausted` is counted from verdict `resource-exhausted`
+and `crashed` is counted from `runnerErrors` with subtype `crash`). The
+existing summary has no denormalised fields; run counts preserve that
+pattern.
 
 ### `summary.defined`
 
@@ -175,15 +179,15 @@ exist only at run scope.
 ### Definition Of "Executed"
 
 A case is counted as `executed` when it received any `TestOutcome`
-(pass, fail, skip, inconclusive) or crashed mid-run. Filtered-out and
-sharded-out cases do not count because they never entered the final
-`TestPlan`.
+(pass, fail, skip, inconclusive), crashed mid-run, or exhausted a resource
+budget after its body started. Filtered-out and sharded-out cases do not
+count because they never entered the final `TestPlan`.
 
 Skipped tests count as executed: the runner processed them and
-recorded a skip verdict. Crashed cases count as executed: the runner
-started a body even if the worker died before completion. The rule is
-deliberately simple — "the runner got to it, in any way" — and matches
-the user question the counts are meant to answer.
+recorded a skip verdict. Crashed and resource-exhausted cases count as
+executed: the runner started a body even if the worker died or was killed
+before completion. The rule is deliberately simple: "the runner got to it,
+in any way." That matches the user question the counts are meant to answer.
 
 ### Definition Of "Defined"
 

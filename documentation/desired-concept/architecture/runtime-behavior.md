@@ -4,8 +4,9 @@
 
 This document fills in the runtime-shaped concerns most existing concept
 documentation names only in passing: console capture, exit codes, signal handling,
-unhandled rejections, leaked resources, parallelism semantics, sharding,
-monorepo discovery, terminal capability detection, watch-mode targeting.
+unhandled rejections, leaked resources, resource budgets, parallelism semantics,
+sharding, monorepo discovery, terminal capability detection, watch-mode
+targeting.
 
 It is meant to be normative rather than aspirational. Each section states
 the default and names the override surface where one exists instead of
@@ -79,6 +80,7 @@ Default exit codes for the `overkill` CLI:
 | At least one runner error            | 2         |
 | Configuration / argument error       | 3         |
 | No tests collected                   | 4         |
+| At least one resource exhaustion     | 5         |
 | Runner crashed (internal bug)        | 70        |
 
 Test code calling `process.exit(code)` is treated as a runner-level error
@@ -176,6 +178,119 @@ The crash report includes the captured output, the worker's exit signal,
 core-dump pointer where available, and the test identity that was active.
 This complements [Microtests And Capabilities](../authoring/microtests-and-capabilities.md)'s discussion of crash-
 only supervision.
+
+## Resource Budgets
+
+Resource budgets prevent one test from consuming enough memory or runtime
+resources to kill the host before the runner can name the culprit. They are
+part of runtime policy, not benchmark policy: a benchmark asks "how much did
+this workload use?", while a resource budget asks "did this test exceed the
+ceiling for this profile?"
+
+Overkill uses Node runtime APIs first. The default implementation should not
+shell out to `ps`, read `/proc`, install native addons, or require cgroup
+management. Useful built-ins include:
+
+- `node:child_process` for disposable supervised workers
+- `process.memoryUsage.rss()` for cheap resident-memory samples
+- `process.resourceUsage()` for completion-time resource usage
+- `process.constrainedMemory()` to derive defaults from host or container
+  constraints when Node can see them
+- `process.getActiveResourcesInfo()` for active-resource diagnostics
+- `node:v8` heap statistics for JavaScript heap context
+- `process.report` and `--report-on-fatalerror` for fatal diagnostic reports
+- V8 memory flags such as `--max-old-space-size` for child process heap
+  ceilings
+
+### Metrics
+
+First-party resource budgets should start with metrics Node can observe or
+influence portably:
+
+- `v8HeapBytes` checked by a child process heap ceiling and telemetry
+- `rssBytes` sampled with `process.memoryUsage.rss()` while the worker event
+  loop can run
+- `residentGrowthBytesPerSecond` derived from consecutive RSS samples
+- `activeResourceCount` and `activeResourceTypes` from
+  `process.getActiveResourcesInfo()`
+- `libuvHandleCount` from diagnostic reports when available
+
+Avoid calling any of these `allocationRate`. With Node APIs alone, Overkill
+can measure resident growth and heap pressure, not total allocator churn.
+
+Open file descriptor budgets are Node-first but not universal. In strict
+microtests, filesystem writes and most accidental file access are already
+blocked by the capability profile. In profiles that allow file access,
+Overkill may count file resources it owns or observes through Node handle
+diagnostics, but it should not claim a complete cross-platform descriptor
+count unless Node exposes one.
+
+### Single-Process Microtests
+
+Default `microtest` execution is single-process and concurrent. It has no
+parent process or sidecar that can outlive the test body. Therefore:
+
+- assertion value serialization and diff construction are always bounded
+- active test identity is emitted before the body starts
+- resource telemetry may be sampled between turns of the event loop
+- post-test heap, RSS, and active-resource deltas may be reported in verbose
+  or debug output
+- resource budgets in this mode are diagnostic unless configured to upgrade
+  the execution profile
+
+Single-process microtests do not produce a hard `resource-exhausted` kill
+for a CPU-bound loop or a synchronous allocation that prevents the event loop
+from reaching the sampler. If the process dies, the last streamed active test
+identity is useful evidence, but the runner process may not survive to turn it
+into a complete `RunResult`.
+
+When a run requests enforced resource budgets for ordinary microtests,
+orchestration should resolve the run to `microtest-supervised` unless the user
+explicitly selects diagnostic-only policy. This keeps the default path cheap
+while avoiding false guarantees.
+
+### Supervised Execution
+
+`microtest-supervised` and other owned-boundary profiles enforce resource
+budgets through disposable child processes:
+
+- the parent assigns one active case to a worker at a time
+- the worker sends an `active-case` event before evaluating the body
+- the worker streams resource samples while its event loop can run
+- the parent records the latest active `CaseId`, file, and display name
+- the parent kills the child with `process.kill(pid, 'SIGKILL')` when a
+  streamed sample breaches policy
+- the parent replaces the worker and records the active case with verdict
+  `resource-exhausted`
+
+For JavaScript heap pressure, the worker is also spawned with a V8 heap limit
+derived from the budget. This helps catch cases where allocation outruns the
+sampler but stays inside the V8 heap. The parent still owns attribution
+because it already recorded the active case before the body started.
+
+Node-only enforcement is not a perfect host-level memory sandbox. A native
+addon, external-memory allocation, or platform behavior that escapes V8 heap
+limits can still outrun in-process telemetry. Overkill should state the
+enforcement mode in the failure artifact:
+
+- `v8-heap-limit` for a child process killed or aborted by V8 heap pressure
+- `sampled` for a parent decision based on worker telemetry
+- `post-test-diagnostic` for single-process or completion-only evidence
+
+### Reporting
+
+A resource budget breach is neither an assertion failure nor a timeout. It is
+reported as:
+
+- test verdict `resource-exhausted`
+- runner error subtype `resource-exhaustion`
+- a `ResourceExhaustion` artifact containing the metric, budget, observed
+  value, enforcement mode, sample interval, worker id, and active case
+
+The default human message names the test file, test name, metric, budget,
+observed peak, and enforcement mode. Verbose mode reports peak resource usage
+per test file even when no budget was exceeded, so growth is visible before it
+becomes a ceiling.
 
 ## Leaked Promises, Timers, And Handles
 

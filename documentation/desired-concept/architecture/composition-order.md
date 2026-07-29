@@ -64,24 +64,30 @@ the body. Outermost first:
 2. **Retry loop** (integration profiles only). Wraps the entire
    per-attempt sequence below. Decides after each attempt whether
    to run again. See [Failure Artifacts § Retry Interaction](../authoring/failure-artifacts.md#retry-interaction).
-3. **Timeout watchdog.** Per-attempt soft and (where supported)
+3. **Resource budget supervision.** In supervised process-boundary
+   profiles, the parent records the active case and enforces Node-first
+   resource budgets. In single-process profiles, this layer is diagnostic
+   only. See [Runtime Behavior § Resource Budgets](./runtime-behavior.md#resource-budgets).
+4. **Timeout watchdog.** Per-attempt soft and (where supported)
    hard deadlines. Sets up the `AbortSignal` and the optional
    watchdog timer. See [Runtime Behavior § Timeouts](./runtime-behavior.md#timeouts).
-4. **Debug recording** (when `--debug` / `--debug-scope` /
+5. **Debug recording** (when `--debug` / `--debug-scope` /
    `{ debug: true }`). Begins capturing the timeline, handle
    events, module loads, heap baseline. See
    [Test Debug Mode](../authoring/debug-mode.md).
-5. **Test body.** The actual code under test runs.
+6. **Test body.** The actual code under test runs.
 
 Unwinding happens in reverse, innermost first:
 
 1. Body returns, throws, or rejects.
 2. Debug recording ends; `TestDebugArtifact` is written.
 3. Timeout watchdog cancels its timer.
-4. Retry loop inspects the result. On retry, jumps back to step 3
-   above (new timeout, new debug recording, new attempt). On
-   final-result, falls through.
-5. Worker boundary remains; the runner moves to the next test in
+4. Resource budget supervision records final samples or cancels
+   diagnostic tracking.
+5. Retry loop inspects the result. On retry, jumps back to step 3
+   above (new resource tracking, timeout, debug recording, and attempt).
+   On final-result, falls through.
+6. Worker boundary remains; the runner moves to the next test in
    this worker.
 
 ## Why Two Phases (And What It Costs)
@@ -164,6 +170,9 @@ the order isn't explicit:
 - **Timeout fires per attempt, not per test.** A 5 s soft timeout
   on an integration test with 3 retries means up to 15 s of total
   real time, not 5 s.
+- **Resource budgets are outside timeout.** A resource breach is
+  reported as `resource-exhausted`, not as a timeout, even if the
+  same test would later exceed its time budget.
 - **Capabilities can't be raised by metadata.** A child test
   cannot grant itself `fs-write` if its parent suite excluded it.
   Intersection is one-way.

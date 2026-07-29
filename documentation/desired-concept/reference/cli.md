@@ -91,11 +91,12 @@ entrypoints rather than as hidden boolean flags.
 
 ## Capability And Execution
 
-| Flag                | Behavior                                                                | Reference                                                                                             |
-| ------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `--profile <name>`  | Select a runner profile (e.g. `microtest`, `integration`, `benchmark`). | [Microtests And Capabilities](../authoring/microtests-and-capabilities.md)                            |
-| `--mode <strategy>` | Override the resolved execution strategy (serial, worker-pool, …).      | [Runtime Behavior § Parallelism Semantics](../architecture/runtime-behavior.md#parallelism-semantics) |
-| `--workers <n>`     | Override default worker count for worker-pool modes.                    | same                                                                                                  |
+| Flag                             | Behavior                                                                | Reference                                                                                             |
+| -------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `--profile <name>`               | Select a runner profile (e.g. `microtest`, `integration`, `benchmark`). | [Microtests And Capabilities](../authoring/microtests-and-capabilities.md)                            |
+| `--mode <strategy>`              | Override the resolved execution strategy (serial, worker-pool, …).      | [Runtime Behavior § Parallelism Semantics](../architecture/runtime-behavior.md#parallelism-semantics) |
+| `--workers <n>`                  | Override default worker count for worker-pool modes.                    | same                                                                                                  |
+| `--resource-budget <name=value>` | Override one resource budget for this run.                              | [Runtime Behavior § Resource Budgets](../architecture/runtime-behavior.md#resource-budgets)           |
 
 ## Output And Capture
 
@@ -112,6 +113,7 @@ entrypoints rather than as hidden boolean flags.
 | `--order lexical`          | Disable seeded shuffling and use deterministic collection order.     | [Runtime Behavior](../architecture/runtime-behavior.md) |
 | `--debug`                  | Emit a structured debug artifact for every test in the resolved set. | [Test Debug Mode](../authoring/debug-mode.md)           |
 | `--debug-scope <selector>` | Emit a debug artifact for tests matching a selector.                 | same                                                    |
+| `--verbose`                | Include per-file peak resource usage and other expanded diagnostics. | [Runtime Behavior](../architecture/runtime-behavior.md) |
 
 This list intentionally omits flags that are still under design (e.g.
 `--since <ref>`); when those land, this table is the
