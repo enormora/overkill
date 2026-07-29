@@ -11,6 +11,7 @@ import {
     formatCaseId,
     type Engine,
     type RunResult,
+    type SourceLocation,
     type TestCase
 } from '@overkill-dev/engine';
 
@@ -64,16 +65,49 @@ async function executeSmokePlan(engine: Engine): Promise<RunResult> {
     return engine.execute(engine.createTestPlan(root));
 }
 
-function assertSmokeResult(result: RunResult): void {
-    const passingCaseId = { file: null, name: 'passes', params: null, suite: [ 'root' ] };
-    const failingCaseId = { file: null, name: 'fails', params: null, suite: [ 'root' ] };
+function failedAssertionLocation(result: RunResult): SourceLocation {
+    const failedResult = result.perTest.at(1);
 
+    assert.notEqual(failedResult, undefined);
+
+    if (failedResult?.outcome.kind !== 'fail') {
+        throw new TypeError('Expected second test result to fail.');
+    }
+
+    const failure = failedResult.outcome.failures[0];
+
+    if (failure.kind !== 'assertion') {
+        throw new TypeError('Expected assertion failure.');
+    }
+
+    return failure.checks[0].location;
+}
+
+function assertPackagedSourceLocation(location: SourceLocation): void {
+    assert.match(
+        location.file.replaceAll('\\', '/'),
+        /target\/build\/source\/integration-tests\/package-smoke\/engine-direct-execution\.test\.js$/u
+    );
+    assert.equal(typeof location.line, 'number');
+    assert.equal(typeof location.column, 'number');
+}
+
+function assertSmokeSummary(result: RunResult): void {
     assert.equal(result.summary.defined, 3);
     assert.equal(result.summary.discovered, 2);
     assert.equal(result.summary.planned, 2);
     assert.equal(result.summary.passed, 1);
     assert.equal(result.summary.failed, 1);
     assert.deepStrictEqual(result.bySuite.root, { discovered: 2, executed: 2, planned: 2 });
+}
+
+function assertSmokeResult(result: RunResult): void {
+    const passingCaseId = { file: null, name: 'passes', params: null, suite: [ 'root' ] };
+    const failingCaseId = { file: null, name: 'fails', params: null, suite: [ 'root' ] };
+    const location = failedAssertionLocation(result);
+
+    assertPackagedSourceLocation(location);
+    assertSmokeSummary(result);
     assert.deepStrictEqual(
         result.perTest.map(function toPublicResultShape(testResult) {
             return {
@@ -95,7 +129,7 @@ function assertSmokeResult(result: RunResult): void {
                                     expected: 2,
                                     id: '1',
                                     kind: 'leaf',
-                                    location: { column: null, file: '', line: null },
+                                    location,
                                     path: [],
                                     source: 'assert',
                                     summary: 'numbers differ'

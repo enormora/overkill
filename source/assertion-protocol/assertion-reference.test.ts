@@ -10,6 +10,7 @@ import {
     isNarrowingAssertionReference,
     type CompositeCheckBuilder
 } from './assertion-reference.ts';
+import { unknownSourceLocation } from './source-location.ts';
 
 function builtInChildren(
     check: CompositeCheckBuilder<'assert'>
@@ -61,8 +62,22 @@ function checkNames(children: readonly CompositeAssertionChildNode<'assert'>[]):
     });
 }
 
+function assertForeignLocations(
+    children: readonly CompositeAssertionChildNode<'assert'>[],
+    location: CompositeAssertionChildNode<'assert'>['location']
+): void {
+    assert.deepStrictEqual(
+        children.map(function locationOf(child) {
+            return child.location;
+        }),
+        children.map(function expectedLocation() {
+            return location;
+        })
+    );
+}
+
 registerTest('createCompositeCheckBuilder() creates every built-in composite child node', function () {
-    const check = createCompositeCheckBuilder('assert', 'child');
+    const check = createCompositeCheckBuilder('assert', 'child', unknownSourceLocation);
     const children = builtInChildren(check);
     const annotated = check.annotated('annotated').true(true);
     const group = check.group([ annotated ]);
@@ -105,13 +120,15 @@ registerTest('createCompositeCheckBuilder() creates every built-in composite chi
         'undefined'
     ]);
     assert.equal(annotated.message, 'annotated');
+    assert.deepStrictEqual(annotated.location, unknownSourceLocation);
     assert.equal(isCompositeAssertionGroup(group), true);
     assert.equal(isCompositeAssertionGroup({}), false);
     assert.equal(isCompositeAssertionGroup(null), false);
 });
 
 registerTest('composite foreign bridges normalize passing and failing callbacks', async function () {
-    const check = createCompositeCheckBuilder('assert', null);
+    const location = { column: 5, file: '/test/composite.test.ts', line: 10 };
+    const check = createCompositeCheckBuilder('assert', null, location);
     const thrown = check.fromThrowable('throws', function throwForeignError() {
         throw new TypeError('bad');
     });
@@ -128,6 +145,7 @@ registerTest('composite foreign bridges normalize passing and failing callbacks'
     );
     assert.equal(thrown.result.passed ? null : thrown.result.error.name, 'TypeError');
     assert.equal(rejected.result.passed ? null : rejected.result.error.name, 'RangeError');
+    assertForeignLocations([ thrown, resolved, rejected ], location);
 });
 
 registerTest('assertion references expose brand and empty-name validation', function () {

@@ -41,7 +41,11 @@ import {
     type InstanceOfAssertionNode,
     type TypeAssertionNode
 } from './assertions/type-shape.ts';
-import type { AssertionSource, NonEmptyReadonlyArray } from './assertion-node-shape.ts';
+import type {
+    AssertionSource,
+    NonEmptyReadonlyArray,
+    ResolvableSourceLocation
+} from './assertion-node-shape.ts';
 
 type ForeignAssertionErrorRecord = {
     readonly message: string;
@@ -106,6 +110,7 @@ export type ForeignAssertionResult = ForeignAssertionResultByOutcome[keyof Forei
 export type ForeignAssertionNode<Source extends AssertionSource = AssertionSource> = {
     readonly check: 'foreign';
     readonly label: string;
+    readonly location: ResolvableSourceLocation;
     readonly message: string | null;
     readonly result: ForeignAssertionResult;
     readonly source: Source;
@@ -125,6 +130,7 @@ export type CompositeAssertionNode<Source extends AssertionSource = AssertionSou
     readonly check: 'composite';
     readonly children: NonEmptyReadonlyArray<CompositeAssertionChildNode<Source>>;
     readonly expected: unknown;
+    readonly location: ResolvableSourceLocation;
     readonly message: string | null;
     readonly name: string;
     readonly source: Source;

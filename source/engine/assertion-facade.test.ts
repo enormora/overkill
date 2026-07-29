@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict';
 import { registerTest } from '../test-support/register-test.ts';
 import type { AssertAssertionNode, RequireAssertionNode } from '../assertion-protocol/assertion-node.ts';
-import type { AssertionSource } from '../assertion-protocol/assertion-node-shape.ts';
+import type { AssertionSource, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import {
-    createRecordingAssertFacade,
-    type AssertAssertionFacade,
-    type RequireAssertionFacade
+    createRecordingAssertFacadeWithLocation,
+    type AssertAssertionFacade
 } from './assertion-facade.ts';
-import { createRecordingRequireFacade } from './require-assertion-facade.ts';
+import {
+    createRecordingRequireFacadeWithLocation,
+    type RequireAssertionFacade
+} from './require-assertion-facade.ts';
 
 type AssertRecording = {
     readonly facade: AssertAssertionFacade;
@@ -19,10 +21,27 @@ type RequireRecording = {
     readonly records: readonly RequireAssertionNode[];
 };
 
+const testLocation: SourceLocation = { column: 7, file: '/test/assertion-facade.test.ts', line: 11 };
+
+function captureTestLocation(): SourceLocation {
+    return testLocation;
+}
+
 function assertionChecks(records: readonly (AssertAssertionNode | RequireAssertionNode)[]): readonly string[] {
     return records.map(function checkOf(record) {
         return record.check;
     });
+}
+
+function assertRecordLocations(records: readonly (AssertAssertionNode | RequireAssertionNode)[]): void {
+    assert.deepStrictEqual(
+        records.map(function locationOf(record) {
+            return record.location;
+        }),
+        records.map(function expectedLocation() {
+            return testLocation;
+        })
+    );
 }
 
 function assertRecordSources(
@@ -41,35 +60,43 @@ function assertRecordSources(
 
 function createAssertRecording(): AssertRecording {
     const records: AssertAssertionNode[] = [];
-    const facade = createRecordingAssertFacade({
-        failContract(failure) {
-            throw new Error(failure.summary);
+    const facade = createRecordingAssertFacadeWithLocation(
+        {
+            failContract(failure) {
+                throw new Error(failure.summary);
+            },
+            recordAssert(assertion) {
+                records.push(assertion);
+            },
+            recordPendingAssert() {
+                return {
+                    resolve(assertion) {
+                        records.push(assertion);
+                    }
+                };
+            }
         },
-        recordAssert(assertion) {
-            records.push(assertion);
-        },
-        recordPendingAssert() {
-            return {
-                resolve(assertion) {
-                    records.push(assertion);
-                }
-            };
-        }
-    }, null);
+        null,
+        captureTestLocation
+    );
 
     return { facade, records };
 }
 
 function createRequireRecording(): RequireRecording {
     const records: RequireAssertionNode[] = [];
-    const facade = createRecordingRequireFacade({
-        failContract(failure) {
-            throw new Error(failure.summary);
+    const facade = createRecordingRequireFacadeWithLocation(
+        {
+            failContract(failure) {
+                throw new Error(failure.summary);
+            },
+            recordRequire(assertion) {
+                records.push(assertion);
+            }
         },
-        recordRequire(assertion) {
-            records.push(assertion);
-        }
-    }, null);
+        null,
+        captureTestLocation
+    );
 
     return { facade, records };
 }
@@ -77,10 +104,17 @@ function createRequireRecording(): RequireRecording {
 function assertAssertPayloads(records: readonly AssertAssertionNode[]): void {
     const instanceOfRecord = records.at(16);
 
-    assert.deepStrictEqual(records.at(0), { actual: [ 1 ], check: 'array', message: 'array', source: 'assert' });
+    assert.deepStrictEqual(records.at(0), {
+        actual: [ 1 ],
+        check: 'array',
+        location: testLocation,
+        message: 'array',
+        source: 'assert'
+    });
     assert.deepStrictEqual(records.at(2), {
         actual: 2,
         check: 'between',
+        location: testLocation,
         maximum: 3,
         message: null,
         minimum: 1,
@@ -90,6 +124,7 @@ function assertAssertPayloads(records: readonly AssertAssertionNode[]): void {
         actual: { name: 'Ada' },
         check: 'has-property',
         key: 'name',
+        location: testLocation,
         message: null,
         source: 'assert'
     });
@@ -102,6 +137,7 @@ function assertAssertPayloads(records: readonly AssertAssertionNode[]): void {
         actual: instanceOfRecord.actual,
         check: 'instance-of',
         expected: Error,
+        location: testLocation,
         message: null,
         source: 'assert'
     });
@@ -110,11 +146,18 @@ function assertAssertPayloads(records: readonly AssertAssertionNode[]): void {
 function assertRequirePayloads(records: readonly RequireAssertionNode[]): void {
     const instanceOfRecord = records.at(5);
 
-    assert.deepStrictEqual(records.at(0), { actual: [ 1 ], check: 'array', message: 'array', source: 'require' });
+    assert.deepStrictEqual(records.at(0), {
+        actual: [ 1 ],
+        check: 'array',
+        location: testLocation,
+        message: 'array',
+        source: 'require'
+    });
     assert.deepStrictEqual(records.at(4), {
         actual: { name: 'Ada' },
         check: 'has-property',
         key: 'name',
+        location: testLocation,
         message: null,
         source: 'require'
     });
@@ -127,6 +170,7 @@ function assertRequirePayloads(records: readonly RequireAssertionNode[]): void {
         actual: instanceOfRecord.actual,
         check: 'instance-of',
         expected: Error,
+        location: testLocation,
         message: null,
         source: 'require'
     });
@@ -337,6 +381,7 @@ registerTest('createRecordingAssertFacade() records every built-in assertion nod
         'undefined'
     ]);
     assertRecordSources(recording.records, 'assert');
+    assertRecordLocations(recording.records);
     assertAssertPayloads(recording.records);
 });
 
@@ -374,6 +419,7 @@ registerTest('createRecordingRequireFacade() records every built-in requirement 
         'string'
     ]);
     assertRecordSources(recording.records, 'require');
+    assertRecordLocations(recording.records);
     assertRequirePayloads(recording.records);
 });
 

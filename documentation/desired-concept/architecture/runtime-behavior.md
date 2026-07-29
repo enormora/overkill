@@ -618,6 +618,14 @@ With Node's built-in type stripping, ordinary TypeScript source locations
 should already be good enough in the common path. Overkill should not assume a
 custom source-map story unless a specific transform path requires it.
 
+Assertion source locations are captured from Node-rendered stack text through
+a lazy non-thrown `Error` token. When Node strips TypeScript types, line and
+column numbers stay aligned because stripping preserves whitespace. When
+`--enable-source-maps` is active, Node maps rendered stack frames before
+Overkill parses them. Overkill does not install `Error.prepareStackTrace`,
+depend on V8 `CallSite` objects, or resolve source maps itself in the
+baseline engine.
+
 ## Encoding And Locale
 
 The runner forces `LC_ALL=C.UTF-8`-equivalent behavior internally for

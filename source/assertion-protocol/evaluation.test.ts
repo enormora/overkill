@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict';
 import { registerTest } from '../test-support/register-test.ts';
 import type { AssertAssertionNode } from './assertion-node.ts';
+import { createCompositeCheckBuilder } from './assertion-reference.ts';
 import { evaluateAssertion } from './evaluation.ts';
+import { unknownSourceLocation } from './source-location.ts';
 
 function* values(): Generator<number> {
     yield 1;
     yield 2;
 }
+
+const check = createCompositeCheckBuilder('assert', null, unknownSourceLocation);
 
 type EvaluationCase = {
     readonly assertion: AssertAssertionNode;
@@ -14,216 +18,78 @@ type EvaluationCase = {
 };
 
 const passingAssertions: readonly EvaluationCase[] = [
-    { assertion: { actual: [ 1 ], check: 'array', message: null, source: 'assert' }, fails: false },
-    {
-        assertion: {
-            actual: [ { id: 1, name: 'Ada' } ],
-            check: 'array-contains-partial',
-            expected: { id: 1 },
-            message: null,
-            source: 'assert'
-        },
-        fails: false
-    },
-    {
-        assertion: { actual: 2, check: 'between', maximum: 3, message: null, minimum: 1, source: 'assert' },
-        fails: false
-    },
-    { assertion: { actual: true, check: 'boolean', message: null, source: 'assert' }, fails: false },
-    {
-        assertion: {
-            actual: new Map([ [ 'a', 1 ] ]),
-            check: 'deep-equal',
-            expected: new Map([ [ 'a', 1 ] ]),
-            message: null,
-            source: 'assert'
-        },
-        fails: false
-    },
-    { assertion: { actual: 'value', check: 'defined', message: null, source: 'assert' }, fails: false },
-    { assertion: { actual: [], check: 'empty', message: null, source: 'assert' }, fails: false },
-    {
-        assertion: { actual: 'value', check: 'ends-with', expected: 'ue', message: null, source: 'assert' },
-        fails: false
-    },
-    { assertion: { actual: 1, check: 'equal', expected: 1, message: null, source: 'assert' }, fails: false },
-    { assertion: { actual: false, check: 'false', message: null, source: 'assert' }, fails: false },
-    { assertion: { actual: values, check: 'function', message: null, source: 'assert' }, fails: false },
-    { assertion: { actual: 2, check: 'greater-than', expected: 1, message: null, source: 'assert' }, fails: false },
-    {
-        assertion: { actual: 2, check: 'greater-than-or-equal', expected: 2, message: null, source: 'assert' },
-        fails: false
-    },
-    {
-        assertion: { actual: { name: 'Ada' }, check: 'has-property', key: 'name', message: null, source: 'assert' },
-        fails: false
-    },
-    {
-        assertion: { actual: 'value', check: 'includes', expected: 'al', message: null, source: 'assert' },
-        fails: false
-    },
-    {
-        assertion: {
-            actual: new Error('boom'),
-            check: 'instance-of',
-            expected: Error,
-            message: null,
-            source: 'assert'
-        },
-        fails: false
-    },
-    {
-        assertion: { actual: values(), check: 'length', expectedLength: 2, message: null, source: 'assert' },
-        fails: false
-    },
-    { assertion: { actual: 1, check: 'less-than', expected: 2, message: null, source: 'assert' }, fails: false },
-    {
-        assertion: { actual: 2, check: 'less-than-or-equal', expected: 2, message: null, source: 'assert' },
-        fails: false
-    },
-    { assertion: { actual: 'value', check: 'match', message: null, pattern: /^val/u, source: 'assert' }, fails: false },
-    {
-        assertion: {
-            actual: [ { id: 1, name: 'Ada' } ],
-            check: 'members-partial-deep-equal',
-            expected: [ { id: 1 } ],
-            message: null,
-            source: 'assert'
-        },
-        fails: false
-    },
-    {
-        assertion: { actual: { a: 1 }, check: 'not-deep-equal', expected: { a: 2 }, message: null, source: 'assert' },
-        fails: false
-    },
-    { assertion: { actual: [ 1 ], check: 'not-empty', message: null, source: 'assert' }, fails: false },
-    { assertion: { actual: 1, check: 'not-equal', expected: 2, message: null, source: 'assert' }, fails: false },
-    {
-        assertion: { actual: 'value', check: 'not-match', message: null, pattern: /^other/u, source: 'assert' },
-        fails: false
-    },
-    { assertion: { actual: 'value', check: 'not-null', message: null, source: 'assert' }, fails: false },
-    { assertion: { actual: null, check: 'null', message: null, source: 'assert' }, fails: false },
-    { assertion: { actual: 1, check: 'number', message: null, source: 'assert' }, fails: false },
-    { assertion: { actual: { name: 'Ada' }, check: 'object', message: null, source: 'assert' }, fails: false },
-    {
-        assertion: {
-            actual: { id: 1, name: 'Ada' },
-            check: 'partial-deep-equal',
-            expected: { id: 1 },
-            message: null,
-            source: 'assert'
-        },
-        fails: false
-    },
-    {
-        assertion: { actual: 'value', check: 'starts-with', expected: 'val', message: null, source: 'assert' },
-        fails: false
-    },
-    { assertion: { actual: 'value', check: 'string', message: null, source: 'assert' }, fails: false },
-    { assertion: { actual: true, check: 'true', message: null, source: 'assert' }, fails: false },
-    { assertion: { actual: undefined, check: 'undefined', message: null, source: 'assert' }, fails: false }
+    { assertion: check.array([ 1 ]), fails: false },
+    { assertion: check.arrayContainsPartial([ { id: 1, name: 'Ada' } ], { id: 1 }), fails: false },
+    { assertion: check.between(2, 1, 3), fails: false },
+    { assertion: check.boolean(true), fails: false },
+    { assertion: check.deepEqual(new Map([ [ 'a', 1 ] ]), new Map([ [ 'a', 1 ] ])), fails: false },
+    { assertion: check.defined('value'), fails: false },
+    { assertion: check.empty([]), fails: false },
+    { assertion: check.endsWith('value', 'ue'), fails: false },
+    { assertion: check.equal(1, 1), fails: false },
+    { assertion: check.false(false), fails: false },
+    { assertion: check.function(values), fails: false },
+    { assertion: check.greaterThan(2, 1), fails: false },
+    { assertion: check.greaterThanOrEqual(2, 2), fails: false },
+    { assertion: check.hasProperty({ name: 'Ada' }, 'name'), fails: false },
+    { assertion: check.includes('value', 'al'), fails: false },
+    { assertion: check.instanceOf(new Error('boom'), Error), fails: false },
+    { assertion: check.length(values(), 2), fails: false },
+    { assertion: check.lessThan(1, 2), fails: false },
+    { assertion: check.lessThanOrEqual(2, 2), fails: false },
+    { assertion: check.match('value', /^val/u), fails: false },
+    { assertion: check.membersPartialDeepEqual([ { id: 1, name: 'Ada' } ], [ { id: 1 } ]), fails: false },
+    { assertion: check.notDeepEqual({ a: 1 }, { a: 2 }), fails: false },
+    { assertion: check.notEmpty([ 1 ]), fails: false },
+    { assertion: check.notEqual(1, 2), fails: false },
+    { assertion: check.notMatch('value', /^other/u), fails: false },
+    { assertion: check.notNull('value'), fails: false },
+    { assertion: check.null(null), fails: false },
+    { assertion: check.number(1), fails: false },
+    { assertion: check.object({ name: 'Ada' }), fails: false },
+    { assertion: check.partialDeepEqual({ id: 1, name: 'Ada' }, { id: 1 }), fails: false },
+    { assertion: check.startsWith('value', 'val'), fails: false },
+    { assertion: check.string('value'), fails: false },
+    { assertion: check.true(true), fails: false },
+    { assertion: check.undefined(undefined), fails: false }
 ];
 
 const failingAssertions: readonly EvaluationCase[] = [
-    { assertion: { actual: {}, check: 'array', message: null, source: 'assert' }, fails: true },
-    {
-        assertion: {
-            actual: [],
-            check: 'array-contains-partial',
-            expected: { id: 1 },
-            message: null,
-            source: 'assert'
-        },
-        fails: true
-    },
-    {
-        assertion: { actual: 4, check: 'between', maximum: 3, message: null, minimum: 1, source: 'assert' },
-        fails: true
-    },
-    { assertion: { actual: 'true', check: 'boolean', message: null, source: 'assert' }, fails: true },
-    {
-        assertion: { actual: { a: 1 }, check: 'deep-equal', expected: { a: 2 }, message: null, source: 'assert' },
-        fails: true
-    },
-    { assertion: { actual: null, check: 'defined', message: null, source: 'assert' }, fails: true },
-    { assertion: { actual: [ 1 ], check: 'empty', message: null, source: 'assert' }, fails: true },
-    {
-        assertion: { actual: 'value', check: 'ends-with', expected: 'al', message: null, source: 'assert' },
-        fails: true
-    },
-    { assertion: { actual: 1, check: 'equal', expected: 2, message: null, source: 'assert' }, fails: true },
-    { assertion: { check: 'fail', message: null, source: 'assert' }, fails: true },
-    { assertion: { actual: true, check: 'false', message: null, source: 'assert' }, fails: true },
-    { assertion: { actual: 'value', check: 'function', message: null, source: 'assert' }, fails: true },
-    { assertion: { actual: 1, check: 'greater-than', expected: 1, message: null, source: 'assert' }, fails: true },
-    {
-        assertion: { actual: 1, check: 'greater-than-or-equal', expected: 2, message: null, source: 'assert' },
-        fails: true
-    },
-    {
-        assertion: { actual: { name: 'Ada' }, check: 'has-property', key: 'id', message: null, source: 'assert' },
-        fails: true
-    },
-    { assertion: { actual: 'value', check: 'includes', expected: 'zz', message: null, source: 'assert' }, fails: true },
-    {
-        assertion: { actual: {}, check: 'instance-of', expected: Error, message: null, source: 'assert' },
-        fails: true
-    },
-    {
-        assertion: { actual: values(), check: 'length', expectedLength: 3, message: null, source: 'assert' },
-        fails: true
-    },
-    { assertion: { actual: 2, check: 'less-than', expected: 2, message: null, source: 'assert' }, fails: true },
-    {
-        assertion: { actual: 3, check: 'less-than-or-equal', expected: 2, message: null, source: 'assert' },
-        fails: true
-    },
-    {
-        assertion: { actual: 'value', check: 'match', message: null, pattern: /^other/u, source: 'assert' },
-        fails: true
-    },
-    {
-        assertion: {
-            actual: [],
-            check: 'members-partial-deep-equal',
-            expected: [ { id: 1 } ],
-            message: null,
-            source: 'assert'
-        },
-        fails: true
-    },
-    {
-        assertion: { actual: { a: 1 }, check: 'not-deep-equal', expected: { a: 1 }, message: null, source: 'assert' },
-        fails: true
-    },
-    { assertion: { actual: [], check: 'not-empty', message: null, source: 'assert' }, fails: true },
-    { assertion: { actual: 1, check: 'not-equal', expected: 1, message: null, source: 'assert' }, fails: true },
-    {
-        assertion: { actual: 'value', check: 'not-match', message: null, pattern: /^val/u, source: 'assert' },
-        fails: true
-    },
-    { assertion: { actual: null, check: 'not-null', message: null, source: 'assert' }, fails: true },
-    { assertion: { actual: undefined, check: 'null', message: null, source: 'assert' }, fails: true },
-    { assertion: { actual: Number.NaN, check: 'number', message: null, source: 'assert' }, fails: true },
-    { assertion: { actual: [], check: 'object', message: null, source: 'assert' }, fails: true },
-    {
-        assertion: {
-            actual: { id: 2 },
-            check: 'partial-deep-equal',
-            expected: { id: 1 },
-            message: null,
-            source: 'assert'
-        },
-        fails: true
-    },
-    {
-        assertion: { actual: 'value', check: 'starts-with', expected: 'zz', message: null, source: 'assert' },
-        fails: true
-    },
-    { assertion: { actual: 1, check: 'string', message: null, source: 'assert' }, fails: true },
-    { assertion: { actual: false, check: 'true', message: null, source: 'assert' }, fails: true },
-    { assertion: { actual: null, check: 'undefined', message: null, source: 'assert' }, fails: true }
+    { assertion: check.array({}), fails: true },
+    { assertion: check.arrayContainsPartial([], { id: 1 }), fails: true },
+    { assertion: check.between(4, 1, 3), fails: true },
+    { assertion: check.boolean('true'), fails: true },
+    { assertion: check.deepEqual({ a: 1 }, { a: 2 }), fails: true },
+    { assertion: check.defined(null), fails: true },
+    { assertion: check.empty([ 1 ]), fails: true },
+    { assertion: check.endsWith('value', 'al'), fails: true },
+    { assertion: check.equal(1, 2), fails: true },
+    { assertion: check.fail(), fails: true },
+    { assertion: check.false(true), fails: true },
+    { assertion: check.function('value'), fails: true },
+    { assertion: check.greaterThan(1, 1), fails: true },
+    { assertion: check.greaterThanOrEqual(1, 2), fails: true },
+    { assertion: check.hasProperty({ name: 'Ada' }, 'id'), fails: true },
+    { assertion: check.includes('value', 'zz'), fails: true },
+    { assertion: check.instanceOf({}, Error), fails: true },
+    { assertion: check.length(values(), 3), fails: true },
+    { assertion: check.lessThan(2, 2), fails: true },
+    { assertion: check.lessThanOrEqual(3, 2), fails: true },
+    { assertion: check.match('value', /^other/u), fails: true },
+    { assertion: check.membersPartialDeepEqual([], [ { id: 1 } ]), fails: true },
+    { assertion: check.notDeepEqual({ a: 1 }, { a: 1 }), fails: true },
+    { assertion: check.notEmpty([]), fails: true },
+    { assertion: check.notEqual(1, 1), fails: true },
+    { assertion: check.notMatch('value', /^val/u), fails: true },
+    { assertion: check.notNull(null), fails: true },
+    { assertion: check.null(undefined), fails: true },
+    { assertion: check.number(Number.NaN), fails: true },
+    { assertion: check.object([]), fails: true },
+    { assertion: check.partialDeepEqual({ id: 2 }, { id: 1 }), fails: true },
+    { assertion: check.startsWith('value', 'zz'), fails: true },
+    { assertion: check.string(1), fails: true },
+    { assertion: check.true(false), fails: true },
+    { assertion: check.undefined(null), fails: true }
 ];
 
 registerTest('evaluateAssertion() passes built-in catalog assertions with strict semantics', function () {
@@ -253,6 +119,7 @@ registerTest('evaluateAssertion() preserves custom messages and assertion source
         actual: 1,
         check: 'equal',
         expected: 2,
+        location: unknownSourceLocation,
         message: 'custom message',
         source: 'assert'
     }, 7);
@@ -262,7 +129,7 @@ registerTest('evaluateAssertion() preserves custom messages and assertion source
         expected: 2,
         id: '7',
         kind: 'leaf',
-        location: { column: null, file: '', line: null },
+        location: unknownSourceLocation,
         path: [],
         source: 'assert',
         summary: 'custom message'

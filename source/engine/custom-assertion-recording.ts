@@ -14,7 +14,11 @@ import {
     type CompositeAssertionReturn,
     type NarrowingCompositeAssertionReference
 } from '../assertion-protocol/assertion-reference.ts';
-import type { AssertionSource, NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import type {
+    AssertionSource,
+    NonEmptyReadonlyArray,
+    ResolvableSourceLocation
+} from '../assertion-protocol/assertion-node-shape.ts';
 import type { TestContractFailure } from './run-result.ts';
 
 const expectedArgumentSlot = 1;
@@ -37,6 +41,7 @@ export type RequireAssertionSink = {
 type CompositeAssertionNodeInput<Source extends AssertionSource> = {
     readonly annotation: string | null;
     readonly children: NonEmptyReadonlyArray<CompositeAssertionChildNode<Source>>;
+    readonly location: ResolvableSourceLocation;
     readonly parameters: readonly unknown[];
     readonly reference: AssertionReference;
     readonly source: Source;
@@ -44,11 +49,44 @@ type CompositeAssertionNodeInput<Source extends AssertionSource> = {
 
 type PendingCompositeAssertionInput = {
     readonly annotation: string | null;
+    readonly location: ResolvableSourceLocation;
     readonly parameters: readonly unknown[];
     readonly pending: PendingAssertAssertionSink;
     readonly reference: CompositeAssertionReference;
     readonly result: Promise<CompositeAssertionReturn<'assert'>>;
     readonly sink: AssertAssertionSink;
+};
+
+type NarrowingCompositeAssertionNodeInput<Source extends AssertionSource> = {
+    readonly annotation: string | null;
+    readonly location: ResolvableSourceLocation;
+    readonly parameters: readonly unknown[];
+    readonly reference: NarrowingCompositeAssertionReference;
+    readonly source: Source;
+};
+
+type CompositeAssertionRecordingInput = {
+    readonly annotation: string | null;
+    readonly location: ResolvableSourceLocation;
+    readonly parameters: readonly unknown[];
+    readonly reference: CompositeAssertionReference;
+    readonly sink: AssertAssertionSink;
+};
+
+type AssertReferenceRecordingInput = {
+    readonly annotation: string | null;
+    readonly location: ResolvableSourceLocation;
+    readonly parameters: readonly unknown[];
+    readonly reference: unknown;
+    readonly sink: AssertAssertionSink;
+};
+
+type RequireReferenceRecordingInput = {
+    readonly annotation: string | null;
+    readonly location: ResolvableSourceLocation;
+    readonly parameters: readonly unknown[];
+    readonly reference: unknown;
+    readonly sink: RequireAssertionSink;
 };
 
 function createInvalidAssertionReferenceFailure(actual: unknown): TestContractFailure {
@@ -150,6 +188,7 @@ function createCompositeAssertionNode<Source extends AssertionSource>(
         check: 'composite',
         children: input.children,
         expected: expectedArgument ?? input.reference.name,
+        location: input.location,
         message: input.annotation,
         name: input.reference.name,
         source: input.source,
@@ -158,21 +197,23 @@ function createCompositeAssertionNode<Source extends AssertionSource>(
 }
 
 function createNarrowingCompositeAssertionNode<Source extends AssertionSource>(
-    source: Source,
-    annotation: string | null,
-    reference: NarrowingCompositeAssertionReference,
-    parameters: readonly unknown[]
+    input: NarrowingCompositeAssertionNodeInput<Source>
 ): CompositeAssertionNode<Source> {
-    const passed = reference.narrows(parameters[0], ...parameters.slice(1));
-    const child = createCompositeCheckBuilder(source, `Expected ${reference.name} narrowing predicate to pass.`)
+    const passed = input.reference.narrows(input.parameters[0], ...input.parameters.slice(1));
+    const child = createCompositeCheckBuilder(
+        input.source,
+        `Expected ${input.reference.name} narrowing predicate to pass.`,
+        input.location
+    )
         .true(passed);
 
     return createCompositeAssertionNode({
-        annotation,
+        annotation: input.annotation,
         children: [ child ],
-        parameters,
-        reference,
-        source
+        location: input.location,
+        parameters: input.parameters,
+        reference: input.reference,
+        source: input.source
     });
 }
 
@@ -182,72 +223,81 @@ async function recordResolvedCompositeAssertion(input: PendingCompositeAssertion
     input.pending.resolve(createCompositeAssertionNode({
         annotation: input.annotation,
         children: normalizeCompositeChildren(resolved, input.sink.failContract),
+        location: input.location,
         parameters: input.parameters,
         reference: input.reference,
         source: 'assert'
     }));
 }
 
-function recordCompositeAssertion(
-    sink: AssertAssertionSink,
-    annotation: string | null,
-    reference: CompositeAssertionReference,
-    parameters: readonly unknown[]
-): Promise<void> | void {
-    const result = reference.assert(createCompositeCheckBuilder('assert', null), ...parameters);
+function recordCompositeAssertion(input: CompositeAssertionRecordingInput): Promise<void> | void {
+    const result = input.reference.assert(
+        createCompositeCheckBuilder('assert', null, input.location),
+        ...input.parameters
+    );
 
     if (!isPromiseLike(result)) {
-        sink.recordAssert(createCompositeAssertionNode({
-            annotation,
-            children: normalizeCompositeChildren(result, sink.failContract),
-            parameters,
-            reference,
+        input.sink.recordAssert(createCompositeAssertionNode({
+            annotation: input.annotation,
+            children: normalizeCompositeChildren(result, input.sink.failContract),
+            location: input.location,
+            parameters: input.parameters,
+            reference: input.reference,
             source: 'assert'
         }));
         return undefined;
     }
 
     return recordResolvedCompositeAssertion({
-        annotation,
-        parameters,
-        pending: sink.recordPendingAssert(),
-        reference,
+        annotation: input.annotation,
+        location: input.location,
+        parameters: input.parameters,
+        pending: input.sink.recordPendingAssert(),
+        reference: input.reference,
         result,
-        sink
+        sink: input.sink
     });
 }
 
-export function recordAssertReference(
-    sink: AssertAssertionSink,
-    annotation: string | null,
-    reference: unknown,
-    parameters: readonly unknown[]
-): Promise<void> | void {
-    if (!isAssertionReference(reference)) {
-        sink.failContract(createInvalidAssertionReferenceFailure(reference));
+export function recordAssertReference(input: AssertReferenceRecordingInput): Promise<void> | void {
+    if (!isAssertionReference(input.reference)) {
+        input.sink.failContract(createInvalidAssertionReferenceFailure(input.reference));
     }
 
-    if (reference.kind === 'narrowing-composite') {
-        sink.recordAssert(createNarrowingCompositeAssertionNode('assert', annotation, reference, parameters));
+    if (input.reference.kind === 'narrowing-composite') {
+        input.sink.recordAssert(createNarrowingCompositeAssertionNode({
+            annotation: input.annotation,
+            location: input.location,
+            parameters: input.parameters,
+            reference: input.reference,
+            source: 'assert'
+        }));
         return undefined;
     }
 
-    return recordCompositeAssertion(sink, annotation, reference, parameters);
+    return recordCompositeAssertion({
+        annotation: input.annotation,
+        location: input.location,
+        parameters: input.parameters,
+        reference: input.reference,
+        sink: input.sink
+    });
 }
 
-export function recordRequireReference(
-    sink: RequireAssertionSink,
-    annotation: string | null,
-    reference: unknown,
-    parameters: readonly unknown[]
-): void {
-    if (!isNarrowingAssertionReference(reference)) {
-        sink.failContract(
-            isAssertionReference(reference)
-                ? createInvalidRequireReferenceFailure(reference.name)
-                : createInvalidAssertionReferenceFailure(reference)
+export function recordRequireReference(input: RequireReferenceRecordingInput): void {
+    if (!isNarrowingAssertionReference(input.reference)) {
+        input.sink.failContract(
+            isAssertionReference(input.reference)
+                ? createInvalidRequireReferenceFailure(input.reference.name)
+                : createInvalidAssertionReferenceFailure(input.reference)
         );
     }
 
-    sink.recordRequire(createNarrowingCompositeAssertionNode('require', annotation, reference, parameters));
+    input.sink.recordRequire(createNarrowingCompositeAssertionNode({
+        annotation: input.annotation,
+        location: input.location,
+        parameters: input.parameters,
+        reference: input.reference,
+        source: 'require'
+    }));
 }

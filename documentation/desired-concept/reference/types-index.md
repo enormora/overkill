@@ -237,6 +237,9 @@ type SourceLocation = {
     readonly line: number | null;
     readonly column: number | null;
 };
+
+type SourceLocationProvider = () => SourceLocation;
+type ResolvableSourceLocation = SourceLocation | SourceLocationProvider;
 ```
 
 Canonical: [Assertions And Results § The Protocol Shape](../authoring/assertions-and-results.md#the-protocol-shape) for `TestOutcome`,
@@ -273,6 +276,7 @@ type EqualAssertionNode<Source extends AssertionSource = AssertionSource> = {
     readonly actual: unknown;
     readonly check: 'equal';
     readonly expected: unknown;
+    readonly location: ResolvableSourceLocation;
     readonly message: string | null;
     readonly source: Source;
 };
@@ -280,6 +284,7 @@ type EqualAssertionNode<Source extends AssertionSource = AssertionSource> = {
 type TrueAssertionNode<Source extends AssertionSource = AssertionSource> = {
     readonly actual: unknown;
     readonly check: 'true';
+    readonly location: ResolvableSourceLocation;
     readonly message: string | null;
     readonly source: Source;
 };
@@ -288,6 +293,7 @@ type AssertAssertionNode = EqualAssertionNode<'assert'> | TrueAssertionNode<'ass
 type RequireAssertionNode = {
     readonly actual: unknown;
     readonly check: 'defined' | 'string';
+    readonly location: ResolvableSourceLocation;
     readonly message: string | null;
     readonly source: 'require';
 };

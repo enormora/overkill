@@ -16,6 +16,10 @@ export type SourceLocation = {
     readonly line: number | null;
 };
 
+export type SourceLocationProvider = () => SourceLocation;
+
+export type ResolvableSourceLocation = SourceLocation | SourceLocationProvider;
+
 type FailedCheckBase = {
     readonly id: string;
     readonly location: SourceLocation;
@@ -50,6 +54,7 @@ export type InstanceConstructor = abstract new (...args: never[]) => unknown;
 export type ActualAssertionNode<Source extends AssertionSource, Check extends string> = {
     readonly actual: unknown;
     readonly check: Check;
+    readonly location: ResolvableSourceLocation;
     readonly message: string | null;
     readonly source: Source;
 };
@@ -58,6 +63,7 @@ export type ExpectedAssertionNode<Source extends AssertionSource, Check extends 
     readonly actual: unknown;
     readonly check: Check;
     readonly expected: unknown;
+    readonly location: ResolvableSourceLocation;
     readonly message: string | null;
     readonly source: Source;
 };

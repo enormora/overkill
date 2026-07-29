@@ -6,6 +6,7 @@ import {
 } from '../reporters/in-memory-reporter.ts';
 import { registerTest } from '../test-support/register-test.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
+import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
 import type { RealTimeReporter, ReporterEvent } from './reporter.ts';
 import type { FailOutcome, RunResult } from './run-result.ts';
 import type { TestBody, TestContext } from './test-node.ts';
@@ -203,6 +204,7 @@ registerTest('execute() accepts a directly returned assertion node', async funct
         return {
             actual: true,
             check: 'true',
+            location: unknownSourceLocation,
             message: 'direct assertion',
             source: 'assert'
         };

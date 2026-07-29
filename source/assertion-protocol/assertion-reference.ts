@@ -3,7 +3,12 @@ import type {
     CompositeAssertionChildNode,
     ForeignAssertionNode
 } from './assertion-node.ts';
-import type { AssertionSource, InstanceConstructor, NonEmptyReadonlyArray } from './assertion-node-shape.ts';
+import type {
+    AssertionSource,
+    InstanceConstructor,
+    NonEmptyReadonlyArray,
+    ResolvableSourceLocation
+} from './assertion-node-shape.ts';
 import { createThrownErrorRecord } from './thrown-error-record.ts';
 
 const assertionReferenceIdentity: unique symbol = Symbol('OverkillAssertionReference');
@@ -154,6 +159,14 @@ type ReferenceReturn<Result> = Result extends Promise<CompositeAssertionReturn<'
 
 type ReadonlyParameters<Arguments extends readonly unknown[]> = readonly [...Arguments];
 
+type ForeignAssertionNodeInput<Source extends AssertionSource> = {
+    readonly label: string;
+    readonly location: ResolvableSourceLocation;
+    readonly message: string | null;
+    readonly result: ForeignAssertionNode<Source>['result'];
+    readonly source: Source;
+};
+
 export type AssertReferenceArguments<Reference> = Reference extends CompositeAssertionReference<infer Arguments>
     ? ReadonlyParameters<Arguments>
     : ReferenceArguments<Reference>;
@@ -218,85 +231,96 @@ export function isCompositeAssertionGroup<Source extends AssertionSource>(
 }
 
 function createForeignAssertionNode<Source extends AssertionSource>(
-    source: Source,
-    message: string | null,
-    label: string,
-    result: ForeignAssertionNode<Source>['result']
+    input: ForeignAssertionNodeInput<Source>
 ): ForeignAssertionNode<Source> {
     return {
         check: 'foreign',
-        label,
-        message,
-        result,
-        source,
-        summary: result.passed
-            ? `Expected foreign assertion ${label} to pass.`
-            : `${label}: ${result.error.message}`
+        label: input.label,
+        location: input.location,
+        message: input.message,
+        result: input.result,
+        source: input.source,
+        summary: input.result.passed
+            ? `Expected foreign assertion ${input.label} to pass.`
+            : `${input.label}: ${input.result.error.message}`
     };
 }
 
 export function createCompositeCheckBuilder<Source extends AssertionSource>(
     source: Source,
-    message: string | null
+    message: string | null,
+    location: ResolvableSourceLocation
 ): CompositeCheckBuilder<Source> {
     return {
         annotated(childMessage) {
-            return createCompositeCheckBuilder(source, childMessage);
+            return createCompositeCheckBuilder(source, childMessage, location);
         },
 
         array(actual) {
-            return { actual, check: 'array', message, source };
+            return { actual, check: 'array', location, message, source };
         },
 
         arrayContainsPartial(actual, expected) {
-            return { actual, check: 'array-contains-partial', expected, message, source };
+            return { actual, check: 'array-contains-partial', expected, location, message, source };
         },
 
         between(actual, minimum, maximum) {
-            return { actual, check: 'between', maximum, message, minimum, source };
+            return { actual, check: 'between', location, maximum, message, minimum, source };
         },
 
         boolean(actual) {
-            return { actual, check: 'boolean', message, source };
+            return { actual, check: 'boolean', location, message, source };
         },
 
         deepEqual(actual, expected) {
-            return { actual, check: 'deep-equal', expected, message, source };
+            return { actual, check: 'deep-equal', expected, location, message, source };
         },
 
         defined(actual) {
-            return { actual, check: 'defined', message, source };
+            return { actual, check: 'defined', location, message, source };
         },
 
         empty(actual) {
-            return { actual, check: 'empty', message, source };
+            return { actual, check: 'empty', location, message, source };
         },
 
         endsWith(actual, expected) {
-            return { actual, check: 'ends-with', expected, message, source };
+            return { actual, check: 'ends-with', expected, location, message, source };
         },
 
         equal(actual, expected) {
-            return { actual, check: 'equal', expected, message, source };
+            return { actual, check: 'equal', expected, location, message, source };
         },
 
         fail() {
-            return { check: 'fail', message, source };
+            return { check: 'fail', location, message, source };
         },
 
         false(actual) {
-            return { actual, check: 'false', message, source };
+            return { actual, check: 'false', location, message, source };
         },
 
         async fromRejectable(label, body) {
             try {
                 await body();
 
-                return createForeignAssertionNode(source, message, label, { passed: true });
+                return createForeignAssertionNode({
+                    label,
+                    location,
+                    message,
+                    result: { passed: true },
+                    source
+                });
             } catch (error: unknown) {
-                return createForeignAssertionNode(source, message, label, {
-                    error: createThrownErrorRecord(error),
-                    passed: false
+                return createForeignAssertionNode({
+                    label,
+                    location,
+                    message,
+                    result: {
+                        error: createThrownErrorRecord(error),
+                        passed: false
+                    },
+                    source
                 });
             }
         },
@@ -305,25 +329,37 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
             try {
                 body();
 
-                return createForeignAssertionNode(source, message, label, { passed: true });
+                return createForeignAssertionNode({
+                    label,
+                    location,
+                    message,
+                    result: { passed: true },
+                    source
+                });
             } catch (error: unknown) {
-                return createForeignAssertionNode(source, message, label, {
-                    error: createThrownErrorRecord(error),
-                    passed: false
+                return createForeignAssertionNode({
+                    label,
+                    location,
+                    message,
+                    result: {
+                        error: createThrownErrorRecord(error),
+                        passed: false
+                    },
+                    source
                 });
             }
         },
 
         function(actual) {
-            return { actual, check: 'function', message, source };
+            return { actual, check: 'function', location, message, source };
         },
 
         greaterThan(actual, expected) {
-            return { actual, check: 'greater-than', expected, message, source };
+            return { actual, check: 'greater-than', expected, location, message, source };
         },
 
         greaterThanOrEqual(actual, expected) {
-            return { actual, check: 'greater-than-or-equal', expected, message, source };
+            return { actual, check: 'greater-than-or-equal', expected, location, message, source };
         },
 
         group(children) {
@@ -331,87 +367,87 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
         },
 
         hasProperty(actual, key) {
-            return { actual, check: 'has-property', key, message, source };
+            return { actual, check: 'has-property', key, location, message, source };
         },
 
         includes(actual, expected) {
-            return { actual, check: 'includes', expected, message, source };
+            return { actual, check: 'includes', expected, location, message, source };
         },
 
         instanceOf(actual, expected) {
-            return { actual, check: 'instance-of', expected, message, source };
+            return { actual, check: 'instance-of', expected, location, message, source };
         },
 
         length(actual, expectedLength) {
-            return { actual, check: 'length', expectedLength, message, source };
+            return { actual, check: 'length', expectedLength, location, message, source };
         },
 
         lessThan(actual, expected) {
-            return { actual, check: 'less-than', expected, message, source };
+            return { actual, check: 'less-than', expected, location, message, source };
         },
 
         lessThanOrEqual(actual, expected) {
-            return { actual, check: 'less-than-or-equal', expected, message, source };
+            return { actual, check: 'less-than-or-equal', expected, location, message, source };
         },
 
         match(actual, pattern) {
-            return { actual, check: 'match', message, pattern, source };
+            return { actual, check: 'match', location, message, pattern, source };
         },
 
         membersPartialDeepEqual(actual, expected) {
-            return { actual, check: 'members-partial-deep-equal', expected, message, source };
+            return { actual, check: 'members-partial-deep-equal', expected, location, message, source };
         },
 
         notDeepEqual(actual, expected) {
-            return { actual, check: 'not-deep-equal', expected, message, source };
+            return { actual, check: 'not-deep-equal', expected, location, message, source };
         },
 
         notEmpty(actual) {
-            return { actual, check: 'not-empty', message, source };
+            return { actual, check: 'not-empty', location, message, source };
         },
 
         notEqual(actual, expected) {
-            return { actual, check: 'not-equal', expected, message, source };
+            return { actual, check: 'not-equal', expected, location, message, source };
         },
 
         notMatch(actual, pattern) {
-            return { actual, check: 'not-match', message, pattern, source };
+            return { actual, check: 'not-match', location, message, pattern, source };
         },
 
         notNull(actual) {
-            return { actual, check: 'not-null', message, source };
+            return { actual, check: 'not-null', location, message, source };
         },
 
         null(actual) {
-            return { actual, check: 'null', message, source };
+            return { actual, check: 'null', location, message, source };
         },
 
         number(actual) {
-            return { actual, check: 'number', message, source };
+            return { actual, check: 'number', location, message, source };
         },
 
         object(actual) {
-            return { actual, check: 'object', message, source };
+            return { actual, check: 'object', location, message, source };
         },
 
         partialDeepEqual(actual, expected) {
-            return { actual, check: 'partial-deep-equal', expected, message, source };
+            return { actual, check: 'partial-deep-equal', expected, location, message, source };
         },
 
         startsWith(actual, expected) {
-            return { actual, check: 'starts-with', expected, message, source };
+            return { actual, check: 'starts-with', expected, location, message, source };
         },
 
         string(actual) {
-            return { actual, check: 'string', message, source };
+            return { actual, check: 'string', location, message, source };
         },
 
         true(actual) {
-            return { actual, check: 'true', message, source };
+            return { actual, check: 'true', location, message, source };
         },
 
         undefined(actual) {
-            return { actual, check: 'undefined', message, source };
+            return { actual, check: 'undefined', location, message, source };
         }
     };
 }

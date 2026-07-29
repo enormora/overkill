@@ -1,5 +1,5 @@
 import { assertionOutcome, type AssertionOutcome } from '../assertion-evaluation.ts';
-import type { AssertionSource, ExpectedAssertionNode } from '../assertion-node-shape.ts';
+import type { AssertionSource, ExpectedAssertionNode, ResolvableSourceLocation } from '../assertion-node-shape.ts';
 
 type NumericComparisonCheck = 'greater-than' | 'greater-than-or-equal' | 'less-than' | 'less-than-or-equal';
 
@@ -10,6 +10,7 @@ export type NumericComparisonAssertionNode<Source extends AssertionSource = Asse
 export type BetweenAssertionNode<Source extends AssertionSource = AssertionSource> = {
     readonly actual: unknown;
     readonly check: 'between';
+    readonly location: ResolvableSourceLocation;
     readonly maximum: number;
     readonly message: string | null;
     readonly minimum: number;
