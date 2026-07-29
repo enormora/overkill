@@ -7,8 +7,9 @@ import {
     type CompositeAssertionNode,
     type ForeignAssertionNode
 } from './assertion-node.ts';
-import type { AssertionSource, FailedCheck, NonEmptyReadonlyArray, SourceLocation } from './assertion-node-shape.ts';
+import type { AssertionSource, FailedCheck, NonEmptyReadonlyArray } from './assertion-node-shape.ts';
 import { assertionEvaluatorByCheck, type AssertionNodeByCheck } from './assertions/dispatch.ts';
+import { resolveSourceLocation } from './source-location.ts';
 
 type AssertionEvaluation = AssertionOutcome & {
     readonly summary: string;
@@ -20,8 +21,6 @@ function evaluateAssertionNode<Check extends keyof AssertionNodeByCheck>(
 ): AssertionOutcome {
     return assertionEvaluatorByCheck[check](assertion);
 }
-
-const emptyLocation: SourceLocation = { column: null, file: '', line: null };
 
 function assertNonEmptyItems<Item>(
     items: readonly Item[],
@@ -42,7 +41,7 @@ function evaluateForeignAssertion(assertion: ForeignAssertionNode, id: string): 
         id,
         kind: 'foreign',
         label: assertion.label,
-        location: emptyLocation,
+        location: resolveSourceLocation(assertion.location),
         path: [],
         source: assertion.source,
         summary: assertion.message ?? assertion.summary
@@ -67,7 +66,7 @@ function evaluateLeafAssertion(
         expected: evaluation.expected,
         id,
         kind: 'leaf',
-        location: emptyLocation,
+        location: resolveSourceLocation(assertion.location),
         path: [],
         source: assertion.source,
         summary: evaluation.summary
@@ -104,7 +103,7 @@ function evaluateCompositeAssertion(assertion: CompositeAssertionNode, id: strin
         expected: assertion.expected,
         id,
         kind: 'composite',
-        location: emptyLocation,
+        location: resolveSourceLocation(assertion.location),
         path: [],
         source: assertion.source,
         summary: assertionSummary(assertion)

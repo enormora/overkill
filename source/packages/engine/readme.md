@@ -14,6 +14,8 @@ Top-level API:
 - `validateReporterSinks(reporters)`
 - `defineCompositeAssertion(options)`
 - `defineNarrowingCompositeAssertion(options)`
+- `captureSourceLocation()`
+- `unknownSourceLocation`
 - `CaseId`, `TestId`, `TestPlan`, `ExecuteOptions`, `NonEmptyReadonlyArray`
 - `Reporter`, `ReporterEvent`, `RealTimeReporter`, `FinalResultReporter`, `RunFacts`, `SinkDeclaration`
 - `RunResult`, `TestOutcome`, `PassOutcome`, `FailOutcome`, `SkipOutcome`, `InconclusiveOutcome`
@@ -67,3 +69,7 @@ Assertion bodies:
 - `FailedCheck` is discriminated by `kind`. Leaf checks carry value
   comparison data, composite checks carry child diagnostics, and foreign
   checks carry normalized thrown-error data.
+- Failed checks carry concrete source locations. Engine-created assertion
+  nodes capture lazy locations at the public assertion boundary. Direct raw
+  assertion nodes must provide `location`; use `captureSourceLocation()` for
+  accuracy or `unknownSourceLocation` when unavailable.

@@ -12,6 +12,7 @@ import {
     type AssertionSource,
     type CaseAssertContext,
     type CaseId,
+    type captureSourceLocation,
     type ExecuteOptions,
     type FailedCheck,
     type FailedCompositeCheck,
@@ -24,16 +25,20 @@ import {
     type ReporterEvent,
     type RequireAssertionFacade,
     type RequireAssertionNode,
+    type ResolvableSourceLocation,
     type RunFacts,
     type RunResult,
     type RunSummary,
     type RunnerError,
     type SinkDeclaration,
+    type SourceLocation,
+    type SourceLocationProvider,
     type TestContext,
     type TestFailure,
     type TestOutcome,
     type TestPlan,
-    type TestPlanCase
+    type TestPlanCase,
+    type unknownSourceLocation
 } from './engine.entry-point.ts';
 
 type FailedCheckFixture = {
@@ -273,6 +278,19 @@ describe('Assertion protocol', function () {
             readonly message: null;
             readonly source: 'require';
         }>();
+    });
+
+    test('exports source location helpers for raw assertion nodes', function () {
+        expect<SourceLocation>().type.toBe<{
+            readonly column: number | null;
+            readonly file: string;
+            readonly line: number | null;
+        }>();
+        expect<SourceLocationProvider>().type.toBe<() => SourceLocation>();
+        expect<ResolvableSourceLocation>().type.toBe<SourceLocation | SourceLocationProvider>();
+        expect<typeof captureSourceLocation>().type.toBe<() => SourceLocationProvider>();
+        expect<typeof unknownSourceLocation>().type.toBeAssignableTo<SourceLocation>();
+        expect<AssertAssertionNode>().type.toBeAssignableTo<{ readonly location: ResolvableSourceLocation; }>();
     });
 
     test('exposes the concept assert catalog without ok', function () {

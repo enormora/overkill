@@ -885,6 +885,9 @@ The public concept therefore stays simpler:
 - property helpers such as `case.forall(...)` use a nested injected
   assertion context
 - direct returned protocol nodes are assert-source only
+- direct returned protocol nodes carry explicit `location` metadata; direct
+  authors use `captureSourceLocation()` for accurate lazy locations or
+  `unknownSourceLocation` when no source is available
 - engine-created require nodes are carried through the test session, count
   toward `plan(n)` once the normal completion has a valid assert-source
   result, and expose `source: 'require'` on failed checks
@@ -899,6 +902,28 @@ Custom assertion protocol nodes remain a separate design question. Extension
 helpers may wrap built-ins, create composite assertion boundaries, or bridge
 foreign assertion systems later, but this concept does not yet choose that
 wire shape.
+
+### Assertion Source Locations
+
+`FailedCheck.location` identifies the Overkill assertion boundary that caused
+the failed check.
+
+Policy:
+
+- built-in `case.assert.*` and `case.require.*` failures point to that public
+  assertion call
+- custom, composite, and narrowing failures point to the outer
+  `case.assert(reference, ...)` or `case.require(reference, ...)` call
+- composite children inherit that same boundary location by default, because
+  child checks are diagnostics inside one assertion boundary
+- foreign bridge failures use the Overkill boundary location; the thrown
+  foreign error keeps its own stack in the structured error diagnostic
+- helper and macro forwarding is a separate API decision; the baseline
+  captures the immediate assertion boundary
+
+Assertion nodes may carry `SourceLocation` directly or a lazy
+`SourceLocationProvider`. Failed checks always expose a concrete
+`SourceLocation`.
 
 ### Error Separation
 
@@ -1170,6 +1195,8 @@ Overkill assertion boundary:
 - failure records one `FailedCheck`
 - thrown foreign errors are normalized into Overkill's structured
   diagnostics
+- source location points to the Overkill assertion boundary, not to the
+  foreign assertion library internals
 
 The callback may internally run a complex foreign assertion library, but the
 Overkill boundary remains explicit and stable.

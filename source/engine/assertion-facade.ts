@@ -3,7 +3,12 @@ import type {
     CompositeAssertionReturn,
     NarrowingCompositeAssertionReference
 } from '../assertion-protocol/assertion-reference.ts';
-import type { AssertionOptions, InstanceConstructor } from '../assertion-protocol/assertion-node-shape.ts';
+import type {
+    AssertionOptions,
+    InstanceConstructor,
+    ResolvableSourceLocation
+} from '../assertion-protocol/assertion-node-shape.ts';
+import { captureSourceLocation } from '../assertion-protocol/source-location.ts';
 import {
     recordAssertReference,
     type AssertAssertionSink
@@ -69,44 +74,28 @@ export type AssertAssertionFacade = {
     readonly undefined: (actual: unknown, options?: AssertionOptions) => void;
 };
 
-export type RequireAssertionFacade = {
-    <Actual, Narrowed extends Actual, Arguments extends readonly unknown[]>(
-        reference: NarrowingCompositeAssertionReference<Actual, Narrowed, Arguments>,
-        actual: Actual,
-        ...parameters: Arguments
-    ): asserts actual is Narrowed;
-    readonly annotated: (message: string) => RequireAssertionFacade;
-    readonly array: (actual: unknown, options?: AssertionOptions) => asserts actual is readonly unknown[];
-    readonly boolean: (actual: unknown, options?: AssertionOptions) => asserts actual is boolean;
-    readonly defined: <Value>(actual: Value, options?: AssertionOptions) => asserts actual is NonNullable<Value>;
-    readonly function: (
-        actual: unknown,
-        options?: AssertionOptions
-    ) => asserts actual is (...parameters: readonly unknown[]) => unknown;
-    readonly hasProperty: <Key extends PropertyKey>(
-        actual: unknown,
-        key: Key,
-        options?: AssertionOptions
-    ) => asserts actual is Readonly<Record<Key, unknown>>;
-    readonly instanceOf: <Constructor extends InstanceConstructor>(
-        actual: unknown,
-        expected: Constructor,
-        options?: AssertionOptions
-    ) => asserts actual is InstanceType<Constructor>;
-    readonly notNull: <Value>(actual: Value, options?: AssertionOptions) => asserts actual is Exclude<Value, null>;
-    readonly null: (actual: unknown, options?: AssertionOptions) => asserts actual is null;
-    readonly number: (actual: unknown, options?: AssertionOptions) => asserts actual is number;
-    readonly object: (
-        actual: unknown,
-        options?: AssertionOptions
-    ) => asserts actual is Readonly<Record<PropertyKey, unknown>>;
-    readonly string: (actual: unknown, options?: AssertionOptions) => asserts actual is string;
-};
-
 type AssertAssertionMethods = Pick<AssertAssertionFacade, keyof AssertAssertionFacade>;
+
+type AssertAssertionMetadata = {
+    readonly location: ResolvableSourceLocation;
+    readonly message: string | null;
+    readonly source: 'assert';
+};
 
 function messageFromOptions(options: AssertionOptions | undefined, annotation: string | null): string | null {
     return options?.message ?? annotation;
+}
+
+function assertAssertionMetadata(
+    options: AssertionOptions | undefined,
+    annotation: string | null,
+    captureLocation: () => ResolvableSourceLocation
+): AssertAssertionMetadata {
+    return {
+        location: captureLocation(),
+        message: messageFromOptions(options, annotation),
+        source: 'assert'
+    };
 }
 
 function isAssertMethodName(
@@ -126,21 +115,21 @@ function isAssertAssertionFacade(
         });
 }
 
-export function createRecordingAssertFacade(
+export function createRecordingAssertFacadeWithLocation(
     sink: AssertAssertionSink,
-    annotation: string | null
+    annotation: string | null,
+    captureLocation: () => ResolvableSourceLocation
 ): AssertAssertionFacade {
     const methods: AssertAssertionMethods = {
         annotated(message) {
-            return createRecordingAssertFacade(sink, message);
+            return createRecordingAssertFacadeWithLocation(sink, message, captureLocation);
         },
 
         array(actual, options) {
             sink.recordAssert({
                 actual,
                 check: 'array',
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -149,8 +138,7 @@ export function createRecordingAssertFacade(
                 actual,
                 check: 'array-contains-partial',
                 expected,
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -159,9 +147,8 @@ export function createRecordingAssertFacade(
                 actual,
                 check: 'between',
                 maximum,
-                message: messageFromOptions(options, annotation),
                 minimum,
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -169,8 +156,7 @@ export function createRecordingAssertFacade(
             sink.recordAssert({
                 actual,
                 check: 'boolean',
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -179,8 +165,7 @@ export function createRecordingAssertFacade(
                 actual,
                 check: 'deep-equal',
                 expected,
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -188,8 +173,7 @@ export function createRecordingAssertFacade(
             sink.recordAssert({
                 actual,
                 check: 'defined',
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -197,8 +181,7 @@ export function createRecordingAssertFacade(
             sink.recordAssert({
                 actual,
                 check: 'empty',
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -207,8 +190,7 @@ export function createRecordingAssertFacade(
                 actual,
                 check: 'ends-with',
                 expected,
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -217,21 +199,22 @@ export function createRecordingAssertFacade(
                 actual,
                 check: 'equal',
                 expected,
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
         fail(options) {
-            sink.recordAssert({ check: 'fail', message: messageFromOptions(options, annotation), source: 'assert' });
+            sink.recordAssert({
+                check: 'fail',
+                ...assertAssertionMetadata(options, annotation, captureLocation)
+            });
         },
 
         false(actual, options) {
             sink.recordAssert({
                 actual,
                 check: 'false',
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -239,8 +222,7 @@ export function createRecordingAssertFacade(
             sink.recordAssert({
                 actual,
                 check: 'function',
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -249,8 +231,7 @@ export function createRecordingAssertFacade(
                 actual,
                 check: 'greater-than',
                 expected,
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -259,8 +240,7 @@ export function createRecordingAssertFacade(
                 actual,
                 check: 'greater-than-or-equal',
                 expected,
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -269,8 +249,7 @@ export function createRecordingAssertFacade(
                 actual,
                 check: 'has-property',
                 key,
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -279,8 +258,7 @@ export function createRecordingAssertFacade(
                 actual,
                 check: 'includes',
                 expected,
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -289,8 +267,7 @@ export function createRecordingAssertFacade(
                 actual,
                 check: 'instance-of',
                 expected,
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -299,8 +276,7 @@ export function createRecordingAssertFacade(
                 actual,
                 check: 'length',
                 expectedLength,
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -309,8 +285,7 @@ export function createRecordingAssertFacade(
                 actual,
                 check: 'less-than',
                 expected,
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -319,8 +294,7 @@ export function createRecordingAssertFacade(
                 actual,
                 check: 'less-than-or-equal',
                 expected,
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -328,9 +302,8 @@ export function createRecordingAssertFacade(
             sink.recordAssert({
                 actual,
                 check: 'match',
-                message: messageFromOptions(options, annotation),
                 pattern,
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -339,8 +312,7 @@ export function createRecordingAssertFacade(
                 actual,
                 check: 'members-partial-deep-equal',
                 expected,
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -349,8 +321,7 @@ export function createRecordingAssertFacade(
                 actual,
                 check: 'not-deep-equal',
                 expected,
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -358,8 +329,7 @@ export function createRecordingAssertFacade(
             sink.recordAssert({
                 actual,
                 check: 'not-empty',
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -368,8 +338,7 @@ export function createRecordingAssertFacade(
                 actual,
                 check: 'not-equal',
                 expected,
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -377,9 +346,8 @@ export function createRecordingAssertFacade(
             sink.recordAssert({
                 actual,
                 check: 'not-match',
-                message: messageFromOptions(options, annotation),
                 pattern,
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -387,8 +355,7 @@ export function createRecordingAssertFacade(
             sink.recordAssert({
                 actual,
                 check: 'not-null',
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -396,8 +363,7 @@ export function createRecordingAssertFacade(
             sink.recordAssert({
                 actual,
                 check: 'null',
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -405,8 +371,7 @@ export function createRecordingAssertFacade(
             sink.recordAssert({
                 actual,
                 check: 'number',
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -414,8 +379,7 @@ export function createRecordingAssertFacade(
             sink.recordAssert({
                 actual,
                 check: 'object',
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -424,8 +388,7 @@ export function createRecordingAssertFacade(
                 actual,
                 check: 'partial-deep-equal',
                 expected,
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -434,8 +397,7 @@ export function createRecordingAssertFacade(
                 actual,
                 check: 'starts-with',
                 expected,
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -443,8 +405,7 @@ export function createRecordingAssertFacade(
             sink.recordAssert({
                 actual,
                 check: 'string',
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -452,8 +413,7 @@ export function createRecordingAssertFacade(
             sink.recordAssert({
                 actual,
                 check: 'true',
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         },
 
@@ -461,8 +421,7 @@ export function createRecordingAssertFacade(
             sink.recordAssert({
                 actual,
                 check: 'undefined',
-                message: messageFromOptions(options, annotation),
-                source: 'assert'
+                ...assertAssertionMetadata(options, annotation, captureLocation)
             });
         }
     };
@@ -481,7 +440,13 @@ export function createRecordingAssertFacade(
         ...parameters: Arguments
     ): void;
     function callAssertReference(reference: unknown, ...parameters: readonly unknown[]): Promise<void> | void {
-        return recordAssertReference(sink, annotation, reference, parameters);
+        return recordAssertReference({
+            annotation,
+            location: captureLocation(),
+            parameters,
+            reference,
+            sink
+        });
     }
 
     const facade = new Proxy(callAssertReference, {
@@ -499,4 +464,11 @@ export function createRecordingAssertFacade(
     }
 
     throw new TypeError('Failed to create assert facade.');
+}
+
+export function createRecordingAssertFacade(
+    sink: AssertAssertionSink,
+    annotation: string | null
+): AssertAssertionFacade {
+    return createRecordingAssertFacadeWithLocation(sink, annotation, captureSourceLocation);
 }

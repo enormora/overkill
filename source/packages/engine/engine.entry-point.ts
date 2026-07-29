@@ -58,7 +58,8 @@ export type {
     StreamSinkDeclaration
 } from '../../engine/reporter.ts';
 export { validateReporterSinks } from '../../engine/reporter.ts';
-export type { AssertAssertionFacade, RequireAssertionFacade } from '../../engine/assertion-facade.ts';
+export type { AssertAssertionFacade } from '../../engine/assertion-facade.ts';
+export type { RequireAssertionFacade } from '../../engine/require-assertion-facade.ts';
 export {
     defineCompositeAssertion,
     defineNarrowingCompositeAssertion
@@ -85,8 +86,14 @@ export type {
     FailedLeafCheck,
     InstanceConstructor,
     NonEmptyReadonlyArray,
+    ResolvableSourceLocation,
+    SourceLocationProvider,
     SourceLocation
 } from '../../assertion-protocol/assertion-node-shape.ts';
+export {
+    captureSourceLocation,
+    unknownSourceLocation
+} from '../../assertion-protocol/source-location.ts';
 export type { FalseAssertionNode, TrueAssertionNode } from '../../assertion-protocol/assertions/boolean.ts';
 export type {
     EmptinessAssertionNode,

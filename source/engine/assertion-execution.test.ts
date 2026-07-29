@@ -4,7 +4,13 @@ import {
     defineNarrowingCompositeAssertion
 } from '../assertion-protocol/assertion-reference.ts';
 import type { AssertAssertionNode } from '../assertion-protocol/assertion-node.ts';
-import type { FailedCompositeCheck, FailedForeignCheck } from '../assertion-protocol/assertion-node-shape.ts';
+import type {
+    FailedCheck,
+    FailedCompositeCheck,
+    FailedForeignCheck,
+    SourceLocation
+} from '../assertion-protocol/assertion-node-shape.ts';
+import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import { registerTest } from '../test-support/register-test.ts';
 import type { AssertionTestFailure, FailOutcome, RunResult, TestContractFailure } from './run-result.ts';
@@ -83,8 +89,52 @@ function firstContractFailure(outcome: FailOutcome): TestContractFailure {
     throw new TypeError('Expected contract failure.');
 }
 
+function assertCapturedTestLocation(location: SourceLocation): void {
+    assert.match(location.file.replaceAll('\\', '/'), /source\/engine\/assertion-execution\.test\.ts$/u);
+    assert.equal(typeof location.line, 'number');
+    assert.equal(typeof location.column, 'number');
+}
+
+function assertCompositeBoundaryLocation(
+    composite: FailedCompositeCheck,
+    children: readonly FailedCheck[]
+): void {
+    const childLocations = children.map(function locationOf(child) {
+        return child.location;
+    });
+
+    assertCapturedTestLocation(composite.location);
+    childLocations.forEach(assertCapturedTestLocation);
+    assert.deepStrictEqual(
+        childLocations,
+        children.map(function expectedLocation() {
+            return composite.location;
+        })
+    );
+}
+
+function assertForeignBridgeFailure(composite: FailedCompositeCheck, child: FailedForeignCheck): void {
+    assert.equal(composite.summary, 'foreign failed');
+    assert.equal(child.label, 'foreign.expectation');
+    assert.equal(child.error.name, 'TypeError');
+    assert.equal(child.error.message, 'wrong shape');
+    assertCompositeBoundaryLocation(composite, [ child ]);
+}
+
+function firstFailedCheck(outcome: FailOutcome): FailedCheck {
+    const check = firstAssertionFailure(outcome).checks.at(0);
+
+    assert.notEqual(check, undefined);
+
+    if (check !== undefined) {
+        return check;
+    }
+
+    throw new TypeError('Expected failed check.');
+}
+
 function firstCompositeCheck(outcome: FailOutcome): FailedCompositeCheck {
-    const check = firstAssertionFailure(outcome).checks[0];
+    const check = firstFailedCheck(outcome);
 
     if (check.kind === 'composite') {
         return check;
@@ -93,8 +143,20 @@ function firstCompositeCheck(outcome: FailOutcome): FailedCompositeCheck {
     throw new TypeError('Expected composite failed check.');
 }
 
+function compositeChildAt(composite: FailedCompositeCheck, index: number): FailedCheck {
+    const child = composite.children[index];
+
+    assert.notEqual(child, undefined);
+
+    if (child !== undefined) {
+        return child;
+    }
+
+    throw new TypeError('Expected composite child.');
+}
+
 function firstForeignChild(outcome: FailOutcome): FailedForeignCheck {
-    const child = firstCompositeCheck(outcome).children[0];
+    const child = compositeChildAt(firstCompositeCheck(outcome), 0);
 
     if (child.kind === 'foreign') {
         return child;
@@ -138,6 +200,9 @@ registerTest('execute() skips plan mismatch when a requirement fails', async fun
         return testContext.assert.done();
     });
     const outcome = firstFailOutcome(result);
+    const check = firstFailedCheck(outcome);
+
+    assertCapturedTestLocation(check.location);
 
     assert.deepStrictEqual(outcome.failures, [
         {
@@ -147,7 +212,7 @@ registerTest('execute() skips plan mismatch when a requirement fails', async fun
                     expected: 'string',
                     id: '1',
                     kind: 'leaf',
-                    location: { column: null, file: '', line: null },
+                    location: check.location,
                     path: [],
                     source: 'require',
                     summary: 'required string'
@@ -169,6 +234,9 @@ registerTest('execute() treats caught failed requirements as fatal and ignores l
         return testContext.assert.done();
     });
     const outcome = firstFailOutcome(result);
+    const check = firstFailedCheck(outcome);
+
+    assertCapturedTestLocation(check.location);
 
     assert.deepStrictEqual(outcome.failures, [
         {
@@ -178,7 +246,7 @@ registerTest('execute() treats caught failed requirements as fatal and ignores l
                     expected: 'string',
                     id: '1',
                     kind: 'leaf',
-                    location: { column: null, file: '', line: null },
+                    location: check.location,
                     path: [],
                     source: 'require',
                     summary: 'required string'
@@ -194,6 +262,7 @@ registerTest('execute() rejects returned results that drop recorded builder asse
         const replacement: AssertAssertionNode = {
             actual: true,
             check: 'true',
+            location: unknownSourceLocation,
             message: null,
             source: 'assert'
         };
@@ -219,12 +288,14 @@ registerTest('execute() accepts appended direct assertions around builder assert
         const leading: AssertAssertionNode = {
             actual: true,
             check: 'true',
+            location: unknownSourceLocation,
             message: null,
             source: 'assert'
         };
         const trailing: AssertAssertionNode = {
             actual: false,
             check: 'false',
+            location: unknownSourceLocation,
             message: null,
             source: 'assert'
         };
@@ -309,6 +380,11 @@ registerTest('execute() reports composite parent failures with child diagnostics
         return testContext.assert.done();
     });
     const outcome = firstFailOutcome(result);
+    const composite = firstCompositeCheck(outcome);
+    const firstChild = compositeChildAt(composite, 0);
+    const secondChild = compositeChildAt(composite, 1);
+
+    assertCompositeBoundaryLocation(composite, [ firstChild, secondChild ]);
 
     assert.deepStrictEqual(outcome.failures, [
         {
@@ -321,7 +397,7 @@ registerTest('execute() reports composite parent failures with child diagnostics
                             expected: true,
                             id: '1.1',
                             kind: 'leaf',
-                            location: { column: null, file: '', line: null },
+                            location: firstChild.location,
                             path: [],
                             source: 'assert',
                             summary: 'status'
@@ -331,7 +407,7 @@ registerTest('execute() reports composite parent failures with child diagnostics
                             expected: 2,
                             id: '1.2',
                             kind: 'leaf',
-                            location: { column: null, file: '', line: null },
+                            location: secondChild.location,
                             path: [],
                             source: 'assert',
                             summary: 'value'
@@ -340,7 +416,7 @@ registerTest('execute() reports composite parent failures with child diagnostics
                     expected: 2,
                     id: '1',
                     kind: 'composite',
-                    location: { column: null, file: '', line: null },
+                    location: composite.location,
                     path: [],
                     source: 'assert',
                     summary: 'Expected resultOk to match.'
@@ -409,6 +485,10 @@ registerTest('execute() short-circuits failed narrowing assertion references thr
         return testContext.assert.done();
     });
     const outcome = firstFailOutcome(result);
+    const composite = firstCompositeCheck(outcome);
+    const child = compositeChildAt(composite, 0);
+
+    assertCompositeBoundaryLocation(composite, [ child ]);
 
     assert.deepStrictEqual(outcome.failures, [
         {
@@ -421,7 +501,7 @@ registerTest('execute() short-circuits failed narrowing assertion references thr
                             expected: true,
                             id: '1.1',
                             kind: 'leaf',
-                            location: { column: null, file: '', line: null },
+                            location: child.location,
                             path: [],
                             source: 'require',
                             summary: 'Expected resultOk narrowing predicate to pass.'
@@ -430,7 +510,7 @@ registerTest('execute() short-circuits failed narrowing assertion references thr
                     expected: 'resultOk',
                     id: '1',
                     kind: 'composite',
-                    location: { column: null, file: '', line: null },
+                    location: composite.location,
                     path: [],
                     source: 'require',
                     summary: 'Expected resultOk assertion to pass.'
@@ -484,9 +564,6 @@ registerTest('execute() normalizes foreign bridge failures under the composite p
     const composite = firstCompositeCheck(outcome);
     const child = firstForeignChild(outcome);
 
-    assert.equal(composite.summary, 'foreign failed');
     assert.equal(child.kind, 'foreign');
-    assert.equal(child.label, 'foreign.expectation');
-    assert.equal(child.error.name, 'TypeError');
-    assert.equal(child.error.message, 'wrong shape');
+    assertForeignBridgeFailure(composite, child);
 });

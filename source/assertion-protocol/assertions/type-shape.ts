@@ -1,5 +1,10 @@
 import { assertionOutcome, type AssertionOutcome } from '../assertion-evaluation.ts';
-import type { ActualAssertionNode, AssertionSource, InstanceConstructor } from '../assertion-node-shape.ts';
+import type {
+    ActualAssertionNode,
+    AssertionSource,
+    InstanceConstructor,
+    ResolvableSourceLocation
+} from '../assertion-node-shape.ts';
 import { isPlainObject } from '../partial-matching.ts';
 
 type TypeAssertionCheck = 'array' | 'boolean' | 'function' | 'number' | 'object' | 'string';
@@ -12,6 +17,7 @@ export type InstanceOfAssertionNode<Source extends AssertionSource = AssertionSo
     readonly actual: unknown;
     readonly check: 'instance-of';
     readonly expected: InstanceConstructor;
+    readonly location: ResolvableSourceLocation;
     readonly message: string | null;
     readonly source: Source;
 };
@@ -20,6 +26,7 @@ export type HasPropertyAssertionNode<Source extends AssertionSource = AssertionS
     readonly actual: unknown;
     readonly check: 'has-property';
     readonly key: PropertyKey;
+    readonly location: ResolvableSourceLocation;
     readonly message: string | null;
     readonly source: Source;
 };
