@@ -11,9 +11,167 @@ import type { AssertionSource, FailedCheck, NonEmptyReadonlyArray } from './asse
 import { assertionEvaluatorByCheck, type AssertionNodeByCheck } from './assertions/dispatch.ts';
 import { resolveSourceLocation } from './source-location.ts';
 
+type DeepAssertionCheckByName = {
+    readonly arrayContainsPartial: 'array-contains-partial';
+    readonly deepEqual: 'deep-equal';
+    readonly membersPartialDeepEqual: 'members-partial-deep-equal';
+    readonly notDeepEqual: 'not-deep-equal';
+    readonly partialDeepEqual: 'partial-deep-equal';
+};
+
+type DeepAssertionCheck = DeepAssertionCheckByName[keyof DeepAssertionCheckByName];
+
+type DeepAssertionOperandRole = 'actual' | 'expected';
+
+type PrimitiveValueTypeByName = {
+    readonly bigint: 'bigint';
+    readonly boolean: 'boolean';
+    readonly null: 'null';
+    readonly number: 'number';
+    readonly string: 'string';
+    readonly symbol: 'symbol';
+    readonly undefined: 'undefined';
+};
+
+type PrimitiveValueType = PrimitiveValueTypeByName[keyof PrimitiveValueTypeByName];
+
+export type InvalidDeepAssertionOperand = {
+    readonly check: DeepAssertionCheck;
+    readonly index: number | null;
+    readonly role: DeepAssertionOperandRole;
+    readonly type: PrimitiveValueType;
+};
+
 type AssertionEvaluation = AssertionOutcome & {
     readonly summary: string;
 };
+
+type DeepAssertionNode = Extract<AssertionNode | CompositeAssertionChildNode, { readonly check: DeepAssertionCheck; }>;
+
+type DeepOperandFinder = (
+    check: DeepAssertionCheck,
+    assertion: DeepAssertionNode
+) => InvalidDeepAssertionOperand | null;
+
+function primitiveValueType(value: unknown): PrimitiveValueType | null {
+    if (value === null) {
+        return 'null';
+    }
+
+    const valueType = typeof value;
+
+    return valueType === 'object' || valueType === 'function' ? null : valueType;
+}
+
+function invalidOperand(
+    check: DeepAssertionCheck,
+    role: DeepAssertionOperandRole,
+    value: unknown,
+    index: number | null
+): InvalidDeepAssertionOperand | null {
+    const type = primitiveValueType(value);
+
+    return type === null
+        ? null
+        : {
+            check,
+            index,
+            role,
+            type
+        };
+}
+
+function invalidMember(
+    check: DeepAssertionCheck,
+    role: DeepAssertionOperandRole,
+    values: readonly unknown[]
+): InvalidDeepAssertionOperand | null {
+    for (const [ index, value ] of values.entries()) {
+        const invalid = invalidOperand(check, role, value, index);
+
+        if (invalid !== null) {
+            return invalid;
+        }
+    }
+
+    return null;
+}
+
+function invalidExactDeepAssertionOperand(
+    check: DeepAssertionCheck,
+    assertion: DeepAssertionNode
+): InvalidDeepAssertionOperand | null {
+    return invalidOperand(check, 'actual', assertion.actual, null) ??
+        invalidOperand(check, 'expected', assertion.expected, null);
+}
+
+function invalidArrayContainsPartialOperand(
+    check: DeepAssertionCheck,
+    assertion: DeepAssertionNode
+): InvalidDeepAssertionOperand | null {
+    const invalidActualMember = Array.isArray(assertion.actual)
+        ? invalidMember(check, 'actual', assertion.actual)
+        : null;
+
+    return invalidOperand(check, 'actual', assertion.actual, null) ??
+        invalidActualMember ??
+        invalidOperand(check, 'expected', assertion.expected, null);
+}
+
+function invalidMembersPartialDeepEqualOperand(
+    check: DeepAssertionCheck,
+    assertion: DeepAssertionNode
+): InvalidDeepAssertionOperand | null {
+    const invalidActualMember = Array.isArray(assertion.actual)
+        ? invalidMember(check, 'actual', assertion.actual)
+        : null;
+    const invalidExpectedMember = Array.isArray(assertion.expected)
+        ? invalidMember(check, 'expected', assertion.expected)
+        : null;
+
+    return invalidOperand(check, 'actual', assertion.actual, null) ??
+        invalidOperand(check, 'expected', assertion.expected, null) ??
+        invalidActualMember ??
+        invalidExpectedMember;
+}
+
+const deepOperandFinders: Readonly<Record<DeepAssertionCheck, DeepOperandFinder>> = {
+    'array-contains-partial': invalidArrayContainsPartialOperand,
+    'deep-equal': invalidExactDeepAssertionOperand,
+    'members-partial-deep-equal': invalidMembersPartialDeepEqualOperand,
+    'not-deep-equal': invalidExactDeepAssertionOperand,
+    'partial-deep-equal': invalidExactDeepAssertionOperand
+};
+
+function isDeepAssertionCheck(check: string): check is DeepAssertionCheck {
+    return Object.hasOwn(deepOperandFinders, check);
+}
+
+function isDeepAssertion(
+    assertion: AssertionNode | CompositeAssertionChildNode
+): assertion is DeepAssertionNode {
+    return isDeepAssertionCheck(assertion.check) && Object.hasOwn(assertion, 'expected');
+}
+
+export function invalidDeepAssertionOperand(
+    assertion: AssertionNode | CompositeAssertionChildNode
+): InvalidDeepAssertionOperand | null {
+    if (assertion.check === 'composite') {
+        for (const child of assertion.children) {
+            const invalid = invalidDeepAssertionOperand(child);
+
+            if (invalid !== null) {
+                return invalid;
+            }
+        }
+
+        return null;
+    }
+
+    return isDeepAssertion(assertion)
+        ? deepOperandFinders[assertion.check](assertion.check, assertion)
+        : null;
+}
 
 function evaluateAssertionNode<Check extends keyof AssertionNodeByCheck>(
     check: Check,

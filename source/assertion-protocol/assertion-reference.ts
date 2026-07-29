@@ -5,6 +5,7 @@ import type {
 } from './assertion-node.ts';
 import type {
     AssertionSource,
+    DeepComparable,
     InstanceConstructor,
     NonEmptyReadonlyArray,
     ResolvableSourceLocation
@@ -51,13 +52,16 @@ type NarrowingCompositeAssertionSummaryFormatter<Actual, Arguments extends reado
 export type CompositeCheckBuilder<Source extends AssertionSource = AssertionSource> = {
     readonly annotated: (message: string) => CompositeCheckBuilder<Source>;
     readonly array: (actual: unknown) => BuiltInAssertAssertionNode<Source>;
-    readonly arrayContainsPartial: (
-        actual: readonly unknown[],
-        expectedSubset: unknown
+    readonly arrayContainsPartial: <Actual, Expected>(
+        actual: readonly DeepComparable<Actual>[],
+        expectedSubset: DeepComparable<Expected>
     ) => BuiltInAssertAssertionNode<Source>;
     readonly between: (actual: number, minimum: number, maximum: number) => BuiltInAssertAssertionNode<Source>;
     readonly boolean: (actual: unknown) => BuiltInAssertAssertionNode<Source>;
-    readonly deepEqual: (actual: unknown, expected: unknown) => BuiltInAssertAssertionNode<Source>;
+    readonly deepEqual: <Actual, Expected>(
+        actual: DeepComparable<Actual>,
+        expected: DeepComparable<Expected>
+    ) => BuiltInAssertAssertionNode<Source>;
     readonly defined: (actual: unknown) => BuiltInAssertAssertionNode<Source>;
     readonly empty: (actual: unknown) => BuiltInAssertAssertionNode<Source>;
     readonly endsWith: (actual: string, expected: string) => BuiltInAssertAssertionNode<Source>;
@@ -79,11 +83,14 @@ export type CompositeCheckBuilder<Source extends AssertionSource = AssertionSour
     readonly lessThan: (actual: number, expected: number) => BuiltInAssertAssertionNode<Source>;
     readonly lessThanOrEqual: (actual: number, expected: number) => BuiltInAssertAssertionNode<Source>;
     readonly match: (actual: string, pattern: RegExp) => BuiltInAssertAssertionNode<Source>;
-    readonly membersPartialDeepEqual: (
-        actual: readonly unknown[],
-        expectedMembers: readonly unknown[]
+    readonly membersPartialDeepEqual: <Actual, Expected>(
+        actual: readonly DeepComparable<Actual>[],
+        expectedMembers: readonly DeepComparable<Expected>[]
     ) => BuiltInAssertAssertionNode<Source>;
-    readonly notDeepEqual: (actual: unknown, expected: unknown) => BuiltInAssertAssertionNode<Source>;
+    readonly notDeepEqual: <Actual, Expected>(
+        actual: DeepComparable<Actual>,
+        expected: DeepComparable<Expected>
+    ) => BuiltInAssertAssertionNode<Source>;
     readonly notEmpty: (actual: unknown) => BuiltInAssertAssertionNode<Source>;
     readonly notEqual: (actual: unknown, expected: unknown) => BuiltInAssertAssertionNode<Source>;
     readonly notMatch: (actual: string, pattern: RegExp) => BuiltInAssertAssertionNode<Source>;
@@ -91,7 +98,10 @@ export type CompositeCheckBuilder<Source extends AssertionSource = AssertionSour
     readonly null: (actual: unknown) => BuiltInAssertAssertionNode<Source>;
     readonly number: (actual: unknown) => BuiltInAssertAssertionNode<Source>;
     readonly object: (actual: unknown) => BuiltInAssertAssertionNode<Source>;
-    readonly partialDeepEqual: (actual: unknown, expectedSubset: unknown) => BuiltInAssertAssertionNode<Source>;
+    readonly partialDeepEqual: <Actual, Expected>(
+        actual: DeepComparable<Actual>,
+        expectedSubset: DeepComparable<Expected>
+    ) => BuiltInAssertAssertionNode<Source>;
     readonly startsWith: (actual: string, expected: string) => BuiltInAssertAssertionNode<Source>;
     readonly string: (actual: unknown) => BuiltInAssertAssertionNode<Source>;
     readonly true: (actual: unknown) => BuiltInAssertAssertionNode<Source>;

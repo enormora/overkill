@@ -1,5 +1,9 @@
 import type { WallClock } from '@enormora/wall-clock';
-import { assertionPasses, evaluateAssertion } from '../assertion-protocol/evaluation.ts';
+import {
+    assertionPasses,
+    evaluateAssertion,
+    invalidDeepAssertionOperand
+} from '../assertion-protocol/evaluation.ts';
 import type {
     AssertAssertionNode,
     AssertionNode,
@@ -15,6 +19,7 @@ import {
     type TestContractFailure,
     type TestFailure,
     type TestOutcome,
+    invalidDeepAssertionOperandFailure,
     verdictFromOutcome
 } from './run-result.ts';
 import type { TestContext } from './test-node.ts';
@@ -415,6 +420,22 @@ function evaluatedAssertionFailure(assertions: readonly AssertionNode[]): TestFa
     };
 }
 
+function assertionContractFailure(assertions: readonly AssertionNode[]): TestContractFailure | null {
+    for (const assertion of assertions) {
+        const invalid = invalidDeepAssertionOperand(assertion);
+
+        if (invalid !== null) {
+            return invalidDeepAssertionOperandFailure(invalid);
+        }
+    }
+
+    return null;
+}
+
+function assertionFailure(assertions: readonly AssertionNode[]): TestFailure | null {
+    return assertionContractFailure(assertions) ?? evaluatedAssertionFailure(assertions);
+}
+
 function createTestContext(recorder: AssertionRecorder): TestContext {
     const assertContext = Object.assign(
         createRecordingAssertFacade(
@@ -544,7 +565,7 @@ function planFailure(recorder: AssertionRecorder, executedBody: ExecutedBody): T
 
 function createOutcome(recorder: AssertionRecorder, executedBody: ExecutedBody): TestOutcome {
     const failures = [
-        evaluatedAssertionFailure(executedBody.returnedAssertions),
+        assertionFailure(executedBody.returnedAssertions),
         bodyFailure(executedBody),
         planFailure(recorder, executedBody)
     ]

@@ -80,6 +80,7 @@ export type {
 export type {
     AssertionOptions,
     AssertionSource,
+    DeepComparable,
     FailedCheck,
     FailedCompositeCheck,
     FailedForeignCheck,

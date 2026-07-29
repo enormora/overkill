@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { registerTest } from '../test-support/register-test.ts';
-import type { AssertAssertionNode } from './assertion-node.ts';
+import type { AssertAssertionNode, CompositeAssertionChildNode, CompositeAssertionNode } from './assertion-node.ts';
 import { createCompositeCheckBuilder } from './assertion-reference.ts';
-import { evaluateAssertion } from './evaluation.ts';
+import { evaluateAssertion, invalidDeepAssertionOperand } from './evaluation.ts';
 import { unknownSourceLocation } from './source-location.ts';
 
 function* values(): Generator<number> {
@@ -16,6 +16,47 @@ type EvaluationCase = {
     readonly assertion: AssertAssertionNode;
     readonly fails: boolean;
 };
+
+type DeepCheckByName = {
+    readonly arrayContainsPartial: 'array-contains-partial';
+    readonly deepEqual: 'deep-equal';
+    readonly membersPartialDeepEqual: 'members-partial-deep-equal';
+    readonly notDeepEqual: 'not-deep-equal';
+    readonly partialDeepEqual: 'partial-deep-equal';
+};
+
+type DeepCheck = DeepCheckByName[keyof DeepCheckByName];
+
+function deepAssertion(
+    checkName: DeepCheck,
+    actual: unknown,
+    expected: unknown
+): CompositeAssertionChildNode<'assert'> {
+    return {
+        actual,
+        check: checkName,
+        expected,
+        location: unknownSourceLocation,
+        message: null,
+        source: 'assert'
+    };
+}
+
+function compositeAssertion(
+    children: readonly [CompositeAssertionChildNode<'assert'>, ...CompositeAssertionChildNode<'assert'>[]]
+): CompositeAssertionNode<'assert'> {
+    return {
+        actual: 'composite',
+        check: 'composite',
+        children,
+        expected: 'pass',
+        location: unknownSourceLocation,
+        message: null,
+        name: 'composite',
+        source: 'assert',
+        summary: 'Expected composite assertion to pass.'
+    };
+}
 
 const passingAssertions: readonly EvaluationCase[] = [
     { assertion: check.array([ 1 ]), fails: false },
@@ -134,4 +175,73 @@ registerTest('evaluateAssertion() preserves custom messages and assertion source
         source: 'assert',
         summary: 'custom message'
     });
+});
+
+registerTest('invalidDeepAssertionOperand() accepts structural and reference operands', function () {
+    assert.equal(invalidDeepAssertionOperand(check.deepEqual({ id: 1 }, { id: 1 })), null);
+    assert.equal(invalidDeepAssertionOperand(check.deepEqual(values, values)), null);
+    assert.equal(invalidDeepAssertionOperand(check.arrayContainsPartial([ { id: 1 } ], { id: 1 })), null);
+    assert.equal(invalidDeepAssertionOperand(check.membersPartialDeepEqual([ { id: 1 } ], [ { id: 1 } ])), null);
+    assert.equal(invalidDeepAssertionOperand(check.equal(1, 1)), null);
+    assert.equal(invalidDeepAssertionOperand(compositeAssertion([ check.true(true) ])), null);
+});
+
+registerTest('invalidDeepAssertionOperand() reports primitive exact deep operands', function () {
+    assert.deepStrictEqual(invalidDeepAssertionOperand(deepAssertion('deep-equal', null, {})), {
+        check: 'deep-equal',
+        index: null,
+        role: 'actual',
+        type: 'null'
+    });
+    assert.deepStrictEqual(invalidDeepAssertionOperand(deepAssertion('not-deep-equal', {}, undefined)), {
+        check: 'not-deep-equal',
+        index: null,
+        role: 'expected',
+        type: 'undefined'
+    });
+    assert.deepStrictEqual(invalidDeepAssertionOperand(deepAssertion('partial-deep-equal', Symbol('id'), {})), {
+        check: 'partial-deep-equal',
+        index: null,
+        role: 'actual',
+        type: 'symbol'
+    });
+});
+
+registerTest('invalidDeepAssertionOperand() reports primitive partial member operands', function () {
+    assert.deepStrictEqual(invalidDeepAssertionOperand(deepAssertion('array-contains-partial', 1, { id: 1 })), {
+        check: 'array-contains-partial',
+        index: null,
+        role: 'actual',
+        type: 'number'
+    });
+    assert.deepStrictEqual(invalidDeepAssertionOperand(deepAssertion('array-contains-partial', [ { id: 1 } ], true)), {
+        check: 'array-contains-partial',
+        index: null,
+        role: 'expected',
+        type: 'boolean'
+    });
+    assert.deepStrictEqual(
+        invalidDeepAssertionOperand(deepAssertion('members-partial-deep-equal', [ { id: 1 } ], 1n)),
+        {
+            check: 'members-partial-deep-equal',
+            index: null,
+            role: 'expected',
+            type: 'bigint'
+        }
+    );
+});
+
+registerTest('invalidDeepAssertionOperand() reports primitive composite child operands', function () {
+    assert.deepStrictEqual(
+        invalidDeepAssertionOperand(compositeAssertion([
+            check.true(true),
+            deepAssertion('members-partial-deep-equal', [ { id: 1 } ], [ 'id' ])
+        ])),
+        {
+            check: 'members-partial-deep-equal',
+            index: 0,
+            role: 'expected',
+            type: 'string'
+        }
+    );
 });

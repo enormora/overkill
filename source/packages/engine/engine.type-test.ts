@@ -12,7 +12,9 @@ import {
     type AssertionSource,
     type CaseAssertContext,
     type CaseId,
+    type CompositeCheckBuilder,
     type captureSourceLocation,
+    type DeepComparable,
     type ExecuteOptions,
     type FailedCheck,
     type FailedCompositeCheck,
@@ -108,6 +110,13 @@ const narrowingAssertion = defineNarrowingCompositeAssertion({
 });
 
 declare const requireFacade: RequireAssertionFacade;
+declare const assertFacade: AssertAssertionFacade;
+declare const compositeCheckBuilder: CompositeCheckBuilder<'assert'>;
+declare const functionValue: () => number;
+declare const mixedDeepValue: string | { readonly id: string; };
+declare const objectValues: readonly { readonly id: number; }[];
+declare const unknownValue: unknown;
+declare const unknownValues: readonly unknown[];
 
 type OutcomeKind = 'fail' | 'inconclusive' | 'pass' | 'skip';
 type ExpectedRunnerErrorSubtypeByName = {
@@ -323,6 +332,54 @@ describe('Assertion protocol', function () {
         expect(asyncAssertion).type.toBe<typeof asyncAssertion>();
         requireFacade(narrowingAssertion, value);
         expect(value).type.toBe<string>();
+    });
+});
+
+describe('Deep assertion operands', function () {
+    test('defines deep comparable operands', function () {
+        expect<DeepComparable>().type.toBe<unknown>();
+        expect<DeepComparable<number>>().type.toBe<never>();
+        expect<DeepComparable<string | { readonly id: string; }>>().type.toBe<never>();
+        expect<DeepComparable<ReturnType<typeof JSON.parse>>>().type.toBe<never>();
+    });
+
+    test('accepts exact deep assertion operands', function () {
+        expect(assertFacade.deepEqual).type.toBeCallableWith({ id: 1 }, { id: 1 });
+        expect(assertFacade.deepEqual).type.toBeCallableWith([ 1 ], [ 1 ]);
+        expect(assertFacade.deepEqual).type.toBeCallableWith(functionValue, functionValue);
+        expect(assertFacade.deepEqual).type.toBeCallableWith(new Map<string, number>(), new Map<string, number>());
+        expect(assertFacade.deepEqual).type.toBeCallableWith(new Set<number>(), new Set<number>());
+        expect(assertFacade.deepEqual).type.toBeCallableWith(unknownValue, { id: 1 });
+        expect(assertFacade.notDeepEqual).type.toBeCallableWith({ id: 1 }, { id: 2 });
+    });
+
+    test('accepts partial deep assertion operands', function () {
+        expect(assertFacade.partialDeepEqual).type.toBeCallableWith({ id: 1, name: 'Ada' }, { id: 1 });
+        expect(assertFacade.arrayContainsPartial).type.toBeCallableWith(objectValues, { id: 1 });
+        expect(assertFacade.arrayContainsPartial).type.toBeCallableWith(unknownValues, { id: 1 });
+        expect(assertFacade.membersPartialDeepEqual).type.toBeCallableWith(objectValues, [ { id: 1 } ]);
+        expect(assertFacade.membersPartialDeepEqual).type.toBeCallableWith(unknownValues, unknownValues);
+    });
+
+    test('accepts composite builder deep assertion operands', function () {
+        expect(compositeCheckBuilder.deepEqual).type.toBeCallableWith({ id: 1 }, { id: 1 });
+        expect(compositeCheckBuilder.partialDeepEqual).type.toBeCallableWith({ id: 1 }, { id: 1 });
+    });
+
+    test('rejects exact primitive deep assertion operands', function () {
+        expect(assertFacade.deepEqual).type.not.toBeCallableWith(1, 1);
+        expect(assertFacade.notDeepEqual).type.not.toBeCallableWith('a', 'b');
+        expect(assertFacade.deepEqual).type.not.toBeCallableWith(mixedDeepValue, { id: 'a' });
+        expect(compositeCheckBuilder.deepEqual).type.not.toBeCallableWith(1, 1);
+    });
+
+    test('rejects partial primitive deep assertion operands', function () {
+        expect(assertFacade.partialDeepEqual).type.not.toBeCallableWith(true, false);
+        expect(assertFacade.arrayContainsPartial).type.not.toBeCallableWith([ 1 ], { id: 1 });
+        expect(assertFacade.arrayContainsPartial).type.not.toBeCallableWith(objectValues, 1);
+        expect(assertFacade.membersPartialDeepEqual).type.not.toBeCallableWith([ 1 ], [ { id: 1 } ]);
+        expect(assertFacade.membersPartialDeepEqual).type.not.toBeCallableWith(objectValues, [ 1 ]);
+        expect(compositeCheckBuilder.partialDeepEqual).type.not.toBeCallableWith(true, false);
     });
 });
 

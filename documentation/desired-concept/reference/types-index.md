@@ -300,6 +300,21 @@ type RequireAssertionNode = {
 type AssertionNode = AssertAssertionNode | RequireAssertionNode;
 type AssertionResult = AssertAssertionNode | NonEmptyReadonlyArray<AssertAssertionNode>;
 
+type PrimitiveValueByType = {
+    readonly bigint: bigint;
+    readonly boolean: boolean;
+    readonly null: null;
+    readonly number: number;
+    readonly string: string;
+    readonly symbol: symbol;
+    readonly undefined: undefined;
+};
+type PrimitiveValue = PrimitiveValueByType[keyof PrimitiveValueByType];
+type IsAny<Value> = 0 extends Value & 1 ? true : false;
+type DeepComparableKnownValue<Value> = [Extract<Value, PrimitiveValue>] extends [never] ? Value : never;
+type DeepComparableUnknownValue<Value> = unknown extends Value ? unknown : DeepComparableKnownValue<Value>;
+type DeepComparable<Value = unknown> = IsAny<Value> extends true ? never : DeepComparableUnknownValue<Value>;
+
 type CompositeAssertionReference<Arguments extends readonly unknown[]> = unknown;
 type NarrowingCompositeAssertionReference<Actual, Narrowed extends Actual, Arguments extends readonly unknown[]> = unknown;
 
@@ -309,7 +324,27 @@ type AssertAssertionFacade = {
         ...arguments_: readonly unknown[]
     ): void | Promise<void>;
     readonly annotated: (message: string) => AssertAssertionFacade;
+    readonly arrayContainsPartial: <Actual, Expected>(
+        actual: readonly DeepComparable<Actual>[],
+        expectedSubset: DeepComparable<Expected>
+    ) => void;
+    readonly deepEqual: <Actual, Expected>(
+        actual: DeepComparable<Actual>,
+        expected: DeepComparable<Expected>
+    ) => void;
     readonly equal: (actual: unknown, expected: unknown) => void;
+    readonly membersPartialDeepEqual: <Actual, Expected>(
+        actual: readonly DeepComparable<Actual>[],
+        expectedMembers: readonly DeepComparable<Expected>[]
+    ) => void;
+    readonly notDeepEqual: <Actual, Expected>(
+        actual: DeepComparable<Actual>,
+        expected: DeepComparable<Expected>
+    ) => void;
+    readonly partialDeepEqual: <Actual, Expected>(
+        actual: DeepComparable<Actual>,
+        expectedSubset: DeepComparable<Expected>
+    ) => void;
     readonly true: (actual: unknown) => void;
 };
 
