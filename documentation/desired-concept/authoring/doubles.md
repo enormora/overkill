@@ -231,8 +231,8 @@ narrow subset:
 - `spy()`
 - `.returns(...)`
 - `.resolves(...)`
-- `.rejects(...)`
-- `.throws(...)`
+- `.rejects(reason)`
+- `.throws(thrown)`
 - `.callsFake(...)`
 - `callCount`
 - `firstCall.args`
@@ -255,8 +255,8 @@ The minimal shape worth exploring is:
 - `rule.returns(value)`
 - `rule.constructs(instance)`
 - `rule.resolves(value)`
-- `rule.rejects(error)`
-- `rule.throws(error)`
+- `rule.rejects(reason: unknown)`
+- `rule.throws(thrown: unknown)`
 - `rule.calls(fn)` for fully custom logic (the `answer` configuration field is the equivalent at the double level)
 - `rule.sequence(...)` for successive results without verbose call-index rules
 
@@ -267,6 +267,11 @@ const nextToken = testDouble<() => string>({
     fallback: rule.sequence('a', 'b', rule.throws(new Error('done')))
 });
 ```
+
+`throws` and `rejects` should accept any JavaScript thrown value or rejection
+reason. That keeps doubles able to model existing dependencies that throw or
+reject non-error values, such as `throw 'foo'`, while still allowing the
+recommended `Error` instances for new code.
 
 For more advanced cases:
 
@@ -324,6 +329,7 @@ That means:
 - `rule.when()` should type-check argument tuples against `Fn`
 - `rule.returns()` should type-check against the return type of `Fn`
 - `rule.resolves()` and `rule.rejects()` should work naturally for async function signatures
+- `rule.throws()` and `rule.rejects()` should accept `unknown` thrown values and rejection reasons
 - recorded calls should preserve the argument tuple type
 - constructor signatures should preserve constructor argument tuples and instance types
 - `rule.whenConstructedWith()` should type-check constructor argument tuples
