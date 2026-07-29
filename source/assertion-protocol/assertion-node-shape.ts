@@ -6,6 +6,26 @@ export type NonEmptyReadonlyArray<Item> = readonly [Item, ...(readonly Item[])];
 
 export type AssertionSource = (typeof assertionSources)[number];
 
+type PrimitiveValueByType = {
+    readonly bigint: bigint;
+    readonly boolean: boolean;
+    readonly null: null;
+    readonly number: number;
+    readonly string: string;
+    readonly symbol: symbol;
+    readonly undefined: undefined;
+};
+
+type PrimitiveValue = PrimitiveValueByType[keyof PrimitiveValueByType];
+
+type IsAny<Value> = 0 extends Value & 1 ? true : false;
+
+type DeepComparableKnownValue<Value> = [Extract<Value, PrimitiveValue>] extends [never] ? Value : never;
+
+type DeepComparableUnknownValue<Value> = unknown extends Value ? unknown : DeepComparableKnownValue<Value>;
+
+export type DeepComparable<Value = unknown> = IsAny<Value> extends true ? never : DeepComparableUnknownValue<Value>;
+
 export type AssertionOptions = {
     readonly message: string;
 };

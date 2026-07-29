@@ -292,7 +292,7 @@ type narrowing.
 
 #### `arrayContainsPartial(actual, expectedSubset)`
 
-Signature: `arrayContainsPartial(actual: readonly unknown[], expectedSubset: unknown)`
+Signature: `arrayContainsPartial<Actual, Expected>(actual: readonly DeepComparable<Actual>[], expectedSubset: DeepComparable<Expected>)`
 
 ```ts
 case.assert.arrayContainsPartial(users, { id: 'u1', role: 'admin' });
@@ -326,7 +326,7 @@ type narrowing.
 
 #### `deepEqual(actual, expected)`
 
-Signature: `deepEqual(actual: unknown, expected: unknown)`
+Signature: `deepEqual<Actual, Expected>(actual: DeepComparable<Actual>, expected: DeepComparable<Expected>)`
 
 ```ts
 case.assert.deepEqual(result, { ok: true, count: 2 });
@@ -334,6 +334,7 @@ case.assert.deepEqual(result, { ok: true, count: 2 });
 
 Passes when `actual` and `expected` are deeply equal with strict semantics.
 This is the default full-structure equality assertion.
+Top-level operands must be non-primitive or `unknown`.
 
 #### `defined(actual)`
 
@@ -505,7 +506,7 @@ Passes when `pattern.test(actual)` passes.
 
 #### `membersPartialDeepEqual(actual, expectedMembers)`
 
-Signature: `membersPartialDeepEqual(actual: readonly unknown[], expectedMembers: readonly unknown[])`
+Signature: `membersPartialDeepEqual<Actual, Expected>(actual: readonly DeepComparable<Actual>[], expectedMembers: readonly DeepComparable<Expected>[])`
 
 ```ts
 case.assert.membersPartialDeepEqual(users, [
@@ -520,7 +521,7 @@ extra actual fields and ignoring array order.
 
 #### `notDeepEqual(actual, expected)`
 
-Signature: `notDeepEqual(actual: unknown, expected: unknown)`
+Signature: `notDeepEqual<Actual, Expected>(actual: DeepComparable<Actual>, expected: DeepComparable<Expected>)`
 
 ```ts
 case.assert.notDeepEqual(before, after);
@@ -604,7 +605,7 @@ Passes when `actual` is a non-null object and not an array. Also available on
 
 #### `partialDeepEqual(actual, expectedSubset)`
 
-Signature: `partialDeepEqual(actual: unknown, expectedSubset: unknown)`
+Signature: `partialDeepEqual<Actual, Expected>(actual: DeepComparable<Actual>, expectedSubset: DeepComparable<Expected>)`
 
 ```ts
 case.assert.partialDeepEqual(user, { profile: { locale: 'en-US' } });
@@ -612,6 +613,25 @@ case.assert.partialDeepEqual(user, { profile: { locale: 'en-US' } });
 
 Passes when `actual` contains the structure described by `expectedSubset`.
 Nested objects, arrays, maps, and sets are matched recursively.
+
+### Deep Assertion Operand Boundary
+
+The `deep*` assertion family is for structural comparison, not primitive
+equality. Authoring APIs reject statically known top-level primitive operands,
+mixed primitive unions, and `any`. They still accept `unknown` so tests can
+compare decoded or otherwise untyped object values without pre-narrowing.
+
+This boundary applies to `deepEqual`, `notDeepEqual`, `partialDeepEqual`,
+`arrayContainsPartial`, and `membersPartialDeepEqual`. Primitive leaves inside
+objects, arrays, maps, and sets remain valid. Function operands are also valid;
+their deep equality semantics are reference-based.
+
+Runtime validation mirrors the authoring rule for values that arrive through
+`unknown`, raw assertion nodes, or custom assertions. A primitive top-level
+deep operand is a `test-contract` failure with code
+`invalid-deep-assertion-operand`, not an assertion mismatch. The diagnostic
+identifies the check, operand role, primitive type, and member index when the
+invalid value came from a membership helper.
 
 #### `startsWith(actual, expected)`
 

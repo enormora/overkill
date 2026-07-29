@@ -5,6 +5,7 @@ import type {
 } from '../assertion-protocol/assertion-reference.ts';
 import type {
     AssertionOptions,
+    DeepComparable,
     InstanceConstructor,
     ResolvableSourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
@@ -30,14 +31,18 @@ export type AssertAssertionFacade = {
     ): void;
     readonly annotated: (message: string) => AssertAssertionFacade;
     readonly array: (actual: unknown, options?: AssertionOptions) => void;
-    readonly arrayContainsPartial: (
-        actual: readonly unknown[],
-        expectedSubset: unknown,
+    readonly arrayContainsPartial: <Actual, Expected>(
+        actual: readonly DeepComparable<Actual>[],
+        expectedSubset: DeepComparable<Expected>,
         options?: AssertionOptions
     ) => void;
     readonly between: (actual: number, minimum: number, maximum: number, options?: AssertionOptions) => void;
     readonly boolean: (actual: unknown, options?: AssertionOptions) => void;
-    readonly deepEqual: (actual: unknown, expected: unknown, options?: AssertionOptions) => void;
+    readonly deepEqual: <Actual, Expected>(
+        actual: DeepComparable<Actual>,
+        expected: DeepComparable<Expected>,
+        options?: AssertionOptions
+    ) => void;
     readonly defined: (actual: unknown, options?: AssertionOptions) => void;
     readonly empty: (actual: unknown, options?: AssertionOptions) => void;
     readonly endsWith: (actual: string, expected: string, options?: AssertionOptions) => void;
@@ -54,12 +59,16 @@ export type AssertAssertionFacade = {
     readonly lessThan: (actual: number, expected: number, options?: AssertionOptions) => void;
     readonly lessThanOrEqual: (actual: number, expected: number, options?: AssertionOptions) => void;
     readonly match: (actual: string, pattern: RegExp, options?: AssertionOptions) => void;
-    readonly membersPartialDeepEqual: (
-        actual: readonly unknown[],
-        expectedMembers: readonly unknown[],
+    readonly membersPartialDeepEqual: <Actual, Expected>(
+        actual: readonly DeepComparable<Actual>[],
+        expectedMembers: readonly DeepComparable<Expected>[],
         options?: AssertionOptions
     ) => void;
-    readonly notDeepEqual: (actual: unknown, expected: unknown, options?: AssertionOptions) => void;
+    readonly notDeepEqual: <Actual, Expected>(
+        actual: DeepComparable<Actual>,
+        expected: DeepComparable<Expected>,
+        options?: AssertionOptions
+    ) => void;
     readonly notEmpty: (actual: unknown, options?: AssertionOptions) => void;
     readonly notEqual: (actual: unknown, expected: unknown, options?: AssertionOptions) => void;
     readonly notMatch: (actual: string, pattern: RegExp, options?: AssertionOptions) => void;
@@ -67,7 +76,11 @@ export type AssertAssertionFacade = {
     readonly null: (actual: unknown, options?: AssertionOptions) => void;
     readonly number: (actual: unknown, options?: AssertionOptions) => void;
     readonly object: (actual: unknown, options?: AssertionOptions) => void;
-    readonly partialDeepEqual: (actual: unknown, expectedSubset: unknown, options?: AssertionOptions) => void;
+    readonly partialDeepEqual: <Actual, Expected>(
+        actual: DeepComparable<Actual>,
+        expectedSubset: DeepComparable<Expected>,
+        options?: AssertionOptions
+    ) => void;
     readonly startsWith: (actual: string, expected: string, options?: AssertionOptions) => void;
     readonly string: (actual: unknown, options?: AssertionOptions) => void;
     readonly true: (actual: unknown, options?: AssertionOptions) => void;

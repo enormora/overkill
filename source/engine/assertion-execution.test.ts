@@ -369,14 +369,14 @@ registerTest('execute() reports composite parent failures with child diagnostics
             ]);
         },
         formatSummary(context, result: ValueResult, expected: unknown) {
-            assert.deepStrictEqual(result, { ok: false, value: 1 });
-            assert.equal(expected, 2);
+            assert.deepStrictEqual(result, { ok: false, value: { count: 1 } });
+            assert.deepStrictEqual(expected, { count: 2 });
             return `Expected ${context.name} to match.`;
         },
         name: 'resultOk'
     });
     const result = await executeSingleBody(function body(testContext: TestContext) {
-        testContext.assert(resultOk, { ok: false, value: 1 }, 2);
+        testContext.assert(resultOk, { ok: false, value: { count: 1 } }, { count: 2 });
         return testContext.assert.done();
     });
     const outcome = firstFailOutcome(result);
@@ -390,7 +390,7 @@ registerTest('execute() reports composite parent failures with child diagnostics
         {
             checks: [
                 {
-                    actual: { ok: false, value: 1 },
+                    actual: { ok: false, value: { count: 1 } },
                     children: [
                         {
                             actual: false,
@@ -403,8 +403,8 @@ registerTest('execute() reports composite parent failures with child diagnostics
                             summary: 'status'
                         },
                         {
-                            actual: 1,
-                            expected: 2,
+                            actual: { count: 1 },
+                            expected: { count: 2 },
                             id: '1.2',
                             kind: 'leaf',
                             location: secondChild.location,
@@ -413,7 +413,7 @@ registerTest('execute() reports composite parent failures with child diagnostics
                             summary: 'value'
                         }
                     ],
-                    expected: 2,
+                    expected: { count: 2 },
                     id: '1',
                     kind: 'composite',
                     location: composite.location,

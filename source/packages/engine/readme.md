@@ -16,7 +16,7 @@ Top-level API:
 - `defineNarrowingCompositeAssertion(options)`
 - `captureSourceLocation()`
 - `unknownSourceLocation`
-- `CaseId`, `TestId`, `TestPlan`, `ExecuteOptions`, `NonEmptyReadonlyArray`
+- `CaseId`, `TestId`, `TestPlan`, `ExecuteOptions`, `NonEmptyReadonlyArray`, `DeepComparable`
 - `Reporter`, `ReporterEvent`, `RealTimeReporter`, `FinalResultReporter`, `RunFacts`, `SinkDeclaration`
 - `RunResult`, `TestOutcome`, `PassOutcome`, `FailOutcome`, `SkipOutcome`, `InconclusiveOutcome`
 - `AssertionNode`, `AssertionResult`, `AssertAssertionFacade`, `CaseAssertContext`

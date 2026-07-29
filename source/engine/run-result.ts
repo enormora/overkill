@@ -1,3 +1,4 @@
+import type { InvalidDeepAssertionOperand } from '../assertion-protocol/evaluation.ts';
 import type { FailedCheck, NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import type { CaseId } from './identity.ts';
 
@@ -38,6 +39,7 @@ type TestContractFailureCodeByName = {
     readonly deadBuilderAssertion: 'dead-builder-assertion';
     readonly invalidAssertionReference: 'invalid-assertion-reference';
     readonly invalidCompositeResult: 'invalid-composite-result';
+    readonly invalidDeepAssertionOperand: 'invalid-deep-assertion-operand';
     readonly invalidPlan: 'invalid-plan';
     readonly invalidRequireReference: 'invalid-require-reference';
     readonly noAssertions: 'no-assertions';
@@ -56,6 +58,16 @@ export type TestContractFailure = {
 };
 
 export type TestFailure = AssertionTestFailure | BodyErrorTestFailure | TestContractFailure;
+
+export function invalidDeepAssertionOperandFailure(actual: InvalidDeepAssertionOperand): TestContractFailure {
+    return {
+        actual,
+        code: 'invalid-deep-assertion-operand',
+        expected: 'non-primitive deep assertion operand',
+        kind: 'test-contract',
+        summary: 'Deep assertions require non-primitive operands.'
+    };
+}
 
 export type FailOutcome = {
     readonly failures: NonEmptyReadonlyArray<TestFailure>;
