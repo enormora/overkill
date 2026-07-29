@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { serializeValue } from '../compare/serialized-value.ts';
 import { registerTest } from '../test-support/register-test.ts';
 import type { AssertAssertionNode, CompositeAssertionChildNode, CompositeAssertionNode } from './assertion-node.ts';
 import { createCompositeCheckBuilder } from './assertion-reference.ts';
@@ -166,8 +167,9 @@ registerTest('evaluateAssertion() preserves custom messages and assertion source
     }, 7);
 
     assert.deepStrictEqual(failedCheck, {
-        actual: 1,
-        expected: 2,
+        actual: serializeValue(1),
+        diff: null,
+        expected: serializeValue(2),
         id: '7',
         kind: 'leaf',
         location: unknownSourceLocation,

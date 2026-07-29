@@ -57,16 +57,41 @@ counterexample into the case's assertion log (see
 ```ts
 // recorded into the case's assertion log
 const recorded: FailedCheck = {
-    id: '0001',
-    summary: 'expected deep equality',
-    expected: { id: '42', name: 'Adäle' }, // composed
-    actual: { id: '42', name: 'Adäle' }, // decomposed
-    path: [ 'name' ],
-    location: { file: 'source/users.test.ts', line: 10 },
+    actual: {
+        constructorName: 'Object',
+        entries: [
+            { key: { kind: 'string', value: 'id' }, value: { kind: 'string', truncation: null, value: '42' } },
+            { key: { kind: 'string', value: 'name' }, value: { kind: 'string', truncation: null, value: 'Adäle' } }
+        ],
+        kind: 'object',
+        truncation: null
+    },
     diff: {
         kind: 'object',
-        ops: [ { operation: 'replace', path: [ 'name' ], from: '"Adäle"', to: '"Adäle"' } ]
-    }
+        operations: [
+            {
+                from: { kind: 'string', truncation: null, value: 'Adäle' },
+                operation: 'replace',
+                path: [ { kind: 'property', key: { kind: 'string', value: 'name' } } ],
+                to: { kind: 'string', truncation: null, value: 'Adäle' }
+            }
+        ]
+    },
+    expected: {
+        constructorName: 'Object',
+        entries: [
+            { key: { kind: 'string', value: 'id' }, value: { kind: 'string', truncation: null, value: '42' } },
+            { key: { kind: 'string', value: 'name' }, value: { kind: 'string', truncation: null, value: 'Adäle' } }
+        ],
+        kind: 'object',
+        truncation: null
+    },
+    id: '0001',
+    kind: 'leaf',
+    location: { column: null, file: 'source/users.test.ts', line: 10 },
+    path: [ { kind: 'property', key: { kind: 'string', value: 'name' } } ],
+    source: 'assert',
+    summary: 'expected deep equality'
 };
 ```
 

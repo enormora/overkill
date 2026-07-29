@@ -1,16 +1,29 @@
-import { inspect } from 'node:util';
 import colors from 'yoctocolors';
+import type { SerializedValue } from '../compare/serialized-value.ts';
+import type {
+    ArrayDiffOperation,
+    Diff,
+    DiffPathSegment,
+    MapDiffOperation,
+    ObjectDiffOperation,
+    SetDiffOperation
+} from '../diff/diff-shape.ts';
 import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import type { TestFailure } from '../engine/run-result.ts';
+import { formatSerializedValue, keyText } from './serialized-value-rendering.ts';
 
-const bytesPerBinaryKilobyte = 1024;
-const valueBinaryKilobytes = 8;
-const valueByteLimit = valueBinaryKilobytes * bytesPerBinaryKilobyte;
 const blockLineLimit = 100;
-const stringContextGraphemes = 16;
-const shallowHintLimit = 5;
+const bytesPerKilobyte = 1024;
+const valueKilobytes = 8;
+const valueByteLimit = valueKilobytes * bytesPerKilobyte;
 
-type InspectableObject = Readonly<Record<string, unknown>> | readonly unknown[];
+type PropertySegment = Extract<DiffPathSegment, { readonly kind: 'property'; }>;
+
+type MapSegment = Extract<DiffPathSegment, { readonly kind: 'map-key' | 'map-value'; }>;
+
+type SetSegment = Extract<DiffPathSegment, { readonly kind: 'set-value'; }>;
+
+type KeyedSegment = MapSegment | PropertySegment | SetSegment;
 
 function byteLength(value: string): number {
     return Buffer.byteLength(value, 'utf8');
@@ -54,125 +67,42 @@ function truncateRenderedValue(value: string): string {
     return truncateLines(truncateBytes(value));
 }
 
-function formatBooleanNumberOrUndefined(value: unknown): string | null {
-    if (typeof value === 'boolean' || typeof value === 'number' || value === undefined) {
-        return String(value);
-    }
+function formatPropertySegment(segment: PropertySegment): string {
+    const key = keyText(segment.key);
 
-    return null;
+    return /^[A-Za-z_$][\w$]*$/u.test(key) ? `.${key}` : `[${JSON.stringify(key)}]`;
 }
 
-function formatPrimitive(value: unknown): string | null {
-    const rendered = formatBooleanNumberOrUndefined(value);
-
-    if (rendered !== null) {
-        return rendered;
-    }
-
-    if (value === null) {
-        return 'null';
-    }
-
-    if (typeof value === 'string') {
-        return JSON.stringify(value);
-    }
-
-    if (typeof value === 'bigint') {
-        return `${value}n`;
-    }
-
-    return typeof value === 'symbol' ? value.toString() : null;
+function isPropertySegment(segment: KeyedSegment): segment is PropertySegment {
+    return segment.kind === 'property';
 }
 
-function formatValue(value: unknown): string {
-    const primitive = formatPrimitive(value);
-
-    if (primitive !== null) {
-        return primitive;
+function formatKeyedSegment(segment: KeyedSegment): string {
+    if (segment.kind === 'set-value') {
+        return `[set ${formatSerializedValue(segment.value)}]`;
     }
 
-    if (value instanceof Error) {
-        return `${value.name}: ${value.message}`;
+    if (segment.kind === 'map-key') {
+        return `[map key ${formatSerializedValue(segment.key)}]`;
     }
 
-    return truncateRenderedValue(inspect(value, {
-        breakLength: 80,
-        colors: false,
-        compact: false,
-        depth: 4,
-        maxArrayLength: 20,
-        maxStringLength: valueByteLimit,
-        sorted: true
-    }));
-}
-
-function firstStringDifference(expected: string, actual: string): number | null {
-    const length = Math.max(expected.length, actual.length);
-
-    for (let index = 0; index < length; index += 1) {
-        if (expected[index] !== actual[index]) {
-            return index;
-        }
+    if (segment.kind === 'map-value') {
+        return `[map value ${formatSerializedValue(segment.key)}]`;
     }
 
-    return null;
+    return isPropertySegment(segment) ? formatPropertySegment(segment) : '';
 }
 
-function graphemeSegments(value: string): readonly Intl.SegmentData[] {
-    const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+function formatSegment(segment: DiffPathSegment): string {
+    if (segment.kind === 'index') {
+        return `[${segment.index}]`;
+    }
 
-    return Array.from(segmenter.segment(value));
+    return segment.kind === 'byte' ? `[byte ${segment.offset}]` : formatKeyedSegment(segment);
 }
 
-function stringWindow(value: string, codeUnitIndex: number): string {
-    const segments = graphemeSegments(value);
-    const segmentIndex = Math.max(
-        0,
-        segments.findIndex(function containsIndex(segment, index) {
-            const nextIndex = segments[index + 1]?.index ?? value.length;
-
-            return codeUnitIndex >= segment.index && codeUnitIndex < nextIndex;
-        })
-    );
-    const start = Math.max(0, segmentIndex - stringContextGraphemes);
-    const end = Math.min(segments.length, segmentIndex + stringContextGraphemes + 1);
-    const prefix = start === 0 ? '' : '...';
-    const suffix = end === segments.length ? '' : '...';
-    const window = segments
-        .slice(start, end)
-        .map(function toSegment(segment) {
-            return segment.segment;
-        })
-        .join('');
-
-    return `${prefix}${window}${suffix}`;
-}
-
-function formatStringComparison(expected: string, actual: string): readonly string[] {
-    const difference = firstStringDifference(expected, actual);
-    const windowIndex = difference ?? 0;
-    const normalizationNote = expected !== actual && expected.normalize('NFC') === actual.normalize('NFC')
-        ? [ 'note: strings are equal after canonical Unicode normalization' ]
-        : [];
-
-    return [
-        `first difference at code unit ${windowIndex}`,
-        ...normalizationNote,
-        `expected (${expected.length} code units): ${JSON.stringify(stringWindow(expected, windowIndex))}`,
-        `actual (${actual.length} code units):   ${JSON.stringify(stringWindow(actual, windowIndex))}`
-    ];
-}
-
-function formatPath(path: FailedCheck['path']): string {
-    return path
-        .map(function formatSegment(segment) {
-            if (typeof segment === 'number') {
-                return `[${segment}]`;
-            }
-
-            return /^[A-Za-z_$][\w$]*$/u.test(segment) ? `.${segment}` : `[${JSON.stringify(segment)}]`;
-        })
-        .join('');
+function formatPath(path: readonly DiffPathSegment[]): string {
+    return path.map(formatSegment).join('');
 }
 
 function formatLocation(location: FailedCheck['location']): string | null {
@@ -191,128 +121,165 @@ function formatLocation(location: FailedCheck['location']): string | null {
     return `${location.file}:${location.line}:${location.column}`;
 }
 
-function isInspectableObject(value: unknown): value is InspectableObject {
-    return typeof value === 'object' && value !== null;
+function formatSerializedValueLines(label: 'actual' | 'expected', value: SerializedValue): readonly string[] {
+    return [ `${label}: ${truncateRenderedValue(formatSerializedValue(value))}` ];
 }
 
-function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-    return isInspectableObject(value) && !Array.isArray(value);
-}
-
-function formatArrayHint(expected: readonly unknown[], actual: readonly unknown[]): string {
-    if (expected.length !== actual.length) {
-        return `reference differs; array lengths differ: expected ${expected.length}, actual ${actual.length}`;
+function formatObjectOperation(operation: ObjectDiffOperation): string {
+    if (operation.operation === 'replace') {
+        return `replace ${formatPath(operation.path)}: expected ${formatSerializedValue(operation.from)}, actual ${
+            formatSerializedValue(operation.to)
+        }`;
     }
 
-    const index = expected.findIndex(function differs(expectedItem, itemIndex) {
-        return !Object.is(expectedItem, actual[itemIndex]);
-    });
+    if (operation.operation === 'add') {
+        return `add ${formatPath(operation.path)}: ${formatSerializedValue(operation.value)}`;
+    }
 
-    return index === -1
-        ? 'reference differs; shallow contents match'
-        : `reference differs; shallow difference at [${index}]`;
+    if (operation.operation === 'remove') {
+        return `remove ${formatPath(operation.path)}: ${formatSerializedValue(operation.value)}`;
+    }
+
+    return `missing ${formatPath(operation.path)}: ${formatSerializedValue(operation.value)}`;
 }
 
-function sortedKeys(value: Readonly<Record<string, unknown>>): readonly string[] {
-    return Object.keys(value).toSorted(function compareKeys(first, second) {
-        return first.localeCompare(second);
-    });
+function formatArrayOperation(operation: ArrayDiffOperation): string {
+    if (operation.operation === 'missing-index') {
+        return `missing [${operation.index}]: ${formatSerializedValue(operation.value)}`;
+    }
+
+    if (operation.operation === 'missing-member') {
+        return `missing array member: ${formatSerializedValue(operation.value)}`;
+    }
+
+    return formatObjectOperation(operation);
 }
 
-function formatObjectHint(
-    expected: Readonly<Record<string, unknown>>,
-    actual: Readonly<Record<string, unknown>>
-): string {
-    const expectedKeys = sortedKeys(expected);
-    const actualKeys = sortedKeys(actual);
-    const expectedKeySet = new Set(expectedKeys);
-    const actualKeySet = new Set(actualKeys);
-    const differences = [
-        ...expectedKeys.flatMap(function missingOrChanged(key) {
-            if (!actualKeySet.has(key)) {
-                return [ `missing ${key}` ];
-            }
+function formatMapOperation(operation: MapDiffOperation): string {
+    if (operation.operation === 'missing-entry') {
+        return `missing map entry ${formatSerializedValue(operation.key)}: ${formatSerializedValue(operation.value)}`;
+    }
 
-            return Object.is(expected[key], actual[key]) ? [] : [ `changed ${key}` ];
-        }),
-        ...actualKeys.flatMap(function extra(key) {
-            return expectedKeySet.has(key) ? [] : [ `extra ${key}` ];
-        })
+    return formatObjectOperation(operation);
+}
+
+function formatSetOperation(operation: SetDiffOperation): string {
+    if (operation.operation === 'missing-member') {
+        return `missing set member: ${formatSerializedValue(operation.value)}`;
+    }
+
+    return formatObjectOperation(operation);
+}
+
+function formatValueDiff(diff: Extract<Diff, { readonly kind: 'value'; }>): readonly string[] {
+    return [
+        ...formatSerializedValueLines('expected', diff.expected),
+        ...formatSerializedValueLines('actual', diff.actual)
     ];
-    const leadingDifferences = differences.slice(0, shallowHintLimit).join(', ');
-
-    return differences.length === 0
-        ? 'reference differs; shallow contents match'
-        : `reference differs; shallow differences: ${leadingDifferences}`;
 }
 
-function formatRecordOrObjectHint(expected: unknown, actual: unknown): string | null {
-    if (!isInspectableObject(expected) || !isInspectableObject(actual)) {
-        return null;
-    }
-
-    return isRecord(expected) && isRecord(actual)
-        ? formatObjectHint(expected, actual)
-        : 'reference differs; value types differ';
+function formatStringDiff(diff: Extract<Diff, { readonly kind: 'string'; }>): readonly string[] {
+    return diff.hunks.flatMap(function formatHunk(hunk) {
+        return [
+            `string hunk expected ${hunk.expectedStart}, actual ${hunk.actualStart}`,
+            ...hunk.removed.map(function removed(line) {
+                return `- ${line}`;
+            }),
+            ...hunk.added.map(function added(line) {
+                return `+ ${line}`;
+            })
+        ];
+    });
 }
 
-function formatShallowHint(expected: unknown, actual: unknown): string | null {
-    if (Array.isArray(expected) && Array.isArray(actual)) {
-        return formatArrayHint(expected, actual);
+function formatCollectionDiff(diff: Diff): readonly string[] | null {
+    if (diff.kind === 'object') {
+        return diff.operations.map(formatObjectOperation);
     }
 
-    return formatRecordOrObjectHint(expected, actual);
+    if (diff.kind === 'array') {
+        return diff.operations.map(formatArrayOperation);
+    }
+
+    if (diff.kind === 'map') {
+        return diff.operations.map(formatMapOperation);
+    }
+
+    if (diff.kind === 'set') {
+        return diff.operations.map(formatSetOperation);
+    }
+
+    return null;
 }
 
-function formatValueLines(label: 'actual' | 'expected', value: unknown): readonly string[] {
-    const rendered = formatValue(value);
-    const lines = rendered.split('\n');
-
-    if (lines.length === 1) {
-        return [ `${label}: ${lines[0]}` ];
-    }
+function formatBinaryDiff(diff: Extract<Diff, { readonly kind: 'binary'; }>): readonly string[] {
+    const expectedSummary = `expected ${diff.expectedSize} bytes ${diff.expectedHash}`;
+    const actualSummary = `actual ${diff.actualSize} bytes ${diff.actualHash}`;
+    const header = `binary differs: ${expectedSummary}, ${actualSummary}`;
 
     return [
-        `${label}:`,
-        ...lines.map(function indentValueLine(line) {
-            return `  ${line}`;
+        header,
+        ...diff.ranges.map(function formatRange(range) {
+            return `byte ${range.offset}: expected [${range.expected.join(', ')}], actual [${range.actual.join(', ')}]`;
         })
     ];
 }
 
-function formatNonStringCheckDetails(check: FailedCheck): readonly string[] {
+function formatDiff(diff: Diff): readonly string[] {
+    if (diff.kind === 'value') {
+        return formatValueDiff(diff);
+    }
+
+    if (diff.kind === 'string') {
+        return formatStringDiff(diff);
+    }
+
+    const collection = formatCollectionDiff(diff);
+
+    if (collection !== null) {
+        return collection;
+    }
+
+    return diff.kind === 'binary' ? formatBinaryDiff(diff) : [];
+}
+
+function failedCheckDetailLines(check: FailedCheck): readonly string[] {
     if (check.kind === 'foreign') {
-        return [];
+        return [
+            `foreign assertion: ${check.label}`,
+            `${check.error.name}: ${check.error.message}`
+        ];
     }
 
-    const shallowHint = formatShallowHint(check.expected, check.actual);
-
-    return [
-        ...shallowHint === null ? [] : [ shallowHint ],
-        ...formatValueLines('expected', check.expected),
-        ...formatValueLines('actual', check.actual)
-    ];
+    return check.diff === null
+        ? [
+            ...formatSerializedValueLines('expected', check.expected),
+            ...formatSerializedValueLines('actual', check.actual)
+        ]
+        : formatDiff(check.diff);
 }
 
 function formatFailedCheck(check: FailedCheck): readonly string[] {
     const path = formatPath(check.path);
     const location = formatLocation(check.location);
-    const detailLines = check.kind === 'foreign'
-        ? [
-            `foreign assertion: ${check.label}`,
-            `${check.error.name}: ${check.error.message}`
-        ]
-        : Array.from(
-            typeof check.expected === 'string' && typeof check.actual === 'string'
-                ? formatStringComparison(check.expected, check.actual)
-                : formatNonStringCheckDetails(check)
-        );
+    const detailLines = failedCheckDetailLines(check);
+    const childLines = check.kind === 'composite'
+        ? check.children.flatMap(function formatChild(child, index) {
+            return [
+                `child check ${index + 1}`,
+                ...formatFailedCheck(child).map(function indentChild(line) {
+                    return `  ${line}`;
+                })
+            ];
+        })
+        : [];
 
     return [
         check.summary,
         ...path.length === 0 ? [] : [ `path: ${path}` ],
         ...location === null ? [] : [ `location: ${location}` ],
-        ...detailLines
+        ...detailLines,
+        ...childLines
     ];
 }
 
@@ -322,7 +289,7 @@ function formatTestContractFailure(
     return [
         `${failure.summary} (${failure.code})`,
         `expected: ${failure.expected}`,
-        `actual: ${formatValue(failure.actual)}`
+        `actual: ${truncateRenderedValue(String(failure.actual))}`
     ];
 }
 

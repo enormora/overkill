@@ -86,8 +86,13 @@ registerTest('line reporter prints assertion failure details for a failed test-e
                 {
                     checks: [
                         {
-                            actual: 1,
-                            expected: 2,
+                            actual: { kind: 'number', value: 1 },
+                            diff: {
+                                actual: { kind: 'number', value: 1 },
+                                expected: { kind: 'number', value: 2 },
+                                kind: 'value'
+                            },
+                            expected: { kind: 'number', value: 2 },
                             id: '1',
                             kind: 'leaf',
                             location: { column: null, file: '', line: null },
@@ -127,12 +132,25 @@ registerTest('line reporter prints unicode string mismatch hints', async functio
                 {
                     checks: [
                         {
-                            actual: decomposedName,
-                            expected: composedName,
+                            actual: { kind: 'string', truncation: null, value: decomposedName },
+                            diff: {
+                                actual: decomposedName,
+                                expected: composedName,
+                                hunks: [
+                                    {
+                                        actualStart: 1,
+                                        added: [ decomposedName ],
+                                        expectedStart: 1,
+                                        removed: [ composedName ]
+                                    }
+                                ],
+                                kind: 'string'
+                            },
+                            expected: { kind: 'string', truncation: null, value: composedName },
                             id: '1',
                             kind: 'leaf',
                             location: { column: 5, file: 'source/users.test.ts', line: 10 },
-                            path: [ 'name' ],
+                            path: [ { key: { kind: 'string', value: 'name' }, kind: 'property' } ],
                             source: 'assert',
                             summary: 'names differ'
                         }
@@ -150,7 +168,7 @@ registerTest('line reporter prints unicode string mismatch hints', async functio
     assert.deepStrictEqual(log.secondCall.args, [ '  names differ' ]);
     assert.deepStrictEqual(log.thirdCall.args, [ '  path: .name' ]);
     assert.deepStrictEqual(log.getCall(3).args, [ '  location: source/users.test.ts:10:5' ]);
-    assert.deepStrictEqual(log.getCall(5).args, [ '  note: strings are equal after canonical Unicode normalization' ]);
+    assert.deepStrictEqual(log.getCall(4).args, [ '  string hunk expected 1, actual 1' ]);
 });
 
 registerTest('line reporter prints body error failures with a dimmed stack', async function () {
@@ -227,8 +245,29 @@ registerTest('line reporter prints object identity hints', async function () {
                 {
                     checks: [
                         {
-                            actual: { id: 1, name: 'Grace' },
-                            expected: { id: 1, name: 'Ada' },
+                            actual: {
+                                constructorName: 'Object',
+                                entries: [],
+                                kind: 'object',
+                                truncation: null
+                            },
+                            diff: {
+                                kind: 'object',
+                                operations: [
+                                    {
+                                        from: { kind: 'string', truncation: null, value: 'Ada' },
+                                        operation: 'replace',
+                                        path: [ { key: { kind: 'string', value: 'name' }, kind: 'property' } ],
+                                        to: { kind: 'string', truncation: null, value: 'Grace' }
+                                    }
+                                ]
+                            },
+                            expected: {
+                                constructorName: 'Object',
+                                entries: [],
+                                kind: 'object',
+                                truncation: null
+                            },
                             id: '1',
                             kind: 'leaf',
                             location: { column: null, file: '', line: null },
@@ -246,7 +285,7 @@ registerTest('line reporter prints object identity hints', async function () {
         wallTimeMs: 12
     });
 
-    assert.deepStrictEqual(log.getCall(2).args, [ '  reference differs; shallow differences: changed name' ]);
+    assert.deepStrictEqual(log.getCall(2).args, [ '  replace .name: expected "Ada", actual "Grace"' ]);
 });
 
 registerTest('line reporter prints a passed test-end event', async function () {

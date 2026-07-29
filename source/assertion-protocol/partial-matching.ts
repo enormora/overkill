@@ -1,4 +1,4 @@
-import { deepEqual } from 'fast-equals';
+import { compareDeepValues } from '../compare/comparison.ts';
 
 export function isPlainObject(value: unknown): value is Readonly<Record<PropertyKey, unknown>> {
     if (typeof value !== 'object' || value === null || Array.isArray(value)) {
@@ -34,7 +34,7 @@ function mapPartiallyMatches(actual: unknown, expected: ReadonlyMap<unknown, unk
 
     return Array.from(expected).every(function entryMatches([ expectedKey, expectedValue ]) {
         return Array.from(actual).some(function actualEntryMatches([ actualKey, actualValue ]) {
-            return deepEqual(actualKey, expectedKey) && match(actualValue, expectedValue);
+            return compareDeepValues(actualKey, expectedKey).passed && match(actualValue, expectedValue);
         });
     });
 }
@@ -80,5 +80,5 @@ export function partialDeepEqual(actual: unknown, expected: unknown): boolean {
 
     return isPlainObject(expected)
         ? objectPartiallyMatches(actual, expected, partialDeepEqual)
-        : deepEqual(actual, expected);
+        : compareDeepValues(actual, expected).passed;
 }

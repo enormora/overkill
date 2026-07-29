@@ -238,16 +238,15 @@ A failed assertion's diff is structured (see [Assertions And Results](./assertio
 
 ```ts
 type DiffArtifact = {
-    readonly kind: 'value' | 'string' | 'object' | 'array' | 'binary';
+    readonly diff: Diff | null;
     readonly expected: SerializedValue;
     readonly actual: SerializedValue;
-    readonly ops?: ReadonlyArray<DiffOperation>;
-    readonly hunks?: ReadonlyArray<Hunk>;
+    readonly path: ReadonlyArray<DiffPathSegment>;
 };
 ```
 
-Reporters render this. The runner does not pre-render. Truncation is
-reporter-policy, not runner-policy (the data stays full in JSON output).
+Reporters render this. The runner does not pre-render. Value serialization is
+bounded before delivery. Human reporter truncation is a separate display cap.
 
 ## Retry Interaction
 

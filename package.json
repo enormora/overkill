@@ -22,7 +22,7 @@
     "dependencies": {
         "@enormora/wall-clock": "0.0.3",
         "ansi-escapes": "7.3.0",
-        "fast-equals": "6.0.2",
+        "diff": "9.0.0",
         "figures": "6.1.0",
         "is-interactive": "2.0.0",
         "string-width": "8.2.2",

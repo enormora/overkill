@@ -138,8 +138,13 @@ registerTest('dot reporter maps outcomes and runner errors to compact marks', as
             {
                 checks: [
                     {
-                        actual: 1,
-                        expected: 2,
+                        actual: { kind: 'number', value: 1 },
+                        diff: {
+                            actual: { kind: 'number', value: 1 },
+                            expected: { kind: 'number', value: 2 },
+                            kind: 'value'
+                        },
+                        expected: { kind: 'number', value: 2 },
                         id: 'check',
                         kind: 'leaf',
                         location: { column: null, file: '', line: null },

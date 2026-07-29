@@ -1,13 +1,17 @@
 import assert from 'node:assert/strict';
-import type { FailedLeafCheck } from '../assertion-protocol/assertion-node-shape.ts';
+import type { FailedCompositeCheck, FailedLeafCheck } from '../assertion-protocol/assertion-node-shape.ts';
+import { compareDeepValues, compareStringEquality, serializedValueDiff } from '../compare/comparison.ts';
+import { serializeValue } from '../compare/serialized-value.ts';
+import type { Diff } from '../diff/diff-shape.ts';
 import type { TestFailure } from '../engine/run-result.ts';
 import { registerTest } from '../test-support/register-test.ts';
 import { formatFailure } from './line-failure-rendering.ts';
 
 function failedCheck(overrides: Partial<FailedLeafCheck>): FailedLeafCheck {
     return {
-        actual: 1,
-        expected: 2,
+        actual: serializeValue(1),
+        diff: serializedValueDiff(1, 2),
+        expected: serializeValue(2),
         id: '1',
         kind: 'leaf',
         location: { column: null, file: '', line: null },
@@ -18,32 +22,32 @@ function failedCheck(overrides: Partial<FailedLeafCheck>): FailedLeafCheck {
     };
 }
 
-registerTest('line failure formatter renders multiple check labels and scalar values', function () {
-    const lines = formatFailure({
-        checks: [
-            {
-                actual: undefined,
-                expected: null,
-                id: '1',
-                kind: 'leaf',
-                location: { column: null, file: 'source/users.test.ts', line: null },
-                path: [ 0, 'display name' ],
-                source: 'assert',
-                summary: 'null differs'
-            },
-            {
-                actual: Symbol.for('actual'),
-                expected: 1n,
-                id: '2',
-                kind: 'leaf',
-                location: { column: null, file: 'source/users.test.ts', line: 12 },
-                path: [],
-                source: 'assert',
-                summary: 'symbol differs'
-            }
-        ],
-        kind: 'assertion'
-    });
+function assertionFailure(checks: readonly [FailedLeafCheck, ...FailedLeafCheck[]]): TestFailure {
+    return { checks, kind: 'assertion' };
+}
+
+registerTest('line failure formatter renders serialized scalar values and locations', function () {
+    const lines = formatFailure(assertionFailure([
+        failedCheck({
+            actual: serializeValue(undefined),
+            diff: null,
+            expected: serializeValue(null),
+            location: { column: null, file: 'source/users.test.ts', line: null },
+            path: [
+                { index: 0, kind: 'index' },
+                { key: { kind: 'string', value: 'display name' }, kind: 'property' }
+            ],
+            summary: 'null differs'
+        }),
+        failedCheck({
+            actual: serializeValue(Symbol.for('actual')),
+            diff: null,
+            expected: serializeValue(1n),
+            id: '2',
+            location: { column: null, file: 'source/users.test.ts', line: 12 },
+            summary: 'symbol differs'
+        })
+    ]));
 
     assert.deepStrictEqual(lines.slice(0, 10), [
         'check 1',
@@ -57,86 +61,121 @@ registerTest('line failure formatter renders multiple check labels and scalar va
         'location: source/users.test.ts:12',
         'expected: 1n'
     ]);
-    assert.equal(lines.at(-1), 'actual: Symbol(actual)');
+    assert.equal(lines.at(-1), 'actual: Symbol.for(actual)');
 });
 
-registerTest('line failure formatter renders collection shallow hints', function () {
-    const lines = formatFailure({
-        checks: [
-            failedCheck({ actual: [ 1 ], expected: [ 1, 2 ], summary: 'array length differs' }),
-            failedCheck({ actual: [ 1 ], expected: [ 1 ], summary: 'array references differ' }),
-            failedCheck({
-                actual: { extra: 3, same: 2 },
-                expected: { missing: 1, same: 2 },
-                summary: 'object keys differ'
-            }),
-            failedCheck({ actual: [ 1 ], expected: { 0: 1 }, summary: 'types differ' })
-        ],
-        kind: 'assertion'
-    });
-
-    assert.ok(lines.includes('reference differs; array lengths differ: expected 2, actual 1'));
-    assert.ok(lines.includes('reference differs; shallow contents match'));
-    assert.ok(lines.includes('reference differs; shallow differences: missing missing, extra extra'));
-    assert.ok(lines.includes('reference differs; value types differ'));
-});
-
-registerTest('line failure formatter renders composite parents without child details', function () {
-    const lines = formatFailure({
-        checks: [
-            {
-                actual: { ok: false },
-                children: [
-                    failedCheck({
-                        actual: false,
-                        expected: true,
-                        id: '1.1',
-                        summary: 'child detail'
-                    })
-                ],
-                expected: 'resultOk',
-                id: '1',
-                kind: 'composite',
-                location: { column: null, file: '', line: null },
-                path: [],
-                source: 'assert',
-                summary: 'Expected resultOk assertion to pass.'
-            }
-        ],
-        kind: 'assertion'
-    });
+registerTest('line failure formatter renders structured string hunks', function () {
+    const comparison = compareStringEquality('Ada', 'Grace');
+    const lines = formatFailure(assertionFailure([
+        failedCheck({
+            actual: comparison.actual,
+            diff: comparison.diff,
+            expected: comparison.expected,
+            summary: 'names differ'
+        })
+    ]));
 
     assert.deepStrictEqual(lines, [
+        'names differ',
+        'string hunk expected 1, actual 1',
+        '- Grace',
+        '+ Ada'
+    ]);
+});
+
+registerTest('line failure formatter renders object, array, map, and set diffs', function () {
+    const objectComparison = compareDeepValues({ id: 1, name: 'Grace' }, { id: 1, name: 'Ada' });
+    const arrayComparison = compareDeepValues([ 1, 3 ], [ 1, 2 ]);
+    const mapComparison = compareDeepValues(new Map([ [ 'id', 2 ] ]), new Map([ [ 'id', 1 ] ]));
+    const setComparison = compareDeepValues(new Set([ 2 ]), new Set([ 1 ]));
+    const lines = formatFailure(assertionFailure([
+        failedCheck({
+            actual: objectComparison.actual,
+            diff: objectComparison.diff,
+            expected: objectComparison.expected,
+            summary: 'object differs'
+        }),
+        failedCheck({
+            actual: arrayComparison.actual,
+            diff: arrayComparison.diff,
+            expected: arrayComparison.expected,
+            summary: 'array differs'
+        }),
+        failedCheck({
+            actual: mapComparison.actual,
+            diff: mapComparison.diff,
+            expected: mapComparison.expected,
+            summary: 'map differs'
+        }),
+        failedCheck({
+            actual: setComparison.actual,
+            diff: setComparison.diff,
+            expected: setComparison.expected,
+            summary: 'set differs'
+        })
+    ]));
+
+    assert.ok(lines.includes('replace .name: expected "Ada", actual "Grace"'));
+    assert.ok(lines.includes('replace [1]: expected 2, actual 3'));
+    assert.ok(lines.some(function includesMapChange(line) {
+        return line.startsWith('replace [map value ');
+    }));
+    assert.ok(lines.includes('remove [set 1]: 1'));
+});
+
+registerTest('line failure formatter renders binary diff summaries', function () {
+    const actualBytes = new Uint8Array(101);
+    const expectedBytes = new Uint8Array(101);
+    actualBytes.fill(2);
+    expectedBytes.fill(1);
+
+    const binaryComparison = compareDeepValues(actualBytes, expectedBytes);
+    const lines = formatFailure(assertionFailure([
+        failedCheck({
+            actual: binaryComparison.actual,
+            diff: binaryComparison.diff,
+            expected: binaryComparison.expected,
+            summary: 'binary differs'
+        })
+    ]));
+
+    assert.ok(lines.some(function includesBinarySummary(line) {
+        return line.startsWith('binary differs: expected 101 bytes ');
+    }));
+});
+
+registerTest('line failure formatter renders composite children', function () {
+    const child = failedCheck({
+        actual: serializeValue(false),
+        diff: null,
+        expected: serializeValue(true),
+        summary: 'child detail'
+    });
+    const composite: FailedCompositeCheck = {
+        actual: serializeValue({ ok: false }),
+        children: [ child ],
+        diff: null,
+        expected: serializeValue('resultOk'),
+        id: '1',
+        kind: 'composite',
+        location: { column: null, file: '', line: null },
+        path: [],
+        source: 'assert',
+        summary: 'Expected resultOk assertion to pass.'
+    };
+
+    assert.deepStrictEqual(formatFailure({ checks: [ composite ], kind: 'assertion' }), [
         'Expected resultOk assertion to pass.',
         'expected: "resultOk"',
-        'actual:',
-        '  {',
-        '    ok: false',
-        '  }'
+        'actual: Object { ok: false }',
+        'child check 1',
+        '  child detail',
+        '  expected: true',
+        '  actual: false'
     ]);
 });
 
-registerTest('line failure formatter renders equal string diagnostics without normalization note', function () {
-    const lines = formatFailure({
-        checks: [
-            failedCheck({
-                actual: 'same',
-                expected: 'same',
-                summary: 'strings differ'
-            })
-        ],
-        kind: 'assertion'
-    });
-
-    assert.deepStrictEqual(lines, [
-        'strings differ',
-        'first difference at code unit 0',
-        'expected (4 code units): "same"',
-        'actual (4 code units):   "same"'
-    ]);
-});
-
-registerTest('line failure formatter renders body errors without stacks', function () {
+registerTest('line failure formatter renders body errors and test-contract failures', function () {
     const failure: TestFailure = {
         error: {
             message: 'boom',
@@ -146,21 +185,36 @@ registerTest('line failure formatter renders body errors without stacks', functi
         },
         kind: 'body-error'
     };
+    const contract: TestFailure = {
+        actual: 0,
+        code: 'no-assertions',
+        expected: 'at least one assertion',
+        kind: 'test-contract',
+        summary: 'Expected at least one assertion.'
+    };
 
     assert.deepStrictEqual(formatFailure(failure), [ 'Error: boom' ]);
+    assert.deepStrictEqual(formatFailure(contract), [
+        'Expected at least one assertion. (no-assertions)',
+        'expected: at least one assertion',
+        'actual: 0'
+    ]);
 });
 
 registerTest('line failure formatter truncates oversized rendered values', function () {
-    const lines = formatFailure({
-        checks: [
-            failedCheck({
-                actual: { value: 'x'.repeat(9000) },
-                expected: { value: 'y' },
-                summary: 'large value differs'
-            })
-        ],
-        kind: 'assertion'
-    });
+    const diff: Diff = {
+        actual: serializeValue('x'.repeat(9000)),
+        expected: serializeValue('y'),
+        kind: 'value'
+    };
+    const lines = formatFailure(assertionFailure([
+        failedCheck({
+            actual: diff.actual,
+            diff,
+            expected: diff.expected,
+            summary: 'large value differs'
+        })
+    ]));
 
     assert.ok(lines.some(function includesTruncationMarker(line) {
         return line.includes('truncated after');

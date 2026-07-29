@@ -15,6 +15,8 @@ import {
     type CompositeCheckBuilder,
     type captureSourceLocation,
     type DeepComparable,
+    type Diff,
+    type DiffPathSegment,
     type ExecuteOptions,
     type FailedCheck,
     type FailedCompositeCheck,
@@ -32,6 +34,8 @@ import {
     type RunResult,
     type RunSummary,
     type RunnerError,
+    type SerializationTruncation,
+    type SerializedValue,
     type SinkDeclaration,
     type SourceLocation,
     type SourceLocationProvider,
@@ -44,8 +48,9 @@ import {
 } from './engine.entry-point.ts';
 
 type FailedCheckFixture = {
-    readonly actual: 'actual';
-    readonly expected: 'expected';
+    readonly actual: { readonly kind: 'number'; readonly value: 1; };
+    readonly diff: null;
+    readonly expected: { readonly kind: 'undefined'; };
     readonly id: '1';
     readonly kind: 'leaf';
     readonly location: { readonly column: null; readonly file: ''; readonly line: null; };
@@ -55,6 +60,9 @@ type FailedCheckFixture = {
 };
 
 type FailedCheckKeyByName = {
+    readonly actual: true;
+    readonly diff: true;
+    readonly expected: true;
     readonly id: true;
     readonly kind: true;
     readonly location: true;
@@ -63,16 +71,9 @@ type FailedCheckKeyByName = {
     readonly summary: true;
 };
 
-type FailedCheckKey = keyof FailedCheckKeyByName;
+type FailedLeafCheckKey = keyof FailedCheckKeyByName;
 
-type FailedLeafCheckKeyByName = FailedCheckKeyByName & {
-    readonly actual: true;
-    readonly expected: true;
-};
-
-type FailedLeafCheckKey = keyof FailedLeafCheckKeyByName;
-
-type FailedCompositeCheckKeyByName = FailedLeafCheckKeyByName & {
+type FailedCompositeCheckKeyByName = FailedCheckKeyByName & {
     readonly children: true;
 };
 
@@ -244,11 +245,46 @@ describe('TestOutcome', function () {
         expect<TestOutcome>().type.not.toBeAssignableFrom<{ readonly kind: 'inconclusive'; }>();
     });
 
-    test('keeps failed checks free of diff fields', function () {
-        expect<keyof FailedCheck>().type.toBe<FailedCheckKey>();
+    test('exposes structured failed check diagnostics', function () {
+        expect<keyof FailedCheck>().type.toBe<keyof FailedCheckKeyByName>();
         expect<keyof FailedLeafCheck>().type.toBe<FailedLeafCheckKey>();
         expect<keyof FailedCompositeCheck>().type.toBe<FailedCompositeCheckKey>();
         expect<keyof FailedForeignCheck>().type.toBe<FailedForeignCheckKey>();
+        expect<FailedCheck['actual']>().type.toBe<SerializedValue>();
+        expect<FailedCheck['expected']>().type.toBe<SerializedValue>();
+        expect<FailedCheck['diff']>().type.toBe<Diff | null>();
+        expect<FailedCheck['path']>().type.toBe<readonly DiffPathSegment[]>();
+    });
+
+    test('exports serialized value and diff contracts', function () {
+        expect<SerializedValue>().type.toBeAssignableFrom<{ readonly kind: 'number'; readonly value: '-0'; }>();
+        expect<SerializedValue>().type.toBeAssignableFrom<{
+            readonly kind: 'string';
+            readonly truncation: SerializationTruncation | null;
+            readonly value: 'value';
+        }>();
+        expect<DiffPathSegment>().type.toBeAssignableFrom<{
+            readonly key: { readonly kind: 'string'; readonly value: 'name'; };
+            readonly kind: 'property';
+        }>();
+        expect<DiffPathSegment>().type.toBeAssignableFrom<{
+            readonly key: { readonly kind: 'number'; readonly value: 1; };
+            readonly kind: 'map-value';
+        }>();
+        expect<Diff>().type.toBeAssignableFrom<{
+            readonly actual: 'actual';
+            readonly expected: 'expected';
+            readonly hunks: readonly [];
+            readonly kind: 'string';
+        }>();
+        expect<Diff>().type.toBeAssignableFrom<{
+            readonly kind: 'binary';
+            readonly actualHash: 'hash';
+            readonly actualSize: 1;
+            readonly expectedHash: 'hash';
+            readonly expectedSize: 1;
+            readonly ranges: readonly [];
+        }>();
     });
 
     test('accepts public test failure shapes', function () {
