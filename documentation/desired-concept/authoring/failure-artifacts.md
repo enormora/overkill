@@ -110,6 +110,39 @@ explicit support (`case.assert.rejects(() => promiseReturningCall(), { message: 
 rather than relying on the global hooks. The global hooks are the safety net, not the
 mechanism.
 
+## Runtime Policy Violations
+
+Strict runtime policies, such as denied filesystem writes, denied network
+access, denied `process.exit`, and strict `console.*` diagnostics, must report
+structured runtime policy violations.
+
+A runtime policy violation is a runner error, not an assertion failure. It
+must include:
+
+- the violated policy, such as `fs-write-denied` or `console-output-denied`
+- the observed operation, such as `fs.writeFile`, `process.stdout.write`, or
+  `console.log`
+- the active `CaseId` when the violation happened during a test body
+- `null` attribution only when the violation happened outside any active test
+- a source location or stack when the runtime can provide it
+- attribution confidence: `direct`, `active-case`, or `unknown`
+
+Owned-boundary profiles have the strongest attribution rule. Before evaluating
+a test body, the worker must emit the active `CaseId`; any denied capability,
+process-exit attempt, strict console event, crash, or hard-kill condition in
+that window is attributed to that case unless the runner can prove it belongs
+to run-level machinery.
+
+Same-process profiles may use `AsyncLocalStorage` and runtime diagnostics for
+attribution. If a violation is detected but the originating test is uncertain,
+the runner reports attribution drift rather than assigning the violation to a
+sibling test.
+
+Human reporters should name the test file and test name for attributed
+violations. Machine-readable reporters receive the `CaseId` and structured
+violation payload so a message like `fs.writeFile was denied` is never detached
+from the test that triggered it.
+
 ## Artifact Policy
 
 Artifacts are:

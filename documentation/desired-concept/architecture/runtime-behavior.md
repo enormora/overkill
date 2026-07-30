@@ -46,6 +46,12 @@ Override surfaces:
 - reporter-level configuration — choose to print captured output for passing
   tests as well
 
+When strict console diagnostics are enabled, `console.*` is a runtime policy
+violation. It is reported as a runner error with `runtime-policy` subtype and
+the same attribution rules as other out-of-band runtime events. A reporter must
+be able to say which active test emitted the denied console call, or that
+attribution is unknown.
+
 Capture must respect orderings within a test. Captured chunks are timestamped
 at capture time so reporters can render them interleaved with assertion
 events.
