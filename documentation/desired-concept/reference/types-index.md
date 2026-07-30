@@ -182,23 +182,22 @@ type TestFailure =
     };
 
 type FailedCheckBase = {
+    readonly actual: SerializedValue;
+    readonly diff: Diff | null;
+    readonly expected: SerializedValue;
     readonly id: string;
     readonly location: SourceLocation;
-    readonly path: ReadonlyArray<string | number>;
+    readonly path: ReadonlyArray<DiffPathSegment>;
     readonly source: 'assert' | 'require';
     readonly summary: string;
 };
 
 type FailedCheck =
     | (FailedCheckBase & {
-        readonly actual: unknown;
-        readonly expected: unknown;
         readonly kind: 'leaf';
     })
     | (FailedCheckBase & {
-        readonly actual: unknown;
         readonly children: NonEmptyReadonlyArray<FailedCheck>;
-        readonly expected: unknown;
         readonly kind: 'composite';
     })
     | (FailedCheckBase & {
@@ -215,22 +214,67 @@ type FailedCheck =
 type Diff =
     | { kind: 'value'; expected: SerializedValue; actual: SerializedValue; }
     | { kind: 'string'; expected: string; actual: string; hunks: ReadonlyArray<Hunk>; }
-    | { kind: 'object'; ops: ReadonlyArray<DiffOperation>; }
-    | { kind: 'array'; ops: ReadonlyArray<DiffOperation>; }
-    | { kind: 'binary'; expectedSize: number; actualSize: number; expectedHash: string; actualHash: string; };
+    | { kind: 'object'; operations: ReadonlyArray<ObjectDiffOperation>; }
+    | { kind: 'array'; operations: ReadonlyArray<ArrayDiffOperation>; }
+    | { kind: 'map'; operations: ReadonlyArray<MapDiffOperation>; }
+    | { kind: 'set'; operations: ReadonlyArray<SetDiffOperation>; }
+    | {
+        kind: 'binary';
+        expectedSize: number;
+        actualSize: number;
+        expectedHash: string;
+        actualHash: string;
+        ranges: ReadonlyArray<ByteDiffRange>;
+    };
+
+type DiffPathSegment =
+    | { kind: 'property'; key: SerializedPropertyKey; }
+    | { kind: 'index'; index: number; }
+    | { kind: 'map-key'; key: SerializedValue; }
+    | { kind: 'map-value'; key: SerializedValue; }
+    | { kind: 'set-value'; value: SerializedValue; }
+    | { kind: 'byte'; offset: number; };
+
+type SerializedPropertyKey =
+    | { kind: 'string'; value: string; }
+    | { kind: 'symbol'; value: string; };
 
 type DiffOperation =
-    | { operation: 'add'; path: ReadonlyArray<string | number>; value: SerializedValue; }
-    | { operation: 'remove'; path: ReadonlyArray<string | number>; value: SerializedValue; }
-    | { operation: 'replace'; path: ReadonlyArray<string | number>; from: SerializedValue; to: SerializedValue; };
+    | { operation: 'add'; path: ReadonlyArray<DiffPathSegment>; value: SerializedValue; }
+    | { operation: 'remove'; path: ReadonlyArray<DiffPathSegment>; value: SerializedValue; }
+    | { operation: 'replace'; path: ReadonlyArray<DiffPathSegment>; from: SerializedValue; to: SerializedValue; };
+
+type ObjectDiffOperation =
+    | DiffOperation
+    | { operation: 'missing-property'; path: ReadonlyArray<DiffPathSegment>; value: SerializedValue; };
+
+type ArrayDiffOperation =
+    | DiffOperation
+    | { operation: 'missing-index'; index: number; value: SerializedValue; }
+    | { operation: 'missing-member'; value: SerializedValue; };
+
+type MapDiffOperation =
+    | DiffOperation
+    | { operation: 'missing-entry'; key: SerializedValue; value: SerializedValue; };
+
+type SetDiffOperation =
+    | Exclude<DiffOperation, { operation: 'replace'; }>
+    | { operation: 'missing-member'; value: SerializedValue; };
 
 type Hunk = {
-    readonly line: number;
+    readonly expectedStart: number;
+    readonly actualStart: number;
     readonly removed: ReadonlyArray<string>;
     readonly added: ReadonlyArray<string>;
 };
 
-type SerializedValue = unknown; // bounded JSON-compatible value, possibly carrying truncation metadata
+type ByteDiffRange = {
+    readonly offset: number;
+    readonly expected: ReadonlyArray<number>;
+    readonly actual: ReadonlyArray<number>;
+};
+
+type SerializedValue = unknown; // bounded JSON-compatible value with explicit truncation metadata when capped
 
 type SourceLocation = {
     readonly file: string;

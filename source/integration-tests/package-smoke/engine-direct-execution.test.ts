@@ -9,6 +9,7 @@ import {
     createTestPlan,
     execute,
     formatCaseId,
+    serializeValue,
     type Engine,
     type RunResult,
     type SourceLocation,
@@ -125,8 +126,9 @@ function assertSmokeResult(result: RunResult): void {
                         {
                             checks: [
                                 {
-                                    actual: 1,
-                                    expected: 2,
+                                    actual: serializeValue(1),
+                                    diff: null,
+                                    expected: serializeValue(2),
                                     id: '1',
                                     kind: 'leaf',
                                     location,

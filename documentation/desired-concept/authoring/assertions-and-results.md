@@ -1295,20 +1295,48 @@ collected in [Types Index § Outcomes And Verdicts](../reference/types-index.md#
 type FailedCheck = {
     readonly id: string;
     readonly summary: string;
-    readonly expected: unknown;
-    readonly actual: unknown;
-    readonly path: ReadonlyArray<string | number>;
+    readonly expected: SerializedValue;
+    readonly actual: SerializedValue;
+    readonly path: ReadonlyArray<DiffPathSegment>;
     readonly location: SourceLocation;
-    readonly diff?: Diff;
+    readonly diff: Diff | null;
 };
 
 type Diff =
     | { kind: 'value'; expected: SerializedValue; actual: SerializedValue; }
     | { kind: 'string'; expected: string; actual: string; hunks: ReadonlyArray<Hunk>; }
-    | { kind: 'object'; ops: ReadonlyArray<DiffOperation>; }
-    | { kind: 'array'; ops: ReadonlyArray<DiffOperation>; }
-    | { kind: 'binary'; expectedSize: number; actualSize: number; expectedHash: string; actualHash: string; };
+    | { kind: 'object'; operations: ReadonlyArray<ObjectDiffOperation>; }
+    | { kind: 'array'; operations: ReadonlyArray<ArrayDiffOperation>; }
+    | { kind: 'map'; operations: ReadonlyArray<MapDiffOperation>; }
+    | { kind: 'set'; operations: ReadonlyArray<SetDiffOperation>; }
+    | {
+        kind: 'binary';
+        expectedSize: number;
+        actualSize: number;
+        expectedHash: string;
+        actualHash: string;
+        ranges: ReadonlyArray<ByteDiffRange>;
+    };
 ```
+
+`FailedCheck.actual` and `FailedCheck.expected` are serialized diagnostic
+values, not raw assertion operands. The root path is `[]`. Path entries are
+typed segments for properties, indexes, map keys, map values, set members, and
+byte offsets. Composite checks and foreign checks use `diff: null`; their child
+checks or normalized thrown-error payload carry the useful detail.
+
+Rich diffs are emitted only where the engine owns meaningful comparison
+semantics: deep assertions, partial assertions, and string `equal` failures.
+Plain non-string `equal` failures and failed `notDeepEqual` checks keep
+serialized operands with `diff: null`.
+
+Deep comparison uses `Object.is` for primitive leaves, so `NaN` equals `NaN`
+and `-0` differs from `+0`. It compares enumerable own string and symbol data
+properties, never invokes accessors or `toJSON`, compares class instances only
+when their prototype matches, and treats Map and Set comparisons as
+order-independent deep matches. Dates compare by time, regexps by source and
+flags, errors by name, message, and enumerable data, while Promise, WeakMap, and
+WeakSet compare by identity only. Cyclic structures compare by graph topology.
 
 The `binary` kind covers cases where a meaningful structured diff is
 not possible — compiled artifacts, encoded media, opaque blobs.

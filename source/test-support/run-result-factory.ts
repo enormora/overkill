@@ -5,6 +5,8 @@ import type {
     NonEmptyReadonlyArray,
     SourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
+import type { DiffPathSegment } from '../diff/diff-shape.ts';
+import { serializeValue } from '../compare/serialized-value.ts';
 import type {
     OrphanedNode,
     RunnerError,
@@ -21,7 +23,7 @@ type FailedCheckOverrides = {
     readonly id?: string;
     readonly kind?: 'leaf';
     readonly location?: Partial<SourceLocation>;
-    readonly path?: readonly (number | string)[];
+    readonly path?: readonly DiffPathSegment[];
     readonly source?: 'assert' | 'require';
     readonly summary?: string;
 };
@@ -125,8 +127,9 @@ const defaultCaseId: CaseId = {
 };
 
 const defaultFailedCheck: FailedLeafCheck = {
-    actual: null,
-    expected: null,
+    actual: serializeValue(null),
+    diff: null,
+    expected: serializeValue(null),
     id: 'check',
     kind: 'leaf',
     location: defaultLocation,
@@ -145,11 +148,15 @@ const emptyPerTestResultOverrides: readonly PerTestResultOverrides[] = [];
 const emptyRunnerErrorOverrides: readonly RunnerErrorOverrides[] = [];
 
 function buildFailedCheck(overrides: FailedCheckOverrides = {}): FailedLeafCheck {
-    const { location, ...checkOverrides } = overrides;
+    const { actual, expected, location, ...checkOverrides } = overrides;
+    const hasActual = Object.hasOwn(overrides, 'actual');
+    const hasExpected = Object.hasOwn(overrides, 'expected');
 
     return {
         ...defaultFailedCheck,
         ...checkOverrides,
+        actual: hasActual ? serializeValue(actual) : defaultFailedCheck.actual,
+        expected: hasExpected ? serializeValue(expected) : defaultFailedCheck.expected,
         location: {
             ...defaultLocation,
             ...location

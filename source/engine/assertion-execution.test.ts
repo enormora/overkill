@@ -11,15 +11,13 @@ import type {
     SourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
 import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
+import { serializeValue } from '../compare/serialized-value.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import { registerTest } from '../test-support/register-test.ts';
 import type { AssertionTestFailure, FailOutcome, RunResult, TestContractFailure } from './run-result.ts';
 import type { TestBody, TestContext } from './test-node.ts';
 
-type BooleanResult = {
-    readonly ok: boolean;
-};
-
+type BooleanResult = { readonly ok: boolean; };
 type ValueResult = {
     readonly ok: boolean;
     readonly value: unknown;
@@ -208,8 +206,9 @@ registerTest('execute() skips plan mismatch when a requirement fails', async fun
         {
             checks: [
                 {
-                    actual: 1,
-                    expected: 'string',
+                    actual: serializeValue(1),
+                    diff: null,
+                    expected: serializeValue('string'),
                     id: '1',
                     kind: 'leaf',
                     location: check.location,
@@ -242,8 +241,9 @@ registerTest('execute() treats caught failed requirements as fatal and ignores l
         {
             checks: [
                 {
-                    actual: 1,
-                    expected: 'string',
+                    actual: serializeValue(1),
+                    diff: null,
+                    expected: serializeValue('string'),
                     id: '1',
                     kind: 'leaf',
                     location: check.location,
@@ -390,11 +390,12 @@ registerTest('execute() reports composite parent failures with child diagnostics
         {
             checks: [
                 {
-                    actual: { ok: false, value: { count: 1 } },
+                    actual: serializeValue({ ok: false, value: { count: 1 } }),
                     children: [
                         {
-                            actual: false,
-                            expected: true,
+                            actual: serializeValue(false),
+                            diff: firstChild.diff,
+                            expected: serializeValue(true),
                             id: '1.1',
                             kind: 'leaf',
                             location: firstChild.location,
@@ -403,17 +404,19 @@ registerTest('execute() reports composite parent failures with child diagnostics
                             summary: 'status'
                         },
                         {
-                            actual: { count: 1 },
-                            expected: { count: 2 },
+                            actual: serializeValue({ count: 1 }),
+                            diff: secondChild.diff,
+                            expected: serializeValue({ count: 2 }),
                             id: '1.2',
                             kind: 'leaf',
                             location: secondChild.location,
-                            path: [],
+                            path: [ { key: { kind: 'string', value: 'count' }, kind: 'property' } ],
                             source: 'assert',
                             summary: 'value'
                         }
                     ],
-                    expected: { count: 2 },
+                    diff: null,
+                    expected: serializeValue({ count: 2 }),
                     id: '1',
                     kind: 'composite',
                     location: composite.location,
@@ -494,11 +497,12 @@ registerTest('execute() short-circuits failed narrowing assertion references thr
         {
             checks: [
                 {
-                    actual: { error, ok: false },
+                    actual: serializeValue({ error, ok: false }),
                     children: [
                         {
-                            actual: false,
-                            expected: true,
+                            actual: serializeValue(false),
+                            diff: child.diff,
+                            expected: serializeValue(true),
                             id: '1.1',
                             kind: 'leaf',
                             location: child.location,
@@ -507,7 +511,8 @@ registerTest('execute() short-circuits failed narrowing assertion references thr
                             summary: 'Expected resultOk narrowing predicate to pass.'
                         }
                     ],
-                    expected: 'resultOk',
+                    diff: null,
+                    expected: serializeValue('resultOk'),
                     id: '1',
                     kind: 'composite',
                     location: composite.location,

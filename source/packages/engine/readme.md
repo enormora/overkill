@@ -21,6 +21,7 @@ Top-level API:
 - `RunResult`, `TestOutcome`, `PassOutcome`, `FailOutcome`, `SkipOutcome`, `InconclusiveOutcome`
 - `AssertionNode`, `AssertionResult`, `AssertAssertionFacade`, `CaseAssertContext`
 - `RequireAssertionFacade`, `FailedCheck`, `TestFailure`, `RunnerError`
+- `Diff`, `DiffPathSegment`, `SerializedValue`, `SerializationBudget`
 
 The top-level constructors share one default engine instance. Use
 `createEngine()` when a collection needs isolated construction state for
@@ -66,9 +67,11 @@ Assertion bodies:
   `AssertAssertionFacade`.
 - `case.plan(count)` must be the first test-body call and must declare a
   positive integer assertion count.
-- `FailedCheck` is discriminated by `kind`. Leaf checks carry value
-  comparison data, composite checks carry child diagnostics, and foreign
-  checks carry normalized thrown-error data.
+- `FailedCheck` is discriminated by `kind`. Every failed check carries
+  serialized `actual` and `expected` values, a typed mismatch `path`, and
+  `diff: Diff | null`. Leaf checks carry value comparison data, composite
+  checks carry child diagnostics, and foreign checks carry normalized
+  thrown-error data.
 - Failed checks carry concrete source locations. Engine-created assertion
   nodes capture lazy locations at the public assertion boundary. Direct raw
   assertion nodes must provide `location`; use `captureSourceLocation()` for

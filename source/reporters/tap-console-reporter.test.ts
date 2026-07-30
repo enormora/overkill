@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import sinon, { type SinonSpy } from 'sinon';
+import { serializedValueDiff } from '../compare/comparison.ts';
+import { serializeValue } from '../compare/serialized-value.ts';
 import type { CaseId } from '../engine/identity.ts';
 import type { FinalResultReporter, RealTimeReporter } from '../engine/reporter.ts';
 import { registerTest } from '../test-support/register-test.ts';
@@ -53,8 +55,9 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
                 {
                     checks: [
                         {
-                            actual: 1,
-                            expected: 2,
+                            actual: serializeValue(1),
+                            diff: serializedValueDiff(1, 2),
+                            expected: serializeValue(2),
                             id: '1',
                             kind: 'leaf',
                             location: { column: null, file: '', line: null },

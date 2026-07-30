@@ -1,5 +1,9 @@
-import { deepEqual } from 'fast-equals';
-import { assertionOutcome, type AssertionOutcome } from '../assertion-evaluation.ts';
+import {
+    compareDeepValues,
+    compareEqualValues,
+    compareStringEquality
+} from '../../compare/comparison.ts';
+import { assertionOutcome, comparisonOutcome, type AssertionOutcome } from '../assertion-evaluation.ts';
 import type { AssertionSource, ExpectedAssertionNode } from '../assertion-node-shape.ts';
 
 export type EqualAssertionNode<Source extends AssertionSource = AssertionSource> = ExpectedAssertionNode<
@@ -30,15 +34,23 @@ export const equalitySummaryByCheck = {
 } as const;
 
 export function evaluateDeepEqual(assertion: DeepEqualAssertionNode): AssertionOutcome {
-    return assertionOutcome(assertion.actual, assertion.expected, deepEqual(assertion.actual, assertion.expected));
+    return comparisonOutcome(compareDeepValues(assertion.actual, assertion.expected));
 }
 
 export function evaluateEqual(assertion: EqualAssertionNode): AssertionOutcome {
-    return assertionOutcome(assertion.actual, assertion.expected, Object.is(assertion.actual, assertion.expected));
+    if (typeof assertion.actual === 'string' && typeof assertion.expected === 'string') {
+        return comparisonOutcome(compareStringEquality(assertion.actual, assertion.expected));
+    }
+
+    return comparisonOutcome(compareEqualValues(assertion.actual, assertion.expected));
 }
 
 export function evaluateNotDeepEqual(assertion: NotDeepEqualAssertionNode): AssertionOutcome {
-    return assertionOutcome(assertion.actual, assertion.expected, !deepEqual(assertion.actual, assertion.expected));
+    return assertionOutcome(
+        assertion.actual,
+        assertion.expected,
+        !compareDeepValues(assertion.actual, assertion.expected).passed
+    );
 }
 
 export function evaluateNotEqual(assertion: NotEqualAssertionNode): AssertionOutcome {

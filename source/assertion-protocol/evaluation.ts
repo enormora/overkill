@@ -1,3 +1,4 @@
+import { serializeValue } from '../compare/serialized-value.ts';
 import type { AssertionOutcome } from './assertion-evaluation.ts';
 import {
     assertionSummary,
@@ -195,7 +196,10 @@ function evaluateForeignAssertion(assertion: ForeignAssertionNode, id: string): 
     }
 
     return {
+        actual: serializeValue(assertion.label),
+        diff: null,
         error: assertion.result.error,
+        expected: serializeValue('foreign assertion pass'),
         id,
         kind: 'foreign',
         label: assertion.label,
@@ -221,11 +225,12 @@ function evaluateLeafAssertion(
 
     return {
         actual: evaluation.actual,
+        diff: evaluation.diff,
         expected: evaluation.expected,
         id,
         kind: 'leaf',
         location: resolveSourceLocation(assertion.location),
-        path: [],
+        path: evaluation.path,
         source: assertion.source,
         summary: evaluation.summary
     };
@@ -256,9 +261,10 @@ function evaluateCompositeAssertion(assertion: CompositeAssertionNode, id: strin
     assertNonEmptyItems(children, 'Expected composite assertion failure to contain failed children.');
 
     return {
-        actual: assertion.actual,
+        actual: serializeValue(assertion.actual),
         children,
-        expected: assertion.expected,
+        diff: null,
+        expected: serializeValue(assertion.expected),
         id,
         kind: 'composite',
         location: resolveSourceLocation(assertion.location),

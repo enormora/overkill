@@ -91,6 +91,29 @@ export type {
     SourceLocationProvider,
     SourceLocation
 } from '../../assertion-protocol/assertion-node-shape.ts';
+export type {
+    ArrayDiffOperation,
+    ByteDiffRange,
+    Diff,
+    DiffPathSegment,
+    Hunk,
+    MapDiffOperation,
+    ObjectDiffOperation,
+    SetDiffOperation
+} from '../../diff/diff-shape.ts';
+export {
+    defaultSerializationBudget,
+    serializeValue,
+    serializeValueWithBudget
+} from '../../compare/serialized-value.ts';
+export type {
+    SerializationBudget,
+    SerializedMapEntry,
+    SerializedProperty,
+    SerializedPropertyKey,
+    SerializedValue,
+    SerializationTruncation
+} from '../../compare/serialized-value.ts';
 export {
     captureSourceLocation,
     unknownSourceLocation

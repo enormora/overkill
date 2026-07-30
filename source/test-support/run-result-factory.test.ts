@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
+import { serializeValue } from '../compare/serialized-value.ts';
 import { registerTest } from './register-test.ts';
 import { runResultFactory } from './run-result-factory.ts';
 
 function defaultFailure(): unknown {
     return {
-        actual: null,
-        expected: null,
+        actual: serializeValue(null),
+        diff: null,
+        expected: serializeValue(null),
         id: 'check',
         kind: 'leaf',
         location: {

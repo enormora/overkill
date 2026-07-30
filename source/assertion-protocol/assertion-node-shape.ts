@@ -1,3 +1,5 @@
+import type { SerializedValue } from '../compare/serialized-value.ts';
+import type { Diff, DiffPathSegment } from '../diff/diff-shape.ts';
 import type { ThrownErrorRecord } from './thrown-error-record.ts';
 
 export const assertionSources = [ 'assert', 'require' ] as const;
@@ -41,23 +43,22 @@ export type SourceLocationProvider = () => SourceLocation;
 export type ResolvableSourceLocation = SourceLocation | SourceLocationProvider;
 
 type FailedCheckBase = {
+    readonly actual: SerializedValue;
+    readonly diff: Diff | null;
+    readonly expected: SerializedValue;
     readonly id: string;
     readonly location: SourceLocation;
-    readonly path: readonly (number | string)[];
+    readonly path: readonly DiffPathSegment[];
     readonly source: AssertionSource;
     readonly summary: string;
 };
 
 export type FailedLeafCheck = FailedCheckBase & {
-    readonly actual: unknown;
-    readonly expected: unknown;
     readonly kind: 'leaf';
 };
 
 export type FailedCompositeCheck = FailedCheckBase & {
-    readonly actual: unknown;
     readonly children: NonEmptyReadonlyArray<FailedCheck>;
-    readonly expected: unknown;
     readonly kind: 'composite';
 };
 
