@@ -40,6 +40,7 @@ test-package-smoke: compile
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
     mkdir -p target/build/source/integration-tests/package-smoke/node_modules/@overkill-dev
     packtory pack @overkill-dev/engine --format folder --version 0.0.0 --out target/build/source/integration-tests/package-smoke/node_modules/@overkill-dev/engine
+    packtory pack @overkill-dev/doubles --format folder --version 0.0.0 --out target/build/source/integration-tests/package-smoke/node_modules/@overkill-dev/doubles
     node source/test-support/package-smoke-assert-installer.mjs
     node --test target/build/source/integration-tests/package-smoke/**/*.test.js
 

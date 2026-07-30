@@ -70,6 +70,25 @@ export const config = {
             }
         },
         {
+            name: '@overkill-dev/doubles',
+            roots: {
+                main: {
+                    js: 'packages/doubles/doubles.entry-point.js',
+                    declarationFile: 'packages/doubles/doubles.entry-point.d.ts'
+                }
+            },
+            additionalFiles: [
+                {
+                    sourceFilePath: path.join(projectFolder, 'source/packages/doubles/readme.md'),
+                    targetFilePath: 'readme.md'
+                }
+            ],
+            additionalPackageJsonAttributes: {
+                ...packageMetadata,
+                description: 'Explicit Overkill test doubles.'
+            }
+        },
+        {
             name: '@overkill-dev/run',
             roots: {
                 main: {

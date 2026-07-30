@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createFactory } from '@enormora/objectory';
 import { defineCompositeAssertion } from '@overkill-dev/assert';
+import * as doublesPackage from '@overkill-dev/doubles';
 import {
     createEngine,
     createSuite,
@@ -196,4 +197,8 @@ await test('consumer imports @overkill-dev/assert reference and executes it thro
 
     assert.equal(result.summary.passed, 1);
     assert.equal(result.summary.failed, 0);
+});
+
+await test('consumer imports top-level @overkill-dev/doubles facade', function () {
+    assert.deepEqual(Object.keys(doublesPackage), []);
 });
