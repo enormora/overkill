@@ -12,8 +12,6 @@ Top-level API:
 - `createEngine()`
 - `formatCaseId(caseId)`
 - `validateReporterSinks(reporters)`
-- `defineCompositeAssertion(options)`
-- `defineNarrowingCompositeAssertion(options)`
 - `captureSourceLocation()`
 - `unknownSourceLocation`
 - `CaseId`, `TestId`, `TestPlan`, `ExecuteOptions`, `NonEmptyReadonlyArray`, `DeepComparable`
@@ -54,10 +52,8 @@ Assertion bodies:
   when one fails.
 - Custom assertions are imported assertion reference values:
   `case.assert(resultOk, result)`. Narrowing references may also be used with
-  `case.require(resultOk, result)`.
-- `defineCompositeAssertion(...)` creates assert-only references.
-  `defineNarrowingCompositeAssertion(...)` creates sync references accepted by
-  both `case.assert` and `case.require`.
+  `case.require(resultOk, result)`. Define reusable assertion references with
+  `@overkill-dev/assert`.
 - Async custom assertions must be awaited before `case.assert.done()`.
 - `case.assert.throws(body, matcher)` checks synchronous thrown values.
   Promise-returning callbacks belong to `case.assert.rejects(...)`.

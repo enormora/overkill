@@ -2,6 +2,7 @@
     "extends": "../tsconfig.base.json",
     "compilerOptions": {
         "paths": {
+            "@overkill-dev/assert": ["./packages/assert/assert.entry-point.ts"],
             "@overkill-dev/engine": ["./packages/engine/engine.entry-point.ts"]
         },
         "rootDir": "..",

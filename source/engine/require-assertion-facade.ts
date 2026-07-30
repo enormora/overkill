@@ -1,4 +1,4 @@
-import type { NarrowingCompositeAssertionReference } from '../assertion-protocol/assertion-reference.ts';
+import type { NarrowingCompositeAssertionReference } from '../packages/engine/assertion-protocol.entry-point.ts';
 import type {
     AssertionOptions,
     InstanceConstructor,

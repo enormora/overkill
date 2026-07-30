@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createFactory } from '@enormora/objectory';
+import { defineCompositeAssertion } from '@overkill-dev/assert';
 import {
     createEngine,
     createSuite,
@@ -21,6 +22,17 @@ type SmokeCaseDefinition = {
     readonly expectedVerdict: 'fail' | 'pass';
     readonly assertionSummary: string;
 };
+
+type ResultOk = {
+    readonly ok: boolean;
+};
+
+const resultOk = defineCompositeAssertion({
+    assert(check, result: ResultOk) {
+        return check.true(result.ok);
+    },
+    name: 'resultOk'
+});
 
 const smokeCaseDefinitionFactory = createFactory<SmokeCaseDefinition>(function createSmokeCaseDefinition() {
     return {
@@ -169,4 +181,19 @@ await test('consumer imports top-level @overkill-dev/engine exports and executes
 
 await test('consumer imports createEngine() and executes a TestPlan', async function () {
     assertSmokeResult(await executeSmokePlan(createEngine()));
+});
+
+await test('consumer imports @overkill-dev/assert reference and executes it through @overkill-dev/engine', async function () {
+    const testCase = createTestCase({
+        body(testContext) {
+            testContext.assert(resultOk, { ok: true });
+            return testContext.assert.done();
+        },
+        metadata: {},
+        name: 'uses assert package'
+    });
+    const result = await execute(createTestPlan(testCase));
+
+    assert.equal(result.summary.passed, 1);
+    assert.equal(result.summary.failed, 0);
 });

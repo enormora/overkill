@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { defineCompositeAssertion } from '../assertion-protocol/assertion-reference.ts';
+import { defineCompositeAssertion } from '../packages/assert/assert.entry-point.ts';
 import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import { registerTest } from '../test-support/register-test.ts';

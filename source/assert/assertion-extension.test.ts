@@ -1,16 +1,18 @@
 import assert from 'node:assert/strict';
+import {
+    isAssertionReference,
+    isCompositeAssertionGroup,
+    isNarrowingAssertionReference,
+    type CompositeAssertionChildNode
+} from '../packages/engine/assertion-protocol.entry-point.ts';
+import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
 import { registerTest } from '../test-support/register-test.ts';
-import type { CompositeAssertionChildNode } from './assertion-node.ts';
 import {
     createCompositeCheckBuilder,
     defineCompositeAssertion,
     defineNarrowingCompositeAssertion,
-    isAssertionReference,
-    isCompositeAssertionGroup,
-    isNarrowingAssertionReference,
     type CompositeCheckBuilder
-} from './assertion-reference.ts';
-import { unknownSourceLocation } from './source-location.ts';
+} from './assertion-extension.ts';
 
 function builtInChildren(
     check: CompositeCheckBuilder<'assert'>
@@ -196,9 +198,19 @@ registerTest('assertion references expose brand and empty-name validation', func
     assert.equal(isAssertionReference(reference), true);
     assert.equal(isNarrowingAssertionReference(narrowing), true);
     assert.throws(function defineEmptyCompositeAssertion() {
-        defineCompositeAssertion({ assert: reference.assert, name: '' });
+        defineCompositeAssertion({
+            assert(check) {
+                return check.true(true);
+            },
+            name: ''
+        });
     }, /must not be empty/u);
     assert.throws(function defineEmptyNarrowingAssertion() {
-        defineNarrowingCompositeAssertion({ name: '', narrows: narrowing.narrows });
+        defineNarrowingCompositeAssertion({
+            name: '',
+            narrows(value: unknown): value is string {
+                return typeof value === 'string';
+            }
+        });
     }, /must not be empty/u);
 });

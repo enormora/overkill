@@ -28,11 +28,16 @@ export const config = {
         {
             name: '@overkill-dev/engine',
             roots: {
+                assertionProtocol: {
+                    js: 'packages/engine/assertion-protocol.entry-point.js',
+                    declarationFile: 'packages/engine/assertion-protocol.entry-point.d.ts'
+                },
                 main: {
                     js: 'packages/engine/engine.entry-point.js',
                     declarationFile: 'packages/engine/engine.entry-point.d.ts'
                 }
             },
+            defaultModuleRoot: 'main',
             additionalFiles: [
                 {
                     sourceFilePath: path.join(projectFolder, 'source/packages/engine/readme.md'),
@@ -42,6 +47,26 @@ export const config = {
             additionalPackageJsonAttributes: {
                 ...packageMetadata,
                 description: 'Core Overkill engine primitives and execution model.'
+            }
+        },
+        {
+            name: '@overkill-dev/assert',
+            bundlePeerDependencies: [ '@overkill-dev/engine' ],
+            roots: {
+                main: {
+                    js: 'packages/assert/assert.entry-point.js',
+                    declarationFile: 'packages/assert/assert.entry-point.d.ts'
+                }
+            },
+            additionalFiles: [
+                {
+                    sourceFilePath: path.join(projectFolder, 'source/packages/assert/readme.md'),
+                    targetFilePath: 'readme.md'
+                }
+            ],
+            additionalPackageJsonAttributes: {
+                ...packageMetadata,
+                description: 'Reusable Overkill assertion-extension helpers.'
             }
         },
         {
