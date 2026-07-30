@@ -545,6 +545,7 @@ type RunnerError = {
         | 'crash'
         | 'unhandled-rejection'
         | 'permission'
+        | 'runtime-policy'
         | 'loader'
         | 'reporter'
         | 'attribution-drift'
@@ -552,6 +553,22 @@ type RunnerError = {
     readonly attributedTo: CaseId | null; // null when run-level
     readonly message: string;
     readonly cause?: unknown;
+};
+
+type RuntimePolicyViolation = {
+    readonly attribution:
+        | { readonly kind: 'direct'; readonly case: CaseId; }
+        | { readonly kind: 'active-case'; readonly case: CaseId; }
+        | { readonly kind: 'unknown'; };
+    readonly operation: string;
+    readonly policy:
+        | 'console-output-denied'
+        | 'fs-write-denied'
+        | 'net-denied'
+        | 'process-exit-denied'
+        | 'worker-denied'
+        | 'child-process-denied';
+    readonly source: SourceLocation | null;
 };
 ```
 

@@ -88,6 +88,13 @@ Strict microtest mode denies, by default:
   not cover it; the boundary is enforced through runtime
   observability, not permission flags.
 
+Every strict microtest violation must preserve test attribution. Denied
+capabilities use the active `CaseId` recorded before the test body starts.
+Strict `console.*` diagnostics use the same active case or
+`AsyncLocalStorage` correlation, depending on the execution profile. If the
+runner cannot determine the test, it reports an attribution-drift runner error
+instead of blaming the nearest sibling case.
+
 The first enforcement mechanism is Node's permission model (Node 20+):
 
 - `--permission`
