@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {
     defineCompositeAssertion,
     defineNarrowingCompositeAssertion
-} from '../assertion-protocol/assertion-reference.ts';
+} from '../packages/assert/assert.entry-point.ts';
 import type { AssertAssertionNode } from '../assertion-protocol/assertion-node.ts';
 import type {
     FailedCheck,

@@ -104,7 +104,7 @@ Progressive disclosure should be intentional:
 - beginners see tests, assertions, and running
 - intermediate users see doubles, macros, baselines, and reporters
 - advanced users find harnesses, recording, flush helpers, mutation,
-  browser-performance metrics, and custom assertion registration
+  browser-performance metrics, and custom assertion references
 
 ## Examples
 

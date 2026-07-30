@@ -392,24 +392,25 @@ responsible for assertions about them, such as:
 
 That separation keeps the doubles package smaller and avoids turning it into a whole framework by itself. The doubles package should still expose rich introspection data directly; the assertion layer simply provides a nicer assertion vocabulary on top.
 
-One useful pattern here is a registered composite assertion:
+One useful pattern here is an imported composite assertion reference:
 
 ```ts
 import { defineCompositeAssertion } from '@overkill-dev/assert';
 import type { TestDouble } from '@overkill-dev/doubles';
 
-export const calledOnceWith = defineCompositeAssertion(
-    'calledOnceWith',
-    <TArg>(check, sut: TestDouble<[TArg], unknown>, expected: TArg) => {
+export const calledOnceWith = defineCompositeAssertion({
+    name: 'calledOnceWith',
+
+    assert<TArg>(check, sut: TestDouble<[TArg], unknown>, expected: TArg) {
         return check.group([ check.calledOnce(sut), check.calledWith(sut, expected) ]);
     }
-);
+});
 ```
 
 That gives tests a flatter, domain-level assertion:
 
 ```ts
-case.assert.calledOnceWith(saveUser, { id: '42' });
+case.assert(calledOnceWith, saveUser, { id: '42' });
 ```
 
 while still reporting the underlying call-count and call-argument failures as

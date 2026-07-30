@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { serializeValue } from '../compare/serialized-value.ts';
+import { createCompositeCheckBuilder } from '../assert/assertion-extension.ts';
 import { registerTest } from '../test-support/register-test.ts';
 import type { AssertAssertionNode, CompositeAssertionChildNode, CompositeAssertionNode } from './assertion-node.ts';
 import type { FailedCompositeCheck } from './assertion-node-shape.ts';
-import { createCompositeCheckBuilder } from './assertion-reference.ts';
 import { evaluateAssertion, invalidDeepAssertionOperand } from './evaluation.ts';
 import { unknownSourceLocation } from './source-location.ts';
 import { createThrownMatcherAssertion } from './thrown-matcher.ts';

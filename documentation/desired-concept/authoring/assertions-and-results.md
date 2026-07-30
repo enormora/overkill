@@ -64,10 +64,10 @@ still lives directly in `@overkill-dev/engine`. The engine is the home for:
 - implementation shared between default test facades and direct
   engine-level consumers
 
-`@overkill-dev/engine` owns the v1 assertion reference helpers.
-`@overkill-dev/assert` may later become a smaller companion package that
-hosts or re-exports helpers such as `defineCompositeAssertion(...)` and
-foreign-assertion bridge builders.
+`@overkill-dev/assert` owns reusable assertion-extension helpers such as
+`defineCompositeAssertion(...)` and foreign-assertion bridge builders. The
+engine owns assertion execution, counting, and the injected `case.assert` /
+`case.require` facades.
 
 ## API Constraints To Avoid Lint-Rule Patchwork
 
@@ -1161,13 +1161,12 @@ order, global availability, or dot-method name collisions.
 
 ### Assertion Reference Helpers
 
-The v1 helper surface lives in `@overkill-dev/engine`. A later
-`@overkill-dev/assert` package may host or re-export ergonomic helpers.
+The helper surface lives in `@overkill-dev/assert`.
 
 Assert-only references use `defineCompositeAssertion(...)`:
 
 ```ts
-import { defineCompositeAssertion } from '@overkill-dev/engine';
+import { defineCompositeAssertion } from '@overkill-dev/assert';
 
 export const resultValueDeepEqual = defineCompositeAssertion({
     name: 'resultValueDeepEqual',
@@ -1209,7 +1208,7 @@ child diagnostics. It is distinct from a test macro:
 Definition shape:
 
 ```ts
-import { defineCompositeAssertion } from '@overkill-dev/engine';
+import { defineCompositeAssertion } from '@overkill-dev/assert';
 import type { TestDouble } from '@overkill-dev/doubles';
 
 const calledOnceWith = defineCompositeAssertion({
@@ -1284,7 +1283,7 @@ Overkill boundary remains explicit and stable.
 Example direction:
 
 ```ts
-import { defineCompositeAssertion } from '@overkill-dev/engine';
+import { defineCompositeAssertion } from '@overkill-dev/assert';
 
 export const hasResourceProperties = defineCompositeAssertion({
     name: 'hasResourceProperties',
@@ -1438,7 +1437,7 @@ For the product concept:
   tests
 - first-party assertion semantics live in `@overkill-dev/engine`
 - reusable assertion reference helpers such as
-  `defineCompositeAssertion(...)` live in `@overkill-dev/engine` for v1
+  `defineCompositeAssertion(...)` live in `@overkill-dev/assert`
 - `@overkill-dev/test` may re-expose that engine-owned assertion surface, but it
   is not required for assertion usage
 - primary authoring shape: builder/context API with explicit
