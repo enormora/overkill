@@ -118,6 +118,13 @@ export {
     captureSourceLocation,
     unknownSourceLocation
 } from '../../assertion-protocol/source-location.ts';
+export type {
+    ErrorMatcher,
+    ExactThrownMatcher,
+    SynchronousCallback,
+    ThrownAssertionObservation,
+    ThrownMatcher
+} from '../../assertion-protocol/thrown-matcher.ts';
 export type { FalseAssertionNode, TrueAssertionNode } from '../../assertion-protocol/assertions/boolean.ts';
 export type {
     EmptinessAssertionNode,

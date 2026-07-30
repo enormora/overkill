@@ -49,6 +49,14 @@ function builtInChildren(
         check.number(1),
         check.object({}),
         check.partialDeepEqual({ ok: true }, { ok: true }),
+        ...check
+            .throws(
+                function throwExpectedError() {
+                    throw new Error('expected');
+                },
+                { message: 'expected' }
+            )
+            .children,
         check.startsWith('value', 'va'),
         check.string('value'),
         check.true(true),
@@ -114,6 +122,8 @@ registerTest('createCompositeCheckBuilder() creates every built-in composite chi
         'number',
         'object',
         'partial-deep-equal',
+        'instance-of',
+        'equal',
         'starts-with',
         'string',
         'true',
@@ -124,6 +134,27 @@ registerTest('createCompositeCheckBuilder() creates every built-in composite chi
     assert.equal(isCompositeAssertionGroup(group), true);
     assert.equal(isCompositeAssertionGroup({}), false);
     assert.equal(isCompositeAssertionGroup(null), false);
+});
+
+registerTest('createCompositeCheckBuilder() flattens composite assertion groups', function () {
+    const check = createCompositeCheckBuilder('assert', 'child', unknownSourceLocation);
+    const group = check.group([
+        check.true(true),
+        check.throws(function throwExpectedError() {
+            throw new Error('expected');
+        }, { message: 'expected' })
+    ]);
+
+    assert.deepStrictEqual(checkNames(group.children), [ 'true', 'instance-of', 'equal' ]);
+});
+
+registerTest('createCompositeCheckBuilder() creates async rejects groups', async function () {
+    const check = createCompositeCheckBuilder('assert', 'child', unknownSourceLocation);
+    const group = await check.rejects(async function rejectExpectedError() {
+        await Promise.reject(new Error('expected'));
+    }, { message: 'expected' });
+
+    assert.deepStrictEqual(checkNames(group.children), [ 'instance-of', 'equal' ]);
 });
 
 registerTest('composite foreign bridges normalize passing and failing callbacks', async function () {

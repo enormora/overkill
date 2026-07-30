@@ -44,6 +44,9 @@ import {
     type TestOutcome,
     type TestPlan,
     type TestPlanCase,
+    type ErrorMatcher,
+    type ExactThrownMatcher,
+    type ThrownMatcher,
     type unknownSourceLocation
 } from './engine.entry-point.ts';
 
@@ -172,8 +175,10 @@ type ExpectedAssertFacadeKeys = keyof {
     readonly number: true;
     readonly object: true;
     readonly partialDeepEqual: true;
+    readonly rejects: true;
     readonly startsWith: true;
     readonly string: true;
+    readonly throws: true;
     readonly true: true;
     readonly undefined: true;
 };
@@ -355,6 +360,56 @@ describe('Assertion protocol', function () {
         expect<AssertionOptions>().type.toBe<{ readonly message: string; }>();
         expect<TestContext['assert']>().type.toBe<CaseAssertContext>();
         expect<TestContext['require']>().type.toBe<RequireAssertionFacade>();
+    });
+
+    test('defines explicit thrown matcher shapes', function () {
+        expect<ExactThrownMatcher>().type.toBeAssignableFrom<{ readonly exact: 'raw'; }>();
+        expect<ErrorMatcher>().type.toBeAssignableFrom<{
+            readonly message: 'expected';
+            readonly type: typeof Error;
+        }>();
+        expect<ThrownMatcher>().type.toBeAssignableFrom<{
+            readonly cause: { readonly exact: 'raw'; };
+            readonly message: RegExp;
+        }>();
+        expect<ErrorMatcher>().type.not.toBeAssignableFrom<{ readonly unused?: never; }>();
+        expect<ThrownMatcher>().type.not.toBeAssignableFrom<{
+            readonly exact: 'raw';
+            readonly message: 'expected';
+        }>();
+    });
+
+    test('accepts explicit throws and rejects assertions', function () {
+        expect(assertFacade.throws).type.toBeCallableWith(function throwValue() {
+            throw new Error('expected');
+        }, { message: 'expected' });
+        expect(assertFacade.throws).type.toBeCallableWith(function returnRawValue() {
+            return 'raw';
+        }, { exact: 'raw' });
+        expect(assertFacade.rejects).type.toBeCallableWith(async function rejectValue() {
+            await Promise.reject(new Error('expected'));
+        }, { type: Error });
+        expect(compositeCheckBuilder.throws).type.toBeCallableWith(function throwValue() {
+            throw new Error('expected');
+        }, { message: /expected/u });
+        expect(compositeCheckBuilder.rejects).type.toBeCallableWith(async function rejectValue() {
+            await Promise.reject(new Error('expected'));
+        }, { exact: new Error('expected') });
+    });
+
+    test('rejects ambiguous thrown matcher calls', function () {
+        expect(assertFacade.throws).type.not.toBeCallableWith(async function rejectValue() {
+            await Promise.reject(new Error('expected'));
+        }, { type: Error });
+        expect(assertFacade.rejects).type.not.toBeCallableWith(function returnValue() {
+            return undefined;
+        }, { type: Error });
+        expect(assertFacade.throws).type.not.toBeCallableWith(function throwValue() {
+            throw new Error('expected');
+        }, {});
+        expect(assertFacade.throws).type.not.toBeCallableWith(function throwValue() {
+            throw new Error('expected');
+        }, { exact: 'raw', message: 'expected' });
     });
 
     test('infers callable custom assertion references', function () {

@@ -695,12 +695,63 @@ The error assertions should stay strict:
 The matcher itself should be a small object contract:
 
 ```ts
-type ErrorMatcher = {
-    readonly type?: abstract new (...args: ReadonlyArray<unknown>) => Error;
-    readonly message?: string | RegExp;
-    readonly code?: string;
-    readonly name?: string;
-    readonly cause?: ErrorMatcher;
+type OptionalFields<Shape, RequiredKey extends keyof Shape> = {
+    readonly [ShapeKey in keyof Shape as ShapeKey extends RequiredKey ? never : ShapeKey]?: Shape[ShapeKey];
+};
+
+type RequiredField<Shape, RequiredKey extends keyof Shape> = {
+    readonly [ShapeKey in RequiredKey]-?: Shape[ShapeKey];
+};
+
+type RequireAtLeastOne<Shape, Key extends keyof Shape = keyof Shape> = {
+    readonly [RequiredKey in Key]: OptionalFields<Shape, RequiredKey> & RequiredField<Shape, RequiredKey>;
+}[Key];
+
+type ExactThrownMatcher = {
+    readonly cause?: never;
+    readonly code?: never;
+    readonly exact: unknown;
+    readonly message?: never;
+    readonly name?: never;
+    readonly type?: never;
+};
+
+type ErrorMatcher =
+    & RequireAtLeastOne<{
+        readonly type: abstract new (...args: never[]) => Error;
+        readonly message: string | RegExp;
+        readonly code: string;
+        readonly name: string;
+        readonly cause: ThrownMatcher;
+    }>
+    & {
+        readonly exact?: never;
+    };
+
+type ThrownMatcher = ExactThrownMatcher | ErrorMatcher;
+```
+
+`ExactThrownMatcher` is exclusive with structured error fields. It uses
+`Object.is` semantics for the caught value. `ErrorMatcher` requires at least
+one structured field. Multiple fields are conjunctive. A string `message`
+matches by exact equality; use `RegExp` for pattern matching. Structured error
+fields match only `Error` instances.
+
+The public assertion signatures should keep sync and async paths distinct:
+
+```ts
+type Assert = {
+    throws<Body extends () => unknown>(
+        body: ReturnType<Body> extends PromiseLike<unknown> ? never : Body,
+        matcher: ThrownMatcher,
+        options?: AssertionOptions
+    ): void;
+
+    rejects(
+        thunk: () => PromiseLike<unknown>,
+        matcher: ThrownMatcher,
+        options?: AssertionOptions
+    ): Promise<void>;
 };
 ```
 
@@ -710,6 +761,10 @@ Recommended examples:
 case.assert.throws(doParse, {
     type: SyntaxError,
     message: /invalid header/,
+});
+
+case.assert.throws(legacyThrow, {
+    exact: 'legacy error',
 });
 
 await case.assert.rejects(
@@ -726,6 +781,11 @@ This matcher should stay intentionally small:
 - no positional message argument
 - no predicate overloads
 - no arbitrary callback matcher DSL
+- no weak `throwsAny` / `rejectsAny` escape hatch
+
+`case.assert.rejects(...)` is async and must be awaited before
+`case.assert.done()`. A thunk that throws synchronously before returning a
+promise is a body error, not a rejection assertion result.
 
 If a test needs custom matching logic, it should catch the error and use
 ordinary assertions on the resulting value instead of overloading the

@@ -285,6 +285,11 @@ function recordAssertNodes(facade: AssertAssertionFacade): void {
         },
         function () {
             facade.undefined(undefined);
+        },
+        function () {
+            facade.throws(function throwExpectedError() {
+                throw new Error('expected');
+            }, { message: 'expected' });
         }
     ];
 
@@ -378,11 +383,24 @@ registerTest('createRecordingAssertFacade() records every built-in assertion nod
         'starts-with',
         'string',
         'true',
-        'undefined'
+        'undefined',
+        'composite'
     ]);
     assertRecordSources(recording.records, 'assert');
     assertRecordLocations(recording.records);
     assertAssertPayloads(recording.records);
+});
+
+registerTest('createRecordingAssertFacade() records async rejects assertions through pending sink', async function () {
+    const recording = createAssertRecording();
+
+    await recording.facade.rejects(async function rejectExpectedError() {
+        await Promise.reject(new Error('expected'));
+    }, { message: 'expected' });
+
+    assert.deepStrictEqual(assertionChecks(recording.records), [ 'composite' ]);
+    assertRecordSources(recording.records, 'assert');
+    assertRecordLocations(recording.records);
 });
 
 registerTest('createRecordingAssertFacade() applies annotated messages without requiring the builder API', function () {
