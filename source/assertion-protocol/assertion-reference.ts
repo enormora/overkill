@@ -10,6 +10,11 @@ import type {
     NonEmptyReadonlyArray,
     ResolvableSourceLocation
 } from './assertion-node-shape.ts';
+import {
+    thrownMatcherChildren,
+    type SynchronousCallback,
+    type ThrownMatcher
+} from './thrown-matcher.ts';
 import { createThrownErrorRecord } from './thrown-error-record.ts';
 
 const assertionReferenceIdentity: unique symbol = Symbol('OverkillAssertionReference');
@@ -24,6 +29,8 @@ export type CompositeAssertionGroup<Source extends AssertionSource = AssertionSo
     readonly [compositeGroupIdentity]: true;
     readonly children: NonEmptyReadonlyArray<CompositeAssertionChildNode<Source>>;
 };
+
+type GroupItem<Source extends AssertionSource> = CompositeAssertionChildNode<Source> | CompositeAssertionGroup<Source>;
 
 type CompositeAssertionReturnByKind<Source extends AssertionSource> = {
     readonly child: CompositeAssertionChildNode<Source>;
@@ -74,7 +81,7 @@ export type CompositeCheckBuilder<Source extends AssertionSource = AssertionSour
     readonly greaterThan: (actual: number, expected: number) => BuiltInAssertAssertionNode<Source>;
     readonly greaterThanOrEqual: (actual: number, expected: number) => BuiltInAssertAssertionNode<Source>;
     readonly group: (
-        children: NonEmptyReadonlyArray<CompositeAssertionChildNode<Source>>
+        children: NonEmptyReadonlyArray<GroupItem<Source>>
     ) => CompositeAssertionGroup<Source>;
     readonly hasProperty: (actual: unknown, key: PropertyKey) => BuiltInAssertAssertionNode<Source>;
     readonly includes: (actual: string, expected: string) => BuiltInAssertAssertionNode<Source>;
@@ -102,8 +109,16 @@ export type CompositeCheckBuilder<Source extends AssertionSource = AssertionSour
         actual: DeepComparable<Actual>,
         expectedSubset: DeepComparable<Expected>
     ) => BuiltInAssertAssertionNode<Source>;
+    readonly rejects: (
+        thunk: () => PromiseLike<unknown>,
+        matcher: ThrownMatcher
+    ) => Promise<CompositeAssertionGroup<Source>>;
     readonly startsWith: (actual: string, expected: string) => BuiltInAssertAssertionNode<Source>;
     readonly string: (actual: unknown) => BuiltInAssertAssertionNode<Source>;
+    readonly throws: <Body extends () => unknown>(
+        body: SynchronousCallback<Body>,
+        matcher: ThrownMatcher
+    ) => CompositeAssertionGroup<Source>;
     readonly true: (actual: unknown) => BuiltInAssertAssertionNode<Source>;
     readonly undefined: (actual: unknown) => BuiltInAssertAssertionNode<Source>;
 };
@@ -256,6 +271,27 @@ function createForeignAssertionNode<Source extends AssertionSource>(
     };
 }
 
+function assertNonEmptyItems<Item>(
+    items: readonly Item[],
+    message: string
+): asserts items is NonEmptyReadonlyArray<Item> {
+    if (items.length === 0) {
+        throw new TypeError(message);
+    }
+}
+
+function flattenCompositeGroupItems<Source extends AssertionSource>(
+    items: NonEmptyReadonlyArray<GroupItem<Source>>
+): NonEmptyReadonlyArray<CompositeAssertionChildNode<Source>> {
+    const children = items.flatMap(function toChildren(item) {
+        return isCompositeAssertionGroup<Source>(item) ? item.children : [ item ];
+    });
+
+    assertNonEmptyItems(children, 'Expected composite assertion group to contain children.');
+
+    return children;
+}
+
 export function createCompositeCheckBuilder<Source extends AssertionSource>(
     source: Source,
     message: string | null,
@@ -373,7 +409,7 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
         },
 
         group(children) {
-            return { [compositeGroupIdentity]: true, children };
+            return { [compositeGroupIdentity]: true, children: flattenCompositeGroupItems(children) };
         },
 
         hasProperty(actual, key) {
@@ -444,12 +480,74 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
             return { actual, check: 'partial-deep-equal', expected, location, message, source };
         },
 
+        async rejects(thunk, matcher) {
+            const promise = thunk();
+
+            try {
+                const value = await promise;
+
+                return {
+                    [compositeGroupIdentity]: true,
+                    children: thrownMatcherChildren({
+                        kind: 'rejects',
+                        location,
+                        matcher,
+                        message,
+                        observation: { status: 'resolved', value },
+                        source
+                    })
+                };
+            } catch (error: unknown) {
+                return {
+                    [compositeGroupIdentity]: true,
+                    children: thrownMatcherChildren({
+                        kind: 'rejects',
+                        location,
+                        matcher,
+                        message,
+                        observation: { status: 'rejected', value: error },
+                        source
+                    })
+                };
+            }
+        },
+
         startsWith(actual, expected) {
             return { actual, check: 'starts-with', expected, location, message, source };
         },
 
         string(actual) {
             return { actual, check: 'string', location, message, source };
+        },
+
+        throws(body, matcher) {
+            try {
+                const value = body();
+
+                return {
+                    [compositeGroupIdentity]: true,
+                    children: thrownMatcherChildren({
+                        kind: 'throws',
+                        location,
+                        matcher,
+                        message,
+                        observation: { status: 'returned', value },
+                        source
+                    })
+                };
+            } catch (error: unknown) {
+                return {
+                    [compositeGroupIdentity]: true,
+                    children: thrownMatcherChildren({
+                        kind: 'throws',
+                        location,
+                        matcher,
+                        message,
+                        observation: { status: 'threw', value: error },
+                        source
+                    })
+                };
+            }
         },
 
         true(actual) {

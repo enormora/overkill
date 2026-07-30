@@ -20,6 +20,7 @@ Top-level API:
 - `Reporter`, `ReporterEvent`, `RealTimeReporter`, `FinalResultReporter`, `RunFacts`, `SinkDeclaration`
 - `RunResult`, `TestOutcome`, `PassOutcome`, `FailOutcome`, `SkipOutcome`, `InconclusiveOutcome`
 - `AssertionNode`, `AssertionResult`, `AssertAssertionFacade`, `CaseAssertContext`
+- `ThrownMatcher`, `ErrorMatcher`, `ExactThrownMatcher`
 - `RequireAssertionFacade`, `FailedCheck`, `TestFailure`, `RunnerError`
 - `Diff`, `DiffPathSegment`, `SerializedValue`, `SerializationBudget`
 
@@ -58,6 +59,14 @@ Assertion bodies:
   `defineNarrowingCompositeAssertion(...)` creates sync references accepted by
   both `case.assert` and `case.require`.
 - Async custom assertions must be awaited before `case.assert.done()`.
+- `case.assert.throws(body, matcher)` checks synchronous thrown values.
+  Promise-returning callbacks belong to `case.assert.rejects(...)`.
+- `case.assert.rejects(thunk, matcher)` checks promise rejections and must be
+  awaited before `case.assert.done()`.
+- Thrown matchers are explicit objects. Use `{ exact: value }` for `Object.is`
+  matching, or structured error fields such as `type`, `message`, `code`,
+  `name`, and recursive `cause`. Structured error matchers require at least
+  one field, and a string `message` is exact.
 - `case.assert.annotated(message).*` and `case.require.annotated(message).*`
   record message-scoped checks without positional message overloads.
 - `case.assert.annotated(message)(reference, ...)` annotates a custom

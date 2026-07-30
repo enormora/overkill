@@ -11,6 +11,11 @@ import type {
 } from '../assertion-protocol/assertion-node-shape.ts';
 import { captureSourceLocation } from '../assertion-protocol/source-location.ts';
 import {
+    createThrownMatcherAssertion,
+    type SynchronousCallback,
+    type ThrownMatcher
+} from '../assertion-protocol/thrown-matcher.ts';
+import {
     recordAssertReference,
     type AssertAssertionSink
 } from './custom-assertion-recording.ts';
@@ -81,8 +86,18 @@ export type AssertAssertionFacade = {
         expectedSubset: DeepComparable<Expected>,
         options?: AssertionOptions
     ) => void;
+    readonly rejects: (
+        thunk: () => PromiseLike<unknown>,
+        matcher: ThrownMatcher,
+        options?: AssertionOptions
+    ) => Promise<void>;
     readonly startsWith: (actual: string, expected: string, options?: AssertionOptions) => void;
     readonly string: (actual: unknown, options?: AssertionOptions) => void;
+    readonly throws: <Body extends () => unknown>(
+        body: SynchronousCallback<Body>,
+        matcher: ThrownMatcher,
+        options?: AssertionOptions
+    ) => void;
     readonly true: (actual: unknown, options?: AssertionOptions) => void;
     readonly undefined: (actual: unknown, options?: AssertionOptions) => void;
 };
@@ -405,6 +420,30 @@ export function createRecordingAssertFacadeWithLocation(
             });
         },
 
+        async rejects(thunk, matcher, options) {
+            const metadata = assertAssertionMetadata(options, annotation, captureLocation);
+            const promise = thunk();
+            const pending = sink.recordPendingAssert();
+
+            try {
+                const value = await promise;
+
+                pending.resolve(createThrownMatcherAssertion({
+                    kind: 'rejects',
+                    matcher,
+                    ...metadata,
+                    observation: { status: 'resolved', value }
+                }));
+            } catch (error: unknown) {
+                pending.resolve(createThrownMatcherAssertion({
+                    kind: 'rejects',
+                    matcher,
+                    ...metadata,
+                    observation: { status: 'rejected', value: error }
+                }));
+            }
+        },
+
         startsWith(actual, expected, options) {
             sink.recordAssert({
                 actual,
@@ -420,6 +459,28 @@ export function createRecordingAssertFacadeWithLocation(
                 check: 'string',
                 ...assertAssertionMetadata(options, annotation, captureLocation)
             });
+        },
+
+        throws(body, matcher, options) {
+            const metadata = assertAssertionMetadata(options, annotation, captureLocation);
+
+            try {
+                const value = body();
+
+                sink.recordAssert(createThrownMatcherAssertion({
+                    kind: 'throws',
+                    matcher,
+                    ...metadata,
+                    observation: { status: 'returned', value }
+                }));
+            } catch (error: unknown) {
+                sink.recordAssert(createThrownMatcherAssertion({
+                    kind: 'throws',
+                    matcher,
+                    ...metadata,
+                    observation: { status: 'threw', value: error }
+                }));
+            }
         },
 
         true(actual, options) {

@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import { serializeValue } from '../compare/serialized-value.ts';
 import { registerTest } from '../test-support/register-test.ts';
 import type { AssertAssertionNode, CompositeAssertionChildNode, CompositeAssertionNode } from './assertion-node.ts';
+import type { FailedCompositeCheck } from './assertion-node-shape.ts';
 import { createCompositeCheckBuilder } from './assertion-reference.ts';
 import { evaluateAssertion, invalidDeepAssertionOperand } from './evaluation.ts';
 import { unknownSourceLocation } from './source-location.ts';
+import { createThrownMatcherAssertion } from './thrown-matcher.ts';
 
 function* values(): Generator<number> {
     yield 1;
@@ -57,6 +59,16 @@ function compositeAssertion(
         source: 'assert',
         summary: 'Expected composite assertion to pass.'
     };
+}
+
+function compositeFailure(assertion: CompositeAssertionNode<'assert'>): FailedCompositeCheck {
+    const failedCheck = evaluateAssertion(assertion, 1);
+
+    if (failedCheck?.kind === 'composite') {
+        return failedCheck;
+    }
+
+    throw new TypeError('Expected composite assertion failure.');
 }
 
 const passingAssertions: readonly EvaluationCase[] = [
@@ -177,6 +189,83 @@ registerTest('evaluateAssertion() preserves custom messages and assertion source
         source: 'assert',
         summary: 'custom message'
     });
+});
+
+registerTest('evaluateAssertion() passes thrown matcher composites', async function () {
+    const exactAssertion = createThrownMatcherAssertion({
+        kind: 'rejects',
+        location: unknownSourceLocation,
+        matcher: { exact: 'expected' },
+        message: null,
+        observation: { status: 'rejected', value: 'expected' },
+        source: 'assert'
+    });
+    const errorGroup = check.throws(function throwExpectedError() {
+        throw Object.assign(new SyntaxError('invalid header'), { code: 'EINVAL' });
+    }, {
+        code: 'EINVAL',
+        message: /invalid/u,
+        name: 'SyntaxError',
+        type: SyntaxError
+    });
+    const rejectsGroup = await check.rejects(async function rejectExpectedError() {
+        await Promise.reject(new Error('expected', { cause: 'raw cause' }));
+    }, { cause: { exact: 'raw cause' }, message: 'expected' });
+
+    assert.equal(evaluateAssertion(exactAssertion, 1), null);
+    assert.equal(evaluateAssertion(compositeAssertion(errorGroup.children), 1), null);
+    assert.equal(evaluateAssertion(compositeAssertion(rejectsGroup.children), 1), null);
+});
+
+registerTest('evaluateAssertion() reports thrown matcher field failures', function () {
+    const group = check.throws(function throwMismatchedError() {
+        throw Object.assign(new TypeError('actual'), { code: 'ACTUAL' });
+    }, {
+        code: 'EXPECTED',
+        message: 'expected',
+        name: 'RangeError',
+        type: RangeError
+    });
+    const failure = compositeFailure(compositeAssertion(group.children));
+
+    assert.deepStrictEqual(
+        failure.children.map(function summaryOf(child) {
+            return child.summary;
+        }),
+        [
+            'Expected thrown value to be an instance of the constructor.',
+            'Expected thrown value message to equal the string.',
+            'Expected thrown value code to equal the string.',
+            'Expected thrown value name to equal the string.'
+        ]
+    );
+});
+
+registerTest('evaluateAssertion() reports missing and non-error thrown values', function () {
+    const missingGroup = check.throws(function returnNormally() {
+        return 'value';
+    }, { exact: 'expected' });
+    const nonErrorAssertion = createThrownMatcherAssertion({
+        kind: 'rejects',
+        location: unknownSourceLocation,
+        matcher: { message: 'raw' },
+        message: null,
+        observation: { status: 'rejected', value: 'raw' },
+        source: 'assert'
+    });
+
+    assert.deepStrictEqual(
+        compositeFailure(compositeAssertion(missingGroup.children)).children.map(function summaryOf(child) {
+            return child.summary;
+        }),
+        [ 'Expected function to throw.' ]
+    );
+    assert.deepStrictEqual(
+        compositeFailure(nonErrorAssertion).children.map(function summaryOf(child) {
+            return child.summary;
+        }),
+        [ 'Expected thrown value to be an Error.' ]
+    );
 });
 
 registerTest('invalidDeepAssertionOperand() accepts structural and reference operands', function () {

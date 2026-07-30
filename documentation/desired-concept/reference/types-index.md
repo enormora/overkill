@@ -294,12 +294,52 @@ Canonical: [Assertions And Results § The Protocol Shape](../authoring/assertion
 ## Assertion Extensions And Error Matching
 
 ```ts
-type ErrorMatcher = {
-    readonly type?: abstract new (...args: ReadonlyArray<unknown>) => Error;
-    readonly message?: string | RegExp;
-    readonly code?: string;
-    readonly name?: string;
-    readonly cause?: ErrorMatcher;
+type OptionalFields<Shape, RequiredKey extends keyof Shape> = {
+    readonly [ShapeKey in keyof Shape as ShapeKey extends RequiredKey ? never : ShapeKey]?: Shape[ShapeKey];
+};
+
+type RequiredField<Shape, RequiredKey extends keyof Shape> = {
+    readonly [ShapeKey in RequiredKey]-?: Shape[ShapeKey];
+};
+
+type RequireAtLeastOne<Shape, Key extends keyof Shape = keyof Shape> = {
+    readonly [RequiredKey in Key]: OptionalFields<Shape, RequiredKey> & RequiredField<Shape, RequiredKey>;
+}[Key];
+
+type ExactThrownMatcher = {
+    readonly cause?: never;
+    readonly code?: never;
+    readonly exact: unknown;
+    readonly message?: never;
+    readonly name?: never;
+    readonly type?: never;
+};
+
+type ErrorMatcher =
+    RequireAtLeastOne<{
+        readonly type: abstract new (...args: never[]) => Error;
+        readonly message: string | RegExp;
+        readonly code: string;
+        readonly name: string;
+        readonly cause: ThrownMatcher;
+    }> & {
+        readonly exact?: never;
+    };
+
+type ThrownMatcher = ExactThrownMatcher | ErrorMatcher;
+
+type Assert = {
+    throws<Body extends () => unknown>(
+        body: ReturnType<Body> extends PromiseLike<unknown> ? never : Body,
+        matcher: ThrownMatcher,
+        options?: AssertionOptions
+    ): void;
+
+    rejects(
+        thunk: () => PromiseLike<unknown>,
+        matcher: ThrownMatcher,
+        options?: AssertionOptions
+    ): Promise<void>;
 };
 
 type AssertionExtension = {
@@ -307,7 +347,8 @@ type AssertionExtension = {
 };
 
 type ForeignAssertionBridge = {
-    fromThrowable(label: string, body: () => void | Promise<void>): unknown;
+    fromThrowable(label: string, body: () => void): unknown;
+    fromRejectable(label: string, body: () => Promise<void>): Promise<unknown>;
 };
 
 type AssertionOptions = {
