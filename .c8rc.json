@@ -2,7 +2,7 @@
     "all": true,
     "extension": [".ts"],
     "src": ["source"],
-    "exclude": ["source/**/*.d.ts", "source/**/*.test.ts", "source/packages/**/*.ts", "target/**"],
+    "exclude": ["source/**/*-types.ts", "source/**/*.test.ts", "source/packages/**/*.ts", "target/**"],
     "check-coverage": true,
     "lines": 93,
     "functions": 95,

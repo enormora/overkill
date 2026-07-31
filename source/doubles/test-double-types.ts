@@ -8,7 +8,7 @@ import type {
     UnknownConstructor,
     UnknownFunction
 } from './double-behavior.ts';
-import type { DoubleHistory as HistoryForDouble } from './test-double-history-types.d.ts';
+import type { DoubleHistory as HistoryForDouble } from './test-double-history-types.ts';
 
 type PrimitiveValue = bigint | boolean | number | string | symbol | null | undefined;
 type VoidReturn = ReturnType<() => void>;
