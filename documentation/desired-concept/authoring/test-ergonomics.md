@@ -57,8 +57,8 @@ Overkill should support a first-party `defineHarness(...)` concept.
 
 ```ts
 const runnerHarness = defineHarness({
-    loadConfig: () => testDouble().resolves('the-config'),
-    buildAndPublishAll: () => testDouble().resolves(Result.ok([])),
+    loadConfig: () => testDouble.resolves<() => Promise<string>>('the-config'),
+    buildAndPublishAll: () => testDouble.resolves<() => Promise<Result<readonly unknown[]>>>(Result.ok([])),
     log: () => testDouble(),
 }, (parts) => {
     return {
@@ -104,7 +104,7 @@ Example direction:
 
 ```ts
 const renderAccountPage = defineHarness(async (overrides) => {
-    const loadAccount = overrides.loadAccount ?? testDouble().resolves(account);
+    const loadAccount = overrides.loadAccount ?? testDouble.resolves<() => Promise<Account>>(account);
     const rendered = await render(<AccountPage loadAccount={loadAccount} />);
 
     return {

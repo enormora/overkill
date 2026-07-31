@@ -49,14 +49,14 @@ The core should be a typed function double with:
 - optional behavior rules
 - an optional fallback answer
 
-The recommendation is to make the primary shape configuration-driven rather than chain-driven.
-
-That does not mean every use must start with a configuration object. The simple
-path should stay very small:
+The recommendation is to make the primary shape configuration-driven rather than
+chain-driven. Simple fixed behavior uses static creation helpers on
+`testDouble`, so behavior is still chosen at creation time rather than by
+mutating a created double:
 
 ```ts
-const log = testDouble().returns(undefined);
-const loadUser = testDouble<(id: string) => Promise<User>>().resolves(adminUser);
+const log = testDouble.returns<() => void>();
+const loadUser = testDouble.resolves<(id: string) => Promise<User>>(adminUser);
 ```
 
 The type argument is the full function signature, not a separate args-tuple plus
@@ -68,7 +68,7 @@ generic.
 
 The intended split is:
 
-- shorthand instance methods for the common fixed-behavior cases
+- static factory methods on `testDouble` for the common fixed-behavior cases
 - configuration object plus rule composition for advanced behavior
 
 Example direction:
@@ -155,7 +155,7 @@ The same `testDouble()` concept should cover constructor signatures:
 type ClientConstructor = new (baseUrl: string) => Client;
 
 const client = createClientFixture();
-const Client = testDouble<ClientConstructor>().constructs(client);
+const Client = testDouble.constructs<ClientConstructor>(client);
 
 const service = createService({ Client });
 
@@ -248,7 +248,11 @@ Overkill direction of one main doubles concept instead of category sprawl.
 
 The minimal shape worth exploring is:
 
-- `testDouble<Fn>(config?)`
+- `testDouble()` for an untyped callable double
+- `testDouble.returns<Fn>(value)`, `testDouble.constructs<Ctor>(instance)`,
+  `testDouble.resolves<Fn>(value)`, `testDouble.rejects<Fn>(reason)`, and
+  `testDouble.throws<Fn>(thrown)` for fixed behavior at creation time
+- `testDouble<Fn>(config)` for advanced rule-driven behavior
 - `rule.when(...args)` for arg-specific rules, with a fluent terminator that attaches behavior
 - `rule.whenConstructedWith(...args)` for constructor-specific argument rules
 - `rule.onCall(index)` for ordered rules, with a fluent terminator that attaches behavior
@@ -325,7 +329,7 @@ Type safety should be a primary design requirement.
 
 That means:
 
-- `testDouble<Fn>()` should preserve the full function signature
+- static factories on `testDouble` should preserve the full function or constructor signature
 - `rule.when()` should type-check argument tuples against `Fn`
 - `rule.returns()` should type-check against the return type of `Fn`
 - `rule.resolves()` and `rule.rejects()` should work naturally for async function signatures
@@ -351,7 +355,7 @@ This should be easier to reason about than matcher-heavy APIs that gradually los
 The untyped path is still legitimate for quick tests or gradual migration:
 
 ```ts
-const writeLine = testDouble().returns(undefined);
+const writeLine = testDouble();
 ```
 
 Typed signatures remain the preferred path when the function contract is part
@@ -450,7 +454,11 @@ Recommended direction:
 - strong direct introspection on each instance, such as `callCount`, `constructionCount`, `firstCall`, `firstConstruction`, `lastCall`, `lastConstruction`, and typed call/result records
 - advanced escape hatch: `answer(call)` configuration field or `rule.calls(fn)`
 - constructor behavior: `.constructs(instance)`, `rule.constructs(instance)`, and `rule.whenConstructedWith(...)`
-- common-case sugar: instance methods (`.returns`, `.constructs`, `.resolves`, `.rejects`, `.throws`) on the simple path; `rule.returns`, `rule.constructs`, `rule.resolves`, `rule.rejects`, `rule.throws`, `rule.sequence` for advanced rules
+- common-case sugar: static fixed-behavior factories on `testDouble`
+  (`testDouble.returns`, `testDouble.constructs`, `testDouble.resolves`,
+  `testDouble.rejects`, `testDouble.throws`); `rule.returns`,
+  `rule.constructs`, `rule.resolves`, `rule.rejects`, `rule.throws`,
+  `rule.sequence` for advanced rules
 - advanced-path behavior still configured through `rules`, `fallback`, and `answer` on the configuration object, with rules built via the `rule.*` namespace
 - no object-method replacement API in the first-party concept
 - no module replacement API in the first-party concept

@@ -200,5 +200,6 @@ await test('consumer imports @overkill-dev/assert reference and executes it thro
 });
 
 await test('consumer imports top-level @overkill-dev/doubles facade', function () {
-    assert.deepEqual(Object.keys(doublesPackage), []);
+    assert.deepEqual(Object.keys(doublesPackage), [ 'testDouble' ]);
+    assert.equal(doublesPackage.testDouble.returns('value')(), 'value');
 });
