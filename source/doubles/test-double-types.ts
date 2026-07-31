@@ -8,6 +8,7 @@ import type {
     UnknownConstructor,
     UnknownFunction
 } from './double-behavior.ts';
+import type { DoubleHistory as HistoryForDouble } from './test-double-history-types.ts';
 
 type PrimitiveValue = bigint | boolean | number | string | symbol | null | undefined;
 type VoidReturn = ReturnType<() => void>;
@@ -320,7 +321,9 @@ export type RuleFactory = {
     ) => ConstructionRuleStarter<ExpectedArguments, 'arguments'>;
 };
 
-export type TestDouble<Signature> = Signature;
+export type DoubleHistory<Signature> = HistoryForDouble<Signature>;
+
+export type TestDouble<Signature> = DoubleHistory<Signature> & Signature;
 
 export type TestDoubleFactory = {
     <Signature extends CallableSignature | ConstructorSignature = UnknownFunction<unknown>>(

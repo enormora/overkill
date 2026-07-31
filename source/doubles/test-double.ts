@@ -1,32 +1,26 @@
 import {
-    answerFromBehavior,
     type BehaviorMode,
-    type BehaviorAnswer,
     callsBehavior,
     constructsBehavior,
     ensureConstructorInstance,
-    fallbackForInvocation,
-    isConstructorInstance,
     isRuntimeBehavior,
     isRuntimeRule,
     isUnknownFunction,
     rejectsBehavior,
     resolvesBehavior,
     returnsBehavior,
-    ruleMatches,
     sequenceBehavior,
     throwsBehavior,
     type CallableSignature,
-    type ConstructorReturnValue,
     type ConstructorSignature,
     type InvocationKind,
     type RuntimeBehavior,
     type RuntimeConfiguration,
     type RuntimeFallback,
-    type RuntimeRule,
     type UnknownConstructor,
     type UnknownFunction
 } from './double-behavior.ts';
+import { createDouble, modeSet, type SupportedModes } from './double-runtime.ts';
 import type {
     CallBehavior,
     CallRule,
@@ -47,160 +41,25 @@ import type {
 } from './test-double-types.ts';
 
 type ConfigurationRecord = Readonly<Partial<Record<'answer' | 'fallback' | 'rules', unknown>>>;
-type InvocationRecord = {
-    readonly arguments: readonly unknown[];
-    readonly index: number;
-    readonly kind: InvocationKind;
-};
-type SupportedModes = ReadonlySet<InvocationKind>;
 
-function assertCallableDouble<ReturnValue>(value: unknown): asserts value is UnknownFunction<ReturnValue> {
-    if (!isUnknownFunction(value)) {
-        throw new TypeError('Expected callable double factory to create a function.');
-    }
-}
-
-function assertConstructorDouble<Instance>(value: unknown): asserts value is UnknownConstructor<Instance> {
-    if (!isUnknownFunction(value)) {
-        throw new TypeError('Expected constructor double factory to create a function.');
-    }
-}
-
-function modeSet(...modes: readonly InvocationKind[]): SupportedModes {
-    return new Set(modes);
-}
-
-function answerFromMatchingRules(rules: readonly RuntimeRule[], invocation: InvocationRecord): BehaviorAnswer {
-    for (const configuredRule of rules) {
-        const answer = ruleMatches(configuredRule, invocation)
-            ? answerFromBehavior(configuredRule.behavior, invocation)
-            : { answered: false as const };
-
-        if (answer.answered) {
-            return answer;
-        }
-    }
-
-    return { answered: false as const };
-}
-
-function answerFromFallback(fallback: RuntimeFallback | null, invocation: InvocationRecord): BehaviorAnswer {
-    if (fallback === null) {
-        return { answered: false as const };
-    }
-
-    const fallbackBehavior = fallbackForInvocation(fallback, invocation);
-
-    return fallbackBehavior === null ? { answered: false as const } : answerFromBehavior(fallbackBehavior, invocation);
-}
-
-function answerFromRules(configuration: RuntimeConfiguration, invocation: InvocationRecord): BehaviorAnswer {
-    const ruleAnswer = answerFromMatchingRules(configuration.rules, invocation);
-
-    if (ruleAnswer.answered) {
-        return ruleAnswer;
-    }
-
-    const fallbackAnswer = answerFromFallback(configuration.fallback, invocation);
-
-    if (fallbackAnswer.answered || configuration.answer === null) {
-        return fallbackAnswer;
-    }
-
-    return {
-        answered: true as const,
-        value: configuration.answer(invocation)
-    };
-}
-
-function answerForInvocation(
-    configuration: RuntimeConfiguration,
-    invocation: InvocationRecord,
-    missingBehaviorMessage: string
-): unknown {
-    const answer = answerFromRules(configuration, invocation);
-
-    if (!answer.answered) {
-        throw new TypeError(missingBehaviorMessage);
-    }
-
-    return answer.value;
-}
-
-function createDouble<ReturnValue>(
-    configuration: RuntimeConfiguration,
-    supportedModes: SupportedModes
-): UnknownFunction<ReturnValue> {
-    let callIndex = 0;
-    let constructionIndex = 0;
-
-    const candidate: unknown = new Proxy(function TestDouble() {
-        throw new TypeError('test double target should not be reached.');
-    }, {
-        apply(_target, _thisArgument, argumentList) {
-            if (!supportedModes.has('call')) {
-                throw new TypeError('Class constructor TestDouble cannot be invoked without new.');
-            }
-
-            const invocation: InvocationRecord = {
-                arguments: Array.from(argumentList),
-                index: callIndex,
-                kind: 'call' as const
-            };
-            callIndex += 1;
-
-            return answerForInvocation(
-                configuration,
-                invocation,
-                'test double has no configured behavior for this call.'
-            );
-        },
-        construct(_target, argumentList): ConstructorReturnValue {
-            if (!supportedModes.has('construction')) {
-                throw new TypeError('test double is not a constructor.');
-            }
-
-            const invocation: InvocationRecord = {
-                arguments: Array.from(argumentList),
-                index: constructionIndex,
-                kind: 'construction' as const
-            };
-            constructionIndex += 1;
-            const answer = answerForInvocation(
-                configuration,
-                invocation,
-                'test double has no configured behavior for this construction.'
-            );
-
-            if (!isConstructorInstance(answer)) {
-                throw new TypeError('test double constructor behavior must return an object instance.');
-            }
-
-            return answer;
-        }
-    });
-
-    assertCallableDouble<ReturnValue>(candidate);
-
-    return candidate;
-}
-
-function createCallableBehaviorDouble<ReturnValue>(behavior: RuntimeBehavior): UnknownFunction<ReturnValue> {
-    return createDouble<ReturnValue>({
+function createCallableBehaviorDouble<ReturnValue>(
+    behavior: RuntimeBehavior
+): TestDouble<UnknownFunction<ReturnValue>> {
+    return createDouble<UnknownFunction<ReturnValue>>({
         answer: null,
         fallback: behavior,
         rules: []
     }, modeSet('call'));
 }
 
-function createConstructorBehaviorDouble<Instance>(behavior: RuntimeBehavior): UnknownConstructor<Instance> {
-    const double = createDouble<Instance>({
+function createConstructorBehaviorDouble<Instance>(
+    behavior: RuntimeBehavior
+): TestDouble<UnknownConstructor<Instance>> {
+    const double = createDouble<UnknownConstructor<Instance>>({
         answer: null,
         fallback: behavior,
         rules: []
     }, modeSet('construction'));
-
-    assertConstructorDouble<Instance>(double);
 
     return double;
 }
@@ -321,7 +180,7 @@ function createRejectingDouble(reason: unknown): TestDouble<UnknownFunction<Prom
 function createRejectingDouble<Signature extends CallableSignature>(
     reason: ReturnType<Signature> extends Promise<unknown> ? unknown : never
 ): TestDouble<Signature>;
-function createRejectingDouble(reason: unknown): UnknownFunction<Promise<never>> {
+function createRejectingDouble(reason: unknown): TestDouble<UnknownFunction<Promise<never>>> {
     return createCallableBehaviorDouble(rejectsBehavior(reason));
 }
 
@@ -335,7 +194,7 @@ function createResolvingDouble(value: unknown): unknown {
 function createReturningDouble<SignatureOrValue>(
     ...value: ReturnArguments<SignatureOrValue>
 ): TestDouble<ReturnSignature<SignatureOrValue>>;
-function createReturningDouble(...value: readonly unknown[]): UnknownFunction<unknown> {
+function createReturningDouble(...value: readonly unknown[]): TestDouble<UnknownFunction<unknown>> {
     return createCallableBehaviorDouble(returnsBehavior(value[0]));
 }
 
@@ -343,7 +202,7 @@ function createThrowingDouble(thrown: unknown): TestDouble<UnknownFunction<never
 function createThrowingDouble<Signature extends CallableSignature>(
     thrown: ReturnType<Signature> extends Promise<unknown> ? never : unknown
 ): TestDouble<Signature>;
-function createThrowingDouble(thrown: unknown): UnknownFunction<never> {
+function createThrowingDouble(thrown: unknown): TestDouble<UnknownFunction<never>> {
     return createCallableBehaviorDouble(throwsBehavior(thrown));
 }
 

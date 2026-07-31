@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { registerTest } from '../test-support/register-test.ts';
+import type { DoubleCall } from './double-history.ts';
 import { rule, testDouble } from './test-double.ts';
+import type { TestDouble } from './test-double-types.ts';
 
 type PrimitiveConstructionFactory = (instance: unknown) => unknown;
 type User = {
@@ -16,6 +18,11 @@ type UserProfile = {
 type ClientWithId = {
     readonly id: string;
 };
+type ClientWithIdConstructor = new (baseUrl: string) => ClientWithId;
+type ClientFactoryDoubleSignature = {
+    (baseUrl: string): ClientWithId;
+    new (baseUrl: string): ClientWithId;
+};
 type ClientOptions = {
     readonly auth: ClientAuth;
     readonly baseUrl: string;
@@ -23,6 +30,90 @@ type ClientOptions = {
 type ClientAuth = {
     readonly token: string;
 };
+type ScopedReceiver = {
+    readonly scope: string;
+};
+type LoadScopedValue = (this: ScopedReceiver, id: string) => string;
+type RecordedScopedLoadValue = {
+    readonly loadValue: TestDouble<LoadScopedValue>;
+    readonly receiver: ScopedReceiver;
+};
+type RecordedClientConstructor = {
+    readonly Client: TestDouble<ClientWithIdConstructor>;
+    readonly client: ClientWithId;
+};
+type RecordedClientFactory = {
+    readonly calledClient: ClientWithId;
+    readonly clientFactoryDouble: TestDouble<ClientFactoryDoubleSignature>;
+    readonly constructedClient: ClientWithId;
+};
+type SnapshotInput = {
+    readonly id: string;
+};
+type SnapshotOutput = {
+    readonly id: string;
+};
+type SnapshotLoader = (input: SnapshotInput) => SnapshotOutput;
+type MutableArraySnapshot = {
+    readonly push: (value: unknown) => number;
+};
+type RecordedSnapshotLoader = {
+    readonly input: SnapshotInput;
+    readonly loadValue: TestDouble<SnapshotLoader>;
+    readonly output: SnapshotOutput;
+};
+
+function requireRecordedValue<Value>(value: Value | null, message: string): Value {
+    if (value === null) {
+        assert.fail(message);
+    }
+
+    return value;
+}
+
+function createRecordedScopedLoadValue(): RecordedScopedLoadValue {
+    const receiver = { scope: 'test' };
+    const loadValue = testDouble.returns<LoadScopedValue>('value');
+
+    assert.equal(loadValue.call(receiver, 'a'), 'value');
+
+    return { loadValue, receiver };
+}
+
+function createRecordedClientConstructor(): RecordedClientConstructor {
+    const client = { id: 'client' };
+    const Client = testDouble.constructs<ClientWithIdConstructor>(client);
+
+    assert.equal(new Client('https://api.example.test'), client);
+
+    return { Client, client };
+}
+
+function createRecordedClientFactory(): RecordedClientFactory {
+    const calledClient = { id: 'called' };
+    const constructedClient = { id: 'constructed' };
+    const clientFactoryDouble = testDouble<ClientFactoryDoubleSignature>({
+        fallback: {
+            call: rule.returns(calledClient),
+            construction: rule.constructs(constructedClient)
+        }
+    });
+
+    assert.equal(clientFactoryDouble('call'), calledClient);
+    assert.equal(Reflect.construct(clientFactoryDouble, [ 'construction' ]), constructedClient);
+
+    return { calledClient, clientFactoryDouble, constructedClient };
+}
+
+function createRecordedSnapshotLoader(): RecordedSnapshotLoader {
+    const input: SnapshotInput = { id: 'input' };
+    const output: SnapshotOutput = { id: 'output' };
+    const loadValue = testDouble.returns<SnapshotLoader>(output);
+
+    assert.equal(loadValue(input), output);
+
+    return { input, loadValue, output };
+}
 
 registerTest('testDouble() creates an untyped callable double', function () {
     const anyValue = testDouble();
@@ -260,4 +351,241 @@ registerTest('configured doubles throw TypeError when no behavior can answer', f
     assert.throws(function loadUnknownValue() {
         loadValue('unknown');
     }, /no configured behavior/u);
+});
+
+registerTest('doubles expose aggregate counts for returned calls', function () {
+    const { loadValue } = createRecordedScopedLoadValue();
+
+    assert.equal(loadValue.interactionCount, 1);
+    assert.equal(loadValue.callCount, 1);
+    assert.equal(loadValue.constructionCount, 0);
+    assert.equal(loadValue.nthCall(1), null);
+});
+
+registerTest('doubles expose aggregate call history for returned calls', function () {
+    const { loadValue, receiver } = createRecordedScopedLoadValue();
+    const firstInteraction = requireRecordedValue(loadValue.firstInteraction, 'expected recorded interaction');
+    const firstCall = requireRecordedValue(loadValue.firstCall, 'expected recorded call');
+
+    assert.equal(firstInteraction.kind, 'call');
+    assert.deepEqual(firstCall.arguments, [ 'a' ]);
+    assert.equal(firstCall.thisValue, receiver);
+    assert.equal(firstCall.index, 0);
+    assert.equal(firstCall.order, 0);
+    assert.equal(requireRecordedValue(loadValue.nthCall(0), 'expected nth call').result.status, 'returned');
+});
+
+registerTest('doubles expose returned call result history', function () {
+    const { loadValue } = createRecordedScopedLoadValue();
+    const lastResult = requireRecordedValue(loadValue.lastResult, 'expected recorded result');
+
+    assert.equal(lastResult.status, 'returned');
+});
+
+registerTest('doubles expose construction counts for returned constructions', function () {
+    const { Client } = createRecordedClientConstructor();
+
+    assert.equal(Client.interactionCount, 1);
+    assert.equal(Client.callCount, 0);
+    assert.equal(Client.constructionCount, 1);
+});
+
+registerTest('doubles expose construction history for returned constructions', function () {
+    const { Client, client } = createRecordedClientConstructor();
+    const firstConstruction = requireRecordedValue(Client.firstConstruction, 'expected recorded construction');
+    const firstInteraction = requireRecordedValue(Client.firstInteraction, 'expected recorded interaction');
+
+    assert.deepEqual(firstConstruction.arguments, [ 'https://api.example.test' ]);
+    assert.equal(firstConstruction.instance, client);
+    assert.equal(firstConstruction.result.status, 'returned');
+    assert.equal(firstInteraction.kind, 'construction');
+});
+
+registerTest('aggregate history counts calls and constructions together', function () {
+    const { clientFactoryDouble } = createRecordedClientFactory();
+
+    assert.equal(clientFactoryDouble.interactionCount, 2);
+    assert.equal(clientFactoryDouble.callCount, 1);
+    assert.equal(clientFactoryDouble.constructionCount, 1);
+});
+
+registerTest('aggregate history preserves chronological call and construction order', function () {
+    const { clientFactoryDouble } = createRecordedClientFactory();
+
+    assert.deepEqual(
+        clientFactoryDouble.interactions.map(function interactionKind(interaction) {
+            return interaction.kind;
+        }),
+        [ 'call', 'construction' ]
+    );
+    assert.deepEqual(
+        clientFactoryDouble.results.map(function resultKind(result) {
+            return result.invocationKind;
+        }),
+        [ 'call', 'construction' ]
+    );
+    assert.equal(requireRecordedValue(clientFactoryDouble.firstResult, 'expected first result').order, 0);
+    assert.equal(requireRecordedValue(clientFactoryDouble.lastResult, 'expected last result').order, 1);
+});
+
+registerTest('history records thrown calls', function () {
+    type LoadValue = (id: string) => string;
+
+    const expected = new Error('expected');
+    const throwingLoadValue = testDouble.throws<LoadValue>(expected);
+
+    assert.throws(function throwConfiguredError() {
+        throwingLoadValue('id');
+    }, expected);
+
+    assert.equal(throwingLoadValue.firstResult?.status, 'threw');
+});
+
+registerTest('history records missing behavior', function () {
+    type LoadValue = (id: string) => string;
+
+    const missingLoadValue = testDouble<LoadValue>({
+        rules: [ rule.when('known').returns('value') ]
+    });
+
+    assert.throws(function throwMissingBehavior() {
+        missingLoadValue('unknown');
+    }, /no configured behavior/u);
+
+    assert.equal(missingLoadValue.firstResult?.status, 'threw');
+});
+
+registerTest('history records unsupported invocation modes', function () {
+    const Client = testDouble.constructs({ id: 'client' });
+
+    assert.throws(function callConstructorDouble() {
+        (Client as unknown as () => unknown)();
+    }, /Class constructor/u);
+
+    assert.equal(Client.firstCall?.result.status, 'threw');
+    assert.equal(Client.callCount, 1);
+});
+
+registerTest('history records thrown constructions with null instances', function () {
+    type ClientConstructor = new () => ClientWithId;
+
+    const error = new Error('expected');
+    const Client = testDouble<ClientConstructor>({
+        fallback: rule.throws(error)
+    });
+
+    assert.throws(function constructClientForHistory() {
+        Reflect.construct(Client, []);
+    }, error);
+
+    assert.equal(Client.constructionCount, 1);
+    const firstConstruction = requireRecordedValue(Client.firstConstruction, 'expected thrown construction');
+    assert.equal(firstConstruction.instance, null);
+    assert.equal(firstConstruction.result.status, 'threw');
+});
+
+registerTest('promise results are recorded immediately without awaiting settlement', async function () {
+    const error = new Error('expected');
+    const loadValue = testDouble.rejects(error);
+    const promise = loadValue('id');
+    const firstResult = requireRecordedValue(loadValue.firstResult, 'expected returned promise result');
+
+    assert.equal(firstResult.status, 'returned');
+    assert.equal(firstResult.value, promise);
+    await assert.rejects(async function awaitRejectedValue() {
+        await promise;
+    }, error);
+    assert.equal(requireRecordedValue(loadValue.firstResult, 'expected retained promise result').status, 'returned');
+});
+
+registerTest('history array snapshots are shallow copies', function () {
+    const { input, loadValue } = createRecordedSnapshotLoader();
+    const calls = loadValue.calls as unknown as unknown[];
+
+    calls.push({ kind: 'call' });
+
+    assert.equal(loadValue.callCount, 1);
+    assert.deepEqual(requireRecordedValue(loadValue.firstCall, 'expected fresh call').arguments, [ input ]);
+});
+
+registerTest('history record snapshots are shallow copies', function () {
+    const { input, loadValue } = createRecordedSnapshotLoader();
+    const firstCall = requireRecordedValue(loadValue.firstCall, 'expected recorded call') as DoubleCall;
+    const mutableArguments = firstCall.arguments as unknown as MutableArraySnapshot;
+
+    mutableArguments.push('changed');
+    Object.defineProperty(firstCall, 'index', { value: 99 });
+
+    assert.deepEqual(requireRecordedValue(loadValue.firstCall, 'expected fresh call').arguments, [ input ]);
+    assert.equal(requireRecordedValue(loadValue.firstCall, 'expected fresh call').index, 0);
+});
+
+registerTest('history result snapshots keep value references', function () {
+    const { loadValue, output } = createRecordedSnapshotLoader();
+    const outputResult = requireRecordedValue(loadValue.firstResult, 'expected returned output');
+
+    if (outputResult.status !== 'returned') {
+        assert.fail('expected returned output');
+    }
+    assert.equal(outputResult.value, output);
+});
+
+registerTest('history properties are non-enumerable', function () {
+    const loadValue = testDouble.returns('value');
+
+    loadValue('id');
+
+    assert.equal(loadValue.interactionCount, 1);
+    assert.deepEqual(Object.keys(loadValue), []);
+    assert.deepEqual(Object.entries(loadValue), []);
+});
+
+registerTest('reset clears history and restarts indexes', function () {
+    type LoadValue = (id: string) => string;
+
+    const seen: unknown[] = [];
+    const loadValue = testDouble<LoadValue>({
+        answer(invocation) {
+            seen.push(invocation);
+
+            return `${invocation.index}:${invocation.arguments[0]}`;
+        }
+    });
+
+    assert.equal(loadValue('a'), '0:a');
+    loadValue.reset();
+    assert.equal(loadValue.interactionCount, 0);
+    assert.equal(loadValue('b'), '0:b');
+    assert.deepEqual(seen, [
+        { arguments: [ 'a' ], index: 0, kind: 'call' },
+        { arguments: [ 'b' ], index: 0, kind: 'call' }
+    ]);
+});
+
+registerTest('reset rewinds ordered rules and sequence behaviors', function () {
+    type LoadValue = () => string;
+
+    const loadValue = testDouble<LoadValue>({
+        rules: [ rule.onCall(0).returns('first') ],
+        fallback: rule.sequence([ 'second', 'third' ])
+    });
+
+    assert.equal(loadValue(), 'first');
+    assert.equal(loadValue(), 'second');
+    loadValue.reset();
+    assert.equal(loadValue(), 'first');
+    assert.equal(loadValue(), 'second');
+});
+
+registerTest('sequence behavior state is independent per double', function () {
+    type LoadValue = () => string;
+
+    const sequence = rule.sequence([ 'first', 'second' ]);
+    const firstLoadValue = testDouble<LoadValue>({ fallback: sequence });
+    const secondLoadValue = testDouble<LoadValue>({ fallback: sequence });
+
+    assert.equal(firstLoadValue(), 'first');
+    assert.equal(secondLoadValue(), 'first');
+    assert.equal(firstLoadValue(), 'second');
+    assert.equal(secondLoadValue(), 'second');
 });

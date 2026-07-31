@@ -76,8 +76,8 @@ test('passes dry-run by default', async (case) => {
 
     await harness.subject.run(['publish']);
 
-    case.assert.equal(harness.buildAndPublishAll.callCount, 1);
-    case.assert.deepEqual(harness.buildAndPublishAll.firstCall.args[1], {
+    case.assert.equal(harness.buildAndPublishAll.interactionCount, 1);
+    case.assert.deepEqual(harness.buildAndPublishAll.firstInteraction.arguments[1], {
         dryRun: true,
     });
     return case.assert.done();
@@ -302,7 +302,7 @@ test('logs fire-and-forget rejection', async (case) => {
 
     await run.rejects({ message: 'error' });
 
-    case.assert.equal(logger.error.callCount, 1);
+    case.assert.equal(logger.error.interactionCount, 1);
     return case.assert.done();
 });
 ```
