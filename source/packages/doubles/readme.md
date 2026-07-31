@@ -11,7 +11,9 @@ Current package state:
 - fixed behavior factories: `testDouble.returns(...)`,
   `testDouble.resolves(...)`, `testDouble.rejects(...)`,
   `testDouble.throws(...)`, and `testDouble.constructs(...)`
-- rule configuration, call history introspection, and doubles-oriented
-  assertion extensions are future milestones
+- configurable behavior rules through `rule.when(...)`, `rule.onCall(...)`,
+  `rule.sequence([...])`, and fallback or answer configuration
+- call history introspection and doubles-oriented assertion extensions are
+  future milestones
 - no module replacement, object-method patching, global sandbox, or restore
   registry API
