@@ -3,6 +3,26 @@ import { registerTest } from '../test-support/register-test.ts';
 import { rule, testDouble } from './test-double.ts';
 
 type PrimitiveConstructionFactory = (instance: unknown) => unknown;
+type User = {
+    readonly id: string;
+};
+type UserQuery = {
+    readonly id: string;
+    readonly profile: UserProfile;
+};
+type UserProfile = {
+    readonly role: string;
+};
+type ClientWithId = {
+    readonly id: string;
+};
+type ClientOptions = {
+    readonly auth: ClientAuth;
+    readonly baseUrl: string;
+};
+type ClientAuth = {
+    readonly token: string;
+};
 
 registerTest('testDouble() creates an untyped callable double', function () {
     const anyValue = testDouble();
@@ -73,18 +93,7 @@ registerTest('testDouble.constructs() rejects primitive instances at runtime', f
 });
 
 registerTest('rule.when() matches partial-deep argument prefixes', function () {
-    type User = {
-        readonly id: string;
-    };
-    type LoadUser = (
-        query: {
-            readonly id: string;
-            readonly profile: {
-                readonly role: string;
-            };
-        },
-        scope: string
-    ) => User;
+    type LoadUser = (query: UserQuery, scope: string) => User;
 
     const adminUser = { id: 'admin' };
     const guestUser = { id: 'guest' };
@@ -100,18 +109,7 @@ registerTest('rule.when() matches partial-deep argument prefixes', function () {
 });
 
 registerTest('rule.whenConstructedWith() matches partial-deep constructor argument prefixes', function () {
-    type Client = {
-        readonly id: string;
-    };
-    type ClientConstructor = new (
-        options: {
-            readonly auth: {
-                readonly token: string;
-            };
-            readonly baseUrl: string;
-        },
-        retries: number
-    ) => Client;
+    type ClientConstructor = new (options: ClientOptions, retries: number) => ClientWithId;
 
     const client = { id: 'primary' };
     const Client = testDouble<ClientConstructor>({
@@ -123,32 +121,34 @@ registerTest('rule.whenConstructedWith() matches partial-deep constructor argume
     assert.equal(new Client({ auth: { token: 'primary' }, baseUrl: 'https://api.example.test' }, 3), client);
 });
 
-registerTest('ordered call and construction rules use zero-based indexes', function () {
+registerTest('ordered call rules use zero-based indexes', function () {
     type LoadValue = () => string;
-    type Client = {
-        readonly id: string;
-    };
-    type ClientConstructor = new () => Client;
 
-    const firstClient = { id: 'first' };
-    const secondClient = { id: 'second' };
     const loadValue = testDouble<LoadValue>({
         rules: [
             rule.onCall(1).returns('second'),
             rule.onCall(0).returns('first')
         ]
     });
-    const Client = testDouble<ClientConstructor>({
+
+    assert.equal(loadValue(), 'first');
+    assert.equal(loadValue(), 'second');
+});
+
+registerTest('ordered construction rules use zero-based indexes', function () {
+    type ClientConstructor = new () => ClientWithId;
+
+    const firstClient = { id: 'first' };
+    const secondClient = { id: 'second' };
+    const clientConstructor = testDouble<ClientConstructor>({
         rules: [
             rule.onConstruction(1).constructs(secondClient),
             rule.onConstruction(0).constructs(firstClient)
         ]
     });
 
-    assert.equal(loadValue(), 'first');
-    assert.equal(loadValue(), 'second');
-    assert.equal(new Client(), firstClient);
-    assert.equal(new Client(), secondClient);
+    assert.equal(Reflect.construct(clientConstructor, []), firstClient);
+    assert.equal(Reflect.construct(clientConstructor, []), secondClient);
 });
 
 registerTest('rules are evaluated in order and exhausted sequences fall through', function () {
@@ -195,39 +195,33 @@ registerTest('rule.sequence() supports async behavior entries', async function (
 });
 
 registerTest('fallback can configure call and construction defaults together', function () {
-    type Client = {
-        readonly id: string;
-    };
     type ClientFactory = {
-        (baseUrl: string): Client;
-        new (baseUrl: string): Client;
+        (baseUrl: string): ClientWithId;
+        new (baseUrl: string): ClientWithId;
     };
 
     const calledClient = { id: 'called' };
     const constructedClient = { id: 'constructed' };
-    const Client = testDouble<ClientFactory>({
+    const clientFactory = testDouble<ClientFactory>({
         fallback: {
             call: rule.returns(calledClient),
             construction: rule.constructs(constructedClient)
         }
     });
 
-    assert.equal(Client('https://api.example.test'), calledClient);
-    assert.equal(new Client('https://api.example.test'), constructedClient);
+    assert.equal(clientFactory('https://api.example.test'), calledClient);
+    assert.equal(Reflect.construct(clientFactory, [ 'https://api.example.test' ]), constructedClient);
 });
 
 registerTest('answer receives invocation arguments, index, and kind', function () {
-    type Client = {
-        readonly id: string;
-    };
     type ClientFactory = {
         (id: string): string;
-        new (id: string): Client;
+        new (id: string): ClientWithId;
     };
 
     const constructedClient = { id: 'constructed' };
     const seen: unknown[] = [];
-    const Client = testDouble<ClientFactory>({
+    const clientFactory = testDouble<ClientFactory>({
         answer(invocation) {
             seen.push(invocation);
 
@@ -237,9 +231,9 @@ registerTest('answer receives invocation arguments, index, and kind', function (
         }
     });
 
-    assert.equal(Client('a'), '0:a');
-    assert.equal(Client('b'), '1:b');
-    assert.equal(new Client('c'), constructedClient);
+    assert.equal(clientFactory('a'), '0:a');
+    assert.equal(clientFactory('b'), '1:b');
+    assert.equal(Reflect.construct(clientFactory, [ 'c' ]), constructedClient);
     assert.deepEqual(seen, [
         { arguments: [ 'a' ], index: 0, kind: 'call' },
         { arguments: [ 'b' ], index: 1, kind: 'call' },
