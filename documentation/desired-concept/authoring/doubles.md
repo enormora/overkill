@@ -262,13 +262,13 @@ The minimal shape worth exploring is:
 - `rule.rejects(reason: unknown)`
 - `rule.throws(thrown: unknown)`
 - `rule.calls(fn)` for fully custom logic (the `answer` configuration field is the equivalent at the double level)
-- `rule.sequence(...)` for successive results without verbose call-index rules
+- `rule.sequence([...])` for successive results without verbose call-index rules
 
 Example:
 
 ```ts
 const nextToken = testDouble<() => string>({
-    fallback: rule.sequence('a', 'b', rule.throws(new Error('done')))
+    fallback: rule.sequence([ 'a', 'b', rule.throws(new Error('done')) ])
 });
 ```
 
@@ -281,11 +281,11 @@ For more advanced cases:
 
 ```ts
 const authorize = testDouble<(user: string, scope: string) => boolean>({
-    answer(call) {
-        if (call.args[0] === 'root') {
+    answer(invocation) {
+        if (invocation.arguments[0] === 'root') {
             return true;
         }
-        if (call.args[1] === 'read') {
+        if (invocation.arguments[1] === 'read') {
             return true;
         }
         return false;
@@ -299,8 +299,8 @@ users to switch to a second primary fluent API:
 ```ts
 const read = testDouble<(path: string) => Promise<string>>({
     rules: [
-        rule.onCall(1).resolves('first'),
-        rule.onCall(2).resolves('second'),
+        rule.onCall(0).resolves('first'),
+        rule.onCall(1).resolves('second'),
         rule.when('/missing').rejects(new Error('not found'))
     ],
     fallback: rule.rejects(new Error('unexpected call'))
