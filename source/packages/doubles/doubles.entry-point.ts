@@ -1,5 +1,7 @@
+export { doubleUsage } from '../../doubles/double-usage.ts';
 export { rule } from '../../doubles/double-rule.ts';
 export { testDouble } from '../../doubles/test-double.ts';
+export type { DoubleUsageAssertions } from '../../doubles/double-usage.ts';
 export type {
     DoubleInvocation
 } from '../../doubles/double-behavior.ts';

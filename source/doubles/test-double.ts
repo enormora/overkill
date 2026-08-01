@@ -33,6 +33,7 @@ import type {
     ReturnArguments,
     ReturnSignature
 } from './double-rule.ts';
+import { createChronologyScope, type ChronologyScope } from './double-chronology.ts';
 import { createDouble, modeSet, type SupportedModes } from './double-runtime.ts';
 
 type ConfigurationRecord = Readonly<Partial<Record<'answer' | 'fallback' | 'rules', unknown>>>;
@@ -96,24 +97,38 @@ export type TestDoubleFactory = {
     };
 };
 
+export type TestDoubleScope = {
+    readonly testDouble: TestDoubleFactory;
+};
+
 function createCallableBehaviorDouble<ReturnValue>(
+    scope: TestDoubleScopeContext,
     behavior: RuntimeBehavior
 ): TestDouble<UnknownFunction<ReturnValue>> {
-    return createDouble<UnknownFunction<ReturnValue>>({
-        answer: null,
-        fallback: behavior,
-        rules: []
-    }, modeSet('call'));
+    return createDouble<UnknownFunction<ReturnValue>>(
+        {
+            answer: null,
+            fallback: behavior,
+            rules: []
+        },
+        scope.chronology,
+        modeSet('call')
+    );
 }
 
 function createConstructorBehaviorDouble<Instance>(
+    scope: TestDoubleScopeContext,
     behavior: RuntimeBehavior
 ): TestDouble<UnknownConstructor<Instance>> {
-    const double = createDouble<UnknownConstructor<Instance>>({
-        answer: null,
-        fallback: behavior,
-        rules: []
-    }, modeSet('construction'));
+    const double = createDouble<UnknownConstructor<Instance>>(
+        {
+            answer: null,
+            fallback: behavior,
+            rules: []
+        },
+        scope.chronology,
+        modeSet('construction')
+    );
 
     return double;
 }
@@ -202,14 +217,21 @@ function normalizeRuntimeConfiguration(configuration: ConfigurationRecord): Runt
     };
 }
 
-function createUntypedDouble(): TestDouble<UnknownFunction<unknown>>;
-function createUntypedDouble<Signature extends CallableSignature>(): TestDouble<Signature>;
-function createUntypedDouble<Signature extends CallableSignature | ConstructorSignature>(
-    configuration: TestDoubleConfiguration<Signature>
-): TestDouble<Signature>;
-function createUntypedDouble(...configuration: readonly unknown[]): TestDouble<UnknownFunction<unknown>> {
+type TestDoubleScopeContext = {
+    readonly chronology: ChronologyScope;
+};
+
+type TestDoubleCreator = <Signature extends CallableSignature | ConstructorSignature = UnknownFunction<unknown>>(
+    ...configuration: Signature extends ConstructorSignature ? readonly [TestDoubleConfiguration<Signature>]
+        : readonly [] | readonly [TestDoubleConfiguration<Signature>]
+) => TestDouble<Signature>;
+
+function createUntypedDoubleFromUnknowns(
+    scope: TestDoubleScopeContext,
+    configuration: readonly unknown[]
+): TestDouble<UnknownFunction<unknown>> {
     if (configuration.length === 0) {
-        return createCallableBehaviorDouble(returnsBehavior(undefined));
+        return createCallableBehaviorDouble(scope, returnsBehavior(undefined));
     }
 
     if (configuration.length !== 1 || !isRuntimeConfiguration(configuration[0])) {
@@ -218,52 +240,138 @@ function createUntypedDouble(...configuration: readonly unknown[]): TestDouble<U
 
     const runtimeConfiguration = normalizeRuntimeConfiguration(configuration[0]);
 
-    return createDouble(runtimeConfiguration, supportedModesFromConfiguration(runtimeConfiguration));
+    return createDouble(runtimeConfiguration, scope.chronology, supportedModesFromConfiguration(runtimeConfiguration));
 }
 
 function createConstructingDouble<SignatureOrInstance>(
+    scope: TestDoubleScopeContext,
     instance: ConstructInstance<SignatureOrInstance>
 ): TestDouble<ConstructSignature<SignatureOrInstance>>;
-function createConstructingDouble(instance: unknown): unknown {
+function createConstructingDouble(scope: TestDoubleScopeContext, instance: unknown): unknown {
     ensureConstructorInstance(instance, 'testDouble.constructs()');
 
-    return createConstructorBehaviorDouble(constructsBehavior(instance));
+    return createConstructorBehaviorDouble(scope, constructsBehavior(instance));
 }
 
-function createRejectingDouble(reason: unknown): TestDouble<UnknownFunction<Promise<never>>>;
+function createRejectingDouble(
+    scope: TestDoubleScopeContext,
+    reason: unknown
+): TestDouble<UnknownFunction<Promise<never>>>;
 function createRejectingDouble<Signature extends CallableSignature>(
+    scope: TestDoubleScopeContext,
     reason: ReturnType<Signature> extends Promise<unknown> ? unknown : never
 ): TestDouble<Signature>;
-function createRejectingDouble(reason: unknown): TestDouble<UnknownFunction<Promise<never>>> {
-    return createCallableBehaviorDouble(rejectsBehavior(reason));
+function createRejectingDouble(
+    scope: TestDoubleScopeContext,
+    reason: unknown
+): TestDouble<UnknownFunction<Promise<never>>> {
+    return createCallableBehaviorDouble(scope, rejectsBehavior(reason));
 }
 
 function createResolvingDouble<SignatureOrValue>(
+    scope: TestDoubleScopeContext,
     value: ResolvedValue<SignatureOrValue>
 ): TestDouble<ResolvedSignature<SignatureOrValue>>;
-function createResolvingDouble(value: unknown): unknown {
-    return createCallableBehaviorDouble(resolvesBehavior(value));
+function createResolvingDouble(scope: TestDoubleScopeContext, value: unknown): unknown {
+    return createCallableBehaviorDouble(scope, resolvesBehavior(value));
 }
 
-function createReturningDouble<SignatureOrValue>(
-    ...value: ReturnArguments<SignatureOrValue>
-): TestDouble<ReturnSignature<SignatureOrValue>>;
-function createReturningDouble(...value: readonly unknown[]): TestDouble<UnknownFunction<unknown>> {
-    return createCallableBehaviorDouble(returnsBehavior(value[0]));
-}
-
-function createThrowingDouble(thrown: unknown): TestDouble<UnknownFunction<never>>;
+function createThrowingDouble(
+    scope: TestDoubleScopeContext,
+    thrown: unknown
+): TestDouble<UnknownFunction<never>>;
 function createThrowingDouble<Signature extends CallableSignature>(
+    scope: TestDoubleScopeContext,
     thrown: ReturnType<Signature> extends Promise<unknown> ? never : unknown
 ): TestDouble<Signature>;
-function createThrowingDouble(thrown: unknown): TestDouble<UnknownFunction<never>> {
-    return createCallableBehaviorDouble(throwsBehavior(thrown));
+function createThrowingDouble(
+    scope: TestDoubleScopeContext,
+    thrown: unknown
+): TestDouble<UnknownFunction<never>> {
+    return createCallableBehaviorDouble(scope, throwsBehavior(thrown));
 }
 
-export const testDouble: TestDoubleFactory = Object.assign(createUntypedDouble, {
-    constructs: createConstructingDouble,
-    rejects: createRejectingDouble,
-    resolves: createResolvingDouble,
-    returns: createReturningDouble,
-    throws: createThrowingDouble
-});
+function createScopedDoubleFunction(scope: TestDoubleScopeContext): TestDoubleCreator {
+    function scopedDouble<Signature extends CallableSignature | ConstructorSignature = UnknownFunction<unknown>>(
+        ...configuration: Signature extends ConstructorSignature ? readonly [TestDoubleConfiguration<Signature>]
+            : readonly [] | readonly [TestDoubleConfiguration<Signature>]
+    ): TestDouble<Signature>;
+    function scopedDouble(...configuration: readonly unknown[]): TestDouble<UnknownFunction<unknown>> {
+        return createUntypedDoubleFromUnknowns(scope, configuration);
+    }
+
+    return scopedDouble;
+}
+
+function createScopedConstructs(scope: TestDoubleScopeContext): TestDoubleFactory['constructs'] {
+    function scopedConstructs<SignatureOrInstance>(
+        instance: ConstructInstance<SignatureOrInstance>
+    ): TestDouble<ConstructSignature<SignatureOrInstance>>;
+    function scopedConstructs(instance: unknown): unknown {
+        return createConstructingDouble(scope, instance);
+    }
+
+    return scopedConstructs;
+}
+
+function createScopedRejects(scope: TestDoubleScopeContext): TestDoubleFactory['rejects'] {
+    function scopedRejects(reason: unknown): TestDouble<UnknownFunction<Promise<never>>>;
+    function scopedRejects<Signature extends CallableSignature>(
+        reason: ReturnType<Signature> extends Promise<unknown> ? unknown : never
+    ): TestDouble<Signature>;
+    function scopedRejects(reason: unknown): TestDouble<UnknownFunction<Promise<never>>> {
+        return createRejectingDouble(scope, reason);
+    }
+
+    return scopedRejects;
+}
+
+function createScopedResolves(scope: TestDoubleScopeContext): TestDoubleFactory['resolves'] {
+    function scopedResolves<SignatureOrValue>(
+        value: ResolvedValue<SignatureOrValue>
+    ): TestDouble<ResolvedSignature<SignatureOrValue>>;
+    function scopedResolves(value: unknown): unknown {
+        return createResolvingDouble(scope, value);
+    }
+
+    return scopedResolves;
+}
+
+function createScopedReturns(scope: TestDoubleScopeContext): TestDoubleFactory['returns'] {
+    function scopedReturns<SignatureOrValue>(
+        ...value: ReturnArguments<SignatureOrValue>
+    ): TestDouble<ReturnSignature<SignatureOrValue>>;
+    function scopedReturns(...value: readonly unknown[]): TestDouble<UnknownFunction<unknown>> {
+        return createCallableBehaviorDouble(scope, returnsBehavior(value[0]));
+    }
+
+    return scopedReturns;
+}
+
+function createScopedThrows(scope: TestDoubleScopeContext): TestDoubleFactory['throws'] {
+    function scopedThrows(thrown: unknown): TestDouble<UnknownFunction<never>>;
+    function scopedThrows<Signature extends CallableSignature>(
+        thrown: ReturnType<Signature> extends Promise<unknown> ? never : unknown
+    ): TestDouble<Signature>;
+    function scopedThrows(thrown: unknown): TestDouble<UnknownFunction<never>> {
+        return createThrowingDouble(scope, thrown);
+    }
+
+    return scopedThrows;
+}
+
+export function createTestDoubleScope(): TestDoubleScope {
+    const scope = { chronology: createChronologyScope() };
+
+    return {
+        testDouble: Object.assign(createScopedDoubleFunction(scope), {
+            constructs: createScopedConstructs(scope),
+            rejects: createScopedRejects(scope),
+            resolves: createScopedResolves(scope),
+            returns: createScopedReturns(scope),
+            throws: createScopedThrows(scope)
+        })
+    };
+}
+
+export const testDouble: TestDoubleFactory = createTestDoubleScope().testDouble;

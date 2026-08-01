@@ -21,6 +21,11 @@ import {
     type RuntimeDoubleHistory
 } from './double-history.ts';
 import {
+    type ChronologyScope,
+    type DoubleChronology,
+    installDoubleChronology
+} from './double-chronology.ts';
+import {
     createReturnedResult,
     createThrownResult,
     type HistoryInvocation
@@ -32,6 +37,10 @@ type InvocationRecord = {
     readonly kind: InvocationKind;
 };
 
+type RuntimeInvocation<Kind extends InvocationKind = InvocationKind> = HistoryInvocation<Kind> & {
+    readonly chronologyOrder: number;
+};
+
 export type SupportedModes = ReadonlySet<InvocationKind>;
 
 type DoubleRuntimeState = BehaviorRuntime & {
@@ -40,6 +49,7 @@ type DoubleRuntimeState = BehaviorRuntime & {
 
 type DoubleExecutionContext = {
     readonly configuration: RuntimeConfiguration;
+    readonly chronology: DoubleChronology;
     readonly history: RuntimeDoubleHistory;
     readonly runtime: BehaviorRuntime;
     readonly supportedModes: SupportedModes;
@@ -159,11 +169,13 @@ function answerForInvocation(
 }
 
 function createCallInvocation(
+    chronologyScope: ChronologyScope,
     history: RuntimeDoubleHistory,
     argumentList: ArrayLike<unknown>
-): HistoryInvocation<'call'> {
+): RuntimeInvocation<'call'> {
     return {
         arguments: Array.from(argumentList),
+        chronologyOrder: chronologyScope.nextOrder(),
         index: history.callIndex(),
         kind: 'call',
         order: history.interactionOrder()
@@ -171,11 +183,13 @@ function createCallInvocation(
 }
 
 function createConstructionInvocation(
+    chronologyScope: ChronologyScope,
     history: RuntimeDoubleHistory,
     argumentList: ArrayLike<unknown>
-): HistoryInvocation<'construction'> {
+): RuntimeInvocation<'construction'> {
     return {
         arguments: Array.from(argumentList),
+        chronologyOrder: chronologyScope.nextOrder(),
         index: history.constructionIndex(),
         kind: 'construction',
         order: history.interactionOrder()
@@ -184,26 +198,28 @@ function createConstructionInvocation(
 
 function unsupportedCall(
     context: DoubleExecutionContext,
-    invocation: HistoryInvocation<'call'>,
+    invocation: RuntimeInvocation<'call'>,
     thisValue: unknown
 ): never {
     const error = new TypeError('Class constructor TestDouble cannot be invoked without new.');
     context.history.recordCallResult(invocation, thisValue, createThrownResult(invocation, error));
+    context.chronology.record({ kind: invocation.kind, order: invocation.chronologyOrder });
     throw error;
 }
 
 function unsupportedConstruction(
     context: DoubleExecutionContext,
-    invocation: HistoryInvocation<'construction'>
+    invocation: RuntimeInvocation<'construction'>
 ): never {
     const error = new TypeError('test double is not a constructor.');
     context.history.recordConstructionResult(invocation, null, createThrownResult(invocation, error));
+    context.chronology.record({ kind: invocation.kind, order: invocation.chronologyOrder });
     throw error;
 }
 
 function answerCall(
     context: DoubleExecutionContext,
-    invocation: HistoryInvocation<'call'>,
+    invocation: RuntimeInvocation<'call'>,
     thisValue: unknown
 ): unknown {
     try {
@@ -213,16 +229,18 @@ function answerCall(
             'test double has no configured behavior for this call.'
         );
         context.history.recordCallResult(invocation, thisValue, createReturnedResult(invocation, answer));
+        context.chronology.record({ kind: invocation.kind, order: invocation.chronologyOrder });
         return answer;
     } catch (error: unknown) {
         context.history.recordCallResult(invocation, thisValue, createThrownResult(invocation, error));
+        context.chronology.record({ kind: invocation.kind, order: invocation.chronologyOrder });
         throw error;
     }
 }
 
 function answerConstruction(
     context: DoubleExecutionContext,
-    invocation: HistoryInvocation<'construction'>
+    invocation: RuntimeInvocation<'construction'>
 ): ConstructorReturnValue {
     const answer = answerForInvocation(
         context,
@@ -239,14 +257,16 @@ function answerConstruction(
 
 function constructDouble(
     context: DoubleExecutionContext,
-    invocation: HistoryInvocation<'construction'>
+    invocation: RuntimeInvocation<'construction'>
 ): ConstructorReturnValue {
     try {
         const answer = answerConstruction(context, invocation);
         context.history.recordConstructionResult(invocation, answer, createReturnedResult(invocation, answer));
+        context.chronology.record({ kind: invocation.kind, order: invocation.chronologyOrder });
         return answer;
     } catch (error: unknown) {
         context.history.recordConstructionResult(invocation, null, createThrownResult(invocation, error));
+        context.chronology.record({ kind: invocation.kind, order: invocation.chronologyOrder });
         throw error;
     }
 }
@@ -259,17 +279,22 @@ function createDoubleTarget(): (...arguments_: readonly unknown[]) => never {
 
 export function createDouble<Signature extends CallableSignature | ConstructorSignature>(
     configuration: RuntimeConfiguration,
+    chronologyScope: ChronologyScope,
     supportedModes: SupportedModes
 ): RuntimeTestDouble<Signature> {
     const runtime = createDoubleRuntimeState();
-    const history = createDoubleHistory(runtime.reset);
-    const context = { configuration, history, runtime, supportedModes };
     const target = createDoubleTarget();
+    const chronology = installDoubleChronology(target, chronologyScope);
+    const history = createDoubleHistory(function resetDouble() {
+        chronology.reset();
+        runtime.reset();
+    });
+    const context = { chronology, configuration, history, runtime, supportedModes };
     history.install(target);
 
     const candidate: unknown = new Proxy(target, {
         apply(_target, thisArgument, argumentList): unknown {
-            const invocation = createCallInvocation(history, argumentList);
+            const invocation = createCallInvocation(chronologyScope, history, argumentList);
             return supportedModes.has('call') ? answerCall(context, invocation, thisArgument) : unsupportedCall(
                 context,
                 invocation,
@@ -277,7 +302,7 @@ export function createDouble<Signature extends CallableSignature | ConstructorSi
             );
         },
         construct(_target, argumentList): ConstructorReturnValue {
-            const invocation = createConstructionInvocation(history, argumentList);
+            const invocation = createConstructionInvocation(chronologyScope, history, argumentList);
             return supportedModes.has('construction') ? constructDouble(context, invocation) : unsupportedConstruction(
                 context,
                 invocation

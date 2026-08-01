@@ -3,10 +3,10 @@ import path from 'node:path';
 
 const projectFolder = process.cwd();
 const buildFolder = path.join(projectFolder, 'target/build/source');
-const packageFolder = path.join(
-    buildFolder,
-    'integration-tests/package-smoke/node_modules/@overkill-dev/assert'
-);
+const packageFolders = [
+    path.join(buildFolder, 'node_modules/@overkill-dev/assert'),
+    path.join(buildFolder, 'integration-tests/package-smoke/node_modules/@overkill-dev/assert')
+];
 const packageJsonIndent = 4;
 const packageJson = {
     exports: {
@@ -28,26 +28,32 @@ async function copyTextFile(sourcePath, targetPath, transform) {
     await fs.writeFile(targetPath, content);
 }
 
-await fs.rm(packageFolder, { force: true, recursive: true });
+async function installPackage(packageFolder) {
+    await fs.rm(packageFolder, { force: true, recursive: true });
 
-await copyTextFile(
-    path.join(buildFolder, 'packages/assert/assert.entry-point.js'),
-    path.join(packageFolder, 'packages/assert/assert.entry-point.js'),
-    function preserveContent(content) {
-        return content;
-    }
-);
-await copyTextFile(
-    path.join(buildFolder, 'assert/assertion-extension.js'),
-    path.join(packageFolder, 'assert/assertion-extension.js'),
-    function rewriteProtocolImport(content) {
-        return content.replace(
-            '../packages/engine/assertion-protocol.entry-point.js',
-            '@overkill-dev/engine/packages/engine/assertion-protocol.entry-point.js'
-        );
-    }
-);
-await fs.writeFile(
-    path.join(packageFolder, 'package.json'),
-    `${JSON.stringify(packageJson, null, packageJsonIndent)}\n`
-);
+    await copyTextFile(
+        path.join(buildFolder, 'packages/assert/assert.entry-point.js'),
+        path.join(packageFolder, 'packages/assert/assert.entry-point.js'),
+        function preserveContent(content) {
+            return content;
+        }
+    );
+    await copyTextFile(
+        path.join(buildFolder, 'assert/assertion-extension.js'),
+        path.join(packageFolder, 'assert/assertion-extension.js'),
+        function rewriteProtocolImport(content) {
+            return content;
+        }
+    );
+    await fs.cp(
+        path.join(buildFolder, 'assertion-protocol'),
+        path.join(packageFolder, 'assertion-protocol'),
+        { recursive: true }
+    );
+    await fs.writeFile(
+        path.join(packageFolder, 'package.json'),
+        `${JSON.stringify(packageJson, null, packageJsonIndent)}\n`
+    );
+}
+
+await Promise.all(packageFolders.map(installPackage));

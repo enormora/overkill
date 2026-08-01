@@ -1,26 +1,31 @@
 import {
+    createAssertionReferenceRecord,
     createCompositeAssertionGroup,
-    createCompositeAssertionReferenceRecord,
-    createNarrowingCompositeAssertionReferenceRecord,
-    createThrownErrorRecord,
     isCompositeAssertionGroup,
-    thrownMatcherChildren,
-    type AssertCompositeAssertionReturn,
-    type AssertionSource,
-    type BuiltInAssertAssertionNode,
-    type CompositeAssertionChildNode,
     type CompositeAssertionGroup,
     type CompositeAssertionReference,
     type CompositeAssertionSummaryContext,
-    type DeepComparable,
-    type ForeignAssertionNode,
-    type InstanceConstructor,
-    type NarrowingCompositeAssertionReference,
-    type NonEmptyReadonlyArray,
-    type ResolvableSourceLocation,
+    type AssertCompositeAssertionReturn,
+    type NarrowingCompositeAssertionReference
+} from '../assertion-protocol/assertion-reference.ts';
+import type {
+    BuiltInAssertAssertionNode,
+    CompositeAssertionChildNode,
+    ForeignAssertionNode
+} from '../assertion-protocol/assertion-node.ts';
+import type {
+    AssertionSource,
+    DeepComparable,
+    InstanceConstructor,
+    NonEmptyReadonlyArray,
+    ResolvableSourceLocation
+} from '../assertion-protocol/assertion-node-shape.ts';
+import { createThrownErrorRecord } from '../assertion-protocol/thrown-error-record.ts';
+import {
     type SynchronousCallback,
-    type ThrownMatcher
-} from '../packages/engine/assertion-protocol.entry-point.ts';
+    type ThrownMatcher,
+    thrownMatcherChildren
+} from '../assertion-protocol/thrown-matcher.ts';
 
 type GroupItem<Source extends AssertionSource> = CompositeAssertionChildNode<Source> | CompositeAssertionGroup<Source>;
 
@@ -426,7 +431,7 @@ export function defineCompositeAssertion<
     Arguments extends readonly unknown[],
     Result extends AssertCompositeAssertionReturn
 >(definition: CompositeAssertionDefinition<Arguments, Result>): CompositeAssertionReference<Arguments, Result> {
-    return createCompositeAssertionReferenceRecord({
+    return createAssertionReferenceRecord({
         formatSummary: definition.formatSummary ?? null,
         kind: 'composite',
         name: definition.name,
@@ -446,7 +451,7 @@ export function defineNarrowingCompositeAssertion<
 >(
     definition: NarrowingCompositeAssertionDefinition<Actual, Narrowed, Arguments>
 ): NarrowingCompositeAssertionReference<Actual, Narrowed, Arguments> {
-    return createNarrowingCompositeAssertionReferenceRecord({
+    return createAssertionReferenceRecord({
         formatSummary: definition.formatSummary ?? null,
         kind: 'narrowing-composite',
         name: definition.name,

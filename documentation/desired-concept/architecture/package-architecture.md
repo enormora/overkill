@@ -188,8 +188,9 @@ The conceptual split is:
 - `@overkill-dev/doubles` owns programmable function doubles
 - `@overkill-dev/engine` owns built-in assertions and the injected assertion
   context
-- `@overkill-dev/assert` owns reusable doubles-oriented assertion-extension
-  helpers
+- `@overkill-dev/assert` owns reusable assertion-extension helpers
+- `@overkill-dev/doubles` owns doubles-specific assertion references under
+  `doubleUsage`
 - `@overkill-dev/test` owns default authoring/facade composition only
 - doubles-specific assertions may be contributed by `@overkill-dev/doubles`
   when an engine-backed assertion context explicitly opts into them
@@ -279,15 +280,15 @@ await run({
 Equivalent programmatic entrypoints should exist for the other major CLI
 verbs too:
 
-- `list(request)` — mirror of `overkill list`
-- `watch(request)` — mirror of `overkill run --watch`
-- `replay(runId, options?)` — mirror of `overkill replay`
-- `replayWitness(path, options?)` — mirror of `overkill replay-witness`
-- `mergeResults(inputs, options?)` — mirror of the richer merged-results
+- `list(request)` - mirror of `overkill list`
+- `watch(request)` - mirror of `overkill run --watch`
+- `replay(runId, options?)` - mirror of `overkill replay`
+- `replayWitness(path, options?)` - mirror of `overkill replay-witness`
+- `mergeResults(inputs, options?)` - mirror of the richer merged-results
   workflow
 - `baseline.update(request)`, `baseline.apply(request)`,
   `baseline.bootstrap(request)`, `baseline.diff(request)`,
-  `baseline.list(request)` — mirrors of the baseline subcommands
+  `baseline.list(request)` - mirrors of the baseline subcommands
 
 This is also the logical layer for choosing microtest vs integration vs benchmark profiles.
 
