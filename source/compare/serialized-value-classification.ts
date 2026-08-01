@@ -28,7 +28,7 @@ export function prototypeIs(value: unknown, prototype: unknown): boolean {
     }
 }
 
-export function isBufferValue(value: unknown): value is Buffer {
+export function isBufferValue(value: unknown): value is Uint8Array {
     try {
         return Buffer.isBuffer(value);
     } catch {

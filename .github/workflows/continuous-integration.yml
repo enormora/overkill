@@ -108,8 +108,6 @@ jobs:
               run: npm ci
             - name: Dry-run package publish
               run: npx just publish-dry-run
-              env:
-                  NPM_TOKEN: dry-run
 
     workflow-security:
         runs-on: ubuntu-latest
