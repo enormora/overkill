@@ -103,6 +103,7 @@ This gives one concept that handles:
 
 - simple fixed returns
 - promise resolution and rejection
+- fresh sync and async generator results
 - constructor simulation
 - per-call sequencing
 - per-argument behavior
@@ -135,6 +136,11 @@ That means a test double instance should expose obvious information directly, fo
 - `results`
 - `firstResult`
 - `lastResult`
+- `iteratorEventCount`
+- `iteratorEvents`
+- `firstIteratorEvent`
+- `lastIteratorEvent`
+- `nthIteratorEvent(n)`
 
 The goal is that a user can inspect a double naturally in a debugger or in an assertion without first learning a large helper API.
 
@@ -154,6 +160,32 @@ used exactly once.
 state, including `rule.onCall`, `rule.onConstruction`, and `rule.sequence`.
 It does not reset mutable state owned by user callbacks passed to `answer` or
 `rule.calls(fn)`.
+
+Generator dependencies should use explicit behavior factories:
+
+```ts
+const loadEvents = testDouble.yields<(id: string) => Generator<Event, Summary, Command>>(
+    [ created, updated ],
+    summary
+);
+
+const loadEventsFromSource = testDouble.yieldsFrom<
+    (id: string) => Generator<Event, Summary, Command>
+>(function* eventsFor(id) {
+    return yield* eventSource(id);
+});
+```
+
+`yields(values, returnValue)` and `yieldsAsync(values, returnValue)` use finite
+readonly arrays and return a fresh tracked iterator per double call.
+`yieldsFrom(factory)` and `yieldsAsyncFrom(factory)` call the factory lazily when
+iteration starts, pass through the double call arguments, and delegate with
+`yield*`. Async delegation may use a sync or async source.
+
+Iterator tracking belongs to those first-party generator behaviors only. It
+records `next`, `return`, and `throw` outcomes, including post-completion calls.
+Reset clears iterator history and detaches already-created iterators from future
+recording while letting them continue to run.
 
 History properties are reserved names on double values. They are direct
 non-enumerable own properties, so debugger and assertion reads work without
@@ -235,6 +267,10 @@ assertion context:
 - `case.assert(doubleUsage.calledOnceWith, double, args)`
 - `case.assert(doubleUsage.constructedOnce, double)`
 - `case.assert(doubleUsage.constructedOnceWith, double, args)`
+- `case.assert(doubleUsage.iterated, double)`
+- `case.assert(doubleUsage.iteratorEventCount, double, count)`
+- `case.assert(doubleUsage.yieldCount, double, count)`
+- `case.assert(doubleUsage.yieldedExactly, double, values)`
 
 These assertions should read construction records, not infer constructor usage
 from return values. A double can return any object from a normal call, and that

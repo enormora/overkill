@@ -15,10 +15,24 @@ import {
     type RuntimeFallback,
     returnsBehavior,
     throwsBehavior,
+    yieldsAsyncBehavior,
+    yieldsAsyncFromBehavior,
+    yieldsBehavior,
+    yieldsFromBehavior,
     type UnknownConstructor,
     type UnknownFunction
 } from './double-behavior.ts';
 import type { DoubleHistory as HistoryForDouble } from './double-history.ts';
+import type {
+    AsyncGeneratorSignature,
+    AsyncReturnArguments,
+    AsyncSourceFactory,
+    AsyncYieldValue,
+    SyncGeneratorSignature,
+    SyncReturnArguments,
+    SyncSourceFactory,
+    SyncYieldValue
+} from './double-rule-generator.ts';
 import type {
     CallArguments,
     CallReturn,
@@ -94,6 +108,48 @@ export type TestDoubleFactory = {
         <Signature extends CallableSignature>(
             thrown: ReturnType<Signature> extends Promise<unknown> ? never : unknown
         ): TestDouble<Signature>;
+    };
+    readonly yields: {
+        <YieldValue>(
+            values: readonly YieldValue[]
+        ): TestDouble<UnknownFunction<Generator<YieldValue, undefined, unknown>>>;
+        <YieldValue, ReturnValue>(
+            values: readonly YieldValue[],
+            returnValue: ReturnValue
+        ): TestDouble<UnknownFunction<Generator<YieldValue, ReturnValue, unknown>>>;
+        <Signature extends CallableSignature>(
+            values: readonly SyncYieldValue<ReturnType<SyncGeneratorSignature<Signature>>>[],
+            ...returnValue: SyncReturnArguments<ReturnType<SyncGeneratorSignature<Signature>>>
+        ): TestDouble<SyncGeneratorSignature<Signature>>;
+    };
+    readonly yieldsAsync: {
+        <YieldValue>(
+            values: readonly YieldValue[]
+        ): TestDouble<UnknownFunction<AsyncGenerator<YieldValue, undefined, unknown>>>;
+        <YieldValue, ReturnValue>(
+            values: readonly YieldValue[],
+            returnValue: ReturnValue
+        ): TestDouble<UnknownFunction<AsyncGenerator<YieldValue, ReturnValue, unknown>>>;
+        <Signature extends CallableSignature>(
+            values: readonly AsyncYieldValue<ReturnType<AsyncGeneratorSignature<Signature>>>[],
+            ...returnValue: AsyncReturnArguments<ReturnType<AsyncGeneratorSignature<Signature>>>
+        ): TestDouble<AsyncGeneratorSignature<Signature>>;
+    };
+    readonly yieldsAsyncFrom: {
+        <SourceFactory extends (...arguments_: readonly unknown[]) => AsyncIterable<unknown> | Iterable<unknown>>(
+            sourceFactory: SourceFactory
+        ): TestDouble<UnknownFunction<ReturnType<SourceFactory>>>;
+        <Signature extends CallableSignature>(
+            sourceFactory: AsyncSourceFactory<Signature>
+        ): TestDouble<AsyncGeneratorSignature<Signature>>;
+    };
+    readonly yieldsFrom: {
+        <SourceFactory extends (...arguments_: readonly unknown[]) => Iterable<unknown>>(
+            sourceFactory: SourceFactory
+        ): TestDouble<UnknownFunction<ReturnType<SourceFactory>>>;
+        <Signature extends CallableSignature>(
+            sourceFactory: SyncSourceFactory<Signature>
+        ): TestDouble<SyncGeneratorSignature<Signature>>;
     };
 };
 
@@ -291,6 +347,36 @@ function createThrowingDouble(
     return createCallableBehaviorDouble(scope, throwsBehavior(thrown));
 }
 
+function createYieldingDouble(
+    scope: TestDoubleScopeContext,
+    values: readonly unknown[],
+    ...returnValue: readonly [] | readonly [unknown]
+): TestDouble<UnknownFunction<Generator<unknown, unknown, unknown>>> {
+    return createCallableBehaviorDouble(scope, yieldsBehavior(values, returnValue[0]));
+}
+
+function createYieldingFromDouble(
+    scope: TestDoubleScopeContext,
+    sourceFactory: (...arguments_: readonly unknown[]) => Iterable<unknown>
+): TestDouble<UnknownFunction<Iterable<unknown>>> {
+    return createCallableBehaviorDouble(scope, yieldsFromBehavior(sourceFactory));
+}
+
+function createAsyncYieldingDouble(
+    scope: TestDoubleScopeContext,
+    values: readonly unknown[],
+    ...returnValue: readonly [] | readonly [unknown]
+): TestDouble<UnknownFunction<AsyncGenerator<unknown, unknown, unknown>>> {
+    return createCallableBehaviorDouble(scope, yieldsAsyncBehavior(values, returnValue[0]));
+}
+
+function createAsyncYieldingFromDouble(
+    scope: TestDoubleScopeContext,
+    sourceFactory: (...arguments_: readonly unknown[]) => AsyncIterable<unknown> | Iterable<unknown>
+): TestDouble<UnknownFunction<AsyncIterable<unknown> | Iterable<unknown>>> {
+    return createCallableBehaviorDouble(scope, yieldsAsyncFromBehavior(sourceFactory));
+}
+
 function createScopedDoubleFunction(scope: TestDoubleScopeContext): TestDoubleCreator {
     function scopedDouble<Signature extends CallableSignature | ConstructorSignature = UnknownFunction<unknown>>(
         ...configuration: Signature extends ConstructorSignature ? readonly [TestDoubleConfiguration<Signature>]
@@ -360,6 +446,82 @@ function createScopedThrows(scope: TestDoubleScopeContext): TestDoubleFactory['t
     return scopedThrows;
 }
 
+function createScopedYields(scope: TestDoubleScopeContext): TestDoubleFactory['yields'] {
+    function scopedYields<YieldValue>(
+        values: readonly YieldValue[]
+    ): TestDouble<UnknownFunction<Generator<YieldValue, undefined, unknown>>>;
+    function scopedYields<YieldValue, ReturnValue>(
+        values: readonly YieldValue[],
+        returnValue: ReturnValue
+    ): TestDouble<UnknownFunction<Generator<YieldValue, ReturnValue, unknown>>>;
+    function scopedYields<Signature extends CallableSignature>(
+        values: readonly SyncYieldValue<ReturnType<SyncGeneratorSignature<Signature>>>[],
+        ...returnValue: SyncReturnArguments<ReturnType<SyncGeneratorSignature<Signature>>>
+    ): TestDouble<SyncGeneratorSignature<Signature>>;
+    function scopedYields(
+        values: readonly unknown[],
+        ...returnValue: readonly [] | readonly [unknown]
+    ): TestDouble<UnknownFunction<Generator<unknown, unknown, unknown>>> {
+        return createYieldingDouble(scope, values, ...returnValue);
+    }
+
+    return scopedYields;
+}
+
+function createScopedYieldsFrom(scope: TestDoubleScopeContext): TestDoubleFactory['yieldsFrom'] {
+    function scopedYieldsFrom<SourceFactory extends (...arguments_: readonly unknown[]) => Iterable<unknown>>(
+        sourceFactory: SourceFactory
+    ): TestDouble<UnknownFunction<ReturnType<SourceFactory>>>;
+    function scopedYieldsFrom<Signature extends CallableSignature>(
+        sourceFactory: SyncSourceFactory<Signature>
+    ): TestDouble<SyncGeneratorSignature<Signature>>;
+    function scopedYieldsFrom(
+        sourceFactory: (...arguments_: readonly unknown[]) => Iterable<unknown>
+    ): TestDouble<UnknownFunction<Iterable<unknown>>> {
+        return createYieldingFromDouble(scope, sourceFactory);
+    }
+
+    return scopedYieldsFrom;
+}
+
+function createScopedYieldsAsync(scope: TestDoubleScopeContext): TestDoubleFactory['yieldsAsync'] {
+    function scopedYieldsAsync<YieldValue>(
+        values: readonly YieldValue[]
+    ): TestDouble<UnknownFunction<AsyncGenerator<YieldValue, undefined, unknown>>>;
+    function scopedYieldsAsync<YieldValue, ReturnValue>(
+        values: readonly YieldValue[],
+        returnValue: ReturnValue
+    ): TestDouble<UnknownFunction<AsyncGenerator<YieldValue, ReturnValue, unknown>>>;
+    function scopedYieldsAsync<Signature extends CallableSignature>(
+        values: readonly AsyncYieldValue<ReturnType<AsyncGeneratorSignature<Signature>>>[],
+        ...returnValue: AsyncReturnArguments<ReturnType<AsyncGeneratorSignature<Signature>>>
+    ): TestDouble<AsyncGeneratorSignature<Signature>>;
+    function scopedYieldsAsync(
+        values: readonly unknown[],
+        ...returnValue: readonly [] | readonly [unknown]
+    ): TestDouble<UnknownFunction<AsyncGenerator<unknown, unknown, unknown>>> {
+        return createAsyncYieldingDouble(scope, values, ...returnValue);
+    }
+
+    return scopedYieldsAsync;
+}
+
+function createScopedYieldsAsyncFrom(scope: TestDoubleScopeContext): TestDoubleFactory['yieldsAsyncFrom'] {
+    function scopedYieldsAsyncFrom<
+        SourceFactory extends (...arguments_: readonly unknown[]) => AsyncIterable<unknown> | Iterable<unknown>
+    >(sourceFactory: SourceFactory): TestDouble<UnknownFunction<ReturnType<SourceFactory>>>;
+    function scopedYieldsAsyncFrom<Signature extends CallableSignature>(
+        sourceFactory: AsyncSourceFactory<Signature>
+    ): TestDouble<AsyncGeneratorSignature<Signature>>;
+    function scopedYieldsAsyncFrom(
+        sourceFactory: (...arguments_: readonly unknown[]) => AsyncIterable<unknown> | Iterable<unknown>
+    ): TestDouble<UnknownFunction<AsyncIterable<unknown> | Iterable<unknown>>> {
+        return createAsyncYieldingFromDouble(scope, sourceFactory);
+    }
+
+    return scopedYieldsAsyncFrom;
+}
+
 export function createTestDoubleScope(): TestDoubleScope {
     const scope = { chronology: createChronologyScope() };
 
@@ -369,7 +531,11 @@ export function createTestDoubleScope(): TestDoubleScope {
             rejects: createScopedRejects(scope),
             resolves: createScopedResolves(scope),
             returns: createScopedReturns(scope),
-            throws: createScopedThrows(scope)
+            throws: createScopedThrows(scope),
+            yields: createScopedYields(scope),
+            yieldsAsync: createScopedYieldsAsync(scope),
+            yieldsAsyncFrom: createScopedYieldsAsyncFrom(scope),
+            yieldsFrom: createScopedYieldsFrom(scope)
         })
     };
 }

@@ -25,6 +25,7 @@ type AnyArguments = readonly unknown[];
 type NonEmptyAnyArguments = readonly [unknown, ...unknown[]];
 
 export type CountArguments = readonly [double: unknown, expectedCount: number];
+export type IteratorValuesArguments = readonly [double: unknown, values: readonly unknown[]];
 export type ValueArguments = readonly [double: unknown];
 export type OrderArguments = readonly [doubles: DoubleList];
 export type AggregateArguments = readonly [double: unknown, args: AnyArguments];

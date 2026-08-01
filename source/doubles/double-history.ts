@@ -4,19 +4,27 @@ import type {
     ConstructorSignature
 } from './double-behavior.ts';
 import {
-    copyCall,
-    copyConstruction,
-    copyInteraction,
-    copyResult,
     createCallRecord,
     createConstructionRecord,
     type DoubleCall,
     type DoubleConstruction,
-    type DoubleInteraction,
     type DoubleResult,
     type HistoryInvocation
 } from './double-history-record.ts';
+import {
+    createHistoryApi,
+    installHistory,
+    type MutableDoubleHistory
+} from './double-history-api.ts';
 import { createHistoryStore, type HistoryStore } from './double-history-store.ts';
+import {
+    type AsyncIteratorSource,
+    createAsyncTrackedIterator,
+    createSyncTrackedIterator,
+    type SyncIteratorSource,
+    type TrackedCallInvocation
+} from './double-iterator-tracking.ts';
+import type { IteratorEventFor } from './double-iterator-event-types.ts';
 
 type CallArguments<Signature> = Signature extends (...arguments_: infer Arguments) => unknown ? Arguments : never;
 type ConstructionArguments<Signature> = Signature extends new (...arguments_: infer Arguments) => unknown ? Arguments
@@ -281,40 +289,23 @@ export type DoubleHistory<Signature> = {
     readonly firstCall: CallRecordFor<Signature> | null;
     readonly firstConstruction: ConstructionRecordFor<Signature> | null;
     readonly firstInteraction: InteractionRecordFor<Signature> | null;
+    readonly firstIteratorEvent: IteratorEventFor<Signature> | null;
     readonly firstResult: ResultRecordFor<Signature> | null;
     readonly interactionCount: number;
     readonly interactions: readonly InteractionRecordFor<Signature>[];
+    readonly iteratorEventCount: number;
+    readonly iteratorEvents: readonly IteratorEventFor<Signature>[];
     readonly lastCall: CallRecordFor<Signature> | null;
     readonly lastConstruction: ConstructionRecordFor<Signature> | null;
     readonly lastInteraction: InteractionRecordFor<Signature> | null;
+    readonly lastIteratorEvent: IteratorEventFor<Signature> | null;
     readonly lastResult: ResultRecordFor<Signature> | null;
     readonly nthCall: (index: number) => CallRecordFor<Signature> | null;
     readonly nthConstruction: (index: number) => ConstructionRecordFor<Signature> | null;
     readonly nthInteraction: (index: number) => InteractionRecordFor<Signature> | null;
+    readonly nthIteratorEvent: (index: number) => IteratorEventFor<Signature> | null;
     readonly reset: () => void;
     readonly results: readonly ResultRecordFor<Signature>[];
-};
-
-type MutableDoubleHistory = {
-    readonly callCount: number;
-    readonly calls: readonly DoubleCall[];
-    readonly constructionCount: number;
-    readonly constructions: readonly DoubleConstruction[];
-    readonly firstCall: DoubleCall | null;
-    readonly firstConstruction: DoubleConstruction | null;
-    readonly firstInteraction: DoubleInteraction | null;
-    readonly firstResult: DoubleResult | null;
-    readonly interactionCount: number;
-    readonly interactions: readonly DoubleInteraction[];
-    readonly lastCall: DoubleCall | null;
-    readonly lastConstruction: DoubleConstruction | null;
-    readonly lastInteraction: DoubleInteraction | null;
-    readonly lastResult: DoubleResult | null;
-    readonly nthCall: (index: number) => DoubleCall | null;
-    readonly nthConstruction: (index: number) => DoubleConstruction | null;
-    readonly nthInteraction: (index: number) => DoubleInteraction | null;
-    readonly reset: () => void;
-    readonly results: readonly DoubleResult[];
 };
 
 export type RuntimeDoubleHistory = {
@@ -333,122 +324,17 @@ export type RuntimeDoubleHistory = {
         result: DoubleResult
     ) => void;
     readonly reset: () => void;
+    readonly trackAsyncIterator: (
+        invocation: TrackedCallInvocation,
+        source: AsyncIteratorSource
+    ) => AsyncIterableIterator<unknown>;
+    readonly trackSyncIterator: (
+        invocation: TrackedCallInvocation,
+        source: SyncIteratorSource
+    ) => IterableIterator<unknown>;
 };
 
 type UnknownFunctionTarget = (...arguments_: readonly unknown[]) => unknown;
-
-const historyPropertyNames: readonly (keyof MutableDoubleHistory)[] = [
-    'callCount',
-    'calls',
-    'constructionCount',
-    'constructions',
-    'firstCall',
-    'firstConstruction',
-    'firstInteraction',
-    'firstResult',
-    'interactionCount',
-    'interactions',
-    'lastCall',
-    'lastConstruction',
-    'lastInteraction',
-    'lastResult',
-    'nthCall',
-    'nthConstruction',
-    'nthInteraction',
-    'reset',
-    'results'
-];
-
-function copyNullable<Item>(item: Item | null, copy: (value: Item) => Item): Item | null {
-    return item === null ? null : copy(item);
-}
-
-function validHistoryIndex(index: number): boolean {
-    return Number.isSafeInteger(index) && index >= 0;
-}
-
-function createHistoryApi(store: HistoryStore): MutableDoubleHistory {
-    return {
-        get callCount() {
-            return store.calls.length;
-        },
-        get calls() {
-            return store.calls.map(copyCall);
-        },
-        get constructionCount() {
-            return store.constructions.length;
-        },
-        get constructions() {
-            return store.constructions.map(copyConstruction);
-        },
-        get firstCall() {
-            return copyNullable(store.calls[0] ?? null, copyCall);
-        },
-        get firstConstruction() {
-            return copyNullable(store.constructions[0] ?? null, copyConstruction);
-        },
-        get firstInteraction() {
-            return copyNullable(store.interactions[0] ?? null, copyInteraction);
-        },
-        get firstResult() {
-            return copyNullable(store.results[0] ?? null, copyResult);
-        },
-        get interactionCount() {
-            return store.interactions.length;
-        },
-        get interactions() {
-            return store.interactions.map(copyInteraction);
-        },
-        get lastCall() {
-            return copyNullable(store.calls.at(-1) ?? null, copyCall);
-        },
-        get lastConstruction() {
-            return copyNullable(store.constructions.at(-1) ?? null, copyConstruction);
-        },
-        get lastInteraction() {
-            return copyNullable(store.interactions.at(-1) ?? null, copyInteraction);
-        },
-        get lastResult() {
-            return copyNullable(store.results.at(-1) ?? null, copyResult);
-        },
-        nthCall(index) {
-            return validHistoryIndex(index) ? copyNullable(store.calls[index] ?? null, copyCall) : null;
-        },
-        nthConstruction(index) {
-            return validHistoryIndex(index) ? copyNullable(store.constructions[index] ?? null, copyConstruction) : null;
-        },
-        nthInteraction(index) {
-            return validHistoryIndex(index) ? copyNullable(store.interactions[index] ?? null, copyInteraction) : null;
-        },
-        reset: store.reset,
-        get results() {
-            return store.results.map(copyResult);
-        }
-    };
-}
-
-function defineHistoryProperty(
-    target: UnknownFunctionTarget,
-    api: MutableDoubleHistory,
-    name: keyof MutableDoubleHistory
-): void {
-    const descriptor = Object.getOwnPropertyDescriptor(api, name);
-
-    if (descriptor === undefined) {
-        throw new TypeError(`test double history property ${name} is not defined.`);
-    }
-
-    Object.defineProperty(target, name, {
-        ...descriptor,
-        enumerable: false
-    });
-}
-
-function installHistory(target: UnknownFunctionTarget, api: MutableDoubleHistory): void {
-    for (const name of historyPropertyNames) {
-        defineHistoryProperty(target, api, name);
-    }
-}
 
 function createRuntimeHistory(store: HistoryStore, api: MutableDoubleHistory): RuntimeDoubleHistory {
     return {
@@ -464,7 +350,13 @@ function createRuntimeHistory(store: HistoryStore, api: MutableDoubleHistory): R
         recordConstructionResult(invocation, instance, result) {
             store.recordConstruction(createConstructionRecord(invocation, instance, result));
         },
-        reset: store.reset
+        reset: store.reset,
+        trackAsyncIterator(invocation, source) {
+            return createAsyncTrackedIterator(store, invocation, source);
+        },
+        trackSyncIterator(invocation, source) {
+            return createSyncTrackedIterator(store, invocation, source);
+        }
     };
 }
 

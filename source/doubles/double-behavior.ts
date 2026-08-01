@@ -16,6 +16,9 @@ export type DoubleInvocation<Arguments extends readonly unknown[]> = {
 };
 
 export type Invocation<Arguments extends readonly unknown[] = readonly unknown[]> = DoubleInvocation<Arguments>;
+type CallInvocation = DoubleInvocation<readonly unknown[]> & {
+    readonly kind: 'call';
+};
 
 export type BehaviorAnswer = {
     readonly answered: false;
@@ -24,10 +27,25 @@ export type BehaviorAnswer = {
     readonly value: unknown;
 };
 
+type FixedBehaviorKindByName = {
+    readonly calls: 'calls';
+    readonly constructs: 'constructs';
+    readonly rejects: 'rejects';
+    readonly resolves: 'resolves';
+    readonly returns: 'returns';
+    readonly throws: 'throws';
+    readonly yields: 'yields';
+    readonly yieldsAsync: 'yields-async';
+    readonly yieldsAsyncFrom: 'yields-async-from';
+    readonly yieldsFrom: 'yields-from';
+};
+
+type FixedBehaviorKindValue = FixedBehaviorKindByName[keyof FixedBehaviorKindByName];
+
 type FixedBehavior<Mode extends BehaviorMode, Result> = {
-    readonly behaviorKind: 'calls' | 'constructs' | 'rejects' | 'resolves' | 'returns' | 'throws';
+    readonly behaviorKind: FixedBehaviorKindValue;
     readonly mode: Mode;
-    produce: (...arguments_: readonly unknown[]) => unknown;
+    produce: (invocation: Invocation, runtime: BehaviorRuntime) => unknown;
     result: () => Result;
 };
 
@@ -91,6 +109,14 @@ export type ConstructorReturnValue = CallableSignature | Readonly<Record<Propert
 
 export type BehaviorRuntime = {
     readonly nextSequenceEntry: (behavior: RuntimeBehavior) => unknown;
+    readonly trackAsyncIterator: (
+        invocation: CallInvocation,
+        source: () => AsyncIterator<unknown, unknown, unknown> | Iterator<unknown, unknown, unknown>
+    ) => AsyncIterableIterator<unknown>;
+    readonly trackSyncIterator: (
+        invocation: CallInvocation,
+        source: () => Iterator<unknown, unknown, unknown>
+    ) => IterableIterator<unknown>;
 };
 
 const unanswered: BehaviorAnswer = { answered: false };
@@ -189,8 +215,154 @@ export function callsBehavior<Answer extends UnknownFunction<unknown>>(
         result() {
             throw new TypeError('calls result marker should not be called.');
         },
-        produce(...invocationArguments) {
-            return answer(...invocationArguments);
+        produce(invocation) {
+            return answer(...invocation.arguments);
+        }
+    };
+}
+
+function ensureCallInvocation(invocation: Invocation): asserts invocation is CallInvocation {
+    if (invocation.kind !== 'call') {
+        throw new TypeError('generator behavior can only answer calls.');
+    }
+}
+
+function syncValuesIterator<YieldValue, ReturnValue>(
+    values: readonly YieldValue[],
+    returnValue: ReturnValue
+): Generator<YieldValue, ReturnValue, unknown> {
+    return (function* yieldValues() {
+        yield* values;
+        return returnValue;
+    })();
+}
+
+function syncDelegatedIterator(
+    sourceFactory: (...arguments_: readonly unknown[]) => Iterable<unknown>,
+    invocationArguments: readonly unknown[]
+): Iterator<unknown, unknown, unknown> {
+    return (function* yieldDelegatedValues() {
+        const returnValue: unknown = yield* sourceFactory(...invocationArguments);
+
+        return returnValue;
+    })();
+}
+
+function asyncValuesIterator<YieldValue, ReturnValue>(
+    values: readonly YieldValue[],
+    returnValue: ReturnValue
+): AsyncGenerator<YieldValue, ReturnValue, unknown> {
+    return (async function* yieldAsyncValues() {
+        yield* values;
+        return returnValue;
+    })();
+}
+
+function asyncDelegatedIterator(
+    sourceFactory: (...arguments_: readonly unknown[]) => AsyncIterable<unknown> | Iterable<unknown>,
+    invocationArguments: readonly unknown[]
+): AsyncGenerator<unknown, unknown, unknown> {
+    return (async function* yieldAsyncDelegatedValues() {
+        const returnValue: unknown = yield* sourceFactory(...invocationArguments);
+
+        return returnValue;
+    })();
+}
+
+export function yieldsBehavior<YieldValue, ReturnValue>(
+    values: readonly YieldValue[],
+    returnValue: ReturnValue
+): RuntimeBehavior<'call', Generator<YieldValue, ReturnValue, unknown>> {
+    const snapshot = Array.from(values);
+
+    return {
+        behaviorKind: 'yields',
+        mode: 'call',
+        result() {
+            return syncValuesIterator(snapshot, returnValue);
+        },
+        produce(invocation, runtime) {
+            ensureCallInvocation(invocation);
+
+            return runtime.trackSyncIterator(
+                invocation,
+                function createIterator() {
+                    return syncValuesIterator(snapshot, returnValue);
+                }
+            );
+        }
+    };
+}
+
+export function yieldsFromBehavior<SourceFactory extends (...arguments_: readonly unknown[]) => Iterable<unknown>>(
+    sourceFactory: SourceFactory
+): RuntimeBehavior<'call', ReturnType<SourceFactory>> {
+    return {
+        behaviorKind: 'yields-from',
+        mode: 'call',
+        result() {
+            throw new TypeError('yieldsFrom result marker should not be called.');
+        },
+        produce(invocation, runtime) {
+            ensureCallInvocation(invocation);
+
+            const invocationArguments = Array.from(invocation.arguments);
+
+            return runtime.trackSyncIterator(
+                invocation,
+                function createIterator() {
+                    return syncDelegatedIterator(sourceFactory, invocationArguments);
+                }
+            );
+        }
+    };
+}
+
+export function yieldsAsyncBehavior<YieldValue, ReturnValue>(
+    values: readonly YieldValue[],
+    returnValue: ReturnValue
+): RuntimeBehavior<'call', AsyncGenerator<YieldValue, ReturnValue, unknown>> {
+    const snapshot = Array.from(values);
+
+    return {
+        behaviorKind: 'yields-async',
+        mode: 'call',
+        result() {
+            return asyncValuesIterator(snapshot, returnValue);
+        },
+        produce(invocation, runtime) {
+            ensureCallInvocation(invocation);
+
+            return runtime.trackAsyncIterator(
+                invocation,
+                function createIterator() {
+                    return asyncValuesIterator(snapshot, returnValue);
+                }
+            );
+        }
+    };
+}
+
+export function yieldsAsyncFromBehavior<
+    SourceFactory extends (...arguments_: readonly unknown[]) => AsyncIterable<unknown> | Iterable<unknown>
+>(sourceFactory: SourceFactory): RuntimeBehavior<'call', ReturnType<SourceFactory>> {
+    return {
+        behaviorKind: 'yields-async-from',
+        mode: 'call',
+        result() {
+            throw new TypeError('yieldsAsyncFrom result marker should not be called.');
+        },
+        produce(invocation, runtime) {
+            ensureCallInvocation(invocation);
+
+            const invocationArguments = Array.from(invocation.arguments);
+
+            return runtime.trackAsyncIterator(
+                invocation,
+                function createIterator() {
+                    return asyncDelegatedIterator(sourceFactory, invocationArguments);
+                }
+            );
         }
     };
 }
@@ -269,7 +441,7 @@ export function answerFromBehavior(
             answered: true,
             value: fixedBehavior.behaviorKind === 'sequence'
                 ? fixedBehavior.result()
-                : fixedBehavior.produce(...invocation.arguments)
+                : fixedBehavior.produce(invocation, runtime)
         };
 }
 

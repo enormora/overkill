@@ -21,6 +21,60 @@ export type DoubleThrownResult = {
 
 export type DoubleResult<Value = unknown> = DoubleReturnedResult<Value> | DoubleThrownResult;
 
+export type DoubleIteratorProtocol = 'async' | 'sync';
+export type DoubleIteratorMethod = 'next' | 'return' | 'throw';
+
+type DoubleIteratorEventBase<
+    Protocol extends DoubleIteratorProtocol = DoubleIteratorProtocol,
+    Arguments extends readonly unknown[] = readonly unknown[]
+> = {
+    readonly arguments: Arguments;
+    readonly callIndex: number;
+    readonly index: number;
+    readonly iteratorIndex: number;
+    readonly method: DoubleIteratorMethod;
+    readonly protocol: Protocol;
+};
+
+export type DoubleIteratorYieldEvent<
+    YieldValue = unknown,
+    NextArguments extends readonly unknown[] = readonly unknown[]
+> = DoubleIteratorEventBase<DoubleIteratorProtocol, NextArguments> & {
+    readonly kind: 'yield';
+    readonly value: YieldValue;
+};
+
+export type DoubleIteratorReturnEvent<
+    ReturnValue = unknown,
+    NextArguments extends readonly unknown[] = readonly unknown[]
+> = DoubleIteratorEventBase<DoubleIteratorProtocol, NextArguments> & {
+    readonly kind: 'return';
+    readonly value: ReturnValue;
+};
+
+export type DoubleIteratorThrowEvent<
+    NextArguments extends readonly unknown[] = readonly unknown[]
+> = DoubleIteratorEventBase<DoubleIteratorProtocol, NextArguments> & {
+    readonly kind: 'throw';
+    readonly thrown: unknown;
+};
+
+type DoubleIteratorEventKind = keyof {
+    readonly return: unknown;
+    readonly throw: unknown;
+    readonly yield: unknown;
+};
+
+export type DoubleIteratorEvent<
+    YieldValue = unknown,
+    ReturnValue = unknown,
+    NextArguments extends readonly unknown[] = readonly unknown[]
+> = {
+    readonly return: DoubleIteratorReturnEvent<ReturnValue, NextArguments>;
+    readonly throw: DoubleIteratorThrowEvent<NextArguments>;
+    readonly yield: DoubleIteratorYieldEvent<YieldValue, NextArguments>;
+}[DoubleIteratorEventKind];
+
 export type DoubleCall<
     Arguments extends readonly unknown[] = readonly unknown[],
     ReturnValue = unknown,
@@ -60,6 +114,13 @@ export type HistoryInvocation<Kind extends InvocationKind = InvocationKind> = {
 
 export function copyResult(result: DoubleResult): DoubleResult {
     return { ...result };
+}
+
+export function copyIteratorEvent(event: DoubleIteratorEvent): DoubleIteratorEvent {
+    return {
+        ...event,
+        arguments: Array.from(event.arguments)
+    };
 }
 
 export function copyCall(call: DoubleCall): DoubleCall {

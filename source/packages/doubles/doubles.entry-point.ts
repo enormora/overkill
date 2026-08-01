@@ -9,6 +9,10 @@ export type {
     DoubleCall,
     DoubleConstruction,
     DoubleInteraction,
+    DoubleIteratorEvent,
+    DoubleIteratorReturnEvent,
+    DoubleIteratorThrowEvent,
+    DoubleIteratorYieldEvent,
     DoubleResult,
     DoubleReturnedResult,
     DoubleThrownResult

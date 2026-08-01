@@ -57,14 +57,16 @@ function hasNumberHistoryProperties(value: unknown): boolean {
     return typeof value === 'function' &&
         typeof Reflect.get(value, 'callCount') === 'number' &&
         typeof Reflect.get(value, 'constructionCount') === 'number' &&
-        typeof Reflect.get(value, 'interactionCount') === 'number';
+        typeof Reflect.get(value, 'interactionCount') === 'number' &&
+        typeof Reflect.get(value, 'iteratorEventCount') === 'number';
 }
 
 function hasArrayHistoryProperties(value: unknown): boolean {
     return typeof value === 'function' &&
         Array.isArray(Reflect.get(value, 'calls')) &&
         Array.isArray(Reflect.get(value, 'constructions')) &&
-        Array.isArray(Reflect.get(value, 'interactions'));
+        Array.isArray(Reflect.get(value, 'interactions')) &&
+        Array.isArray(Reflect.get(value, 'iteratorEvents'));
 }
 
 function isHistoryShape(value: unknown): value is HistoryShape {

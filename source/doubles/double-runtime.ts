@@ -43,7 +43,8 @@ type RuntimeInvocation<Kind extends InvocationKind = InvocationKind> = HistoryIn
 
 export type SupportedModes = ReadonlySet<InvocationKind>;
 
-type DoubleRuntimeState = BehaviorRuntime & {
+type SequenceRuntimeState = {
+    readonly nextSequenceEntry: BehaviorRuntime['nextSequenceEntry'];
     readonly reset: () => void;
 };
 
@@ -69,7 +70,7 @@ function assertTestDouble<Signature extends CallableSignature | ConstructorSigna
     }
 }
 
-function createDoubleRuntimeState(): DoubleRuntimeState {
+function createSequenceRuntimeState(): SequenceRuntimeState {
     const sequenceIndexes = new Map<RuntimeBehavior, number>();
 
     return {
@@ -282,13 +283,18 @@ export function createDouble<Signature extends CallableSignature | ConstructorSi
     chronologyScope: ChronologyScope,
     supportedModes: SupportedModes
 ): RuntimeTestDouble<Signature> {
-    const runtime = createDoubleRuntimeState();
+    const sequenceRuntime = createSequenceRuntimeState();
     const target = createDoubleTarget();
     const chronology = installDoubleChronology(target, chronologyScope);
     const history = createDoubleHistory(function resetDouble() {
         chronology.reset();
-        runtime.reset();
+        sequenceRuntime.reset();
     });
+    const runtime: BehaviorRuntime = {
+        nextSequenceEntry: sequenceRuntime.nextSequenceEntry,
+        trackAsyncIterator: history.trackAsyncIterator,
+        trackSyncIterator: history.trackSyncIterator
+    };
     const context = { chronology, configuration, history, runtime, supportedModes };
     history.install(target);
 

@@ -14,6 +14,25 @@ import {
     type UnknownConstructor,
     type UnknownFunction
 } from './double-behavior.ts';
+import type { NonEmptyArgumentPatterns } from './double-rule-arguments.ts';
+import {
+    type AsyncYieldingBehaviorFactory,
+    type AsyncYieldingFromBehaviorFactory,
+    type AsyncYieldingFromRuleTerminator,
+    type AsyncYieldingRuleTerminator,
+    createAsyncYieldingBehavior,
+    createAsyncYieldingFromBehavior,
+    createAsyncYieldingFromRuleTerminator,
+    createAsyncYieldingRuleTerminator,
+    createYieldingBehavior,
+    type YieldingBehaviorFactory,
+    createYieldingFromBehavior,
+    type YieldingFromBehaviorFactory,
+    type YieldingFromRuleTerminator,
+    createYieldingFromRuleTerminator,
+    type YieldingRuleTerminator,
+    createYieldingRuleTerminator
+} from './double-rule-generator.ts';
 
 type PrimitiveValue = bigint | boolean | number | string | symbol | null | undefined;
 type VoidReturn = ReturnType<() => void>;
@@ -56,40 +75,6 @@ export type ConstructInstance<SignatureOrInstance> = SignatureOrInstance extends
 export type ConstructSignature<SignatureOrInstance> = SignatureOrInstance extends ConstructorSignature
     ? SignatureOrInstance
     : UnknownConstructor<SignatureOrInstance>;
-
-type BuiltInPartialValue = Date | Error | Promise<unknown> | RegExp;
-
-type DeepPartialValue<Value> = Value extends PrimitiveValue ? Value : DeepPartialReference<Value>;
-
-type DeepPartialReference<Value> = Value extends CallableSignature ? Value : DeepPartialBuiltIn<Value>;
-
-type DeepPartialBuiltIn<Value> = Value extends BuiltInPartialValue ? Value : DeepPartialMap<Value>;
-
-type DeepPartialMapValue<Key, EntryValue> = ReadonlyMap<DeepPartialValue<Key>, DeepPartialValue<EntryValue>>;
-
-type DeepPartialMap<Value> = Value extends ReadonlyMap<infer Key, infer EntryValue>
-    ? DeepPartialMapValue<Key, EntryValue>
-    : DeepPartialSet<Value>;
-
-type DeepPartialSet<Value> = Value extends ReadonlySet<infer EntryValue> ? ReadonlySet<DeepPartialValue<EntryValue>>
-    : DeepPartialArray<Value>;
-
-type DeepPartialArrayValue<EntryValue> = readonly DeepPartialValue<EntryValue>[];
-
-type DeepPartialArray<Value> = Value extends readonly (infer EntryValue)[] ? DeepPartialArrayValue<EntryValue>
-    : DeepPartialObject<Value>;
-
-type DeepPartialObject<Value> = Value extends Readonly<Record<PropertyKey, unknown>>
-    ? { readonly [Key in keyof Value]?: DeepPartialValue<Value[Key]>; }
-    : Value;
-
-type TuplePrefix<Arguments extends readonly unknown[]> = Arguments extends readonly [infer First, ...infer Rest]
-    ? readonly [DeepPartialValue<First>, ...TuplePrefix<Rest>] | readonly [DeepPartialValue<First>]
-    : never;
-
-type NonEmptyArgumentPatterns<Arguments extends readonly unknown[]> = number extends Arguments['length']
-    ? readonly [DeepPartialValue<Arguments[number]>, ...DeepPartialValue<Arguments[number]>[]]
-    : TuplePrefix<Arguments>;
 
 export type CallArguments<Signature> = Signature extends (...arguments_: infer Arguments) => unknown ? Arguments
     : never;
@@ -280,6 +265,10 @@ type CallRuleStarter<ArgumentPattern extends readonly unknown[], MatchKind exten
         entries: SequenceEntries<Entry>
     ) => CallRule<ArgumentPattern, SequenceResult<Entry>, MatchKind>;
     readonly throws: (thrown: unknown) => CallRule<ArgumentPattern, never, MatchKind>;
+    readonly yields: YieldingRuleTerminator<ArgumentPattern, MatchKind>;
+    readonly yieldsAsync: AsyncYieldingRuleTerminator<ArgumentPattern, MatchKind>;
+    readonly yieldsAsyncFrom: AsyncYieldingFromRuleTerminator<ArgumentPattern, MatchKind>;
+    readonly yieldsFrom: YieldingFromRuleTerminator<ArgumentPattern, MatchKind>;
 };
 
 type ConstructionRuleStarter<
@@ -330,6 +319,10 @@ export type RuleFactory = {
     readonly returns: ReturningBehaviorFactory;
     readonly sequence: SequenceBehaviorFactory;
     readonly throws: ThrowingBehaviorFactory;
+    readonly yields: YieldingBehaviorFactory;
+    readonly yieldsAsync: AsyncYieldingBehaviorFactory;
+    readonly yieldsAsyncFrom: AsyncYieldingFromBehaviorFactory;
+    readonly yieldsFrom: YieldingFromBehaviorFactory;
     readonly when: <ExpectedArguments extends readonly [unknown, ...(readonly unknown[])]>(
         ...expectedArguments: ExpectedArguments
     ) => CallRuleStarter<ExpectedArguments, 'arguments'>;
@@ -379,7 +372,11 @@ function createCallRuleStarter<ArgumentPattern extends readonly unknown[], Match
         },
         throws(thrown) {
             return callRule<ArgumentPattern, never, MatchKind>(criterion, throwsBehavior(thrown));
-        }
+        },
+        yields: createYieldingRuleTerminator(criterion),
+        yieldsAsync: createAsyncYieldingRuleTerminator(criterion),
+        yieldsAsyncFrom: createAsyncYieldingFromRuleTerminator(criterion),
+        yieldsFrom: createYieldingFromRuleTerminator(criterion)
     };
 }
 
@@ -476,6 +473,10 @@ export const rule: RuleFactory = {
     returns: createReturningBehavior,
     sequence: sequenceBehavior,
     throws: throwsBehavior,
+    yields: createYieldingBehavior,
+    yieldsAsync: createAsyncYieldingBehavior,
+    yieldsAsyncFrom: createAsyncYieldingFromBehavior,
+    yieldsFrom: createYieldingFromBehavior,
     when: createCallArgumentRuleStarter,
     whenConstructedWith: createConstructionArgumentRuleStarter
 };
