@@ -7,9 +7,9 @@ import type {
     ResolvableSourceLocation
 } from './assertion-node-shape.ts';
 
-const assertionReferenceIdentity: unique symbol = Symbol('OverkillAssertionReference');
-const assertionReferenceRecordIdentity: unique symbol = Symbol('OverkillAssertionReferenceRecord');
-const compositeGroupIdentity: unique symbol = Symbol('OverkillCompositeGroup');
+const assertionReferenceIdentity: unique symbol = Symbol.for('OverkillAssertionReference');
+const assertionReferenceRecordIdentity: unique symbol = Symbol.for('OverkillAssertionReferenceRecord');
+const compositeGroupIdentity: unique symbol = Symbol.for('OverkillCompositeGroup');
 
 export type CompositeAssertionSummaryContext = {
     readonly name: string;
@@ -103,15 +103,6 @@ export type NarrowingCompositeAssertionReference<
 
 export type AssertionReference = CompositeAssertionReference | NarrowingCompositeAssertionReference;
 
-type NamedAssertionReferenceRecord = {
-    readonly name: string;
-};
-
-type BrandedAssertionReference<Record extends NamedAssertionReferenceRecord> = {
-    readonly [assertionReferenceIdentity]: true;
-    readonly [assertionReferenceRecordIdentity]: Readonly<Record>;
-};
-
 type NarrowingReferenceArguments<Actual, Arguments extends readonly unknown[]> = readonly [
     actual: Actual,
     ...parameters: Arguments
@@ -145,10 +136,26 @@ function ensureAssertionName(name: string): void {
     }
 }
 
-function createAssertionReference<Record extends NamedAssertionReferenceRecord>(
-    record: Record
-): BrandedAssertionReference<Record> {
+export function createAssertionReferenceRecord<
+    Arguments extends readonly unknown[],
+    Result extends AssertCompositeAssertionReturn
+>(record: CompositeAssertionReferenceRecord<Arguments, Result>): CompositeAssertionReference<Arguments, Result>;
+export function createAssertionReferenceRecord<
+    Actual,
+    Narrowed extends Actual,
+    Arguments extends readonly unknown[]
+>(
+    record: NarrowingCompositeAssertionReferenceRecord<Actual, Narrowed, Arguments>
+): NarrowingCompositeAssertionReference<Actual, Narrowed, Arguments>;
+export function createAssertionReferenceRecord(record: AssertionReferenceRecord): AssertionReference {
     ensureAssertionName(record.name);
+
+    if (record.kind === 'composite') {
+        return {
+            [assertionReferenceIdentity]: true,
+            [assertionReferenceRecordIdentity]: record
+        };
+    }
 
     return {
         [assertionReferenceIdentity]: true,
@@ -156,19 +163,22 @@ function createAssertionReference<Record extends NamedAssertionReferenceRecord>(
     };
 }
 
-export const createCompositeAssertionReferenceRecord: <
+export function createCompositeAssertionReferenceRecord<
     Arguments extends readonly unknown[],
     Result extends AssertCompositeAssertionReturn
->(record: CompositeAssertionReferenceRecord<Arguments, Result>) => CompositeAssertionReference<Arguments, Result> =
-    createAssertionReference;
+>(record: CompositeAssertionReferenceRecord<Arguments, Result>): CompositeAssertionReference<Arguments, Result> {
+    return createAssertionReferenceRecord({ ...record });
+}
 
-export const createNarrowingCompositeAssertionReferenceRecord: <
+export function createNarrowingCompositeAssertionReferenceRecord<
     Actual,
     Narrowed extends Actual,
     Arguments extends readonly unknown[]
 >(
     record: NarrowingCompositeAssertionReferenceRecord<Actual, Narrowed, Arguments>
-) => NarrowingCompositeAssertionReference<Actual, Narrowed, Arguments> = createAssertionReference;
+): NarrowingCompositeAssertionReference<Actual, Narrowed, Arguments> {
+    return createAssertionReferenceRecord({ ...record });
+}
 
 export function getAssertionReferenceRecord(reference: AssertionReference): AssertionReferenceRecord {
     return reference[assertionReferenceRecordIdentity];

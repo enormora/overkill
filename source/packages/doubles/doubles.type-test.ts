@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'tstyche';
+import type { AssertAssertionFacade } from '../engine/engine.entry-point.ts';
 import {
+    doubleUsage,
     rule,
     testDouble,
     type DoubleCall,
@@ -94,6 +96,7 @@ type ExpectedOverloadedConstruction = {
 const user: User = { id: '1', name: 'Ada' };
 const client: Client = { baseUrl: 'https://api.example.test' };
 const clientWithTimeout: ClientWithTimeout = { baseUrl: 'https://api.example.test', timeout: 500 };
+declare const assertFacade: AssertAssertionFacade;
 
 describe('@overkill-dev/doubles', function () {
     describe('fixed doubles', function () {
@@ -232,6 +235,39 @@ describe('@overkill-dev/doubles', function () {
 
             expect(loadValue.firstCall).type.toBe<ExpectedOverloadedCall>();
             expect(Client.firstConstruction).type.toBe<ExpectedOverloadedConstruction>();
+        });
+    });
+
+    describe('double usage assertions', function () {
+        test('exports assertion references under one namespace', function () {
+            expect(doubleUsage.calledOnceWith).type.toBeAssignableTo<unknown>();
+            expect(doubleUsage).type.toHaveProperty('calledWithExactly');
+            expect(doubleUsage).type.toHaveProperty('interactionOrder');
+            expect(doubleUsage).type.not.toHaveProperty('returnedWith');
+        });
+
+        test('accepts doubles through the engine assert facade', function () {
+            const loadUser = testDouble<LoadUser>();
+            const Client = testDouble<ClientConstructor>({
+                fallback: rule.constructs(client)
+            });
+
+            assertFacade(doubleUsage.called, loadUser);
+            assertFacade(doubleUsage.calledWith, loadUser, [ '1', false ]);
+            assertFacade(doubleUsage.calledWithExactly, loadUser, [ '1', false ]);
+            assertFacade(doubleUsage.calledWithPrefix, loadUser, [ '1' ]);
+            assertFacade(doubleUsage.nthCallWith, loadUser, 0, [ '1', false ]);
+            assertFacade(doubleUsage.constructedWith, Client, [ 'https://api.example.test' ]);
+            assertFacade(doubleUsage.callCount, loadUser, 1);
+            assertFacade(doubleUsage.callOrder, [ loadUser, testDouble<LoadUser>() ]);
+        });
+
+        test('rejects empty prefix and short order arguments at compile time', function () {
+            const loadUser = testDouble<LoadUser>();
+
+            expect(assertFacade).type.not.toBeCallableWith(doubleUsage.calledWithPrefix, loadUser, []);
+            expect(assertFacade).type.not.toBeCallableWith(doubleUsage.callOrder, [ loadUser ]);
+            expect(assertFacade).type.not.toBeCallableWith(doubleUsage.callCount, loadUser, '1');
         });
     });
 

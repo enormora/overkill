@@ -57,7 +57,7 @@ Configuration should mainly cover orchestration and package wiring:
 - mutation integration
 - type-test integration
 - browser or benchmark package wiring
-- runtime-state directory (`runtimeStateDir`, default `.overkill`) — root for run records, witnesses, fuzzing/property corpus, debug-mode artifacts, and other runtime-owned outputs
+- runtime-state directory (`runtimeStateDir`, default `.overkill`) - root for run records, witnesses, fuzzing/property corpus, debug-mode artifacts, and other runtime-owned outputs
 
 Configuration should avoid becoming the place where test logic lives.
 
@@ -177,10 +177,10 @@ Custom assertions should not live in root runner configuration. Assertion
 references are ordinary imported values used inside tests:
 
 ```ts
-import { interactedOnceWith } from '@overkill-dev/doubles';
+import { doubleUsage } from '@overkill-dev/doubles';
 
 test('publishes once', (case) => {
-    case.assert(interactedOnceWith, harness.publish, expected);
+    case.assert(doubleUsage.calledOnceWith, harness.publish, [ expected ]);
     return case.assert.done();
 });
 ```

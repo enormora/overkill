@@ -13,10 +13,10 @@ Overkill needs a result model that is:
 
 The core accepts two first-party styles:
 
-- **builder/result mode** — the primary concept; tests receive injected
+- **builder/result mode** - the primary concept; tests receive injected
   `case.assert`, `case.require`, and `case.plan`, and must explicitly
   return `case.assert.done()`
-- **throwing mode** — an explicit alternate test API such as
+- **throwing mode** - an explicit alternate test API such as
   `throwingTest`; tests may return `void`
 
 Both produce the same internal `TestOutcome` value.
@@ -39,8 +39,8 @@ reporters and integrations consume structured outcomes.
 
 Sources:
 
-- [Rust by Example — Unit testing with `Result`](https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html)
-- [elm-test — `Test` and `Expect`](https://package.elm-lang.org/packages/elm-explorations/test/latest/Test)
+- [Rust by Example - Unit testing with `Result`](https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html)
+- [elm-test - `Test` and `Expect`](https://package.elm-lang.org/packages/elm-explorations/test/latest/Test)
 
 ## Why A First-Party Assertion Layer Still Makes Sense
 
@@ -161,8 +161,8 @@ strict, and semantic.
 
 Two namespaces exist:
 
-- `case.assert.*` — broad assertion surface; records and continues
-- `case.require.*` — narrow gating surface; records and short-circuits,
+- `case.assert.*` - broad assertion surface; records and continues
+- `case.require.*` - narrow gating surface; records and short-circuits,
   primarily for type narrowing
 
 ### `case.require`
@@ -812,8 +812,8 @@ bundle.
 ## Property Tests And The Assertion Boundary
 
 Property primitives like `case.forall(gen, body)` (proposed package
-`@overkill-dev/property`) call `body` many times — once per generated
-input — but count as **one assertion at the boundary** for both
+`@overkill-dev/property`) call `body` many times - once per generated
+input - but count as **one assertion at the boundary** for both
 zero-assertion detection and `plan(n)`:
 
 - on success: `case.forall` records one assertion's worth of
@@ -883,7 +883,7 @@ The engine treats structured outcomes as canonical:
 ```ts
 // engine-level outcome; reporter-facing verdicts (for example
 // `crashed`) are derived from outcome + metadata + runner-error state
-// — see Glossary § Test Outcome / Test Verdict.
+// - see Glossary § Test Outcome / Test Verdict.
 type TestOutcome = Pass | Fail | Skip | Inconclusive;
 
 type Pass = { kind: 'pass'; };
@@ -947,7 +947,7 @@ test('user shape', (case) => {
   straight-line tests
 
 Builder mode does not invalidate the underlying result-oriented
-protocol — it is simply a friendlier way to produce it. `throwingTest`
+protocol - it is simply a friendlier way to produce it. `throwingTest`
 remains a supported alternate authoring style, but the engine
 normalizes its result into the same structured `TestOutcome` shape so
 reporters consume one failure model.
@@ -1036,17 +1036,17 @@ pure returned-value assertions.
 
 ### Influences
 
-- `elm-test` — expectations as values
-- ZIO Test — assertions as values
-- ScalaCheck — properties as values
-- Rust — coexistence of alternate test-result styles
+- `elm-test` - expectations as values
+- ZIO Test - assertions as values
+- ScalaCheck - properties as values
+- Rust - coexistence of alternate test-result styles
 
 Sources:
 
-- [elm-test — `Expect`](https://package.elm-lang.org/packages/elm-explorations/test/latest/Expect)
-- [ZIO Test — Why ZIO Test](https://zio.dev/reference/test/why-zio-test/)
-- [ScalaCheck — Properties](https://scalacheck.org/documentation.html)
-- [Rust by Example — Unit testing with `Result`](https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html)
+- [elm-test - `Expect`](https://package.elm-lang.org/packages/elm-explorations/test/latest/Expect)
+- [ZIO Test - Why ZIO Test](https://zio.dev/reference/test/why-zio-test/)
+- [ScalaCheck - Properties](https://scalacheck.org/documentation.html)
+- [Rust by Example - Unit testing with `Result`](https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html)
 
 ## `assert` Versus `require`
 
@@ -1209,13 +1209,15 @@ Definition shape:
 
 ```ts
 import { defineCompositeAssertion } from '@overkill-dev/assert';
-import type { TestDouble } from '@overkill-dev/doubles';
 
-const interactedOnceWith = defineCompositeAssertion({
-    name: 'interactedOnceWith',
+const resultValue = defineCompositeAssertion({
+    name: 'resultValue',
 
-    assert<TArg>(check, sut: TestDouble<(argument: TArg) => unknown>, expected: TArg) {
-        return check.group([ check.interactedOnce(sut), check.interactedWith(sut, expected) ]);
+    assert(check, result: { readonly ok: boolean; readonly value: unknown; }, expected: unknown) {
+        return check.group([
+            check.annotated('ok flag').true(result.ok),
+            check.annotated('value').deepEqual(result.value, expected)
+        ]);
     }
 });
 ```
@@ -1224,11 +1226,9 @@ Composite references are ordinary imported values:
 
 ```ts
 test('publishes the release', async (case) => {
-    await publishRelease(harness, 'v1.2.3');
+    const result = await publishRelease(harness, 'v1.2.3');
 
-    case.assert(interactedOnceWith, harness.buildAndPublishAll, {
-        tag: 'v1.2.3',
-    });
+    case.assert(resultValue, result, { tag: 'v1.2.3' });
 
     return case.assert.done();
 });
@@ -1243,6 +1243,24 @@ Important rule:
 
 This keeps `plan(n)` stable and prevents assertion-counting from depending
 on how a custom assertion happens to be implemented internally.
+
+Doubles assertions follow the same imported-reference shape. The doubles
+package contributes them through `doubleUsage`, and the engine still owns the
+assertion boundary:
+
+```ts
+import { doubleUsage } from '@overkill-dev/doubles';
+
+test('publishes the release', async (case) => {
+    await publishRelease(harness, 'v1.2.3');
+
+    case.assert(doubleUsage.calledOnceWith, harness.buildAndPublishAll, [
+        { tag: 'v1.2.3' },
+    ]);
+
+    return case.assert.done();
+});
+```
 
 ### Foreign Assertion Bridges
 
@@ -1398,13 +1416,13 @@ flags, errors by name, message, and enumerable data, while Promise, WeakMap, and
 WeakSet compare by identity only. Cyclic structures compare by graph topology.
 
 The `binary` kind covers cases where a meaningful structured diff is
-not possible — compiled artifacts, encoded media, opaque blobs.
+not possible - compiled artifacts, encoded media, opaque blobs.
 Reporters render it as a size-and-hash summary; the full bytes are
 available out-of-band (the baseline files on disk, or attached run
 artifacts) for external diff tools. Baseline subtypes that need
 richer comparison (visual diff for screenshots, percentile diff for
 performance) provide their own adapter-specific representations
-above this type — see [Baselines And Snapshots](./baselines-and-snapshots.md).
+above this type - see [Baselines And Snapshots](./baselines-and-snapshots.md).
 
 The engine bounds value serialization before reporters receive the structured
 shape. Assertion failure messages are built from user-controlled values, and a
@@ -1461,18 +1479,18 @@ For the product concept:
 
 ## Assertion Influences
 
-- AVA — zero-assertion detection as default failure
-- `node-tap` — `t.plan()` precedent
-- `elm-test` — returned-value expectations as inspiration for the protocol
+- AVA - zero-assertion detection as default failure
+- `node-tap` - `t.plan()` precedent
+- `elm-test` - returned-value expectations as inspiration for the protocol
   layer
-- ZIO Test — `Assertion` as a value
-- ScalaCheck — `Prop` as a value
-- Swift Testing — explicit split between non-gating and gating checks
+- ZIO Test - `Assertion` as a value
+- ScalaCheck - `Prop` as a value
+- Swift Testing - explicit split between non-gating and gating checks
 
 ## Sources
 
-- [AVA — Assertion planning](https://github.com/avajs/ava/blob/main/docs/03-assertions.md)
-- [node-tap — `t.plan()`](https://node-tap.org/api/plan)
-- [elm-test — `Expect`](https://package.elm-lang.org/packages/elm-explorations/test/latest/Expect)
-- [Rust by Example — `Result` testing](https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html)
-- [Vitest — domain snapshot adapters](https://vitest.dev/guide/snapshot.html)
+- [AVA - Assertion planning](https://github.com/avajs/ava/blob/main/docs/03-assertions.md)
+- [node-tap - `t.plan()`](https://node-tap.org/api/plan)
+- [elm-test - `Expect`](https://package.elm-lang.org/packages/elm-explorations/test/latest/Expect)
+- [Rust by Example - `Result` testing](https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html)
+- [Vitest - domain snapshot adapters](https://vitest.dev/guide/snapshot.html)

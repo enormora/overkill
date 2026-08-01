@@ -74,7 +74,7 @@ The intended split is:
 Example direction:
 
 ```ts
-import { testDouble, rule } from '@overkill-dev/doubles';
+import { doubleUsage, rule, testDouble } from '@overkill-dev/doubles';
 
 const loadUser = testDouble<(id: string) => Promise<User>>({
     rules: [
@@ -183,7 +183,7 @@ const service = createService({ Client });
 
 service.connect();
 
-case.assert.constructedOnceWith(Client, 'https://api.example.test');
+case.assert(doubleUsage.constructedOnceWith, Client, [ 'https://api.example.test' ]);
 case.assert.equal(Client.firstConstruction.instance, client);
 ```
 
@@ -219,22 +219,22 @@ const Client = testDouble<ClientFactory>({
 const calledClient = Client('https://api.example.test');
 const constructedClient = new Client('https://api.example.test');
 
-case.assert.calledOnce(Client);
-case.assert.constructedOnce(Client);
+case.assert(doubleUsage.calledOnce, Client);
+case.assert(doubleUsage.constructedOnce, Client);
 case.assert.equal(calledClient, fallbackClient);
 case.assert.equal(constructedClient, primaryClient);
 ```
 
-The assertion layer should expose aggregate assertions for the common "used
-once" case and mode-specific assertions when the invocation mode matters.
-Recommended names:
+The doubles package should expose assertion references through a named
+`doubleUsage` export. Tests pass those references to the engine-owned
+assertion context:
 
-- `case.assert.interactedOnce(double)`
-- `case.assert.interactedOnceWith(double, ...args)`
-- `case.assert.calledOnce(double)`
-- `case.assert.calledOnceWith(double, ...args)`
-- `case.assert.constructedOnce(double)`
-- `case.assert.constructedOnceWith(double, ...args)`
+- `case.assert(doubleUsage.interactedOnce, double)`
+- `case.assert(doubleUsage.interactedOnceWith, double, args)`
+- `case.assert(doubleUsage.calledOnce, double)`
+- `case.assert(doubleUsage.calledOnceWith, double, args)`
+- `case.assert(doubleUsage.constructedOnce, double)`
+- `case.assert(doubleUsage.constructedOnceWith, double, args)`
 
 These assertions should read construction records, not infer constructor usage
 from return values. A double can return any object from a normal call, and that
@@ -396,13 +396,19 @@ of what the test cares about.
 
 Recommended direction:
 
-- prefer exact argument tuples first
+- prefer exact-arity argument tuples first
+- use partial-deep argument matching for `*With` assertions
+- use `*WithExactly` assertions for exact-deep argument matching
+- use `*WithPrefix` assertions when arity should be wider than the expected prefix
 - allow a small set of explicit typed matchers later if needed
 - do not make the whole API depend on broad matcher DSLs from day one
 
 That suggests:
 
 - exact `rule.when("x", 1).returns("y")`
+- `case.assert(doubleUsage.calledWith, save, [ { id: "42" } ])`
+- `case.assert(doubleUsage.calledWithExactly, save, [ { id: "42", name: "Ada" } ])`
+- `case.assert(doubleUsage.calledWithPrefix, publish, [ "user.saved" ])`
 - perhaps later `rule.when(match.string, match.number).returns("y")`
 
 The first release concept should not depend on complex matcher machinery.
@@ -411,43 +417,48 @@ The first release concept should not depend on complex matcher machinery.
 
 `@overkill-dev/doubles` should create and track doubles.
 
-The first-party assertion layer in `@overkill-dev/engine` should remain
-responsible for assertions about them, such as:
+The engine-owned assertion context should remain responsible for recording,
+counting, gating, and formatting assertion results. The doubles package can
+contribute doubles-specific composite assertion references through
+`doubleUsage`, such as:
 
 - call count
 - call arguments
 - constructor invocation mode
 - construction arguments
-- constructed instances
-- returned values
-- thrown errors
 - ordering where that is actually relevant
 
-That separation keeps the doubles package smaller and avoids turning it into a whole framework by itself. The doubles package should still expose rich introspection data directly; the assertion layer simply provides a nicer assertion vocabulary on top.
+That separation keeps the assertion context owned by the engine without making
+users register assertion methods globally. The doubles package still exposes
+rich introspection data directly; `doubleUsage` provides a nicer assertion
+vocabulary on top.
 
-One useful pattern here is an imported composite assertion reference:
+One useful pattern is an imported composite assertion reference:
 
 ```ts
-import { defineCompositeAssertion } from '@overkill-dev/assert';
-import type { TestDouble } from '@overkill-dev/doubles';
-
-export const interactedOnceWith = defineCompositeAssertion({
-    name: 'interactedOnceWith',
-
-    assert<TArg>(check, sut: TestDouble<(argument: TArg) => unknown>, expected: TArg) {
-        return check.group([ check.interactedOnce(sut), check.interactedWith(sut, expected) ]);
-    }
-});
+import { doubleUsage } from '@overkill-dev/doubles';
 ```
 
 That gives tests a flatter, domain-level assertion:
 
 ```ts
-case.assert(interactedOnceWith, saveUser, { id: '42' });
+case.assert(doubleUsage.interactedOnceWith, saveUser, [ { id: '42' } ]);
 ```
 
 while still reporting the underlying call-count and call-argument failures as
 grouped child diagnostics.
+
+Cross-double order assertions need shared chronology without process-global
+state. The doubles package should keep chronology inside an internal
+double-creation scope. The public package entry point materializes one default
+scope for `testDouble`. Tests for the doubles package can create a fresh scope
+internally to keep order assertions deterministic. Public `reset()` clears a
+double's visible history and double-owned sequence state, but it does not reset
+the hidden cross-double chronology.
+
+Returned values, thrown values, and constructed-instance assertions are still
+useful, but they are not part of the first `doubleUsage` assertion set. Add
+them as a separate issue bullet before implementing them.
 
 ## Relationship To Resources
 
@@ -479,6 +490,7 @@ Recommended direction:
 
 - package name: `@overkill-dev/doubles`
 - primary abstraction: `testDouble()`
+- assertion namespace: `doubleUsage`
 - primary API shape: configuration object plus call and construction rule composition
 - strong direct introspection on each instance, such as `interactionCount`, `callCount`, `constructionCount`, `firstInteraction`, `firstCall`, `firstConstruction`, and typed interaction/result records
 - advanced escape hatch: `answer(call)` configuration field or `rule.calls(fn)`
