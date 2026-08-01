@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { registerTest } from '../test-support/register-test.ts';
-import type { DoubleCall } from './double-history.ts';
-import { rule, testDouble } from './test-double.ts';
-import type { TestDouble } from './test-double-types.ts';
+import type { DoubleCall } from './double-history-record.ts';
+import { rule } from './double-rule.ts';
+import { testDouble, type TestDouble } from './test-double.ts';
 
 type PrimitiveConstructionFactory = (instance: unknown) => unknown;
 type User = {

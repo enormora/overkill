@@ -17,12 +17,14 @@ import {
 } from './double-behavior.ts';
 import {
     createDoubleHistory,
-    createReturnedResult,
-    createThrownResult,
-    type HistoryInvocation,
+    type DoubleHistory,
     type RuntimeDoubleHistory
 } from './double-history.ts';
-import type { TestDouble } from './test-double-types.ts';
+import {
+    createReturnedResult,
+    createThrownResult,
+    type HistoryInvocation
+} from './double-history-record.ts';
 
 type InvocationRecord = {
     readonly arguments: readonly unknown[];
@@ -43,13 +45,15 @@ type DoubleExecutionContext = {
     readonly supportedModes: SupportedModes;
 };
 
+type RuntimeTestDouble<Signature> = DoubleHistory<Signature> & Signature;
+
 export function modeSet(...modes: readonly InvocationKind[]): SupportedModes {
     return new Set(modes);
 }
 
 function assertTestDouble<Signature extends CallableSignature | ConstructorSignature>(
     value: unknown
-): asserts value is TestDouble<Signature> {
+): asserts value is RuntimeTestDouble<Signature> {
     if (!isUnknownFunction(value)) {
         throw new TypeError('Expected double factory to create a function.');
     }
@@ -256,7 +260,7 @@ function createDoubleTarget(): (...arguments_: readonly unknown[]) => never {
 export function createDouble<Signature extends CallableSignature | ConstructorSignature>(
     configuration: RuntimeConfiguration,
     supportedModes: SupportedModes
-): TestDouble<Signature> {
+): RuntimeTestDouble<Signature> {
     const runtime = createDoubleRuntimeState();
     const history = createDoubleHistory(runtime.reset);
     const context = { configuration, history, runtime, supportedModes };

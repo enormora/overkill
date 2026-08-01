@@ -1,52 +1,299 @@
-import type { ConstructorReturnValue, InvocationKind } from './double-behavior.ts';
+import type {
+    CallableSignature,
+    ConstructorReturnValue,
+    ConstructorSignature
+} from './double-behavior.ts';
+import {
+    copyCall,
+    copyConstruction,
+    copyInteraction,
+    copyResult,
+    createCallRecord,
+    createConstructionRecord,
+    type DoubleCall,
+    type DoubleConstruction,
+    type DoubleInteraction,
+    type DoubleResult,
+    type HistoryInvocation
+} from './double-history-record.ts';
+import { createHistoryStore, type HistoryStore } from './double-history-store.ts';
 
-export type DoubleReturnedResult<Value = unknown> = {
-    readonly invocationIndex: number;
-    readonly invocationKind: InvocationKind;
-    readonly order: number;
-    readonly status: 'returned';
-    readonly value: Value;
-};
+type CallArguments<Signature> = Signature extends (...arguments_: infer Arguments) => unknown ? Arguments : never;
+type ConstructionArguments<Signature> = Signature extends new (...arguments_: infer Arguments) => unknown ? Arguments
+    : never;
+type CallReturn<Signature> = Signature extends (...arguments_: readonly never[]) => infer ReturnValue ? ReturnValue
+    : never;
+type ConstructionInstance<Signature> = Signature extends new (...arguments_: readonly never[]) => infer Instance
+    ? Instance
+    : never;
+type CallThisValue<Signature> = ThisParameterType<Signature>;
 
-export type DoubleThrownResult = {
-    readonly invocationIndex: number;
-    readonly invocationKind: InvocationKind;
-    readonly order: number;
-    readonly status: 'threw';
-    readonly thrown: unknown;
-};
-
-export type DoubleResult<Value = unknown> = DoubleReturnedResult<Value> | DoubleThrownResult;
-
-export type DoubleCall<
-    Arguments extends readonly unknown[] = readonly unknown[],
-    ReturnValue = unknown,
-    ThisValue = unknown
+type CallableOverloadRecordUnion<
+    Arguments1 extends readonly unknown[],
+    ReturnValue1,
+    ThisValue1,
+    Arguments2 extends readonly unknown[],
+    ReturnValue2,
+    ThisValue2,
+    Arguments3 extends readonly unknown[],
+    ReturnValue3,
+    ThisValue3,
+    Arguments4 extends readonly unknown[],
+    ReturnValue4,
+    ThisValue4,
+    Arguments5 extends readonly unknown[],
+    ReturnValue5,
+    ThisValue5,
+    Arguments6 extends readonly unknown[],
+    ReturnValue6,
+    ThisValue6,
+    Arguments7 extends readonly unknown[],
+    ReturnValue7,
+    ThisValue7,
+    Arguments8 extends readonly unknown[],
+    ReturnValue8,
+    ThisValue8,
+    Arguments9 extends readonly unknown[],
+    ReturnValue9,
+    ThisValue9,
+    Arguments10 extends readonly unknown[],
+    ReturnValue10,
+    ThisValue10,
+    Arguments11 extends readonly unknown[],
+    ReturnValue11,
+    ThisValue11,
+    Arguments12 extends readonly unknown[],
+    ReturnValue12,
+    ThisValue12
 > = {
-    readonly arguments: Arguments;
-    readonly index: number;
-    readonly kind: 'call';
-    readonly order: number;
-    readonly result: DoubleResult<ReturnValue>;
-    readonly thisValue: ThisValue;
-};
+    readonly overload01: DoubleCall<Arguments1, ReturnValue1, ThisValue1>;
+    readonly overload02: DoubleCall<Arguments2, ReturnValue2, ThisValue2>;
+    readonly overload03: DoubleCall<Arguments3, ReturnValue3, ThisValue3>;
+    readonly overload04: DoubleCall<Arguments4, ReturnValue4, ThisValue4>;
+    readonly overload05: DoubleCall<Arguments5, ReturnValue5, ThisValue5>;
+    readonly overload06: DoubleCall<Arguments6, ReturnValue6, ThisValue6>;
+    readonly overload07: DoubleCall<Arguments7, ReturnValue7, ThisValue7>;
+    readonly overload08: DoubleCall<Arguments8, ReturnValue8, ThisValue8>;
+    readonly overload09: DoubleCall<Arguments9, ReturnValue9, ThisValue9>;
+    readonly overload10: DoubleCall<Arguments10, ReturnValue10, ThisValue10>;
+    readonly overload11: DoubleCall<Arguments11, ReturnValue11, ThisValue11>;
+    readonly overload12: DoubleCall<Arguments12, ReturnValue12, ThisValue12>;
+}[
+    keyof {
+        readonly overload01: unknown;
+        readonly overload02: unknown;
+        readonly overload03: unknown;
+        readonly overload04: unknown;
+        readonly overload05: unknown;
+        readonly overload06: unknown;
+        readonly overload07: unknown;
+        readonly overload08: unknown;
+        readonly overload09: unknown;
+        readonly overload10: unknown;
+        readonly overload11: unknown;
+        readonly overload12: unknown;
+    }
+];
 
-export type DoubleConstruction<
-    Arguments extends readonly unknown[] = readonly unknown[],
-    Instance = unknown
+type CallableOverloadRecords<Signature> = Signature extends {
+    (this: infer ThisValue1, ...arguments_: infer Arguments1): infer ReturnValue1;
+    (this: infer ThisValue2, ...arguments_: infer Arguments2): infer ReturnValue2;
+    (this: infer ThisValue3, ...arguments_: infer Arguments3): infer ReturnValue3;
+    (this: infer ThisValue4, ...arguments_: infer Arguments4): infer ReturnValue4;
+    (this: infer ThisValue5, ...arguments_: infer Arguments5): infer ReturnValue5;
+    (this: infer ThisValue6, ...arguments_: infer Arguments6): infer ReturnValue6;
+    (this: infer ThisValue7, ...arguments_: infer Arguments7): infer ReturnValue7;
+    (this: infer ThisValue8, ...arguments_: infer Arguments8): infer ReturnValue8;
+    (this: infer ThisValue9, ...arguments_: infer Arguments9): infer ReturnValue9;
+    (this: infer ThisValue10, ...arguments_: infer Arguments10): infer ReturnValue10;
+    (this: infer ThisValue11, ...arguments_: infer Arguments11): infer ReturnValue11;
+    (this: infer ThisValue12, ...arguments_: infer Arguments12): infer ReturnValue12;
+} ? CallableOverloadRecordUnion<
+        Arguments1,
+        ReturnValue1,
+        ThisValue1,
+        Arguments2,
+        ReturnValue2,
+        ThisValue2,
+        Arguments3,
+        ReturnValue3,
+        ThisValue3,
+        Arguments4,
+        ReturnValue4,
+        ThisValue4,
+        Arguments5,
+        ReturnValue5,
+        ThisValue5,
+        Arguments6,
+        ReturnValue6,
+        ThisValue6,
+        Arguments7,
+        ReturnValue7,
+        ThisValue7,
+        Arguments8,
+        ReturnValue8,
+        ThisValue8,
+        Arguments9,
+        ReturnValue9,
+        ThisValue9,
+        Arguments10,
+        ReturnValue10,
+        ThisValue10,
+        Arguments11,
+        ReturnValue11,
+        ThisValue11,
+        Arguments12,
+        ReturnValue12,
+        ThisValue12
+    >
+    : never;
+
+type SingleCallRecord<Signature> = Signature extends CallableSignature
+    ? DoubleCall<CallArguments<Signature>, CallReturn<Signature>, CallThisValue<Signature>>
+    : never;
+
+type KnownCallRecord<Signature> = CallableOverloadRecords<Signature> extends never ? SingleCallRecord<Signature>
+    : CallableOverloadRecords<Signature>;
+
+type CallRecordFor<Signature> = KnownCallRecord<Signature> extends never ? DoubleCall
+    : KnownCallRecord<Signature>;
+
+type ConstructableOverloadRecordUnion<
+    Arguments1 extends readonly unknown[],
+    Instance1,
+    Arguments2 extends readonly unknown[],
+    Instance2,
+    Arguments3 extends readonly unknown[],
+    Instance3,
+    Arguments4 extends readonly unknown[],
+    Instance4,
+    Arguments5 extends readonly unknown[],
+    Instance5,
+    Arguments6 extends readonly unknown[],
+    Instance6,
+    Arguments7 extends readonly unknown[],
+    Instance7,
+    Arguments8 extends readonly unknown[],
+    Instance8,
+    Arguments9 extends readonly unknown[],
+    Instance9,
+    Arguments10 extends readonly unknown[],
+    Instance10,
+    Arguments11 extends readonly unknown[],
+    Instance11,
+    Arguments12 extends readonly unknown[],
+    Instance12
 > = {
-    readonly arguments: Arguments;
-    readonly index: number;
-    readonly instance: Instance | null;
-    readonly kind: 'construction';
-    readonly order: number;
-    readonly result: DoubleResult<Instance>;
-};
+    readonly overload01: DoubleConstruction<Arguments1, Instance1>;
+    readonly overload02: DoubleConstruction<Arguments2, Instance2>;
+    readonly overload03: DoubleConstruction<Arguments3, Instance3>;
+    readonly overload04: DoubleConstruction<Arguments4, Instance4>;
+    readonly overload05: DoubleConstruction<Arguments5, Instance5>;
+    readonly overload06: DoubleConstruction<Arguments6, Instance6>;
+    readonly overload07: DoubleConstruction<Arguments7, Instance7>;
+    readonly overload08: DoubleConstruction<Arguments8, Instance8>;
+    readonly overload09: DoubleConstruction<Arguments9, Instance9>;
+    readonly overload10: DoubleConstruction<Arguments10, Instance10>;
+    readonly overload11: DoubleConstruction<Arguments11, Instance11>;
+    readonly overload12: DoubleConstruction<Arguments12, Instance12>;
+}[
+    keyof {
+        readonly overload01: unknown;
+        readonly overload02: unknown;
+        readonly overload03: unknown;
+        readonly overload04: unknown;
+        readonly overload05: unknown;
+        readonly overload06: unknown;
+        readonly overload07: unknown;
+        readonly overload08: unknown;
+        readonly overload09: unknown;
+        readonly overload10: unknown;
+        readonly overload11: unknown;
+        readonly overload12: unknown;
+    }
+];
 
-export type DoubleInteraction<
-    CallRecord extends DoubleCall = DoubleCall,
-    ConstructionRecord extends DoubleConstruction = DoubleConstruction
-> = CallRecord | ConstructionRecord;
+type ConstructableOverloadRecords<Signature> = Signature extends {
+    new (...arguments_: infer Arguments1): infer Instance1;
+    new (...arguments_: infer Arguments2): infer Instance2;
+    new (...arguments_: infer Arguments3): infer Instance3;
+    new (...arguments_: infer Arguments4): infer Instance4;
+    new (...arguments_: infer Arguments5): infer Instance5;
+    new (...arguments_: infer Arguments6): infer Instance6;
+    new (...arguments_: infer Arguments7): infer Instance7;
+    new (...arguments_: infer Arguments8): infer Instance8;
+    new (...arguments_: infer Arguments9): infer Instance9;
+    new (...arguments_: infer Arguments10): infer Instance10;
+    new (...arguments_: infer Arguments11): infer Instance11;
+    new (...arguments_: infer Arguments12): infer Instance12;
+} ? ConstructableOverloadRecordUnion<
+        Arguments1,
+        Instance1,
+        Arguments2,
+        Instance2,
+        Arguments3,
+        Instance3,
+        Arguments4,
+        Instance4,
+        Arguments5,
+        Instance5,
+        Arguments6,
+        Instance6,
+        Arguments7,
+        Instance7,
+        Arguments8,
+        Instance8,
+        Arguments9,
+        Instance9,
+        Arguments10,
+        Instance10,
+        Arguments11,
+        Instance11,
+        Arguments12,
+        Instance12
+    >
+    : never;
+
+type SingleConstructionRecord<Signature> = Signature extends ConstructorSignature
+    ? DoubleConstruction<ConstructionArguments<Signature>, ConstructionInstance<Signature>>
+    : never;
+
+type KnownConstructionRecord<Signature> = ConstructableOverloadRecords<Signature> extends never
+    ? SingleConstructionRecord<Signature>
+    : ConstructableOverloadRecords<Signature>;
+
+type ConstructionRecordFor<Signature> = KnownConstructionRecord<Signature> extends never ? DoubleConstruction
+    : KnownConstructionRecord<Signature>;
+
+type InteractionRecordFor<Signature> = CallRecordFor<Signature> | ConstructionRecordFor<Signature>;
+
+type ResultValueFor<Signature> = CallReturn<Signature> | ConstructionInstance<Signature>;
+
+type ResultRecordFor<Signature> = DoubleResult<
+    ResultValueFor<Signature> extends never ? unknown : ResultValueFor<Signature>
+>;
+
+export type DoubleHistory<Signature> = {
+    readonly callCount: number;
+    readonly calls: readonly CallRecordFor<Signature>[];
+    readonly constructionCount: number;
+    readonly constructions: readonly ConstructionRecordFor<Signature>[];
+    readonly firstCall: CallRecordFor<Signature> | null;
+    readonly firstConstruction: ConstructionRecordFor<Signature> | null;
+    readonly firstInteraction: InteractionRecordFor<Signature> | null;
+    readonly firstResult: ResultRecordFor<Signature> | null;
+    readonly interactionCount: number;
+    readonly interactions: readonly InteractionRecordFor<Signature>[];
+    readonly lastCall: CallRecordFor<Signature> | null;
+    readonly lastConstruction: ConstructionRecordFor<Signature> | null;
+    readonly lastInteraction: InteractionRecordFor<Signature> | null;
+    readonly lastResult: ResultRecordFor<Signature> | null;
+    readonly nthCall: (index: number) => CallRecordFor<Signature> | null;
+    readonly nthConstruction: (index: number) => ConstructionRecordFor<Signature> | null;
+    readonly nthInteraction: (index: number) => InteractionRecordFor<Signature> | null;
+    readonly reset: () => void;
+    readonly results: readonly ResultRecordFor<Signature>[];
+};
 
 type MutableDoubleHistory = {
     readonly callCount: number;
@@ -88,27 +335,7 @@ export type RuntimeDoubleHistory = {
     readonly reset: () => void;
 };
 
-export type HistoryInvocation<Kind extends InvocationKind = InvocationKind> = {
-    readonly arguments: readonly unknown[];
-    readonly index: number;
-    readonly kind: Kind;
-    readonly order: number;
-};
-
 type UnknownFunctionTarget = (...arguments_: readonly unknown[]) => unknown;
-
-type HistoryStore = {
-    readonly callIndex: () => number;
-    readonly calls: readonly DoubleCall[];
-    readonly constructionIndex: () => number;
-    readonly constructions: readonly DoubleConstruction[];
-    readonly interactionOrder: () => number;
-    readonly interactions: readonly DoubleInteraction[];
-    readonly recordCall: (call: DoubleCall) => void;
-    readonly recordConstruction: (construction: DoubleConstruction) => void;
-    readonly reset: () => void;
-    readonly results: readonly DoubleResult[];
-};
 
 const historyPropertyNames: readonly (keyof MutableDoubleHistory)[] = [
     'callCount',
@@ -132,108 +359,12 @@ const historyPropertyNames: readonly (keyof MutableDoubleHistory)[] = [
     'results'
 ];
 
-function copyResult(result: DoubleResult): DoubleResult {
-    return { ...result };
-}
-
-function copyCall(call: DoubleCall): DoubleCall {
-    return {
-        ...call,
-        arguments: Array.from(call.arguments),
-        result: copyResult(call.result)
-    };
-}
-
-function copyConstruction(construction: DoubleConstruction): DoubleConstruction {
-    return {
-        ...construction,
-        arguments: Array.from(construction.arguments),
-        result: copyResult(construction.result)
-    };
-}
-
-function copyInteraction(interaction: DoubleInteraction): DoubleInteraction {
-    return interaction.kind === 'call' ? copyCall(interaction) : copyConstruction(interaction);
-}
-
 function copyNullable<Item>(item: Item | null, copy: (value: Item) => Item): Item | null {
     return item === null ? null : copy(item);
 }
 
 function validHistoryIndex(index: number): boolean {
     return Number.isSafeInteger(index) && index >= 0;
-}
-
-export function createReturnedResult(invocation: HistoryInvocation, value: unknown): DoubleResult {
-    return {
-        invocationIndex: invocation.index,
-        invocationKind: invocation.kind,
-        order: invocation.order,
-        status: 'returned',
-        value
-    };
-}
-
-export function createThrownResult(invocation: HistoryInvocation, thrown: unknown): DoubleResult {
-    return {
-        invocationIndex: invocation.index,
-        invocationKind: invocation.kind,
-        order: invocation.order,
-        status: 'threw',
-        thrown
-    };
-}
-
-function createHistoryStore(resetRuntimeState: () => void): HistoryStore {
-    const calls: DoubleCall[] = [];
-    const constructions: DoubleConstruction[] = [];
-    const interactions: DoubleInteraction[] = [];
-    const results: DoubleResult[] = [];
-    let nextCallIndex = 0;
-    let nextConstructionIndex = 0;
-    let nextOrder = 0;
-
-    return {
-        callIndex() {
-            const index = nextCallIndex;
-            nextCallIndex += 1;
-            return index;
-        },
-        calls,
-        constructionIndex() {
-            const index = nextConstructionIndex;
-            nextConstructionIndex += 1;
-            return index;
-        },
-        constructions,
-        interactionOrder() {
-            const order = nextOrder;
-            nextOrder += 1;
-            return order;
-        },
-        interactions,
-        recordCall(call) {
-            calls.push(call);
-            interactions.push(call);
-            results.push(call.result);
-        },
-        recordConstruction(construction) {
-            constructions.push(construction);
-            interactions.push(construction);
-            results.push(construction.result);
-        },
-        reset() {
-            calls.length = 0;
-            constructions.length = 0;
-            interactions.length = 0;
-            results.length = 0;
-            nextCallIndex = 0;
-            nextConstructionIndex = 0;
-            nextOrder = 0;
-            resetRuntimeState();
-        },
-        results
-    };
 }
 
 function createHistoryApi(store: HistoryStore): MutableDoubleHistory {
@@ -311,36 +442,6 @@ function defineHistoryProperty(
         ...descriptor,
         enumerable: false
     });
-}
-
-function createCallRecord(
-    invocation: HistoryInvocation<'call'>,
-    thisValue: unknown,
-    result: DoubleResult
-): DoubleCall {
-    return {
-        arguments: Array.from(invocation.arguments),
-        index: invocation.index,
-        kind: 'call',
-        order: invocation.order,
-        result,
-        thisValue
-    };
-}
-
-function createConstructionRecord(
-    invocation: HistoryInvocation<'construction'>,
-    instance: ConstructorReturnValue | null,
-    result: DoubleResult
-): DoubleConstruction {
-    return {
-        arguments: Array.from(invocation.arguments),
-        index: invocation.index,
-        instance,
-        kind: 'construction',
-        order: invocation.order,
-        result
-    };
 }
 
 function installHistory(target: UnknownFunctionTarget, api: MutableDoubleHistory): void {

@@ -1,46 +1,100 @@
 import {
-    type BehaviorMode,
-    callsBehavior,
+    type CallableSignature,
+    type ConstructorSignature,
     constructsBehavior,
+    type DoubleInvocation,
     ensureConstructorInstance,
+    type InvocationKind,
     isRuntimeBehavior,
     isRuntimeRule,
     isUnknownFunction,
     rejectsBehavior,
     resolvesBehavior,
-    returnsBehavior,
-    sequenceBehavior,
-    throwsBehavior,
-    type CallableSignature,
-    type ConstructorSignature,
-    type InvocationKind,
     type RuntimeBehavior,
     type RuntimeConfiguration,
     type RuntimeFallback,
+    returnsBehavior,
+    throwsBehavior,
     type UnknownConstructor,
     type UnknownFunction
 } from './double-behavior.ts';
-import { createDouble, modeSet, type SupportedModes } from './double-runtime.ts';
+import type { DoubleHistory as HistoryForDouble } from './double-history.ts';
 import type {
-    CallBehavior,
-    CallRule,
-    CallRuleStarter,
+    CallArguments,
+    CallReturn,
     ConstructInstance,
     ConstructSignature,
-    ConstructionRule,
-    ConstructionRuleStarter,
-    ResolvedValue,
+    ConstructionArguments,
+    ConstructionInstance,
+    DoubleRuleFor,
+    FallbackFor,
     ResolvedSignature,
+    ResolvedValue,
     ReturnArguments,
-    ReturnSignature,
-    RuleFactory,
-    SequenceResult,
-    TestDouble,
-    TestDoubleConfiguration,
-    TestDoubleFactory
-} from './test-double-types.ts';
+    ReturnSignature
+} from './double-rule.ts';
+import { createDouble, modeSet, type SupportedModes } from './double-runtime.ts';
 
 type ConfigurationRecord = Readonly<Partial<Record<'answer' | 'fallback' | 'rules', unknown>>>;
+type CallableInvocationFor<Signature> = [Signature] extends [CallableSignature]
+    ? DoubleInvocation<CallArguments<Signature>>
+    : never;
+
+type ConstructionInvocationFor<Signature> = [Signature] extends [ConstructorSignature]
+    ? DoubleInvocation<ConstructionArguments<Signature>>
+    : never;
+
+type InvocationFor<Signature> = CallableInvocationFor<Signature> | ConstructionInvocationFor<Signature>;
+
+type AnswerReturn<Signature> = CallReturn<Signature> | ConstructionInstance<Signature>;
+
+type RuleConfiguration<Signature> = {
+    readonly rules?: readonly DoubleRuleFor<Signature>[];
+};
+
+type AnswerConfiguration<Signature> = RuleConfiguration<Signature> & {
+    readonly answer: (invocation: InvocationFor<Signature>) => AnswerReturn<Signature>;
+    readonly fallback?: never;
+};
+
+type FallbackConfiguration<Signature> = RuleConfiguration<Signature> & {
+    readonly answer?: never;
+    readonly fallback?: FallbackFor<Signature>;
+};
+
+type TestDoubleConfiguration<Signature> = AnswerConfiguration<Signature> | FallbackConfiguration<Signature>;
+
+export type DoubleHistory<Signature> = HistoryForDouble<Signature>;
+
+export type TestDouble<Signature> = DoubleHistory<Signature> & Signature;
+
+export type TestDoubleFactory = {
+    <Signature extends CallableSignature | ConstructorSignature = UnknownFunction<unknown>>(
+        ...configuration: Signature extends ConstructorSignature ? readonly [TestDoubleConfiguration<Signature>]
+            : readonly [] | readonly [TestDoubleConfiguration<Signature>]
+    ): TestDouble<Signature>;
+    readonly constructs: <SignatureOrInstance>(
+        instance: ConstructInstance<SignatureOrInstance>
+    ) => TestDouble<ConstructSignature<SignatureOrInstance>>;
+    readonly rejects: {
+        (reason: unknown): TestDouble<UnknownFunction<Promise<never>>>;
+        <Signature extends CallableSignature>(
+            reason: ReturnType<Signature> extends Promise<unknown> ? unknown : never
+        ): TestDouble<Signature>;
+    };
+    readonly resolves: <SignatureOrValue>(
+        value: ResolvedValue<SignatureOrValue>
+    ) => TestDouble<ResolvedSignature<SignatureOrValue>>;
+    readonly returns: <SignatureOrValue>(
+        ...value: ReturnArguments<SignatureOrValue>
+    ) => TestDouble<ReturnSignature<SignatureOrValue>>;
+    readonly throws: {
+        (thrown: unknown): TestDouble<UnknownFunction<never>>;
+        <Signature extends CallableSignature>(
+            thrown: ReturnType<Signature> extends Promise<unknown> ? never : unknown
+        ): TestDouble<Signature>;
+    };
+};
 
 function createCallableBehaviorDouble<ReturnValue>(
     behavior: RuntimeBehavior
@@ -205,148 +259,6 @@ function createThrowingDouble<Signature extends CallableSignature>(
 function createThrowingDouble(thrown: unknown): TestDouble<UnknownFunction<never>> {
     return createCallableBehaviorDouble(throwsBehavior(thrown));
 }
-
-function callRule<ArgumentPattern extends readonly unknown[], Result, MatchKind extends 'arguments' | 'index'>(
-    criterion: CallRule<ArgumentPattern, Result, MatchKind>['criterion'],
-    behavior: RuntimeBehavior<BehaviorMode, Result>
-): CallRule<ArgumentPattern, Result, MatchKind> {
-    return { behavior, criterion };
-}
-
-function constructionRule<ArgumentPattern extends readonly unknown[], Result, MatchKind extends 'arguments' | 'index'>(
-    criterion: ConstructionRule<ArgumentPattern, Result, MatchKind>['criterion'],
-    behavior: RuntimeBehavior<BehaviorMode, Result>
-): ConstructionRule<ArgumentPattern, Result, MatchKind> {
-    return { behavior, criterion };
-}
-
-function createCallRuleStarter<ArgumentPattern extends readonly unknown[], MatchKind extends 'arguments' | 'index'>(
-    criterion: CallRule<ArgumentPattern, unknown, MatchKind>['criterion']
-): CallRuleStarter<ArgumentPattern, MatchKind> {
-    return {
-        calls(answer) {
-            return callRule<ArgumentPattern, ReturnType<typeof answer>, MatchKind>(
-                criterion,
-                callsBehavior(answer)
-            );
-        },
-        rejects(reason: unknown) {
-            return callRule<ArgumentPattern, Promise<never>, MatchKind>(criterion, rejectsBehavior(reason));
-        },
-        resolves(value) {
-            return callRule<ArgumentPattern, Promise<typeof value>, MatchKind>(criterion, resolvesBehavior(value));
-        },
-        returns(...value: readonly unknown[]) {
-            return callRule<ArgumentPattern, unknown, MatchKind>(criterion, returnsBehavior(value[0]));
-        },
-        sequence(entries) {
-            return callRule<ArgumentPattern, SequenceResult<typeof entries[number]>, MatchKind>(
-                criterion,
-                sequenceBehavior<SequenceResult<typeof entries[number]>>(entries)
-            );
-        },
-        throws(thrown) {
-            return callRule<ArgumentPattern, never, MatchKind>(criterion, throwsBehavior(thrown));
-        }
-    };
-}
-
-function createConstructionRuleStarter<
-    ArgumentPattern extends readonly unknown[],
-    MatchKind extends 'arguments' | 'index'
->(
-    criterion: ConstructionRule<ArgumentPattern, unknown, MatchKind>['criterion']
-): ConstructionRuleStarter<ArgumentPattern, MatchKind> {
-    return {
-        calls(answer) {
-            return constructionRule<ArgumentPattern, ReturnType<typeof answer>, MatchKind>(
-                criterion,
-                callsBehavior(answer)
-            );
-        },
-        constructs<SignatureOrInstance>(instance: ConstructInstance<SignatureOrInstance>) {
-            return constructionRule<ArgumentPattern, ConstructInstance<SignatureOrInstance>, MatchKind>(
-                criterion,
-                constructsBehavior(instance)
-            );
-        },
-        sequence(entries) {
-            return constructionRule<ArgumentPattern, SequenceResult<typeof entries[number]>, MatchKind>(
-                criterion,
-                sequenceBehavior<SequenceResult<typeof entries[number]>>(entries)
-            );
-        },
-        throws(thrown) {
-            return constructionRule<ArgumentPattern, never, MatchKind>(criterion, throwsBehavior(thrown));
-        }
-    };
-}
-
-function createCallArgumentRuleStarter<ArgumentPattern extends readonly [unknown, ...unknown[]]>(
-    ...expectedArguments: ArgumentPattern
-): CallRuleStarter<ArgumentPattern, 'arguments'> {
-    return createCallRuleStarter({
-        expectedArguments,
-        invocationKind: 'call',
-        kind: 'arguments'
-    });
-}
-
-function createConstructionArgumentRuleStarter<ArgumentPattern extends readonly [unknown, ...unknown[]]>(
-    ...expectedArguments: ArgumentPattern
-): ConstructionRuleStarter<ArgumentPattern, 'arguments'> {
-    return createConstructionRuleStarter({
-        expectedArguments,
-        invocationKind: 'construction',
-        kind: 'arguments'
-    });
-}
-
-function validRuleIndex(index: number): number {
-    if (!Number.isSafeInteger(index) || index < 0) {
-        throw new TypeError('ordered double rules require a non-negative integer index.');
-    }
-
-    return index;
-}
-
-function createCallIndexRuleStarter(index: number): CallRuleStarter<readonly unknown[], 'index'> {
-    return createCallRuleStarter({
-        index: validRuleIndex(index),
-        invocationKind: 'call',
-        kind: 'index'
-    });
-}
-
-function createConstructionIndexRuleStarter(index: number): ConstructionRuleStarter<readonly unknown[], 'index'> {
-    return createConstructionRuleStarter({
-        index: validRuleIndex(index),
-        invocationKind: 'construction',
-        kind: 'index'
-    });
-}
-
-function createReturningBehavior(): CallBehavior<void>;
-function createReturningBehavior<SignatureOrValue>(
-    ...value: ReturnArguments<SignatureOrValue>
-): CallBehavior<SignatureOrValue extends CallableSignature ? ReturnType<SignatureOrValue> : SignatureOrValue>;
-function createReturningBehavior(...value: readonly unknown[]): CallBehavior {
-    return returnsBehavior(value[0]);
-}
-
-export const rule: RuleFactory = {
-    calls: callsBehavior,
-    constructs: constructsBehavior,
-    onCall: createCallIndexRuleStarter,
-    onConstruction: createConstructionIndexRuleStarter,
-    rejects: rejectsBehavior,
-    resolves: resolvesBehavior,
-    returns: createReturningBehavior,
-    sequence: sequenceBehavior,
-    throws: throwsBehavior,
-    when: createCallArgumentRuleStarter,
-    whenConstructedWith: createConstructionArgumentRuleStarter
-};
 
 export const testDouble: TestDoubleFactory = Object.assign(createUntypedDouble, {
     constructs: createConstructingDouble,
