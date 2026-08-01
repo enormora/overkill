@@ -8,6 +8,7 @@ import {
     type DoubleConstruction,
     type DoubleHistory,
     type DoubleInvocation,
+    type DoubleIteratorEvent,
     type DoubleResult,
     type TestDouble
 } from './doubles.entry-point.ts';
@@ -31,6 +32,9 @@ type UserQuery = {
 type LoadUser = (id: string, includeDeleted: boolean) => User;
 type SearchUser = (query: UserQuery, includeDeleted: boolean) => User;
 type SaveUser = (user: User) => Promise<User>;
+type LoadEvents = (id: string) => Generator<string, number, boolean>;
+type LoadEventProtocolArguments = readonly [] | readonly [boolean] | readonly [number] | readonly [unknown];
+type LoadAsyncEvents = (id: string) => AsyncGenerator<string, number, boolean>;
 type ClientConstructor = new (baseUrl: string) => Client;
 type ScopeReceiver = {
     readonly scope: string;
@@ -180,6 +184,65 @@ describe('@overkill-dev/doubles', function () {
         });
     });
 
+    describe('fixed generator doubles', function () {
+        test('creates fixed sync generator doubles', function () {
+            const untyped = testDouble.yields([ 'created' ]);
+            const typed = testDouble.yields<LoadEvents>([ 'created' ], 1);
+
+            expect(untyped).type.toBe<
+                TestDouble<(...arguments_: readonly unknown[]) => Generator<string, undefined, unknown>>
+            >();
+            expect(typed).type.toBe<TestDouble<LoadEvents>>();
+            expect(typed).type.toBeCallableWith('1');
+            expect(typed('1')).type.toBe<Generator<string, number, boolean>>();
+        });
+
+        test('creates fixed sync generator doubles from sources', function () {
+            const fromSource = testDouble.yieldsFrom<LoadEvents>(function* loadEvents(id) {
+                yield id;
+                return 1;
+            });
+
+            expect(fromSource).type.toBe<TestDouble<LoadEvents>>();
+        });
+
+        test('rejects non-generator fixed sync generator doubles', function () {
+            expect(testDouble.yields<LoadUser>).type.not.toBeCallableWith([ 'event' ]);
+            expect(testDouble.yields<LoadEvents>).type.not.toBeCallableWith([ 'event' ], 'done');
+        });
+
+        test('creates fixed async generator doubles', function () {
+            const untyped = testDouble.yieldsAsync([ 'created' ]);
+            const typed = testDouble.yieldsAsync<LoadAsyncEvents>([ 'created' ], 1);
+
+            expect(untyped).type.toBe<
+                TestDouble<(...arguments_: readonly unknown[]) => AsyncGenerator<string, undefined, unknown>>
+            >();
+            expect(typed).type.toBe<TestDouble<LoadAsyncEvents>>();
+            expect(typed).type.toBeCallableWith('1');
+            expect(typed('1')).type.toBe<AsyncGenerator<string, number, boolean>>();
+        });
+
+        test('creates fixed async generator doubles from sources', function () {
+            const fromAsyncSource = testDouble.yieldsAsyncFrom<LoadAsyncEvents>(async function* loadEvents(id) {
+                yield id;
+                return 1;
+            });
+            const fromSyncSource = testDouble.yieldsAsyncFrom<LoadAsyncEvents>(function* loadEvents(id) {
+                yield id;
+                return 1;
+            });
+
+            expect(fromAsyncSource).type.toBe<TestDouble<LoadAsyncEvents>>();
+            expect(fromSyncSource).type.toBe<TestDouble<LoadAsyncEvents>>();
+        });
+
+        test('rejects non-generator fixed async generator doubles', function () {
+            expect(testDouble.yieldsAsync<LoadUser>).type.not.toBeCallableWith([ 'event' ]);
+            expect(testDouble.yieldsAsync<LoadAsyncEvents>).type.not.toBeCallableWith([ 'event' ], 'done');
+        });
+    });
+
     describe('history types', function () {
         test('exposes typed history counts and reset on callable doubles', function () {
             const loadUser = testDouble<LoadUser>();
@@ -204,6 +267,23 @@ describe('@overkill-dev/doubles', function () {
                 DoubleCall<Parameters<ScopedLoadUser>, User, ScopeReceiver> | null
             >();
             expect(saveUser.firstResult).type.toBe<DoubleResult<Promise<User>> | null>();
+        });
+
+        test('exposes typed iterator history records', function () {
+            const loadEvents = testDouble.yields<LoadEvents>([ 'created' ], 1);
+            const plain = testDouble.returns<LoadUser>(user);
+
+            expect(loadEvents.iteratorEventCount).type.toBe<number>();
+            expect(loadEvents.iteratorEvents).type.toBe<
+                readonly DoubleIteratorEvent<string, number, LoadEventProtocolArguments>[]
+            >();
+            expect(loadEvents.firstIteratorEvent).type.toBe<
+                DoubleIteratorEvent<string, number, LoadEventProtocolArguments> | null
+            >();
+            expect(loadEvents.nthIteratorEvent(0)).type.toBe<
+                DoubleIteratorEvent<string, number, LoadEventProtocolArguments> | null
+            >();
+            expect(plain.firstIteratorEvent).type.toBe<DoubleIteratorEvent | null>();
         });
 
         test('exposes typed construction and aggregate interaction history', function () {
@@ -242,6 +322,7 @@ describe('@overkill-dev/doubles', function () {
         test('exports assertion references under one namespace', function () {
             expect(doubleUsage.calledOnceWith).type.toBeAssignableTo<unknown>();
             expect(doubleUsage).type.toHaveProperty('calledWithExactly');
+            expect(doubleUsage).type.toHaveProperty('yieldedExactly');
             expect(doubleUsage).type.toHaveProperty('interactionOrder');
             expect(doubleUsage).type.not.toHaveProperty('returnedWith');
         });
@@ -262,12 +343,17 @@ describe('@overkill-dev/doubles', function () {
             assertFacade(doubleUsage.callOrder, [ loadUser, testDouble<LoadUser>() ]);
         });
 
+        test('accepts generator doubles through the engine assert facade', function () {
+            assertFacade(doubleUsage.yieldedExactly, testDouble.yields([ 'event' ]), [ 'event' ]);
+        });
+
         test('rejects empty prefix and short order arguments at compile time', function () {
             const loadUser = testDouble<LoadUser>();
 
             expect(assertFacade).type.not.toBeCallableWith(doubleUsage.calledWithPrefix, loadUser, []);
             expect(assertFacade).type.not.toBeCallableWith(doubleUsage.callOrder, [ loadUser ]);
             expect(assertFacade).type.not.toBeCallableWith(doubleUsage.callCount, loadUser, '1');
+            expect(assertFacade).type.not.toBeCallableWith(doubleUsage.yieldedExactly, loadUser, 'event');
         });
     });
 
@@ -387,6 +473,45 @@ describe('@overkill-dev/doubles', function () {
                 },
                 fallback: rule.returns(user)
             });
+        });
+    });
+
+    describe('generator rule-based doubles', function () {
+        test('type-checks sync generator rules and fallback behavior', function () {
+            expect(testDouble<LoadEvents>).type.toBeCallableWith({
+                rules: [
+                    rule.when('1').yields<LoadEvents>([ 'event' ], 1),
+                    rule.onCall(1).yieldsFrom<LoadEvents>(function* loadEvents(id) {
+                        yield id;
+                        return 1;
+                    })
+                ],
+                fallback: rule.yields<LoadEvents>([ 'fallback' ], 1)
+            });
+        });
+
+        test('type-checks async generator rules and fallback behavior', function () {
+            expect(testDouble<LoadAsyncEvents>).type.toBeCallableWith({
+                rules: [
+                    rule.when('1').yieldsAsync<LoadAsyncEvents>([ 'event' ], 1),
+                    rule.onCall(1).yieldsAsyncFrom<LoadAsyncEvents>(function* loadEvents(id) {
+                        yield id;
+                        return 1;
+                    })
+                ],
+                fallback: rule.yieldsAsync<LoadAsyncEvents>([ 'fallback' ], 1)
+            });
+        });
+
+        test('rejects mismatched generator rules and construction terminators', function () {
+            expect(testDouble<LoadEvents>).type.not.toBeCallableWith({
+                rules: [ rule.when('1').yieldsAsync([ 'event' ]) ]
+            });
+            expect(testDouble<LoadAsyncEvents>).type.not.toBeCallableWith({
+                rules: [ rule.when('1').yields([ 'event' ]) ]
+            });
+            expect(rule.whenConstructedWith('https://api.example.test')).type.not.toHaveProperty('yields');
+            expect(rule.whenConstructedWith('https://api.example.test')).type.not.toHaveProperty('yieldsAsync');
         });
     });
 });

@@ -59,6 +59,16 @@ new Client('https://api.example.test');
 - `testDouble.rejects(reason)`: returns a rejected promise.
 - `testDouble.throws(thrown)`: throws `thrown` from every call.
 - `testDouble.constructs(instance)`: returns `instance` from `new Double(...)`.
+- `testDouble.yields(values, returnValue?)`: returns a fresh tracked sync
+  iterator from a finite value array.
+- `testDouble.yieldsFrom(factory)`: returns a fresh tracked sync iterator that
+  delegates with `yield*`. The factory receives the double call arguments and
+  runs lazily on first iterator consumption.
+- `testDouble.yieldsAsync(values, returnValue?)`: returns a fresh tracked async
+  iterator from a finite value array.
+- `testDouble.yieldsAsyncFrom(factory)`: returns a fresh tracked async iterator
+  that delegates with async `yield*`. The factory receives the double call
+  arguments and may return a sync or async iterable.
 
 ## Rules
 
@@ -93,6 +103,12 @@ Rule terminators:
 - `.constructs(instance)`: returns an instance from construction rules.
 - `.calls(fn)`: calls `fn` for custom behavior.
 - `.sequence(entries)`: uses entries in order for repeated matches.
+- `.yields(values, returnValue?)`: returns a fresh tracked sync iterator.
+- `.yieldsFrom(factory)`: returns a fresh tracked sync iterator delegated from
+  the call arguments.
+- `.yieldsAsync(values, returnValue?)`: returns a fresh tracked async iterator.
+- `.yieldsAsyncFrom(factory)`: returns a fresh tracked async iterator delegated
+  from the call arguments.
 
 Behavior factories can also be used directly in `fallback`:
 
@@ -103,6 +119,10 @@ Behavior factories can also be used directly in `fallback`:
 - `rule.constructs(instance)`
 - `rule.calls(fn)`
 - `rule.sequence(entries)`
+- `rule.yields(values, returnValue?)`
+- `rule.yieldsFrom(factory)`
+- `rule.yieldsAsync(values, returnValue?)`
+- `rule.yieldsAsyncFrom(factory)`
 
 A fallback can separate call and construction behavior for a value that is both
 callable and constructable:
@@ -131,6 +151,10 @@ Every double records usage. History properties are non-enumerable.
 - `firstConstruction`, `lastConstruction`, `nthConstruction(index)`: selected construction records.
 - `results`: returned and thrown results in order.
 - `firstResult`, `lastResult`: selected result records.
+- `iteratorEventCount`: tracked iterator protocol events.
+- `iteratorEvents`: tracked `next`, `return`, and `throw` outcomes in order.
+- `firstIteratorEvent`, `lastIteratorEvent`, `nthIteratorEvent(index)`:
+  selected iterator event records.
 - `reset()`: clears this double's public history and rewinds double-owned ordered behavior.
 
 Records include:
@@ -142,6 +166,18 @@ Records include:
 - `result`: returned or thrown result data.
 - `thisValue`: only on call records.
 - `instance`: only on construction records.
+
+Iterator records are created only for iterators produced by `yields`,
+`yieldsFrom`, `yieldsAsync`, and `yieldsAsyncFrom`. They include:
+
+- `kind`: `yield`, `return`, or `throw`.
+- `protocol`: `sync` or `async`.
+- `method`: `next`, `return`, or `throw`.
+- `arguments`: the iterator method arguments.
+- `value`: yielded or returned values.
+- `thrown`: thrown values.
+- `callIndex`, `iteratorIndex`, and `index`: related call and iterator event
+  positions.
 
 ## Assertions
 
@@ -189,6 +225,13 @@ case.assert(doubleUsage.calledWith, ping, []);
 - `doubleUsage.notConstructed(double)`: no constructions.
 - `doubleUsage.constructionCount(double, count)`: exact construction count.
 - `doubleUsage.constructedOnce(double)`: exactly one construction.
+- `doubleUsage.iterated(double)`: at least one tracked iterator event.
+- `doubleUsage.notIterated(double)`: no tracked iterator events.
+- `doubleUsage.iteratorEventCount(double, count)`: exact tracked iterator event
+  count.
+- `doubleUsage.yieldCount(double, count)`: exact yielded value count.
+- `doubleUsage.yieldedExactly(double, values)`: exact yielded values across all
+  tracked iterators in event order.
 
 ### Any Matching Usage
 

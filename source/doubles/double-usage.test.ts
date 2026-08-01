@@ -169,6 +169,45 @@ registerTest('doubleUsage argument assertions support partial, prefix, and exact
     assert.equal(result.summary.failed, 0);
 });
 
+registerTest('doubleUsage iterator assertions pass through case.assert()', async function () {
+    const loadEvents = testDouble.yields([ 'created', 'updated' ]);
+    const result = await executeSingleBody(function body(testContext: TestContext) {
+        const events = loadEvents();
+
+        events.next();
+        events.next();
+        events.next();
+        testContext.assert(doubleUsage.iterated, loadEvents);
+        testContext.assert(doubleUsage.iteratorEventCount, loadEvents, 3);
+        testContext.assert(doubleUsage.yieldCount, loadEvents, 2);
+        testContext.assert(doubleUsage.yieldedExactly, loadEvents, [ 'created', 'updated' ]);
+        return testContext.assert.done();
+    });
+
+    assert.equal(result.summary.passed, 1);
+    assert.equal(result.summary.failed, 0);
+});
+
+registerTest('doubleUsage iterator assertions report protocol history failures', async function () {
+    const loadEvents = testDouble.yields([ 'created' ]);
+    const result = await executeSingleBody(function body(testContext: TestContext) {
+        loadEvents().next();
+
+        testContext.assert(doubleUsage.notIterated, loadEvents);
+        testContext.assert(doubleUsage.iteratorEventCount, loadEvents, 2);
+        testContext.assert(doubleUsage.yieldCount, loadEvents, 2);
+        testContext.assert(doubleUsage.yieldedExactly, loadEvents, [ 'updated' ]);
+        return testContext.assert.done();
+    });
+
+    assertFailureSummaries(result, [
+        'Expected double iterator not to have been consumed.',
+        'Expected double iterator event count to match.',
+        'Expected double yield count to match.',
+        'Expected double yielded values to match exactly.'
+    ]);
+});
+
 registerTest('doubleUsage prefix assertions reject empty prefixes', async function () {
     const ping = testDouble.returns<Ping>('pong');
     const result = await executeSingleBody(function body(testContext: TestContext) {

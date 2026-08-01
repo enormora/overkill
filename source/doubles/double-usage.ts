@@ -11,6 +11,13 @@ import {
     onceReference
 } from './double-usage-count-assertion.ts';
 import {
+    iteratedReference,
+    iteratorEventCountReference,
+    notIteratedReference,
+    yieldCountReference,
+    yieldedExactlyReference
+} from './double-usage-iterator-assertion.ts';
+import {
     orderReference
 } from './double-usage-order-assertion.ts';
 import type {
@@ -19,12 +26,14 @@ import type {
     AggregateIndexedPrefixArguments,
     AggregatePrefixArguments,
     CountArguments,
+    IteratorValuesArguments,
     OrderArguments,
     UsageAssertionReference,
     ValueArguments
 } from './double-usage-contract.ts';
 
 type CountReference = UsageAssertionReference<CountArguments>;
+type IteratorValuesReference = UsageAssertionReference<IteratorValuesArguments>;
 type ValueReference = UsageAssertionReference<ValueArguments>;
 type OrderReference = UsageAssertionReference<OrderArguments>;
 type ArgumentReference = UsageAssertionReference<AggregateArguments>;
@@ -61,6 +70,8 @@ export type DoubleUsageAssertions = {
     readonly interactedWith: ArgumentReference;
     readonly interactedWithExactly: ArgumentReference;
     readonly interactedWithPrefix: PrefixReference;
+    readonly iterated: ValueReference;
+    readonly iteratorEventCount: CountReference;
     readonly interactionCount: CountReference;
     readonly interactionOrder: OrderReference;
     readonly lastCalledWith: ArgumentReference;
@@ -81,6 +92,7 @@ export type DoubleUsageAssertions = {
     readonly notInteracted: ValueReference;
     readonly notInteractedWith: ArgumentReference;
     readonly notInteractedWithPrefix: PrefixReference;
+    readonly notIterated: ValueReference;
     readonly nthCallWith: IndexedArgumentReference;
     readonly nthCallWithExactly: IndexedArgumentReference;
     readonly nthCallWithPrefix: IndexedPrefixReference;
@@ -90,6 +102,8 @@ export type DoubleUsageAssertions = {
     readonly nthInteractionWith: IndexedArgumentReference;
     readonly nthInteractionWithExactly: IndexedArgumentReference;
     readonly nthInteractionWithPrefix: IndexedPrefixReference;
+    readonly yieldCount: CountReference;
+    readonly yieldedExactly: IteratorValuesReference;
 };
 
 export const doubleUsage: DoubleUsageAssertions = {
@@ -205,6 +219,8 @@ export const doubleUsage: DoubleUsageAssertions = {
         negative: false,
         position: 'any'
     }),
+    iterated: iteratedReference('doubleUsage.iterated'),
+    iteratorEventCount: iteratorEventCountReference('doubleUsage.iteratorEventCount'),
     interactionCount: countReference('doubleUsage.interactionCount', 'interaction'),
     interactionOrder: orderReference('doubleUsage.interactionOrder', 'interaction'),
     lastCalledWith: argumentReference('doubleUsage.lastCalledWith', {
@@ -294,6 +310,7 @@ export const doubleUsage: DoubleUsageAssertions = {
         negative: true,
         position: 'any'
     }),
+    notIterated: notIteratedReference('doubleUsage.notIterated'),
     nthCallWith: indexedArgumentReference('doubleUsage.nthCallWith', 'call', 'partial'),
     nthCallWithExactly: indexedArgumentReference('doubleUsage.nthCallWithExactly', 'call', 'exact'),
     nthCallWithPrefix: indexedArgumentPrefixReference('doubleUsage.nthCallWithPrefix', 'call'),
@@ -313,5 +330,7 @@ export const doubleUsage: DoubleUsageAssertions = {
         'interaction',
         'exact'
     ),
-    nthInteractionWithPrefix: indexedArgumentPrefixReference('doubleUsage.nthInteractionWithPrefix', 'interaction')
+    nthInteractionWithPrefix: indexedArgumentPrefixReference('doubleUsage.nthInteractionWithPrefix', 'interaction'),
+    yieldCount: yieldCountReference('doubleUsage.yieldCount'),
+    yieldedExactly: yieldedExactlyReference('doubleUsage.yieldedExactly')
 };
