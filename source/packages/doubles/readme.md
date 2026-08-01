@@ -13,7 +13,8 @@ Current package state:
   `testDouble.throws(...)`, and `testDouble.constructs(...)`
 - configurable behavior rules through `rule.when(...)`, `rule.onCall(...)`,
   `rule.sequence([...])`, and fallback or answer configuration
-- call history introspection and doubles-oriented assertion extensions are
-  future milestones
+- direct call, construction, aggregate interaction, result, and reset
+  introspection on created doubles
+- doubles-oriented assertion extensions are a future milestone
 - no module replacement, object-method patching, global sandbox, or restore
   registry API

@@ -1211,11 +1211,11 @@ Definition shape:
 import { defineCompositeAssertion } from '@overkill-dev/assert';
 import type { TestDouble } from '@overkill-dev/doubles';
 
-const calledOnceWith = defineCompositeAssertion({
-    name: 'calledOnceWith',
+const interactedOnceWith = defineCompositeAssertion({
+    name: 'interactedOnceWith',
 
-    assert<TArg>(check, sut: TestDouble<[TArg], unknown>, expected: TArg) {
-        return check.group([ check.calledOnce(sut), check.calledWith(sut, expected) ]);
+    assert<TArg>(check, sut: TestDouble<(argument: TArg) => unknown>, expected: TArg) {
+        return check.group([ check.interactedOnce(sut), check.interactedWith(sut, expected) ]);
     }
 });
 ```
@@ -1226,7 +1226,7 @@ Composite references are ordinary imported values:
 test('publishes the release', async (case) => {
     await publishRelease(harness, 'v1.2.3');
 
-    case.assert(calledOnceWith, harness.buildAndPublishAll, {
+    case.assert(interactedOnceWith, harness.buildAndPublishAll, {
         tag: 'v1.2.3',
     });
 

@@ -118,6 +118,11 @@ DX-friendly introspection should be a first-class requirement, not an afterthoug
 
 That means a test double instance should expose obvious information directly, for example:
 
+- `interactionCount`
+- `interactions`
+- `firstInteraction`
+- `lastInteraction`
+- `nthInteraction(n)`
 - `callCount`
 - `calls`
 - `firstCall`
@@ -136,10 +141,27 @@ The goal is that a user can inspect a double naturally in a debugger or in an as
 Example direction:
 
 ```ts
-case.assert.equal(saveUser.callCount, 2);
-case.assert.equal(saveUser.firstCall.arguments[0].id, '42');
+case.assert.equal(saveUser.interactionCount, 2);
+case.assert.equal(saveUser.firstInteraction.arguments[0].id, '42');
 case.assert.equal(saveUser.lastResult.status, 'returned');
 ```
+
+Use `callCount` and `constructionCount` when the invocation mode matters.
+Use `interactionCount` when the test only cares that the collaborator was
+used exactly once.
+
+`reset()` clears recorded history and rewinds double-owned ordered behavior
+state, including `rule.onCall`, `rule.onConstruction`, and `rule.sequence`.
+It does not reset mutable state owned by user callbacks passed to `answer` or
+`rule.calls(fn)`.
+
+History properties are reserved names on double values. They are direct
+non-enumerable own properties, so debugger and assertion reads work without
+polluting `Object.keys(double)` or object spread.
+
+Overloaded function and constructor history should be typed exactly up to
+twelve overloads. Larger overload sets fall back to TypeScript's visible
+signature behavior.
 
 This is one of the places where Sinon remains strong: the instance objects are easy to inspect. Overkill should preserve that strength while keeping the rest of the API smaller and more coherent.
 
@@ -161,7 +183,7 @@ const service = createService({ Client });
 
 service.connect();
 
-case.assert.calledOnceWithNew(Client, 'https://api.example.test');
+case.assert.constructedOnceWith(Client, 'https://api.example.test');
 case.assert.equal(Client.firstConstruction.instance, client);
 ```
 
@@ -188,24 +210,31 @@ type ClientFactory = {
 };
 
 const Client = testDouble<ClientFactory>({
-    fallback: [rule.returns(fallbackClient), rule.constructs(primaryClient)],
+    fallback: {
+        call: rule.returns(fallbackClient),
+        construction: rule.constructs(primaryClient),
+    },
 });
 
 const calledClient = Client('https://api.example.test');
 const constructedClient = new Client('https://api.example.test');
 
-case.assert.calledWithoutNew(Client);
-case.assert.calledWithNew(Client);
+case.assert.calledOnce(Client);
+case.assert.constructedOnce(Client);
 case.assert.equal(calledClient, fallbackClient);
 case.assert.equal(constructedClient, primaryClient);
 ```
 
-The assertion layer should expose both broad invocation-mode assertions and
-argument-specific constructor assertions. Recommended names:
+The assertion layer should expose aggregate assertions for the common "used
+once" case and mode-specific assertions when the invocation mode matters.
+Recommended names:
 
-- `case.assert.calledWithoutNew(double)`
-- `case.assert.calledWithNew(double)`
-- `case.assert.calledOnceWithNew(double, ...args)`
+- `case.assert.interactedOnce(double)`
+- `case.assert.interactedOnceWith(double, ...args)`
+- `case.assert.calledOnce(double)`
+- `case.assert.calledOnceWith(double, ...args)`
+- `case.assert.constructedOnce(double)`
+- `case.assert.constructedOnceWith(double, ...args)`
 
 These assertions should read construction records, not infer constructor usage
 from return values. A double can return any object from a normal call, and that
@@ -402,11 +431,11 @@ One useful pattern here is an imported composite assertion reference:
 import { defineCompositeAssertion } from '@overkill-dev/assert';
 import type { TestDouble } from '@overkill-dev/doubles';
 
-export const calledOnceWith = defineCompositeAssertion({
-    name: 'calledOnceWith',
+export const interactedOnceWith = defineCompositeAssertion({
+    name: 'interactedOnceWith',
 
-    assert<TArg>(check, sut: TestDouble<[TArg], unknown>, expected: TArg) {
-        return check.group([ check.calledOnce(sut), check.calledWith(sut, expected) ]);
+    assert<TArg>(check, sut: TestDouble<(argument: TArg) => unknown>, expected: TArg) {
+        return check.group([ check.interactedOnce(sut), check.interactedWith(sut, expected) ]);
     }
 });
 ```
@@ -414,7 +443,7 @@ export const calledOnceWith = defineCompositeAssertion({
 That gives tests a flatter, domain-level assertion:
 
 ```ts
-case.assert(calledOnceWith, saveUser, { id: '42' });
+case.assert(interactedOnceWith, saveUser, { id: '42' });
 ```
 
 while still reporting the underlying call-count and call-argument failures as
@@ -451,7 +480,7 @@ Recommended direction:
 - package name: `@overkill-dev/doubles`
 - primary abstraction: `testDouble()`
 - primary API shape: configuration object plus call and construction rule composition
-- strong direct introspection on each instance, such as `callCount`, `constructionCount`, `firstCall`, `firstConstruction`, `lastCall`, `lastConstruction`, and typed call/result records
+- strong direct introspection on each instance, such as `interactionCount`, `callCount`, `constructionCount`, `firstInteraction`, `firstCall`, `firstConstruction`, and typed interaction/result records
 - advanced escape hatch: `answer(call)` configuration field or `rule.calls(fn)`
 - constructor behavior: `.constructs(instance)`, `rule.constructs(instance)`, and `rule.whenConstructedWith(...)`
 - common-case sugar: static fixed-behavior factories on `testDouble`

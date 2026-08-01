@@ -33,8 +33,8 @@ type FixedBehavior<Mode extends BehaviorMode, Result> = {
 
 type SequenceBehavior<Mode extends BehaviorMode, Result> = {
     readonly behaviorKind: 'sequence';
+    readonly entries: readonly unknown[];
     readonly mode: Mode;
-    next: () => unknown;
     result: () => Result;
 };
 
@@ -88,6 +88,10 @@ export type RuntimeConfiguration = {
 };
 
 export type ConstructorReturnValue = CallableSignature | Readonly<Record<PropertyKey, unknown>>;
+
+export type BehaviorRuntime = {
+    readonly nextSequenceEntry: (behavior: RuntimeBehavior) => unknown;
+};
 
 const unanswered: BehaviorAnswer = { answered: false };
 
@@ -194,20 +198,10 @@ export function callsBehavior<Answer extends UnknownFunction<unknown>>(
 export function sequenceBehavior<Result = unknown>(
     entries: readonly [unknown, unknown, ...unknown[]]
 ): RuntimeBehavior<'both', Result> {
-    let nextIndex = 0;
-
     return {
         behaviorKind: 'sequence',
+        entries,
         mode: 'both',
-        next() {
-            const entry = entries[nextIndex];
-
-            if (entry !== undefined) {
-                nextIndex += 1;
-            }
-
-            return entry;
-        },
         result() {
             throw new TypeError('sequence result marker should not be called.');
         }
@@ -234,11 +228,15 @@ function behaviorFromEntry(entry: unknown): RuntimeBehavior {
     return isRuntimeBehavior(entry) ? entry : returnsBehavior(entry);
 }
 
-function fixedBehaviorFrom(behavior: RuntimeBehavior, invocation: Invocation): RuntimeBehavior | null {
+function fixedBehaviorFrom(
+    behavior: RuntimeBehavior,
+    invocation: Invocation,
+    runtime: BehaviorRuntime
+): RuntimeBehavior | null {
     let currentBehavior = behavior;
 
     while (currentBehavior.behaviorKind === 'sequence') {
-        const entry = currentBehavior.next();
+        const entry = runtime.nextSequenceEntry(currentBehavior);
 
         if (entry === undefined) {
             return null;
@@ -254,12 +252,16 @@ function fixedBehaviorFrom(behavior: RuntimeBehavior, invocation: Invocation): R
     return currentBehavior;
 }
 
-export function answerFromBehavior(behavior: RuntimeBehavior, invocation: Invocation): BehaviorAnswer {
+export function answerFromBehavior(
+    behavior: RuntimeBehavior,
+    invocation: Invocation,
+    runtime: BehaviorRuntime
+): BehaviorAnswer {
     if (!behaviorCanAnswer(behavior, invocation)) {
         return unanswered;
     }
 
-    const fixedBehavior = fixedBehaviorFrom(behavior, invocation);
+    const fixedBehavior = fixedBehaviorFrom(behavior, invocation, runtime);
 
     return fixedBehavior === null
         ? unanswered

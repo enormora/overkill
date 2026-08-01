@@ -177,10 +177,10 @@ Custom assertions should not live in root runner configuration. Assertion
 references are ordinary imported values used inside tests:
 
 ```ts
-import { calledOnceWith } from '@overkill-dev/doubles';
+import { interactedOnceWith } from '@overkill-dev/doubles';
 
 test('publishes once', (case) => {
-    case.assert(calledOnceWith, harness.publish, expected);
+    case.assert(interactedOnceWith, harness.publish, expected);
     return case.assert.done();
 });
 ```
