@@ -118,6 +118,10 @@ Rule terminators:
 - `.throws(thrown)`: throws a value.
 - `.constructs(instance)`: returns an instance from construction rules.
 - `.calls(fn)`: calls `fn` for custom behavior.
+- `.callsCallback(index, arguments, returnValue, receiver?)`: calls a callback
+  argument synchronously, then returns `returnValue`.
+- `.callsCallbackAsync(index, arguments, returnValue, receiver?)`: returns
+  `returnValue`, then calls a callback argument in a microtask.
 - `.sequence(entries)`: uses entries in order for repeated matches.
 - `.yields(values, returnValue?)`: returns a fresh tracked sync iterator.
 - `.yieldsFrom(factory)`: returns a fresh tracked sync iterator delegated from
@@ -134,6 +138,8 @@ Behavior factories can also be used directly in `fallback`:
 - `rule.throws(thrown)`
 - `rule.constructs(instance)`
 - `rule.calls(fn)`
+- `rule.callsCallback(index, arguments, returnValue, receiver?)`
+- `rule.callsCallbackAsync(index, arguments, returnValue, receiver?)`
 - `rule.sequence(entries)`
 - `rule.yields(values, returnValue?)`
 - `rule.yieldsFrom(factory)`
@@ -149,6 +155,17 @@ const Client = testDouble<ClientFactory>({
         call: rule.returns(clientFromCall),
         construction: rule.constructs(clientFromNew)
     }
+});
+```
+
+Callback-style dependencies can invoke a callback argument without dropping to
+custom behavior:
+
+```ts
+type ReadUser = (id: string, callback: (error: Error | null, user: User) => void) => undefined;
+
+const readUser = testDouble<ReadUser>({
+    fallback: rule.callsCallback(1, [ null, user ], undefined)
 });
 ```
 

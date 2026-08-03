@@ -182,6 +182,22 @@ readonly arrays and return a fresh tracked iterator per double call.
 iteration starts, pass through the double call arguments, and delegate with
 `yield*`. Async delegation may use a sync or async source.
 
+Callback-style dependencies should use callback-named rule behavior rather than
+generator-oriented `yields` names:
+
+```ts
+type ReadUser = (id: string, callback: (error: Error | null, user: User) => void) => undefined;
+
+const readUser = testDouble<ReadUser>({
+    fallback: rule.callsCallback(1, [ null, user ], undefined)
+});
+```
+
+`callsCallback(index, arguments, returnValue, receiver?)` invokes the selected
+callback before returning. `callsCallbackAsync(...)` returns first and invokes
+the callback in a microtask. Receiver binding is available for callback
+parameters with a declared `this` type.
+
 Iterator tracking belongs to those first-party generator behaviors only. It
 records `next`, `return`, and `throw` outcomes, including post-completion calls.
 Reset clears iterator history and detaches already-created iterators from future

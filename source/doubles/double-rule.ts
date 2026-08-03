@@ -2,346 +2,63 @@ import {
     type BehaviorMode,
     type CallableSignature,
     callsBehavior,
-    type ConstructorSignature,
     constructsBehavior,
     rejectsBehavior,
     resolvesBehavior,
+    type RuntimeFixedBehavior,
     type RuntimeBehavior,
-    type RuntimeRule,
     returnsBehavior,
     sequenceBehavior,
-    throwsBehavior,
-    type UnknownConstructor,
-    type UnknownFunction
+    throwsBehavior
 } from './double-behavior.ts';
-import type { NonEmptyArgumentPatterns } from './double-rule-arguments.ts';
 import {
-    type AsyncYieldingBehaviorFactory,
-    type AsyncYieldingFromBehaviorFactory,
-    type AsyncYieldingFromRuleTerminator,
-    type AsyncYieldingRuleTerminator,
+    callsCallbackAsyncBehavior,
+    callsCallbackBehavior,
+    createAsyncCallbackRuleTerminator,
+    createCallbackRuleTerminator
+} from './double-rule-callback.ts';
+import {
     createAsyncYieldingBehavior,
     createAsyncYieldingFromBehavior,
     createAsyncYieldingFromRuleTerminator,
     createAsyncYieldingRuleTerminator,
     createYieldingBehavior,
-    type YieldingBehaviorFactory,
     createYieldingFromBehavior,
-    type YieldingFromBehaviorFactory,
-    type YieldingFromRuleTerminator,
     createYieldingFromRuleTerminator,
-    type YieldingRuleTerminator,
     createYieldingRuleTerminator
 } from './double-rule-generator.ts';
+import type {
+    CallRule,
+    CallRuleStarter,
+    ConstructInstance,
+    ConstructionRule,
+    ConstructionRuleStarter,
+    ReturnArguments,
+    RuleFactory,
+    SequenceResult
+} from './double-rule-types.ts';
 
-type PrimitiveValue = bigint | boolean | number | string | symbol | null | undefined;
-type VoidReturn = ReturnType<() => void>;
-
-type FixedReturnValue<SignatureOrValue> = SignatureOrValue extends CallableSignature ? ReturnType<SignatureOrValue>
-    : SignatureOrValue;
-
-export type ReturnSignature<SignatureOrValue> = SignatureOrValue extends CallableSignature ? SignatureOrValue
-    : UnknownFunction<SignatureOrValue>;
-
-type CallableReturnArguments<Signature extends CallableSignature> = ReturnType<Signature> extends VoidReturn
-    ? readonly [] | readonly [ReturnType<Signature>]
-    : readonly [ReturnType<Signature>];
-
-export type ReturnArguments<SignatureOrValue> = SignatureOrValue extends CallableSignature
-    ? CallableReturnArguments<SignatureOrValue>
-    : readonly [FixedReturnValue<SignatureOrValue>];
-
-type PromiseResolution<Value> = Value extends Promise<infer Resolved> ? Resolved : never;
-
-export type ResolvedValue<SignatureOrValue> = SignatureOrValue extends CallableSignature
-    ? PromiseResolution<ReturnType<SignatureOrValue>>
-    : Awaited<SignatureOrValue>;
-
-type AsyncCallableSignature<Signature extends CallableSignature> = ReturnType<Signature> extends Promise<unknown>
-    ? Signature
-    : never;
-
-export type ResolvedSignature<SignatureOrValue> = SignatureOrValue extends CallableSignature
-    ? AsyncCallableSignature<SignatureOrValue>
-    : UnknownFunction<Promise<Awaited<SignatureOrValue>>>;
-
-type NonPrimitiveInstance<SignatureOrInstance> = SignatureOrInstance extends PrimitiveValue ? never
-    : SignatureOrInstance;
-
-export type ConstructInstance<SignatureOrInstance> = SignatureOrInstance extends ConstructorSignature
-    ? InstanceType<SignatureOrInstance>
-    : NonPrimitiveInstance<SignatureOrInstance>;
-
-export type ConstructSignature<SignatureOrInstance> = SignatureOrInstance extends ConstructorSignature
-    ? SignatureOrInstance
-    : UnknownConstructor<SignatureOrInstance>;
-
-export type CallArguments<Signature> = Signature extends (...arguments_: infer Arguments) => unknown ? Arguments
-    : never;
-export type ConstructionArguments<Signature> = Signature extends new (...arguments_: infer Arguments) => unknown
-    ? Arguments
-    : never;
-export type CallReturn<Signature> = Signature extends (...arguments_: readonly never[]) => infer ReturnValue
-    ? ReturnValue
-    : never;
-export type ConstructionInstance<Signature> = Signature extends new (
-    ...arguments_: readonly never[]
-) => infer Instance ? Instance
-    : never;
-
-type CallBehavior<Result = unknown> = RuntimeBehavior<'call', Result>;
-type ConstructionBehavior<Result = unknown> = RuntimeBehavior<'construction', Result>;
-type SharedBehavior<Result = never> = RuntimeBehavior<'both', Result>;
-
-type CallRule<
+function callRule<
     ArgumentPattern extends readonly unknown[],
     Result,
-    MatchKind extends 'arguments' | 'index'
-> = RuntimeRule<'call', ArgumentPattern, Result, MatchKind>;
-
-type ConstructionRule<
-    ArgumentPattern extends readonly unknown[],
-    Result,
-    MatchKind extends 'arguments' | 'index'
-> = RuntimeRule<'construction', ArgumentPattern, Result, MatchKind>;
-
-type CallRuleSupport<Signature> = [Signature] extends [CallableSignature] ? 'callable' : 'unsupported';
-
-type CallRuleBySupport<Signature> = {
-    readonly callable: CallRuleForSignature<Signature>;
-    readonly unsupported: never;
-};
-
-type CallRuleFor<Signature> = CallRuleBySupport<Signature>[CallRuleSupport<Signature>];
-
-type ArgumentCallRuleFor<Signature> = CallRule<
-    NonEmptyArgumentPatterns<CallArguments<Signature>>,
-    CallReturn<Signature>,
-    'arguments'
->;
-
-type IndexedCallRuleFor<Signature> = CallRule<readonly unknown[], CallReturn<Signature>, 'index'>;
-
-type CallRuleForSignature<Signature> = ArgumentCallRuleFor<Signature> | IndexedCallRuleFor<Signature>;
-
-type ConstructionRuleSupport<Signature> = [Signature] extends [ConstructorSignature] ? 'constructable'
-    : 'unsupported';
-
-type ConstructionRuleBySupport<Signature> = {
-    readonly constructable: ConstructionRuleForSignature<Signature>;
-    readonly unsupported: never;
-};
-
-type ConstructionRuleFor<Signature> = ConstructionRuleBySupport<Signature>[ConstructionRuleSupport<Signature>];
-
-type ArgumentConstructionRuleFor<Signature> = ConstructionRule<
-    NonEmptyArgumentPatterns<ConstructionArguments<Signature>>,
-    ConstructionInstance<Signature>,
-    'arguments'
->;
-
-type IndexedConstructionRuleFor<Signature> = ConstructionRule<
-    readonly unknown[],
-    ConstructionInstance<Signature>,
-    'index'
->;
-
-type ConstructionRuleForSignature<Signature> = {
-    readonly arguments: ArgumentConstructionRuleFor<Signature>;
-    readonly index: IndexedConstructionRuleFor<Signature>;
-}[
-    keyof {
-        readonly arguments: unknown;
-        readonly index: unknown;
-    }
-];
-
-export type DoubleRuleFor<Signature> = CallRuleFor<Signature> | ConstructionRuleFor<Signature>;
-
-type CallFallbackSupport<Signature> = [Signature] extends [CallableSignature] ? 'callable' : 'unsupported';
-
-type CallFallbackBySupport<Signature> = {
-    readonly callable: CallFallbackForSignature<Signature>;
-    readonly unsupported: never;
-};
-
-type CallFallbackFor<Signature> = CallFallbackBySupport<Signature>[CallFallbackSupport<Signature>];
-
-type CallFallbackForSignature<Signature> = RuntimeBehavior<BehaviorMode, CallReturn<Signature>> | SharedBehavior;
-
-type ConstructionBehaviorFallbackFor<Signature> = RuntimeBehavior<BehaviorMode, ConstructionInstance<Signature>>;
-
-type ConstructionFallbackForSignature<Signature> = ConstructionBehaviorFallbackFor<Signature> | SharedBehavior;
-
-type ConstructionFallbackSupport<Signature> = [Signature] extends [ConstructorSignature] ? 'constructable'
-    : 'unsupported';
-
-type ConstructionFallbackBySupport<Signature> = {
-    readonly constructable: ConstructionFallbackForSignature<Signature>;
-    readonly unsupported: never;
-};
-
-type ConstructionFallbackFor<Signature> = ConstructionFallbackBySupport<
-    Signature
->[ConstructionFallbackSupport<Signature>];
-
-type FallbackModeSupport<Signature> = [Signature] extends [CallableSignature] ? 'callable' : 'unsupported';
-
-type FallbackByModeSupport<Signature> = {
-    readonly callable: FallbackByCallableMode<Signature>;
-    readonly unsupported: never;
-};
-
-type FallbackByMode<Signature> = FallbackByModeSupport<Signature>[FallbackModeSupport<Signature>];
-
-type CallableFallbackModeSupport<Signature> = [Signature] extends [ConstructorSignature] ? 'constructable'
-    : 'unsupported';
-
-type FallbackByCallableModeSupport<Signature> = {
-    readonly constructable: FallbackModes<Signature>;
-    readonly unsupported: never;
-};
-
-type FallbackByCallableMode<Signature> = FallbackByCallableModeSupport<
-    Signature
->[CallableFallbackModeSupport<Signature>];
-
-type FallbackModes<Signature> = {
-    readonly call: CallFallbackFor<Signature>;
-    readonly construction: ConstructionFallbackFor<Signature>;
-};
-
-type FallbackForSignature<Signature> = CallFallbackFor<Signature> | ConstructionFallbackFor<Signature>;
-
-export type FallbackFor<Signature> = FallbackByMode<Signature> | FallbackForSignature<Signature>;
-
-type SequenceEntries<Entry> = readonly [Entry, Entry, ...Entry[]];
-
-type SequenceResult<Entry> = Entry extends RuntimeBehavior<BehaviorMode, infer Result> ? Result : Entry;
-
-type ReturningBehaviorFactory = {
-    (): CallBehavior<void>;
-    <SignatureOrValue>(...value: ReturnArguments<SignatureOrValue>): CallBehavior<FixedReturnValue<SignatureOrValue>>;
-};
-
-type ResolvingBehaviorFactory = <SignatureOrValue>(
-    value: ResolvedValue<SignatureOrValue>
-) => CallBehavior<Promise<ResolvedValue<SignatureOrValue>>>;
-
-type RejectingBehaviorFactory = {
-    (reason: unknown): CallBehavior<Promise<never>>;
-    <Signature extends CallableSignature>(
-        reason: ReturnType<Signature> extends Promise<unknown> ? unknown : never
-    ): CallBehavior<ReturnType<Signature>>;
-};
-
-type ThrowingBehaviorFactory = {
-    (thrown: unknown): SharedBehavior;
-    <Signature extends CallableSignature>(
-        thrown: ReturnType<Signature> extends Promise<unknown> ? never : unknown
-    ): SharedBehavior;
-};
-
-type ConstructingBehaviorFactory = <SignatureOrInstance>(
-    instance: ConstructInstance<SignatureOrInstance>
-) => ConstructionBehavior<ConstructInstance<SignatureOrInstance>>;
-
-type CallingBehaviorFactory = <Answer extends UnknownFunction<unknown>>(
-    answer: Answer
-) => SharedBehavior<ReturnType<Answer>>;
-
-type SequenceBehaviorFactory = <Entry>(
-    entries: SequenceEntries<Entry>
-) => RuntimeBehavior<BehaviorMode, SequenceResult<Entry>>;
-
-type CallRuleStarter<ArgumentPattern extends readonly unknown[], MatchKind extends 'arguments' | 'index'> = {
-    readonly calls: <Answer extends UnknownFunction<unknown>>(
-        answer: Answer
-    ) => CallRule<ArgumentPattern, ReturnType<Answer>, MatchKind>;
-    readonly rejects: RejectingRuleTerminator<ArgumentPattern, MatchKind>;
-    readonly resolves: ResolvingRuleTerminator<ArgumentPattern, MatchKind>;
-    readonly returns: ReturningRuleTerminator<ArgumentPattern, MatchKind>;
-    readonly sequence: <Entry>(
-        entries: SequenceEntries<Entry>
-    ) => CallRule<ArgumentPattern, SequenceResult<Entry>, MatchKind>;
-    readonly throws: (thrown: unknown) => CallRule<ArgumentPattern, never, MatchKind>;
-    readonly yields: YieldingRuleTerminator<ArgumentPattern, MatchKind>;
-    readonly yieldsAsync: AsyncYieldingRuleTerminator<ArgumentPattern, MatchKind>;
-    readonly yieldsAsyncFrom: AsyncYieldingFromRuleTerminator<ArgumentPattern, MatchKind>;
-    readonly yieldsFrom: YieldingFromRuleTerminator<ArgumentPattern, MatchKind>;
-};
-
-type ConstructionRuleStarter<
-    ArgumentPattern extends readonly unknown[],
-    MatchKind extends 'arguments' | 'index'
-> = {
-    readonly calls: <Answer extends UnknownFunction<unknown>>(
-        answer: Answer
-    ) => ConstructionRule<ArgumentPattern, ReturnType<Answer>, MatchKind>;
-    readonly constructs: <SignatureOrInstance>(
-        instance: ConstructInstance<SignatureOrInstance>
-    ) => ConstructionRule<ArgumentPattern, ConstructInstance<SignatureOrInstance>, MatchKind>;
-    readonly sequence: <Entry>(
-        entries: SequenceEntries<Entry>
-    ) => ConstructionRule<ArgumentPattern, SequenceResult<Entry>, MatchKind>;
-    readonly throws: (thrown: unknown) => ConstructionRule<ArgumentPattern, never, MatchKind>;
-};
-
-type ReturningRuleTerminator<ArgumentPattern extends readonly unknown[], MatchKind extends 'arguments' | 'index'> = {
-    (): CallRule<ArgumentPattern, void, MatchKind>;
-    <SignatureOrValue>(...value: ReturnArguments<SignatureOrValue>): CallRule<
-        ArgumentPattern,
-        FixedReturnValue<SignatureOrValue>,
-        MatchKind
-    >;
-};
-
-type ResolvingRuleTerminator<ArgumentPattern extends readonly unknown[], MatchKind extends 'arguments' | 'index'> = <
-    SignatureOrValue
+    MatchKind extends 'arguments' | 'index',
+    Behavior extends RuntimeBehavior<BehaviorMode, Result> = RuntimeBehavior<BehaviorMode, Result>
 >(
-    value: ResolvedValue<SignatureOrValue>
-) => CallRule<ArgumentPattern, Promise<ResolvedValue<SignatureOrValue>>, MatchKind>;
-
-type RejectingRuleTerminator<ArgumentPattern extends readonly unknown[], MatchKind extends 'arguments' | 'index'> = {
-    (reason: unknown): CallRule<ArgumentPattern, Promise<never>, MatchKind>;
-    <Signature extends CallableSignature>(
-        reason: ReturnType<Signature> extends Promise<unknown> ? unknown : never
-    ): CallRule<ArgumentPattern, ReturnType<Signature>, MatchKind>;
-};
-
-export type RuleFactory = {
-    readonly calls: CallingBehaviorFactory;
-    readonly constructs: ConstructingBehaviorFactory;
-    readonly onCall: (index: number) => CallRuleStarter<readonly unknown[], 'index'>;
-    readonly onConstruction: (index: number) => ConstructionRuleStarter<readonly unknown[], 'index'>;
-    readonly rejects: RejectingBehaviorFactory;
-    readonly resolves: ResolvingBehaviorFactory;
-    readonly returns: ReturningBehaviorFactory;
-    readonly sequence: SequenceBehaviorFactory;
-    readonly throws: ThrowingBehaviorFactory;
-    readonly yields: YieldingBehaviorFactory;
-    readonly yieldsAsync: AsyncYieldingBehaviorFactory;
-    readonly yieldsAsyncFrom: AsyncYieldingFromBehaviorFactory;
-    readonly yieldsFrom: YieldingFromBehaviorFactory;
-    readonly when: <ExpectedArguments extends readonly [unknown, ...(readonly unknown[])]>(
-        ...expectedArguments: ExpectedArguments
-    ) => CallRuleStarter<ExpectedArguments, 'arguments'>;
-    readonly whenConstructedWith: <ExpectedArguments extends readonly [unknown, ...(readonly unknown[])]>(
-        ...expectedArguments: ExpectedArguments
-    ) => ConstructionRuleStarter<ExpectedArguments, 'arguments'>;
-};
-
-function callRule<ArgumentPattern extends readonly unknown[], Result, MatchKind extends 'arguments' | 'index'>(
     criterion: CallRule<ArgumentPattern, Result, MatchKind>['criterion'],
-    behavior: RuntimeBehavior<BehaviorMode, Result>
-): CallRule<ArgumentPattern, Result, MatchKind> {
+    behavior: Behavior
+): CallRule<ArgumentPattern, Result, MatchKind, Behavior> {
     return { behavior, criterion };
 }
 
-function constructionRule<ArgumentPattern extends readonly unknown[], Result, MatchKind extends 'arguments' | 'index'>(
+function constructionRule<
+    ArgumentPattern extends readonly unknown[],
+    Result,
+    MatchKind extends 'arguments' | 'index',
+    Behavior extends RuntimeBehavior<BehaviorMode, Result> = RuntimeBehavior<BehaviorMode, Result>
+>(
     criterion: ConstructionRule<ArgumentPattern, Result, MatchKind>['criterion'],
-    behavior: RuntimeBehavior<BehaviorMode, Result>
-): ConstructionRule<ArgumentPattern, Result, MatchKind> {
+    behavior: Behavior
+): ConstructionRule<ArgumentPattern, Result, MatchKind, Behavior> {
     return { behavior, criterion };
 }
 
@@ -350,28 +67,29 @@ function createCallRuleStarter<ArgumentPattern extends readonly unknown[], Match
 ): CallRuleStarter<ArgumentPattern, MatchKind> {
     return {
         calls(answer) {
-            return callRule<ArgumentPattern, ReturnType<typeof answer>, MatchKind>(
-                criterion,
-                callsBehavior(answer)
-            );
+            return callRule(criterion, callsBehavior(answer));
         },
+        callsCallback: createCallbackRuleTerminator(criterion),
+        callsCallbackAsync: createAsyncCallbackRuleTerminator(criterion),
         rejects(reason: unknown) {
-            return callRule<ArgumentPattern, Promise<never>, MatchKind>(criterion, rejectsBehavior(reason));
+            return callRule(criterion, rejectsBehavior(reason));
         },
         resolves(value) {
-            return callRule<ArgumentPattern, Promise<typeof value>, MatchKind>(criterion, resolvesBehavior(value));
+            return callRule(criterion, resolvesBehavior(value));
         },
         returns(...value: readonly unknown[]) {
-            return callRule<ArgumentPattern, unknown, MatchKind>(criterion, returnsBehavior(value[0]));
+            return callRule(criterion, returnsBehavior(value[0]));
         },
         sequence(entries) {
-            return callRule<ArgumentPattern, SequenceResult<typeof entries[number]>, MatchKind>(
+            const behavior = sequenceBehavior<typeof entries, SequenceResult<typeof entries[number]>>(entries);
+
+            return callRule<ArgumentPattern, SequenceResult<typeof entries[number]>, MatchKind, typeof behavior>(
                 criterion,
-                sequenceBehavior<SequenceResult<typeof entries[number]>>(entries)
+                behavior
             );
         },
         throws(thrown) {
-            return callRule<ArgumentPattern, never, MatchKind>(criterion, throwsBehavior(thrown));
+            return callRule(criterion, throwsBehavior(thrown));
         },
         yields: createYieldingRuleTerminator(criterion),
         yieldsAsync: createAsyncYieldingRuleTerminator(criterion),
@@ -388,25 +106,36 @@ function createConstructionRuleStarter<
 ): ConstructionRuleStarter<ArgumentPattern, MatchKind> {
     return {
         calls(answer) {
-            return constructionRule<ArgumentPattern, ReturnType<typeof answer>, MatchKind>(
-                criterion,
-                callsBehavior(answer)
-            );
+            return constructionRule(criterion, callsBehavior(answer));
         },
         constructs<SignatureOrInstance>(instance: ConstructInstance<SignatureOrInstance>) {
-            return constructionRule<ArgumentPattern, ConstructInstance<SignatureOrInstance>, MatchKind>(
+            const behavior = constructsBehavior<ConstructInstance<SignatureOrInstance>>(instance);
+
+            return constructionRule<
+                ArgumentPattern,
+                ConstructInstance<SignatureOrInstance>,
+                MatchKind,
+                typeof behavior
+            >(
                 criterion,
-                constructsBehavior(instance)
+                behavior
             );
         },
         sequence(entries) {
-            return constructionRule<ArgumentPattern, SequenceResult<typeof entries[number]>, MatchKind>(
+            const behavior = sequenceBehavior<typeof entries, SequenceResult<typeof entries[number]>>(entries);
+
+            return constructionRule<
+                ArgumentPattern,
+                SequenceResult<typeof entries[number]>,
+                MatchKind,
+                typeof behavior
+            >(
                 criterion,
-                sequenceBehavior<SequenceResult<typeof entries[number]>>(entries)
+                behavior
             );
         },
         throws(thrown) {
-            return constructionRule<ArgumentPattern, never, MatchKind>(criterion, throwsBehavior(thrown));
+            return constructionRule(criterion, throwsBehavior(thrown));
         }
     };
 }
@@ -455,16 +184,22 @@ function createConstructionIndexRuleStarter(index: number): ConstructionRuleStar
     });
 }
 
-function createReturningBehavior(): CallBehavior<void>;
+function createReturningBehavior(): RuntimeFixedBehavior<'call', void, 'returns'>;
 function createReturningBehavior<SignatureOrValue>(
     ...value: ReturnArguments<SignatureOrValue>
-): CallBehavior<SignatureOrValue extends CallableSignature ? ReturnType<SignatureOrValue> : SignatureOrValue>;
-function createReturningBehavior(...value: readonly unknown[]): CallBehavior {
+): RuntimeFixedBehavior<
+    'call',
+    SignatureOrValue extends CallableSignature ? ReturnType<SignatureOrValue> : SignatureOrValue,
+    'returns'
+>;
+function createReturningBehavior(...value: readonly unknown[]): RuntimeFixedBehavior<'call', unknown, 'returns'> {
     return returnsBehavior(value[0]);
 }
 
 export const rule: RuleFactory = {
     calls: callsBehavior,
+    callsCallback: callsCallbackBehavior,
+    callsCallbackAsync: callsCallbackAsyncBehavior,
     constructs: constructsBehavior,
     onCall: createCallIndexRuleStarter,
     onConstruction: createConstructionIndexRuleStarter,

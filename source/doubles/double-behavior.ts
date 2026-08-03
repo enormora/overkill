@@ -29,6 +29,8 @@ export type BehaviorAnswer = {
 
 type FixedBehaviorKindByName = {
     readonly calls: 'calls';
+    readonly callsCallback: 'calls-callback';
+    readonly callsCallbackAsync: 'calls-callback-async';
     readonly constructs: 'constructs';
     readonly rejects: 'rejects';
     readonly resolves: 'resolves';
@@ -40,31 +42,49 @@ type FixedBehaviorKindByName = {
     readonly yieldsFrom: 'yields-from';
 };
 
-type FixedBehaviorKindValue = FixedBehaviorKindByName[keyof FixedBehaviorKindByName];
+export type FixedBehaviorKind = FixedBehaviorKindByName[keyof FixedBehaviorKindByName];
+export type CallbackBehaviorKind = 'calls-callback' | 'calls-callback-async';
 
-type FixedBehavior<Mode extends BehaviorMode, Result> = {
-    readonly behaviorKind: FixedBehaviorKindValue;
+export type RuntimeFixedBehavior<
+    Mode extends BehaviorMode,
+    Result,
+    Kind extends FixedBehaviorKind = FixedBehaviorKind
+> = {
+    readonly behaviorKind: Kind;
     readonly mode: Mode;
     produce: (invocation: Invocation, runtime: BehaviorRuntime) => unknown;
     result: () => Result;
 };
 
-type SequenceBehavior<Mode extends BehaviorMode, Result> = {
+export type RuntimeSequenceBehavior<
+    Mode extends BehaviorMode,
+    Result,
+    Entries extends readonly unknown[] = readonly unknown[]
+> = {
     readonly behaviorKind: 'sequence';
-    readonly entries: readonly unknown[];
+    readonly entries: Entries;
     readonly mode: Mode;
     result: () => Result;
 };
 
-type RuntimeBehaviorVariants<Mode extends BehaviorMode, Result> = {
-    readonly fixed: FixedBehavior<Mode, Result>;
-    readonly sequence: SequenceBehavior<Mode, Result>;
+type RuntimeBehaviorVariants<
+    Mode extends BehaviorMode,
+    Result,
+    Kind extends FixedBehaviorKind,
+    Entries extends readonly unknown[]
+> = {
+    readonly fixed: RuntimeFixedBehavior<Mode, Result, Kind>;
+    readonly sequence: RuntimeSequenceBehavior<Mode, Result, Entries>;
 };
 
-export type RuntimeBehavior<Mode extends BehaviorMode = BehaviorMode, Result = unknown> = RuntimeBehaviorVariants<
-    Mode,
-    Result
->[keyof RuntimeBehaviorVariants<Mode, Result>];
+export type RuntimeBehavior<
+    Mode extends BehaviorMode = BehaviorMode,
+    Result = unknown,
+    Kind extends FixedBehaviorKind = FixedBehaviorKind,
+    Entries extends readonly unknown[] = readonly unknown[]
+> = RuntimeBehaviorVariants<Mode, Result, Kind, Entries>[
+    keyof RuntimeBehaviorVariants<Mode, Result, Kind, Entries>
+];
 
 type ArgumentCriterion<Kind extends InvocationKind, ArgumentPattern extends readonly unknown[]> = {
     readonly expectedArguments: ArgumentPattern;
@@ -88,9 +108,10 @@ export type RuntimeRule<
     Kind extends InvocationKind = InvocationKind,
     ArgumentPattern extends readonly unknown[] = readonly unknown[],
     Result = unknown,
-    MatchKind extends RuleMatchKind = RuleMatchKind
+    MatchKind extends RuleMatchKind = RuleMatchKind,
+    Behavior extends RuntimeBehavior<BehaviorMode, Result> = RuntimeBehavior<BehaviorMode, Result>
 > = {
-    readonly behavior: RuntimeBehavior<BehaviorMode, Result>;
+    readonly behavior: Behavior;
     readonly criterion: RuleCriterion<Kind, ArgumentPattern, MatchKind>;
 };
 
@@ -139,7 +160,7 @@ export function ensureConstructorInstance(instance: unknown, source: string): vo
     }
 }
 
-export function returnsBehavior<Value>(value: Value): RuntimeBehavior<'call', Value> {
+export function returnsBehavior<Value>(value: Value): RuntimeFixedBehavior<'call', Value, 'returns'> {
     return {
         behaviorKind: 'returns',
         mode: 'call',
@@ -152,7 +173,7 @@ export function returnsBehavior<Value>(value: Value): RuntimeBehavior<'call', Va
     };
 }
 
-export function resolvesBehavior<Value>(value: Value): RuntimeBehavior<'call', Promise<Value>> {
+export function resolvesBehavior<Value>(value: Value): RuntimeFixedBehavior<'call', Promise<Value>, 'resolves'> {
     return {
         behaviorKind: 'resolves',
         mode: 'call',
@@ -165,7 +186,7 @@ export function resolvesBehavior<Value>(value: Value): RuntimeBehavior<'call', P
     };
 }
 
-export function rejectsBehavior(reason: unknown): RuntimeBehavior<'call', Promise<never>> {
+export function rejectsBehavior(reason: unknown): RuntimeFixedBehavior<'call', Promise<never>, 'rejects'> {
     return {
         behaviorKind: 'rejects',
         mode: 'call',
@@ -178,7 +199,7 @@ export function rejectsBehavior(reason: unknown): RuntimeBehavior<'call', Promis
     };
 }
 
-export function throwsBehavior(thrown: unknown): RuntimeBehavior<'both', never> {
+export function throwsBehavior(thrown: unknown): RuntimeFixedBehavior<'both', never, 'throws'> {
     return {
         behaviorKind: 'throws',
         mode: 'both',
@@ -191,7 +212,9 @@ export function throwsBehavior(thrown: unknown): RuntimeBehavior<'both', never> 
     };
 }
 
-export function constructsBehavior<Instance>(instance: Instance): RuntimeBehavior<'construction', Instance> {
+export function constructsBehavior<Instance>(
+    instance: Instance
+): RuntimeFixedBehavior<'construction', Instance, 'constructs'> {
     ensureConstructorInstance(instance, 'rule.constructs()');
 
     return {
@@ -208,7 +231,7 @@ export function constructsBehavior<Instance>(instance: Instance): RuntimeBehavio
 
 export function callsBehavior<Answer extends UnknownFunction<unknown>>(
     answer: Answer
-): RuntimeBehavior<'both', ReturnType<Answer>> {
+): RuntimeFixedBehavior<'both', ReturnType<Answer>, 'calls'> {
     return {
         behaviorKind: 'calls',
         mode: 'both',
@@ -272,7 +295,7 @@ function asyncDelegatedIterator(
 export function yieldsBehavior<YieldValue, ReturnValue>(
     values: readonly YieldValue[],
     returnValue: ReturnValue
-): RuntimeBehavior<'call', Generator<YieldValue, ReturnValue, unknown>> {
+): RuntimeFixedBehavior<'call', Generator<YieldValue, ReturnValue, unknown>, 'yields'> {
     const snapshot = Array.from(values);
 
     return {
@@ -296,7 +319,7 @@ export function yieldsBehavior<YieldValue, ReturnValue>(
 
 export function yieldsFromBehavior<SourceFactory extends (...arguments_: readonly unknown[]) => Iterable<unknown>>(
     sourceFactory: SourceFactory
-): RuntimeBehavior<'call', ReturnType<SourceFactory>> {
+): RuntimeFixedBehavior<'call', ReturnType<SourceFactory>, 'yields-from'> {
     return {
         behaviorKind: 'yields-from',
         mode: 'call',
@@ -321,7 +344,7 @@ export function yieldsFromBehavior<SourceFactory extends (...arguments_: readonl
 export function yieldsAsyncBehavior<YieldValue, ReturnValue>(
     values: readonly YieldValue[],
     returnValue: ReturnValue
-): RuntimeBehavior<'call', AsyncGenerator<YieldValue, ReturnValue, unknown>> {
+): RuntimeFixedBehavior<'call', AsyncGenerator<YieldValue, ReturnValue, unknown>, 'yields-async'> {
     const snapshot = Array.from(values);
 
     return {
@@ -345,7 +368,7 @@ export function yieldsAsyncBehavior<YieldValue, ReturnValue>(
 
 export function yieldsAsyncFromBehavior<
     SourceFactory extends (...arguments_: readonly unknown[]) => AsyncIterable<unknown> | Iterable<unknown>
->(sourceFactory: SourceFactory): RuntimeBehavior<'call', ReturnType<SourceFactory>> {
+>(sourceFactory: SourceFactory): RuntimeFixedBehavior<'call', ReturnType<SourceFactory>, 'yields-async-from'> {
     return {
         behaviorKind: 'yields-async-from',
         mode: 'call',
@@ -367,9 +390,9 @@ export function yieldsAsyncFromBehavior<
     };
 }
 
-export function sequenceBehavior<Result = unknown>(
-    entries: readonly [unknown, unknown, ...unknown[]]
-): RuntimeBehavior<'both', Result> {
+export function sequenceBehavior<Entries extends readonly [unknown, unknown, ...unknown[]], Result = unknown>(
+    entries: Entries
+): RuntimeSequenceBehavior<'both', Result, Entries> {
     return {
         behaviorKind: 'sequence',
         entries,
