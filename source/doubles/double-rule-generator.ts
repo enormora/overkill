@@ -1,6 +1,7 @@
 import {
     type BehaviorMode,
     type CallableSignature,
+    type RuntimeFixedBehavior,
     type RuntimeBehavior,
     type RuntimeRule,
     yieldsAsyncBehavior,
@@ -12,12 +13,14 @@ import {
 type VoidReturn = ReturnType<() => void>;
 type CallArguments<Signature> = Signature extends (...arguments_: infer Arguments) => unknown ? Arguments
     : never;
-type CallBehavior<Result = unknown> = RuntimeBehavior<'call', Result>;
+type GeneratorBehaviorKind = 'yields' | 'yields-async' | 'yields-async-from' | 'yields-from';
+type CallBehavior<Result = unknown> = RuntimeFixedBehavior<'call', Result, GeneratorBehaviorKind>;
 type CallRule<
     ArgumentPattern extends readonly unknown[],
     Result,
-    MatchKind extends 'arguments' | 'index'
-> = RuntimeRule<'call', ArgumentPattern, Result, MatchKind>;
+    MatchKind extends 'arguments' | 'index',
+    Behavior extends RuntimeBehavior<BehaviorMode, Result> = RuntimeBehavior<BehaviorMode, Result>
+> = RuntimeRule<'call', ArgumentPattern, Result, MatchKind, Behavior>;
 
 type CallCriterion<ArgumentPattern extends readonly unknown[], MatchKind extends 'arguments' | 'index'> = CallRule<
     ArgumentPattern,
@@ -169,16 +172,27 @@ export type YieldingRuleTerminator<
     <YieldValue>(values: readonly YieldValue[]): CallRule<
         ArgumentPattern,
         Generator<YieldValue, undefined, unknown>,
-        MatchKind
+        MatchKind,
+        CallBehavior<Generator<YieldValue, undefined, unknown>>
     >;
     <YieldValue, ReturnValue>(
         values: readonly YieldValue[],
         returnValue: ReturnValue
-    ): CallRule<ArgumentPattern, Generator<YieldValue, ReturnValue, unknown>, MatchKind>;
+    ): CallRule<
+        ArgumentPattern,
+        Generator<YieldValue, ReturnValue, unknown>,
+        MatchKind,
+        CallBehavior<Generator<YieldValue, ReturnValue, unknown>>
+    >;
     <Signature extends CallableSignature>(
         values: readonly SyncYieldValue<ReturnType<SyncGeneratorSignature<Signature>>>[],
         ...returnValue: SyncReturnArguments<ReturnType<SyncGeneratorSignature<Signature>>>
-    ): CallRule<ArgumentPattern, ReturnType<SyncGeneratorSignature<Signature>>, MatchKind>;
+    ): CallRule<
+        ArgumentPattern,
+        ReturnType<SyncGeneratorSignature<Signature>>,
+        MatchKind,
+        CallBehavior<ReturnType<SyncGeneratorSignature<Signature>>>
+    >;
 };
 
 export type YieldingFromRuleTerminator<
@@ -187,10 +201,15 @@ export type YieldingFromRuleTerminator<
 > = {
     <SourceFactory extends (...arguments_: readonly unknown[]) => Iterable<unknown>>(
         sourceFactory: SourceFactory
-    ): CallRule<ArgumentPattern, ReturnType<SourceFactory>, MatchKind>;
+    ): CallRule<ArgumentPattern, ReturnType<SourceFactory>, MatchKind, CallBehavior<ReturnType<SourceFactory>>>;
     <Signature extends CallableSignature>(
         sourceFactory: SyncSourceFactory<Signature>
-    ): CallRule<ArgumentPattern, ReturnType<SyncGeneratorSignature<Signature>>, MatchKind>;
+    ): CallRule<
+        ArgumentPattern,
+        ReturnType<SyncGeneratorSignature<Signature>>,
+        MatchKind,
+        CallBehavior<ReturnType<SyncGeneratorSignature<Signature>>>
+    >;
 };
 
 export type AsyncYieldingRuleTerminator<
@@ -200,16 +219,27 @@ export type AsyncYieldingRuleTerminator<
     <YieldValue>(values: readonly YieldValue[]): CallRule<
         ArgumentPattern,
         AsyncGenerator<YieldValue, undefined, unknown>,
-        MatchKind
+        MatchKind,
+        CallBehavior<AsyncGenerator<YieldValue, undefined, unknown>>
     >;
     <YieldValue, ReturnValue>(
         values: readonly YieldValue[],
         returnValue: ReturnValue
-    ): CallRule<ArgumentPattern, AsyncGenerator<YieldValue, ReturnValue, unknown>, MatchKind>;
+    ): CallRule<
+        ArgumentPattern,
+        AsyncGenerator<YieldValue, ReturnValue, unknown>,
+        MatchKind,
+        CallBehavior<AsyncGenerator<YieldValue, ReturnValue, unknown>>
+    >;
     <Signature extends CallableSignature>(
         values: readonly AsyncYieldValue<ReturnType<AsyncGeneratorSignature<Signature>>>[],
         ...returnValue: AsyncReturnArguments<ReturnType<AsyncGeneratorSignature<Signature>>>
-    ): CallRule<ArgumentPattern, ReturnType<AsyncGeneratorSignature<Signature>>, MatchKind>;
+    ): CallRule<
+        ArgumentPattern,
+        ReturnType<AsyncGeneratorSignature<Signature>>,
+        MatchKind,
+        CallBehavior<ReturnType<AsyncGeneratorSignature<Signature>>>
+    >;
 };
 
 export type AsyncYieldingFromRuleTerminator<
@@ -218,16 +248,26 @@ export type AsyncYieldingFromRuleTerminator<
 > = {
     <SourceFactory extends (...arguments_: readonly unknown[]) => AsyncIterable<unknown> | Iterable<unknown>>(
         sourceFactory: SourceFactory
-    ): CallRule<ArgumentPattern, ReturnType<SourceFactory>, MatchKind>;
+    ): CallRule<ArgumentPattern, ReturnType<SourceFactory>, MatchKind, CallBehavior<ReturnType<SourceFactory>>>;
     <Signature extends CallableSignature>(
         sourceFactory: AsyncSourceFactory<Signature>
-    ): CallRule<ArgumentPattern, ReturnType<AsyncGeneratorSignature<Signature>>, MatchKind>;
+    ): CallRule<
+        ArgumentPattern,
+        ReturnType<AsyncGeneratorSignature<Signature>>,
+        MatchKind,
+        CallBehavior<ReturnType<AsyncGeneratorSignature<Signature>>>
+    >;
 };
 
-function callRule<ArgumentPattern extends readonly unknown[], Result, MatchKind extends 'arguments' | 'index'>(
+function callRule<
+    ArgumentPattern extends readonly unknown[],
+    Result,
+    MatchKind extends 'arguments' | 'index',
+    Behavior extends RuntimeBehavior<BehaviorMode, Result> = RuntimeBehavior<BehaviorMode, Result>
+>(
     criterion: CallCriterion<ArgumentPattern, MatchKind>,
-    behavior: RuntimeBehavior<BehaviorMode, Result>
-): CallRule<ArgumentPattern, Result, MatchKind> {
+    behavior: Behavior
+): CallRule<ArgumentPattern, Result, MatchKind, Behavior> {
     return { behavior, criterion };
 }
 
@@ -240,20 +280,36 @@ export function createYieldingRuleTerminator<
     function yields<YieldValue>(values: readonly YieldValue[]): CallRule<
         ArgumentPattern,
         Generator<YieldValue, undefined, unknown>,
-        MatchKind
+        MatchKind,
+        CallBehavior<Generator<YieldValue, undefined, unknown>>
     >;
     function yields<YieldValue, ReturnValue>(
         values: readonly YieldValue[],
         returnValue: ReturnValue
-    ): CallRule<ArgumentPattern, Generator<YieldValue, ReturnValue, unknown>, MatchKind>;
+    ): CallRule<
+        ArgumentPattern,
+        Generator<YieldValue, ReturnValue, unknown>,
+        MatchKind,
+        CallBehavior<Generator<YieldValue, ReturnValue, unknown>>
+    >;
     function yields<Signature extends CallableSignature>(
         values: readonly SyncYieldValue<ReturnType<SyncGeneratorSignature<Signature>>>[],
         ...returnValue: SyncReturnArguments<ReturnType<SyncGeneratorSignature<Signature>>>
-    ): CallRule<ArgumentPattern, ReturnType<SyncGeneratorSignature<Signature>>, MatchKind>;
+    ): CallRule<
+        ArgumentPattern,
+        ReturnType<SyncGeneratorSignature<Signature>>,
+        MatchKind,
+        CallBehavior<ReturnType<SyncGeneratorSignature<Signature>>>
+    >;
     function yields(
         values: readonly unknown[],
         ...returnValue: readonly [] | readonly [unknown]
-    ): CallRule<ArgumentPattern, Generator<unknown, unknown, unknown>, MatchKind> {
+    ): CallRule<
+        ArgumentPattern,
+        Generator<unknown, unknown, unknown>,
+        MatchKind,
+        CallBehavior<Generator<unknown, unknown, unknown>>
+    > {
         return callRule(criterion, yieldsBehavior(values, returnValue[0]));
     }
 
@@ -268,13 +324,18 @@ export function createYieldingFromRuleTerminator<
 ): YieldingFromRuleTerminator<ArgumentPattern, MatchKind> {
     function yieldsFrom<SourceFactory extends (...arguments_: readonly unknown[]) => Iterable<unknown>>(
         sourceFactory: SourceFactory
-    ): CallRule<ArgumentPattern, ReturnType<SourceFactory>, MatchKind>;
+    ): CallRule<ArgumentPattern, ReturnType<SourceFactory>, MatchKind, CallBehavior<ReturnType<SourceFactory>>>;
     function yieldsFrom<Signature extends CallableSignature>(
         sourceFactory: SyncSourceFactory<Signature>
-    ): CallRule<ArgumentPattern, ReturnType<SyncGeneratorSignature<Signature>>, MatchKind>;
+    ): CallRule<
+        ArgumentPattern,
+        ReturnType<SyncGeneratorSignature<Signature>>,
+        MatchKind,
+        CallBehavior<ReturnType<SyncGeneratorSignature<Signature>>>
+    >;
     function yieldsFrom(
         sourceFactory: (...arguments_: readonly unknown[]) => Iterable<unknown>
-    ): CallRule<ArgumentPattern, Iterable<unknown>, MatchKind> {
+    ): CallRule<ArgumentPattern, Iterable<unknown>, MatchKind, CallBehavior<Iterable<unknown>>> {
         return callRule(criterion, yieldsFromBehavior(sourceFactory));
     }
 
@@ -290,20 +351,36 @@ export function createAsyncYieldingRuleTerminator<
     function yieldsAsync<YieldValue>(values: readonly YieldValue[]): CallRule<
         ArgumentPattern,
         AsyncGenerator<YieldValue, undefined, unknown>,
-        MatchKind
+        MatchKind,
+        CallBehavior<AsyncGenerator<YieldValue, undefined, unknown>>
     >;
     function yieldsAsync<YieldValue, ReturnValue>(
         values: readonly YieldValue[],
         returnValue: ReturnValue
-    ): CallRule<ArgumentPattern, AsyncGenerator<YieldValue, ReturnValue, unknown>, MatchKind>;
+    ): CallRule<
+        ArgumentPattern,
+        AsyncGenerator<YieldValue, ReturnValue, unknown>,
+        MatchKind,
+        CallBehavior<AsyncGenerator<YieldValue, ReturnValue, unknown>>
+    >;
     function yieldsAsync<Signature extends CallableSignature>(
         values: readonly AsyncYieldValue<ReturnType<AsyncGeneratorSignature<Signature>>>[],
         ...returnValue: AsyncReturnArguments<ReturnType<AsyncGeneratorSignature<Signature>>>
-    ): CallRule<ArgumentPattern, ReturnType<AsyncGeneratorSignature<Signature>>, MatchKind>;
+    ): CallRule<
+        ArgumentPattern,
+        ReturnType<AsyncGeneratorSignature<Signature>>,
+        MatchKind,
+        CallBehavior<ReturnType<AsyncGeneratorSignature<Signature>>>
+    >;
     function yieldsAsync(
         values: readonly unknown[],
         ...returnValue: readonly [] | readonly [unknown]
-    ): CallRule<ArgumentPattern, AsyncGenerator<unknown, unknown, unknown>, MatchKind> {
+    ): CallRule<
+        ArgumentPattern,
+        AsyncGenerator<unknown, unknown, unknown>,
+        MatchKind,
+        CallBehavior<AsyncGenerator<unknown, unknown, unknown>>
+    > {
         return callRule(criterion, yieldsAsyncBehavior(values, returnValue[0]));
     }
 
@@ -318,13 +395,28 @@ export function createAsyncYieldingFromRuleTerminator<
 ): AsyncYieldingFromRuleTerminator<ArgumentPattern, MatchKind> {
     function yieldsAsyncFrom<
         SourceFactory extends (...arguments_: readonly unknown[]) => AsyncIterable<unknown> | Iterable<unknown>
-    >(sourceFactory: SourceFactory): CallRule<ArgumentPattern, ReturnType<SourceFactory>, MatchKind>;
+    >(sourceFactory: SourceFactory): CallRule<
+        ArgumentPattern,
+        ReturnType<SourceFactory>,
+        MatchKind,
+        CallBehavior<ReturnType<SourceFactory>>
+    >;
     function yieldsAsyncFrom<Signature extends CallableSignature>(
         sourceFactory: AsyncSourceFactory<Signature>
-    ): CallRule<ArgumentPattern, ReturnType<AsyncGeneratorSignature<Signature>>, MatchKind>;
+    ): CallRule<
+        ArgumentPattern,
+        ReturnType<AsyncGeneratorSignature<Signature>>,
+        MatchKind,
+        CallBehavior<ReturnType<AsyncGeneratorSignature<Signature>>>
+    >;
     function yieldsAsyncFrom(
         sourceFactory: (...arguments_: readonly unknown[]) => AsyncIterable<unknown> | Iterable<unknown>
-    ): CallRule<ArgumentPattern, AsyncIterable<unknown> | Iterable<unknown>, MatchKind> {
+    ): CallRule<
+        ArgumentPattern,
+        AsyncIterable<unknown> | Iterable<unknown>,
+        MatchKind,
+        CallBehavior<AsyncIterable<unknown> | Iterable<unknown>>
+    > {
         return callRule(criterion, yieldsAsyncFromBehavior(sourceFactory));
     }
 

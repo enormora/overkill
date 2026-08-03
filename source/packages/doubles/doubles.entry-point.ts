@@ -27,7 +27,7 @@ export type {
 } from '../../doubles/double-history-record.ts';
 export type {
     RuleFactory
-} from '../../doubles/double-rule.ts';
+} from '../../doubles/double-rule-types.ts';
 export type {
     AsyncDisposableConfiguration,
     DisposableConfiguration,

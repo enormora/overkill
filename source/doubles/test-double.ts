@@ -34,19 +34,21 @@ import type {
     SyncYieldValue
 } from './double-rule-generator.ts';
 import type {
-    CallArguments,
-    CallReturn,
     ConstructInstance,
     ConstructSignature,
-    ConstructionArguments,
-    ConstructionInstance,
     DoubleRuleFor,
     FallbackFor,
     ResolvedSignature,
     ResolvedValue,
     ReturnArguments,
     ReturnSignature
-} from './double-rule.ts';
+} from './double-rule-types.ts';
+import type {
+    CallArguments,
+    CallReturn,
+    ConstructionArguments,
+    ConstructionInstance
+} from './double-signature.ts';
 import { createChronologyScope, type ChronologyScope } from './double-chronology.ts';
 import { createDouble, modeSet, type SupportedModes } from './double-runtime.ts';
 
