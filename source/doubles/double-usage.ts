@@ -11,6 +11,13 @@ import {
     onceReference
 } from './double-usage-count-assertion.ts';
 import {
+    disposedOnceReference,
+    disposedReference,
+    disposeCountReference,
+    disposeOrderReference,
+    notDisposedReference
+} from './double-usage-disposal-assertion.ts';
+import {
     iteratedReference,
     iteratorEventCountReference,
     notIteratedReference,
@@ -62,6 +69,10 @@ export type DoubleUsageAssertions = {
     readonly constructedWithPrefix: PrefixReference;
     readonly constructionCount: CountReference;
     readonly constructionOrder: OrderReference;
+    readonly disposeCount: CountReference;
+    readonly disposeOrder: OrderReference;
+    readonly disposed: ValueReference;
+    readonly disposedOnce: ValueReference;
     readonly interacted: ValueReference;
     readonly interactedOnce: ValueReference;
     readonly interactedOnceWith: ArgumentReference;
@@ -89,6 +100,7 @@ export type DoubleUsageAssertions = {
     readonly notConstructed: ValueReference;
     readonly notConstructedWith: ArgumentReference;
     readonly notConstructedWithPrefix: PrefixReference;
+    readonly notDisposed: ValueReference;
     readonly notInteracted: ValueReference;
     readonly notInteractedWith: ArgumentReference;
     readonly notInteractedWithPrefix: PrefixReference;
@@ -183,6 +195,10 @@ export const doubleUsage: DoubleUsageAssertions = {
     }),
     constructionCount: countReference('doubleUsage.constructionCount', 'construction'),
     constructionOrder: orderReference('doubleUsage.constructionOrder', 'construction'),
+    disposeCount: disposeCountReference('doubleUsage.disposeCount'),
+    disposeOrder: disposeOrderReference('doubleUsage.disposeOrder'),
+    disposed: disposedReference('doubleUsage.disposed'),
+    disposedOnce: disposedOnceReference('doubleUsage.disposedOnce'),
     interacted: atLeastOneReference('doubleUsage.interacted', 'interaction'),
     interactedOnce: onceReference('doubleUsage.interactedOnce', 'interaction'),
     interactedOnceWith: argumentReference('doubleUsage.interactedOnceWith', {
@@ -298,6 +314,7 @@ export const doubleUsage: DoubleUsageAssertions = {
         negative: true,
         position: 'any'
     }),
+    notDisposed: notDisposedReference('doubleUsage.notDisposed'),
     notInteracted: noEventsReference('doubleUsage.notInteracted', 'interaction'),
     notInteractedWith: argumentReference('doubleUsage.notInteractedWith', {
         match: 'partial',

@@ -271,10 +271,55 @@ assertion context:
 - `case.assert(doubleUsage.iteratorEventCount, double, count)`
 - `case.assert(doubleUsage.yieldCount, double, count)`
 - `case.assert(doubleUsage.yieldedExactly, double, values)`
+- `case.assert(doubleUsage.disposed, disposable)`
+- `case.assert(doubleUsage.disposedOnce, disposable)`
+- `case.assert(doubleUsage.disposeCount, disposable, count)`
+- `case.assert(doubleUsage.disposeOrder, [ first, second ])`
 
 These assertions should read construction records, not infer constructor usage
 from return values. A double can return any object from a normal call, and that
 must not count as construction.
+
+## Native Protocol Doubles
+
+Some JavaScript dependencies are protocol objects rather than functions. The
+doubles package should cover the native protocols that are cumbersome to
+implement correctly by hand:
+
+- `testIterator`
+- `testIterable`
+- `testAsyncIterator`
+- `testAsyncIterable`
+- `testDisposable`
+- `testAsyncDisposable`
+
+`testIterator` models one consumable sync cursor. It should create a
+well-formed iterator with `Iterator.from(...)`, then install tracked own
+`next`, `return`, and `throw` method doubles so early-return values are
+preserved. `testIterable` remains valuable because it models a reusable source:
+each `[Symbol.iterator]()` call returns a fresh well-formed iterator.
+
+Async iterator doubles should be structurally well formed with
+`[Symbol.asyncIterator]()` returning themselves. Do not depend on
+`AsyncIterator.from` until it is available in the supported runtime baseline.
+
+Disposable doubles model `using` and `await using` directly:
+
+```ts
+const resource = testDisposable({
+    dispose: { fallback: rule.throws(new Error('expected')) }
+});
+
+using value = resource;
+
+case.assert(doubleUsage.disposedOnce, resource);
+case.assert(doubleUsage.calledOnce, resource.dispose);
+```
+
+Protocol objects should not expose public aggregate history properties like
+`calls`, `iteratorEvents`, or `reset`. Their protocol methods are inspectable
+`TestDouble` functions, and `doubleUsage` may read hidden protocol metadata for
+protocol-level iterator and disposal assertions.
 
 ## Why Not A Sinon-Style Surface
 

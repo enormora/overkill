@@ -9,12 +9,28 @@ restore registry.
 ## Import
 
 ```ts
-import { doubleUsage, rule, testDouble } from '@overkill-dev/doubles';
+import {
+    doubleUsage,
+    rule,
+    testAsyncDisposable,
+    testAsyncIterable,
+    testAsyncIterator,
+    testDisposable,
+    testDouble,
+    testIterable,
+    testIterator
+} from '@overkill-dev/doubles';
 ```
 
 Public runtime values:
 
 - `testDouble`: creates callable or constructable test doubles.
+- `testIterator`: creates one consumable sync iterator double.
+- `testIterable`: creates a reusable sync iterable double.
+- `testAsyncIterator`: creates one consumable async iterator double.
+- `testAsyncIterable`: creates a reusable async iterable double.
+- `testDisposable`: creates a sync disposable double for `using`.
+- `testAsyncDisposable`: creates an async disposable double for `await using`.
 - `rule`: builds reusable behavior rules.
 - `doubleUsage`: assertion references for `case.assert(...)`.
 
@@ -179,6 +195,58 @@ Iterator records are created only for iterators produced by `yields`,
 - `callIndex`, `iteratorIndex`, and `index`: related call and iterator event
   positions.
 
+## Protocol Doubles
+
+Use protocol doubles when the dependency itself is an iterator, iterable, or
+disposable object rather than a function that returns one.
+
+```ts
+const values = testIterator.yields([ 'created', 'updated' ]);
+
+values.next();
+
+case.assert(doubleUsage.iterated, values);
+case.assert(doubleUsage.yieldedExactly, values, [ 'created' ]);
+```
+
+`testIterator` creates one consumable well-formed iterator. It works with
+`for...of`, exposes platform iterator helpers when the runtime provides them,
+and records `next`, `return`, and `throw` through method doubles.
+
+```ts
+const source = testIterable.yields([ 'created', 'updated' ]);
+
+[ ...source ];
+[ ...source ];
+
+case.assert(doubleUsage.yieldedExactly, source, [
+    'created',
+    'updated',
+    'created',
+    'updated'
+]);
+```
+
+`testIterable` creates a reusable iterable. Each `[Symbol.iterator]()` call
+returns a fresh well-formed iterator. Async variants mirror these shapes with
+`for await...of`.
+
+Disposable protocol methods are inspectable doubles too:
+
+```ts
+const resource = testDisposable({
+    dispose: { fallback: rule.throws(new Error('expected')) }
+});
+
+using value = resource;
+
+case.assert(doubleUsage.disposedOnce, resource);
+case.assert(doubleUsage.calledOnce, resource.dispose);
+```
+
+`testAsyncDisposable` installs `[Symbol.asyncDispose]()` for `await using`,
+exposes `.asyncDispose` for inspection, and defaults to resolving `undefined`.
+
 ## Assertions
 
 `doubleUsage` contains assertion references for Overkill's engine-owned
@@ -225,6 +293,11 @@ case.assert(doubleUsage.calledWith, ping, []);
 - `doubleUsage.notConstructed(double)`: no constructions.
 - `doubleUsage.constructionCount(double, count)`: exact construction count.
 - `doubleUsage.constructedOnce(double)`: exactly one construction.
+- `doubleUsage.disposed(disposable)`: at least one disposal.
+- `doubleUsage.notDisposed(disposable)`: no disposal.
+- `doubleUsage.disposeCount(disposable, count)`: exact disposal count.
+- `doubleUsage.disposedOnce(disposable)`: exactly one disposal.
+- `doubleUsage.disposeOrder([a, b, ...])`: disposal order.
 - `doubleUsage.iterated(double)`: at least one tracked iterator event.
 - `doubleUsage.notIterated(double)`: no tracked iterator events.
 - `doubleUsage.iteratorEventCount(double, count)`: exact tracked iterator event
