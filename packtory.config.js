@@ -16,12 +16,25 @@ const packageMetadata = {
 
 export const config = {
     registrySettings: {
-        token: process.env.NPM_TOKEN ?? 'packtory-dry-run-token'
+        auth: {
+            publish: { type: 'npm-oidc', provider: 'auto' },
+            metadata: 'auto'
+        }
+    },
+    checks: {
+        typeScriptIntegrity: {
+            enabled: true,
+            declarations: 'all'
+        }
     },
     commonPackageSettings: {
         sourcesFolder: path.join(projectFolder, 'target/build/source'),
         mainPackageJson: rootPackageJson,
-        publishSettings: { access: 'public' },
+        includeSourceMapFiles: true,
+        publishSettings: {
+            access: 'public',
+            provenance: { type: 'auto' }
+        },
         additionalFiles: [ { sourceFilePath: path.join(projectFolder, 'LICENSE'), targetFilePath: 'LICENSE' } ]
     },
     packages: [
