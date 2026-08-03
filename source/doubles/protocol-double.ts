@@ -1,6 +1,10 @@
 import {
     createTestAsyncDisposable,
-    createTestDisposable
+    createTestDisposable,
+    type AsyncDisposableConfiguration,
+    type DisposableConfiguration,
+    type TestAsyncDisposable,
+    type TestDisposable
 } from './protocol-disposable-double.ts';
 import {
     createAsyncIterableFromFactory,
@@ -16,25 +20,25 @@ import {
     createSyncIterableFromMethod,
     createSyncIteratorFromMethods,
     createYieldingAsyncMethods,
-    createYieldingSyncMethods
+    createYieldingSyncMethods,
+    type AsyncIterableConfiguration,
+    type AsyncIteratorConfiguration,
+    type AsyncIteratorSource,
+    type SyncIterableConfiguration,
+    type SyncIteratorConfiguration,
+    type SyncIteratorSource,
+    type TestAsyncIterable,
+    type TestAsyncIterator,
+    type TestIterable,
+    type TestIterator
 } from './protocol-iterator-double.ts';
-import { testDouble } from './test-double.ts';
-import type {
-    AsyncDisposableConfiguration,
-    AsyncIterableConfiguration,
-    AsyncIteratorConfiguration,
-    AsyncIteratorSource,
-    DisposableConfiguration,
-    SyncIterableConfiguration,
-    SyncIteratorConfiguration,
-    SyncIteratorSource,
-    TestAsyncDisposable,
-    TestAsyncIterable,
-    TestAsyncIterator,
-    TestDisposable,
-    TestIterable,
-    TestIterator
-} from './protocol-double-types.ts';
+import {
+    testDouble,
+    type TestDoubleConfiguration
+} from './test-double.ts';
+import type { CallableSignature } from './double-behavior.ts';
+
+export type ProtocolMethodConfiguration<Signature extends CallableSignature> = TestDoubleConfiguration<Signature>;
 
 export type TestIteratorFactory = {
     <YieldValue = unknown, ReturnValue = undefined, NextValue = unknown>(
