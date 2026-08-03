@@ -2,7 +2,16 @@ import { createWallClock } from '@enormora/wall-clock';
 import { createEngine as createEngineInstance, type Engine } from '../../engine/engine.ts';
 import { createExecute } from '../../engine/execution.ts';
 import { createReporterDispatcher } from '../../engine/reporter.ts';
+import type { RunIfMainOptions } from '../../engine/run-if-main.ts';
 import type { SuiteOptions, TableOptions, TestCaseOptions, TestNode } from '../../engine/test-node.ts';
+
+function readProcessExitCode(): number | string | null | undefined {
+    return process.exitCode;
+}
+
+function writeProcessExitCode(exitCode: number): void {
+    process.exitCode = exitCode;
+}
 
 export function createEngine(): Engine {
     const wallClock = createWallClock();
@@ -11,7 +20,11 @@ export function createEngine(): Engine {
         execute: createExecute({
             reporterDispatcher: createReporterDispatcher({ wallClock }),
             wallClock
-        })
+        }),
+        nodeVersion: process.versions.node,
+        readExitCode: readProcessExitCode,
+        wallClock,
+        writeExitCode: writeProcessExitCode
     });
 }
 
@@ -40,8 +53,17 @@ export async function execute(
     return await defaultEngine.execute(testPlan, options);
 }
 
+export async function runIfMain(
+    meta: Readonly<ImportMeta>,
+    testNode: TestNode,
+    options?: RunIfMainOptions
+): Promise<void> {
+    await defaultEngine.runIfMain(meta, testNode, options);
+}
+
 export type { Engine } from '../../engine/engine.ts';
 export type { Execute, ExecuteOptions } from '../../engine/execution.ts';
+export type { RunIfMain, RunIfMainOptions } from '../../engine/run-if-main.ts';
 export { formatCaseId } from '../../engine/identity.ts';
 export type { CaseId, TestId } from '../../engine/identity.ts';
 export type {

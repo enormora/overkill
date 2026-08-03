@@ -11,8 +11,10 @@ import {
     createTestPlan,
     execute,
     formatCaseId,
+    runIfMain,
     serializeValue,
     type Engine,
+    type RunIfMainOptions,
     type RunResult,
     type SourceLocation,
     type TestCase
@@ -174,10 +176,27 @@ await test('consumer imports top-level @overkill-dev/engine exports and executes
         createTestCase,
         createTestPlan,
         execute,
-        formatCaseId
+        formatCaseId,
+        runIfMain
     };
 
     assertSmokeResult(await executeSmokePlan(topLevelEngine));
+});
+
+await test('consumer imports top-level @overkill-dev/engine runIfMain', async function () {
+    const testCase = createTestCase({
+        body(testContext) {
+            testContext.assert.true(true, { message: 'passes' });
+            return testContext.assert.collect();
+        },
+        metadata: {},
+        name: 'passes'
+    });
+    const options: RunIfMainOptions = {
+        runFacts: { smoke: true }
+    };
+
+    await runIfMain({ main: false } as ImportMeta, testCase, options);
 });
 
 await test('consumer imports createEngine() and executes a TestPlan', async function () {

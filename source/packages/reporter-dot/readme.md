@@ -9,7 +9,9 @@ import { execute } from '@overkill-dev/engine';
 import { createDotReporter } from '@overkill-dev/reporter-dot';
 
 await execute(testPlan, {
-    reporters: [ createDotReporter() ]
+    reporters: [ createDotReporter() ],
+    runFacts: {},
+    startedAt: new Date().toISOString()
 });
 ```
 

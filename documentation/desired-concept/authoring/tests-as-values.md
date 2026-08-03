@@ -150,6 +150,7 @@ authoring helper:
 
 ```ts
 import { runIfMain, suite, test } from '#tests/micro';
+import { createDotReporter } from '@overkill-dev/reporter-dot';
 
 export const spec = suite('users', [
     test('build', (scope) => {
@@ -158,7 +159,9 @@ export const spec = suite('users', [
     })
 ]);
 
-await runIfMain(import.meta, spec);
+await runIfMain(import.meta, spec, {
+    reporters: [ createDotReporter() ]
+});
 ```
 
 `runIfMain(...)` is not a second-class escape hatch. It is the supported
@@ -166,6 +169,25 @@ companion path for teams that want a test file to behave like an ordinary
 Node entrypoint while still exporting the same suite value for tooling.
 What the concept rejects is silent bare-`node` auto-detection of a
 conventional exported suite value without that explicit helper.
+
+For multi-file bare-`node` runs, use an aggregate suite entrypoint:
+
+```ts
+import { runIfMain, suite } from '#tests/micro';
+import { createDotReporter } from '@overkill-dev/reporter-dot';
+import { spec as orders } from './orders.test.ts';
+import { spec as users } from './users.test.ts';
+
+export const spec = suite('all', [ users, orders ]);
+
+await runIfMain(import.meta, spec, {
+    reporters: [ createDotReporter() ]
+});
+```
+
+The aggregate entrypoint is ordinary tests-as-values composition. Leaf files
+keep exporting their `spec`; only the aggregate file needs `runIfMain(...)` if
+the team wants one bare-`node` command for many files.
 
 ## Why This Is Better
 

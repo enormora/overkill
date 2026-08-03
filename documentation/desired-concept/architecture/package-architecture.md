@@ -25,7 +25,9 @@ For tiny projects, this layer should already be usable directly. A consumer
 can import `createSuite`, `createTestCase`, `createTestPlan`, and `execute`
 from `@overkill-dev/engine`, build a suite, freeze it into a `TestPlan`, and
 call `execute(testPlan)` to receive a `RunResult` without pulling in the
-higher-level DSL.
+higher-level DSL. They can also call `runIfMain(import.meta, root, options?)`
+for a direct Node entrypoint when they do not need discovery or runner
+configuration.
 
 Those primitives should also be the only way to create valid engine
 `TestNode`s. Shape-compatible plain objects are not enough: engine-branded
@@ -52,7 +54,7 @@ semantic owner package. In practice that means:
 Recommended public split:
 
 ```ts
-import { execute } from '@overkill-dev/engine';
+import { execute, runIfMain } from '@overkill-dev/engine';
 import { list, mergeResults, replay, replayWitness, resolveRun, run, watch } from '@overkill-dev/run';
 ```
 
@@ -62,6 +64,8 @@ Conceptually:
 - `run(request)` is shorthand for planning plus execution
 - `execute(testPlan)` is the lower-level engine entrypoint once planning is
   already done, and it returns a `RunResult`
+- `runIfMain(import.meta, root, options?)` is the lower-level self-running
+  entrypoint for one already-authored root
 
 ## Default Test Authoring
 
@@ -91,7 +95,7 @@ The preferred DX should be:
 
 - a test file exports a conventional value such as `spec`
 - the canonical direct-file command is `overkill run path/to/file.test.ts`
-- `runIfMain(import.meta, spec)` is a fully supported companion path for
+- `runIfMain(import.meta, spec, options?)` is a fully supported companion path for
   users who want bare `node path/to/file.test.ts`
 - bare `node` execution should not be promised to auto-discover a
   conventional exported suite value without that explicit helper unless

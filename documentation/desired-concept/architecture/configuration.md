@@ -23,7 +23,9 @@ It does not need:
 - loader magic
 
 Engine consumers configure it directly through ordinary TypeScript values and
-function calls.
+function calls. The engine-owned `runIfMain(import.meta, root, options?)`
+helper follows that rule: its third argument is execution options such as
+reporters and run facts, not project configuration.
 
 ## Higher-Level Configuration
 

@@ -9,12 +9,13 @@ Top-level API:
 - `createTable(options)`
 - `createTestPlan(root)`
 - `execute(testPlan)`
+- `runIfMain(import.meta, root, options?)`
 - `createEngine()`
 - `formatCaseId(caseId)`
 - `validateReporterSinks(reporters)`
 - `captureSourceLocation()`
 - `unknownSourceLocation`
-- `CaseId`, `TestId`, `TestPlan`, `ExecuteOptions`, `NonEmptyReadonlyArray`, `DeepComparable`
+- `CaseId`, `TestId`, `TestPlan`, `ExecuteOptions`, `RunIfMainOptions`, `NonEmptyReadonlyArray`, `DeepComparable`
 - `Reporter`, `ReporterEvent`, `RealTimeReporter`, `FinalResultReporter`, `RunFacts`, `SinkDeclaration`
 - `RunResult`, `TestOutcome`, `PassOutcome`, `FailOutcome`, `SkipOutcome`, `InconclusiveOutcome`
 - `AssertionNode`, `AssertionResult`, `AssertAssertionFacade`, `TestScopeAssertContext`
@@ -25,6 +26,45 @@ Top-level API:
 The top-level constructors share one default engine instance. Use
 `createEngine()` when a collection needs isolated construction state for
 `defined` counts and orphan detection.
+
+Direct Node execution:
+
+```ts
+import { createTestCase, runIfMain } from '@overkill-dev/engine';
+import { createDotReporter } from '@overkill-dev/reporter-dot';
+
+export const spec = createTestCase({
+    body(scope) {
+        scope.assert.true(true, { message: 'passes' });
+        return scope.assert.collect();
+    },
+    metadata: {},
+    name: 'passes'
+});
+
+await runIfMain(import.meta, spec, {
+    reporters: [ createDotReporter() ]
+});
+```
+
+Aggregate direct Node execution:
+
+```ts
+import { createSuite, runIfMain } from '@overkill-dev/engine';
+import { createDotReporter } from '@overkill-dev/reporter-dot';
+import { spec as orders } from './orders.test.ts';
+import { spec as users } from './users.test.ts';
+
+export const spec = createSuite({
+    children: [ users, orders ],
+    metadata: {},
+    name: 'all'
+});
+
+await runIfMain(import.meta, spec, {
+    reporters: [ createDotReporter() ]
+});
+```
 
 Reporter lifecycle:
 
