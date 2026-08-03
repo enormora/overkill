@@ -71,13 +71,13 @@ registerTest('execute() counts throws and awaited rejects as assertion boundarie
             await Promise.reject(new Error('expected'));
         }, { message: 'expected' });
 
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(result.summary.passed, 1);
 });
 
-registerTest('execute() rejects unawaited async rejects assertions at done', async function () {
+registerTest('execute() rejects unawaited async rejects assertions at collect', async function () {
     const result = await executeSingleBody(function body(testContext: TestContext) {
         const pendingAssertions = [
             testContext.assert.rejects(async function rejectExpectedError() {
@@ -86,16 +86,16 @@ registerTest('execute() rejects unawaited async rejects assertions at done', asy
         ];
 
         assert.equal(pendingAssertions.length, 1);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.deepStrictEqual(firstFailOutcome(result).failures, [
         {
             actual: 'pending async assertion',
             code: 'pending-async-assertion',
-            expected: 'all async assertions awaited before done',
+            expected: 'all async assertions awaited before collect',
             kind: 'test-contract',
-            summary: 'Async assertion must be awaited before case.assert.done().'
+            summary: 'Async assertion must be awaited before case.assert.collect().'
         }
     ]);
 });
@@ -108,7 +108,7 @@ registerTest('execute() treats sync throws from rejects thunks as body errors', 
     const result = await executeSingleBody(async function body(testContext: TestContext) {
         await testContext.assert.rejects(throwBeforePromise, { message: 'sync boom' });
 
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(firstBodyError(firstFailOutcome(result)).error.message, 'sync boom');
@@ -124,7 +124,7 @@ registerTest('execute() reports throws matcher field failures under one composit
             { message: 'throw contract' }
         );
 
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
     const composite = firstCompositeCheck(firstFailOutcome(result));
 

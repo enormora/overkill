@@ -63,7 +63,7 @@ registerTest('execute() rejects primitive facade deep assertion operands at runt
         const actual: unknown = 1;
 
         testContext.assert.deepEqual(actual, { id: 1 });
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assertInvalidDeepAssertionOperand(result, {
@@ -105,7 +105,7 @@ registerTest('execute() rejects primitive composite deep assertion members at ru
     });
     const result = await executeSingleBody(function body(testContext: TestContext) {
         testContext.assert(primitiveMember);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assertInvalidDeepAssertionOperand(result, {
@@ -128,7 +128,7 @@ registerTest('execute() rejects primitive async composite deep assertion members
     });
     const result = await executeSingleBody(async function body(testContext: TestContext) {
         await testContext.assert(primitiveExpectedMember);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assertInvalidDeepAssertionOperand(result, {

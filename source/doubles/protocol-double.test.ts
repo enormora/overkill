@@ -336,7 +336,7 @@ registerTest('protocol iterator assertions accept protocol objects', async funct
         testContext.assert(doubleUsage.iteratorEventCount, source, 3);
         testContext.assert(doubleUsage.yieldCount, source, 2);
         testContext.assert(doubleUsage.yieldedExactly, source, [ 'created', 'updated' ]);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(result.summary.passed, 1);
@@ -364,7 +364,7 @@ registerTest('disposal assertions accept disposable protocol objects', async fun
         }
 
         assertDisposalUsage(testContext, first, second);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(result.summary.passed, 1);
@@ -374,7 +374,7 @@ registerTest('disposal assertions accept disposable protocol objects', async fun
 registerTest('disposal assertions reject invalid protocol inputs', async function () {
     const result = await executeSingleBody(function body(testContext: TestContext) {
         testContext.assert(doubleUsage.disposed, {});
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(result.summary.failed, 1);
@@ -383,7 +383,7 @@ registerTest('disposal assertions reject invalid protocol inputs', async functio
 registerTest('disposal assertions validate counts and order inputs', async function () {
     const result = await executeSingleBody(function body(testContext: TestContext) {
         testContext.assert(doubleUsage.disposeCount, testDisposable(), -1);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(result.summary.failed, 1);
@@ -392,7 +392,7 @@ registerTest('disposal assertions validate counts and order inputs', async funct
 registerTest('disposal order rejects invalid protocol entries', async function () {
     const result = await executeSingleBody(function body(testContext: TestContext) {
         testContext.assert(doubleUsage.disposeOrder, [ {}, testDisposable() ]);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(result.summary.failed, 1);
@@ -401,7 +401,7 @@ registerTest('disposal order rejects invalid protocol entries', async function (
 registerTest('disposal order reports missing disposal events', async function () {
     const result = await executeSingleBody(function body(testContext: TestContext) {
         testContext.assert(doubleUsage.disposeOrder, [ testDisposable(), testDisposable() ]);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(result.summary.failed, 1);
@@ -412,7 +412,7 @@ registerTest('disposal order rejects too few runtime entries', async function ()
     disposables.pop();
     const result = await executeSingleBody(function body(testContext: TestContext) {
         testContext.assert(doubleUsage.disposeOrder, disposables);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(result.summary.failed, 1);
@@ -424,7 +424,7 @@ registerTest('iterator assertions reject invalid protocol inputs', async functio
         testContext.assert(doubleUsage.notIterated, {});
         testContext.assert(doubleUsage.iteratorEventCount, {}, 1);
         testContext.assert(doubleUsage.yieldedExactly, {}, []);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(result.summary.failed, 1);
@@ -433,7 +433,7 @@ registerTest('iterator assertions reject invalid protocol inputs', async functio
 registerTest('iterator assertions validate expected event counts', async function () {
     const result = await executeSingleBody(function body(testContext: TestContext) {
         testContext.assert(doubleUsage.iteratorEventCount, testIterable.yields([]), -1);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(result.summary.failed, 1);

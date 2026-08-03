@@ -41,12 +41,12 @@ import { suite, table, test } from '#tests/micro';
 export const spec = suite('users', [
     test('build', (case) => {
         case.assert.equal(buildUser('Ada').name, 'Ada');
-        return case.assert.done();
+        return case.assert.collect();
     }),
 
     test('validates', (case) => {
         case.assert.fail(buildUser(''), 'empty name');
-        return case.assert.done();
+        return case.assert.collect();
     }),
 
     table({
@@ -60,7 +60,7 @@ export const spec = suite('users', [
                 parse(serialize(case.parameters.input)),
                 case.parameters.expected,
             );
-            return case.assert.done();
+            return case.assert.collect();
         },
     }),
 ]);
@@ -110,7 +110,7 @@ first and attached later:
 ```ts
 const sharedRoundTrip = test('round-trip', (case) => {
     case.assert.equal(parse(serialize(user)), user);
-    return case.assert.done();
+    return case.assert.collect();
 });
 
 export const spec = suite('users', [
@@ -154,7 +154,7 @@ import { runIfMain, suite, test } from '#tests/micro';
 export const spec = suite('users', [
     test('build', (case) => {
         case.assert.equal(buildUser('Ada').name, 'Ada');
-        return case.assert.done();
+        return case.assert.collect();
     }),
 ]);
 
@@ -221,7 +221,7 @@ const unameCase =
     process.platform === 'linux'
         ? test('uname', (case) => {
               case.assert.equal(runUname(), 'Linux');
-              return case.assert.done();
+              return case.assert.collect();
           })
         : skippedTest('uname', 'not linux');
 
@@ -336,7 +336,7 @@ table({
             parse(case.parameters.input),
             case.parameters.expected,
         );
-        return case.assert.done();
+        return case.assert.collect();
     },
 });
 ```
@@ -416,13 +416,13 @@ const lawsOfMonoid = defineMacro(
             test('left identity', (case) => {
                 return case.forall(gen, (x, sample) => {
                     sample.assert.equal(eq(concat(empty, x), x), true);
-                    return sample.assert.done();
+                    return sample.assert.collect();
                 });
             }),
             test('right identity', (case) => {
                 return case.forall(gen, (x, sample) => {
                     sample.assert.equal(eq(concat(x, empty), x), true);
-                    return sample.assert.done();
+                    return sample.assert.collect();
                 });
             }),
         ]);
@@ -447,13 +447,13 @@ function lawsOfMonoid<T>(parameters: MonoidLaws<T>): TestNode {
         test('left identity', (case) => {
             return case.forall(gen, (x, sample) => {
                 sample.assert.equal(eq(concat(empty, x), x), true);
-                return sample.assert.done();
+                return sample.assert.collect();
             });
         }),
         test('right identity', (case) => {
             return case.forall(gen, (x, sample) => {
                 sample.assert.equal(eq(concat(x, empty), x), true);
-                return sample.assert.done();
+                return sample.assert.collect();
             });
         }),
         test('associativity', (case) => {
@@ -463,7 +463,7 @@ function lawsOfMonoid<T>(parameters: MonoidLaws<T>): TestNode {
                     eq(concat(concat(a, b), c), concat(a, concat(b, c))),
                     true,
                 );
-                return sample.assert.done();
+                return sample.assert.collect();
             });
         }),
     ]);
@@ -542,11 +542,11 @@ const fixtures = loadFixtures(); // executes at module load — visible
 export const spec = suite('users', [
     test('a', (case) => {
         case.assert.equal(buildUser(fixtures.a).id, '1');
-        return case.assert.done();
+        return case.assert.collect();
     }),
     test('b', (case) => {
         case.assert.equal(buildUser(fixtures.b).id, '2');
-        return case.assert.done();
+        return case.assert.collect();
     }),
 ]);
 ```
@@ -591,7 +591,7 @@ import defer * as heavy from './heavy-module.ts';
 export const spec = suite('heavy', [
     test('uses heavy', (case) => {
         case.assert.equal(heavy.compute(), 42);
-        return case.assert.done();
+        return case.assert.collect();
     }),
 ]);
 ```

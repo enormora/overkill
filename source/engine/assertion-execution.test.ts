@@ -168,16 +168,16 @@ registerTest('execute() counts successful requirements once a returned assertion
         testContext.plan(2);
         testContext.require.string('value');
         testContext.assert.true(true);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(result.summary.passed, 1);
 });
 
-registerTest('execute() rejects successful require-only builder completion', async function () {
+registerTest('execute() rejects successful require-only builder collection', async function () {
     const result = await executeSingleBody(function body(testContext: TestContext) {
         testContext.require.string('value');
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.deepStrictEqual(firstFailOutcome(result).failures, [
@@ -195,7 +195,7 @@ registerTest('execute() skips plan mismatch when a requirement fails', async fun
     const result = await executeSingleBody(function body(testContext: TestContext) {
         testContext.plan(2);
         testContext.require.string(1, { message: 'required string' });
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
     const outcome = firstFailOutcome(result);
     const check = firstFailedCheck(outcome);
@@ -230,7 +230,7 @@ registerTest('execute() treats caught failed requirements as fatal and ignores l
             testContext.assert.fail({ message: 'ignored failure' });
         }
 
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
     const outcome = firstFailOutcome(result);
     const check = firstFailedCheck(outcome);
@@ -303,7 +303,7 @@ registerTest('execute() accepts appended direct assertions around builder assert
         testContext.plan(3);
         testContext.assert.true(true);
 
-        return [ leading, ...testContext.assert.done(), trailing ];
+        return [ leading, ...testContext.assert.collect(), trailing ];
     });
 
     assert.equal(result.summary.passed, 1);
@@ -315,7 +315,7 @@ registerTest('execute() merges successful requirements by timeline for counts an
         testContext.assert.equal(1, 2, { message: 'first assert' });
         testContext.require.string('value');
         testContext.assert.equal(3, 4, { message: 'second assert' });
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
     const outcome = firstFailOutcome(result);
 
@@ -345,7 +345,7 @@ registerTest('execute() records callable composite assertion references as one p
         testContext.plan(1);
         testContext.assert(resultOk, { ok: true });
         testContext.assert.length([ 1, 2 ], 2);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(result.summary.failed, 1);
@@ -377,7 +377,7 @@ registerTest('execute() reports composite parent failures with child diagnostics
     });
     const result = await executeSingleBody(function body(testContext: TestContext) {
         testContext.assert(resultOk, { ok: false, value: { count: 1 } }, { count: 2 });
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
     const outcome = firstFailOutcome(result);
     const composite = firstCompositeCheck(outcome);
@@ -439,7 +439,7 @@ registerTest('execute() records narrowing assertion references through assert', 
     });
     const result = await executeSingleBody(function body(testContext: TestContext) {
         testContext.assert(isString, 'value');
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(result.summary.passed, 1);
@@ -448,7 +448,7 @@ registerTest('execute() records narrowing assertion references through assert', 
 registerTest('execute() rejects non-engine assertion references', async function () {
     const result = await executeSingleBody(function body(testContext: TestContext) {
         callUnknownFacade(testContext.assert, [ 'not-reference' ]);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(firstContractFailure(firstFailOutcome(result)).code, 'invalid-assertion-reference');
@@ -463,7 +463,7 @@ registerTest('execute() rejects non-narrowing references through require', async
     });
     const result = await executeSingleBody(function body(testContext: TestContext) {
         callUnknownFacade(testContext.require, [ reference, 'value' ]);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(firstContractFailure(firstFailOutcome(result)).code, 'invalid-require-reference');
@@ -485,7 +485,7 @@ registerTest('execute() short-circuits failed narrowing assertion references thr
 
         testContext.require(resultOk, actual);
         testContext.assert.fail({ message: 'ignored' });
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
     const outcome = firstFailOutcome(result);
     const composite = firstCompositeCheck(outcome);
@@ -526,7 +526,7 @@ registerTest('execute() short-circuits failed narrowing assertion references thr
     ]);
 });
 
-registerTest('execute() rejects unawaited async custom assertions at done', async function () {
+registerTest('execute() rejects unawaited async custom assertions at collect', async function () {
     const eventuallyOk = defineCompositeAssertion({
         async assert(check) {
             await Promise.resolve();
@@ -538,16 +538,16 @@ registerTest('execute() rejects unawaited async custom assertions at done', asyn
         const pendingAssertions = [ testContext.assert(eventuallyOk) ];
 
         assert.equal(pendingAssertions.length, 1);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.deepStrictEqual(firstFailOutcome(result).failures, [
         {
             actual: 'pending async assertion',
             code: 'pending-async-assertion',
-            expected: 'all async assertions awaited before done',
+            expected: 'all async assertions awaited before collect',
             kind: 'test-contract',
-            summary: 'Async assertion must be awaited before case.assert.done().'
+            summary: 'Async assertion must be awaited before case.assert.collect().'
         }
     ]);
 });
@@ -563,7 +563,7 @@ registerTest('execute() normalizes foreign bridge failures under the composite p
     });
     const result = await executeSingleBody(function body(testContext: TestContext) {
         testContext.assert.annotated('foreign failed')(throwsForeign);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
     const outcome = firstFailOutcome(result);
     const composite = firstCompositeCheck(outcome);

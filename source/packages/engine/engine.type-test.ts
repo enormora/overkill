@@ -184,7 +184,7 @@ type ExpectedAssertFacadeKeys = keyof {
     readonly true: true;
     readonly undefined: true;
 };
-type ExpectedCaseAssertContextKeys = ExpectedAssertFacadeKeys | 'done';
+type ExpectedCaseAssertContextKeys = ExpectedAssertFacadeKeys | 'collect';
 type ExpectedRequireFacadeKeys = keyof {
     readonly annotated: true;
     readonly array: true;
@@ -347,14 +347,14 @@ describe('Assertion protocol', function () {
 
     test('exposes the concept assert catalog without ok', function () {
         expect<keyof AssertAssertionFacade>().type.toBe<ExpectedAssertFacadeKeys>();
-        expect<keyof AssertAssertionFacade>().type.not.toBeAssignableFrom<'done'>();
+        expect<keyof AssertAssertionFacade>().type.not.toBeAssignableFrom<'collect'>();
     });
 
-    test('keeps builder completion on the case assert context only', function () {
+    test('keeps builder collection on the case assert context only', function () {
         expect<keyof CaseAssertContext>().type.toBe<ExpectedCaseAssertContextKeys>();
     });
 
-    test('exposes the narrow require catalog without equality or done', function () {
+    test('exposes the narrow require catalog without equality or collect', function () {
         expect<keyof RequireAssertionFacade>().type.toBe<ExpectedRequireFacadeKeys>();
     });
 

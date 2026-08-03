@@ -8,7 +8,7 @@ registerTest('createTestCase() creates a branded test node', function () {
     const testCase = engine.createTestCase({
         body(testContext) {
             testContext.assert.true(true, { message: 'passes' });
-            return testContext.assert.done();
+            return testContext.assert.collect();
         },
         metadata: { priority: 'critical' },
         name: 'passes'
@@ -27,7 +27,7 @@ registerTest('createTestCase() rejects an empty name', function () {
             engine.createTestCase({
                 body(testContext) {
                     testContext.assert.true(true, { message: 'passes' });
-                    return testContext.assert.done();
+                    return testContext.assert.collect();
                 },
                 metadata: {},
                 name: ' '
@@ -79,7 +79,7 @@ registerTest('createSuite() rejects nodes from another engine instance', functio
     const foreignTest = firstEngine.createTestCase({
         body(testContext) {
             testContext.assert.true(true, { message: 'passes' });
-            return testContext.assert.done();
+            return testContext.assert.collect();
         },
         metadata: {},
         name: 'foreign'

@@ -48,11 +48,11 @@ function createSmokeCase(engine: Engine, definition: SmokeCaseDefinition): TestC
         body(testContext) {
             if (definition.expectedVerdict === 'pass') {
                 testContext.assert.true(true, { message: definition.assertionSummary });
-                return testContext.assert.done();
+                return testContext.assert.collect();
             }
 
             testContext.assert.equal(1, 2, { message: definition.assertionSummary });
-            return testContext.assert.done();
+            return testContext.assert.collect();
         },
         metadata: { expectedVerdict: definition.expectedVerdict },
         name: definition.name
@@ -188,7 +188,7 @@ await test('consumer imports @overkill-dev/assert reference and executes it thro
     const testCase = createTestCase({
         body(testContext) {
             testContext.assert(resultOk, { ok: true });
-            return testContext.assert.done();
+            return testContext.assert.collect();
         },
         metadata: {},
         name: 'uses assert package'
@@ -229,7 +229,7 @@ await test('consumer imports top-level @overkill-dev/doubles facade', async func
 
             saveValue('id');
             testContext.assert(doublesPackage.doubleUsage.calledOnceWith, saveValue, [ 'id' ]);
-            return testContext.assert.done();
+            return testContext.assert.collect();
         },
         metadata: {},
         name: 'uses doubles assertions'
