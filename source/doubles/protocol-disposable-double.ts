@@ -4,13 +4,27 @@ import {
     disposeSymbol
 } from './disposal-symbol.ts';
 import { installProtocolMetadata } from './protocol-double-metadata.ts';
-import type {
-    AsyncDisposableConfiguration,
-    DisposableConfiguration,
-    TestAsyncDisposable,
-    TestDisposable
-} from './protocol-double-types.ts';
-import { testDouble } from './test-double.ts';
+import {
+    testDouble,
+    type TestDouble,
+    type TestDoubleConfiguration
+} from './test-double.ts';
+
+export type TestDisposable = Disposable & {
+    readonly dispose: TestDouble<() => void>;
+};
+
+export type TestAsyncDisposable = AsyncDisposable & {
+    readonly asyncDispose: TestDouble<() => Promise<void>>;
+};
+
+export type DisposableConfiguration = {
+    readonly dispose: TestDoubleConfiguration<() => void>;
+};
+
+export type AsyncDisposableConfiguration = {
+    readonly asyncDispose: TestDoubleConfiguration<() => Promise<void>>;
+};
 
 export function createTestDisposable(
     ...configuration: readonly [] | readonly [DisposableConfiguration]

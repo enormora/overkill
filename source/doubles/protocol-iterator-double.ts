@@ -1,31 +1,108 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-type-assertion, @typescript-eslint/no-use-before-define, functional/prefer-tacit, max-lines, restricted-syntax-typescript/no-inline-signature-type-literal, sonarjs/no-identical-functions -- TypeScript cannot model the Iterator.from and sync-or-async source bridge precisely. */
 import type { DoubleIteratorEvent } from './double-history-record.ts';
+import type { UnknownFunction } from './double-behavior.ts';
 import { disposeSymbol } from './disposal-symbol.ts';
 import {
     installProtocolMetadata,
     protocolIteratorEvents
 } from './protocol-double-metadata.ts';
-import type {
-    AsyncIteratorConfiguration,
-    AsyncIteratorMethods,
-    AsyncIteratorSource,
-    AsyncNext,
-    AsyncReturn,
-    AsyncThrow,
-    SyncIteratorConfiguration,
-    SyncIteratorSource,
-    SyncNext,
-    SyncReturn,
-    SyncThrow,
-    TestAsyncIterable,
-    TestAsyncIterator,
-    TestIterable,
-    TestIterator
-} from './protocol-double-types.ts';
 import {
     testDouble,
-    type TestDouble
+    type TestDouble,
+    type TestDoubleConfiguration
 } from './test-double.ts';
+
+type SyncNext<YieldValue, ReturnValue> = UnknownFunction<IteratorResult<YieldValue, ReturnValue>>;
+type SyncReturn<YieldValue, ReturnValue> = UnknownFunction<IteratorResult<YieldValue, ReturnValue>>;
+type SyncThrow<YieldValue, ReturnValue> = UnknownFunction<IteratorResult<YieldValue, ReturnValue>>;
+
+type AsyncNext<YieldValue, ReturnValue> = UnknownFunction<Promise<IteratorResult<YieldValue, ReturnValue>>>;
+type AsyncReturn<YieldValue, ReturnValue> = UnknownFunction<Promise<IteratorResult<YieldValue, ReturnValue>>>;
+type AsyncThrow<YieldValue, ReturnValue> = UnknownFunction<Promise<IteratorResult<YieldValue, ReturnValue>>>;
+
+export type TestIterator<
+    YieldValue = unknown,
+    ReturnValue = unknown,
+    NextValue = unknown
+> = IteratorObject<YieldValue, ReturnValue, NextValue> & {
+    readonly next: TestDouble<SyncNext<YieldValue, ReturnValue>>;
+    readonly return: TestDouble<SyncReturn<YieldValue, ReturnValue>>;
+    readonly throw: TestDouble<SyncThrow<YieldValue, ReturnValue>>;
+};
+
+export type TestAsyncIterator<
+    YieldValue = unknown,
+    ReturnValue = unknown,
+    NextValue = unknown
+> = AsyncIterable<YieldValue> & AsyncIterator<YieldValue, ReturnValue, NextValue> & {
+    readonly next: TestDouble<AsyncNext<YieldValue, ReturnValue>>;
+    readonly return: TestDouble<AsyncReturn<YieldValue, ReturnValue>>;
+    readonly throw: TestDouble<AsyncThrow<YieldValue, ReturnValue>>;
+};
+
+export type TestIterable<
+    YieldValue = unknown,
+    ReturnValue = unknown,
+    NextValue = unknown
+> = Iterable<YieldValue> & {
+    readonly [Symbol.iterator]: TestDouble<() => TestIterator<YieldValue, ReturnValue, NextValue>>;
+};
+
+export type TestAsyncIterable<
+    YieldValue = unknown,
+    ReturnValue = unknown,
+    NextValue = unknown
+> = AsyncIterable<YieldValue> & {
+    readonly [Symbol.asyncIterator]: TestDouble<() => TestAsyncIterator<YieldValue, ReturnValue, NextValue>>;
+};
+
+export type SyncIteratorConfiguration<YieldValue, ReturnValue> = {
+    readonly next: TestDoubleConfiguration<SyncNext<YieldValue, ReturnValue>>;
+    readonly return: TestDoubleConfiguration<SyncReturn<YieldValue, ReturnValue>>;
+    readonly throw: TestDoubleConfiguration<SyncThrow<YieldValue, ReturnValue>>;
+};
+
+export type AsyncIteratorConfiguration<YieldValue, ReturnValue> = {
+    readonly next: TestDoubleConfiguration<AsyncNext<YieldValue, ReturnValue>>;
+    readonly return: TestDoubleConfiguration<AsyncReturn<YieldValue, ReturnValue>>;
+    readonly throw: TestDoubleConfiguration<AsyncThrow<YieldValue, ReturnValue>>;
+};
+
+export type SyncIterableConfiguration<YieldValue, ReturnValue, NextValue> = {
+    readonly iterator: TestDoubleConfiguration<() => TestIterator<YieldValue, ReturnValue, NextValue>>;
+};
+
+export type AsyncIterableConfiguration<YieldValue, ReturnValue, NextValue> = {
+    readonly asyncIterator: TestDoubleConfiguration<() => TestAsyncIterator<YieldValue, ReturnValue, NextValue>>;
+};
+
+export type AsyncIteratorMethods<YieldValue, ReturnValue> = {
+    readonly next: TestDouble<AsyncNext<YieldValue, ReturnValue>>;
+    readonly return: TestDouble<AsyncReturn<YieldValue, ReturnValue>>;
+    readonly throw: TestDouble<AsyncThrow<YieldValue, ReturnValue>>;
+};
+
+type SyncIteratorSourceVariants<YieldValue, ReturnValue> = {
+    readonly iterable: Iterable<YieldValue>;
+    readonly iterator: Iterator<YieldValue, ReturnValue, unknown>;
+};
+
+type AsyncIteratorSourceVariants<YieldValue, ReturnValue> = {
+    readonly asyncIterable: AsyncIterable<YieldValue>;
+    readonly asyncIterator: AsyncIterator<YieldValue, ReturnValue, unknown>;
+    readonly iterable: Iterable<YieldValue>;
+    readonly iterator: Iterator<YieldValue, ReturnValue, unknown>;
+};
+
+export type SyncIteratorSource<YieldValue, ReturnValue> = SyncIteratorSourceVariants<
+    YieldValue,
+    ReturnValue
+>[keyof SyncIteratorSourceVariants<YieldValue, ReturnValue>];
+
+export type AsyncIteratorSource<YieldValue, ReturnValue> = AsyncIteratorSourceVariants<
+    YieldValue,
+    ReturnValue
+>[keyof AsyncIteratorSourceVariants<YieldValue, ReturnValue>];
 
 type IteratorEventInput = {
     readonly arguments: readonly unknown[];

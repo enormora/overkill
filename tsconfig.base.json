@@ -3,7 +3,7 @@
         "target": "ES2025",
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
-        "lib": ["ESNext", "ESNext.Disposable"],
+        "lib": ["ES2025", "ESNext.Array", "ESNext.Disposable"],
         "types": [],
         "importHelpers": true,
         "sourceMap": true,
