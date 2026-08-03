@@ -47,7 +47,7 @@
         "knip": "6.24.0",
         "rust-just": "1.55.1",
         "sinon": "14.0.2",
-        "tstyche": "7.2.1",
+        "tstyche": "7.2.2",
         "typescript": "6.0.3"
     },
     "engines": {
