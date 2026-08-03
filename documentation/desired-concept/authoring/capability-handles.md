@@ -78,7 +78,7 @@ export const spec = suite('saveUser', [
             { kind: 'fs.write', path: 'users/<uuid>.json', body: '...' },
             { kind: 'log.info', msg: 'saved <uuid>' },
         ]);
-        return case.assert.done();
+        return case.assert.collect();
     }),
 ]);
 ```
@@ -280,7 +280,7 @@ the injected `case.assert` API:
 
 ```ts
 case.assert.deepEqual(runtime.recorded(), expected);
-return case.assert.done();
+return case.assert.collect();
 ```
 
 There is nothing to throw. The whole test reads as `(input, runtime) -> (output, effects, outcome)` — pure data, deterministic, machine-readable.

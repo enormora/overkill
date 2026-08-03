@@ -123,7 +123,7 @@ registerTest('doubleUsage count and mode assertions pass through case.assert()',
 
         testContext.assert.equal(client.id, 'client');
         assertCountModeUsage(testContext, loadUser, Client);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(result.summary.passed, 1);
@@ -136,7 +136,7 @@ registerTest('doubleUsage negative mode assertions produce domain summaries', as
         loadUser('42', { role: 'admin', trace: 'trace-id' });
 
         testContext.assert(doubleUsage.notInteracted, loadUser);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
     const composite = firstComposite(result);
 
@@ -162,7 +162,7 @@ registerTest('doubleUsage argument assertions support partial, prefix, and exact
         ]);
         testContext.assert(doubleUsage.calledWith, ping, []);
         testContext.assert(doubleUsage.calledWithExactly, ping, []);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(result.summary.passed, 1);
@@ -181,7 +181,7 @@ registerTest('doubleUsage iterator assertions pass through case.assert()', async
         testContext.assert(doubleUsage.iteratorEventCount, loadEvents, 3);
         testContext.assert(doubleUsage.yieldCount, loadEvents, 2);
         testContext.assert(doubleUsage.yieldedExactly, loadEvents, [ 'created', 'updated' ]);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(result.summary.passed, 1);
@@ -197,7 +197,7 @@ registerTest('doubleUsage iterator assertions report protocol history failures',
         testContext.assert(doubleUsage.iteratorEventCount, loadEvents, 2);
         testContext.assert(doubleUsage.yieldCount, loadEvents, 2);
         testContext.assert(doubleUsage.yieldedExactly, loadEvents, [ 'updated' ]);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assertFailureSummaries(result, [
@@ -214,7 +214,7 @@ registerTest('doubleUsage prefix assertions reject empty prefixes', async functi
         ping();
 
         testContext.assert(doubleUsage.calledWithPrefix as unknown as typeof doubleUsage.calledWith, ping, []);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
     const composite = firstComposite(result);
 
@@ -232,7 +232,7 @@ registerTest('doubleUsage argument assertions distinguish exact arity from prefi
         loadUser('42', { role: 'admin', trace: 'trace-id' });
 
         testContext.assert(doubleUsage.calledWith, loadUser, [ '42' ]);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
     const composite = firstComposite(result);
 
@@ -248,7 +248,7 @@ registerTest('doubleUsage once, last, and nth argument assertions use the releva
 
         testContext.assert(doubleUsage.nthCallWith, loadUser, 0, [ 'first', { role: 'reader' } ]);
         testContext.assert(doubleUsage.lastCalledWith, loadUser, [ 'second', { role: 'admin' } ]);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(result.summary.passed, 1);
@@ -270,7 +270,7 @@ registerTest('doubleUsage argument assertion failures explain the matched positi
             { role: 'reader', trace: 'trace-id' }
         ]);
         testContext.assert(doubleUsage.lastCalledWithPrefix, loadUser, [ 'missing' ]);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assertFailureSummaries(result, [
@@ -290,7 +290,7 @@ registerTest('doubleUsage calledOnceWith requires one total call in that mode', 
         loadUser('second', { role: 'admin', trace: 'two' });
 
         testContext.assert(doubleUsage.calledOnceWith, loadUser, [ 'first', { role: 'reader' } ]);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
     const composite = firstComposite(result);
 
@@ -316,7 +316,7 @@ registerTest('doubleUsage construction argument assertions use construction hist
             'https://api.example.test',
             { timeout: 500, token: 'primary' }
         ]);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(result.summary.passed, 1);
@@ -331,7 +331,7 @@ registerTest('doubleUsage indexed argument assertions validate index and event p
         testContext.assert(doubleUsage.nthCallWith, loadUser, -1, [ 'first' ]);
         testContext.assert(doubleUsage.nthCallWith, loadUser, 3, [ 'first' ]);
         testContext.assert(doubleUsage.nthCallWithPrefix as unknown as typeof doubleUsage.nthCallWith, loadUser, 0, []);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assertFailureSummaries(result, [
@@ -351,7 +351,7 @@ registerTest('doubleUsage order assertions compare events across doubles from on
 
         testContext.assert(doubleUsage.callOrder, [ first, second ]);
         testContext.assert(doubleUsage.interactionOrder, [ first, second ]);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(result.summary.passed, 1);
@@ -369,7 +369,7 @@ registerTest('doubleUsage construction order compares constructor events', async
         testContext.assert.equal(first.id, 'first');
         testContext.assert.equal(second.id, 'second');
         testContext.assert(doubleUsage.constructionOrder, [ First, Second ]);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.equal(result.summary.passed, 1);
@@ -386,7 +386,7 @@ registerTest('doubleUsage order assertions require all previous events before th
         first();
 
         testContext.assert(doubleUsage.callOrder, [ first, second ]);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
     const composite = firstComposite(result);
 
@@ -406,7 +406,7 @@ registerTest('doubleUsage order assertions reject invalid and unused order input
         testContext.assert(doubleUsage.callOrder, [ first, function notADouble() {
             return undefined;
         } ]);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assertFailureSummaries(result, [
@@ -426,7 +426,7 @@ registerTest('doubleUsage order assertions reject mixed double scopes', async fu
         second();
 
         testContext.assert(doubleUsage.callOrder, [ first, second ]);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
     const composite = firstComposite(result);
 
@@ -449,7 +449,7 @@ registerTest('doubleUsage count and argument assertions reject non-doubles indep
         testContext.assert(doubleUsage.calledWith, function notADouble() {
             return undefined;
         }, []);
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assertFailureSummaries(result, [
@@ -464,7 +464,7 @@ registerTest('doubleUsage assertions reject non-doubles with assertion diagnosti
         testContext.assert(doubleUsage.called, function notADouble() {
             return undefined;
         });
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
     const composite = firstComposite(result);
 

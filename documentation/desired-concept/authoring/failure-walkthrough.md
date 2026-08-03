@@ -27,7 +27,7 @@ export const spec = suite('users', [
     test('round-trip preserves values', (case) => {
         return case.forall(gen.user(), (user, sample) => {
             sample.assert.equal(parse(serialize(user)), user);
-            return sample.assert.done();
+            return sample.assert.collect();
         });
     }),
 ]);
@@ -103,7 +103,7 @@ Canonical: [Assertions And Results](./assertions-and-results.md).
 ## Stage 2 — Test Body Returns; Outcome Constructed
 
 `case.forall` returns the test body's terminal value (the
-property-test analogue of `case.assert.done()`). The engine reads
+property-test analogue of `case.assert.collect()`). The engine reads
 the case's recorded log and constructs the `TestOutcome` (see
 [Assertions And Results § The Protocol Shape](./assertions-and-results.md#the-protocol-shape), also
 [Types Index](../reference/types-index.md)):

@@ -13,7 +13,7 @@ const testNodeOwnerIdentity: unique symbol = Symbol('OverkillTestNodeOwnerIdenti
 export type Metadata = Readonly<Record<string, unknown>>;
 
 export type CaseAssertContext = AssertAssertionFacade & {
-    readonly done: () => NonEmptyReadonlyArray<AssertAssertionNode>;
+    readonly collect: () => NonEmptyReadonlyArray<AssertAssertionNode>;
 };
 
 export type TestContext = {

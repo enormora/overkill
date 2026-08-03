@@ -181,7 +181,7 @@ import { doubleUsage } from '@overkill-dev/doubles';
 
 test('publishes once', (case) => {
     case.assert(doubleUsage.calledOnceWith, harness.publish, [ expected ]);
-    return case.assert.done();
+    return case.assert.collect();
 });
 ```
 

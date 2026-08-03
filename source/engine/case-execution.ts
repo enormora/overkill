@@ -41,7 +41,7 @@ type PendingRecordedAssert = {
 
 type AssertionRecorder = {
     readonly activeRecordedAssertions: () => readonly AssertionNode[];
-    readonly done: () => NonEmptyReadonlyArray<AssertAssertionNode>;
+    readonly collect: () => NonEmptyReadonlyArray<AssertAssertionNode>;
     readonly failContract: (failure: TestContractFailure) => never;
     readonly plan: (count: number) => void;
     readonly recordAssert: (assertion: AssertAssertionNode) => void;
@@ -140,9 +140,9 @@ function createPendingAsyncAssertionFailure(): TestContractFailure {
     return {
         actual: 'pending async assertion',
         code: 'pending-async-assertion',
-        expected: 'all async assertions awaited before done',
+        expected: 'all async assertions awaited before collect',
         kind: 'test-contract',
-        summary: 'Async assertion must be awaited before case.assert.done().'
+        summary: 'Async assertion must be awaited before case.assert.collect().'
     };
 }
 
@@ -291,7 +291,7 @@ function createAssertionRecorder(): AssertionRecorder {
         }
     }
 
-    function done(): NonEmptyReadonlyArray<AssertAssertionNode> {
+    function collect(): NonEmptyReadonlyArray<AssertAssertionNode> {
         if (builderAssertions.length === 0) {
             throw new TestContractSignalError(createNoAssertionsFailure(), undefined);
         }
@@ -336,7 +336,7 @@ function createAssertionRecorder(): AssertionRecorder {
             });
         },
 
-        done,
+        collect,
 
         failContract(failure) {
             throw new TestContractSignalError(failure, undefined);
@@ -453,8 +453,8 @@ function createTestContext(recorder: AssertionRecorder): TestContext {
             null
         ),
         {
-            done() {
-                return recorder.done();
+            collect() {
+                return recorder.collect();
             }
         }
     );

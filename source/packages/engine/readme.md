@@ -54,11 +54,11 @@ Assertion bodies:
   `case.assert(resultOk, result)`. Narrowing references may also be used with
   `case.require(resultOk, result)`. Define reusable assertion references with
   `@overkill-dev/assert`.
-- Async custom assertions must be awaited before `case.assert.done()`.
+- Async custom assertions must be awaited before `case.assert.collect()`.
 - `case.assert.throws(body, matcher)` checks synchronous thrown values.
   Promise-returning callbacks belong to `case.assert.rejects(...)`.
 - `case.assert.rejects(thunk, matcher)` checks promise rejections and must be
-  awaited before `case.assert.done()`.
+  awaited before `case.assert.collect()`.
 - Thrown matchers are explicit objects. Use `{ exact: value }` for `Object.is`
   matching, or structured error fields such as `type`, `message`, `code`,
   `name`, and recursive `cause`. Structured error matchers require at least
@@ -67,8 +67,8 @@ Assertion bodies:
   record message-scoped checks without positional message overloads.
 - `case.assert.annotated(message)(reference, ...)` annotates a custom
   assertion boundary.
-- `case.assert.done()` is builder-only completion. It returns the non-empty
-  assertion list for the engine to evaluate, and is not part of
+- `case.assert.collect()` is builder-mode syntax sugar. It returns the
+  non-empty assertion list for the engine to evaluate, and is not part of
   `AssertAssertionFacade`.
 - `case.plan(count)` must be the first test-body call and must declare a
   positive integer assertion count.

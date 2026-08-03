@@ -131,7 +131,7 @@ Its assertion model should be explicit:
 - `case.require` for gating assertions that short-circuit and support
   TypeScript
   narrowing
-- explicit `return case.assert.done()` in builder mode
+- `return case.assert.collect()` as builder-mode syntax sugar
 - optional custom assertion references for domain-specific types such as
   `Result` or `Maybe`, imported where tests need them
 

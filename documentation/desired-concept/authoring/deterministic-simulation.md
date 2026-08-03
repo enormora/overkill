@@ -198,7 +198,7 @@ In-process style:
 test(
     'queue stays consistent under the deterministic runtime',
     withSimulation(myAppSim, { seed: 42n, scenario: 'default' }, async (case) => {
-        case.assert.done();
+        case.assert.collect();
     }),
 );
 ```
@@ -212,7 +212,7 @@ test(
         const runtime = case.runtime;
         const baseUrl = runtime.endpoint;
         // App under test talks to the deterministic service over real HTTP.
-        case.assert.done();
+        case.assert.collect();
     }),
 );
 ```

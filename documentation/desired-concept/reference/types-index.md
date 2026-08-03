@@ -444,7 +444,7 @@ type RequireAssertionFacade = {
 };
 
 type CaseAssertContext = AssertAssertionFacade & {
-    readonly done: () => NonEmptyReadonlyArray<AssertAssertionNode>;
+    readonly collect: () => NonEmptyReadonlyArray<AssertAssertionNode>;
 };
 
 type BuilderTestBody = (case: unknown) => AssertionResult | Promise<AssertionResult>;

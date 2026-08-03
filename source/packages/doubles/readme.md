@@ -260,7 +260,7 @@ test('saves a user', (case) => {
 
     case.assert(doubleUsage.calledOnceWith, saveUser, [ { id: '42' } ]);
 
-    return case.assert.done();
+    return case.assert.collect();
 });
 ```
 

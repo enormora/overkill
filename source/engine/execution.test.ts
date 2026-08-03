@@ -61,7 +61,7 @@ registerTest('execute() returns passing and failing outcomes with run counts', a
                 engine.createTestCase({
                     body(testContext: TestContext) {
                         testContext.assert.true(true, { message: 'passes' });
-                        return testContext.assert.done();
+                        return testContext.assert.collect();
                     },
                     metadata: {},
                     name: 'passes'
@@ -69,7 +69,7 @@ registerTest('execute() returns passing and failing outcomes with run counts', a
                 engine.createTestCase({
                     body(testContext: TestContext) {
                         testContext.assert.equal(1, 2, { message: 'numbers differ' });
-                        return testContext.assert.done();
+                        return testContext.assert.collect();
                     },
                     metadata: {},
                     name: 'fails'
@@ -101,7 +101,7 @@ registerTest('execute() carries orphaned nodes from the plan', async function ()
     const reached = engine.createTestCase({
         body(testContext) {
             testContext.assert.true(true, { message: 'passes' });
-            return testContext.assert.done();
+            return testContext.assert.collect();
         },
         metadata: {},
         name: 'reached'
@@ -134,7 +134,7 @@ registerTest('execute() fails tests with zero assertions', async function () {
             children: [
                 engine.createTestCase({
                     body(testContext: TestContext) {
-                        return testContext.assert.done();
+                        return testContext.assert.collect();
                     },
                     metadata: {},
                     name: 'empty'
@@ -171,7 +171,7 @@ registerTest('execute() fails tests when assertion plan count does not match', a
                     body(testContext) {
                         testContext.plan(2);
                         testContext.assert.true(true, { message: 'one' });
-                        return testContext.assert.done();
+                        return testContext.assert.collect();
                     },
                     metadata: {},
                     name: 'planned'
@@ -217,7 +217,7 @@ registerTest('execute() fails tests with invalid assertion plans', async functio
     const result = await executeSingleBody(function body(testContext) {
         testContext.plan(0);
         testContext.assert.true(true, { message: 'unreached' });
-        return testContext.assert.done();
+        return testContext.assert.collect();
     });
 
     assert.deepStrictEqual(firstFailOutcome(result).failures[0], {
@@ -240,7 +240,7 @@ registerTest('execute() exposes assertion and requirement convenience methods', 
                         testContext.require.string('value', { message: 'string' });
                         testContext.require.defined(true, { message: 'defined' });
                         testContext.assert.true(true, { message: 'passes' });
-                        return testContext.assert.done();
+                        return testContext.assert.collect();
                     },
                     metadata: {},
                     name: 'uses context'
@@ -264,7 +264,7 @@ registerTest('execute() fails the test when a requirement fails', async function
                 engine.createTestCase({
                     body(testContext: TestContext) {
                         testContext.require.string(1, { message: 'required string' });
-                        return testContext.assert.done();
+                        return testContext.assert.collect();
                     },
                     metadata: {},
                     name: 'requires equality'
@@ -272,7 +272,7 @@ registerTest('execute() fails the test when a requirement fails', async function
                 engine.createTestCase({
                     body(testContext: TestContext) {
                         testContext.require.defined(null, { message: 'required defined' });
-                        return testContext.assert.done();
+                        return testContext.assert.collect();
                     },
                     metadata: {},
                     name: 'requires truth'
@@ -398,7 +398,7 @@ registerTest('execute() delivers events and final results to reporters', async f
                 engine.createTestCase({
                     body(testContext) {
                         testContext.assert.true(true, { message: 'passes' });
-                        return testContext.assert.done();
+                        return testContext.assert.collect();
                     },
                     metadata: {},
                     name: 'passes'
@@ -448,7 +448,7 @@ registerTest('execute() emits suite events for table path segments', async funct
                 engine.createTestCase({
                     body(testContext) {
                         testContext.assert.true(true, { message: 'passes' });
-                        return testContext.assert.done();
+                        return testContext.assert.collect();
                     },
                     metadata: {},
                     name: 'first'
@@ -458,7 +458,7 @@ registerTest('execute() emits suite events for table path segments', async funct
                         {
                             body(testContext) {
                                 testContext.assert.true(true, { message: 'row passes' });
-                                return testContext.assert.done();
+                                return testContext.assert.collect();
                             },
                             metadata: {},
                             name: 'row 1',
@@ -517,7 +517,7 @@ registerTest('execute() rejects reporter sink conflicts before starting the run'
                     body(testContext) {
                         bodyRan = true;
                         testContext.assert.true(true, { message: 'passes' });
-                        return testContext.assert.done();
+                        return testContext.assert.collect();
                     },
                     metadata: {},
                     name: 'passes'

@@ -415,7 +415,7 @@ registerTest('createRecordingAssertFacade() applies annotated messages without r
         }),
         [ 'annotated value', 'option value' ]
     );
-    assert.equal(Object.hasOwn(recording.facade, 'done'), false);
+    assert.equal(Object.hasOwn(recording.facade, 'collect'), false);
 });
 
 registerTest('createRecordingRequireFacade() records every built-in requirement node', function () {

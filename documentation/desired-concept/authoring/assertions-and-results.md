@@ -14,28 +14,28 @@ Overkill needs a result model that is:
 The core accepts two first-party styles:
 
 - **builder/result mode** - the primary concept; tests receive injected
-  `case.assert`, `case.require`, and `case.plan`, and must explicitly
-  return `case.assert.done()`
+  `case.assert`, `case.require`, and `case.plan`; most tests return
+  `case.assert.collect()` to hand recorded assertions to the engine
 - **throwing mode** - an explicit alternate test API such as
   `throwingTest`; tests may return `void`
 
 Both produce the same internal `TestOutcome` value.
 
-In builder/result mode, `case.assert.done()` returns the non-empty assertion
+In builder/result mode, `case.assert.collect()` returns the non-empty assertion
 node list recorded by the injected assertion context, not a public
 `TestOutcome`. A builder test may also return one assertion node directly for
 the small direct-engine path. Returning ordinary application values is outside
 the supported builder contract.
 
 Direct engine consumers may return public low-level assert-source
-`AssertionNode` values. Normal builder completion still needs at least one
-returned assert-source node, even if successful `case.require.*` calls were
-recorded. Successful `require` entries count toward `plan(n)` only after a
-valid assert-source result exists.
+`AssertionNode` values. Builder/result mode still needs at least one returned
+assert-source node, whether it comes from `case.assert.collect()` or is
+returned directly. Successful `require` entries count toward `plan(n)` only
+after a valid assert-source result exists.
 
 The engine normalizes these lazy assertion nodes into `TestOutcome`
-internally. Users complete builder tests through the assertion context, while
-reporters and integrations consume structured outcomes.
+internally. Users usually collect builder assertions through the assertion
+context, while reporters and integrations consume structured outcomes.
 
 Sources:
 
@@ -134,7 +134,7 @@ test('parses three rows', (case) => {
     case.assert.length(rows, 3);
     case.assert.equal(rows[0].id, 1);
     case.assert.equal(rows[1].id, 2);
-    return case.assert.done();
+    return case.assert.collect();
 });
 ```
 
@@ -243,11 +243,11 @@ Recommended built-ins:
   - `fail(reason?)`
   - `annotated(text).<assertion>(...)`
 
-`case.assert.done()` is not an assertion protocol primitive. It belongs to
-builder/result mode only: it completes the injected case builder and returns
-the non-empty assert-source assertion list to the engine. A future reusable
-`@overkill-dev/assert` API should be able to reuse assertion semantics without
-carrying builder completion.
+`case.assert.collect()` is not an assertion protocol primitive. It belongs to
+builder/result mode only: it returns the non-empty assert-source assertion list
+recorded by the injected case builder. A future reusable `@overkill-dev/assert`
+API should be able to reuse assertion semantics without carrying this builder
+collection method.
 
 `annotated(text)` creates a scoped assertion facade that applies `text` as the
 human-facing failure summary for the next assertion calls made through that
@@ -674,17 +674,18 @@ case.assert.undefined(optionalValue);
 
 Passes only when `actual` is exactly `undefined`.
 
-#### `case.assert.done()`
+#### `case.assert.collect()`
 
-Signature: `done()`
+Signature: `collect()`
 
 ```ts
-return case.assert.done();
+return case.assert.collect();
 ```
 
-Completes builder/result mode and returns the non-empty list of builder
-assertions recorded through `case.assert`. It is intentionally not available
-on the reusable `case.assert` facade surface.
+Returns the non-empty list of builder assertions recorded through
+`case.assert`. This is builder-mode syntax sugar; callers may also return
+assertion nodes directly. It is intentionally not available on the reusable
+`case.assert` facade surface.
 
 The error assertions should stay strict:
 
@@ -784,7 +785,7 @@ This matcher should stay intentionally small:
 - no weak `throwsAny` / `rejectsAny` escape hatch
 
 `case.assert.rejects(...)` is async and must be awaited before
-`case.assert.done()`. A thunk that throws synchronously before returning a
+`case.assert.collect()`. A thunk that throws synchronously before returning a
 promise is a body error, not a rejection assertion result.
 
 If a test needs custom matching logic, it should catch the error and use
@@ -835,7 +836,7 @@ package. A typical shape is:
 test('round-trips', (case) => {
     return case.forall(gen.user(), (user, sample) => {
         sample.assert.equal(parse(serialize(user)), user);
-        return sample.assert.done();
+        return sample.assert.collect();
     });
 });
 ```
@@ -937,7 +938,7 @@ TypeScript problems:
 test('user shape', (case) => {
     case.require.defined(user);
     case.assert.equal(user.name, 'Ada');
-    return case.assert.done();
+    return case.assert.collect();
 });
 ```
 
@@ -1084,8 +1085,8 @@ those awaits in a straightforward way.
 
 Each `assert.*` or `require.*` call records into the test's assertion log
 immediately, regardless of whether more `await`s follow. The plan declared
-at the top of the test body still applies; `case.assert.done()` at the end
-finalizes the recorded log.
+at the top of the test body still applies; `case.assert.collect()` returns the
+recorded assertion nodes.
 
 ```ts
 test('saves and re-reads', async (case) => {
@@ -1098,7 +1099,7 @@ test('saves and re-reads', async (case) => {
     case.require.defined(fetched);
     case.assert.equal(fetched.name, 'Ada');
 
-    return case.assert.done();
+    return case.assert.collect();
 });
 ```
 
@@ -1138,7 +1139,7 @@ Primary syntax:
 ```ts
 test('returns a successful result', (case) => {
     case.assert(resultOk, result);
-    return case.assert.done();
+    return case.assert.collect();
 });
 ```
 
@@ -1230,7 +1231,7 @@ test('publishes the release', async (case) => {
 
     case.assert(resultValue, result, { tag: 'v1.2.3' });
 
-    return case.assert.done();
+    return case.assert.collect();
 });
 ```
 
@@ -1258,7 +1259,7 @@ test('publishes the release', async (case) => {
         { tag: 'v1.2.3' },
     ]);
 
-    return case.assert.done();
+    return case.assert.collect();
 });
 ```
 
@@ -1355,7 +1356,7 @@ test('defines versioned bucket', (case) => {
         VersioningConfiguration: { Status: 'Enabled' },
     });
 
-    return case.assert.done();
+    return case.assert.collect();
 });
 ```
 
@@ -1458,8 +1459,8 @@ For the product concept:
   `defineCompositeAssertion(...)` live in `@overkill-dev/assert`
 - `@overkill-dev/test` may re-expose that engine-owned assertion surface, but it
   is not required for assertion usage
-- primary authoring shape: builder/context API with explicit
-  `return case.assert.done()`
+- primary authoring shape: builder/context API, usually ending with
+  `return case.assert.collect()`
 - `AssertionNode` exists as a public low-level engine protocol, but not as a
   separate package or the day-to-day authoring surface
 - zero-assertion detection: failure, no opt-out
