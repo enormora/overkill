@@ -119,7 +119,7 @@ The preferred first-party authoring shape should be tests-as-values:
 
 - exported suite trees
 - direct-file execution through `overkill run foo.test.ts`
-- explicit `runIfMain(import.meta, spec, options?)` support for
+- explicit `runIfMain(import.meta, testNode, options?)` support for
   `node foo.test.ts`
 - trivial machine-readable discovery
 

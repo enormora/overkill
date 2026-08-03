@@ -23,7 +23,7 @@ import { gen } from '@overkill-dev/property'; // proposed package, see types-ind
 import { suite, test } from '@overkill-dev/test';
 import { parse, serialize } from './users.ts';
 
-export const spec = suite('users', [
+export const testNode = suite('users', [
     test('round-trip preserves values', (scope) => {
         return scope.forall(gen.user(), (user, sample) => {
             sample.assert.equal(parse(serialize(user)), user);
@@ -294,7 +294,7 @@ visible first.
 
 ## Cross-References
 
-This document is a reading aid; the canonical specs live in:
+This document is a reading aid; the canonical specifications live in:
 
 - [Assertions And Results](./assertions-and-results.md) — assertion API, `FailedCheck`,
   diff shape, plan, `TestOutcome` ADT

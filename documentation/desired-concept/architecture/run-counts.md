@@ -16,7 +16,7 @@ bad.
 
 Run counts also surface a third fact: which test nodes were
 _constructed_ during collection but reach no run root — _orphans_. A
-test defined and never wired into a `spec`, or a suite fragment
+test defined and never wired into a `testNode`, or a suite fragment
 imported and never used, was built but runs nowhere. The runner
 reports those nodes; the developer interprets.
 
@@ -261,11 +261,11 @@ canonical orphan is a forgotten test:
 export const someTest = test('some-test', () => {});
 export const otherTest = test('other-test', () => {});
 
-export const spec = suite('foo', [ someTest ]);
+export const testNode = suite('foo', [ someTest ]);
 ```
 
 Both `test(...)` calls run when the module evaluates, so both nodes
-are in `Constructed`. Only `someTest` is reachable from `spec`, so only it is in
+are in `Constructed`. Only `someTest` is reachable from `testNode`, so only it is in
 `Reached`. `otherTest` is in `Constructed - Reached`: it was built and wired into
 nothing.
 
@@ -313,11 +313,11 @@ significant, and parallel collection races over shared state.
 `Constructed` has none of those properties:
 
 - Discovery does not consult it. The runner still learns the test
-  set by walking the exported `spec` value; `Constructed` is never read to
+  set by walking the exported `testNode` value; `Constructed` is never read to
   decide what runs.
 - It is a set, not a sequence. Insertion order does not affect `Constructed`,
   and `Constructed - Reached` is order-independent.
-- It is not the source of truth. The exported `spec` value is
+- It is not the source of truth. The exported `testNode` value is
   byte-for-byte identical whether or not `Constructed` exists.
 - Collection runs once, single-threaded, in the orchestrator, so
   nothing races over it.
@@ -407,7 +407,7 @@ Examples of situations the counts make visible:
 - A suite with conditional `skippedTest` where the condition
   accidentally elided more cases than expected — `bySuite[suite]`
   shows the gap localised to one subtree.
-- A test defined but never added to a `spec` — the refactor that
+- A test defined but never added to a `testNode`: the refactor that
   split one suite into two left a case wired to neither; it appears
   in `orphans` with its file and name.
 - A reusable suite fragment imported but never used — `orphans`

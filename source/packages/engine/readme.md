@@ -33,7 +33,7 @@ Direct Node execution:
 import { createTestCase, runIfMain } from '@overkill-dev/engine';
 import { createDotReporter } from '@overkill-dev/reporter-dot';
 
-export const spec = createTestCase({
+export const testNode = createTestCase({
     body(scope) {
         scope.assert.true(true, { message: 'passes' });
         return scope.assert.collect();
@@ -42,7 +42,7 @@ export const spec = createTestCase({
     name: 'passes'
 });
 
-await runIfMain(import.meta, spec, {
+await runIfMain(import.meta, testNode, {
     reporters: [ createDotReporter() ]
 });
 ```
@@ -52,16 +52,16 @@ Aggregate direct Node execution:
 ```ts
 import { createSuite, runIfMain } from '@overkill-dev/engine';
 import { createDotReporter } from '@overkill-dev/reporter-dot';
-import { spec as orders } from './orders.test.ts';
-import { spec as users } from './users.test.ts';
+import { testNode as orders } from './orders.test.ts';
+import { testNode as users } from './users.test.ts';
 
-export const spec = createSuite({
+export const testNode = createSuite({
     children: [ users, orders ],
     metadata: {},
     name: 'all'
 });
 
-await runIfMain(import.meta, spec, {
+await runIfMain(import.meta, testNode, {
     reporters: [ createDotReporter() ]
 });
 ```
