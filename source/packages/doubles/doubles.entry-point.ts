@@ -29,20 +29,22 @@ export type {
     RuleFactory
 } from '../../doubles/double-rule.ts';
 export type {
-    ProtocolMethodConfiguration,
-    TestAsyncDisposable,
     TestAsyncDisposableFactory,
-    TestAsyncIterable,
     TestAsyncIterableFactory,
-    TestAsyncIterator,
     TestAsyncIteratorFactory,
-    TestDisposable,
     TestDisposableFactory,
-    TestIterable,
     TestIterableFactory,
-    TestIterator,
     TestIteratorFactory
 } from '../../doubles/protocol-double.ts';
+export type {
+    ProtocolMethodConfiguration,
+    TestAsyncDisposable,
+    TestAsyncIterable,
+    TestAsyncIterator,
+    TestDisposable,
+    TestIterable,
+    TestIterator
+} from '../../doubles/protocol-double-types.ts';
 export type {
     DoubleHistory,
     TestDouble,

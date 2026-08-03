@@ -91,14 +91,15 @@ function iteratorCountAssertion(input: IteratorCountCheckInput): AssertionResult
         return inspected.result;
     }
 
-    const actualCount = input.value === 'event'
-        ? inspected.events.length
-        : yieldedValues({ iteratorEvents: inspected.events }).length;
+    const actualCounts = {
+        event: inspected.events.length,
+        yield: yieldedValues({ iteratorEvents: inspected.events }).length
+    };
 
     return input.check.group([
         input.check.annotated('expected count').true(validNonNegativeInteger(input.expectedCount)),
         input.check.annotated(input.value === 'event' ? 'iterator event count' : 'yield count').equal(
-            actualCount,
+            actualCounts[input.value],
             input.expectedCount
         )
     ]);

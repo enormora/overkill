@@ -241,11 +241,11 @@ const resource = testDisposable({
 using value = resource;
 
 case.assert(doubleUsage.disposedOnce, resource);
-case.assert(doubleUsage.calledOnce, resource[Symbol.dispose]);
+case.assert(doubleUsage.calledOnce, resource.dispose);
 ```
 
-`testAsyncDisposable` exposes `[Symbol.asyncDispose]()` for `await using` and
-defaults to resolving `undefined`.
+`testAsyncDisposable` installs `[Symbol.asyncDispose]()` for `await using`,
+exposes `.asyncDispose` for inspection, and defaults to resolving `undefined`.
 
 ## Assertions
 

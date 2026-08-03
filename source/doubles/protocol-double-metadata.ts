@@ -1,11 +1,12 @@
 import type { DoubleIteratorEvent } from './double-history-record.ts';
+import type { UnknownFunction } from './double-behavior.ts';
 
-export type DisposableProtocol = 'async-disposable' | 'disposable';
-export type IteratorProtocol = 'async-iterable' | 'async-iterator' | 'iterable' | 'iterator';
-export type ProtocolKind = DisposableProtocol | IteratorProtocol;
+type DisposableProtocol = 'async-disposable' | 'disposable';
+type IteratorProtocol = 'async-iterable' | 'async-iterator' | 'iterable' | 'iterator';
+type ProtocolKind = DisposableProtocol | IteratorProtocol;
 
 type ProtocolMetadata = {
-    readonly disposeMethod: () => unknown | null;
+    readonly disposeMethod: () => UnknownFunction<unknown> | null;
     readonly iteratorEvents: () => readonly DoubleIteratorEvent[];
     readonly kind: ProtocolKind;
 };
@@ -13,7 +14,7 @@ type ProtocolMetadata = {
 const protocolMetadataSymbol = Symbol('overkill.protocolDoubleMetadata');
 
 function isRecord(value: unknown): value is Readonly<Record<PropertyKey, unknown>> {
-    return typeof value === 'object' && value !== null || typeof value === 'function';
+    return value !== null && (typeof value === 'object' || typeof value === 'function');
 }
 
 function isProtocolMetadata(value: unknown): value is ProtocolMetadata {
@@ -23,14 +24,14 @@ function isProtocolMetadata(value: unknown): value is ProtocolMetadata {
         typeof Reflect.get(value, 'kind') === 'string';
 }
 
-export function installProtocolMetadata(target: object, metadata: ProtocolMetadata): void {
+export function installProtocolMetadata(target: NonNullable<unknown>, metadata: ProtocolMetadata): void {
     Object.defineProperty(target, protocolMetadataSymbol, {
         enumerable: false,
         value: metadata
     });
 }
 
-export function protocolMetadata(value: unknown): ProtocolMetadata | null {
+function protocolMetadata(value: unknown): ProtocolMetadata | null {
     if (!isRecord(value) || !Object.hasOwn(value, protocolMetadataSymbol)) {
         return null;
     }
@@ -40,7 +41,7 @@ export function protocolMetadata(value: unknown): ProtocolMetadata | null {
     return isProtocolMetadata(descriptor?.value) ? descriptor.value : null;
 }
 
-export function protocolDisposeMethod(value: unknown): unknown | null {
+export function protocolDisposeMethod(value: unknown): UnknownFunction<unknown> | null {
     return protocolMetadata(value)?.disposeMethod() ?? null;
 }
 

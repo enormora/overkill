@@ -313,7 +313,7 @@ const resource = testDisposable({
 using value = resource;
 
 case.assert(doubleUsage.disposedOnce, resource);
-case.assert(doubleUsage.calledOnce, resource[Symbol.dispose]);
+case.assert(doubleUsage.calledOnce, resource.dispose);
 ```
 
 Protocol objects should not expose public aggregate history properties like
