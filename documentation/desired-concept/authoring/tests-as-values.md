@@ -38,7 +38,7 @@ the high-level authoring layer, not as a discarded side experiment.
 ```ts
 import { suite, table, test } from '#tests/micro';
 
-export const spec = suite('users', [
+export const testNode = suite('users', [
     test('build', (scope) => {
         scope.assert.equal(buildUser('Ada').name, 'Ada');
         return scope.assert.collect();
@@ -66,12 +66,12 @@ export const spec = suite('users', [
 ]);
 ```
 
-The named export `spec` is a `Suite` — a plain data tree. The runner imports
+The named export `testNode` is a `Suite`, a plain data tree. The runner imports
 that value and hands it to orchestration:
 
 ```ts
 const mod = await import(file);
-const tree: TestNode = mod.spec;
+const tree: TestNode = mod.testNode;
 await run(tree);
 ```
 
@@ -84,7 +84,7 @@ value. It does not forbid runtime-internal bookkeeping that discovery
 never consults. Run Counts, for instance, has the node constructors
 record each constructed node into a run-scoped collection used only to
 report orphaned nodes; that collection never feeds discovery and leaves
-the exported `spec` unchanged. See
+the exported `testNode` unchanged. See
 [Run Counts § Orphan Detection](../architecture/run-counts.md#orphan-detection).
 
 For projects that need different authoring surfaces for different suite
@@ -113,13 +113,13 @@ const sharedRoundTrip = test('round-trip', (scope) => {
     return scope.assert.collect();
 });
 
-export const spec = suite('users', [
+export const testNode = suite('users', [
     sharedRoundTrip
 ]);
 ```
 
 That temporary detachment is a feature, not a misuse. The semantic boundary
-is **reachability from the exported root**: only nodes reachable from `spec`
+is **reachability from the exported root**: only nodes reachable from `testNode`
 participate in the run. Collection, filtering, sharding, and plan freeze
 are described in
 [Composition Order](../architecture/composition-order.md).
@@ -152,14 +152,14 @@ authoring helper:
 import { runIfMain, suite, test } from '#tests/micro';
 import { createDotReporter } from '@overkill-dev/reporter-dot';
 
-export const spec = suite('users', [
+export const testNode = suite('users', [
     test('build', (scope) => {
         scope.assert.equal(buildUser('Ada').name, 'Ada');
         return scope.assert.collect();
     })
 ]);
 
-await runIfMain(import.meta, spec, {
+await runIfMain(import.meta, testNode, {
     reporters: [ createDotReporter() ]
 });
 ```
@@ -175,18 +175,18 @@ For multi-file bare-`node` runs, use an aggregate suite entrypoint:
 ```ts
 import { runIfMain, suite } from '#tests/micro';
 import { createDotReporter } from '@overkill-dev/reporter-dot';
-import { spec as orders } from './orders.test.ts';
-import { spec as users } from './users.test.ts';
+import { testNode as orders } from './orders.test.ts';
+import { testNode as users } from './users.test.ts';
 
-export const spec = suite('all', [ users, orders ]);
+export const testNode = suite('all', [ users, orders ]);
 
-await runIfMain(import.meta, spec, {
+await runIfMain(import.meta, testNode, {
     reporters: [ createDotReporter() ]
 });
 ```
 
 The aggregate entrypoint is ordinary tests-as-values composition. Leaf files
-keep exporting their `spec`; only the aggregate file needs `runIfMain(...)` if
+keep exporting their `testNode`; only the aggregate file needs `runIfMain(...)` if
 the team wants one bare-`node` command for many files.
 
 ## Why This Is Better
@@ -219,7 +219,7 @@ export const userCases = {
 // users.test.ts
 import { userCases } from './helpers/user-cases.ts';
 
-export const spec = suite('users', [ userCases.roundTrip ]);
+export const testNode = suite('users', [ userCases.roundTrip ]);
 ```
 
 This is valid and intentional. The runner should not treat every constructed
@@ -247,7 +247,7 @@ const unameCase =
           })
         : skippedTest('uname', 'not linux');
 
-export const spec = suite('platform', [
+export const testNode = suite('platform', [
     test('linux', linuxOnly, ...),
     unameCase,
 ]);
@@ -284,7 +284,7 @@ walk. There is no half-registered global state to clean up.
 ### Reproducibility improves
 
 Two runs of `overkill list` produce identical output as long as the file's
-exported `spec` is identical. Imperative registration can produce different
+exported `testNode` is identical. Imperative registration can produce different
 output if module evaluation has any non-determinism.
 
 ## The Underlying Type
@@ -491,7 +491,7 @@ function lawsOfMonoid<T>(parameters: MonoidLaws<T>): TestNode {
     ]);
 }
 
-export const spec = suite('string concat', [
+export const testNode = suite('string concat', [
     lawsOfMonoid({ name: 'string', empty: '', concat: (a, b) => a + b, gen, eq })
 ]);
 ```
@@ -563,7 +563,7 @@ an explicit constant inside the suite construction:
 ```ts
 const fixtures = loadFixtures(); // executes at module load — visible
 
-export const spec = suite('users', [
+export const testNode = suite('users', [
     test('a', (scope) => {
         scope.assert.equal(buildUser(fixtures.a).id, '1');
         return scope.assert.collect();
@@ -612,7 +612,7 @@ not be evaluated until first access. Combined with tests-as-values:
 ```ts
 import defer * as heavy from './heavy-module.ts';
 
-export const spec = suite('heavy', [
+export const testNode = suite('heavy', [
     test('uses heavy', (scope) => {
         scope.assert.equal(heavy.compute(), 42);
         return scope.assert.collect();
@@ -678,7 +678,7 @@ free, rather than a reporter-output parser kludge.
 - Elm `elm-test` — the cleanest existing realization of tests-as-values in
   a popular runner
 - Haskell `tasty` — `TestTree` is the canonical name for the same idea
-- ZIO Test — `Spec[R, E]` values
+- ZIO Test value-oriented test definitions
 - ScalaCheck — `Prop` values
 - Jane Street's `inline_test` — tests are first-class values registered by
   a parsetree extension
@@ -699,6 +699,6 @@ free, rather than a reporter-output parser kludge.
 
 - [elm-test — `Test` and `Expect`](https://package.elm-lang.org/packages/elm-explorations/test/latest/Test)
 - [Haskell `tasty` — `TestTree`](https://github.com/UnkindPartition/tasty)
-- [ZIO Test — `Spec`](https://zio.dev/reference/test/why-zio-test/)
+- [ZIO Test reference](https://zio.dev/reference/test/why-zio-test/)
 - [TC39 `import defer` proposal](https://github.com/tc39/proposal-defer-import-eval)
 - [Jane Street `inline_test` documentation](https://blog.janestreet.com/automatically-generated-tests-and-property-based-testing/)

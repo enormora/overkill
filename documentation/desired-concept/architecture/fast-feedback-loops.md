@@ -197,7 +197,7 @@ node ./foo.test.ts
 
 That's it. No flag, no `--experimental-*`, no loader. Caveats:
 
-- A self-running Overkill file calls `runIfMain(import.meta, spec, options?)`.
+- A self-running Overkill file calls `runIfMain(import.meta, testNode, options?)`.
   Reporter output is explicit; pass a reporter such as
   `createDotReporter()` when the direct Node entrypoint should print.
 - Files must use erasable syntax. Otherwise: `node --experimental-transform-types ./foo.test.ts`.

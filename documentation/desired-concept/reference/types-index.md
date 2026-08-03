@@ -468,7 +468,7 @@ type TestFacade = {
     readonly defineMacro: <Args extends ReadonlyArray<unknown>>(
         factory: (...args: Args) => TestNode,
     ) => (...args: Args) => TestNode;
-    readonly runIfMain: (meta: ImportMeta, spec: TestNode, options?: RunIfMainOptions) => Promise<void>;
+    readonly runIfMain: (meta: ImportMeta, testNode: TestNode, options?: RunIfMainOptions) => Promise<void>;
 };
 ```
 

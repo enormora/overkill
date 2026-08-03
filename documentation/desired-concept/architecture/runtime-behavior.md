@@ -382,9 +382,9 @@ deltas) and emits it as a structured artifact regardless of outcome.
 Activation is always explicit (`--debug`, `--debug-scope`, or per-test
 metadata) and never affects the verdict.
 
-The full spec — activation, `TestDebugArtifact` shape, storage,
+The full specification covers activation, `TestDebugArtifact` shape, storage,
 reporter interaction, overhead, retry/replay behavior, and the
-interpretation patterns the artifact surfaces — lives in
+interpretation patterns the artifact surfaces, and lives in
 [Test Debug Mode](../authoring/debug-mode.md).
 
 ## Parallelism Semantics

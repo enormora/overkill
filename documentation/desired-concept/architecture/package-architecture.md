@@ -93,9 +93,9 @@ a second competing first-party reuse philosophy.
 
 The preferred DX should be:
 
-- a test file exports a conventional value such as `spec`
+- a test file exports a conventional value such as `testNode`
 - the canonical direct-file command is `overkill run path/to/file.test.ts`
-- `runIfMain(import.meta, spec, options?)` is a fully supported companion path for
+- `runIfMain(import.meta, testNode, options?)` is a fully supported companion path for
   users who want bare `node path/to/file.test.ts`
 - bare `node` execution should not be promised to auto-discover a
   conventional exported suite value without that explicit helper unless
@@ -546,7 +546,7 @@ or extend the contract but do not redefine it.
 | Test doubles (`testDouble`, `when`, helpers)                      | `@overkill-dev/doubles`                                                | See [Doubles](../authoring/doubles.md).                                                                                                                        |
 | Typed runtime / resource composition                              | `@overkill-dev/resources`                                              | Lifecycle scopes, execution requirements.                                                                                                                      |
 | Discovery, filtering, runner profiles                             | `@overkill-dev/run`                                                    | Reads configuration, freezes `RunFacts`, and produces `ResolvedRun`.                                                                                           |
-| Selection filter grammar                                          | `@overkill-dev/run`                                                    | Spec in [Metadata And Selection](./metadata-and-selection.md).                                                                                                 |
+| Selection filter grammar                                          | `@overkill-dev/run`                                                    | Specification in [Metadata And Selection](./metadata-and-selection.md).                                                                                        |
 | Sharding                                                          | `@overkill-dev/run`                                                    | Stable identity-hash partitioning.                                                                                                                             |
 | Reporter event stream contract                                    | `@overkill-dev/engine`                                                 | The `ReporterEvent` ADT.                                                                                                                                       |
 | Reporter rendering                                                | `@overkill-dev/reporter-*`                                             | Each presentation choice is its own package.                                                                                                                   |

@@ -61,7 +61,7 @@ handles:
 ```ts
 import { suite, test } from '@overkill-dev/test';
 
-export const spec = suite('saveUser', [
+export const testNode = suite('saveUser', [
     test('records the effect transcript', async (scope) => {
         const runtime = recordingRuntime({
             clock: virtualClock('2026-01-01T00:00:00Z'),

@@ -222,7 +222,7 @@ const schemaContract = defineMacro((title, schema) =>
     ])
 );
 
-export const spec = suite('schemas', [
+export const testNode = suite('schemas', [
     schemaContract('user schema', userSchema),
     schemaContract('pet schema', petSchema)
 ]);

@@ -248,7 +248,7 @@ Example direction:
 import { eslintRuleSuite } from '@overkill-dev/eslint-rule-test';
 import rule from '../src/rules/no-foo.ts';
 
-export const spec = eslintRuleSuite({
+export const testNode = eslintRuleSuite({
     name: 'no-foo',
     rule,
     languageOptions: {
@@ -313,7 +313,7 @@ Recommended first rules:
 - `no-constant-actual-assert`
   - catches likely reversed `actual` / `expected` in equality-style
     assertions
-- `require-exported-spec`
+- `require-exported-test-node`
   - enforces the tests-as-values exported-root convention
 - `no-orphan-test-nodes`
   - catches high-confidence cases where `test(...)`, `suite(...)`, or
