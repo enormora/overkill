@@ -6,9 +6,9 @@ import { isTestNode } from './test-node.ts';
 registerTest('createTestCase() creates a branded test node', function () {
     const engine = createEngine();
     const testCase = engine.createTestCase({
-        body(testContext) {
-            testContext.assert.true(true, { message: 'passes' });
-            return testContext.assert.collect();
+        body(testScope) {
+            testScope.assert.true(true, { message: 'passes' });
+            return testScope.assert.collect();
         },
         metadata: { priority: 'critical' },
         name: 'passes'
@@ -25,9 +25,9 @@ registerTest('createTestCase() rejects an empty name', function () {
     assert.throws(
         function createUnnamedTestCase() {
             engine.createTestCase({
-                body(testContext) {
-                    testContext.assert.true(true, { message: 'passes' });
-                    return testContext.assert.collect();
+                body(testScope) {
+                    testScope.assert.true(true, { message: 'passes' });
+                    return testScope.assert.collect();
                 },
                 metadata: {},
                 name: ' '
@@ -77,9 +77,9 @@ registerTest('createSuite() rejects nodes from another engine instance', functio
     const firstEngine = createEngine();
     const secondEngine = createEngine();
     const foreignTest = firstEngine.createTestCase({
-        body(testContext) {
-            testContext.assert.true(true, { message: 'passes' });
-            return testContext.assert.collect();
+        body(testScope) {
+            testScope.assert.true(true, { message: 'passes' });
+            return testScope.assert.collect();
         },
         metadata: {},
         name: 'foreign'

@@ -45,14 +45,14 @@ const smokeCaseDefinitionFactory = createFactory<SmokeCaseDefinition>(function c
 
 function createSmokeCase(engine: Engine, definition: SmokeCaseDefinition): TestCase {
     return engine.createTestCase({
-        body(testContext) {
+        body(testScope) {
             if (definition.expectedVerdict === 'pass') {
-                testContext.assert.true(true, { message: definition.assertionSummary });
-                return testContext.assert.collect();
+                testScope.assert.true(true, { message: definition.assertionSummary });
+                return testScope.assert.collect();
             }
 
-            testContext.assert.equal(1, 2, { message: definition.assertionSummary });
-            return testContext.assert.collect();
+            testScope.assert.equal(1, 2, { message: definition.assertionSummary });
+            return testScope.assert.collect();
         },
         metadata: { expectedVerdict: definition.expectedVerdict },
         name: definition.name
@@ -186,9 +186,9 @@ await test('consumer imports createEngine() and executes a TestPlan', async func
 
 await test('consumer imports @overkill-dev/assert reference and executes it through @overkill-dev/engine', async function () {
     const testCase = createTestCase({
-        body(testContext) {
-            testContext.assert(resultOk, { ok: true });
-            return testContext.assert.collect();
+        body(testScope) {
+            testScope.assert(resultOk, { ok: true });
+            return testScope.assert.collect();
         },
         metadata: {},
         name: 'uses assert package'
@@ -224,12 +224,12 @@ await test('consumer imports top-level @overkill-dev/doubles facade', async func
     );
 
     const testCase = createTestCase({
-        body(testContext) {
+        body(testScope) {
             const saveValue = doublesPackage.testDouble.returns('saved');
 
             saveValue('id');
-            testContext.assert(doublesPackage.doubleUsage.calledOnceWith, saveValue, [ 'id' ]);
-            return testContext.assert.collect();
+            testScope.assert(doublesPackage.doubleUsage.calledOnceWith, saveValue, [ 'id' ]);
+            return testScope.assert.collect();
         },
         metadata: {},
         name: 'uses doubles assertions'

@@ -364,7 +364,7 @@ That should cover:
 context composition layer, not merely a fixture helper for
 `@overkill-dev/test`. It should be able to model:
 
-- ordinary test context
+- ordinary test scope
 - shared or isolated resources
 - per-run, per-file, per-suite, or per-case lifecycle scopes
 - runtime matrices

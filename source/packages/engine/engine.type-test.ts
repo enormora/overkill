@@ -13,7 +13,7 @@ import type {
     AssertionOptions,
     AssertionResult,
     AssertionSource,
-    CaseAssertContext,
+    TestScopeAssertContext,
     CaseId,
     captureSourceLocation,
     DeepComparable,
@@ -43,7 +43,7 @@ import type {
     SinkDeclaration,
     SourceLocation,
     SourceLocationProvider,
-    TestContext,
+    TestScope,
     TestFailure,
     TestOutcome,
     TestPlan,
@@ -184,7 +184,7 @@ type ExpectedAssertFacadeKeys = keyof {
     readonly true: true;
     readonly undefined: true;
 };
-type ExpectedCaseAssertContextKeys = ExpectedAssertFacadeKeys | 'collect';
+type ExpectedTestScopeAssertContextKeys = ExpectedAssertFacadeKeys | 'collect';
 type ExpectedRequireFacadeKeys = keyof {
     readonly annotated: true;
     readonly array: true;
@@ -350,18 +350,18 @@ describe('Assertion protocol', function () {
         expect<keyof AssertAssertionFacade>().type.not.toBeAssignableFrom<'collect'>();
     });
 
-    test('keeps builder collection on the case assert context only', function () {
-        expect<keyof CaseAssertContext>().type.toBe<ExpectedCaseAssertContextKeys>();
+    test('keeps builder collection on the test scope assert context only', function () {
+        expect<keyof TestScopeAssertContext>().type.toBe<ExpectedTestScopeAssertContextKeys>();
     });
 
     test('exposes the narrow require catalog without equality or collect', function () {
         expect<keyof RequireAssertionFacade>().type.toBe<ExpectedRequireFacadeKeys>();
     });
 
-    test('uses explicit message options and facades on test context', function () {
+    test('uses explicit message options and facades on test scope', function () {
         expect<AssertionOptions>().type.toBe<{ readonly message: string; }>();
-        expect<TestContext['assert']>().type.toBe<CaseAssertContext>();
-        expect<TestContext['require']>().type.toBe<RequireAssertionFacade>();
+        expect<TestScope['assert']>().type.toBe<TestScopeAssertContext>();
+        expect<TestScope['require']>().type.toBe<RequireAssertionFacade>();
     });
 
     test('defines explicit thrown matcher shapes', function () {

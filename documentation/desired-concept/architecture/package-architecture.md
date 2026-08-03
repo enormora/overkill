@@ -74,8 +74,8 @@ authoring layer. It should favor:
 - flat tests
 - explicit grouping only where needed
 - test macros as the primary reuse model
-- typed context
-- `case` as the preferred documentation name for the injected test context
+- typed test scope
+- `scope` as the preferred documentation name for the injected test scope
 - async support
 - no hook-centric lifecycle model
 - a small advanced ergonomics layer for harnesses, interaction recording,
@@ -141,11 +141,11 @@ The first-party assertion layer should live in `@overkill-dev/engine`, not in
   such as `Result` / `Maybe`
 
 Overkill should not expose a broad “mount any third-party matcher library
-into `case.assert`” surface. The extension boundary should stay narrower:
+into `scope.assert`” surface. The extension boundary should stay narrower:
 
 - `@overkill-dev/engine` owns the assertion model, built-ins, counting rules,
-  public low-level `AssertionNode` protocol, injected `case.assert` /
-  `case.require`, and assertion reference execution
+  public low-level `AssertionNode` protocol, injected `scope.assert` /
+  `scope.require`, and assertion reference execution
 - `@overkill-dev/assert` owns reusable helpers for defining assertion
   extensions, such as composite-assertion builders and foreign-assertion
   bridges
@@ -217,7 +217,7 @@ Related first-party ergonomics above the doubles layer may include:
 
 `@overkill-dev/resources` should be generic enough to serve multiple higher-level families:
 
-- `@overkill-dev/test` for ordinary test context
+- `@overkill-dev/test` for ordinary test scope
 - `@overkill-dev/bench` for temp dirs, registries, calibration resources, PTYs, and external processes
 - browser packages for browser servers, contexts, pages, and device matrices
 

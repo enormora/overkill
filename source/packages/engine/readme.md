@@ -17,7 +17,7 @@ Top-level API:
 - `CaseId`, `TestId`, `TestPlan`, `ExecuteOptions`, `NonEmptyReadonlyArray`, `DeepComparable`
 - `Reporter`, `ReporterEvent`, `RealTimeReporter`, `FinalResultReporter`, `RunFacts`, `SinkDeclaration`
 - `RunResult`, `TestOutcome`, `PassOutcome`, `FailOutcome`, `SkipOutcome`, `InconclusiveOutcome`
-- `AssertionNode`, `AssertionResult`, `AssertAssertionFacade`, `CaseAssertContext`
+- `AssertionNode`, `AssertionResult`, `AssertAssertionFacade`, `TestScopeAssertContext`
 - `ThrownMatcher`, `ErrorMatcher`, `ExactThrownMatcher`
 - `RequireAssertionFacade`, `FailedCheck`, `TestFailure`, `RunnerError`
 - `Diff`, `DiffPathSegment`, `SerializedValue`, `SerializationBudget`
@@ -47,30 +47,30 @@ Reporter sinks:
 
 Assertion bodies:
 
-- `case.assert.*` records non-gating assertion nodes and continues.
-- `case.require.*` records narrow gating assertion nodes and short-circuits
+- `scope.assert.*` records non-gating assertion nodes and continues.
+- `scope.require.*` records narrow gating assertion nodes and short-circuits
   when one fails.
 - Custom assertions are imported assertion reference values:
-  `case.assert(resultOk, result)`. Narrowing references may also be used with
-  `case.require(resultOk, result)`. Define reusable assertion references with
+  `scope.assert(resultOk, result)`. Narrowing references may also be used with
+  `scope.require(resultOk, result)`. Define reusable assertion references with
   `@overkill-dev/assert`.
-- Async custom assertions must be awaited before `case.assert.collect()`.
-- `case.assert.throws(body, matcher)` checks synchronous thrown values.
-  Promise-returning callbacks belong to `case.assert.rejects(...)`.
-- `case.assert.rejects(thunk, matcher)` checks promise rejections and must be
-  awaited before `case.assert.collect()`.
+- Async custom assertions must be awaited before `scope.assert.collect()`.
+- `scope.assert.throws(body, matcher)` checks synchronous thrown values.
+  Promise-returning callbacks belong to `scope.assert.rejects(...)`.
+- `scope.assert.rejects(thunk, matcher)` checks promise rejections and must be
+  awaited before `scope.assert.collect()`.
 - Thrown matchers are explicit objects. Use `{ exact: value }` for `Object.is`
   matching, or structured error fields such as `type`, `message`, `code`,
   `name`, and recursive `cause`. Structured error matchers require at least
   one field, and a string `message` is exact.
-- `case.assert.annotated(message).*` and `case.require.annotated(message).*`
+- `scope.assert.annotated(message).*` and `scope.require.annotated(message).*`
   record message-scoped checks without positional message overloads.
-- `case.assert.annotated(message)(reference, ...)` annotates a custom
+- `scope.assert.annotated(message)(reference, ...)` annotates a custom
   assertion boundary.
-- `case.assert.collect()` is builder-mode syntax sugar. It returns the
+- `scope.assert.collect()` is builder-mode syntax sugar. It returns the
   non-empty assertion list for the engine to evaluate, and is not part of
   `AssertAssertionFacade`.
-- `case.plan(count)` must be the first test-body call and must declare a
+- `scope.plan(count)` must be the first test-body call and must declare a
   positive integer assertion count.
 - `FailedCheck` is discriminated by `kind`. Every failed check carries
   serialized `actual` and `expected` values, a typed mismatch `path`, and

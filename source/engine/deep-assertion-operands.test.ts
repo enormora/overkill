@@ -5,7 +5,7 @@ import { createTestEngine as createEngine } from '../test-support/create-test-en
 import { registerTest } from '../test-support/register-test.ts';
 import type { InvalidDeepAssertionOperand } from '../assertion-protocol/evaluation.ts';
 import type { FailOutcome, RunResult } from './run-result.ts';
-import type { TestBody, TestContext } from './test-node.ts';
+import type { TestBody, TestScope } from './test-node.ts';
 
 function firstFailOutcome(result: RunResult): FailOutcome {
     const firstResult = result.perTest.at(0);
@@ -59,11 +59,11 @@ function assertInvalidDeepAssertionOperand(
 }
 
 registerTest('execute() rejects primitive facade deep assertion operands at runtime', async function () {
-    const result = await executeSingleBody(function body(testContext: TestContext) {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
         const actual: unknown = 1;
 
-        testContext.assert.deepEqual(actual, { id: 1 });
-        return testContext.assert.collect();
+        testScope.assert.deepEqual(actual, { id: 1 });
+        return testScope.assert.collect();
     });
 
     assertInvalidDeepAssertionOperand(result, {
@@ -103,9 +103,9 @@ registerTest('execute() rejects primitive composite deep assertion members at ru
         },
         name: 'primitiveMember'
     });
-    const result = await executeSingleBody(function body(testContext: TestContext) {
-        testContext.assert(primitiveMember);
-        return testContext.assert.collect();
+    const result = await executeSingleBody(function body(testScope: TestScope) {
+        testScope.assert(primitiveMember);
+        return testScope.assert.collect();
     });
 
     assertInvalidDeepAssertionOperand(result, {
@@ -126,9 +126,9 @@ registerTest('execute() rejects primitive async composite deep assertion members
         },
         name: 'primitiveExpectedMember'
     });
-    const result = await executeSingleBody(async function body(testContext: TestContext) {
-        await testContext.assert(primitiveExpectedMember);
-        return testContext.assert.collect();
+    const result = await executeSingleBody(async function body(testScope: TestScope) {
+        await testScope.assert(primitiveExpectedMember);
+        return testScope.assert.collect();
     });
 
     assertInvalidDeepAssertionOperand(result, {

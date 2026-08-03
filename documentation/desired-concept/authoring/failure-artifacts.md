@@ -106,7 +106,7 @@ attribution drift (an async chain escaped its test window), it warns rather
 than silently mis-blaming a sibling test.
 
 Tests that intend to test rejection paths use the assertion library's
-explicit support (`case.assert.rejects(() => promiseReturningCall(), { message: /expected/ })`)
+explicit support (`scope.assert.rejects(() => promiseReturningCall(), { message: /expected/ })`)
 rather than relying on the global hooks. The global hooks are the safety net, not the
 mechanism.
 
@@ -157,7 +157,7 @@ Artifacts are:
 - size-bounded with explicit truncation markers
 
 Ordinary microtest failures do **not** imply a standalone on-disk file
-per failed case. The default microtest path stays cheap: assertion
+per failed scope. The default microtest path stays cheap: assertion
 results, concise diffs, and runner diagnostics live in the run record
 and event stream. Separate per-test files are reserved for artifacts
 whose value survives the run (witnesses, baselines) or for explicitly

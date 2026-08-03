@@ -14,14 +14,14 @@ Overkill needs a result model that is:
 The core accepts two first-party styles:
 
 - **builder/result mode** - the primary concept; tests receive injected
-  `case.assert`, `case.require`, and `case.plan`; most tests return
-  `case.assert.collect()` to hand recorded assertions to the engine
+  `scope.assert`, `scope.require`, and `scope.plan`; most tests return
+  `scope.assert.collect()` to hand recorded assertions to the engine
 - **throwing mode** - an explicit alternate test API such as
   `throwingTest`; tests may return `void`
 
 Both produce the same internal `TestOutcome` value.
 
-In builder/result mode, `case.assert.collect()` returns the non-empty assertion
+In builder/result mode, `scope.assert.collect()` returns the non-empty assertion
 node list recorded by the injected assertion context, not a public
 `TestOutcome`. A builder test may also return one assertion node directly for
 the small direct-engine path. Returning ordinary application values is outside
@@ -29,7 +29,7 @@ the supported builder contract.
 
 Direct engine consumers may return public low-level assert-source
 `AssertionNode` values. Builder/result mode still needs at least one returned
-assert-source node, whether it comes from `case.assert.collect()` or is
+assert-source node, whether it comes from `scope.assert.collect()` or is
 returned directly. Successful `require` entries count toward `plan(n)` only
 after a valid assert-source result exists.
 
@@ -66,8 +66,8 @@ still lives directly in `@overkill-dev/engine`. The engine is the home for:
 
 `@overkill-dev/assert` owns reusable assertion-extension helpers such as
 `defineCompositeAssertion(...)` and foreign-assertion bridge builders. The
-engine owns assertion execution, counting, and the injected `case.assert` /
-`case.require` facades.
+engine owns assertion execution, counting, and the injected `scope.assert` /
+`scope.require` facades.
 
 ## API Constraints To Avoid Lint-Rule Patchwork
 
@@ -79,7 +79,7 @@ concept should therefore commit to these constraints:
 - no positional overloading where a later argument might mean matcher,
   options, or custom message depending on type
 - if human annotation support is provided, it should be a prefix assertion
-  context such as `case.assert.annotated('...').equal(actual, expected)`,
+  context such as `scope.assert.annotated('...').equal(actual, expected)`,
   not an extra positional message argument and not a postfix
   `.annotate(...)` on the result of an assertion call
 - no public import-style split between several overlapping assertion entry
@@ -128,13 +128,13 @@ to implement.
 `plan` declares the expected number of assertion boundaries in a test:
 
 ```ts
-test('parses three rows', (case) => {
-    case.plan(3);
+test('parses three rows', (scope) => {
+    scope.plan(3);
     const rows = parse(input);
-    case.assert.length(rows, 3);
-    case.assert.equal(rows[0].id, 1);
-    case.assert.equal(rows[1].id, 2);
-    return case.assert.collect();
+    scope.assert.length(rows, 3);
+    scope.assert.equal(rows[0].id, 1);
+    scope.assert.equal(rows[1].id, 2);
+    return scope.assert.collect();
 });
 ```
 
@@ -149,7 +149,7 @@ Semantics:
 - if the test never returns, timeout or crash handling applies instead
 
 For ordinary assertions, one call records one boundary. Composite
-assertions and property-family primitives such as `case.forall(...)` also
+assertions and property-family primitives such as `scope.forall(...)` also
 count as one boundary each.
 
 This is explicit context injection, not hidden global mutable state.
@@ -161,11 +161,11 @@ strict, and semantic.
 
 Two namespaces exist:
 
-- `case.assert.*` - broad assertion surface; records and continues
-- `case.require.*` - narrow gating surface; records and short-circuits,
+- `scope.assert.*` - broad assertion surface; records and continues
+- `scope.require.*` - narrow gating surface; records and short-circuits,
   primarily for type narrowing
 
-### `case.require`
+### `scope.require`
 
 `require` should stay minimal. It exists to make preconditions explicit and
 to support useful TypeScript narrowing in straight-line tests.
@@ -188,7 +188,7 @@ Recommended built-ins:
 numeric comparison, and doubles-specific assertions belong on `assert`, not
 on `require`.
 
-### `case.assert`
+### `scope.assert`
 
 `assert` should include all useful `require` assertions plus the ordinary
 test assertion vocabulary.
@@ -243,7 +243,7 @@ Recommended built-ins:
   - `fail(reason?)`
   - `annotated(text).<assertion>(...)`
 
-`case.assert.collect()` is not an assertion protocol primitive. It belongs to
+`scope.assert.collect()` is not an assertion protocol primitive. It belongs to
 builder/result mode only: it returns the non-empty assert-source assertion list
 recorded by the injected case builder. A future reusable `@overkill-dev/assert`
 API should be able to reuse assertion semantics without carrying this builder
@@ -254,8 +254,8 @@ human-facing failure summary for the next assertion calls made through that
 facade:
 
 ```ts
-case.assert.annotated('cart starts empty').empty(cart.items);
-case.require.annotated('user id must be present').string(input.userId);
+scope.assert.annotated('cart starts empty').empty(cart.items);
+scope.require.annotated('user id must be present').string(input.userId);
 ```
 
 The low-level assertion node still carries a nullable `message` field. That is
@@ -263,16 +263,16 @@ protocol data, not a reason to add positional message overloads.
 
 ### Current Built-In Assertion Reference
 
-Each signature below is available on `case.assert` unless noted otherwise.
-`case.require` intentionally exposes only the narrow gating subset listed in
-the `case.require` section.
+Each signature below is available on `scope.assert` unless noted otherwise.
+`scope.require` intentionally exposes only the narrow gating subset listed in
+the `scope.require` section.
 
 #### `annotated(text)`
 
 Signature: `annotated(text: string)`
 
 ```ts
-case.assert.annotated('response includes account id').string(response.accountId);
+scope.assert.annotated('response includes account id').string(response.accountId);
 ```
 
 Returns a scoped assertion facade that records `text` as the failure message
@@ -284,10 +284,10 @@ signature stays focused on assertion operands.
 Signature: `array(actual: unknown)`
 
 ```ts
-case.assert.array(rows);
+scope.assert.array(rows);
 ```
 
-Passes only when `actual` is an array. Also available on `case.require` for
+Passes only when `actual` is an array. Also available on `scope.require` for
 type narrowing.
 
 #### `arrayContainsPartial(actual, expectedSubset)`
@@ -295,7 +295,7 @@ type narrowing.
 Signature: `arrayContainsPartial<Actual, Expected>(actual: readonly DeepComparable<Actual>[], expectedSubset: DeepComparable<Expected>)`
 
 ```ts
-case.assert.arrayContainsPartial(users, { id: 'u1', role: 'admin' });
+scope.assert.arrayContainsPartial(users, { id: 'u1', role: 'admin' });
 ```
 
 Passes when at least one array item partially deep-matches `expectedSubset`.
@@ -307,7 +307,7 @@ record by important fields rather than checking the whole collection.
 Signature: `between(actual: number, minimum: number, maximum: number)`
 
 ```ts
-case.assert.between(score, 0, 100);
+scope.assert.between(score, 0, 100);
 ```
 
 Passes when `actual` is greater than or equal to `minimum` and less than or
@@ -318,10 +318,10 @@ equal to `maximum`.
 Signature: `boolean(actual: unknown)`
 
 ```ts
-case.assert.boolean(flag);
+scope.assert.boolean(flag);
 ```
 
-Passes only when `actual` is a boolean. Also available on `case.require` for
+Passes only when `actual` is a boolean. Also available on `scope.require` for
 type narrowing.
 
 #### `deepEqual(actual, expected)`
@@ -329,7 +329,7 @@ type narrowing.
 Signature: `deepEqual<Actual, Expected>(actual: DeepComparable<Actual>, expected: DeepComparable<Expected>)`
 
 ```ts
-case.assert.deepEqual(result, { ok: true, count: 2 });
+scope.assert.deepEqual(result, { ok: true, count: 2 });
 ```
 
 Passes when `actual` and `expected` are deeply equal with strict semantics.
@@ -341,18 +341,18 @@ Top-level operands must be non-primitive or `unknown`.
 Signature: `defined(actual: unknown)`
 
 ```ts
-case.assert.defined(config.port);
+scope.assert.defined(config.port);
 ```
 
 Passes when `actual` is neither `null` nor `undefined`. Also available on
-`case.require` for type narrowing.
+`scope.require` for type narrowing.
 
 #### `empty(actual)`
 
 Signature: `empty(actual: unknown)`
 
 ```ts
-case.assert.empty(queue);
+scope.assert.empty(queue);
 ```
 
 Passes when the value has a supported collection count of `0`. Supported
@@ -363,7 +363,7 @@ values include strings, arrays, maps, sets, plain objects, and iterables.
 Signature: `endsWith(actual: string, expected: string)`
 
 ```ts
-case.assert.endsWith(filename, '.json');
+scope.assert.endsWith(filename, '.json');
 ```
 
 Passes when `actual` ends with `expected`.
@@ -373,7 +373,7 @@ Passes when `actual` ends with `expected`.
 Signature: `equal(actual: unknown, expected: unknown)`
 
 ```ts
-case.assert.equal(statusCode, 200);
+scope.assert.equal(statusCode, 200);
 ```
 
 Passes when `Object.is(actual, expected)` passes. Use it for scalar or
@@ -384,7 +384,7 @@ identity equality, not for deep object comparison.
 Signature: `fail()`
 
 ```ts
-case.assert.annotated('unreachable branch executed').fail();
+scope.assert.annotated('unreachable branch executed').fail();
 ```
 
 Always records a failed assertion. It is useful for impossible branches after
@@ -395,7 +395,7 @@ the test has enough context to explain why reaching them is wrong.
 Signature: `false(actual: unknown)`
 
 ```ts
-case.assert.false(result.cached);
+scope.assert.false(result.cached);
 ```
 
 Passes only when `actual` is exactly `false`.
@@ -405,10 +405,10 @@ Passes only when `actual` is exactly `false`.
 Signature: `function(actual: unknown)`
 
 ```ts
-case.assert.function(plugin.load);
+scope.assert.function(plugin.load);
 ```
 
-Passes only when `actual` is a function. Also available on `case.require` for
+Passes only when `actual` is a function. Also available on `scope.require` for
 type narrowing.
 
 #### `greaterThan(actual, expected)`
@@ -416,7 +416,7 @@ type narrowing.
 Signature: `greaterThan(actual: number, expected: number)`
 
 ```ts
-case.assert.greaterThan(durationMs, 0);
+scope.assert.greaterThan(durationMs, 0);
 ```
 
 Passes when `actual` is strictly greater than `expected`.
@@ -426,7 +426,7 @@ Passes when `actual` is strictly greater than `expected`.
 Signature: `greaterThanOrEqual(actual: number, expected: number)`
 
 ```ts
-case.assert.greaterThanOrEqual(retryCount, 1);
+scope.assert.greaterThanOrEqual(retryCount, 1);
 ```
 
 Passes when `actual` is greater than or equal to `expected`.
@@ -436,10 +436,10 @@ Passes when `actual` is greater than or equal to `expected`.
 Signature: `hasProperty(actual: unknown, key: PropertyKey)`
 
 ```ts
-case.assert.hasProperty(headers, 'content-type');
+scope.assert.hasProperty(headers, 'content-type');
 ```
 
-Passes when `actual` owns `key` directly. Also available on `case.require` for
+Passes when `actual` owns `key` directly. Also available on `scope.require` for
 type narrowing to a record containing that property.
 
 #### `includes(actual, expected)`
@@ -447,7 +447,7 @@ type narrowing to a record containing that property.
 Signature: `includes(actual: string, expected: string)`
 
 ```ts
-case.assert.includes(message, 'saved');
+scope.assert.includes(message, 'saved');
 ```
 
 Passes when the string `actual` contains `expected`.
@@ -457,10 +457,10 @@ Passes when the string `actual` contains `expected`.
 Signature: `instanceOf(actual: unknown, ctor: abstract new (...args: never[]) => unknown)`
 
 ```ts
-case.assert.instanceOf(error, SyntaxError);
+scope.assert.instanceOf(error, SyntaxError);
 ```
 
-Passes when `actual instanceof ctor`. Also available on `case.require` for
+Passes when `actual instanceof ctor`. Also available on `scope.require` for
 type narrowing.
 
 #### `length(actual, expectedLength)`
@@ -468,7 +468,7 @@ type narrowing.
 Signature: `length(actual: unknown, expectedLength: number)`
 
 ```ts
-case.assert.length(rows, 3);
+scope.assert.length(rows, 3);
 ```
 
 Passes when the supported collection count equals `expectedLength`. Supported
@@ -479,7 +479,7 @@ values match `empty`.
 Signature: `lessThan(actual: number, expected: number)`
 
 ```ts
-case.assert.lessThan(durationMs, 500);
+scope.assert.lessThan(durationMs, 500);
 ```
 
 Passes when `actual` is strictly less than `expected`.
@@ -489,7 +489,7 @@ Passes when `actual` is strictly less than `expected`.
 Signature: `lessThanOrEqual(actual: number, expected: number)`
 
 ```ts
-case.assert.lessThanOrEqual(retryCount, 3);
+scope.assert.lessThanOrEqual(retryCount, 3);
 ```
 
 Passes when `actual` is less than or equal to `expected`.
@@ -499,7 +499,7 @@ Passes when `actual` is less than or equal to `expected`.
 Signature: `match(actual: string, pattern: RegExp)`
 
 ```ts
-case.assert.match(user.email, /^[^@]+@[^@]+$/u);
+scope.assert.match(user.email, /^[^@]+@[^@]+$/u);
 ```
 
 Passes when `pattern.test(actual)` passes.
@@ -509,9 +509,9 @@ Passes when `pattern.test(actual)` passes.
 Signature: `membersPartialDeepEqual<Actual, Expected>(actual: readonly DeepComparable<Actual>[], expectedMembers: readonly DeepComparable<Expected>[])`
 
 ```ts
-case.assert.membersPartialDeepEqual(users, [
+scope.assert.membersPartialDeepEqual(users, [
     { id: 'u1', role: 'admin' },
-    { id: 'u2', role: 'viewer' },
+    { id: 'u2', role: 'viewer' }
 ]);
 ```
 
@@ -524,7 +524,7 @@ extra actual fields and ignoring array order.
 Signature: `notDeepEqual<Actual, Expected>(actual: DeepComparable<Actual>, expected: DeepComparable<Expected>)`
 
 ```ts
-case.assert.notDeepEqual(before, after);
+scope.assert.notDeepEqual(before, after);
 ```
 
 Passes when `actual` and `expected` are not deeply equal.
@@ -534,7 +534,7 @@ Passes when `actual` and `expected` are not deeply equal.
 Signature: `notEmpty(actual: unknown)`
 
 ```ts
-case.assert.notEmpty(events);
+scope.assert.notEmpty(events);
 ```
 
 Passes when the value has a supported collection count greater than `0`.
@@ -544,7 +544,7 @@ Passes when the value has a supported collection count greater than `0`.
 Signature: `notEqual(actual: unknown, expected: unknown)`
 
 ```ts
-case.assert.notEqual(actualId, previousId);
+scope.assert.notEqual(actualId, previousId);
 ```
 
 Passes when `Object.is(actual, expected)` does not pass.
@@ -554,7 +554,7 @@ Passes when `Object.is(actual, expected)` does not pass.
 Signature: `notMatch(actual: string, pattern: RegExp)`
 
 ```ts
-case.assert.notMatch(output, /deprecated/u);
+scope.assert.notMatch(output, /deprecated/u);
 ```
 
 Passes when `pattern.test(actual)` does not pass.
@@ -564,10 +564,10 @@ Passes when `pattern.test(actual)` does not pass.
 Signature: `notNull(actual: unknown)`
 
 ```ts
-case.assert.notNull(user);
+scope.assert.notNull(user);
 ```
 
-Passes when `actual` is not `null`. Also available on `case.require` for type
+Passes when `actual` is not `null`. Also available on `scope.require` for type
 narrowing.
 
 #### `null(actual)`
@@ -575,10 +575,10 @@ narrowing.
 Signature: `null(actual: unknown)`
 
 ```ts
-case.assert.null(cacheEntry);
+scope.assert.null(cacheEntry);
 ```
 
-Passes only when `actual` is exactly `null`. Also available on `case.require`
+Passes only when `actual` is exactly `null`. Also available on `scope.require`
 for type narrowing.
 
 #### `number(actual)`
@@ -586,10 +586,10 @@ for type narrowing.
 Signature: `number(actual: unknown)`
 
 ```ts
-case.assert.number(total);
+scope.assert.number(total);
 ```
 
-Passes only when `actual` is a number. Also available on `case.require` for
+Passes only when `actual` is a number. Also available on `scope.require` for
 type narrowing.
 
 #### `object(actual)`
@@ -597,18 +597,18 @@ type narrowing.
 Signature: `object(actual: unknown)`
 
 ```ts
-case.assert.object(payload);
+scope.assert.object(payload);
 ```
 
 Passes when `actual` is a non-null object and not an array. Also available on
-`case.require` for type narrowing.
+`scope.require` for type narrowing.
 
 #### `partialDeepEqual(actual, expectedSubset)`
 
 Signature: `partialDeepEqual<Actual, Expected>(actual: DeepComparable<Actual>, expectedSubset: DeepComparable<Expected>)`
 
 ```ts
-case.assert.partialDeepEqual(user, { profile: { locale: 'en-US' } });
+scope.assert.partialDeepEqual(user, { profile: { locale: 'en-US' } });
 ```
 
 Passes when `actual` contains the structure described by `expectedSubset`.
@@ -638,7 +638,7 @@ invalid value came from a membership helper.
 Signature: `startsWith(actual: string, expected: string)`
 
 ```ts
-case.assert.startsWith(route, '/api/');
+scope.assert.startsWith(route, '/api/');
 ```
 
 Passes when `actual` starts with `expected`.
@@ -648,10 +648,10 @@ Passes when `actual` starts with `expected`.
 Signature: `string(actual: unknown)`
 
 ```ts
-case.assert.string(name);
+scope.assert.string(name);
 ```
 
-Passes only when `actual` is a string. Also available on `case.require` for
+Passes only when `actual` is a string. Also available on `scope.require` for
 type narrowing.
 
 #### `true(actual)`
@@ -659,7 +659,7 @@ type narrowing.
 Signature: `true(actual: unknown)`
 
 ```ts
-case.assert.true(result.ok);
+scope.assert.true(result.ok);
 ```
 
 Passes only when `actual` is exactly `true`.
@@ -669,23 +669,23 @@ Passes only when `actual` is exactly `true`.
 Signature: `undefined(actual: unknown)`
 
 ```ts
-case.assert.undefined(optionalValue);
+scope.assert.undefined(optionalValue);
 ```
 
 Passes only when `actual` is exactly `undefined`.
 
-#### `case.assert.collect()`
+#### `scope.assert.collect()`
 
 Signature: `collect()`
 
 ```ts
-return case.assert.collect();
+return scope.assert.collect();
 ```
 
 Returns the non-empty list of builder assertions recorded through
-`case.assert`. This is builder-mode syntax sugar; callers may also return
+`scope.assert`. This is builder-mode syntax sugar; callers may also return
 assertion nodes directly. It is intentionally not available on the reusable
-`case.assert` facade surface.
+`scope.assert` facade surface.
 
 The error assertions should stay strict:
 
@@ -759,21 +759,21 @@ type Assert = {
 Recommended examples:
 
 ```ts
-case.assert.throws(doParse, {
+scope.assert.throws(doParse, {
     type: SyntaxError,
-    message: /invalid header/,
+    message: /invalid header/
 });
 
-case.assert.throws(legacyThrow, {
-    exact: 'legacy error',
+scope.assert.throws(legacyThrow, {
+    exact: 'legacy error'
 });
 
-await case.assert.rejects(
+await scope.assert.rejects(
     () => loadUser('42'),
     {
         code: 'ENOENT',
-        message: 'user not found',
-    },
+        message: 'user not found'
+    }
 );
 ```
 
@@ -784,8 +784,8 @@ This matcher should stay intentionally small:
 - no arbitrary callback matcher DSL
 - no weak `throwsAny` / `rejectsAny` escape hatch
 
-`case.assert.rejects(...)` is async and must be awaited before
-`case.assert.collect()`. A thunk that throws synchronously before returning a
+`scope.assert.rejects(...)` is async and must be awaited before
+`scope.assert.collect()`. A thunk that throws synchronously before returning a
 promise is a body error, not a rejection assertion result.
 
 If a test needs custom matching logic, it should catch the error and use
@@ -812,29 +812,29 @@ bundle.
 
 ## Property Tests And The Assertion Boundary
 
-Property primitives like `case.forall(gen, body)` (proposed package
+Property primitives like `scope.forall(gen, body)` (proposed package
 `@overkill-dev/property`) call `body` many times - once per generated
 input - but count as **one assertion at the boundary** for both
 zero-assertion detection and `plan(n)`:
 
-- on success: `case.forall` records one assertion's worth of
+- on success: `scope.forall` records one assertion's worth of
   activity in the case's log; a property test that completes
   successfully therefore satisfies § Zero-Assertion Detection
-  without forcing the author to write `case.plan(1)`
-- on failure: `case.forall` records exactly one `FailedCheck` for
+  without forcing the author to write `scope.plan(1)`
+- on failure: `scope.forall` records exactly one `FailedCheck` for
   the shrunk minimal counterexample, regardless of how many failing
   inputs were seen during shrinking
 - `plan(n)` counts boundary assertions: a test with one
-  `case.forall` call satisfies `case.plan(1)`; a test with two
-  `case.forall` calls satisfies `case.plan(2)`
+  `scope.forall` call satisfies `scope.plan(1)`; a test with two
+  `scope.forall` calls satisfies `scope.plan(2)`
 
-The body passed to `case.forall` should use an injected property-local
+The body passed to `scope.forall` should use an injected property-local
 assertion context rather than importing a separate low-level assertion
 package. A typical shape is:
 
 ```ts
-test('round-trips', (case) => {
-    return case.forall(gen.user(), (user, sample) => {
+test('round-trips', (scope) => {
+    return scope.forall(gen.user(), (user, sample) => {
         sample.assert.equal(parse(serialize(user)), user);
         return sample.assert.collect();
     });
@@ -935,10 +935,10 @@ Builder mode is the preferred surface because it solves practical
 TypeScript problems:
 
 ```ts
-test('user shape', (case) => {
-    case.require.defined(user);
-    case.assert.equal(user.name, 'Ada');
-    return case.assert.collect();
+test('user shape', (scope) => {
+    scope.require.defined(user);
+    scope.assert.equal(user.name, 'Ada');
+    return scope.assert.collect();
 });
 ```
 
@@ -962,8 +962,8 @@ does not need a separate first-party package yet.
 
 The public concept therefore stays simpler:
 
-- day-to-day tests use injected `case.assert` / `case.require`
-- property helpers such as `case.forall(...)` use a nested injected
+- day-to-day tests use injected `scope.assert` / `scope.require`
+- property helpers such as `scope.forall(...)` use a nested injected
   assertion context
 - direct returned protocol nodes are assert-source only
 - direct returned protocol nodes carry explicit `location` metadata; direct
@@ -991,10 +991,10 @@ the failed check.
 
 Policy:
 
-- built-in `case.assert.*` and `case.require.*` failures point to that public
+- built-in `scope.assert.*` and `scope.require.*` failures point to that public
   assertion call
 - custom, composite, and narrowing failures point to the outer
-  `case.assert(reference, ...)` or `case.require(reference, ...)` call
+  `scope.assert(reference, ...)` or `scope.require(reference, ...)` call
 - composite children inherit that same boundary location by default, because
   child checks are diagnostics inside one assertion boundary
 - foreign bridge failures use the Overkill boundary location; the thrown
@@ -1073,7 +1073,7 @@ and require-style checks.
 When the documentation talks about explicit aggregate or "run all" semantics, that
 refers to explicit aggregate helpers in the assertion layer, not to
 builder-test control flow. In the builder API, the default control-flow
-rule is simple: `case.assert` records and continues; `case.require`
+rule is simple: `scope.assert` records and continues; `scope.require`
 records and stops.
 
 ## Async Test Support
@@ -1085,21 +1085,21 @@ those awaits in a straightforward way.
 
 Each `assert.*` or `require.*` call records into the test's assertion log
 immediately, regardless of whether more `await`s follow. The plan declared
-at the top of the test body still applies; `case.assert.collect()` returns the
+at the top of the test body still applies; `scope.assert.collect()` returns the
 recorded assertion nodes.
 
 ```ts
-test('saves and re-reads', async (case) => {
-    case.plan(3);
+test('saves and re-reads', async (scope) => {
+    scope.plan(3);
 
     const id = await store.save({ name: 'Ada' });
-    case.assert.string(id);
+    scope.assert.string(id);
 
     const fetched = await store.read(id);
-    case.require.defined(fetched);
-    case.assert.equal(fetched.name, 'Ada');
+    scope.require.defined(fetched);
+    scope.assert.equal(fetched.name, 'Ada');
 
-    return case.assert.collect();
+    return scope.assert.collect();
 });
 ```
 
@@ -1121,8 +1121,8 @@ Throwing mode is still supported, but explicitly in the test API shape:
 ```ts
 import { throwingTest as test } from '@overkill-dev/test';
 
-test('legacy flow', (case) => {
-    case.assert.equal(add(2, 3), 5);
+test('legacy flow', (scope) => {
+    scope.assert.equal(add(2, 3), 5);
 });
 ```
 
@@ -1137,17 +1137,17 @@ such as `Result` or `Maybe`.
 Primary syntax:
 
 ```ts
-test('returns a successful result', (case) => {
-    case.assert(resultOk, result);
-    return case.assert.collect();
+test('returns a successful result', (scope) => {
+    scope.assert(resultOk, result);
+    return scope.assert.collect();
 });
 ```
 
 Built-in assertions remain named methods:
 
 ```ts
-case.assert.equal(actual, expected);
-case.require.defined(value);
+scope.assert.equal(actual, expected);
+scope.require.defined(value);
 ```
 
 Custom assertions should remain:
@@ -1193,7 +1193,7 @@ export const resultOk = defineNarrowingCompositeAssertion({
 });
 ```
 
-`case.assert(resultOk, result)` checks and continues. `case.require(resultOk,
+`scope.assert(resultOk, result)` checks and continues. `scope.require(resultOk,
 result)` checks, short-circuits on failure, and narrows the first operand.
 Narrowing references are synchronous.
 
@@ -1226,12 +1226,12 @@ const resultValue = defineCompositeAssertion({
 Composite references are ordinary imported values:
 
 ```ts
-test('publishes the release', async (case) => {
+test('publishes the release', async (scope) => {
     const result = await publishRelease(harness, 'v1.2.3');
 
-    case.assert(resultValue, result, { tag: 'v1.2.3' });
+    scope.assert(resultValue, result, { tag: 'v1.2.3' });
 
-    return case.assert.collect();
+    return scope.assert.collect();
 });
 ```
 
@@ -1252,21 +1252,21 @@ assertion boundary:
 ```ts
 import { doubleUsage } from '@overkill-dev/doubles';
 
-test('publishes the release', async (case) => {
+test('publishes the release', async (scope) => {
     await publishRelease(harness, 'v1.2.3');
 
-    case.assert(doubleUsage.calledOnceWith, harness.buildAndPublishAll, [
-        { tag: 'v1.2.3' },
+    scope.assert(doubleUsage.calledOnceWith, harness.buildAndPublishAll, [
+        { tag: 'v1.2.3' }
     ]);
 
-    return case.assert.collect();
+    return scope.assert.collect();
 });
 ```
 
 ### Foreign Assertion Bridges
 
 Overkill should **not** try to absorb arbitrary third-party assertion
-libraries into `case.assert.*` wholesale.
+libraries into `scope.assert.*` wholesale.
 
 That would make too many core behaviors ambiguous:
 
@@ -1351,12 +1351,12 @@ import { hasResourceProperties } from '@overkill-dev/aws-cdk';
 Then ordinary tests use imported references:
 
 ```ts
-test('defines versioned bucket', (case) => {
-    case.assert(hasResourceProperties, stack, 'AWS::S3::Bucket', {
-        VersioningConfiguration: { Status: 'Enabled' },
+test('defines versioned bucket', (scope) => {
+    scope.assert(hasResourceProperties, stack, 'AWS::S3::Bucket', {
+        VersioningConfiguration: { Status: 'Enabled' }
     });
 
-    return case.assert.collect();
+    return scope.assert.collect();
 });
 ```
 
@@ -1460,7 +1460,7 @@ For the product concept:
 - `@overkill-dev/test` may re-expose that engine-owned assertion surface, but it
   is not required for assertion usage
 - primary authoring shape: builder/context API, usually ending with
-  `return case.assert.collect()`
+  `return scope.assert.collect()`
 - `AssertionNode` exists as a public low-level engine protocol, but not as a
   separate package or the day-to-day authoring surface
 - zero-assertion detection: failure, no opt-out
@@ -1468,7 +1468,7 @@ For the product concept:
   and `n > 0`
 - optional global assertion budgets are allowed as a centrally configured
   policy; they count assertion boundaries, so composite assertions and
-  `case.forall(...)` each count as 1
+  `scope.forall(...)` each count as 1
 - diff data is structured, not stack-mined, and assertion value formatting is
   resource-bounded before reporter delivery
 - ordinary async/app errors remain distinct from assertion failures

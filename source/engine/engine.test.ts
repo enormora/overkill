@@ -18,9 +18,9 @@ registerTest('engine.execute() invokes the injected execute dependency', async f
         engine.createSuite({
             children: [
                 engine.createTestCase({
-                    body(testContext) {
-                        testContext.assert.true(true, { message: 'passes' });
-                        return testContext.assert.collect();
+                    body(testScope) {
+                        testScope.assert.true(true, { message: 'passes' });
+                        return testScope.assert.collect();
                     },
                     metadata: {},
                     name: 'passes'

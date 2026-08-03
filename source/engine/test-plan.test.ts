@@ -7,9 +7,9 @@ registerTest('createTestPlan() expands suites and tables into executable cases',
     const root = engine.createSuite({
         children: [
             engine.createTestCase({
-                body(testContext) {
-                    testContext.assert.true(true, { message: 'passes' });
-                    return testContext.assert.collect();
+                body(testScope) {
+                    testScope.assert.true(true, { message: 'passes' });
+                    return testScope.assert.collect();
                 },
                 metadata: { local: true },
                 name: 'first'
@@ -17,9 +17,9 @@ registerTest('createTestPlan() expands suites and tables into executable cases',
             engine.createTable({
                 cases: [
                     {
-                        body(testContext) {
-                            testContext.assert.true(true, { message: 'row passes' });
-                            return testContext.assert.collect();
+                        body(testScope) {
+                            testScope.assert.true(true, { message: 'row passes' });
+                            return testScope.assert.collect();
                         },
                         metadata: { row: 1 },
                         name: 'row 1',
@@ -65,17 +65,17 @@ registerTest('createTestPlan() expands suites and tables into executable cases',
 registerTest('createTestPlan() reports constructed nodes that do not reach the root as orphans', function () {
     const engine = createEngine();
     const reached = engine.createTestCase({
-        body(testContext) {
-            testContext.assert.true(true, { message: 'passes' });
-            return testContext.assert.collect();
+        body(testScope) {
+            testScope.assert.true(true, { message: 'passes' });
+            return testScope.assert.collect();
         },
         metadata: {},
         name: 'reached'
     });
     engine.createTestCase({
-        body(testContext) {
-            testContext.assert.true(true, { message: 'passes' });
-            return testContext.assert.collect();
+        body(testScope) {
+            testScope.assert.true(true, { message: 'passes' });
+            return testScope.assert.collect();
         },
         metadata: {},
         name: 'unused test'
@@ -143,17 +143,17 @@ registerTest('createTestPlan() rejects duplicate full case identities', function
     const root = engine.createSuite({
         children: [
             engine.createTestCase({
-                body(testContext) {
-                    testContext.assert.true(true, { message: 'passes' });
-                    return testContext.assert.collect();
+                body(testScope) {
+                    testScope.assert.true(true, { message: 'passes' });
+                    return testScope.assert.collect();
                 },
                 metadata: {},
                 name: 'same'
             }),
             engine.createTestCase({
-                body(testContext) {
-                    testContext.assert.true(true, { message: 'passes' });
-                    return testContext.assert.collect();
+                body(testScope) {
+                    testScope.assert.true(true, { message: 'passes' });
+                    return testScope.assert.collect();
                 },
                 metadata: {},
                 name: 'same'

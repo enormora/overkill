@@ -23,10 +23,10 @@ A function that takes parameters and returns a `TestNode` such as a
 
 Source: [Tests As Values](../authoring/tests-as-values.md).
 
-## Case Context
+## Test Scope
 
 The injected context object passed to a first-party `@overkill-dev/test` body.
-Docs prefer the local variable name `case`. It may expose `assert`,
+Docs prefer the local variable name `scope`. It may expose `assert`,
 `require`, `plan`, and selected helper methods.
 
 Source: [Assertions And Results](../authoring/assertions-and-results.md), [Test Ergonomics](../authoring/test-ergonomics.md).
@@ -124,7 +124,7 @@ Source: [Assertions And Results § Protocol Layer](../authoring/assertions-and-r
 A lazy assertion-protocol value consumed by the engine and normalized into
 structured outcomes. Direct engine consumers may return an `AssertionNode` or
 a non-empty list of them. Ordinary users interact with injected
-`case.assert` / `case.require` instead of constructing protocol nodes
+`scope.assert` / `scope.require` instead of constructing protocol nodes
 directly.
 
 Source: [Assertions And Results](../authoring/assertions-and-results.md).

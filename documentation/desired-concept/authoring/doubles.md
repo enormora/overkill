@@ -147,9 +147,9 @@ The goal is that a user can inspect a double naturally in a debugger or in an as
 Example direction:
 
 ```ts
-case.assert.equal(saveUser.interactionCount, 2);
-case.assert.equal(saveUser.firstInteraction.arguments[0].id, '42');
-case.assert.equal(saveUser.lastResult.status, 'returned');
+scope.assert.equal(saveUser.interactionCount, 2);
+scope.assert.equal(saveUser.firstInteraction.arguments[0].id, '42');
+scope.assert.equal(saveUser.lastResult.status, 'returned');
 ```
 
 Use `callCount` and `constructionCount` when the invocation mode matters.
@@ -215,8 +215,8 @@ const service = createService({ Client });
 
 service.connect();
 
-case.assert(doubleUsage.constructedOnceWith, Client, [ 'https://api.example.test' ]);
-case.assert.equal(Client.firstConstruction.instance, client);
+scope.assert(doubleUsage.constructedOnceWith, Client, [ 'https://api.example.test' ]);
+scope.assert.equal(Client.firstConstruction.instance, client);
 ```
 
 Constructor behavior should use construction-specific rule names so call
@@ -244,37 +244,37 @@ type ClientFactory = {
 const Client = testDouble<ClientFactory>({
     fallback: {
         call: rule.returns(fallbackClient),
-        construction: rule.constructs(primaryClient),
-    },
+        construction: rule.constructs(primaryClient)
+    }
 });
 
 const calledClient = Client('https://api.example.test');
 const constructedClient = new Client('https://api.example.test');
 
-case.assert(doubleUsage.calledOnce, Client);
-case.assert(doubleUsage.constructedOnce, Client);
-case.assert.equal(calledClient, fallbackClient);
-case.assert.equal(constructedClient, primaryClient);
+scope.assert(doubleUsage.calledOnce, Client);
+scope.assert(doubleUsage.constructedOnce, Client);
+scope.assert.equal(calledClient, fallbackClient);
+scope.assert.equal(constructedClient, primaryClient);
 ```
 
 The doubles package should expose assertion references through a named
 `doubleUsage` export. Tests pass those references to the engine-owned
 assertion context:
 
-- `case.assert(doubleUsage.interactedOnce, double)`
-- `case.assert(doubleUsage.interactedOnceWith, double, args)`
-- `case.assert(doubleUsage.calledOnce, double)`
-- `case.assert(doubleUsage.calledOnceWith, double, args)`
-- `case.assert(doubleUsage.constructedOnce, double)`
-- `case.assert(doubleUsage.constructedOnceWith, double, args)`
-- `case.assert(doubleUsage.iterated, double)`
-- `case.assert(doubleUsage.iteratorEventCount, double, count)`
-- `case.assert(doubleUsage.yieldCount, double, count)`
-- `case.assert(doubleUsage.yieldedExactly, double, values)`
-- `case.assert(doubleUsage.disposed, disposable)`
-- `case.assert(doubleUsage.disposedOnce, disposable)`
-- `case.assert(doubleUsage.disposeCount, disposable, count)`
-- `case.assert(doubleUsage.disposeOrder, [ first, second ])`
+- `scope.assert(doubleUsage.interactedOnce, double)`
+- `scope.assert(doubleUsage.interactedOnceWith, double, args)`
+- `scope.assert(doubleUsage.calledOnce, double)`
+- `scope.assert(doubleUsage.calledOnceWith, double, args)`
+- `scope.assert(doubleUsage.constructedOnce, double)`
+- `scope.assert(doubleUsage.constructedOnceWith, double, args)`
+- `scope.assert(doubleUsage.iterated, double)`
+- `scope.assert(doubleUsage.iteratorEventCount, double, count)`
+- `scope.assert(doubleUsage.yieldCount, double, count)`
+- `scope.assert(doubleUsage.yieldedExactly, double, values)`
+- `scope.assert(doubleUsage.disposed, disposable)`
+- `scope.assert(doubleUsage.disposedOnce, disposable)`
+- `scope.assert(doubleUsage.disposeCount, disposable, count)`
+- `scope.assert(doubleUsage.disposeOrder, [ first, second ])`
 
 These assertions should read construction records, not infer constructor usage
 from return values. A double can return any object from a normal call, and that
@@ -312,8 +312,8 @@ const resource = testDisposable({
 
 using value = resource;
 
-case.assert(doubleUsage.disposedOnce, resource);
-case.assert(doubleUsage.calledOnce, resource.dispose);
+scope.assert(doubleUsage.disposedOnce, resource);
+scope.assert(doubleUsage.calledOnce, resource.dispose);
 ```
 
 Protocol objects should not expose public aggregate history properties like
@@ -487,9 +487,9 @@ Recommended direction:
 That suggests:
 
 - exact `rule.when("x", 1).returns("y")`
-- `case.assert(doubleUsage.calledWith, save, [ { id: "42" } ])`
-- `case.assert(doubleUsage.calledWithExactly, save, [ { id: "42", name: "Ada" } ])`
-- `case.assert(doubleUsage.calledWithPrefix, publish, [ "user.saved" ])`
+- `scope.assert(doubleUsage.calledWith, save, [ { id: "42" } ])`
+- `scope.assert(doubleUsage.calledWithExactly, save, [ { id: "42", name: "Ada" } ])`
+- `scope.assert(doubleUsage.calledWithPrefix, publish, [ "user.saved" ])`
 - perhaps later `rule.when(match.string, match.number).returns("y")`
 
 The first release concept should not depend on complex matcher machinery.
@@ -523,7 +523,7 @@ import { doubleUsage } from '@overkill-dev/doubles';
 That gives tests a flatter, domain-level assertion:
 
 ```ts
-case.assert(doubleUsage.interactedOnceWith, saveUser, [ { id: '42' } ]);
+scope.assert(doubleUsage.interactedOnceWith, saveUser, [ { id: '42' } ]);
 ```
 
 while still reporting the underlying call-count and call-argument failures as

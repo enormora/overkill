@@ -179,9 +179,9 @@ references are ordinary imported values used inside tests:
 ```ts
 import { doubleUsage } from '@overkill-dev/doubles';
 
-test('publishes once', (case) => {
-    case.assert(doubleUsage.calledOnceWith, harness.publish, [ expected ]);
-    return case.assert.collect();
+test('publishes once', (scope) => {
+    scope.assert(doubleUsage.calledOnceWith, harness.publish, [ expected ]);
+    return scope.assert.collect();
 });
 ```
 
