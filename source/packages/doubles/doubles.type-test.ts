@@ -3,14 +3,26 @@ import type { AssertAssertionFacade } from '../engine/engine.entry-point.ts';
 import {
     doubleUsage,
     rule,
+    testAsyncDisposable,
+    testAsyncIterable,
+    testAsyncIterator,
     testDouble,
+    testDisposable,
+    testIterable,
+    testIterator,
     type DoubleCall,
     type DoubleConstruction,
     type DoubleHistory,
     type DoubleInvocation,
     type DoubleIteratorEvent,
     type DoubleResult,
-    type TestDouble
+    type TestAsyncDisposable,
+    type TestAsyncIterable,
+    type TestAsyncIterator,
+    type TestDisposable,
+    type TestDouble,
+    type TestIterable,
+    type TestIterator
 } from './doubles.entry-point.ts';
 
 type User = {
@@ -240,6 +252,55 @@ describe('@overkill-dev/doubles', function () {
         test('rejects non-generator fixed async generator doubles', function () {
             expect(testDouble.yieldsAsync<LoadUser>).type.not.toBeCallableWith([ 'event' ]);
             expect(testDouble.yieldsAsync<LoadAsyncEvents>).type.not.toBeCallableWith([ 'event' ], 'done');
+        });
+    });
+
+    describe('protocol doubles', function () {
+        test('exports sync iterator and iterable doubles', function () {
+            const iterator = testIterator.yields([ 'created' ], 1);
+            const iterable = testIterable.yields([ 'created' ], 1);
+
+            expect(iterator).type.toBe<TestIterator<string, number>>();
+            expect(iterator.next).type.toBeAssignableTo<
+                TestDouble<
+                    (...arguments_: readonly unknown[]) => IteratorResult<
+                        string,
+                        number
+                    >
+                >
+            >();
+            expect(iterator[Symbol.iterator]()).type.toBe<IteratorObject<string, number>>();
+            expect(iterable).type.toBe<TestIterable<string, number>>();
+            expect(iterable[Symbol.iterator]).type.toBeAssignableTo<
+                TestDouble<() => TestIterator<string, number>>
+            >();
+        });
+
+        test('exports async iterator and iterable doubles', function () {
+            const iterator = testAsyncIterator.yields([ 'created' ], 1);
+            const iterable = testAsyncIterable.yields([ 'created' ], 1);
+
+            expect(iterator).type.toBe<TestAsyncIterator<string, number>>();
+            expect(iterator.next).type.toBeAssignableTo<
+                TestDouble<(...arguments_: readonly unknown[]) => Promise<IteratorResult<string, number>>>
+            >();
+            expect(iterator[Symbol.asyncIterator]()).type.toBeAssignableTo<AsyncIterator<string, number, unknown>>();
+            expect(iterable).type.toBe<TestAsyncIterable<string, number>>();
+            expect(iterable[Symbol.asyncIterator]).type.toBeAssignableTo<
+                TestDouble<() => TestAsyncIterator<string, number>>
+            >();
+        });
+
+        test('exports disposable doubles', function () {
+            const disposable = testDisposable();
+            const asyncDisposable = testAsyncDisposable();
+
+            expect(disposable).type.toBe<TestDisposable>();
+            expect(disposable).type.toBeAssignableTo<Disposable>();
+            expect(disposable[Symbol.dispose]).type.toBeAssignableTo<TestDouble<() => void>>();
+            expect(asyncDisposable).type.toBe<TestAsyncDisposable>();
+            expect(asyncDisposable).type.toBeAssignableTo<AsyncDisposable>();
+            expect(asyncDisposable[Symbol.asyncDispose]).type.toBeAssignableTo<TestDouble<() => Promise<void>>>();
         });
     });
 

@@ -13,6 +13,7 @@ import {
     inspectedDouble,
     validNonNegativeInteger
 } from './double-usage-inspection.ts';
+import { protocolIteratorEvents } from './protocol-double-metadata.ts';
 
 type IteratorCountCheckInput = {
     readonly check: AssertionCheck;
@@ -25,20 +26,51 @@ type IteratorEventHistory = {
     readonly iteratorEvents: readonly DoubleIteratorEvent[];
 };
 
-function iteratorEventCount(check: AssertionCheck, subject: unknown): AssertionResult {
+type IteratorInspection = {
+    readonly events: readonly DoubleIteratorEvent[];
+    readonly valid: true;
+} | {
+    readonly result: AssertionResult;
+    readonly valid: false;
+};
+
+function inspectedIteratorEvents(check: AssertionCheck, subject: unknown): IteratorInspection {
+    const protocolEvents = protocolIteratorEvents(subject);
+
+    if (protocolEvents !== null) {
+        return {
+            events: protocolEvents,
+            valid: true
+        };
+    }
+
     const inspected = inspectedDouble(check, subject);
 
     return inspected.valid
-        ? check.annotated('iterator event count').greaterThan(inspected.history.iteratorEventCount, 0)
-        : inspected.failure;
+        ? {
+            events: inspected.history.iteratorEvents,
+            valid: true
+        }
+        : {
+            result: inspected.failure,
+            valid: false
+        };
+}
+
+function iteratorEventCount(check: AssertionCheck, subject: unknown): AssertionResult {
+    const inspected = inspectedIteratorEvents(check, subject);
+
+    return inspected.valid
+        ? check.annotated('iterator event count').greaterThan(inspected.events.length, 0)
+        : inspected.result;
 }
 
 function noIteratorEvents(check: AssertionCheck, subject: unknown): AssertionResult {
-    const inspected = inspectedDouble(check, subject);
+    const inspected = inspectedIteratorEvents(check, subject);
 
     return inspected.valid
-        ? check.annotated('iterator event count').equal(inspected.history.iteratorEventCount, 0)
-        : inspected.failure;
+        ? check.annotated('iterator event count').equal(inspected.events.length, 0)
+        : inspected.result;
 }
 
 function yieldedValues(history: IteratorEventHistory): readonly unknown[] {
@@ -53,15 +85,15 @@ function yieldedValues(history: IteratorEventHistory): readonly unknown[] {
 }
 
 function iteratorCountAssertion(input: IteratorCountCheckInput): AssertionResult {
-    const inspected = inspectedDouble(input.check, input.subject);
+    const inspected = inspectedIteratorEvents(input.check, input.subject);
 
     if (!inspected.valid) {
-        return inspected.failure;
+        return inspected.result;
     }
 
     const actualCount = input.value === 'event'
-        ? inspected.history.iteratorEventCount
-        : yieldedValues(inspected.history).length;
+        ? inspected.events.length
+        : yieldedValues({ iteratorEvents: inspected.events }).length;
 
     return input.check.group([
         input.check.annotated('expected count').true(validNonNegativeInteger(input.expectedCount)),
@@ -78,6 +110,16 @@ function yieldedExactlyAssertion(
     expectedValues: readonly unknown[]
 ): AssertionResult {
     const inspected = inspectedDouble(check, subject);
+    const protocolEvents = protocolIteratorEvents(subject);
+
+    if (protocolEvents !== null) {
+        return groupChildren(check, [
+            check.annotated('yielded values').deepEqual(
+                yieldedValues({ iteratorEvents: protocolEvents }),
+                expectedValues
+            )
+        ], 'yielded values');
+    }
 
     if (!inspected.valid) {
         return inspected.failure;

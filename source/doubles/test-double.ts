@@ -77,7 +77,7 @@ type FallbackConfiguration<Signature> = RuleConfiguration<Signature> & {
     readonly fallback?: FallbackFor<Signature>;
 };
 
-type TestDoubleConfiguration<Signature> = AnswerConfiguration<Signature> | FallbackConfiguration<Signature>;
+export type TestDoubleConfiguration<Signature> = AnswerConfiguration<Signature> | FallbackConfiguration<Signature>;
 
 export type DoubleHistory<Signature> = HistoryForDouble<Signature>;
 
