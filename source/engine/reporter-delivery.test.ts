@@ -18,9 +18,9 @@ function createPassingPlan(engine: Engine): TestPlan {
         engine.createSuite({
             children: [
                 engine.createTestCase({
-                    body(testContext) {
-                        testContext.assert.true(true, { message: 'passes' });
-                        return testContext.assert.collect();
+                    body(testScope) {
+                        testScope.assert.true(true, { message: 'passes' });
+                        return testScope.assert.collect();
                     },
                     metadata: {},
                     name: 'passes'

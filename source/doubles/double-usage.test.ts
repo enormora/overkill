@@ -7,7 +7,7 @@ import { serializeValue } from '../compare/serialized-value.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import { registerTest } from '../test-support/register-test.ts';
 import type { AssertionTestFailure, FailOutcome, RunResult } from '../engine/run-result.ts';
-import type { TestBody, TestContext } from '../engine/test-node.ts';
+import type { TestBody, TestScope } from '../engine/test-node.ts';
 import { doubleUsage } from './double-usage.ts';
 import { rule } from './double-rule.ts';
 import { createTestDoubleScope, testDouble } from './test-double.ts';
@@ -102,28 +102,28 @@ function assertFailureSummaries(result: RunResult, expectedSummaries: readonly s
     );
 }
 
-function assertCountModeUsage(testContext: TestContext, loadUser: unknown, clientConstructor: unknown): void {
-    testContext.assert(doubleUsage.called, loadUser);
-    testContext.assert(doubleUsage.calledOnce, loadUser);
-    testContext.assert(doubleUsage.callCount, loadUser, 1);
-    testContext.assert(doubleUsage.constructed, clientConstructor);
-    testContext.assert(doubleUsage.constructedOnce, clientConstructor);
-    testContext.assert(doubleUsage.constructionCount, clientConstructor, 1);
-    testContext.assert(doubleUsage.interacted, clientConstructor);
-    testContext.assert(doubleUsage.interactedOnce, loadUser);
-    testContext.assert(doubleUsage.interactionCount, loadUser, 1);
+function assertCountModeUsage(testScope: TestScope, loadUser: unknown, clientConstructor: unknown): void {
+    testScope.assert(doubleUsage.called, loadUser);
+    testScope.assert(doubleUsage.calledOnce, loadUser);
+    testScope.assert(doubleUsage.callCount, loadUser, 1);
+    testScope.assert(doubleUsage.constructed, clientConstructor);
+    testScope.assert(doubleUsage.constructedOnce, clientConstructor);
+    testScope.assert(doubleUsage.constructionCount, clientConstructor, 1);
+    testScope.assert(doubleUsage.interacted, clientConstructor);
+    testScope.assert(doubleUsage.interactedOnce, loadUser);
+    testScope.assert(doubleUsage.interactionCount, loadUser, 1);
 }
 
-registerTest('doubleUsage count and mode assertions pass through case.assert()', async function () {
+registerTest('doubleUsage count and mode assertions pass through scope.assert()', async function () {
     const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
     const Client = testDouble.constructs<ClientConstructor>({ id: 'client' });
-    const result = await executeSingleBody(function body(testContext: TestContext) {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
         loadUser('42', { role: 'admin', trace: 'trace-id' });
         const client = new Client('https://api.example.test', { timeout: 500, token: 'primary' });
 
-        testContext.assert.equal(client.id, 'client');
-        assertCountModeUsage(testContext, loadUser, Client);
-        return testContext.assert.collect();
+        testScope.assert.equal(client.id, 'client');
+        assertCountModeUsage(testScope, loadUser, Client);
+        return testScope.assert.collect();
     });
 
     assert.equal(result.summary.passed, 1);
@@ -132,11 +132,11 @@ registerTest('doubleUsage count and mode assertions pass through case.assert()',
 
 registerTest('doubleUsage negative mode assertions produce domain summaries', async function () {
     const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
-    const result = await executeSingleBody(function body(testContext: TestContext) {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
         loadUser('42', { role: 'admin', trace: 'trace-id' });
 
-        testContext.assert(doubleUsage.notInteracted, loadUser);
-        return testContext.assert.collect();
+        testScope.assert(doubleUsage.notInteracted, loadUser);
+        return testScope.assert.collect();
     });
     const composite = firstComposite(result);
 
@@ -150,38 +150,38 @@ registerTest('doubleUsage argument assertions support partial, prefix, and exact
     const user = { id: '42', name: 'Ada' };
     const loadUser = testDouble.returns<LoadUser>(user);
     const ping = testDouble.returns<Ping>('pong');
-    const result = await executeSingleBody(function body(testContext: TestContext) {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
         loadUser('42', { role: 'admin', trace: 'trace-id' });
         ping();
 
-        testContext.assert(doubleUsage.calledWith, loadUser, [ '42', { role: 'admin' } ]);
-        testContext.assert(doubleUsage.calledWithPrefix, loadUser, [ '42' ]);
-        testContext.assert(doubleUsage.calledWithExactly, loadUser, [
+        testScope.assert(doubleUsage.calledWith, loadUser, [ '42', { role: 'admin' } ]);
+        testScope.assert(doubleUsage.calledWithPrefix, loadUser, [ '42' ]);
+        testScope.assert(doubleUsage.calledWithExactly, loadUser, [
             '42',
             { role: 'admin', trace: 'trace-id' }
         ]);
-        testContext.assert(doubleUsage.calledWith, ping, []);
-        testContext.assert(doubleUsage.calledWithExactly, ping, []);
-        return testContext.assert.collect();
+        testScope.assert(doubleUsage.calledWith, ping, []);
+        testScope.assert(doubleUsage.calledWithExactly, ping, []);
+        return testScope.assert.collect();
     });
 
     assert.equal(result.summary.passed, 1);
     assert.equal(result.summary.failed, 0);
 });
 
-registerTest('doubleUsage iterator assertions pass through case.assert()', async function () {
+registerTest('doubleUsage iterator assertions pass through scope.assert()', async function () {
     const loadEvents = testDouble.yields([ 'created', 'updated' ]);
-    const result = await executeSingleBody(function body(testContext: TestContext) {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
         const events = loadEvents();
 
         events.next();
         events.next();
         events.next();
-        testContext.assert(doubleUsage.iterated, loadEvents);
-        testContext.assert(doubleUsage.iteratorEventCount, loadEvents, 3);
-        testContext.assert(doubleUsage.yieldCount, loadEvents, 2);
-        testContext.assert(doubleUsage.yieldedExactly, loadEvents, [ 'created', 'updated' ]);
-        return testContext.assert.collect();
+        testScope.assert(doubleUsage.iterated, loadEvents);
+        testScope.assert(doubleUsage.iteratorEventCount, loadEvents, 3);
+        testScope.assert(doubleUsage.yieldCount, loadEvents, 2);
+        testScope.assert(doubleUsage.yieldedExactly, loadEvents, [ 'created', 'updated' ]);
+        return testScope.assert.collect();
     });
 
     assert.equal(result.summary.passed, 1);
@@ -190,14 +190,14 @@ registerTest('doubleUsage iterator assertions pass through case.assert()', async
 
 registerTest('doubleUsage iterator assertions report protocol history failures', async function () {
     const loadEvents = testDouble.yields([ 'created' ]);
-    const result = await executeSingleBody(function body(testContext: TestContext) {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
         loadEvents().next();
 
-        testContext.assert(doubleUsage.notIterated, loadEvents);
-        testContext.assert(doubleUsage.iteratorEventCount, loadEvents, 2);
-        testContext.assert(doubleUsage.yieldCount, loadEvents, 2);
-        testContext.assert(doubleUsage.yieldedExactly, loadEvents, [ 'updated' ]);
-        return testContext.assert.collect();
+        testScope.assert(doubleUsage.notIterated, loadEvents);
+        testScope.assert(doubleUsage.iteratorEventCount, loadEvents, 2);
+        testScope.assert(doubleUsage.yieldCount, loadEvents, 2);
+        testScope.assert(doubleUsage.yieldedExactly, loadEvents, [ 'updated' ]);
+        return testScope.assert.collect();
     });
 
     assertFailureSummaries(result, [
@@ -210,11 +210,11 @@ registerTest('doubleUsage iterator assertions report protocol history failures',
 
 registerTest('doubleUsage prefix assertions reject empty prefixes', async function () {
     const ping = testDouble.returns<Ping>('pong');
-    const result = await executeSingleBody(function body(testContext: TestContext) {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
         ping();
 
-        testContext.assert(doubleUsage.calledWithPrefix as unknown as typeof doubleUsage.calledWith, ping, []);
-        return testContext.assert.collect();
+        testScope.assert(doubleUsage.calledWithPrefix as unknown as typeof doubleUsage.calledWith, ping, []);
+        return testScope.assert.collect();
     });
     const composite = firstComposite(result);
 
@@ -228,11 +228,11 @@ registerTest('doubleUsage prefix assertions reject empty prefixes', async functi
 
 registerTest('doubleUsage argument assertions distinguish exact arity from prefix arity', async function () {
     const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
-    const result = await executeSingleBody(function body(testContext: TestContext) {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
         loadUser('42', { role: 'admin', trace: 'trace-id' });
 
-        testContext.assert(doubleUsage.calledWith, loadUser, [ '42' ]);
-        return testContext.assert.collect();
+        testScope.assert(doubleUsage.calledWith, loadUser, [ '42' ]);
+        return testScope.assert.collect();
     });
     const composite = firstComposite(result);
 
@@ -242,13 +242,13 @@ registerTest('doubleUsage argument assertions distinguish exact arity from prefi
 
 registerTest('doubleUsage once, last, and nth argument assertions use the relevant mode history', async function () {
     const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
-    const result = await executeSingleBody(function body(testContext: TestContext) {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
         loadUser('first', { role: 'reader', trace: 'one' });
         loadUser('second', { role: 'admin', trace: 'two' });
 
-        testContext.assert(doubleUsage.nthCallWith, loadUser, 0, [ 'first', { role: 'reader' } ]);
-        testContext.assert(doubleUsage.lastCalledWith, loadUser, [ 'second', { role: 'admin' } ]);
-        return testContext.assert.collect();
+        testScope.assert(doubleUsage.nthCallWith, loadUser, 0, [ 'first', { role: 'reader' } ]);
+        testScope.assert(doubleUsage.lastCalledWith, loadUser, [ 'second', { role: 'admin' } ]);
+        return testScope.assert.collect();
     });
 
     assert.equal(result.summary.passed, 1);
@@ -258,19 +258,19 @@ registerTest('doubleUsage once, last, and nth argument assertions use the releva
 registerTest('doubleUsage argument assertion failures explain the matched position', async function () {
     const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
     const ping = testDouble.returns<Ping>('pong');
-    const result = await executeSingleBody(function body(testContext: TestContext) {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
         loadUser('42', { role: 'admin', trace: 'trace-id' });
 
-        testContext.assert(doubleUsage.calledWithPrefix, loadUser, [ 'missing' ]);
-        testContext.assert(doubleUsage.calledWithExactly, loadUser, [ '42', { role: 'reader', trace: 'trace-id' } ]);
-        testContext.assert(doubleUsage.calledWithExactly, loadUser, [ '42' ]);
-        testContext.assert(doubleUsage.lastCalledWith, ping, []);
-        testContext.assert(doubleUsage.lastCalledWithExactly, loadUser, [
+        testScope.assert(doubleUsage.calledWithPrefix, loadUser, [ 'missing' ]);
+        testScope.assert(doubleUsage.calledWithExactly, loadUser, [ '42', { role: 'reader', trace: 'trace-id' } ]);
+        testScope.assert(doubleUsage.calledWithExactly, loadUser, [ '42' ]);
+        testScope.assert(doubleUsage.lastCalledWith, ping, []);
+        testScope.assert(doubleUsage.lastCalledWithExactly, loadUser, [
             '42',
             { role: 'reader', trace: 'trace-id' }
         ]);
-        testContext.assert(doubleUsage.lastCalledWithPrefix, loadUser, [ 'missing' ]);
-        return testContext.assert.collect();
+        testScope.assert(doubleUsage.lastCalledWithPrefix, loadUser, [ 'missing' ]);
+        return testScope.assert.collect();
     });
 
     assertFailureSummaries(result, [
@@ -285,12 +285,12 @@ registerTest('doubleUsage argument assertion failures explain the matched positi
 
 registerTest('doubleUsage calledOnceWith requires one total call in that mode', async function () {
     const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
-    const result = await executeSingleBody(function body(testContext: TestContext) {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
         loadUser('first', { role: 'reader', trace: 'one' });
         loadUser('second', { role: 'admin', trace: 'two' });
 
-        testContext.assert(doubleUsage.calledOnceWith, loadUser, [ 'first', { role: 'reader' } ]);
-        return testContext.assert.collect();
+        testScope.assert(doubleUsage.calledOnceWith, loadUser, [ 'first', { role: 'reader' } ]);
+        return testScope.assert.collect();
     });
     const composite = firstComposite(result);
 
@@ -303,20 +303,20 @@ registerTest('doubleUsage construction argument assertions use construction hist
     const Client = testDouble<ClientConstructor>({
         fallback: rule.constructs({ id: 'client' })
     });
-    const result = await executeSingleBody(function body(testContext: TestContext) {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
         const client = new Client('https://api.example.test', { timeout: 500, token: 'primary' });
 
-        testContext.assert.equal(client.id, 'client');
-        testContext.assert(doubleUsage.constructedOnceWith, Client, [
+        testScope.assert.equal(client.id, 'client');
+        testScope.assert(doubleUsage.constructedOnceWith, Client, [
             'https://api.example.test',
             { token: 'primary' }
         ]);
-        testContext.assert(doubleUsage.constructedWithPrefix, Client, [ 'https://api.example.test' ]);
-        testContext.assert(doubleUsage.constructedWithExactly, Client, [
+        testScope.assert(doubleUsage.constructedWithPrefix, Client, [ 'https://api.example.test' ]);
+        testScope.assert(doubleUsage.constructedWithExactly, Client, [
             'https://api.example.test',
             { timeout: 500, token: 'primary' }
         ]);
-        return testContext.assert.collect();
+        return testScope.assert.collect();
     });
 
     assert.equal(result.summary.passed, 1);
@@ -325,13 +325,13 @@ registerTest('doubleUsage construction argument assertions use construction hist
 
 registerTest('doubleUsage indexed argument assertions validate index and event presence', async function () {
     const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
-    const result = await executeSingleBody(function body(testContext: TestContext) {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
         loadUser('first', { role: 'reader', trace: 'one' });
 
-        testContext.assert(doubleUsage.nthCallWith, loadUser, -1, [ 'first' ]);
-        testContext.assert(doubleUsage.nthCallWith, loadUser, 3, [ 'first' ]);
-        testContext.assert(doubleUsage.nthCallWithPrefix as unknown as typeof doubleUsage.nthCallWith, loadUser, 0, []);
-        return testContext.assert.collect();
+        testScope.assert(doubleUsage.nthCallWith, loadUser, -1, [ 'first' ]);
+        testScope.assert(doubleUsage.nthCallWith, loadUser, 3, [ 'first' ]);
+        testScope.assert(doubleUsage.nthCallWithPrefix as unknown as typeof doubleUsage.nthCallWith, loadUser, 0, []);
+        return testScope.assert.collect();
     });
 
     assertFailureSummaries(result, [
@@ -345,13 +345,13 @@ registerTest('doubleUsage order assertions compare events across doubles from on
     const { testDouble: scopedDouble } = createTestDoubleScope();
     const first = scopedDouble.returns<Ping>('first');
     const second = scopedDouble.returns<Ping>('second');
-    const result = await executeSingleBody(function body(testContext: TestContext) {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
         first();
         second();
 
-        testContext.assert(doubleUsage.callOrder, [ first, second ]);
-        testContext.assert(doubleUsage.interactionOrder, [ first, second ]);
-        return testContext.assert.collect();
+        testScope.assert(doubleUsage.callOrder, [ first, second ]);
+        testScope.assert(doubleUsage.interactionOrder, [ first, second ]);
+        return testScope.assert.collect();
     });
 
     assert.equal(result.summary.passed, 1);
@@ -362,14 +362,14 @@ registerTest('doubleUsage construction order compares constructor events', async
     const { testDouble: scopedDouble } = createTestDoubleScope();
     const First = scopedDouble.constructs<ClientConstructor>({ id: 'first' });
     const Second = scopedDouble.constructs<ClientConstructor>({ id: 'second' });
-    const result = await executeSingleBody(function body(testContext: TestContext) {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
         const first = new First('https://first.example.test', { timeout: 500, token: 'first' });
         const second = new Second('https://second.example.test', { timeout: 500, token: 'second' });
 
-        testContext.assert.equal(first.id, 'first');
-        testContext.assert.equal(second.id, 'second');
-        testContext.assert(doubleUsage.constructionOrder, [ First, Second ]);
-        return testContext.assert.collect();
+        testScope.assert.equal(first.id, 'first');
+        testScope.assert.equal(second.id, 'second');
+        testScope.assert(doubleUsage.constructionOrder, [ First, Second ]);
+        return testScope.assert.collect();
     });
 
     assert.equal(result.summary.passed, 1);
@@ -380,13 +380,13 @@ registerTest('doubleUsage order assertions require all previous events before th
     const { testDouble: scopedDouble } = createTestDoubleScope();
     const first = scopedDouble.returns<Ping>('first');
     const second = scopedDouble.returns<Ping>('second');
-    const result = await executeSingleBody(function body(testContext: TestContext) {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
         first();
         second();
         first();
 
-        testContext.assert(doubleUsage.callOrder, [ first, second ]);
-        return testContext.assert.collect();
+        testScope.assert(doubleUsage.callOrder, [ first, second ]);
+        return testScope.assert.collect();
     });
     const composite = firstComposite(result);
 
@@ -398,15 +398,15 @@ registerTest('doubleUsage order assertions reject invalid and unused order input
     const { testDouble: scopedDouble } = createTestDoubleScope();
     const first = scopedDouble.returns<Ping>('first');
     const second = scopedDouble.returns<Ping>('second');
-    const result = await executeSingleBody(function body(testContext: TestContext) {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
         first();
 
-        testContext.assert(doubleUsage.callOrder as unknown as typeof doubleUsage.called, [ first ]);
-        testContext.assert(doubleUsage.callOrder, [ first, second ]);
-        testContext.assert(doubleUsage.callOrder, [ first, function notADouble() {
+        testScope.assert(doubleUsage.callOrder as unknown as typeof doubleUsage.called, [ first ]);
+        testScope.assert(doubleUsage.callOrder, [ first, second ]);
+        testScope.assert(doubleUsage.callOrder, [ first, function notADouble() {
             return undefined;
         } ]);
-        return testContext.assert.collect();
+        return testScope.assert.collect();
     });
 
     assertFailureSummaries(result, [
@@ -421,12 +421,12 @@ registerTest('doubleUsage order assertions reject mixed double scopes', async fu
     const secondScope = createTestDoubleScope();
     const first = firstScope.testDouble.returns<Ping>('first');
     const second = secondScope.testDouble.returns<Ping>('second');
-    const result = await executeSingleBody(function body(testContext: TestContext) {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
         first();
         second();
 
-        testContext.assert(doubleUsage.callOrder, [ first, second ]);
-        return testContext.assert.collect();
+        testScope.assert(doubleUsage.callOrder, [ first, second ]);
+        return testScope.assert.collect();
     });
     const composite = firstComposite(result);
 
@@ -439,17 +439,17 @@ registerTest('doubleUsage order assertions reject mixed double scopes', async fu
 });
 
 registerTest('doubleUsage count and argument assertions reject non-doubles independently', async function () {
-    const result = await executeSingleBody(function body(testContext: TestContext) {
-        testContext.assert(doubleUsage.callCount, function notADouble() {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
+        testScope.assert(doubleUsage.callCount, function notADouble() {
             return undefined;
         }, 0);
-        testContext.assert(doubleUsage.notCalled, function notADouble() {
+        testScope.assert(doubleUsage.notCalled, function notADouble() {
             return undefined;
         });
-        testContext.assert(doubleUsage.calledWith, function notADouble() {
+        testScope.assert(doubleUsage.calledWith, function notADouble() {
             return undefined;
         }, []);
-        return testContext.assert.collect();
+        return testScope.assert.collect();
     });
 
     assertFailureSummaries(result, [
@@ -460,11 +460,11 @@ registerTest('doubleUsage count and argument assertions reject non-doubles indep
 });
 
 registerTest('doubleUsage assertions reject non-doubles with assertion diagnostics', async function () {
-    const result = await executeSingleBody(function body(testContext: TestContext) {
-        testContext.assert(doubleUsage.called, function notADouble() {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
+        testScope.assert(doubleUsage.called, function notADouble() {
             return undefined;
         });
-        return testContext.assert.collect();
+        return testScope.assert.collect();
     });
     const composite = firstComposite(result);
 

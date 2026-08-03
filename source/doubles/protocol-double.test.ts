@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { registerTest } from '../test-support/register-test.ts';
 import type { RunResult } from '../engine/run-result.ts';
-import type { TestBody, TestContext } from '../engine/test-node.ts';
+import type { TestBody, TestScope } from '../engine/test-node.ts';
 import { doubleUsage } from './double-usage.ts';
 import { rule } from './double-rule.ts';
 import {
@@ -329,32 +329,32 @@ registerTest('protocol iterable metadata ignores thrown iterator factory calls',
 
 registerTest('protocol iterator assertions accept protocol objects', async function () {
     const source = testIterable.yields([ 'created', 'updated' ]);
-    const result = await executeSingleBody(function body(testContext: TestContext) {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
         assert.deepEqual(Array.from(source), [ 'created', 'updated' ]);
 
-        testContext.assert(doubleUsage.iterated, source);
-        testContext.assert(doubleUsage.iteratorEventCount, source, 3);
-        testContext.assert(doubleUsage.yieldCount, source, 2);
-        testContext.assert(doubleUsage.yieldedExactly, source, [ 'created', 'updated' ]);
-        return testContext.assert.collect();
+        testScope.assert(doubleUsage.iterated, source);
+        testScope.assert(doubleUsage.iteratorEventCount, source, 3);
+        testScope.assert(doubleUsage.yieldCount, source, 2);
+        testScope.assert(doubleUsage.yieldedExactly, source, [ 'created', 'updated' ]);
+        return testScope.assert.collect();
     });
 
     assert.equal(result.summary.passed, 1);
     assert.equal(result.summary.failed, 0);
 });
 
-function assertDisposalUsage(testContext: TestContext, first: unknown, second: unknown): void {
-    testContext.assert(doubleUsage.disposed, first);
-    testContext.assert(doubleUsage.disposedOnce, first);
-    testContext.assert(doubleUsage.disposeCount, first, 1);
-    testContext.assert(doubleUsage.disposeOrder, [ second, first ]);
-    testContext.assert(doubleUsage.notDisposed, testDisposable());
+function assertDisposalUsage(testScope: TestScope, first: unknown, second: unknown): void {
+    testScope.assert(doubleUsage.disposed, first);
+    testScope.assert(doubleUsage.disposedOnce, first);
+    testScope.assert(doubleUsage.disposeCount, first, 1);
+    testScope.assert(doubleUsage.disposeOrder, [ second, first ]);
+    testScope.assert(doubleUsage.notDisposed, testDisposable());
 }
 
 registerTest('disposal assertions accept disposable protocol objects', async function () {
     const first = testDisposable();
     const second = testDisposable();
-    const result = await executeSingleBody(function body(testContext: TestContext) {
+    const result = await executeSingleBody(function body(testScope: TestScope) {
         {
             using firstResource = first;
             using secondResource = second;
@@ -363,8 +363,8 @@ registerTest('disposal assertions accept disposable protocol objects', async fun
             assert.equal(secondResource, second);
         }
 
-        assertDisposalUsage(testContext, first, second);
-        return testContext.assert.collect();
+        assertDisposalUsage(testScope, first, second);
+        return testScope.assert.collect();
     });
 
     assert.equal(result.summary.passed, 1);
@@ -372,36 +372,36 @@ registerTest('disposal assertions accept disposable protocol objects', async fun
 });
 
 registerTest('disposal assertions reject invalid protocol inputs', async function () {
-    const result = await executeSingleBody(function body(testContext: TestContext) {
-        testContext.assert(doubleUsage.disposed, {});
-        return testContext.assert.collect();
+    const result = await executeSingleBody(function body(testScope: TestScope) {
+        testScope.assert(doubleUsage.disposed, {});
+        return testScope.assert.collect();
     });
 
     assert.equal(result.summary.failed, 1);
 });
 
 registerTest('disposal assertions validate counts and order inputs', async function () {
-    const result = await executeSingleBody(function body(testContext: TestContext) {
-        testContext.assert(doubleUsage.disposeCount, testDisposable(), -1);
-        return testContext.assert.collect();
+    const result = await executeSingleBody(function body(testScope: TestScope) {
+        testScope.assert(doubleUsage.disposeCount, testDisposable(), -1);
+        return testScope.assert.collect();
     });
 
     assert.equal(result.summary.failed, 1);
 });
 
 registerTest('disposal order rejects invalid protocol entries', async function () {
-    const result = await executeSingleBody(function body(testContext: TestContext) {
-        testContext.assert(doubleUsage.disposeOrder, [ {}, testDisposable() ]);
-        return testContext.assert.collect();
+    const result = await executeSingleBody(function body(testScope: TestScope) {
+        testScope.assert(doubleUsage.disposeOrder, [ {}, testDisposable() ]);
+        return testScope.assert.collect();
     });
 
     assert.equal(result.summary.failed, 1);
 });
 
 registerTest('disposal order reports missing disposal events', async function () {
-    const result = await executeSingleBody(function body(testContext: TestContext) {
-        testContext.assert(doubleUsage.disposeOrder, [ testDisposable(), testDisposable() ]);
-        return testContext.assert.collect();
+    const result = await executeSingleBody(function body(testScope: TestScope) {
+        testScope.assert(doubleUsage.disposeOrder, [ testDisposable(), testDisposable() ]);
+        return testScope.assert.collect();
     });
 
     assert.equal(result.summary.failed, 1);
@@ -410,30 +410,30 @@ registerTest('disposal order reports missing disposal events', async function ()
 registerTest('disposal order rejects too few runtime entries', async function () {
     const disposables: [unknown, unknown] = [ testDisposable(), testDisposable() ];
     disposables.pop();
-    const result = await executeSingleBody(function body(testContext: TestContext) {
-        testContext.assert(doubleUsage.disposeOrder, disposables);
-        return testContext.assert.collect();
+    const result = await executeSingleBody(function body(testScope: TestScope) {
+        testScope.assert(doubleUsage.disposeOrder, disposables);
+        return testScope.assert.collect();
     });
 
     assert.equal(result.summary.failed, 1);
 });
 
 registerTest('iterator assertions reject invalid protocol inputs', async function () {
-    const result = await executeSingleBody(function body(testContext: TestContext) {
-        testContext.assert(doubleUsage.iterated, {});
-        testContext.assert(doubleUsage.notIterated, {});
-        testContext.assert(doubleUsage.iteratorEventCount, {}, 1);
-        testContext.assert(doubleUsage.yieldedExactly, {}, []);
-        return testContext.assert.collect();
+    const result = await executeSingleBody(function body(testScope: TestScope) {
+        testScope.assert(doubleUsage.iterated, {});
+        testScope.assert(doubleUsage.notIterated, {});
+        testScope.assert(doubleUsage.iteratorEventCount, {}, 1);
+        testScope.assert(doubleUsage.yieldedExactly, {}, []);
+        return testScope.assert.collect();
     });
 
     assert.equal(result.summary.failed, 1);
 });
 
 registerTest('iterator assertions validate expected event counts', async function () {
-    const result = await executeSingleBody(function body(testContext: TestContext) {
-        testContext.assert(doubleUsage.iteratorEventCount, testIterable.yields([]), -1);
-        return testContext.assert.collect();
+    const result = await executeSingleBody(function body(testScope: TestScope) {
+        testScope.assert(doubleUsage.iteratorEventCount, testIterable.yields([]), -1);
+        return testScope.assert.collect();
     });
 
     assert.equal(result.summary.failed, 1);

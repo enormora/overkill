@@ -24,12 +24,12 @@ import { suite, test } from '@overkill-dev/test';
 import { parse, serialize } from './users.ts';
 
 export const spec = suite('users', [
-    test('round-trip preserves values', (case) => {
-        return case.forall(gen.user(), (user, sample) => {
+    test('round-trip preserves values', (scope) => {
+        return scope.forall(gen.user(), (user, sample) => {
             sample.assert.equal(parse(serialize(user)), user);
             return sample.assert.collect();
         });
-    }),
+    })
 ]);
 ```
 
@@ -40,15 +40,15 @@ form when the input used composed form. The structures compare unequal.
 
 The important part for this walkthrough is not the property helper
 itself; it is the authoring shape around it: the file exports a suite
-value, the case body returns a `case.forall(...)` invocation that uses a
+value, the case body returns a `scope.forall(...)` invocation that uses a
 nested injected assertion context, and the failure still enters the
 pipeline as a recorded `FailedCheck`.
 
-## Stage 1 — `case.forall` Shrinks And Records
+## Stage 1 — `scope.forall` Shrinks And Records
 
-`case.forall(generator, body)` evaluates the body for each generated
+`scope.forall(generator, body)` evaluates the body for each generated
 input, giving that body a nested assertion context for the sampled input.
-Once `case.forall` sees a failing sample, it shrinks the input to a
+Once `scope.forall` sees a failing sample, it shrinks the input to a
 minimal counterexample and records a single `FailedCheck` for that
 counterexample into the case's assertion log (see
 [Assertions And Results § Diff And Diagnostic Shape](./assertions-and-results.md#diff-and-diagnostic-shape), and
@@ -102,8 +102,8 @@ Canonical: [Assertions And Results](./assertions-and-results.md).
 
 ## Stage 2 — Test Body Returns; Outcome Constructed
 
-`case.forall` returns the test body's terminal value (the
-property-test analogue of `case.assert.collect()`). The engine reads
+`scope.forall` returns the test body's terminal value (the
+property-test analogue of `scope.assert.collect()`). The engine reads
 the case's recorded log and constructs the `TestOutcome` (see
 [Assertions And Results § The Protocol Shape](./assertions-and-results.md#the-protocol-shape), also
 [Types Index](../reference/types-index.md)):
@@ -120,15 +120,15 @@ const outcome: TestOutcome = {
 };
 ```
 
-`case.forall` is the **assertion-recording boundary** for property
+`scope.forall` is the **assertion-recording boundary** for property
 tests: regardless of how many generated inputs the body runs against,
 the call records one assertion's worth of activity in the case's log
 on success, or one `FailedCheck` for the shrunk counterexample on
-failure. The walkthrough does not write `case.plan(1)` because the
+failure. The walkthrough does not write `scope.plan(1)` because the
 boundary rule already satisfies zero-assertion detection; the
 canonical statement of the rule lives in
 [Assertions And Results § Property Tests And The Assertion Boundary](./assertions-and-results.md#property-tests-and-the-assertion-boundary). `plan(n)` remains available — it counts boundary
-assertions, so `case.plan(1)` would still pass — but it is not
+assertions, so `scope.plan(1)` would still pass — but it is not
 load-bearing for property tests.
 
 The engine is at this point done with the test. Whatever happens

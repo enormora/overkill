@@ -9,7 +9,7 @@ import { createTestEngine as createEngine } from '../test-support/create-test-en
 import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
 import type { RealTimeReporter, ReporterEvent } from './reporter.ts';
 import type { FailOutcome, RunResult } from './run-result.ts';
-import type { TestBody, TestContext } from './test-node.ts';
+import type { TestBody, TestScope } from './test-node.ts';
 
 function recordedEvents(reporter: InMemoryRealTimeReporter): readonly ReporterEvent[] {
     return reporter.getRecordedEntries().flatMap(function toEvent(entry) {
@@ -59,17 +59,17 @@ registerTest('execute() returns passing and failing outcomes with run counts', a
         engine.createSuite({
             children: [
                 engine.createTestCase({
-                    body(testContext: TestContext) {
-                        testContext.assert.true(true, { message: 'passes' });
-                        return testContext.assert.collect();
+                    body(testScope: TestScope) {
+                        testScope.assert.true(true, { message: 'passes' });
+                        return testScope.assert.collect();
                     },
                     metadata: {},
                     name: 'passes'
                 }),
                 engine.createTestCase({
-                    body(testContext: TestContext) {
-                        testContext.assert.equal(1, 2, { message: 'numbers differ' });
-                        return testContext.assert.collect();
+                    body(testScope: TestScope) {
+                        testScope.assert.equal(1, 2, { message: 'numbers differ' });
+                        return testScope.assert.collect();
                     },
                     metadata: {},
                     name: 'fails'
@@ -99,9 +99,9 @@ registerTest('execute() returns passing and failing outcomes with run counts', a
 registerTest('execute() carries orphaned nodes from the plan', async function () {
     const engine = createEngine();
     const reached = engine.createTestCase({
-        body(testContext) {
-            testContext.assert.true(true, { message: 'passes' });
-            return testContext.assert.collect();
+        body(testScope) {
+            testScope.assert.true(true, { message: 'passes' });
+            return testScope.assert.collect();
         },
         metadata: {},
         name: 'reached'
@@ -133,8 +133,8 @@ registerTest('execute() fails tests with zero assertions', async function () {
         engine.createSuite({
             children: [
                 engine.createTestCase({
-                    body(testContext: TestContext) {
-                        return testContext.assert.collect();
+                    body(testScope: TestScope) {
+                        return testScope.assert.collect();
                     },
                     metadata: {},
                     name: 'empty'
@@ -168,10 +168,10 @@ registerTest('execute() fails tests when assertion plan count does not match', a
         engine.createSuite({
             children: [
                 engine.createTestCase({
-                    body(testContext) {
-                        testContext.plan(2);
-                        testContext.assert.true(true, { message: 'one' });
-                        return testContext.assert.collect();
+                    body(testScope) {
+                        testScope.plan(2);
+                        testScope.assert.true(true, { message: 'one' });
+                        return testScope.assert.collect();
                     },
                     metadata: {},
                     name: 'planned'
@@ -214,10 +214,10 @@ registerTest('execute() accepts a directly returned assertion node', async funct
 });
 
 registerTest('execute() fails tests with invalid assertion plans', async function () {
-    const result = await executeSingleBody(function body(testContext) {
-        testContext.plan(0);
-        testContext.assert.true(true, { message: 'unreached' });
-        return testContext.assert.collect();
+    const result = await executeSingleBody(function body(testScope) {
+        testScope.plan(0);
+        testScope.assert.true(true, { message: 'unreached' });
+        return testScope.assert.collect();
     });
 
     assert.deepStrictEqual(firstFailOutcome(result).failures[0], {
@@ -235,12 +235,12 @@ registerTest('execute() exposes assertion and requirement convenience methods', 
         engine.createSuite({
             children: [
                 engine.createTestCase({
-                    body(testContext: TestContext) {
-                        testContext.assert.true(true, { message: 'one' });
-                        testContext.require.string('value', { message: 'string' });
-                        testContext.require.defined(true, { message: 'defined' });
-                        testContext.assert.true(true, { message: 'passes' });
-                        return testContext.assert.collect();
+                    body(testScope: TestScope) {
+                        testScope.assert.true(true, { message: 'one' });
+                        testScope.require.string('value', { message: 'string' });
+                        testScope.require.defined(true, { message: 'defined' });
+                        testScope.assert.true(true, { message: 'passes' });
+                        return testScope.assert.collect();
                     },
                     metadata: {},
                     name: 'uses context'
@@ -262,17 +262,17 @@ registerTest('execute() fails the test when a requirement fails', async function
         engine.createSuite({
             children: [
                 engine.createTestCase({
-                    body(testContext: TestContext) {
-                        testContext.require.string(1, { message: 'required string' });
-                        return testContext.assert.collect();
+                    body(testScope: TestScope) {
+                        testScope.require.string(1, { message: 'required string' });
+                        return testScope.assert.collect();
                     },
                     metadata: {},
                     name: 'requires equality'
                 }),
                 engine.createTestCase({
-                    body(testContext: TestContext) {
-                        testContext.require.defined(null, { message: 'required defined' });
-                        return testContext.assert.collect();
+                    body(testScope: TestScope) {
+                        testScope.require.defined(null, { message: 'required defined' });
+                        return testScope.assert.collect();
                     },
                     metadata: {},
                     name: 'requires truth'
@@ -339,8 +339,8 @@ registerTest('execute() preserves assertions recorded before a thrown body error
         engine.createSuite({
             children: [
                 engine.createTestCase({
-                    body(testContext) {
-                        testContext.assert.equal(1, 2, { message: 'numbers differ' });
+                    body(testScope) {
+                        testScope.assert.equal(1, 2, { message: 'numbers differ' });
                         throw new Error('boom');
                     },
                     metadata: {},
@@ -396,9 +396,9 @@ registerTest('execute() delivers events and final results to reporters', async f
         engine.createSuite({
             children: [
                 engine.createTestCase({
-                    body(testContext) {
-                        testContext.assert.true(true, { message: 'passes' });
-                        return testContext.assert.collect();
+                    body(testScope) {
+                        testScope.assert.true(true, { message: 'passes' });
+                        return testScope.assert.collect();
                     },
                     metadata: {},
                     name: 'passes'
@@ -446,9 +446,9 @@ registerTest('execute() emits suite events for table path segments', async funct
         engine.createSuite({
             children: [
                 engine.createTestCase({
-                    body(testContext) {
-                        testContext.assert.true(true, { message: 'passes' });
-                        return testContext.assert.collect();
+                    body(testScope) {
+                        testScope.assert.true(true, { message: 'passes' });
+                        return testScope.assert.collect();
                     },
                     metadata: {},
                     name: 'first'
@@ -456,9 +456,9 @@ registerTest('execute() emits suite events for table path segments', async funct
                 engine.createTable({
                     cases: [
                         {
-                            body(testContext) {
-                                testContext.assert.true(true, { message: 'row passes' });
-                                return testContext.assert.collect();
+                            body(testScope) {
+                                testScope.assert.true(true, { message: 'row passes' });
+                                return testScope.assert.collect();
                             },
                             metadata: {},
                             name: 'row 1',
@@ -514,10 +514,10 @@ registerTest('execute() rejects reporter sink conflicts before starting the run'
         engine.createSuite({
             children: [
                 engine.createTestCase({
-                    body(testContext) {
+                    body(testScope) {
                         bodyRan = true;
-                        testContext.assert.true(true, { message: 'passes' });
-                        return testContext.assert.collect();
+                        testScope.assert.true(true, { message: 'passes' });
+                        return testScope.assert.collect();
                     },
                     metadata: {},
                     name: 'passes'

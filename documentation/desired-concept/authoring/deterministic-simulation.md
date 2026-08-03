@@ -197,9 +197,9 @@ In-process style:
 ```ts
 test(
     'queue stays consistent under the deterministic runtime',
-    withSimulation(myAppSim, { seed: 42n, scenario: 'default' }, async (case) => {
-        case.assert.collect();
-    }),
+    withSimulation(myAppSim, { seed: 42n, scenario: 'default' }, async (scope) => {
+        scope.assert.collect();
+    })
 );
 ```
 
@@ -208,12 +208,12 @@ Local-service style:
 ```ts
 test(
     'checkout handles upstream 500s',
-    withSimulation(deterministicApi, { scenario: 'payments-500' }, async (case) => {
-        const runtime = case.runtime;
+    withSimulation(deterministicApi, { scenario: 'payments-500' }, async (scope) => {
+        const runtime = scope.runtime;
         const baseUrl = runtime.endpoint;
         // App under test talks to the deterministic service over real HTTP.
-        case.assert.collect();
-    }),
+        scope.assert.collect();
+    })
 );
 ```
 

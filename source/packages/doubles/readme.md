@@ -32,7 +32,7 @@ Public runtime values:
 - `testDisposable`: creates a sync disposable double for `using`.
 - `testAsyncDisposable`: creates an async disposable double for `await using`.
 - `rule`: builds reusable behavior rules.
-- `doubleUsage`: assertion references for `case.assert(...)`.
+- `doubleUsage`: assertion references for `scope.assert(...)`.
 
 ## Create A Double
 
@@ -205,8 +205,8 @@ const values = testIterator.yields([ 'created', 'updated' ]);
 
 values.next();
 
-case.assert(doubleUsage.iterated, values);
-case.assert(doubleUsage.yieldedExactly, values, [ 'created' ]);
+scope.assert(doubleUsage.iterated, values);
+scope.assert(doubleUsage.yieldedExactly, values, [ 'created' ]);
 ```
 
 `testIterator` creates one consumable well-formed iterator. It works with
@@ -219,7 +219,7 @@ const source = testIterable.yields([ 'created', 'updated' ]);
 [ ...source ];
 [ ...source ];
 
-case.assert(doubleUsage.yieldedExactly, source, [
+scope.assert(doubleUsage.yieldedExactly, source, [
     'created',
     'updated',
     'created',
@@ -240,8 +240,8 @@ const resource = testDisposable({
 
 using value = resource;
 
-case.assert(doubleUsage.disposedOnce, resource);
-case.assert(doubleUsage.calledOnce, resource.dispose);
+scope.assert(doubleUsage.disposedOnce, resource);
+scope.assert(doubleUsage.calledOnce, resource.dispose);
 ```
 
 `testAsyncDisposable` installs `[Symbol.asyncDispose]()` for `await using`,
@@ -253,14 +253,14 @@ exposes `.asyncDispose` for inspection, and defaults to resolving `undefined`.
 assertion context:
 
 ```ts
-test('saves a user', (case) => {
+test('saves a user', (scope) => {
     const saveUser = testDouble.returns<SaveUser>(true);
 
     saveUser({ id: '42', name: 'Ada' });
 
-    case.assert(doubleUsage.calledOnceWith, saveUser, [ { id: '42' } ]);
+    scope.assert(doubleUsage.calledOnceWith, saveUser, [ { id: '42' } ]);
 
-    return case.assert.collect();
+    return scope.assert.collect();
 });
 ```
 
@@ -273,10 +273,10 @@ Argument assertions always receive one `args` tuple array.
 Examples:
 
 ```ts
-case.assert(doubleUsage.calledWith, saveUser, [ { id: '42' } ]);
-case.assert(doubleUsage.calledWithPrefix, writeMetric, [ 'signup' ]);
-case.assert(doubleUsage.calledWithExactly, saveUser, [ { id: '42', name: 'Ada' } ]);
-case.assert(doubleUsage.calledWith, ping, []);
+scope.assert(doubleUsage.calledWith, saveUser, [ { id: '42' } ]);
+scope.assert(doubleUsage.calledWithPrefix, writeMetric, [ 'signup' ]);
+scope.assert(doubleUsage.calledWithExactly, saveUser, [ { id: '42', name: 'Ada' } ]);
+scope.assert(doubleUsage.calledWith, ping, []);
 ```
 
 ### Counts
@@ -375,7 +375,7 @@ Indexes are zero-based:
 Order assertions compare usage across doubles:
 
 ```ts
-case.assert(doubleUsage.callOrder, [ loadUser, saveUser, publishEvent ]);
+scope.assert(doubleUsage.callOrder, [ loadUser, saveUser, publishEvent ]);
 ```
 
 - `doubleUsage.interactionOrder([first, second, ...])`

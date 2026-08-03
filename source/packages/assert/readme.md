@@ -34,10 +34,10 @@ export const resultValueDeepEqual = defineCompositeAssertion({
 Tests pass references to the engine-owned assertion facade:
 
 ```ts
-case.assert(resultValueDeepEqual, result, expected);
+scope.assert(resultValueDeepEqual, result, expected);
 ```
 
-`defineNarrowingCompositeAssertion(...)` creates synchronous references accepted by both `case.assert(...)` and `case.require(...)`.
+`defineNarrowingCompositeAssertion(...)` creates synchronous references accepted by both `scope.assert(...)` and `scope.require(...)`.
 
 Foreign throwable-style assertions can be bridged inside a composite assertion:
 

@@ -39,14 +39,14 @@ the high-level authoring layer, not as a discarded side experiment.
 import { suite, table, test } from '#tests/micro';
 
 export const spec = suite('users', [
-    test('build', (case) => {
-        case.assert.equal(buildUser('Ada').name, 'Ada');
-        return case.assert.collect();
+    test('build', (scope) => {
+        scope.assert.equal(buildUser('Ada').name, 'Ada');
+        return scope.assert.collect();
     }),
 
-    test('validates', (case) => {
-        case.assert.fail(buildUser(''), 'empty name');
-        return case.assert.collect();
+    test('validates', (scope) => {
+        scope.assert.fail(buildUser(''), 'empty name');
+        return scope.assert.collect();
     }),
 
     table({
@@ -55,14 +55,14 @@ export const spec = suite('users', [
         caseTitle(parameters) {
             return `should round-trip ${parameters.kind}`;
         },
-        test(case) {
-            case.assert.equal(
-                parse(serialize(case.parameters.input)),
-                case.parameters.expected,
+        test(scope) {
+            scope.assert.equal(
+                parse(serialize(scope.parameters.input)),
+                scope.parameters.expected
             );
-            return case.assert.collect();
-        },
-    }),
+            return scope.assert.collect();
+        }
+    })
 ]);
 ```
 
@@ -108,13 +108,13 @@ and `suite(...)` are ordinary value constructors. A node may be created
 first and attached later:
 
 ```ts
-const sharedRoundTrip = test('round-trip', (case) => {
-    case.assert.equal(parse(serialize(user)), user);
-    return case.assert.collect();
+const sharedRoundTrip = test('round-trip', (scope) => {
+    scope.assert.equal(parse(serialize(user)), user);
+    return scope.assert.collect();
 });
 
 export const spec = suite('users', [
-    sharedRoundTrip,
+    sharedRoundTrip
 ]);
 ```
 
@@ -152,10 +152,10 @@ authoring helper:
 import { runIfMain, suite, test } from '#tests/micro';
 
 export const spec = suite('users', [
-    test('build', (case) => {
-        case.assert.equal(buildUser('Ada').name, 'Ada');
-        return case.assert.collect();
-    }),
+    test('build', (scope) => {
+        scope.assert.equal(buildUser('Ada').name, 'Ada');
+        return scope.assert.collect();
+    })
 ]);
 
 await runIfMain(import.meta, spec);
@@ -219,9 +219,9 @@ import { skippedTest, suite, test } from '@overkill-dev/test';
 
 const unameCase =
     process.platform === 'linux'
-        ? test('uname', (case) => {
-              case.assert.equal(runUname(), 'Linux');
-              return case.assert.collect();
+        ? test('uname', (scope) => {
+              scope.assert.equal(runUname(), 'Linux');
+              return scope.assert.collect();
           })
         : skippedTest('uname', 'not linux');
 
@@ -281,10 +281,10 @@ type TestCase = {
     readonly name: string;
     readonly metadata: Metadata;
     readonly capabilities: ReadonlyArray<Capability>;
-    readonly run: (ctx: TestContext) => Promise<TestOutcome> | TestOutcome;
+    readonly run: (scope: TestScope) => Promise<TestOutcome> | TestOutcome;
 };
 
-type ParameterizedTestContext<TParameters> = TestContext & {
+type ParameterizedTestScope<TParameters> = TestScope & {
     readonly parameters: TParameters;
 };
 
@@ -300,7 +300,7 @@ type Table = {
     readonly name: string;
     readonly metadata: Metadata;
     readonly cases: ReadonlyArray<TableCase>;
-    readonly run: (case_: TableCase, ctx: ParameterizedTestContext<TableCase>) => Promise<TestOutcome> | TestOutcome;
+    readonly run: (case_: TableCase, scope: ParameterizedTestScope<TableCase>) => Promise<TestOutcome> | TestOutcome;
 };
 ```
 
@@ -311,9 +311,9 @@ walks the tree. The detailed collection-to-plan pipeline lives in
 
 The important typing rule is:
 
-- plain tests receive `TestContext`
+- plain tests receive `TestScope`
 - parameterized/generated cases receive a refined context with
-  `case.parameters`
+  `scope.parameters`
 - `parameters` is not part of the ordinary top-level case API for
   non-parameterized tests
 
@@ -331,13 +331,13 @@ table({
     caseTitle(parameters, index) {
         return `should parse ${parameters.kind} #${index + 1}`;
     },
-    test(case) {
-        case.assert.deepEqual(
-            parse(case.parameters.input),
-            case.parameters.expected,
+    test(scope) {
+        scope.assert.deepEqual(
+            parse(scope.parameters.input),
+            scope.parameters.expected
         );
-        return case.assert.collect();
-    },
+        return scope.assert.collect();
+    }
 });
 ```
 
@@ -348,8 +348,8 @@ The settled semantics should be:
 - `caseTitle` is optional and derives each expanded child case title
 - if `caseTitle` is omitted, Overkill generates deterministic fallback
   names such as `case 1`, `case 2`, ...
-- the callback is named `test` and receives the ordinary `case` object
-  refined with `case.parameters`
+- the callback is named `test` and receives the ordinary `scope` object
+  refined with `scope.parameters`
 - tables are authoring sugar over the same underlying expansion model as
   other parameterized helpers; whether that shares macro machinery
   internally is an implementation detail
@@ -372,8 +372,8 @@ composition rather than ever-deeper nested suite trees pretending to be
 fixture scopes.
 
 Runtime subtests are not part of the first-party concept. A test body should
-not be able to create new test cases through an API such as `case.test(...)`
-or `case.subtest(...)`. Any child cases must exist in the collected tree
+not be able to create new test cases through an API such as `scope.test(...)`
+or `scope.subtest(...)`. Any child cases must exist in the collected tree
 before execution starts, either as nested `suite(...)` values, `table(...)`
 expansions, or macro output.
 
@@ -413,20 +413,20 @@ const lawsOfMonoid = defineMacro(
     <T>(parameters: MonoidLaws<T>) => {
         const { name, empty, concat, gen, eq } = parameters;
         return suite(`monoid laws: ${name}`, [
-            test('left identity', (case) => {
-                return case.forall(gen, (x, sample) => {
+            test('left identity', (scope) => {
+                return scope.forall(gen, (x, sample) => {
                     sample.assert.equal(eq(concat(empty, x), x), true);
                     return sample.assert.collect();
                 });
             }),
-            test('right identity', (case) => {
-                return case.forall(gen, (x, sample) => {
+            test('right identity', (scope) => {
+                return scope.forall(gen, (x, sample) => {
                     sample.assert.equal(eq(concat(x, empty), x), true);
                     return sample.assert.collect();
                 });
-            }),
+            })
         ]);
-    },
+    }
 );
 ```
 
@@ -444,32 +444,34 @@ import { suite, test } from '@overkill-dev/test';
 function lawsOfMonoid<T>(parameters: MonoidLaws<T>): TestNode {
     const { name, empty, concat, gen, eq } = parameters;
     return suite(`monoid laws: ${name}`, [
-        test('left identity', (case) => {
-            return case.forall(gen, (x, sample) => {
+        test('left identity', (scope) => {
+            return scope.forall(gen, (x, sample) => {
                 sample.assert.equal(eq(concat(empty, x), x), true);
                 return sample.assert.collect();
             });
         }),
-        test('right identity', (case) => {
-            return case.forall(gen, (x, sample) => {
+        test('right identity', (scope) => {
+            return scope.forall(gen, (x, sample) => {
                 sample.assert.equal(eq(concat(x, empty), x), true);
                 return sample.assert.collect();
             });
         }),
-        test('associativity', (case) => {
-            return case.forall([gen, gen, gen], (values, sample) => {
-                const [a, b, c] = values;
+        test('associativity', (scope) => {
+            return scope.forall([ gen, gen, gen ], (values, sample) => {
+                const [ a, b, c ] = values;
                 sample.assert.equal(
                     eq(concat(concat(a, b), c), concat(a, concat(b, c))),
-                    true,
+                    true
                 );
                 return sample.assert.collect();
             });
-        }),
+        })
     ]);
 }
 
-export const spec = suite('string concat', [lawsOfMonoid({ name: 'string', empty: '', concat: (a, b) => a + b, gen, eq })]);
+export const spec = suite('string concat', [
+    lawsOfMonoid({ name: 'string', empty: '', concat: (a, b) => a + b, gen, eq })
+]);
 ```
 
 Three properties for free, no boilerplate, fully typed. This is borrowed
@@ -540,14 +542,14 @@ an explicit constant inside the suite construction:
 const fixtures = loadFixtures(); // executes at module load — visible
 
 export const spec = suite('users', [
-    test('a', (case) => {
-        case.assert.equal(buildUser(fixtures.a).id, '1');
-        return case.assert.collect();
+    test('a', (scope) => {
+        scope.assert.equal(buildUser(fixtures.a).id, '1');
+        return scope.assert.collect();
     }),
-    test('b', (case) => {
-        case.assert.equal(buildUser(fixtures.b).id, '2');
-        return case.assert.collect();
-    }),
+    test('b', (scope) => {
+        scope.assert.equal(buildUser(fixtures.b).id, '2');
+        return scope.assert.collect();
+    })
 ]);
 ```
 
@@ -589,10 +591,10 @@ not be evaluated until first access. Combined with tests-as-values:
 import defer * as heavy from './heavy-module.ts';
 
 export const spec = suite('heavy', [
-    test('uses heavy', (case) => {
-        case.assert.equal(heavy.compute(), 42);
-        return case.assert.collect();
-    }),
+    test('uses heavy', (scope) => {
+        scope.assert.equal(heavy.compute(), 42);
+        return scope.assert.collect();
+    })
 ]);
 ```
 
@@ -640,7 +642,7 @@ out for free because every input is explicit.
 Because the test definitions are values, an external tool can:
 
 - import the file and walk `default` to enumerate tests
-- call `test.run(ctx)` for individual tests with custom context
+- call `test.run(scope)` for individual tests with a custom scope
 - compute a stable identity for each test (file + path-in-tree + name +
   parameterization) without parsing source code
 - diff two runs by comparing tree shapes

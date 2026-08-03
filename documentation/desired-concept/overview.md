@@ -127,11 +127,11 @@ co-equal first-party answers at the same layer.
 
 Its assertion model should be explicit:
 
-- `case.assert` for ordinary assertions recorded into the test result
-- `case.require` for gating assertions that short-circuit and support
+- `scope.assert` for ordinary assertions recorded into the test result
+- `scope.require` for gating assertions that short-circuit and support
   TypeScript
   narrowing
-- `return case.assert.collect()` as builder-mode syntax sugar
+- `return scope.assert.collect()` as builder-mode syntax sugar
 - optional custom assertion references for domain-specific types such as
   `Result` or `Maybe`, imported where tests need them
 

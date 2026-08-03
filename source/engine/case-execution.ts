@@ -22,7 +22,7 @@ import {
     invalidDeepAssertionOperandFailure,
     verdictFromOutcome
 } from './run-result.ts';
-import type { TestContext } from './test-node.ts';
+import type { TestScope } from './test-node.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
 type RecordedAssertion = {
@@ -142,7 +142,7 @@ function createPendingAsyncAssertionFailure(): TestContractFailure {
         code: 'pending-async-assertion',
         expected: 'all async assertions awaited before collect',
         kind: 'test-contract',
-        summary: 'Async assertion must be awaited before case.assert.collect().'
+        summary: 'Async assertion must be awaited before scope.assert.collect().'
     };
 }
 
@@ -436,7 +436,7 @@ function assertionFailure(assertions: readonly AssertionNode[]): TestFailure | n
     return assertionContractFailure(assertions) ?? evaluatedAssertionFailure(assertions);
 }
 
-function createTestContext(recorder: AssertionRecorder): TestContext {
+function createTestScope(recorder: AssertionRecorder): TestScope {
     const assertContext = Object.assign(
         createRecordingAssertFacade(
             {
@@ -534,7 +534,7 @@ function failedBody(recorder: AssertionRecorder, error: unknown): ExecutedBody {
 
 async function runCaseBody(testCase: TestPlanCase, recorder: AssertionRecorder): Promise<ExecutedBody> {
     try {
-        return completedBody(recorder, await testCase.body(createTestContext(recorder)));
+        return completedBody(recorder, await testCase.body(createTestScope(recorder)));
     } catch (error: unknown) {
         return failedBody(recorder, error);
     }

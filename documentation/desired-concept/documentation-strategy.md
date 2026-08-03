@@ -110,7 +110,7 @@ Progressive disclosure should be intentional:
 
 Examples should prefer:
 
-- `case` over `t`
+- `scope` over `t`
 - no inline destructuring by default
 - realistic but small examples
 - one concept per example

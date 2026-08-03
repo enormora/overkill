@@ -10,21 +10,21 @@ repeated choreography that makes ordinary tests longer than they need to be.
 
 ## Naming In Examples
 
-The documentation examples should prefer `case` as the injected test context
+The documentation examples should prefer `scope` as the injected test scope
 parameter:
 
 ```ts
-test('loads user', async (case) => {
-    case.require.defined(loadUser);
-    case.assert.equal(await loadUser('42'), 'Ada');
-    return case.assert.collect();
+test('loads user', async (scope) => {
+    scope.require.defined(loadUser);
+    scope.assert.equal(await loadUser('42'), 'Ada');
+    return scope.assert.collect();
 });
 ```
 
-Why `case`:
+Why `scope`:
 
 - more meaningful than `t`
-- shorter than `testContext`
+- short enough for repeated assertion calls
 - does not require inline destructuring by default
 - avoids awkward names like `test.test`
 
@@ -59,28 +59,28 @@ Overkill should support a first-party `defineHarness(...)` concept.
 const runnerHarness = defineHarness({
     loadConfig: () => testDouble.resolves<() => Promise<string>>('the-config'),
     buildAndPublishAll: () => testDouble.resolves<() => Promise<Result<readonly unknown[]>>>(Result.ok([])),
-    log: () => testDouble(),
+    log: () => testDouble()
 }, (parts) => {
     return {
         subject: createCommandLineInterfaceRunner({
             configLoader: { load: parts.loadConfig },
             publisher: { buildAndPublishAll: parts.buildAndPublishAll },
-            log: parts.log,
+            log: parts.log
         }),
-        ...parts,
+        ...parts
     };
 });
 
-test('passes dry-run by default', async (case) => {
+test('passes dry-run by default', async (scope) => {
     const harness = runnerHarness.create();
 
-    await harness.subject.run(['publish']);
+    await harness.subject.run([ 'publish' ]);
 
-    case.assert.equal(harness.buildAndPublishAll.interactionCount, 1);
-    case.assert.deepEqual(harness.buildAndPublishAll.firstInteraction.arguments[1], {
-        dryRun: true,
+    scope.assert.equal(harness.buildAndPublishAll.interactionCount, 1);
+    scope.assert.deepEqual(harness.buildAndPublishAll.firstInteraction.arguments[1], {
+        dryRun: true
     });
-    return case.assert.collect();
+    return scope.assert.collect();
 });
 ```
 
@@ -136,9 +136,9 @@ const log = recordCalls(writeLine);
 writeLine('hello');
 writeLine('world');
 
-case.assert.deepEqual(log.entries, [
-    ['hello'],
-    ['world'],
+scope.assert.deepEqual(log.entries, [
+    [ 'hello' ],
+    [ 'world' ]
 ]);
 ```
 
@@ -209,22 +209,22 @@ import { defineMacro, suite, test } from '@overkill-dev/test';
 const schemaValidationCases = [
     missingField('name'),
     undefinedField('name'),
-    wrongType('age', 'number'),
+    wrongType('age', 'number')
 ];
 
 const schemaContract = defineMacro((title, schema) =>
     suite(title, [
         ...schemaValidationCases.map((schemaValidationCase, index) =>
-            test(schemaValidationCase.title ?? `case ${index + 1}`, (case) => {
-                return schemaValidationCase.run(schema, case);
-            }),
-        ),
-    ]),
+            test(schemaValidationCase.title ?? `case ${index + 1}`, (scope) => {
+                return schemaValidationCase.run(schema, scope);
+            })
+        )
+    ])
 );
 
 export const spec = suite('schemas', [
     schemaContract('user schema', userSchema),
-    schemaContract('pet schema', petSchema),
+    schemaContract('pet schema', petSchema)
 ]);
 ```
 
@@ -253,20 +253,20 @@ set of queue-control helpers.
 
 Recommended helpers:
 
-- `case.flushAsync()`
-- `case.microtasks()`
-- `case.immediate()`
+- `scope.flushAsync()`
+- `scope.microtasks()`
+- `scope.immediate()`
 
 Suggested semantics:
 
-- `case.microtasks()` drains the current microtask queue once. Use it when
+- `scope.microtasks()` drains the current microtask queue once. Use it when
   the code under test schedules follow-up work with `Promise.resolve()`,
   `queueMicrotask`, or an already-resolved async continuation.
-- `case.immediate()` yields one event-loop turn. Use it when the code under
+- `scope.immediate()` yields one event-loop turn. Use it when the code under
   test crosses a macrotask boundary (`setImmediate`, message channel,
   stream callback, next-turn event dispatch) and a microtask flush is not
   enough.
-- `case.flushAsync()` is the bounded "settle what is already in flight"
+- `scope.flushAsync()` is the bounded "settle what is already in flight"
   helper. It repeatedly yields through the relevant queue boundaries until
   the currently scheduled async work has drained, or until a small safety
   limit is hit so the helper cannot spin forever on a live loop.
@@ -297,13 +297,13 @@ The spawned-async pattern is real, but it should stay small and advanced.
 Recommended direction:
 
 ```ts
-test('logs fire-and-forget rejection', async (case) => {
-    const run = case.inFlight(() => executor.execute(asyncFunction));
+test('logs fire-and-forget rejection', async (scope) => {
+    const run = scope.inFlight(() => executor.execute(asyncFunction));
 
     await run.rejects({ message: 'error' });
 
-    case.assert.equal(logger.error.interactionCount, 1);
-    return case.assert.collect();
+    scope.assert.equal(logger.error.interactionCount, 1);
+    return scope.assert.collect();
 });
 ```
 

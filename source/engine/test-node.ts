@@ -12,17 +12,17 @@ const testNodeOwnerIdentity: unique symbol = Symbol('OverkillTestNodeOwnerIdenti
 
 export type Metadata = Readonly<Record<string, unknown>>;
 
-export type CaseAssertContext = AssertAssertionFacade & {
+export type TestScopeAssertContext = AssertAssertionFacade & {
     readonly collect: () => NonEmptyReadonlyArray<AssertAssertionNode>;
 };
 
-export type TestContext = {
-    readonly assert: CaseAssertContext;
+export type TestScope = {
+    readonly assert: TestScopeAssertContext;
     readonly plan: (count: number) => void;
     readonly require: RequireAssertionFacade;
 };
 
-export type TestBody = (testContext: TestContext) => AssertionResult | Promise<AssertionResult>;
+export type TestBody = (scope: TestScope) => AssertionResult | Promise<AssertionResult>;
 
 export type TestCase = {
     readonly [testNodeBrand]: true;

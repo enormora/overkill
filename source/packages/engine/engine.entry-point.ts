@@ -173,7 +173,7 @@ export type {
     RequireAssertionNode
 } from '../../assertion-protocol/assertion-node.ts';
 export type {
-    CaseAssertContext,
+    TestScopeAssertContext,
     Metadata,
     Suite,
     SuiteOptions,
@@ -184,7 +184,7 @@ export type {
     TestBody,
     TestCase,
     TestCaseOptions,
-    TestContext,
+    TestScope,
     TestNode
 } from '../../engine/test-node.ts';
 export type { TestPlan, TestPlanCase, TestPlanCaseBody } from '../../engine/test-plan.ts';

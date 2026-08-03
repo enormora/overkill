@@ -443,7 +443,7 @@ type RequireAssertionFacade = {
     readonly string: (actual: unknown) => asserts actual is string;
 };
 
-type CaseAssertContext = AssertAssertionFacade & {
+type TestScopeAssertContext = AssertAssertionFacade & {
     readonly collect: () => NonEmptyReadonlyArray<AssertAssertionNode>;
 };
 

@@ -148,7 +148,7 @@ window may be attributed to a sibling test. The runner should warn on
 detected attribution drift rather than silently mis-blaming a test.
 
 Tests that intend to test rejection paths use the assertion library's
-explicit support (`case.assert.rejects(() => promiseReturningCall(), { message: /expected/ })`)
+explicit support (`scope.assert.rejects(() => promiseReturningCall(), { message: /expected/ })`)
 rather than relying on the global hooks.
 
 ## Signal Handling And Cancellation

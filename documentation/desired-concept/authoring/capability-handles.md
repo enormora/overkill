@@ -62,24 +62,24 @@ handles:
 import { suite, test } from '@overkill-dev/test';
 
 export const spec = suite('saveUser', [
-    test('records the effect transcript', async (case) => {
+    test('records the effect transcript', async (scope) => {
         const runtime = recordingRuntime({
             clock: virtualClock('2026-01-01T00:00:00Z'),
             random: seededRandom(0xc0ffee),
             fs: memoryFs({ 'users/_template.json': '{}' }),
-            http: stubHttp({ 'GET /users/1': { status: 200, body: { id: 1 } } }),
+            http: stubHttp({ 'GET /users/1': { status: 200, body: { id: 1 } } })
         });
 
         await saveUser(runtime, { name: 'Ada' });
 
-        case.assert.deepEqual(runtime.recorded(), [
+        scope.assert.deepEqual(runtime.recorded(), [
             { kind: 'random.uuid' },
             { kind: 'clock.now' },
             { kind: 'fs.write', path: 'users/<uuid>.json', body: '...' },
-            { kind: 'log.info', msg: 'saved <uuid>' },
+            { kind: 'log.info', msg: 'saved <uuid>' }
         ]);
-        return case.assert.collect();
-    }),
+        return scope.assert.collect();
+    })
 ]);
 ```
 
@@ -276,11 +276,11 @@ See [Assertions And Results](./assertions-and-results.md).
 
 A test that uses recording handles produces a structured effect log. In the
 preferred high-level authoring style, the test asserts on that log through
-the injected `case.assert` API:
+the injected `scope.assert` API:
 
 ```ts
-case.assert.deepEqual(runtime.recorded(), expected);
-return case.assert.collect();
+scope.assert.deepEqual(runtime.recorded(), expected);
+return scope.assert.collect();
 ```
 
 There is nothing to throw. The whole test reads as `(input, runtime) -> (output, effects, outcome)` — pure data, deterministic, machine-readable.
