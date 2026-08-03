@@ -36,7 +36,7 @@
         "@enormora/eslint-config-typescript": "0.0.58",
         "@enormora/objectory": "0.0.15",
         "@ls-lint/ls-lint": "2.3.1",
-        "@packtory/cli": "0.0.77",
+        "@packtory/cli": "0.0.78",
         "@packtory/github-release-gate": "0.0.42",
         "@types/node": "26.1.2",
         "@types/sinon": "10.0.20",
