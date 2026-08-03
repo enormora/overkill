@@ -1,5 +1,7 @@
+import type { WallClock } from '@enormora/wall-clock';
 import type { Execute } from './execution.ts';
 import { formatCaseId } from './identity.ts';
+import { createRunIfMain, type RunIfMain } from './run-if-main.ts';
 import {
     createTestNodeOwner,
     createTestNodeFactory,
@@ -20,10 +22,15 @@ export type Engine = {
     readonly createTestPlan: TestPlanFactory;
     readonly execute: Execute;
     readonly formatCaseId: typeof formatCaseId;
+    readonly runIfMain: RunIfMain;
 };
 
 export type EngineDependencies = {
     readonly execute: Execute;
+    readonly nodeVersion: string;
+    readonly readExitCode: () => number | string | null | undefined;
+    readonly wallClock: WallClock;
+    readonly writeExitCode: (exitCode: number) => void;
 };
 
 export function createEngine(dependencies: EngineDependencies): Engine {
@@ -36,13 +43,22 @@ export function createEngine(dependencies: EngineDependencies): Engine {
             constructedNodes.add(node);
         }
     });
+    const createTestPlan = createTestPlanFactory(owner, constructedNodes);
 
     return {
         createSuite: nodeFactory.createSuite,
         createTable: nodeFactory.createTable,
         createTestCase: nodeFactory.createTestCase,
-        createTestPlan: createTestPlanFactory(owner, constructedNodes),
+        createTestPlan,
         execute,
-        formatCaseId
+        formatCaseId,
+        runIfMain: createRunIfMain({
+            createTestPlan,
+            execute,
+            nodeVersion: dependencies.nodeVersion,
+            readExitCode: dependencies.readExitCode,
+            wallClock: dependencies.wallClock,
+            writeExitCode: dependencies.writeExitCode
+        })
     };
 }

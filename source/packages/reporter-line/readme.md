@@ -13,7 +13,9 @@ import { execute } from '@overkill-dev/engine';
 import { createLineReporter } from '@overkill-dev/reporter-line';
 
 await execute(testPlan, {
-    reporters: [ createLineReporter() ]
+    reporters: [ createLineReporter() ],
+    runFacts: {},
+    startedAt: new Date().toISOString()
 });
 ```
 

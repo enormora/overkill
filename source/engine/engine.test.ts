@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import sinon from 'sinon';
+import { createDeterministicWallClock } from '@enormora/wall-clock';
 import { registerTest } from '../test-support/register-test.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createEngine } from './engine.ts';
@@ -13,7 +14,18 @@ registerTest('engine.execute() invokes the injected execute dependency', async f
             return expectedResult;
         }
     );
-    const engine = createEngine({ execute });
+    const wallClock = createDeterministicWallClock();
+    const engine = createEngine({
+        execute,
+        nodeVersion: '26.0.0',
+        readExitCode() {
+            return undefined;
+        },
+        wallClock,
+        writeExitCode() {
+            return undefined;
+        }
+    });
     const testPlan = engine.createTestPlan(
         engine.createSuite({
             children: [

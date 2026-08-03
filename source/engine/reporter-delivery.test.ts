@@ -92,16 +92,28 @@ function aggregateErrorEntryMessage(entry: unknown): string {
     return entry instanceof Error ? entry.message : String(entry);
 }
 
+function createReporterDeliveryEngine(wallClock: ReturnType<typeof createDeterministicWallClock>): Engine {
+    return createEngine({
+        execute: createExecute({
+            reporterDispatcher: createReporterDispatcher({ wallClock }),
+            wallClock
+        }),
+        nodeVersion: '26.0.0',
+        readExitCode() {
+            return process.exitCode;
+        },
+        wallClock,
+        writeExitCode(exitCode) {
+            process.exitCode = exitCode;
+        }
+    });
+}
+
 function createConcurrentFinishFixture(): ConcurrentFinishFixture {
     const finishStarted = createReporterSignal();
     const finalReported = createReporterSignal();
     const wallClock = createDeterministicWallClock();
-    const engine = createEngine({
-        execute: createExecute({
-            reporterDispatcher: createReporterDispatcher({ wallClock }),
-            wallClock
-        })
-    });
+    const engine = createReporterDeliveryEngine(wallClock);
 
     return {
         engine,
@@ -215,12 +227,7 @@ registerTest('execute() does not recurse when a reporter fails while handling ru
 registerTest('execute() isolates reporter callback timeouts', async function () {
     const testStartSignal = createReporterSignal();
     const wallClock = createDeterministicWallClock();
-    const engine = createEngine({
-        execute: createExecute({
-            reporterDispatcher: createReporterDispatcher({ wallClock }),
-            wallClock
-        })
-    });
+    const engine = createReporterDeliveryEngine(wallClock);
     const hangingReporter: RealTimeReporter = {
         dispose: null,
         kind: 'real-time',
@@ -341,12 +348,7 @@ registerTest('execute() records dispose failures in the returned result', async 
 registerTest('execute() times out reporter disposal', async function () {
     const disposeSignal = createReporterSignal();
     const wallClock = createDeterministicWallClock();
-    const engine = createEngine({
-        execute: createExecute({
-            reporterDispatcher: createReporterDispatcher({ wallClock }),
-            wallClock
-        })
-    });
+    const engine = createReporterDeliveryEngine(wallClock);
     const hangingReporter: RealTimeReporter = {
         async dispose() {
             disposeSignal.notify();

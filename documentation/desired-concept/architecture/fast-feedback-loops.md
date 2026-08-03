@@ -195,8 +195,11 @@ The minimum invocation in a Node 26-era baseline:
 node ./foo.test.ts
 ```
 
-That’s it. No flag, no `--experimental-*`, no loader. Caveats:
+That's it. No flag, no `--experimental-*`, no loader. Caveats:
 
+- A self-running Overkill file calls `runIfMain(import.meta, spec, options?)`.
+  Reporter output is explicit; pass a reporter such as
+  `createDotReporter()` when the direct Node entrypoint should print.
 - Files must use erasable syntax. Otherwise: `node --experimental-transform-types ./foo.test.ts`.
 - ESM extensions: `.ts` is treated as ESM by default if the nearest
   `package.json` has `"type": "module"`, otherwise as CJS. This mirrors `.js`

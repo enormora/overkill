@@ -451,6 +451,11 @@ type BuilderTestBody = (case: unknown) => AssertionResult | Promise<AssertionRes
 type ThrowingTestBody = (case: unknown) => void | Promise<void>;
 type TestBody = BuilderTestBody | ThrowingTestBody;
 
+type RunIfMainOptions = {
+    readonly reporters?: ReadonlyArray<Reporter>;
+    readonly runFacts?: RunFacts;
+};
+
 type TestFacade = {
     readonly test: (name: string, body: TestBody) => TestCase;
     readonly suite: (name: string, children: ReadonlyArray<TestNode>) => Suite;
@@ -463,7 +468,7 @@ type TestFacade = {
     readonly defineMacro: <Args extends ReadonlyArray<unknown>>(
         factory: (...args: Args) => TestNode,
     ) => (...args: Args) => TestNode;
-    readonly runIfMain: (meta: ImportMeta, spec: TestNode) => Promise<void>;
+    readonly runIfMain: (meta: ImportMeta, spec: TestNode, options?: RunIfMainOptions) => Promise<void>;
 };
 ```
 
