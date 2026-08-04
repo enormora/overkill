@@ -53,7 +53,7 @@ jobs:
                   echo "reason=manual publish override confirmed" >> "$GITHUB_OUTPUT"
             - name: Use Node.js from package metadata
               if: ${{ !inputs.publish_now }}
-              uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+              uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
               with:
                   node-version-file: package.json
             - name: Install dependencies
@@ -107,7 +107,7 @@ jobs:
                   ref: ${{ needs.evaluate-gate.outputs.main_head_sha }}
                   persist-credentials: false
             - name: Use Node.js from package metadata
-              uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+              uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
               with:
                   node-version-file: package.json
             - name: Install dependencies
