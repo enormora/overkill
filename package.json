@@ -30,10 +30,10 @@
         "yoctocolors": "2.2.0"
     },
     "devDependencies": {
-        "@enormora/eslint-config-base": "0.0.51",
-        "@enormora/eslint-config-node": "0.0.37",
-        "@enormora/eslint-config-test-base": "0.0.21",
-        "@enormora/eslint-config-typescript": "0.0.58",
+        "@enormora/eslint-config-base": "0.0.56",
+        "@enormora/eslint-config-node": "0.0.41",
+        "@enormora/eslint-config-test-base": "0.0.26",
+        "@enormora/eslint-config-typescript": "0.0.63",
         "@enormora/objectory": "0.0.15",
         "@ls-lint/ls-lint": "2.3.1",
         "@packtory/cli": "0.0.80",
@@ -42,7 +42,7 @@
         "@types/sinon": "10.0.20",
         "c8": "12.0.0",
         "dependency-cruiser": "18.1.1",
-        "eslint": "10.7.0",
+        "eslint": "10.8.0",
         "jscpd": "5.0.14",
         "knip": "6.31.0",
         "rust-just": "1.57.0",
