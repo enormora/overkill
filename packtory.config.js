@@ -84,6 +84,7 @@ export const config = {
         },
         {
             name: '@overkill-dev/doubles',
+            bundlePeerDependencies: [ '@overkill-dev/engine' ],
             roots: {
                 main: {
                     js: 'packages/doubles/doubles.entry-point.js',
