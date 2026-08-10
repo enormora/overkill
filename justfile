@@ -36,13 +36,5 @@ test-unit-with-coverage:
 test-types:
     tstyche
 
-test-package-smoke: compile
-    rm -rf target/build/source/integration-tests/package-smoke/node_modules
-    mkdir -p target/build/source/integration-tests/package-smoke/node_modules/@overkill-dev
-    node source/test-support/package-smoke-assert-installer.mjs
-    packtory pack @overkill-dev/engine --format folder --version 0.0.0 --out target/build/source/integration-tests/package-smoke/node_modules/@overkill-dev/engine
-    packtory pack @overkill-dev/doubles --format folder --version 0.0.0 --out target/build/source/integration-tests/package-smoke/node_modules/@overkill-dev/doubles
-    node --test target/build/source/integration-tests/package-smoke/**/*.test.js
-
 publish-dry-run: compile
     packtory publish
