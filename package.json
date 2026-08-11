@@ -37,7 +37,7 @@
         "@enormora/objectory": "0.0.15",
         "@ls-lint/ls-lint": "2.3.1",
         "@packtory/cli": "0.0.86",
-        "@packtory/github-release-gate": "0.0.45",
+        "@packtory/github-release-gate": "0.0.46",
         "@types/node": "26.2.0",
         "@types/sinon": "10.0.20",
         "c8": "12.0.0",
