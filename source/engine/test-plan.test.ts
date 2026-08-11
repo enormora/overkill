@@ -148,6 +148,36 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'createTestPlan() rejects reachable empty nested suites',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const engine = createEngine();
+                const root = engine.createRoot({
+                    children: [
+                        engine.createSuite({
+                            children: [
+                                engine.createSuite({
+                                    children: [],
+                                    metadata: {},
+                                    name: 'empty'
+                                })
+                            ],
+                            metadata: {},
+                            name: 'parent'
+                        })
+                    ],
+                    metadata: {},
+                    name: 'root'
+                });
+
+                scope.assert.throws(function createPlanWithEmptySuite() {
+                    engine.createTestPlan(root);
+                }, { message: 'Suite must contain at least one child: parent > empty.' });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'createTestPlan() rejects reachable empty tables',
             metadata: {},
             body(scope: OverkillScope) {

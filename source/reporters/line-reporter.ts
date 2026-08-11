@@ -55,7 +55,9 @@ function formatTestResult(id: CaseId, outcome: TestOutcome, wallTimeMs: number):
 }
 
 function formatSuiteName(event: Extract<ReporterEvent, { readonly kind: 'suite-start'; }>): string {
-    return event.suitePath.at(-1) ?? '<root>';
+    return event.suitePath.reduce(function selectLastSuiteName(_previous, suiteName) {
+        return suiteName;
+    });
 }
 
 function formatOrphan(orphan: OrphanedNode): string {
