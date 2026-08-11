@@ -19,7 +19,7 @@ import type { TestPlan } from './test-plan.ts';
 
 function createPassingPlan(engine: Engine): TestPlan {
     return engine.createTestPlan(
-        engine.createSuite({
+        engine.createRoot({
             children: [
                 engine.createTestCase({
                     body(testScope) {

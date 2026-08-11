@@ -1,6 +1,7 @@
 import type { WallClock } from '@enormora/wall-clock';
 import type { CaseId } from './identity.ts';
 import type { RunResult, RunnerError, TestOutcome } from './run-result.ts';
+import type { Metadata } from './test-node.ts';
 
 export type RunFacts = Readonly<Record<string, unknown>>;
 
@@ -41,6 +42,10 @@ export type SinkDeclaration = PrivateSinkDeclaration | ReporterSinkDeclaration;
 type RunStartReporterEvent = {
     readonly facts: RunFacts;
     readonly kind: 'run-start';
+    readonly root: {
+        readonly metadata: Metadata;
+        readonly name: string;
+    };
     readonly startedAt: string;
 };
 

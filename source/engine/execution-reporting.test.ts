@@ -56,7 +56,7 @@ export const testSuite = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const testPlan = engine.createTestPlan(
-                    engine.createSuite({
+                    engine.createRoot({
                         children: [
                             engine.createTestCase({
                                 body() {
@@ -104,7 +104,7 @@ export const testSuite = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const testPlan = engine.createTestPlan(
-                    engine.createSuite({
+                    engine.createRoot({
                         children: [
                             engine.createTestCase({
                                 body(testScope) {
@@ -141,7 +141,7 @@ export const testSuite = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const testPlan = engine.createTestPlan(
-                    engine.createSuite({
+                    engine.createRoot({
                         children: [
                             engine.createTestCase({
                                 async body() {
@@ -177,7 +177,7 @@ export const testSuite = createOverkillSuite({
                 const realTimeReporter = createInMemoryRealTimeReporter();
                 const finalResultReporter = createInMemoryFinalResultReporter();
                 const testPlan = engine.createTestPlan(
-                    engine.createSuite({
+                    engine.createRoot({
                         children: [
                             engine.createTestCase({
                                 body(testScope) {
@@ -204,22 +204,25 @@ export const testSuite = createOverkillSuite({
                 scope.assert.deepEqual(
                     eventShape,
                     [
-                        { facts: { seed: 42 }, kind: 'run-start', startedAt: '2026-07-15T00:00:00.000Z' },
-                        { kind: 'suite-start', suitePath: [ 'root' ] },
+                        {
+                            facts: { seed: 42 },
+                            kind: 'run-start',
+                            root: { metadata: {}, name: 'root' },
+                            startedAt: '2026-07-15T00:00:00.000Z'
+                        },
                         {
                             attempt: 0,
-                            case: { file: null, name: 'passes', params: null, suite: [ 'root' ] },
+                            case: { file: null, name: 'passes', params: null, suite: [] },
                             kind: 'test-start'
                         },
                         {
                             attempt: 0,
-                            case: { file: null, name: 'passes', params: null, suite: [ 'root' ] },
+                            case: { file: null, name: 'passes', params: null, suite: [] },
                             kind: 'test-end',
                             outcome: { kind: 'pass' },
                             verdict: 'pass',
                             wallTimeMs: 0
                         },
-                        { kind: 'suite-end', suitePath: [ 'root' ] },
                         { kind: 'run-end', result }
                     ]
                 );
@@ -238,7 +241,7 @@ export const testSuite = createOverkillSuite({
                 const engine = createEngine();
                 const realTimeReporter = createInMemoryRealTimeReporter();
                 const testPlan = engine.createTestPlan(
-                    engine.createSuite({
+                    engine.createRoot({
                         children: [
                             engine.createTestCase({
                                 body(testScope) {
@@ -284,10 +287,8 @@ export const testSuite = createOverkillSuite({
                 });
 
                 scope.assert.deepEqual(suiteEvents, [
-                    { kind: 'suite-start', suitePath: [ 'root' ] },
-                    { kind: 'suite-start', suitePath: [ 'root', 'rows' ] },
-                    { kind: 'suite-end', suitePath: [ 'root', 'rows' ] },
-                    { kind: 'suite-end', suitePath: [ 'root' ] }
+                    { kind: 'suite-start', suitePath: [ 'rows' ] },
+                    { kind: 'suite-end', suitePath: [ 'rows' ] }
                 ]);
 
                 return scope.assert.collect();
@@ -311,7 +312,7 @@ export const testSuite = createOverkillSuite({
                     sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ]
                 };
                 const testPlan = engine.createTestPlan(
-                    engine.createSuite({
+                    engine.createRoot({
                         children: [
                             engine.createTestCase({
                                 body(testScope) {

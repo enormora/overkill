@@ -3,7 +3,14 @@ import { createEngine as createEngineInstance, type Engine } from '../../engine/
 import { createExecute } from '../../engine/execution.ts';
 import { createReporterDispatcher } from '../../engine/reporter.ts';
 import type { RunIfMainOptions } from '../../engine/run-if-main.ts';
-import type { SuiteOptions, TableOptions, TestCaseOptions, TestNode } from '../../engine/test-node.ts';
+import type {
+    RootOptions,
+    SuiteOptions,
+    TableOptions,
+    TestCaseOptions,
+    TestNode,
+    TestRoot
+} from '../../engine/test-node.ts';
 
 function readProcessExitCode(): number | string | null | undefined {
     return process.exitCode;
@@ -30,6 +37,10 @@ export function createEngine(): Engine {
 
 const defaultEngine = createEngine();
 
+export function createRoot(options: RootOptions): ReturnType<Engine['createRoot']> {
+    return defaultEngine.createRoot(options);
+}
+
 export function createSuite(options: SuiteOptions): ReturnType<Engine['createSuite']> {
     return defaultEngine.createSuite(options);
 }
@@ -42,7 +53,7 @@ export function createTestCase(options: TestCaseOptions): ReturnType<Engine['cre
     return defaultEngine.createTestCase(options);
 }
 
-export function createTestPlan(root: TestNode): ReturnType<Engine['createTestPlan']> {
+export function createTestPlan(root: TestRoot): ReturnType<Engine['createTestPlan']> {
     return defaultEngine.createTestPlan(root);
 }
 
@@ -63,7 +74,7 @@ export async function runIfMain(
 
 export type { Engine } from '../../engine/engine.ts';
 export type { Execute, ExecuteOptions } from '../../engine/execution.ts';
-export type { RunIfMain, RunIfMainOptions } from '../../engine/run-if-main.ts';
+export type { RunIfMain, RunIfMainOptions, RunIfMainRootOptions } from '../../engine/run-if-main.ts';
 export { formatCaseId } from '../../engine/identity.ts';
 export type { CaseId, TestId } from '../../engine/identity.ts';
 export type {
@@ -197,6 +208,7 @@ export type {
 export type {
     TestScopeAssertContext,
     Metadata,
+    RootOptions,
     Suite,
     SuiteOptions,
     Table,
@@ -206,6 +218,7 @@ export type {
     TestBody,
     TestCase,
     TestCaseOptions,
+    TestRoot,
     TestScope,
     TestNode
 } from '../../engine/test-node.ts';

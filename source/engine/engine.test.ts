@@ -39,7 +39,7 @@ export const testSuite = createOverkillSuite({
                     }
                 });
                 const testPlan = engine.createTestPlan(
-                    engine.createSuite({
+                    engine.createRoot({
                         children: [
                             engine.createTestCase({
                                 body(testScope) {

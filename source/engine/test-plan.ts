@@ -2,14 +2,15 @@ import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node
 import { caseIdentityKey, createCaseId, formatCaseId, type CaseId } from './identity.ts';
 import type { OrphanedNode } from './run-result.ts';
 import {
-    ensureOwnedTestNode,
+    ensureOwnedTestRoot,
     mergeMetadata,
     type Metadata,
     type Table,
     type TestBody,
     type TestCase,
     type TestNode,
-    type TestNodeOwner
+    type TestNodeOwner,
+    type TestRoot
 } from './test-node.ts';
 
 export type TestPlanCaseBody = TestBody;
@@ -26,9 +27,15 @@ export type TestPlan = {
     readonly cases: NonEmptyReadonlyArray<TestPlanCase>;
     readonly discoveredCases: NonEmptyReadonlyArray<TestPlanCase>;
     readonly orphans: readonly OrphanedNode[];
+    readonly root: TestPlanRoot;
 };
 
-export type TestPlanFactory = (root: TestNode) => TestPlan;
+type TestPlanRoot = {
+    readonly metadata: Metadata;
+    readonly name: string;
+};
+
+export type TestPlanFactory = (root: TestRoot) => TestPlan;
 
 type CollectedTestCases = {
     readonly cases: readonly TestPlanCase[];
@@ -122,6 +129,16 @@ function collectNode(
     };
 }
 
+function collectRoot(root: TestRoot): CollectedTestCases {
+    if (root.children.length === 0) {
+        throw new TypeError(`Root must contain at least one child: ${root.name}.`);
+    }
+
+    return mergeCollectedTestCases(root.children.map(function collectChild(child) {
+        return collectNode(child, [], root.metadata);
+    }));
+}
+
 function toReachedNodeSet(reachedNodes: readonly TestNode[]): ReadonlySet<TestNode> {
     return new Set(reachedNodes);
 }
@@ -169,15 +186,15 @@ function assertNonEmptyCases(cases: readonly TestPlanCase[]): asserts cases is N
 }
 
 export function createTestPlanFactory(owner: TestNodeOwner, constructedNodes: ReadonlySet<TestNode>): TestPlanFactory {
-    return function createTestPlan(root: TestNode): TestPlan {
-        ensureOwnedTestNode(
+    return function createTestPlan(root: TestRoot): TestPlan {
+        ensureOwnedTestRoot(
             root,
             owner,
-            'Test plan root must be an engine-created TestNode value.',
+            'Test plan root must be an engine-created TestRoot value.',
             'Test plan root must be created by the same engine instance.'
         );
 
-        const collection = collectNode(root, [], {});
+        const collection = collectRoot(root);
         const { cases: discoveredCases, reachedNodes } = collection;
         assertNonEmptyCases(discoveredCases);
         assertUniqueCaseIds(discoveredCases);
@@ -186,7 +203,11 @@ export function createTestPlanFactory(owner: TestNodeOwner, constructedNodes: Re
             cases: discoveredCases,
             defined: constructedNodes.size,
             discoveredCases,
-            orphans: collectOrphans(constructedNodes, reachedNodes)
+            orphans: collectOrphans(constructedNodes, reachedNodes),
+            root: {
+                metadata: root.metadata,
+                name: root.name
+            }
         };
     };
 }

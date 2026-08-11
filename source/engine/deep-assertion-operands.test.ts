@@ -29,7 +29,7 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
 
     return await engine.execute(
         engine.createTestPlan(
-            engine.createSuite({
+            engine.createRoot({
                 children: [
                     engine.createTestCase({
                         body,

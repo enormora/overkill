@@ -303,6 +303,7 @@ async function createRunResultBeforeRunEnd(
     const startErrors = await dependencies.reporterDispatcher.reportEvent(options.reporters, {
         facts: options.runFacts,
         kind: 'run-start',
+        root: testPlan.root,
         startedAt: options.startedAt
     });
     const executedTestPlan = await executeTestPlanCases(testPlan, options.reporters, dependencies);

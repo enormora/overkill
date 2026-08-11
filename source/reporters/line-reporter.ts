@@ -137,7 +137,7 @@ export function createLineReporter(dependencies: LineReporterDependencies): Real
 
         async onEvent(event) {
             if (event.kind === 'run-start') {
-                terminal.line(infoSymbol, 'Test run started');
+                terminal.line(infoSymbol, `Test run started: ${event.root.name}`);
             } else if (event.kind === 'suite-start') {
                 logSuiteStart(event);
             } else if (event.kind === 'suite-end') {

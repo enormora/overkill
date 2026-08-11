@@ -5,17 +5,18 @@ Core Overkill primitives for defining executable test values and running an alre
 Top-level API:
 
 - `createTestCase(options)`
+- `createRoot(options)`
 - `createSuite(options)`
 - `createTable(options)`
 - `createTestPlan(root)`
 - `execute(testPlan)`
-- `runIfMain(import.meta, root, options?)`
+- `runIfMain(import.meta, testNode, options?)`
 - `createEngine()`
 - `formatCaseId(caseId)`
 - `validateReporterSinks(reporters)`
 - `captureSourceLocation()`
 - `unknownSourceLocation`
-- `CaseId`, `TestId`, `TestPlan`, `ExecuteOptions`, `RunIfMainOptions`, `NonEmptyReadonlyArray`, `DeepComparable`
+- `CaseId`, `TestId`, `TestRoot`, `TestPlan`, `ExecuteOptions`, `RunIfMainOptions`, `NonEmptyReadonlyArray`, `DeepComparable`
 - `Reporter`, `ReporterEvent`, `RealTimeReporter`, `FinalResultReporter`, `RunFacts`, `SinkDeclaration`
 - `RunResult`, `TestOutcome`, `PassOutcome`, `FailOutcome`, `SkipOutcome`, `InconclusiveOutcome`
 - `AssertionNode`, `AssertionResult`, `AssertAssertionFacade`, `TestScopeAssertContext`
@@ -43,6 +44,7 @@ export const testNode = createTestCase({
 });
 
 await runIfMain(import.meta, testNode, {
+    root: { name: import.meta.url, metadata: {} },
     reporters: [ createDotReporter() ]
 });
 ```
@@ -62,9 +64,14 @@ export const testNode = createSuite({
 });
 
 await runIfMain(import.meta, testNode, {
+    root: { name: 'all', metadata: {} },
     reporters: [ createDotReporter() ]
 });
 ```
+
+Direct `createTestPlan(...)` calls require an explicit `createRoot(...)`.
+The root carries run-level name and metadata, but it does not contribute to
+case suite paths or `RunResult.bySuite`.
 
 Reporter lifecycle:
 

@@ -7,6 +7,7 @@ import type { AssertAssertionFacade } from './assertion-facade.ts';
 import type { RequireAssertionFacade } from './require-assertion-facade.ts';
 
 const testNodeBrand: unique symbol = Symbol('OverkillTestNode');
+const testRootBrand: unique symbol = Symbol('OverkillTestRoot');
 const testNodeOwnerBrand: unique symbol = Symbol('OverkillTestNodeOwner');
 const testNodeOwnerIdentity: unique symbol = Symbol('OverkillTestNodeOwnerIdentity');
 
@@ -60,11 +61,21 @@ export type Table = {
 
 export type TestNode = Suite | Table | TestCase;
 
+export type TestRoot = {
+    readonly [testRootBrand]: true;
+    readonly [testNodeOwnerBrand]: TestNodeOwner;
+    readonly children: readonly TestNode[];
+    readonly kind: 'root';
+    readonly metadata: Metadata;
+    readonly name: string;
+};
+
 export type TestNodeOwner = {
     readonly [testNodeOwnerIdentity]: true;
 };
 
 export type TestNodeFactory = {
+    readonly createRoot: (options: RootOptions) => TestRoot;
     readonly createSuite: (options: SuiteOptions) => Suite;
     readonly createTable: (options: TableOptions) => Table;
     readonly createTestCase: (options: TestCaseOptions) => TestCase;
@@ -77,6 +88,12 @@ export type TestNodeFactoryOptions = {
 
 export type TestCaseOptions = {
     readonly body: TestBody;
+    readonly metadata: Metadata;
+    readonly name: string;
+};
+
+export type RootOptions = {
+    readonly children: readonly unknown[];
     readonly metadata: Metadata;
     readonly name: string;
 };
@@ -126,11 +143,19 @@ export function isTestNode(value: unknown): value is TestNode {
     return typeof value === 'object' && value !== null && Object.hasOwn(value, testNodeBrand);
 }
 
+export function isTestRoot(value: unknown): value is TestRoot {
+    return typeof value === 'object' && value !== null && Object.hasOwn(value, testRootBrand);
+}
+
 function hasTestNodeOwner(value: TestNode, owner: TestNodeOwner): boolean {
     return value[testNodeOwnerBrand] === owner;
 }
 
-export function ensureOwnedTestNode(
+function hasTestRootOwner(value: TestRoot, owner: TestNodeOwner): boolean {
+    return value[testNodeOwnerBrand] === owner;
+}
+
+function ensureOwnedTestNode(
     value: unknown,
     owner: TestNodeOwner,
     plainObjectMessage: string,
@@ -145,12 +170,32 @@ export function ensureOwnedTestNode(
     }
 }
 
-function toTestNode(value: unknown, owner: TestNodeOwner): TestNode {
+export function ensureOwnedTestRoot(
+    value: unknown,
+    owner: TestNodeOwner,
+    plainObjectMessage: string,
+    foreignRootMessage: string
+): asserts value is TestRoot {
+    if (!isTestRoot(value)) {
+        throw new TypeError(plainObjectMessage);
+    }
+
+    if (!hasTestRootOwner(value, owner)) {
+        throw new TypeError(foreignRootMessage);
+    }
+}
+
+function toTestNode(
+    value: unknown,
+    owner: TestNodeOwner,
+    plainObjectMessage: string,
+    foreignNodeMessage: string
+): TestNode {
     ensureOwnedTestNode(
         value,
         owner,
-        'Suite children must be engine-created TestNode values.',
-        'Suite children must be created by the same engine instance.'
+        plainObjectMessage,
+        foreignNodeMessage
     );
     return value;
 }
@@ -177,11 +222,38 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
         return testCase;
     }
 
+    function createRoot(options: RootOptions): TestRoot {
+        ensureName(options.name);
+        ensureMetadata(options.metadata);
+        const children = options.children.map(function validateChild(child) {
+            return toTestNode(
+                child,
+                owner,
+                'Root children must be engine-created TestNode values.',
+                'Root children must be created by the same engine instance.'
+            );
+        });
+
+        return {
+            [testRootBrand]: true,
+            [testNodeOwnerBrand]: owner,
+            children,
+            kind: 'root',
+            metadata: options.metadata,
+            name: options.name
+        };
+    }
+
     function createSuite(options: SuiteOptions): Suite {
         ensureName(options.name);
         ensureMetadata(options.metadata);
         const children = options.children.map(function validateChild(child) {
-            return toTestNode(child, owner);
+            return toTestNode(
+                child,
+                owner,
+                'Suite children must be engine-created TestNode values.',
+                'Suite children must be created by the same engine instance.'
+            );
         });
 
         const suite: Suite = {
@@ -223,6 +295,7 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
     }
 
     return {
+        createRoot,
         createSuite,
         createTable,
         createTestCase

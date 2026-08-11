@@ -107,6 +107,33 @@ export const testSuite = createOverkillSuite({
                 const firstCase = firstExecute.arguments[0].cases[0];
                 scope.require.defined(firstCase);
                 scope.assert.equal(firstCase.id.name, 'passes');
+                scope.assert.deepEqual(firstExecute.arguments[0].root, {
+                    metadata: {},
+                    name: 'file:///test/file.test.ts'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'runIfMain() wraps the test node with explicit root data',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const fixture = createRunIfMainFixture(runResultFactory.build(), undefined);
+
+                await fixture.engine.runIfMain(importMeta(true), fixture.testNode, {
+                    root: {
+                        metadata: { owner: 'engine' },
+                        name: 'engine tests'
+                    }
+                });
+
+                const firstExecute = fixture.execute.firstCall;
+                scope.require.notNull(firstExecute);
+                scope.assert.deepEqual(firstExecute.arguments[0].root, {
+                    metadata: { owner: 'engine' },
+                    name: 'engine tests'
+                });
 
                 return scope.assert.collect();
             }

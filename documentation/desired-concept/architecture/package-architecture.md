@@ -25,7 +25,7 @@ For tiny projects, this layer should already be usable directly. A consumer
 can import `createSuite`, `createTestCase`, `createTestPlan`, and `execute`
 from `@overkill-dev/engine`, build a suite, freeze it into a `TestPlan`, and
 call `execute(testPlan)` to receive a `RunResult` without pulling in the
-higher-level DSL. They can also call `runIfMain(import.meta, root, options?)`
+higher-level DSL. They can also call `runIfMain(import.meta, testNode, options?)`
 for a direct Node entrypoint when they do not need discovery or runner
 configuration.
 
@@ -78,8 +78,9 @@ Conceptually:
 - `run(command)` is shorthand for planning plus execution
 - `execute(testPlan)` is the lower-level engine entrypoint once planning is
   already done, and it returns a `RunResult`
-- `runIfMain(import.meta, root, options?)` is the lower-level self-running
-  entrypoint for one already-authored root
+- `runIfMain(import.meta, testNode, options?)` is the lower-level self-running
+  entrypoint for one already-authored `TestNode`; it wraps the node in an
+  execution root for direct Node runs
 
 ## Default Test Authoring
 
