@@ -38,6 +38,8 @@ That means:
 - higher layers may contribute configuration domains even when they do not
   own file discovery
 - direct programmatic composition stays first-class
+- programmatic callers never get file loading unless they call a loading API
+  themselves
 - no project should be forced to adopt a configuration file for small setups
 
 The first-party default should be JavaScript or TypeScript configuration
@@ -108,12 +110,48 @@ export default defineConfig({
 
 This should be a thin typed wrapper, not a mandatory DSL.
 
+CLI usage may auto-discover a root `overkill.config.ts` because the CLI is the
+human project entry point. Direct package usage does not auto-discover that
+file:
+
+```ts
+import { loadRunConfig, run } from '@overkill-dev/run';
+
+const config = await loadRunConfig({
+    configPath: 'overkill.config.ts',
+    cwd: process.cwd()
+});
+
+await run({ config, request });
+```
+
+Callers that already have policy in memory pass it directly:
+
+```ts
+import { defineConfig, run } from '@overkill-dev/run';
+
+const config = defineConfig({
+    include: [ 'source/**/*.test.ts' ],
+    profiles: {
+        microtest: {
+            coverage: {
+                formats: [ 'text', 'lcov' ]
+            }
+        }
+    }
+});
+
+await run({ config, request });
+```
+
 Important ownership split:
 
 - configuration defines persistent project policy
-- CLI chooses per-run intent
+- CLI chooses per-run intent and may discover the project configuration file
 - programmatic `RunRequest` values choose the same per-run intent without
   going through CLI parsing
+- programmatic APIs require an explicit `RunConfig` value; loading a file is a
+  separate `loadRunConfig(...)` call
 
 So, for example:
 
@@ -144,9 +182,37 @@ Canonical shape:
 - built-in defaults fill gaps, but there is no second user-level
   configuration layer and no parallel environment-variable configuration
   surface
+- unit, integration, browser, benchmark, and type-test differences normally
+  live as named profiles in that one policy file, not as separate convention
+  files
 
 The only configuration-oriented CLI flag should be `--config <path>` to pick
 the configuration file location explicitly when discovery is not enough.
+
+The runner should not search for `overkill.unit.config.ts`,
+`overkill.integration.config.ts`, `overkill.benchmark.config.ts`, or similar
+suite-family files. Those names look convenient, but they create unclear
+precedence and make the final policy harder to explain in `RunFacts`.
+Use profiles instead:
+
+```ts
+export default defineConfig({
+    profiles: {
+        microtest: {
+            include: [ 'source/**/*.test.ts' ],
+            execution: { mode: 'worker-pool' }
+        },
+        integration: {
+            include: [ 'source/integration-tests/**/*.test.ts' ],
+            execution: { mode: 'process-per-file' }
+        },
+        benchmark: {
+            include: [ 'source/**/*.bench.ts' ],
+            execution: { mode: 'serial' }
+        }
+    }
+});
+```
 
 Important distinction:
 
@@ -156,9 +222,10 @@ Important distinction:
   second configuration channel; they are one run request against that
   policy
 
-Configuration files are TS modules exporting a default configuration value.
-The runner imports them via the same loader pipeline as test files (Node type
-stripping). No JSON or YAML schema; types over schema.
+Configuration files are TS modules exporting a default configuration value. CLI
+discovery and explicit `loadRunConfig(...)` calls import them via the same
+loader pipeline as test files (Node type stripping). No JSON or YAML schema;
+types over schema.
 
 Where package-level configuration exists, it should extend the root
 configuration through typed composition rather than by inventing unrelated
@@ -167,10 +234,10 @@ ad-hoc precedence rules.
 ## Relationship To Packages
 
 Configuration belongs above the engine. `@overkill-dev/run` owns configuration
-file loading, discovery, and cross-package merging/validation. Higher-level
-packages may still contribute their own configuration domains such as browser
-wiring, benchmark metric collectors, baseline policy, or type-test
-adapters. The detailed package-boundary matrix lives in
+file loading APIs, CLI discovery, and cross-package merging/validation.
+Higher-level packages may still contribute their own configuration domains
+such as browser wiring, benchmark metric collectors, baseline policy, or
+type-test adapters. The detailed package-boundary matrix lives in
 [Package Architecture](./package-architecture.md).
 
 ## Custom Assertions Are Lexical Imports
@@ -227,8 +294,12 @@ magical for configuration too.
 - engine configuration is programmatic only
 - higher-level configuration files are optional
 - JS/TS configuration is preferred
-- configuration loading and discovery live above the engine, in
-  `@overkill-dev/run`
+- CLI configuration discovery lives above the engine, in `@overkill-dev/run`
+- programmatic configuration loading is explicit through `loadRunConfig(...)`
+- programmatic `run(...)` and `resolveRun(...)` accept an already resolved
+  configuration value and do not auto-load files
+- suite-family differences are runner profiles in one project policy, not
+  separate fixed-path config files
 - higher layers may contribute configuration domains even when the runner
   owns the top-level loading step
 - the surface should stay small and orchestration-focused
