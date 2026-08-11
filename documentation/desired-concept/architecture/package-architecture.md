@@ -55,13 +55,27 @@ Recommended public split:
 
 ```ts
 import { execute, runIfMain } from '@overkill-dev/engine';
-import { list, mergeResults, replay, replayWitness, resolveRun, run, watch } from '@overkill-dev/run';
+import {
+    defineConfig,
+    list,
+    loadRunConfig,
+    mergeResults,
+    replay,
+    replayWitness,
+    resolveRun,
+    run,
+    watch
+} from '@overkill-dev/run';
 ```
 
 Conceptually:
 
-- `resolveRun(request)` returns a frozen `ResolvedRun`
-- `run(request)` is shorthand for planning plus execution
+- `defineConfig(config)` preserves typed project policy without requiring a
+  file
+- `loadRunConfig(request)` loads project policy from a file when a caller asks
+  for that explicitly
+- `resolveRun(command)` returns a frozen `ResolvedRun`
+- `run(command)` is shorthand for planning plus execution
 - `execute(testPlan)` is the lower-level engine entrypoint once planning is
   already done, and it returns a `RunResult`
 - `runIfMain(import.meta, root, options?)` is the lower-level self-running

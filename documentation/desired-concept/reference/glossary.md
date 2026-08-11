@@ -250,9 +250,9 @@ Source: [Reproducibility](../architecture/reproducibility.md), [Types Index](./t
 
 ## ResolvedRun
 
-The in-memory value returned by `resolveRun(request)`. It links the original
-`RunRequest`, serializable `RunFacts`, executable `TestPlan`, and reporter
-instances for one invocation.
+The in-memory value returned by `resolveRun(command)`. It links the original
+`RunRequest`, explicit `RunConfig`, serializable `RunFacts`, executable
+`TestPlan`, and reporter instances for one invocation.
 
 Source: [Package Architecture](../architecture/package-architecture.md), [Types Index](./types-index.md).
 

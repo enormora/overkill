@@ -482,6 +482,22 @@ attach them to a root `Suite` with `createSuite`, build the executable
 `execute(testPlan): Promise<RunResult>`.
 
 ```ts
+type RunConfig = {
+    readonly include: ReadonlyArray<string>;
+    readonly profiles: ReadonlyMap<RunnerProfileName, RunnerProfile>;
+    readonly reporters: ReadonlyArray<Reporter>;
+    readonly coverage: CoveragePolicy | null;
+    readonly runtimeStateDir: string;
+};
+
+type LoadRunConfigRequest = {
+    readonly cwd: string;
+    readonly configPath: string | null;
+};
+
+declare function defineConfig(config: RunConfig): RunConfig;
+declare function loadRunConfig(request: LoadRunConfigRequest): Promise<RunConfig>;
+
 type RunRequest = {
     readonly paths?: ReadonlyArray<string>;
     readonly selection?: {
@@ -507,8 +523,15 @@ type RunRequest = {
         readonly mode: 'off' | 'all' | 'selected';
         readonly selectors?: ReadonlyArray<string>;
     };
-    readonly configPath?: string;
 };
+
+type RunCommand = {
+    readonly config: RunConfig;
+    readonly request: RunRequest;
+};
+
+declare function resolveRun(command: RunCommand): Promise<ResolvedRun>;
+declare function run(command: RunCommand): Promise<RunResult>;
 
 type TestPlanCase = {
     readonly id: CaseId;
@@ -535,13 +558,14 @@ type RunFacts = {
     readonly metadataResolved: ReadonlyMap<string, Metadata>;
     readonly loaderConfig: { stripMode: 'strip-only' | 'transform'; sourceMaps: boolean; };
     readonly versions: { engine: string; node: string; packages: ReadonlyMap<string, string>; };
-    // debug mode plumbing — see runtime-behavior.md § Test Debug Mode
+    // debug mode plumbing, see runtime-behavior.md § Test Debug Mode
     readonly debugMode: 'off' | 'all' | 'selected';
     readonly debuggedCases?: ReadonlyArray<CaseId>; // present when debugMode === 'selected'
 };
 
 type ResolvedRun = {
     readonly request: RunRequest;
+    readonly config: RunConfig;
     readonly facts: RunFacts;
     readonly testPlan: TestPlan;
     readonly reporters: ReadonlyArray<Reporter>;
@@ -827,11 +851,11 @@ These names appear in code samples to keep the example readable. They are
 not part of the Overkill API surface; treat them as `unknown` unless the
 sample explicitly defines them.
 
-- `User`, `UserInput`, `Saved` — appear in [Capability Handles](../authoring/capability-handles.md)'s
+- `User`, `UserInput`, `Saved`: appear in [Capability Handles](../authoring/capability-handles.md)'s
   illustrative `saveUser` example
-- `arbitrary.user`, `arbitrary.bytes`, `gen.user` — placeholder generator
+- `arbitrary.user`, `arbitrary.bytes`, `gen.user`: placeholder generator
   references in property-test snippets
 - `relation`, `differential`, `linearizability`, `browserBenchmark`,
-  `slo()` — settled helper names for higher-layer families; owning
+  `slo()`: settled helper names for higher-layer families; owning
   documentation defines the package home and concept-level semantics, but
   this index does not own their full signatures

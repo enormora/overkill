@@ -4,18 +4,23 @@ This doc captures the current CLI surface and CLI runtime behavior.
 The first-party CLI belongs to `@overkill-dev/run`; packaging changes would not
 change the concept described here.
 
-This document enumerates Overkill's command-line interface — subcommands
+This document enumerates Overkill's command-line interface: subcommands
 and flags. It is a reading aid: the canonical behavior of each option
 lives in the relevant domain doc and is linked here.
 
 The CLI surface follows [Principles § One First-Party Path Per Layer](../decisions/principles.md#one-first-party-path-per-layer): per-run intent lives on the CLI, persistent project policy lives
-in the configuration file ([Configuration](../architecture/configuration.md)), and no setting is reachable
-from both surfaces.
+in the configuration file ([Configuration](../architecture/configuration.md)),
+and those two surfaces should not define the same policy.
 
 This does **not** mean the CLI is the only programmatic path. The CLI should
 desugar to the same typed request objects that `@overkill-dev/run` exposes.
 There should be no meaningful "CLI-only flag" whose behavior cannot also be
 requested through the public programmatic API.
+
+The CLI may discover `overkill.config.ts` because it is the project-facing
+entry point. Programmatic `@overkill-dev/run` calls do not auto-load config
+files; callers either pass a `RunConfig` value or explicitly call
+`loadRunConfig(...)`.
 
 ## Subcommands
 
@@ -23,7 +28,7 @@ requested through the public programmatic API.
 
 | Command                          | Purpose                                                     | Reference                                                                                                              |
 | -------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `overkill run [paths...]`        | Default run mode — discover, plan, and execute.             | [Runtime Behavior](../architecture/runtime-behavior.md)                                                                |
+| `overkill run [paths...]`        | Default run mode: discover, plan, and execute.              | [Runtime Behavior](../architecture/runtime-behavior.md)                                                                |
 | `overkill list [paths...]`       | Print the resolved test plan without running it.            | [Tests As Values](../authoring/tests-as-values.md)                                                                     |
 | `overkill replay <run-id>`       | Replay a recorded run from `.overkill/runs/<id>.json`.      | [Reproducibility § Replay](../architecture/reproducibility.md#replay)                                                  |
 | `overkill replay-witness <path>` | Replay a single property/simulation failure from a witness. | [Failure Artifacts § Witnesses And Replay Artifacts](../authoring/failure-artifacts.md#witnesses-and-replay-artifacts) |
@@ -33,7 +38,7 @@ requested through the public programmatic API.
 The `baseline` namespace groups operations on the on-disk baseline
 artifacts. Verbs that execute tests (`update`, `apply`, `bootstrap`,
 `diff`) accept the same selection, capability, output, and lifecycle
-flags as `run` — they _are_ runs with different intended artifacts (see
+flags as `run`; they _are_ runs with different intended artifacts (see
 `Flags vs Subcommands` below). `list` operates on disk only and does
 not run tests.
 
@@ -66,7 +71,7 @@ the invocation is different from the default verdict:
   the user's primary artifact is still baselines, not a verdict)
 
 A flag refines or augments a `run`. It does not change what the user
-asks for — they still want a verdict; the flag just shapes how the run
+asks for: they still want a verdict; the flag just shapes how the run
 gets there or what extra artifacts are emitted alongside (`--coverage`,
 `--debug`, `--watch`, `--filter`).
 
@@ -76,6 +81,18 @@ requires the user to type it deliberately.
 
 Programmatically, the same distinction should exist as separate function
 entrypoints rather than as hidden boolean flags.
+
+## Configuration
+
+| Flag              | Behavior                                                                                           | Reference                                         |
+| ----------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `--config <path>` | Load project policy from an explicit config file instead of discovering root `overkill.config.ts`. | [Configuration](../architecture/configuration.md) |
+
+`--config` changes where persistent project policy is loaded from. It is not a
+general-purpose policy override channel, and Overkill should not add parallel
+fixed-path config files for suite families such as unit, integration, or
+benchmark runs. Those differences belong in named runner profiles selected
+with `--profile <name>`.
 
 ## Selection And Iteration
 
@@ -123,10 +140,10 @@ place they should be registered.
 
 Color, animation, and progress UI obey:
 
-- `NO_COLOR` (any value) — disables color
-- `FORCE_COLOR` — forces color and chooses depth
-- `TERM=dumb` — disables ANSI control sequences
-- not-a-TTY (`stdout.isTTY === false`) — disables progress UI, defaults
+- `NO_COLOR` (any value): disables color
+- `FORCE_COLOR`: forces color and chooses depth
+- `TERM=dumb`: disables ANSI control sequences
+- not-a-TTY (`stdout.isTTY === false`): disables progress UI, defaults
   to a non-animated reporter
 
 Terminal width detection uses `process.stdout.columns`; updates on
