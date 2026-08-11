@@ -136,18 +136,18 @@ function ensureAssertionName(name: string): void {
     }
 }
 
-export function createAssertionReferenceRecord<
+function createAssertionReference<
     Arguments extends readonly unknown[],
     Result extends AssertCompositeAssertionReturn
 >(record: CompositeAssertionReferenceRecord<Arguments, Result>): CompositeAssertionReference<Arguments, Result>;
-export function createAssertionReferenceRecord<
+function createAssertionReference<
     Actual,
     Narrowed extends Actual,
     Arguments extends readonly unknown[]
 >(
     record: NarrowingCompositeAssertionReferenceRecord<Actual, Narrowed, Arguments>
 ): NarrowingCompositeAssertionReference<Actual, Narrowed, Arguments>;
-export function createAssertionReferenceRecord(record: AssertionReferenceRecord): AssertionReference {
+function createAssertionReference(record: AssertionReferenceRecord): AssertionReference {
     ensureAssertionName(record.name);
 
     if (record.kind === 'composite') {
@@ -167,7 +167,7 @@ export function createCompositeAssertionReferenceRecord<
     Arguments extends readonly unknown[],
     Result extends AssertCompositeAssertionReturn
 >(record: CompositeAssertionReferenceRecord<Arguments, Result>): CompositeAssertionReference<Arguments, Result> {
-    return createAssertionReferenceRecord({ ...record });
+    return createAssertionReference({ ...record });
 }
 
 export function createNarrowingCompositeAssertionReferenceRecord<
@@ -177,7 +177,7 @@ export function createNarrowingCompositeAssertionReferenceRecord<
 >(
     record: NarrowingCompositeAssertionReferenceRecord<Actual, Narrowed, Arguments>
 ): NarrowingCompositeAssertionReference<Actual, Narrowed, Arguments> {
-    return createAssertionReferenceRecord({ ...record });
+    return createAssertionReference({ ...record });
 }
 
 export function getAssertionReferenceRecord(reference: AssertionReference): AssertionReferenceRecord {

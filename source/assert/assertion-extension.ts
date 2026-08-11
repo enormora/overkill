@@ -1,13 +1,14 @@
 import {
-    createAssertionReferenceRecord,
     createCompositeAssertionGroup,
+    createCompositeAssertionReferenceRecord,
+    createNarrowingCompositeAssertionReferenceRecord,
     isCompositeAssertionGroup,
     type CompositeAssertionGroup,
     type CompositeAssertionReference,
     type CompositeAssertionSummaryContext,
     type AssertCompositeAssertionReturn,
     type NarrowingCompositeAssertionReference
-} from '../assertion-protocol/assertion-reference.ts';
+} from '../packages/engine/assertion-protocol.entry-point.ts';
 import type {
     BuiltInAssertAssertionNode,
     CompositeAssertionChildNode,
@@ -431,7 +432,7 @@ export function defineCompositeAssertion<
     Arguments extends readonly unknown[],
     Result extends AssertCompositeAssertionReturn
 >(definition: CompositeAssertionDefinition<Arguments, Result>): CompositeAssertionReference<Arguments, Result> {
-    return createAssertionReferenceRecord({
+    return createCompositeAssertionReferenceRecord({
         formatSummary: definition.formatSummary ?? null,
         kind: 'composite',
         name: definition.name,
@@ -451,7 +452,7 @@ export function defineNarrowingCompositeAssertion<
 >(
     definition: NarrowingCompositeAssertionDefinition<Actual, Narrowed, Arguments>
 ): NarrowingCompositeAssertionReference<Actual, Narrowed, Arguments> {
-    return createAssertionReferenceRecord({
+    return createNarrowingCompositeAssertionReferenceRecord({
         formatSummary: definition.formatSummary ?? null,
         kind: 'narrowing-composite',
         name: definition.name,
