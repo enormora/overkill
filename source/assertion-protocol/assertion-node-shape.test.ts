@@ -1,7 +1,26 @@
-import assert from 'node:assert/strict';
-import { registerTest } from '../test-support/register-test.ts';
+import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import {
+    createSuite as createOverkillSuite,
+    createTestCase as createOverkillTestCase,
+    runIfMain,
+    type TestScope as OverkillScope
+} from '@overkill-dev/engine';
 import { assertionSources } from './assertion-node-shape.ts';
 
-registerTest('assertionSources declares the built-in assertion origins', function () {
-    assert.deepStrictEqual(assertionSources, [ 'assert', 'require' ]);
+export const testSuite = createOverkillSuite({
+    name: 'source/assertion-protocol/assertion-node-shape.test.ts',
+    metadata: {},
+    children: [
+        createOverkillTestCase({
+            name: 'assertionSources declares the built-in assertion origins',
+            metadata: {},
+            body(scope: OverkillScope) {
+                scope.assert.deepEqual(assertionSources, [ 'assert', 'require' ]);
+
+                return scope.assert.collect();
+            }
+        })
+    ]
 });
+
+await runIfMain(import.meta, testSuite, { reporters: [ createOverkillLineReporter() ] });

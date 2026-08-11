@@ -1,6 +1,11 @@
-import assert from 'node:assert/strict';
 import { createFactory } from '@enormora/objectory';
-import { registerTest } from '../test-support/register-test.ts';
+import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import {
+    createSuite as createOverkillSuite,
+    createTestCase as createOverkillTestCase,
+    runIfMain,
+    type TestScope as OverkillScope
+} from '@overkill-dev/engine';
 import {
     resolveRun,
     run,
@@ -62,14 +67,37 @@ const runRequestFactory = createFactory<RunRequest>(function createRunRequest() 
     };
 });
 
-registerTest('resolveRun() reports that run resolution is not implemented yet', async function () {
-    await assert.rejects(resolveRun(runRequestFactory.build()), {
-        message: 'resolveRun() is not implemented yet.'
-    });
+export const testSuite = createOverkillSuite({
+    name: 'source/run/run.test.ts',
+    metadata: {},
+    children: [
+        createOverkillTestCase({
+            name: 'resolveRun() reports that run resolution is not implemented yet',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                await scope.assert.rejects(async function rejectValue() {
+                    await resolveRun(runRequestFactory.build());
+                }, {
+                    message: 'resolveRun() is not implemented yet.'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'run() reports that run orchestration is not implemented yet',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                await scope.assert.rejects(async function rejectValue() {
+                    await run(runRequestFactory.build());
+                }, {
+                    message: 'run() is not implemented yet.'
+                });
+
+                return scope.assert.collect();
+            }
+        })
+    ]
 });
 
-registerTest('run() reports that run orchestration is not implemented yet', async function () {
-    await assert.rejects(run(runRequestFactory.build()), {
-        message: 'run() is not implemented yet.'
-    });
-});
+await runIfMain(import.meta, testSuite, { reporters: [ createOverkillLineReporter() ] });

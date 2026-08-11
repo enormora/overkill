@@ -1,61 +1,80 @@
-import assert from 'node:assert/strict';
-import { registerTest } from '../test-support/register-test.ts';
-import type { AssertAssertionNode, RequireAssertionNode } from '../assertion-protocol/assertion-node.ts';
+import { defineNarrowingCompositeAssertion } from '@overkill-dev/assert';
+import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import {
+    createSuite as createOverkillSuite,
+    createTestCase as createOverkillTestCase,
+    runIfMain,
+    type TestScope as OverkillScope
+} from '@overkill-dev/engine';
+import type { AssertAssertionNode } from '../assertion-protocol/assertion-node.ts';
 import type { AssertionSource, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import {
     createRecordingAssertFacadeWithLocation,
     type AssertAssertionFacade
 } from './assertion-facade.ts';
-import {
-    createRecordingRequireFacadeWithLocation,
-    type RequireAssertionFacade
-} from './require-assertion-facade.ts';
 
 type AssertRecording = {
     readonly facade: AssertAssertionFacade;
     readonly records: readonly AssertAssertionNode[];
 };
 
-type RequireRecording = {
-    readonly facade: RequireAssertionFacade;
-    readonly records: readonly RequireAssertionNode[];
+type AssertPayloadSamples = {
+    readonly array: AssertAssertionNode | undefined;
+    readonly between: AssertAssertionNode | undefined;
+    readonly hasProperty: AssertAssertionNode | undefined;
+    readonly instanceOf: AssertAssertionNode | undefined;
 };
 
 const testLocation: SourceLocation = { column: 7, file: '/test/assertion-facade.test.ts', line: 11 };
+
+type InstanceOfAssertAssertionNode = Extract<AssertAssertionNode, { readonly check: 'instance-of'; }>;
+
+const instanceOfAssertAssertionNode = defineNarrowingCompositeAssertion<
+    AssertAssertionNode,
+    InstanceOfAssertAssertionNode,
+    readonly []
+>({
+    name: 'instance-of assert assertion node',
+    narrows(actual): actual is InstanceOfAssertAssertionNode {
+        return actual.check === 'instance-of';
+    }
+});
 
 function captureTestLocation(): SourceLocation {
     return testLocation;
 }
 
-function assertionChecks(records: readonly (AssertAssertionNode | RequireAssertionNode)[]): readonly string[] {
+function assertionChecks(records: readonly AssertAssertionNode[]): readonly string[] {
     return records.map(function checkOf(record) {
         return record.check;
     });
 }
 
-function assertRecordLocations(records: readonly (AssertAssertionNode | RequireAssertionNode)[]): void {
-    assert.deepStrictEqual(
-        records.map(function locationOf(record) {
-            return record.location;
-        }),
-        records.map(function expectedLocation() {
-            return testLocation;
-        })
-    );
+function recordLocations(records: readonly AssertAssertionNode[]): readonly AssertAssertionNode['location'][] {
+    return records.map(function locationOf(record) {
+        return record.location;
+    });
 }
 
-function assertRecordSources(
-    records: readonly (AssertAssertionNode | RequireAssertionNode)[],
+function expectedRecordLocations(records: readonly AssertAssertionNode[]): readonly AssertAssertionNode['location'][] {
+    return records.map(function expectedLocation() {
+        return testLocation;
+    });
+}
+
+function recordSources(records: readonly AssertAssertionNode[]): readonly AssertionSource[] {
+    return records.map(function sourceOf(record) {
+        return record.source;
+    });
+}
+
+function expectedRecordSources(
+    records: readonly AssertAssertionNode[],
     source: AssertionSource
-): void {
-    assert.deepStrictEqual(
-        records.map(function sourceOf(record) {
-            return record.source;
-        }),
-        records.map(function expectedSource() {
-            return source;
-        })
-    );
+): readonly AssertionSource[] {
+    return records.map(function expectedSource() {
+        return source;
+    });
 }
 
 function createAssertRecording(): AssertRecording {
@@ -83,99 +102,14 @@ function createAssertRecording(): AssertRecording {
     return { facade, records };
 }
 
-function createRequireRecording(): RequireRecording {
-    const records: RequireAssertionNode[] = [];
-    const facade = createRecordingRequireFacadeWithLocation(
-        {
-            failContract(failure) {
-                throw new Error(failure.summary);
-            },
-            recordRequire(assertion) {
-                records.push(assertion);
-            }
-        },
-        null,
-        captureTestLocation
-    );
-
-    return { facade, records };
+function assertPayloadSamples(records: readonly AssertAssertionNode[]): AssertPayloadSamples {
+    return {
+        array: records.at(0),
+        between: records.at(2),
+        hasProperty: records.at(14),
+        instanceOf: records.at(16)
+    };
 }
-
-function assertAssertPayloads(records: readonly AssertAssertionNode[]): void {
-    const instanceOfRecord = records.at(16);
-
-    assert.deepStrictEqual(records.at(0), {
-        actual: [ 1 ],
-        check: 'array',
-        location: testLocation,
-        message: 'array',
-        source: 'assert'
-    });
-    assert.deepStrictEqual(records.at(2), {
-        actual: 2,
-        check: 'between',
-        location: testLocation,
-        maximum: 3,
-        message: null,
-        minimum: 1,
-        source: 'assert'
-    });
-    assert.deepStrictEqual(records.at(14), {
-        actual: { name: 'Ada' },
-        check: 'has-property',
-        key: 'name',
-        location: testLocation,
-        message: null,
-        source: 'assert'
-    });
-
-    if (instanceOfRecord?.check !== 'instance-of') {
-        throw new TypeError('Expected an instance-of assertion node.');
-    }
-
-    assert.deepStrictEqual(instanceOfRecord, {
-        actual: instanceOfRecord.actual,
-        check: 'instance-of',
-        expected: Error,
-        location: testLocation,
-        message: null,
-        source: 'assert'
-    });
-}
-
-function assertRequirePayloads(records: readonly RequireAssertionNode[]): void {
-    const instanceOfRecord = records.at(5);
-
-    assert.deepStrictEqual(records.at(0), {
-        actual: [ 1 ],
-        check: 'array',
-        location: testLocation,
-        message: 'array',
-        source: 'require'
-    });
-    assert.deepStrictEqual(records.at(4), {
-        actual: { name: 'Ada' },
-        check: 'has-property',
-        key: 'name',
-        location: testLocation,
-        message: null,
-        source: 'require'
-    });
-
-    if (instanceOfRecord?.check !== 'instance-of') {
-        throw new TypeError('Expected an instance-of requirement node.');
-    }
-
-    assert.deepStrictEqual(instanceOfRecord, {
-        actual: instanceOfRecord.actual,
-        check: 'instance-of',
-        expected: Error,
-        location: testLocation,
-        message: null,
-        source: 'require'
-    });
-}
-
 function recordAssertNodes(facade: AssertAssertionFacade): void {
     const actualFunction = function value(): void {
         return undefined;
@@ -298,161 +232,152 @@ function recordAssertNodes(facade: AssertAssertionFacade): void {
     });
 }
 
-function recordRequireNodes(facade: RequireAssertionFacade): void {
-    const actualFunction = function value(): void {
-        return undefined;
-    };
-    const calls: readonly (() => void)[] = [
-        function () {
-            facade.array([ 1 ], { message: 'array' });
-        },
-        function () {
-            facade.boolean(true);
-        },
-        function () {
-            facade.defined('value');
-        },
-        function () {
-            facade.function(actualFunction);
-        },
-        function () {
-            facade.hasProperty({ name: 'Ada' }, 'name');
-        },
-        function () {
-            facade.instanceOf(new Error('boom'), Error);
-        },
-        function () {
-            facade.notNull('value');
-        },
-        function () {
-            facade.null(null);
-        },
-        function () {
-            facade.number(1);
-        },
-        function () {
-            facade.object({ id: 1 });
-        },
-        function () {
-            facade.string('value');
-        }
-    ];
+export const testSuite = createOverkillSuite({
+    name: 'source/engine/assertion-facade.test.ts',
+    metadata: {},
+    children: [
+        createOverkillTestCase({
+            name: 'createRecordingAssertFacade() records every built-in assertion node',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const recording = createAssertRecording();
 
-    calls.forEach(function recordRequirement(callRequirement) {
-        callRequirement();
-    });
-}
+                recordAssertNodes(recording.facade);
 
-registerTest('createRecordingAssertFacade() records every built-in assertion node', function () {
-    const recording = createAssertRecording();
+                scope.assert.deepEqual(assertionChecks(recording.records), [
+                    'array',
+                    'array-contains-partial',
+                    'between',
+                    'boolean',
+                    'deep-equal',
+                    'defined',
+                    'empty',
+                    'ends-with',
+                    'equal',
+                    'fail',
+                    'false',
+                    'function',
+                    'greater-than',
+                    'greater-than-or-equal',
+                    'has-property',
+                    'includes',
+                    'instance-of',
+                    'length',
+                    'less-than',
+                    'less-than-or-equal',
+                    'match',
+                    'members-partial-deep-equal',
+                    'not-deep-equal',
+                    'not-empty',
+                    'not-equal',
+                    'not-match',
+                    'not-null',
+                    'null',
+                    'number',
+                    'object',
+                    'partial-deep-equal',
+                    'starts-with',
+                    'string',
+                    'true',
+                    'undefined',
+                    'composite'
+                ]);
+                scope.assert.deepEqual(
+                    recordSources(recording.records),
+                    expectedRecordSources(recording.records, 'assert')
+                );
+                scope.assert.deepEqual(recordLocations(recording.records), expectedRecordLocations(recording.records));
 
-    recordAssertNodes(recording.facade);
+                const samples = assertPayloadSamples(recording.records);
+                scope.require.defined(samples.instanceOf);
+                scope.require(instanceOfAssertAssertionNode, samples.instanceOf);
+                scope.assert.deepEqual(
+                    {
+                        array: samples.array,
+                        between: samples.between,
+                        hasProperty: samples.hasProperty,
+                        instanceOf: samples.instanceOf
+                    },
+                    {
+                        array: {
+                            actual: [ 1 ],
+                            check: 'array',
+                            location: testLocation,
+                            message: 'array',
+                            source: 'assert'
+                        },
+                        between: {
+                            actual: 2,
+                            check: 'between',
+                            location: testLocation,
+                            maximum: 3,
+                            message: null,
+                            minimum: 1,
+                            source: 'assert'
+                        },
+                        hasProperty: {
+                            actual: { name: 'Ada' },
+                            check: 'has-property',
+                            key: 'name',
+                            location: testLocation,
+                            message: null,
+                            source: 'assert'
+                        },
+                        instanceOf: {
+                            actual: samples.instanceOf.actual,
+                            check: 'instance-of',
+                            expected: Error,
+                            location: testLocation,
+                            message: null,
+                            source: 'assert'
+                        }
+                    }
+                );
 
-    assert.deepStrictEqual(assertionChecks(recording.records), [
-        'array',
-        'array-contains-partial',
-        'between',
-        'boolean',
-        'deep-equal',
-        'defined',
-        'empty',
-        'ends-with',
-        'equal',
-        'fail',
-        'false',
-        'function',
-        'greater-than',
-        'greater-than-or-equal',
-        'has-property',
-        'includes',
-        'instance-of',
-        'length',
-        'less-than',
-        'less-than-or-equal',
-        'match',
-        'members-partial-deep-equal',
-        'not-deep-equal',
-        'not-empty',
-        'not-equal',
-        'not-match',
-        'not-null',
-        'null',
-        'number',
-        'object',
-        'partial-deep-equal',
-        'starts-with',
-        'string',
-        'true',
-        'undefined',
-        'composite'
-    ]);
-    assertRecordSources(recording.records, 'assert');
-    assertRecordLocations(recording.records);
-    assertAssertPayloads(recording.records);
-});
-
-registerTest('createRecordingAssertFacade() records async rejects assertions through pending sink', async function () {
-    const recording = createAssertRecording();
-
-    await recording.facade.rejects(async function rejectExpectedError() {
-        await Promise.reject(new Error('expected'));
-    }, { message: 'expected' });
-
-    assert.deepStrictEqual(assertionChecks(recording.records), [ 'composite' ]);
-    assertRecordSources(recording.records, 'assert');
-    assertRecordLocations(recording.records);
-});
-
-registerTest('createRecordingAssertFacade() applies annotated messages without requiring the builder API', function () {
-    const recording = createAssertRecording();
-
-    recording.facade.annotated('annotated value').empty([]);
-    recording.facade.annotated('base message').empty([], { message: 'option value' });
-
-    assert.deepStrictEqual(
-        recording.records.map(function messageOf(record) {
-            return record.message;
+                return scope.assert.collect();
+            }
         }),
-        [ 'annotated value', 'option value' ]
-    );
-    assert.equal(Object.hasOwn(recording.facade, 'collect'), false);
-});
+        createOverkillTestCase({
+            name: 'createRecordingAssertFacade() records async rejects assertions through pending sink',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const recording = createAssertRecording();
 
-registerTest('createRecordingRequireFacade() records every built-in requirement node', function () {
-    const recording = createRequireRecording();
+                await recording.facade.rejects(async function rejectExpectedError() {
+                    await Promise.reject(new Error('expected'));
+                }, { message: 'expected' });
 
-    recordRequireNodes(recording.facade);
+                scope.assert.deepEqual(assertionChecks(recording.records), [ 'composite' ]);
+                scope.assert.deepEqual(
+                    recordSources(recording.records),
+                    expectedRecordSources(recording.records, 'assert')
+                );
+                scope.assert.deepEqual(recordLocations(recording.records), expectedRecordLocations(recording.records));
 
-    assert.deepStrictEqual(assertionChecks(recording.records), [
-        'array',
-        'boolean',
-        'defined',
-        'function',
-        'has-property',
-        'instance-of',
-        'not-null',
-        'null',
-        'number',
-        'object',
-        'string'
-    ]);
-    assertRecordSources(recording.records, 'require');
-    assertRecordLocations(recording.records);
-    assertRequirePayloads(recording.records);
-});
-
-registerTest('createRecordingRequireFacade() applies annotated messages', function () {
-    const recording = createRequireRecording();
-    const requiredValue: RequireAssertionFacade = recording.facade.annotated('required value');
-    const optionValue: RequireAssertionFacade = recording.facade.annotated('base message');
-
-    requiredValue.string('value');
-    optionValue.string('value', { message: 'option value' });
-
-    assert.deepStrictEqual(
-        recording.records.map(function messageOf(record) {
-            return record.message;
+                return scope.assert.collect();
+            }
         }),
-        [ 'required value', 'option value' ]
-    );
+        createOverkillTestCase({
+            name: 'createRecordingAssertFacade() applies annotated messages without requiring the builder API',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const recording = createAssertRecording();
+
+                recording.facade.annotated('annotated value').empty([]);
+                recording.facade.annotated('base message').empty([], { message: 'option value' });
+
+                scope.assert.deepEqual(
+                    recording.records.map(function messageOf(record) {
+                        return record.message;
+                    }),
+                    [ 'annotated value', 'option value' ]
+                );
+                scope.assert.equal(Object.hasOwn(recording.facade, 'collect'), false);
+
+                return scope.assert.collect();
+            }
+        })
+    ]
 });
+
+await runIfMain(import.meta, testSuite, { reporters: [ createOverkillLineReporter() ] });

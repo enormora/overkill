@@ -1,11 +1,15 @@
-import assert from 'node:assert/strict';
 import { createDeterministicWallClock } from '@enormora/wall-clock';
+import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
 import {
-    createInMemoryFinalResultReporter,
+    createSuite as createOverkillSuite,
+    createTestCase as createOverkillTestCase,
+    runIfMain,
+    type TestScope as OverkillScope
+} from '@overkill-dev/engine';
+import {
     createInMemoryRealTimeReporter,
     type InMemoryRealTimeReporter
 } from '../reporters/in-memory-reporter.ts';
-import { registerTest } from '../test-support/register-test.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { createEngine, type Engine } from './engine.ts';
 import { createExecute } from './execution.ts';
@@ -56,19 +60,6 @@ type ReporterSignal = {
     readonly promise: Promise<void>;
 };
 
-type AggregateErrorEntryWithMessage = {
-    readonly message: unknown;
-};
-
-type ConcurrentFinishFixture = {
-    readonly engine: Engine;
-    readonly finalReported: ReporterSignal;
-    readonly finalReporter: FinalResultReporter;
-    readonly finishStarted: ReporterSignal;
-    readonly realTimeReporter: RealTimeReporter;
-    readonly wallClock: ReturnType<typeof createDeterministicWallClock>;
-};
-
 function createReporterSignal(): ReporterSignal {
     let notify: () => void = function notifyUnsetSignal(): void {
         return undefined;
@@ -78,18 +69,6 @@ function createReporterSignal(): ReporterSignal {
     });
 
     return { notify, promise };
-}
-
-function hasMessage(value: unknown): value is AggregateErrorEntryWithMessage {
-    return typeof value === 'object' && value !== null && Object.hasOwn(value, 'message');
-}
-
-function aggregateErrorEntryMessage(entry: unknown): string {
-    if (hasMessage(entry)) {
-        return String(entry.message);
-    }
-
-    return entry instanceof Error ? entry.message : String(entry);
 }
 
 function createReporterDeliveryEngine(wallClock: ReturnType<typeof createDeterministicWallClock>): Engine {
@@ -109,422 +88,242 @@ function createReporterDeliveryEngine(wallClock: ReturnType<typeof createDetermi
     });
 }
 
-function createConcurrentFinishFixture(): ConcurrentFinishFixture {
-    const finishStarted = createReporterSignal();
-    const finalReported = createReporterSignal();
-    const wallClock = createDeterministicWallClock();
-    const engine = createReporterDeliveryEngine(wallClock);
+export const testSuite = createOverkillSuite({
+    name: 'source/engine/reporter-delivery.test.ts',
+    metadata: {},
+    children: [
+        createOverkillTestCase({
+            name: 'execute() records reporter callback failures and notifies other real-time reporters',
+            metadata: {},
+            body: async function body(scope: OverkillScope) {
+                const engine = createTestEngine();
+                const observer = createInMemoryRealTimeReporter();
+                const failingReporter: RealTimeReporter = {
+                    dispose: null,
+                    kind: 'real-time',
+                    name: 'broken',
+                    onEvent(event) {
+                        if (event.kind === 'test-start') {
+                            throw new Error('cannot render');
+                        }
 
-    return {
-        engine,
-        finalReported,
-        finalReporter: {
-            dispose: null,
-            kind: 'final-result',
-            name: 'final',
-            onResult() {
-                finalReported.notify();
-            },
-            sinks: []
-        },
-        finishStarted,
-        realTimeReporter: {
-            dispose: null,
-            kind: 'real-time',
-            name: 'slow-finish',
-            onEvent() {
-                return undefined;
-            },
-            async onFinish() {
-                finishStarted.notify();
+                        return undefined;
+                    },
+                    onFinish: null,
+                    sinks: []
+                };
 
-                return await Promise.race<never>([]);
-            },
-            sinks: []
-        },
-        wallClock
-    };
-}
+                const result = await engine.execute(createPassingPlan(engine), {
+                    reporters: [ failingReporter, observer ],
+                    runFacts: {},
+                    startedAt: '2026-07-15T00:00:00.000Z'
+                });
 
-registerTest('execute() records reporter callback failures and notifies other real-time reporters', async function () {
-    const engine = createTestEngine();
-    const observer = createInMemoryRealTimeReporter();
-    const failingReporter: RealTimeReporter = {
-        dispose: null,
-        kind: 'real-time',
-        name: 'broken',
-        onEvent(event) {
-            if (event.kind === 'test-start') {
-                throw new Error('cannot render');
+                const reporterError = firstRunnerError(result);
+
+                scope.assert.equal(reporterError.message, 'broken: cannot render');
+                scope.assert.equal(reporterError.subtype, 'reporter');
+                scope.assert.deepEqual(runnerErrorMessages(observer), [ 'broken: cannot render' ]);
+
+                return scope.assert.collect();
             }
+        }),
+        createOverkillTestCase({
+            name: 'execute() does not recurse when a reporter fails while handling runner-error',
+            metadata: {},
+            body: async function body(scope: OverkillScope) {
+                const engine = createTestEngine();
+                const observer = createInMemoryRealTimeReporter();
+                const failingReporter: RealTimeReporter = {
+                    dispose: null,
+                    kind: 'real-time',
+                    name: 'broken',
+                    onEvent(event) {
+                        if (event.kind === 'test-start') {
+                            throw new Error('primary failure');
+                        }
 
-            return undefined;
-        },
-        onFinish: null,
-        sinks: []
-    };
+                        return undefined;
+                    },
+                    onFinish: null,
+                    sinks: []
+                };
+                const runnerErrorFailingReporter: RealTimeReporter = {
+                    dispose: null,
+                    kind: 'real-time',
+                    name: 'also-broken',
+                    onEvent(event) {
+                        if (event.kind === 'runner-error') {
+                            throw new Error('nested failure');
+                        }
 
-    const result = await engine.execute(createPassingPlan(engine), {
-        reporters: [ failingReporter, observer ],
-        runFacts: {},
-        startedAt: '2026-07-15T00:00:00.000Z'
-    });
+                        return undefined;
+                    },
+                    onFinish: null,
+                    sinks: []
+                };
 
-    const reporterError = firstRunnerError(result);
+                const result = await engine.execute(createPassingPlan(engine), {
+                    reporters: [ failingReporter, runnerErrorFailingReporter, observer ],
+                    runFacts: {},
+                    startedAt: '2026-07-15T00:00:00.000Z'
+                });
 
-    assert.equal(reporterError.message, 'broken: cannot render');
-    assert.equal(reporterError.subtype, 'reporter');
-    assert.deepStrictEqual(runnerErrorMessages(observer), [ 'broken: cannot render' ]);
-});
+                scope.assert.deepEqual(
+                    result.runnerErrors.map(function toMessage(error) {
+                        return error.message;
+                    }),
+                    [ 'broken: primary failure', 'also-broken: nested failure' ]
+                );
+                scope.assert.deepEqual(runnerErrorMessages(observer), [ 'broken: primary failure' ]);
 
-registerTest('execute() does not recurse when a reporter fails while handling runner-error', async function () {
-    const engine = createTestEngine();
-    const observer = createInMemoryRealTimeReporter();
-    const failingReporter: RealTimeReporter = {
-        dispose: null,
-        kind: 'real-time',
-        name: 'broken',
-        onEvent(event) {
-            if (event.kind === 'test-start') {
-                throw new Error('primary failure');
+                return scope.assert.collect();
             }
+        }),
+        createOverkillTestCase({
+            name: 'execute() isolates reporter callback timeouts',
+            metadata: {},
+            body: async function body(scope: OverkillScope) {
+                const testStartSignal = createReporterSignal();
+                const wallClock = createDeterministicWallClock();
+                const engine = createReporterDeliveryEngine(wallClock);
+                const hangingReporter: RealTimeReporter = {
+                    dispose: null,
+                    kind: 'real-time',
+                    name: 'slow',
+                    onEvent(event): Promise<void> | void {
+                        if (event.kind === 'test-start') {
+                            testStartSignal.notify();
+                            return Promise.race<never>([]);
+                        }
 
-            return undefined;
-        },
-        onFinish: null,
-        sinks: []
-    };
-    const runnerErrorFailingReporter: RealTimeReporter = {
-        dispose: null,
-        kind: 'real-time',
-        name: 'also-broken',
-        onEvent(event) {
-            if (event.kind === 'runner-error') {
-                throw new Error('nested failure');
+                        return undefined;
+                    },
+                    onFinish: null,
+                    sinks: []
+                };
+
+                const execution = engine.execute(createPassingPlan(engine), {
+                    reporters: [ hangingReporter, createInMemoryRealTimeReporter() ],
+                    runFacts: {},
+                    startedAt: '2026-07-15T00:00:00.000Z'
+                });
+                await testStartSignal.promise;
+                await Promise.resolve();
+                wallClock.advanceByMilliseconds(100);
+
+                scope.assert.match(
+                    firstRunnerError(await execution).message,
+                    /slow: slow reporter callback timed out after 100 ms\./
+                );
+
+                return scope.assert.collect();
             }
-
-            return undefined;
-        },
-        onFinish: null,
-        sinks: []
-    };
-
-    const result = await engine.execute(createPassingPlan(engine), {
-        reporters: [ failingReporter, runnerErrorFailingReporter, observer ],
-        runFacts: {},
-        startedAt: '2026-07-15T00:00:00.000Z'
-    });
-
-    assert.deepStrictEqual(
-        result.runnerErrors.map(function toMessage(error) {
-            return error.message;
         }),
-        [ 'broken: primary failure', 'also-broken: nested failure' ]
-    );
-    assert.deepStrictEqual(runnerErrorMessages(observer), [ 'broken: primary failure' ]);
-});
+        createOverkillTestCase({
+            name: 'execute() records final reporter errors and emits them after real-time finish',
+            metadata: {},
+            body: async function body(scope: OverkillScope) {
+                const engine = createTestEngine();
+                const observer = createInMemoryRealTimeReporter();
+                const failingFinalReporter: FinalResultReporter = {
+                    dispose: null,
+                    kind: 'final-result',
+                    name: 'final-broken',
+                    onResult() {
+                        throw new Error('cannot finalize');
+                    },
+                    sinks: []
+                };
 
-registerTest('execute() isolates reporter callback timeouts', async function () {
-    const testStartSignal = createReporterSignal();
-    const wallClock = createDeterministicWallClock();
-    const engine = createReporterDeliveryEngine(wallClock);
-    const hangingReporter: RealTimeReporter = {
-        dispose: null,
-        kind: 'real-time',
-        name: 'slow',
-        onEvent(event): Promise<void> | void {
-            if (event.kind === 'test-start') {
-                testStartSignal.notify();
-                return Promise.race<never>([]);
+                const result = await engine.execute(createPassingPlan(engine), {
+                    reporters: [ observer, failingFinalReporter ],
+                    runFacts: {},
+                    startedAt: '2026-07-15T00:00:00.000Z'
+                });
+
+                scope.assert.deepEqual(
+                    result.runnerErrors.map(function toMessage(error) {
+                        return error.message;
+                    }),
+                    [ 'final-broken: cannot finalize' ]
+                );
+                scope.assert.deepEqual(runnerErrorMessages(observer), [ 'final-broken: cannot finalize' ]);
+
+                return scope.assert.collect();
             }
-
-            return undefined;
-        },
-        onFinish: null,
-        sinks: []
-    };
-
-    const execution = engine.execute(createPassingPlan(engine), {
-        reporters: [ hangingReporter, createInMemoryRealTimeReporter() ],
-        runFacts: {},
-        startedAt: '2026-07-15T00:00:00.000Z'
-    });
-    await testStartSignal.promise;
-    await Promise.resolve();
-    wallClock.advanceByMilliseconds(100);
-    const reporterError = firstRunnerError(await execution);
-
-    assert.match(reporterError.message, /slow: slow reporter callback timed out after 100 ms\./);
-});
-
-registerTest('execute() records final reporter errors and emits them after real-time finish', async function () {
-    const engine = createTestEngine();
-    const observer = createInMemoryRealTimeReporter();
-    const failingFinalReporter: FinalResultReporter = {
-        dispose: null,
-        kind: 'final-result',
-        name: 'final-broken',
-        onResult() {
-            throw new Error('cannot finalize');
-        },
-        sinks: []
-    };
-
-    const result = await engine.execute(createPassingPlan(engine), {
-        reporters: [ observer, failingFinalReporter ],
-        runFacts: {},
-        startedAt: '2026-07-15T00:00:00.000Z'
-    });
-
-    assert.deepStrictEqual(
-        result.runnerErrors.map(function toMessage(error) {
-            return error.message;
         }),
-        [ 'final-broken: cannot finalize' ]
-    );
-    assert.deepStrictEqual(runnerErrorMessages(observer), [ 'final-broken: cannot finalize' ]);
-});
+        createOverkillTestCase({
+            name: 'execute() disposes reporters once after final reporting',
+            metadata: {},
+            body: async function body(scope: OverkillScope) {
+                const engine = createTestEngine();
+                const calls: string[] = [];
+                const reporter: RealTimeReporter = {
+                    dispose() {
+                        calls.push('dispose');
+                    },
+                    kind: 'real-time',
+                    name: 'cleanup',
+                    onEvent(event) {
+                        if (event.kind === 'run-start') {
+                            calls.push('run-start');
+                        } else if (event.kind === 'run-end') {
+                            calls.push('run-end');
+                        }
+                    },
+                    onFinish() {
+                        calls.push('finish');
+                    },
+                    sinks: []
+                };
 
-registerTest('execute() disposes reporters once after final reporting', async function () {
-    const engine = createTestEngine();
-    const calls: string[] = [];
-    const reporter: RealTimeReporter = {
-        dispose() {
-            calls.push('dispose');
-        },
-        kind: 'real-time',
-        name: 'cleanup',
-        onEvent(event) {
-            if (event.kind === 'run-start') {
-                calls.push('run-start');
-            } else if (event.kind === 'run-end') {
-                calls.push('run-end');
+                await engine.execute(createPassingPlan(engine), {
+                    reporters: [ reporter ],
+                    runFacts: {},
+                    startedAt: '2026-07-15T00:00:00.000Z'
+                });
+
+                scope.assert.deepEqual(calls, [ 'run-start', 'run-end', 'finish', 'dispose' ]);
+
+                return scope.assert.collect();
             }
-        },
-        onFinish() {
-            calls.push('finish');
-        },
-        sinks: []
-    };
-
-    await engine.execute(createPassingPlan(engine), {
-        reporters: [ reporter ],
-        runFacts: {},
-        startedAt: '2026-07-15T00:00:00.000Z'
-    });
-
-    assert.deepStrictEqual(calls, [ 'run-start', 'run-end', 'finish', 'dispose' ]);
-});
-
-registerTest('execute() records dispose failures in the returned result', async function () {
-    const engine = createTestEngine();
-    const failingReporter: RealTimeReporter = {
-        dispose() {
-            throw new Error('cannot cleanup');
-        },
-        kind: 'real-time',
-        name: 'dirty',
-        onEvent() {
-            return undefined;
-        },
-        onFinish: null,
-        sinks: []
-    };
-
-    const result = await engine.execute(createPassingPlan(engine), {
-        reporters: [ failingReporter ],
-        runFacts: {},
-        startedAt: '2026-07-15T00:00:00.000Z'
-    });
-
-    assert.deepStrictEqual(
-        result.runnerErrors.map(function toMessage(error) {
-            return error.message;
         }),
-        [ 'dirty: cannot cleanup' ]
-    );
-});
+        createOverkillTestCase({
+            name: 'execute() records dispose failures in the returned result',
+            metadata: {},
+            body: async function body(scope: OverkillScope) {
+                const engine = createTestEngine();
+                const failingReporter: RealTimeReporter = {
+                    dispose() {
+                        throw new Error('cannot cleanup');
+                    },
+                    kind: 'real-time',
+                    name: 'dirty',
+                    onEvent() {
+                        return undefined;
+                    },
+                    onFinish: null,
+                    sinks: []
+                };
 
-registerTest('execute() times out reporter disposal', async function () {
-    const disposeSignal = createReporterSignal();
-    const wallClock = createDeterministicWallClock();
-    const engine = createReporterDeliveryEngine(wallClock);
-    const hangingReporter: RealTimeReporter = {
-        async dispose() {
-            disposeSignal.notify();
+                const result = await engine.execute(createPassingPlan(engine), {
+                    reporters: [ failingReporter ],
+                    runFacts: {},
+                    startedAt: '2026-07-15T00:00:00.000Z'
+                });
 
-            return await Promise.race<never>([]);
-        },
-        kind: 'real-time',
-        name: 'slow-cleanup',
-        onEvent() {
-            return undefined;
-        },
-        onFinish: null,
-        sinks: []
-    };
+                scope.assert.deepEqual(
+                    result.runnerErrors.map(function toMessage(error) {
+                        return error.message;
+                    }),
+                    [ 'dirty: cannot cleanup' ]
+                );
 
-    const execution = engine.execute(createPassingPlan(engine), {
-        reporters: [ hangingReporter ],
-        runFacts: {},
-        startedAt: '2026-07-15T00:00:00.000Z'
-    });
-    await disposeSignal.promise;
-    await Promise.resolve();
-    wallClock.advanceByMilliseconds(100);
-    const result = await execution;
-
-    assert.deepStrictEqual(
-        result.runnerErrors.map(function toMessage(error) {
-            return error.message;
-        }),
-        [ 'slow-cleanup: slow-cleanup reporter callback timed out after 100 ms.' ]
-    );
-});
-
-registerTest('execute() disposes reporters after validation failure', async function () {
-    const engine = createTestEngine();
-    let disposed = false;
-    const firstReporter: RealTimeReporter = {
-        dispose() {
-            disposed = true;
-        },
-        kind: 'real-time',
-        name: 'first',
-        onEvent() {
-            return undefined;
-        },
-        onFinish: null,
-        sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ]
-    };
-    const secondReporter: RealTimeReporter = {
-        dispose: null,
-        kind: 'real-time',
-        name: 'second',
-        onEvent() {
-            return undefined;
-        },
-        onFinish: null,
-        sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ]
-    };
-
-    await assert.rejects(
-        async function executeWithInvalidReporterSinks() {
-            await engine.execute(createPassingPlan(engine), {
-                reporters: [ firstReporter, secondReporter ],
-                runFacts: {},
-                startedAt: '2026-07-15T00:00:00.000Z'
-            });
-        },
-        { message: 'Reporter sink conflict: stdout is claimed exclusively.' }
-    );
-    assert.equal(disposed, true);
-});
-
-registerTest('execute() throws AggregateError when execution and cleanup both fail', async function () {
-    const engine = createTestEngine();
-    const firstReporter: RealTimeReporter = {
-        dispose() {
-            throw new Error('cleanup failed');
-        },
-        kind: 'real-time',
-        name: 'first',
-        onEvent() {
-            return undefined;
-        },
-        onFinish: null,
-        sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ]
-    };
-    const secondReporter: RealTimeReporter = {
-        dispose: null,
-        kind: 'real-time',
-        name: 'second',
-        onEvent() {
-            return undefined;
-        },
-        onFinish: null,
-        sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ]
-    };
-
-    await assert.rejects(
-        async function executeWithInvalidReporterSinksAndFailedCleanup() {
-            await engine.execute(createPassingPlan(engine), {
-                reporters: [ firstReporter, secondReporter ],
-                runFacts: {},
-                startedAt: '2026-07-15T00:00:00.000Z'
-            });
-        },
-        function isAggregateError(error: unknown) {
-            assert.equal(error instanceof AggregateError, true);
-            const aggregateError = error as AggregateError;
-            assert.deepStrictEqual(
-                aggregateError.errors.map(aggregateErrorEntryMessage),
-                [
-                    'Reporter sink conflict: stdout is claimed exclusively.',
-                    'first: cleanup failed'
-                ]
-            );
-
-            return true;
-        }
-    );
-});
-
-registerTest('execute() includes run-end reporter errors before final reporting', async function () {
-    const engine = createTestEngine();
-    const finalReporter = createInMemoryFinalResultReporter();
-    const failingReporter: RealTimeReporter = {
-        dispose: null,
-        kind: 'real-time',
-        name: 'run-end-broken',
-        onEvent(event) {
-            if (event.kind === 'run-end') {
-                throw new Error('cannot close run');
+                return scope.assert.collect();
             }
-        },
-        onFinish: null,
-        sinks: []
-    };
-
-    const result = await engine.execute(createPassingPlan(engine), {
-        reporters: [ failingReporter, finalReporter ],
-        runFacts: {},
-        startedAt: '2026-07-15T00:00:00.000Z'
-    });
-    const reportedResult = finalReporter.getRecordedEntries()[0]?.result;
-
-    assert.deepStrictEqual(
-        result.runnerErrors.map(function toMessage(error) {
-            return error.message;
-        }),
-        [ 'run-end-broken: cannot close run' ]
-    );
-    assert.deepStrictEqual(
-        reportedResult?.runnerErrors.map(function toMessage(error) {
-            return error.message;
-        }),
-        [ 'run-end-broken: cannot close run' ]
-    );
+        })
+    ]
 });
 
-registerTest('execute() preserves concurrent final-result and real-time finish callbacks', async function () {
-    const fixture = createConcurrentFinishFixture();
-
-    const execution = fixture.engine.execute(createPassingPlan(fixture.engine), {
-        reporters: [ fixture.realTimeReporter, fixture.finalReporter ],
-        runFacts: {},
-        startedAt: '2026-07-15T00:00:00.000Z'
-    });
-    await fixture.finishStarted.promise;
-    await fixture.finalReported.promise;
-    await Promise.resolve();
-    fixture.wallClock.advanceByMilliseconds(100);
-    const result = await execution;
-
-    assert.deepStrictEqual(
-        result.runnerErrors.map(function toMessage(error) {
-            return error.message;
-        }),
-        [ 'slow-finish: slow-finish reporter callback timed out after 100 ms.' ]
-    );
-});
+await runIfMain(import.meta, testSuite, { reporters: [ createOverkillLineReporter() ] });

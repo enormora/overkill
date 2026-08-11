@@ -1,5 +1,10 @@
-import assert from 'node:assert/strict';
-import { registerTest } from '../test-support/register-test.ts';
+import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import {
+    createSuite as createOverkillSuite,
+    createTestCase as createOverkillTestCase,
+    runIfMain,
+    type TestScope as OverkillScope
+} from '@overkill-dev/engine';
 import {
     captureSourceLocation,
     resolveSourceLocation,
@@ -7,72 +12,106 @@ import {
     unknownSourceLocation
 } from './source-location.ts';
 
-registerTest('sourceLocationFromStack() parses file URL stack frames', function () {
-    assert.deepStrictEqual(
-        sourceLocationFromStack(
-            [
-                'Error',
-                '    at captureSourceLocation (file:///workspace/source/assertion-protocol/source-location.ts:42:19)',
-                '    at body (file:///workspace/source/users.test.ts:10:5)'
-            ]
-                .join('\n')
-        ),
-        {
-            column: 5,
-            file: '/workspace/source/users.test.ts',
-            line: 10
-        }
-    );
-});
+export const testSuite = createOverkillSuite({
+    name: 'source/assertion-protocol/source-location.test.ts',
+    metadata: {},
+    children: [
+        createOverkillTestCase({
+            name: 'sourceLocationFromStack() parses file URL stack frames',
+            metadata: {},
+            body(scope: OverkillScope) {
+                scope.assert.deepEqual(
+                    sourceLocationFromStack(
+                        [
+                            'Error',
+                            '    at captureSourceLocation (file:///workspace/source/assertion-protocol/source-location.ts:42:19)',
+                            '    at body (file:///workspace/source/users.test.ts:10:5)'
+                        ]
+                            .join('\n')
+                    ),
+                    {
+                        column: 5,
+                        file: '/workspace/source/users.test.ts',
+                        line: 10
+                    }
+                );
 
-registerTest('sourceLocationFromStack() parses plain path stack frames', function () {
-    assert.deepStrictEqual(
-        sourceLocationFromStack(
-            [
-                'Error',
-                '    at captureSourceLocation (/workspace/source/assertion-protocol/source-location.ts:42:19)',
-                '    at body (/workspace/source/users.test.ts:12:7)'
-            ]
-                .join('\n')
-        ),
-        {
-            column: 7,
-            file: '/workspace/source/users.test.ts',
-            line: 12
-        }
-    );
-});
-
-registerTest('sourceLocationFromStack() returns the unknown location for unusable stacks', function () {
-    assert.deepStrictEqual(
-        sourceLocationFromStack(
-            [
-                'Error',
-                '    at captureSourceLocation (file:///workspace/source/assertion-protocol/source-location.ts:42:19)',
-                '    at node:internal/test_runner/test:1:1'
-            ]
-                .join('\n')
-        ),
-        unknownSourceLocation
-    );
-});
-
-registerTest('captureSourceLocation() returns a memoized provider for the capture callsite', function () {
-    const location = captureSourceLocation();
-    const first = location();
-    const second = location();
-
-    assert.strictEqual(first, second);
-    assert.match(first.file, /source-location\.test\.ts$/u);
-    assert.equal(typeof first.line, 'number');
-    assert.equal(typeof first.column, 'number');
-});
-
-registerTest('resolveSourceLocation() protects failures from provider errors', function () {
-    assert.deepStrictEqual(
-        resolveSourceLocation(function throwLocationError() {
-            throw new Error('location failed');
+                return scope.assert.collect();
+            }
         }),
-        unknownSourceLocation
-    );
+        createOverkillTestCase({
+            name: 'sourceLocationFromStack() parses plain path stack frames',
+            metadata: {},
+            body(scope: OverkillScope) {
+                scope.assert.deepEqual(
+                    sourceLocationFromStack(
+                        [
+                            'Error',
+                            '    at captureSourceLocation (/workspace/source/assertion-protocol/source-location.ts:42:19)',
+                            '    at body (/workspace/source/users.test.ts:12:7)'
+                        ]
+                            .join('\n')
+                    ),
+                    {
+                        column: 7,
+                        file: '/workspace/source/users.test.ts',
+                        line: 12
+                    }
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'sourceLocationFromStack() returns the unknown location for unusable stacks',
+            metadata: {},
+            body(scope: OverkillScope) {
+                scope.assert.deepEqual(
+                    sourceLocationFromStack(
+                        [
+                            'Error',
+                            '    at captureSourceLocation (file:///workspace/source/assertion-protocol/source-location.ts:42:19)',
+                            '    at node:internal/test_runner/test:1:1'
+                        ]
+                            .join('\n')
+                    ),
+                    unknownSourceLocation
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'captureSourceLocation() returns a memoized provider for the capture callsite',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const location = captureSourceLocation();
+                const first = location();
+                const second = location();
+
+                scope.assert.equal(first, second);
+                scope.assert.match(first.file, /source-location\.test\.ts$/u);
+                scope.assert.equal(typeof first.line, 'number');
+                scope.assert.equal(typeof first.column, 'number');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'resolveSourceLocation() protects failures from provider errors',
+            metadata: {},
+            body(scope: OverkillScope) {
+                scope.assert.deepEqual(
+                    resolveSourceLocation(function throwLocationError() {
+                        throw new Error('location failed');
+                    }),
+                    unknownSourceLocation
+                );
+
+                return scope.assert.collect();
+            }
+        })
+    ]
 });
+
+await runIfMain(import.meta, testSuite, { reporters: [ createOverkillLineReporter() ] });

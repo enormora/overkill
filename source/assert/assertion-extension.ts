@@ -7,26 +7,20 @@ import {
     type CompositeAssertionReference,
     type CompositeAssertionSummaryContext,
     type AssertCompositeAssertionReturn,
-    type NarrowingCompositeAssertionReference
-} from '../packages/engine/assertion-protocol.entry-point.ts';
-import type {
-    BuiltInAssertAssertionNode,
-    CompositeAssertionChildNode,
-    ForeignAssertionNode
-} from '../assertion-protocol/assertion-node.ts';
-import type {
-    AssertionSource,
-    DeepComparable,
-    InstanceConstructor,
-    NonEmptyReadonlyArray,
-    ResolvableSourceLocation
-} from '../assertion-protocol/assertion-node-shape.ts';
-import { createThrownErrorRecord } from '../assertion-protocol/thrown-error-record.ts';
-import {
+    type NarrowingCompositeAssertionReference,
+    type BuiltInAssertAssertionNode,
+    type CompositeAssertionChildNode,
+    type ForeignAssertionNode,
+    type AssertionSource,
+    type DeepComparable,
+    type InstanceConstructor,
+    type NonEmptyReadonlyArray,
+    type ResolvableSourceLocation,
     type SynchronousCallback,
     type ThrownMatcher,
+    createThrownErrorRecord,
     thrownMatcherChildren
-} from '../assertion-protocol/thrown-matcher.ts';
+} from '../packages/engine/assertion-protocol.entry-point.ts';
 
 type GroupItem<Source extends AssertionSource> = CompositeAssertionChildNode<Source> | CompositeAssertionGroup<Source>;
 

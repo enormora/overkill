@@ -1,14 +1,33 @@
-import assert from 'node:assert/strict';
-import { registerTest } from '../test-support/register-test.ts';
+import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import {
+    createSuite as createOverkillSuite,
+    createTestCase as createOverkillTestCase,
+    runIfMain,
+    type TestScope as OverkillScope
+} from '@overkill-dev/engine';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createNullReporter } from './null-reporter.ts';
 
-registerTest('null reporter accepts a final result without producing output', async function () {
-    const reporter = createNullReporter();
+export const testSuite = createOverkillSuite({
+    name: 'source/reporters/null-reporter.test.ts',
+    metadata: {},
+    children: [
+        createOverkillTestCase({
+            name: 'null reporter accepts a final result without producing output',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const reporter = createNullReporter();
 
-    assert.equal(reporter.kind, 'final-result');
-    assert.equal(reporter.name, 'null');
-    assert.deepStrictEqual(reporter.sinks, []);
+                scope.assert.equal(reporter.kind, 'final-result');
+                scope.assert.equal(reporter.name, 'null');
+                scope.assert.deepEqual(reporter.sinks, []);
 
-    await reporter.onResult(runResultFactory.build());
+                await reporter.onResult(runResultFactory.build());
+
+                return scope.assert.collect();
+            }
+        })
+    ]
 });
+
+await runIfMain(import.meta, testSuite, { reporters: [ createOverkillLineReporter() ] });

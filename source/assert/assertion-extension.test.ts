@@ -1,4 +1,10 @@
-import assert from 'node:assert/strict';
+import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import {
+    createSuite as createOverkillSuite,
+    createTestCase as createOverkillTestCase,
+    runIfMain,
+    type TestScope as OverkillScope
+} from '@overkill-dev/engine';
 import {
     isAssertionReference,
     isCompositeAssertionGroup,
@@ -6,7 +12,6 @@ import {
     type CompositeAssertionChildNode
 } from '../packages/engine/assertion-protocol.entry-point.ts';
 import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
-import { registerTest } from '../test-support/register-test.ts';
 import {
     createCompositeCheckBuilder,
     defineCompositeAssertion,
@@ -72,145 +77,187 @@ function checkNames(children: readonly CompositeAssertionChildNode<'assert'>[]):
     });
 }
 
-function assertForeignLocations(
-    children: readonly CompositeAssertionChildNode<'assert'>[],
-    location: CompositeAssertionChildNode<'assert'>['location']
-): void {
-    assert.deepStrictEqual(
-        children.map(function locationOf(child) {
-            return child.location;
-        }),
-        children.map(function expectedLocation() {
-            return location;
-        })
-    );
+function foreignLocations(
+    children: readonly CompositeAssertionChildNode<'assert'>[]
+): readonly CompositeAssertionChildNode<'assert'>['location'][] {
+    return children.map(function locationOf(child) {
+        return child.location;
+    });
 }
 
-registerTest('createCompositeCheckBuilder() creates every built-in composite child node', function () {
-    const check = createCompositeCheckBuilder('assert', 'child', unknownSourceLocation);
-    const children = builtInChildren(check);
-    const annotated = check.annotated('annotated').true(true);
-    const group = check.group([ annotated ]);
+export const testSuite = createOverkillSuite({
+    name: 'source/assert/assertion-extension.test.ts',
+    metadata: {},
+    children: [
+        createOverkillTestCase({
+            name: 'createCompositeCheckBuilder() creates every built-in composite child node',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const check = createCompositeCheckBuilder('assert', 'child', unknownSourceLocation);
+                const children = builtInChildren(check);
+                const annotated = check.annotated('annotated').true(true);
+                const group = check.group([ annotated ]);
 
-    assert.deepStrictEqual(checkNames(children), [
-        'array',
-        'array-contains-partial',
-        'between',
-        'boolean',
-        'deep-equal',
-        'defined',
-        'empty',
-        'ends-with',
-        'equal',
-        'fail',
-        'false',
-        'function',
-        'greater-than',
-        'greater-than-or-equal',
-        'has-property',
-        'includes',
-        'instance-of',
-        'length',
-        'less-than',
-        'less-than-or-equal',
-        'match',
-        'members-partial-deep-equal',
-        'not-deep-equal',
-        'not-empty',
-        'not-equal',
-        'not-match',
-        'not-null',
-        'null',
-        'number',
-        'object',
-        'partial-deep-equal',
-        'instance-of',
-        'equal',
-        'starts-with',
-        'string',
-        'true',
-        'undefined'
-    ]);
-    assert.equal(annotated.message, 'annotated');
-    assert.deepStrictEqual(annotated.location, unknownSourceLocation);
-    assert.equal(isCompositeAssertionGroup(group), true);
-    assert.equal(isCompositeAssertionGroup({}), false);
-    assert.equal(isCompositeAssertionGroup(null), false);
-});
+                scope.assert.deepEqual(checkNames(children), [
+                    'array',
+                    'array-contains-partial',
+                    'between',
+                    'boolean',
+                    'deep-equal',
+                    'defined',
+                    'empty',
+                    'ends-with',
+                    'equal',
+                    'fail',
+                    'false',
+                    'function',
+                    'greater-than',
+                    'greater-than-or-equal',
+                    'has-property',
+                    'includes',
+                    'instance-of',
+                    'length',
+                    'less-than',
+                    'less-than-or-equal',
+                    'match',
+                    'members-partial-deep-equal',
+                    'not-deep-equal',
+                    'not-empty',
+                    'not-equal',
+                    'not-match',
+                    'not-null',
+                    'null',
+                    'number',
+                    'object',
+                    'partial-deep-equal',
+                    'instance-of',
+                    'equal',
+                    'starts-with',
+                    'string',
+                    'true',
+                    'undefined'
+                ]);
+                scope.assert.deepEqual(
+                    {
+                        annotatedLocation: annotated.location,
+                        annotatedMessage: annotated.message,
+                        objectIsCompositeGroup: isCompositeAssertionGroup({}),
+                        nullIsCompositeGroup: isCompositeAssertionGroup(null),
+                        validIsCompositeGroup: isCompositeAssertionGroup(group)
+                    },
+                    {
+                        annotatedLocation: unknownSourceLocation,
+                        annotatedMessage: 'annotated',
+                        objectIsCompositeGroup: false,
+                        nullIsCompositeGroup: false,
+                        validIsCompositeGroup: true
+                    }
+                );
 
-registerTest('createCompositeCheckBuilder() flattens composite assertion groups', function () {
-    const check = createCompositeCheckBuilder('assert', 'child', unknownSourceLocation);
-    const group = check.group([
-        check.true(true),
-        check.throws(function throwExpectedError() {
-            throw new Error('expected');
-        }, { message: 'expected' })
-    ]);
-
-    assert.deepStrictEqual(checkNames(group.children), [ 'true', 'instance-of', 'equal' ]);
-});
-
-registerTest('createCompositeCheckBuilder() creates async rejects groups', async function () {
-    const check = createCompositeCheckBuilder('assert', 'child', unknownSourceLocation);
-    const group = await check.rejects(async function rejectExpectedError() {
-        await Promise.reject(new Error('expected'));
-    }, { message: 'expected' });
-
-    assert.deepStrictEqual(checkNames(group.children), [ 'instance-of', 'equal' ]);
-});
-
-registerTest('composite foreign bridges normalize passing and failing callbacks', async function () {
-    const location = { column: 5, file: '/test/composite.test.ts', line: 10 };
-    const check = createCompositeCheckBuilder('assert', null, location);
-    const thrown = check.fromThrowable('throws', function throwForeignError() {
-        throw new TypeError('bad');
-    });
-    const resolved = await check.fromRejectable('resolves', async function resolveForeignExpectation() {
-        await Promise.resolve();
-    });
-    const rejected = await check.fromRejectable('rejects', async function rejectForeignExpectation() {
-        await Promise.reject(new RangeError('outside'));
-    });
-
-    assert.deepStrictEqual(
-        [ thrown.result.passed, resolved.result.passed, rejected.result.passed ],
-        [ false, true, false ]
-    );
-    assert.equal(thrown.result.passed ? null : thrown.result.error.name, 'TypeError');
-    assert.equal(rejected.result.passed ? null : rejected.result.error.name, 'RangeError');
-    assertForeignLocations([ thrown, resolved, rejected ], location);
-});
-
-registerTest('assertion references expose brand and empty-name validation', function () {
-    const reference = defineCompositeAssertion({
-        assert(check) {
-            return check.true(true);
-        },
-        name: 'custom'
-    });
-    const narrowing = defineNarrowingCompositeAssertion({
-        name: 'narrow',
-        narrows(value: unknown): value is string {
-            return typeof value === 'string';
-        }
-    });
-
-    assert.equal(isAssertionReference(reference), true);
-    assert.equal(isNarrowingAssertionReference(narrowing), true);
-    assert.throws(function defineEmptyCompositeAssertion() {
-        defineCompositeAssertion({
-            assert(check) {
-                return check.true(true);
-            },
-            name: ''
-        });
-    }, /must not be empty/u);
-    assert.throws(function defineEmptyNarrowingAssertion() {
-        defineNarrowingCompositeAssertion({
-            name: '',
-            narrows(value: unknown): value is string {
-                return typeof value === 'string';
+                return scope.assert.collect();
             }
-        });
-    }, /must not be empty/u);
+        }),
+        createOverkillTestCase({
+            name: 'createCompositeCheckBuilder() flattens composite assertion groups',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const check = createCompositeCheckBuilder('assert', 'child', unknownSourceLocation);
+                const group = check.group([
+                    check.true(true),
+                    check.throws(function throwExpectedError() {
+                        throw new Error('expected');
+                    }, { message: 'expected' })
+                ]);
+
+                scope.assert.deepEqual(checkNames(group.children), [ 'true', 'instance-of', 'equal' ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'createCompositeCheckBuilder() creates async rejects groups',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const check = createCompositeCheckBuilder('assert', 'child', unknownSourceLocation);
+                const group = await check.rejects(async function rejectExpectedError() {
+                    await Promise.reject(new Error('expected'));
+                }, { message: 'expected' });
+
+                scope.assert.deepEqual(checkNames(group.children), [ 'instance-of', 'equal' ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'composite foreign bridges normalize passing and failing callbacks',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const location = { column: 5, file: '/test/composite.test.ts', line: 10 };
+                const check = createCompositeCheckBuilder('assert', null, location);
+                const thrown = check.fromThrowable('throws', function throwForeignError() {
+                    throw new TypeError('bad');
+                });
+                const resolved = await check.fromRejectable('resolves', async function resolveForeignExpectation() {
+                    await Promise.resolve();
+                });
+                const rejected = await check.fromRejectable('rejects', async function rejectForeignExpectation() {
+                    await Promise.reject(new RangeError('outside'));
+                });
+
+                scope.assert.deepEqual(
+                    [ thrown.result.passed, resolved.result.passed, rejected.result.passed ],
+                    [ false, true, false ]
+                );
+                scope.assert.equal(thrown.result.passed ? null : thrown.result.error.name, 'TypeError');
+                scope.assert.equal(rejected.result.passed ? null : rejected.result.error.name, 'RangeError');
+                scope.assert.deepEqual(
+                    foreignLocations([ thrown, resolved, rejected ]),
+                    [ location, location, location ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'assertion references expose brand and empty-name validation',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const reference = defineCompositeAssertion({
+                    assert(check) {
+                        return check.true(true);
+                    },
+                    name: 'custom'
+                });
+                const narrowing = defineNarrowingCompositeAssertion({
+                    name: 'narrow',
+                    narrows(value: unknown): value is string {
+                        return typeof value === 'string';
+                    }
+                });
+
+                scope.assert.equal(isAssertionReference(reference), true);
+                scope.assert.equal(isNarrowingAssertionReference(narrowing), true);
+                scope.assert.throws(function defineEmptyCompositeAssertion() {
+                    defineCompositeAssertion({
+                        assert(check) {
+                            return check.true(true);
+                        },
+                        name: ''
+                    });
+                }, { message: /must not be empty/u });
+                scope.assert.throws(function defineEmptyNarrowingAssertion() {
+                    defineNarrowingCompositeAssertion({
+                        name: '',
+                        narrows(value: unknown): value is string {
+                            return typeof value === 'string';
+                        }
+                    });
+                }, { message: /must not be empty/u });
+
+                return scope.assert.collect();
+            }
+        })
+    ]
 });
+
+await runIfMain(import.meta, testSuite, { reporters: [ createOverkillLineReporter() ] });

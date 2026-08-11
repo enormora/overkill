@@ -1,7 +1,12 @@
-import assert from 'node:assert/strict';
+import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import {
+    createSuite as createOverkillSuite,
+    createTestCase as createOverkillTestCase,
+    runIfMain,
+    type TestScope as OverkillScope
+} from '@overkill-dev/engine';
 import { serializeValue } from '../compare/serialized-value.ts';
 import { createCompositeCheckBuilder } from '../assert/assertion-extension.ts';
-import { registerTest } from '../test-support/register-test.ts';
 import type { AssertAssertionNode, CompositeAssertionChildNode, CompositeAssertionNode } from './assertion-node.ts';
 import type { FailedCompositeCheck } from './assertion-node-shape.ts';
 import { evaluateAssertion, invalidDeepAssertionOperand } from './evaluation.ts';
@@ -146,193 +151,278 @@ const failingAssertions: readonly EvaluationCase[] = [
     { assertion: check.undefined(null), fails: true }
 ];
 
-registerTest('evaluateAssertion() passes built-in catalog assertions with strict semantics', function () {
-    assert.deepStrictEqual(
-        passingAssertions.map(function toEvaluation(testCase) {
-            return evaluateAssertion(testCase.assertion, 1) === null;
+export const testSuite = createOverkillSuite({
+    name: 'source/assertion-protocol/evaluation.test.ts',
+    metadata: {},
+    children: [
+        createOverkillTestCase({
+            name: 'evaluateAssertion() passes built-in catalog assertions with strict semantics',
+            metadata: {},
+            body(scope: OverkillScope) {
+                scope.assert.deepEqual(
+                    passingAssertions.map(function toEvaluation(testCase) {
+                        return evaluateAssertion(testCase.assertion, 1) === null;
+                    }),
+                    passingAssertions.map(function toExpectedPass() {
+                        return true;
+                    })
+                );
+
+                return scope.assert.collect();
+            }
         }),
-        passingAssertions.map(function toExpectedPass() {
-            return true;
+        createOverkillTestCase({
+            name: 'evaluateAssertion() fails built-in catalog assertions with source-aware checks',
+            metadata: {},
+            body(scope: OverkillScope) {
+                scope.assert.deepEqual(
+                    failingAssertions.map(function toEvaluation(testCase) {
+                        return evaluateAssertion(testCase.assertion, 1) !== null;
+                    }),
+                    failingAssertions.map(function toExpectedFailure() {
+                        return true;
+                    })
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'evaluateAssertion() preserves custom messages and assertion source',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const failedCheck = evaluateAssertion({
+                    actual: 1,
+                    check: 'equal',
+                    expected: 2,
+                    location: unknownSourceLocation,
+                    message: 'custom message',
+                    source: 'assert'
+                }, 7);
+
+                scope.require.notNull(failedCheck);
+                scope.assert.deepEqual(failedCheck, {
+                    actual: serializeValue(1),
+                    diff: null,
+                    expected: serializeValue(2),
+                    id: '7',
+                    kind: 'leaf',
+                    location: unknownSourceLocation,
+                    path: [],
+                    source: 'assert',
+                    summary: 'custom message'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'evaluateAssertion() passes thrown matcher composites',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const exactAssertion = createThrownMatcherAssertion({
+                    kind: 'rejects',
+                    location: unknownSourceLocation,
+                    matcher: { exact: 'expected' },
+                    message: null,
+                    observation: { status: 'rejected', value: 'expected' },
+                    source: 'assert'
+                });
+                const errorGroup = check.throws(function throwExpectedError() {
+                    throw Object.assign(new SyntaxError('invalid header'), { code: 'EINVAL' });
+                }, {
+                    code: 'EINVAL',
+                    message: /invalid/u,
+                    name: 'SyntaxError',
+                    type: SyntaxError
+                });
+                const rejectsGroup = await check.rejects(async function rejectExpectedError() {
+                    await Promise.reject(new Error('expected', { cause: 'raw cause' }));
+                }, { cause: { exact: 'raw cause' }, message: 'expected' });
+
+                scope.assert.equal(evaluateAssertion(exactAssertion, 1), null);
+                scope.assert.equal(evaluateAssertion(compositeAssertion(errorGroup.children), 1), null);
+                scope.assert.equal(evaluateAssertion(compositeAssertion(rejectsGroup.children), 1), null);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'evaluateAssertion() reports thrown matcher field failures',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const group = check.throws(function throwMismatchedError() {
+                    throw Object.assign(new TypeError('actual'), { code: 'ACTUAL' });
+                }, {
+                    code: 'EXPECTED',
+                    message: 'expected',
+                    name: 'RangeError',
+                    type: RangeError
+                });
+                const failure = compositeFailure(compositeAssertion(group.children));
+
+                scope.assert.deepEqual(
+                    failure.children.map(function summaryOf(child) {
+                        return child.summary;
+                    }),
+                    [
+                        'Expected thrown value to be an instance of the constructor.',
+                        'Expected thrown value message to equal the string.',
+                        'Expected thrown value code to equal the string.',
+                        'Expected thrown value name to equal the string.'
+                    ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'evaluateAssertion() reports missing and non-error thrown values',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const missingGroup = check.throws(function returnNormally() {
+                    return 'value';
+                }, { exact: 'expected' });
+                const nonErrorAssertion = createThrownMatcherAssertion({
+                    kind: 'rejects',
+                    location: unknownSourceLocation,
+                    matcher: { message: 'raw' },
+                    message: null,
+                    observation: { status: 'rejected', value: 'raw' },
+                    source: 'assert'
+                });
+
+                scope.assert.deepEqual(
+                    compositeFailure(compositeAssertion(missingGroup.children)).children.map(function summaryOf(child) {
+                        return child.summary;
+                    }),
+                    [ 'Expected function to throw.' ]
+                );
+                scope.assert.deepEqual(
+                    compositeFailure(nonErrorAssertion).children.map(function summaryOf(child) {
+                        return child.summary;
+                    }),
+                    [ 'Expected thrown value to be an Error.' ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'invalidDeepAssertionOperand() accepts structural and reference operands',
+            metadata: {},
+            body(scope: OverkillScope) {
+                scope.assert.equal(invalidDeepAssertionOperand(check.deepEqual({ id: 1 }, { id: 1 })), null);
+                scope.assert.equal(invalidDeepAssertionOperand(check.deepEqual(values, values)), null);
+                scope.assert.equal(
+                    invalidDeepAssertionOperand(check.arrayContainsPartial([ { id: 1 } ], { id: 1 })),
+                    null
+                );
+                scope.assert.equal(
+                    invalidDeepAssertionOperand(check.membersPartialDeepEqual([ { id: 1 } ], [ { id: 1 } ])),
+                    null
+                );
+                scope.assert.equal(invalidDeepAssertionOperand(check.equal(1, 1)), null);
+                scope.assert.equal(invalidDeepAssertionOperand(compositeAssertion([ check.true(true) ])), null);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'invalidDeepAssertionOperand() reports primitive exact deep operands',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const nullOperand = invalidDeepAssertionOperand(deepAssertion('deep-equal', null, {}));
+                const undefinedOperand = invalidDeepAssertionOperand(deepAssertion('not-deep-equal', {}, undefined));
+                const symbolOperand = invalidDeepAssertionOperand(
+                    deepAssertion('partial-deep-equal', Symbol('id'), {})
+                );
+
+                scope.require.notNull(nullOperand);
+                scope.assert.deepEqual(nullOperand, {
+                    check: 'deep-equal',
+                    index: null,
+                    role: 'actual',
+                    type: 'null'
+                });
+                scope.require.notNull(undefinedOperand);
+                scope.assert.deepEqual(undefinedOperand, {
+                    check: 'not-deep-equal',
+                    index: null,
+                    role: 'expected',
+                    type: 'undefined'
+                });
+                scope.require.notNull(symbolOperand);
+                scope.assert.deepEqual(symbolOperand, {
+                    check: 'partial-deep-equal',
+                    index: null,
+                    role: 'actual',
+                    type: 'symbol'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'invalidDeepAssertionOperand() reports primitive partial member operands',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const actualOperand = invalidDeepAssertionOperand(
+                    deepAssertion('array-contains-partial', 1, { id: 1 })
+                );
+                const expectedOperand = invalidDeepAssertionOperand(
+                    deepAssertion('array-contains-partial', [ { id: 1 } ], true)
+                );
+                const memberOperand = invalidDeepAssertionOperand(
+                    deepAssertion('members-partial-deep-equal', [ { id: 1 } ], 1n)
+                );
+
+                scope.require.notNull(actualOperand);
+                scope.assert.deepEqual(actualOperand, {
+                    check: 'array-contains-partial',
+                    index: null,
+                    role: 'actual',
+                    type: 'number'
+                });
+                scope.require.notNull(expectedOperand);
+                scope.assert.deepEqual(expectedOperand, {
+                    check: 'array-contains-partial',
+                    index: null,
+                    role: 'expected',
+                    type: 'boolean'
+                });
+                scope.require.notNull(memberOperand);
+                scope.assert.deepEqual(memberOperand, {
+                    check: 'members-partial-deep-equal',
+                    index: null,
+                    role: 'expected',
+                    type: 'bigint'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'invalidDeepAssertionOperand() reports primitive composite child operands',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const operand = invalidDeepAssertionOperand(compositeAssertion([
+                    check.true(true),
+                    deepAssertion('members-partial-deep-equal', [ { id: 1 } ], [ 'id' ])
+                ]));
+
+                scope.require.notNull(operand);
+                scope.assert.deepEqual(operand, {
+                    check: 'members-partial-deep-equal',
+                    index: 0,
+                    role: 'expected',
+                    type: 'string'
+                });
+
+                return scope.assert.collect();
+            }
         })
-    );
+    ]
 });
 
-registerTest('evaluateAssertion() fails built-in catalog assertions with source-aware checks', function () {
-    assert.deepStrictEqual(
-        failingAssertions.map(function toEvaluation(testCase) {
-            return evaluateAssertion(testCase.assertion, 1) !== null;
-        }),
-        failingAssertions.map(function toExpectedFailure() {
-            return true;
-        })
-    );
-});
-
-registerTest('evaluateAssertion() preserves custom messages and assertion source', function () {
-    const failedCheck = evaluateAssertion({
-        actual: 1,
-        check: 'equal',
-        expected: 2,
-        location: unknownSourceLocation,
-        message: 'custom message',
-        source: 'assert'
-    }, 7);
-
-    assert.deepStrictEqual(failedCheck, {
-        actual: serializeValue(1),
-        diff: null,
-        expected: serializeValue(2),
-        id: '7',
-        kind: 'leaf',
-        location: unknownSourceLocation,
-        path: [],
-        source: 'assert',
-        summary: 'custom message'
-    });
-});
-
-registerTest('evaluateAssertion() passes thrown matcher composites', async function () {
-    const exactAssertion = createThrownMatcherAssertion({
-        kind: 'rejects',
-        location: unknownSourceLocation,
-        matcher: { exact: 'expected' },
-        message: null,
-        observation: { status: 'rejected', value: 'expected' },
-        source: 'assert'
-    });
-    const errorGroup = check.throws(function throwExpectedError() {
-        throw Object.assign(new SyntaxError('invalid header'), { code: 'EINVAL' });
-    }, {
-        code: 'EINVAL',
-        message: /invalid/u,
-        name: 'SyntaxError',
-        type: SyntaxError
-    });
-    const rejectsGroup = await check.rejects(async function rejectExpectedError() {
-        await Promise.reject(new Error('expected', { cause: 'raw cause' }));
-    }, { cause: { exact: 'raw cause' }, message: 'expected' });
-
-    assert.equal(evaluateAssertion(exactAssertion, 1), null);
-    assert.equal(evaluateAssertion(compositeAssertion(errorGroup.children), 1), null);
-    assert.equal(evaluateAssertion(compositeAssertion(rejectsGroup.children), 1), null);
-});
-
-registerTest('evaluateAssertion() reports thrown matcher field failures', function () {
-    const group = check.throws(function throwMismatchedError() {
-        throw Object.assign(new TypeError('actual'), { code: 'ACTUAL' });
-    }, {
-        code: 'EXPECTED',
-        message: 'expected',
-        name: 'RangeError',
-        type: RangeError
-    });
-    const failure = compositeFailure(compositeAssertion(group.children));
-
-    assert.deepStrictEqual(
-        failure.children.map(function summaryOf(child) {
-            return child.summary;
-        }),
-        [
-            'Expected thrown value to be an instance of the constructor.',
-            'Expected thrown value message to equal the string.',
-            'Expected thrown value code to equal the string.',
-            'Expected thrown value name to equal the string.'
-        ]
-    );
-});
-
-registerTest('evaluateAssertion() reports missing and non-error thrown values', function () {
-    const missingGroup = check.throws(function returnNormally() {
-        return 'value';
-    }, { exact: 'expected' });
-    const nonErrorAssertion = createThrownMatcherAssertion({
-        kind: 'rejects',
-        location: unknownSourceLocation,
-        matcher: { message: 'raw' },
-        message: null,
-        observation: { status: 'rejected', value: 'raw' },
-        source: 'assert'
-    });
-
-    assert.deepStrictEqual(
-        compositeFailure(compositeAssertion(missingGroup.children)).children.map(function summaryOf(child) {
-            return child.summary;
-        }),
-        [ 'Expected function to throw.' ]
-    );
-    assert.deepStrictEqual(
-        compositeFailure(nonErrorAssertion).children.map(function summaryOf(child) {
-            return child.summary;
-        }),
-        [ 'Expected thrown value to be an Error.' ]
-    );
-});
-
-registerTest('invalidDeepAssertionOperand() accepts structural and reference operands', function () {
-    assert.equal(invalidDeepAssertionOperand(check.deepEqual({ id: 1 }, { id: 1 })), null);
-    assert.equal(invalidDeepAssertionOperand(check.deepEqual(values, values)), null);
-    assert.equal(invalidDeepAssertionOperand(check.arrayContainsPartial([ { id: 1 } ], { id: 1 })), null);
-    assert.equal(invalidDeepAssertionOperand(check.membersPartialDeepEqual([ { id: 1 } ], [ { id: 1 } ])), null);
-    assert.equal(invalidDeepAssertionOperand(check.equal(1, 1)), null);
-    assert.equal(invalidDeepAssertionOperand(compositeAssertion([ check.true(true) ])), null);
-});
-
-registerTest('invalidDeepAssertionOperand() reports primitive exact deep operands', function () {
-    assert.deepStrictEqual(invalidDeepAssertionOperand(deepAssertion('deep-equal', null, {})), {
-        check: 'deep-equal',
-        index: null,
-        role: 'actual',
-        type: 'null'
-    });
-    assert.deepStrictEqual(invalidDeepAssertionOperand(deepAssertion('not-deep-equal', {}, undefined)), {
-        check: 'not-deep-equal',
-        index: null,
-        role: 'expected',
-        type: 'undefined'
-    });
-    assert.deepStrictEqual(invalidDeepAssertionOperand(deepAssertion('partial-deep-equal', Symbol('id'), {})), {
-        check: 'partial-deep-equal',
-        index: null,
-        role: 'actual',
-        type: 'symbol'
-    });
-});
-
-registerTest('invalidDeepAssertionOperand() reports primitive partial member operands', function () {
-    assert.deepStrictEqual(invalidDeepAssertionOperand(deepAssertion('array-contains-partial', 1, { id: 1 })), {
-        check: 'array-contains-partial',
-        index: null,
-        role: 'actual',
-        type: 'number'
-    });
-    assert.deepStrictEqual(invalidDeepAssertionOperand(deepAssertion('array-contains-partial', [ { id: 1 } ], true)), {
-        check: 'array-contains-partial',
-        index: null,
-        role: 'expected',
-        type: 'boolean'
-    });
-    assert.deepStrictEqual(
-        invalidDeepAssertionOperand(deepAssertion('members-partial-deep-equal', [ { id: 1 } ], 1n)),
-        {
-            check: 'members-partial-deep-equal',
-            index: null,
-            role: 'expected',
-            type: 'bigint'
-        }
-    );
-});
-
-registerTest('invalidDeepAssertionOperand() reports primitive composite child operands', function () {
-    assert.deepStrictEqual(
-        invalidDeepAssertionOperand(compositeAssertion([
-            check.true(true),
-            deepAssertion('members-partial-deep-equal', [ { id: 1 } ], [ 'id' ])
-        ])),
-        {
-            check: 'members-partial-deep-equal',
-            index: 0,
-            role: 'expected',
-            type: 'string'
-        }
-    );
-});
+await runIfMain(import.meta, testSuite, { reporters: [ createOverkillLineReporter() ] });

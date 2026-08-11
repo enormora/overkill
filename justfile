@@ -28,13 +28,22 @@ lint: eslint lint-filename lint-unused-code lint-dependencies lint-duplication
 lint-fix: eslint-fix
 
 test-unit:
-    find source -path source/integration-tests -prune -o -name '*.test.ts' -exec node --test --test-isolation='none' {} +
+    node source/overkill.test.ts
 
 test-unit-with-coverage:
-    find source -path source/integration-tests -prune -o -name '*.test.ts' -exec c8 --config .c8rc.json node --test --test-isolation='none' {} +
+    c8 --config .c8rc.json node source/overkill.test.ts
 
 test-types:
     tstyche
+
+test-package-smoke: compile
+    rm -rf target/build/source/integration-tests/package-smoke/node_modules
+    mkdir -p target/build/source/integration-tests/package-smoke/node_modules/@overkill-dev
+    packtory pack @overkill-dev/engine --format folder --version 0.0.0 --out target/build/source/integration-tests/package-smoke/node_modules/@overkill-dev/engine
+    packtory pack @overkill-dev/assert --format folder --version 0.0.0 --out target/build/source/integration-tests/package-smoke/node_modules/@overkill-dev/assert
+    packtory pack @overkill-dev/doubles --format folder --version 0.0.0 --out target/build/source/integration-tests/package-smoke/node_modules/@overkill-dev/doubles
+    packtory pack @overkill-dev/reporter-line --format folder --version 0.0.0 --out target/build/source/integration-tests/package-smoke/node_modules/@overkill-dev/reporter-line
+    node target/build/source/integration-tests/package-smoke/engine-direct-execution.test.js
 
 publish-dry-run: compile
     packtory publish

@@ -1,5 +1,10 @@
-import assert from 'node:assert/strict';
-import { registerTest } from '../test-support/register-test.ts';
+import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import {
+    createSuite as createOverkillSuite,
+    createTestCase as createOverkillTestCase,
+    runIfMain,
+    type TestScope as OverkillScope
+} from '@overkill-dev/engine';
 import type { DoubleCall } from './double-history-record.ts';
 import { rule } from './double-rule.ts';
 import { testDouble, type TestDouble } from './test-double.ts';
@@ -15,117 +20,168 @@ type MutableArraySnapshot = {
     readonly push: (value: unknown) => number;
 };
 type RecordedSnapshotLoader = {
+    readonly actual: SnapshotOutput;
     readonly input: SnapshotInput;
     readonly loadValue: TestDouble<SnapshotLoader>;
     readonly output: SnapshotOutput;
 };
 
-function requireRecordedValue<Value>(value: Value | null, message: string): Value {
-    if (value === null) {
-        assert.fail(message);
-    }
-
-    return value;
-}
-
 function createRecordedSnapshotLoader(): RecordedSnapshotLoader {
     const input: SnapshotInput = { id: 'input' };
     const output: SnapshotOutput = { id: 'output' };
     const loadValue = testDouble.returns<SnapshotLoader>(output);
+    const actual = loadValue(input);
 
-    assert.equal(loadValue(input), output);
-
-    return { input, loadValue, output };
+    return { actual, input, loadValue, output };
 }
 
-registerTest('history array snapshots are shallow copies', function () {
-    const { input, loadValue } = createRecordedSnapshotLoader();
-    const calls = loadValue.calls as unknown as unknown[];
+export const testSuite = createOverkillSuite({
+    name: 'source/doubles/test-double-history.test.ts',
+    metadata: {},
+    children: [
+        createOverkillTestCase({
+            name: 'history array snapshots are shallow copies',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const { actual, input, loadValue, output } = createRecordedSnapshotLoader();
+                const calls = loadValue.calls as unknown as unknown[];
 
-    calls.push({ kind: 'call' });
+                calls.push({ kind: 'call' });
 
-    assert.equal(loadValue.callCount, 1);
-    assert.deepEqual(requireRecordedValue(loadValue.firstCall, 'expected fresh call').arguments, [ input ]);
+                scope.assert.equal(actual, output);
+                scope.assert.equal(loadValue.callCount, 1);
+                const { firstCall } = loadValue;
+                scope.require.notNull(firstCall);
+                scope.assert.deepEqual(firstCall.arguments, [ input ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'history record snapshots are shallow copies',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const { actual, input, loadValue, output } = createRecordedSnapshotLoader();
+                const firstCall = loadValue.firstCall as DoubleCall | null;
+
+                scope.assert.equal(actual, output);
+                scope.require.notNull(firstCall);
+                const mutableArguments = firstCall.arguments as unknown as MutableArraySnapshot;
+
+                mutableArguments.push('changed');
+                Object.defineProperty(firstCall, 'index', { value: 99 });
+
+                scope.assert.deepEqual(
+                    {
+                        arguments: loadValue.firstCall?.arguments,
+                        index: loadValue.firstCall?.index
+                    },
+                    {
+                        arguments: [ input ],
+                        index: 0
+                    }
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'history result snapshots keep value references',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const { actual, loadValue, output } = createRecordedSnapshotLoader();
+                const outputResult = loadValue.firstResult;
+
+                scope.assert.equal(actual, output);
+                scope.require.notNull(outputResult);
+                scope.assert.equal(outputResult.status, 'returned');
+                scope.require.hasProperty(outputResult, 'value');
+                scope.assert.equal(outputResult.value, output);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'history properties are non-enumerable',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const loadValue = testDouble.returns('value');
+
+                loadValue('id');
+
+                scope.assert.equal(loadValue.interactionCount, 1);
+                scope.assert.deepEqual(Object.keys(loadValue), []);
+                scope.assert.deepEqual(Object.entries(loadValue), []);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'reset clears history and restarts indexes',
+            metadata: {},
+            body(scope: OverkillScope) {
+                type LoadValue = (id: string) => string;
+
+                const seen: unknown[] = [];
+                const loadValue = testDouble<LoadValue>({
+                    answer(invocation) {
+                        seen.push(invocation);
+
+                        return `${invocation.index}:${invocation.arguments[0]}`;
+                    }
+                });
+
+                scope.assert.equal(loadValue('a'), '0:a');
+                loadValue.reset();
+                scope.assert.equal(loadValue.interactionCount, 0);
+                scope.assert.equal(loadValue('b'), '0:b');
+                scope.assert.deepEqual(seen, [
+                    { arguments: [ 'a' ], index: 0, kind: 'call' },
+                    { arguments: [ 'b' ], index: 0, kind: 'call' }
+                ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'reset rewinds ordered rules and sequence behaviors',
+            metadata: {},
+            body(scope: OverkillScope) {
+                type LoadValue = () => string;
+
+                const loadValue = testDouble<LoadValue>({
+                    rules: [ rule.onCall(0).returns('first') ],
+                    fallback: rule.sequence([ 'second', 'third' ])
+                });
+
+                scope.assert.equal(loadValue(), 'first');
+                scope.assert.equal(loadValue(), 'second');
+                loadValue.reset();
+                scope.assert.equal(loadValue(), 'first');
+                scope.assert.equal(loadValue(), 'second');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'sequence behavior state is independent per double',
+            metadata: {},
+            body(scope: OverkillScope) {
+                type LoadValue = () => string;
+
+                const sequence = rule.sequence([ 'first', 'second' ]);
+                const firstLoadValue = testDouble<LoadValue>({ fallback: sequence });
+                const secondLoadValue = testDouble<LoadValue>({ fallback: sequence });
+
+                scope.assert.equal(firstLoadValue(), 'first');
+                scope.assert.equal(secondLoadValue(), 'first');
+                scope.assert.equal(firstLoadValue(), 'second');
+                scope.assert.equal(secondLoadValue(), 'second');
+
+                return scope.assert.collect();
+            }
+        })
+    ]
 });
 
-registerTest('history record snapshots are shallow copies', function () {
-    const { input, loadValue } = createRecordedSnapshotLoader();
-    const firstCall = requireRecordedValue(loadValue.firstCall, 'expected recorded call') as DoubleCall;
-    const mutableArguments = firstCall.arguments as unknown as MutableArraySnapshot;
-
-    mutableArguments.push('changed');
-    Object.defineProperty(firstCall, 'index', { value: 99 });
-
-    assert.deepEqual(requireRecordedValue(loadValue.firstCall, 'expected fresh call').arguments, [ input ]);
-    assert.equal(requireRecordedValue(loadValue.firstCall, 'expected fresh call').index, 0);
-});
-
-registerTest('history result snapshots keep value references', function () {
-    const { loadValue, output } = createRecordedSnapshotLoader();
-    const outputResult = requireRecordedValue(loadValue.firstResult, 'expected returned output');
-
-    if (outputResult.status !== 'returned') {
-        assert.fail('expected returned output');
-    }
-    assert.equal(outputResult.value, output);
-});
-
-registerTest('history properties are non-enumerable', function () {
-    const loadValue = testDouble.returns('value');
-
-    loadValue('id');
-
-    assert.equal(loadValue.interactionCount, 1);
-    assert.deepEqual(Object.keys(loadValue), []);
-    assert.deepEqual(Object.entries(loadValue), []);
-});
-
-registerTest('reset clears history and restarts indexes', function () {
-    type LoadValue = (id: string) => string;
-
-    const seen: unknown[] = [];
-    const loadValue = testDouble<LoadValue>({
-        answer(invocation) {
-            seen.push(invocation);
-
-            return `${invocation.index}:${invocation.arguments[0]}`;
-        }
-    });
-
-    assert.equal(loadValue('a'), '0:a');
-    loadValue.reset();
-    assert.equal(loadValue.interactionCount, 0);
-    assert.equal(loadValue('b'), '0:b');
-    assert.deepEqual(seen, [
-        { arguments: [ 'a' ], index: 0, kind: 'call' },
-        { arguments: [ 'b' ], index: 0, kind: 'call' }
-    ]);
-});
-
-registerTest('reset rewinds ordered rules and sequence behaviors', function () {
-    type LoadValue = () => string;
-
-    const loadValue = testDouble<LoadValue>({
-        rules: [ rule.onCall(0).returns('first') ],
-        fallback: rule.sequence([ 'second', 'third' ])
-    });
-
-    assert.equal(loadValue(), 'first');
-    assert.equal(loadValue(), 'second');
-    loadValue.reset();
-    assert.equal(loadValue(), 'first');
-    assert.equal(loadValue(), 'second');
-});
-
-registerTest('sequence behavior state is independent per double', function () {
-    type LoadValue = () => string;
-
-    const sequence = rule.sequence([ 'first', 'second' ]);
-    const firstLoadValue = testDouble<LoadValue>({ fallback: sequence });
-    const secondLoadValue = testDouble<LoadValue>({ fallback: sequence });
-
-    assert.equal(firstLoadValue(), 'first');
-    assert.equal(secondLoadValue(), 'first');
-    assert.equal(firstLoadValue(), 'second');
-    assert.equal(secondLoadValue(), 'second');
-});
+await runIfMain(import.meta, testSuite, { reporters: [ createOverkillLineReporter() ] });
