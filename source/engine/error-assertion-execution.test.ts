@@ -1,7 +1,12 @@
-import assert from 'node:assert/strict';
+import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import {
+    createSuite as createOverkillSuite,
+    createTestCase as createOverkillTestCase,
+    runIfMain,
+    type TestScope as OverkillScope
+} from '@overkill-dev/engine';
 import type { FailedCompositeCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
-import { registerTest } from '../test-support/register-test.ts';
 import type { BodyErrorTestFailure, FailOutcome, RunResult } from './run-result.ts';
 import type { TestBody, TestScope } from './test-node.ts';
 
@@ -25,19 +30,17 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
     );
 }
 
-function firstFailOutcome(result: RunResult): FailOutcome {
+function firstFailOutcome(result: RunResult): FailOutcome | null {
     const firstResult = result.perTest.at(0);
-
-    assert.notEqual(firstResult, undefined);
 
     if (firstResult?.outcome.kind === 'fail') {
         return firstResult.outcome;
     }
 
-    throw new TypeError('Expected first outcome to fail.');
+    return null;
 }
 
-function firstCompositeCheck(outcome: FailOutcome): FailedCompositeCheck {
+function firstCompositeCheck(outcome: FailOutcome): FailedCompositeCheck | null {
     const failure = outcome.failures[0];
 
     if (failure.kind === 'assertion') {
@@ -48,94 +51,132 @@ function firstCompositeCheck(outcome: FailOutcome): FailedCompositeCheck {
         }
     }
 
-    throw new TypeError('Expected composite failed check.');
+    return null;
 }
 
-function firstBodyError(outcome: FailOutcome): BodyErrorTestFailure {
+function firstBodyError(outcome: FailOutcome): BodyErrorTestFailure | null {
     const failure = outcome.failures[0];
 
     if (failure.kind === 'body-error') {
         return failure;
     }
 
-    throw new TypeError('Expected body error failure.');
+    return null;
 }
 
-registerTest('execute() counts throws and awaited rejects as assertion boundaries', async function () {
-    const result = await executeSingleBody(async function body(testScope: TestScope) {
-        testScope.plan(2);
-        testScope.assert.throws(function throwExpectedError() {
-            throw new Error('expected');
-        }, { message: 'expected' });
-        await testScope.assert.rejects(async function rejectExpectedError() {
-            await Promise.reject(new Error('expected'));
-        }, { message: 'expected' });
+export const testSuite = createOverkillSuite({
+    name: 'source/engine/error-assertion-execution.test.ts',
+    metadata: {},
+    children: [
+        createOverkillTestCase({
+            name: 'execute() counts throws and awaited rejects as assertion boundaries',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const result = await executeSingleBody(async function testBody(testScope: TestScope) {
+                    testScope.plan(2);
+                    testScope.assert.throws(function throwExpectedError() {
+                        throw new Error('expected');
+                    }, { message: 'expected' });
+                    await testScope.assert.rejects(async function rejectExpectedError() {
+                        await Promise.reject(new Error('expected'));
+                    }, { message: 'expected' });
 
-        return testScope.assert.collect();
-    });
+                    return testScope.assert.collect();
+                });
 
-    assert.equal(result.summary.passed, 1);
-});
+                scope.assert.equal(result.summary.passed, 1);
 
-registerTest('execute() rejects unawaited async rejects assertions at collect', async function () {
-    const result = await executeSingleBody(function body(testScope: TestScope) {
-        const pendingAssertions = [
-            testScope.assert.rejects(async function rejectExpectedError() {
-                await Promise.reject(new Error('expected'));
-            }, { message: 'expected' })
-        ];
-
-        assert.equal(pendingAssertions.length, 1);
-        return testScope.assert.collect();
-    });
-
-    assert.deepStrictEqual(firstFailOutcome(result).failures, [
-        {
-            actual: 'pending async assertion',
-            code: 'pending-async-assertion',
-            expected: 'all async assertions awaited before collect',
-            kind: 'test-contract',
-            summary: 'Async assertion must be awaited before scope.assert.collect().'
-        }
-    ]);
-});
-
-registerTest('execute() treats sync throws from rejects thunks as body errors', async function () {
-    function throwBeforePromise(): never {
-        throw new TypeError('sync boom');
-    }
-
-    const result = await executeSingleBody(async function body(testScope: TestScope) {
-        await testScope.assert.rejects(throwBeforePromise, { message: 'sync boom' });
-
-        return testScope.assert.collect();
-    });
-
-    assert.equal(firstBodyError(firstFailOutcome(result)).error.message, 'sync boom');
-});
-
-registerTest('execute() reports throws matcher field failures under one composite boundary', async function () {
-    const result = await executeSingleBody(function body(testScope: TestScope) {
-        testScope.assert.throws(
-            function throwWrongError() {
-                throw new TypeError('actual');
-            },
-            { message: 'expected', type: RangeError },
-            { message: 'throw contract' }
-        );
-
-        return testScope.assert.collect();
-    });
-    const composite = firstCompositeCheck(firstFailOutcome(result));
-
-    assert.equal(composite.summary, 'throw contract');
-    assert.deepStrictEqual(
-        composite.children.map(function summaryOf(child) {
-            return child.summary;
+                return scope.assert.collect();
+            }
         }),
-        [
-            'Expected thrown value to be an instance of the constructor.',
-            'Expected thrown value message to equal the string.'
-        ]
-    );
+        createOverkillTestCase({
+            name: 'execute() rejects unawaited async rejects assertions at collect',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const result = await executeSingleBody(function testBody(testScope: TestScope) {
+                    const pendingAssertions = [
+                        testScope.assert.rejects(async function rejectExpectedError() {
+                            await Promise.reject(new Error('expected'));
+                        }, { message: 'expected' })
+                    ];
+
+                    scope.assert.equal(pendingAssertions.length, 1);
+                    return testScope.assert.collect();
+                });
+
+                const outcome = firstFailOutcome(result);
+                scope.require.notNull(outcome);
+                scope.assert.deepEqual(outcome.failures, [
+                    {
+                        actual: 'pending async assertion',
+                        code: 'pending-async-assertion',
+                        expected: 'all async assertions awaited before collect',
+                        kind: 'test-contract',
+                        summary: 'Async assertion must be awaited before scope.assert.collect().'
+                    }
+                ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'execute() treats sync throws from rejects thunks as body errors',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                function throwBeforePromise(): never {
+                    throw new TypeError('sync boom');
+                }
+
+                const result = await executeSingleBody(async function testBody(testScope: TestScope) {
+                    await testScope.assert.rejects(throwBeforePromise, { message: 'sync boom' });
+
+                    return testScope.assert.collect();
+                });
+
+                const outcome = firstFailOutcome(result);
+                scope.require.notNull(outcome);
+                const failure = firstBodyError(outcome);
+                scope.require.notNull(failure);
+                scope.assert.equal(failure.error.message, 'sync boom');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'execute() reports throws matcher field failures under one composite boundary',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const result = await executeSingleBody(function testBody(testScope: TestScope) {
+                    testScope.assert.throws(
+                        function throwWrongError() {
+                            throw new TypeError('actual');
+                        },
+                        { message: 'expected', type: RangeError },
+                        { message: 'throw contract' }
+                    );
+
+                    return testScope.assert.collect();
+                });
+                const outcome = firstFailOutcome(result);
+                scope.require.notNull(outcome);
+                const composite = firstCompositeCheck(outcome);
+                scope.require.notNull(composite);
+
+                scope.assert.equal(composite.summary, 'throw contract');
+                scope.assert.deepEqual(
+                    composite.children.map(function summaryOf(child) {
+                        return child.summary;
+                    }),
+                    [
+                        'Expected thrown value to be an instance of the constructor.',
+                        'Expected thrown value message to equal the string.'
+                    ]
+                );
+
+                return scope.assert.collect();
+            }
+        })
+    ]
 });
+
+await runIfMain(import.meta, testSuite, { reporters: [ createOverkillLineReporter() ] });

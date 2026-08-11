@@ -48,6 +48,10 @@ export const config = {
                 main: {
                     js: 'packages/engine/engine.entry-point.js',
                     declarationFile: 'packages/engine/engine.entry-point.d.ts'
+                },
+                rawComparison: {
+                    js: 'compare/raw-comparison.js',
+                    declarationFile: 'compare/raw-comparison.d.ts'
                 }
             },
             defaultModuleRoot: 'main',

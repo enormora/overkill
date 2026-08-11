@@ -1,6 +1,11 @@
-import assert from 'node:assert/strict';
 import ansiEscapes from 'ansi-escapes';
-import { registerTest } from '../test-support/register-test.ts';
+import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import {
+    createSuite as createOverkillSuite,
+    createTestCase as createOverkillTestCase,
+    runIfMain,
+    type TestScope as OverkillScope
+} from '@overkill-dev/engine';
 import {
     createTerminalProgressRenderer,
     type TerminalOutput,
@@ -51,94 +56,138 @@ function createFakeTerminal(columns: number): FakeTerminal {
     };
 }
 
-registerTest('visibleTerminalWidth() ignores ANSI escapes and counts Unicode display width', function () {
-    assert.equal(visibleTerminalWidth('\u{1B}[31m✓\u{1B}[39m漢'), 3);
+export const testSuite = createOverkillSuite({
+    name: 'source/reporters/terminal.test.ts',
+    metadata: {},
+    children: [
+        createOverkillTestCase({
+            name: 'visibleTerminalWidth() ignores ANSI escapes and counts Unicode display width',
+            metadata: {},
+            body(scope: OverkillScope) {
+                scope.assert.equal(visibleTerminalWidth('\u{1B}[31m✓\u{1B}[39m漢'), 3);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'terminal progress renderer redraws the full block on interactive resize',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const terminal = createFakeTerminal(4);
+                const renderer = createTerminalProgressRenderer({
+                    interactive: true,
+                    output: terminal.output
+                });
+
+                renderer.writeMark('a');
+                renderer.writeMark('b');
+                renderer.writeMark('c');
+                terminal.resize();
+
+                scope.assert.equal(terminal.text(), `abc${ansiEscapes.eraseLines(1)}ab\nc`);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'terminal progress renderer ignores resize before progress and after finish',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const terminal = createFakeTerminal(4);
+                const renderer = createTerminalProgressRenderer({
+                    interactive: true,
+                    output: terminal.output
+                });
+
+                terminal.resize();
+                renderer.writeMark('a');
+                renderer.finish();
+                terminal.resize();
+
+                scope.assert.equal(terminal.text(), 'a\n');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'terminal progress renderer does not emit cursor escapes in non-interactive output',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const terminal = createFakeTerminal(2);
+                const renderer = createTerminalProgressRenderer({
+                    interactive: false,
+                    output: terminal.output
+                });
+
+                renderer.writeMark('a');
+                renderer.writeMark('b');
+                renderer.writeMark('c');
+                terminal.resize();
+                renderer.finish();
+
+                scope.assert.equal(terminal.text(), 'ab\nc\n');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'terminal progress renderer falls back when output columns are invalid',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const terminal = createFakeTerminal(0);
+                const renderer = createTerminalProgressRenderer({
+                    interactive: false,
+                    output: terminal.output
+                });
+
+                renderer.writeMark('a');
+                renderer.writeMark('b');
+                renderer.writeMark('c');
+
+                scope.assert.equal(terminal.text(), 'abc');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'terminal progress renderer treats finish as idempotent',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const terminal = createFakeTerminal(4);
+                const renderer = createTerminalProgressRenderer({
+                    interactive: false,
+                    output: terminal.output
+                });
+
+                renderer.finish();
+                renderer.finish();
+                renderer.writeMark('a');
+
+                scope.assert.equal(terminal.text(), 'a');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'terminal progress renderer removes resize listener on dispose',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const terminal = createFakeTerminal(4);
+                const renderer = createTerminalProgressRenderer({
+                    interactive: true,
+                    output: terminal.output
+                });
+
+                scope.assert.equal(terminal.listenerCount(), 1);
+                renderer.dispose();
+                renderer.dispose();
+
+                scope.assert.equal(terminal.listenerCount(), 0);
+
+                return scope.assert.collect();
+            }
+        })
+    ]
 });
 
-registerTest('terminal progress renderer redraws the full block on interactive resize', function () {
-    const terminal = createFakeTerminal(4);
-    const renderer = createTerminalProgressRenderer({
-        interactive: true,
-        output: terminal.output
-    });
-
-    renderer.writeMark('a');
-    renderer.writeMark('b');
-    renderer.writeMark('c');
-    terminal.resize();
-
-    assert.equal(terminal.text(), `abc${ansiEscapes.eraseLines(1)}ab\nc`);
-});
-
-registerTest('terminal progress renderer ignores resize before progress and after finish', function () {
-    const terminal = createFakeTerminal(4);
-    const renderer = createTerminalProgressRenderer({
-        interactive: true,
-        output: terminal.output
-    });
-
-    terminal.resize();
-    renderer.writeMark('a');
-    renderer.finish();
-    terminal.resize();
-
-    assert.equal(terminal.text(), 'a\n');
-});
-
-registerTest('terminal progress renderer does not emit cursor escapes in non-interactive output', function () {
-    const terminal = createFakeTerminal(2);
-    const renderer = createTerminalProgressRenderer({
-        interactive: false,
-        output: terminal.output
-    });
-
-    renderer.writeMark('a');
-    renderer.writeMark('b');
-    renderer.writeMark('c');
-    terminal.resize();
-    renderer.finish();
-
-    assert.equal(terminal.text(), 'ab\nc\n');
-});
-
-registerTest('terminal progress renderer falls back when output columns are invalid', function () {
-    const terminal = createFakeTerminal(0);
-    const renderer = createTerminalProgressRenderer({
-        interactive: false,
-        output: terminal.output
-    });
-
-    renderer.writeMark('a');
-    renderer.writeMark('b');
-    renderer.writeMark('c');
-
-    assert.equal(terminal.text(), 'abc');
-});
-
-registerTest('terminal progress renderer treats finish as idempotent', function () {
-    const terminal = createFakeTerminal(4);
-    const renderer = createTerminalProgressRenderer({
-        interactive: false,
-        output: terminal.output
-    });
-
-    renderer.finish();
-    renderer.finish();
-    renderer.writeMark('a');
-
-    assert.equal(terminal.text(), 'a');
-});
-
-registerTest('terminal progress renderer removes resize listener on dispose', function () {
-    const terminal = createFakeTerminal(4);
-    const renderer = createTerminalProgressRenderer({
-        interactive: true,
-        output: terminal.output
-    });
-
-    assert.equal(terminal.listenerCount(), 1);
-    renderer.dispose();
-    renderer.dispose();
-
-    assert.equal(terminal.listenerCount(), 0);
-});
+await runIfMain(import.meta, testSuite, { reporters: [ createOverkillLineReporter() ] });

@@ -7,6 +7,7 @@ const configFiles = [
 const entryPointFiles = [ '^source/packages/.+/.+\\.entry-point\\.ts$', '^source/reporters/' ];
 const testSupportFiles = [ '^source/test-support/' ];
 const testFiles = [ '\\.(test|type-test)\\.ts$' ];
+const testAggregatorFiles = [ '^source/test-support/unit-suite-groups/' ];
 const excludedFiles = [ '^(\\./)?target/' ];
 
 const ignoreFromOrphans = [ ...configFiles, ...entryPointFiles, ...testFiles, ...testSupportFiles ];
@@ -59,6 +60,17 @@ export default {
             }
         },
         {
+            name: 'no-unaggregated-unit-tests',
+            severity: 'error',
+            from: {
+                pathNot: []
+            },
+            module: {
+                numberOfDependentsLessThan: 1,
+                path: '^source/(?!overkill\\.test\\.ts$)(?!integration-tests/).+\\.test\\.ts$'
+            }
+        },
+        {
             name: 'no-deprecated-npm',
             severity: 'error',
             from: {},
@@ -101,7 +113,7 @@ export default {
             name: 'not-test-file-import',
             severity: 'error',
             from: {
-                pathNot: testFiles
+                pathNot: [ ...testFiles, ...testAggregatorFiles ]
             },
             to: {
                 path: testFiles

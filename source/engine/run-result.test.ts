@@ -1,7 +1,12 @@
-import assert from 'node:assert/strict';
+import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import {
+    createSuite as createOverkillSuite,
+    createTestCase as createOverkillTestCase,
+    runIfMain,
+    type TestScope as OverkillScope
+} from '@overkill-dev/engine';
 import type { FailedCheck, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
-import { registerTest } from '../test-support/register-test.ts';
 import { verdictFromOutcome, type TestOutcome } from './run-result.ts';
 
 type FailedCheckFixture = {
@@ -30,11 +35,25 @@ function createFailedCheck(): FailedCheckFixture {
     };
 }
 
-registerTest('verdictFromOutcome() returns the outcome kind as the verdict', function () {
-    const outcome: TestOutcome = {
-        failures: [ { checks: [ createFailedCheck() ], kind: 'assertion' } ],
-        kind: 'fail'
-    };
+export const testSuite = createOverkillSuite({
+    name: 'source/engine/run-result.test.ts',
+    metadata: {},
+    children: [
+        createOverkillTestCase({
+            name: 'verdictFromOutcome() returns the outcome kind as the verdict',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const outcome: TestOutcome = {
+                    failures: [ { checks: [ createFailedCheck() ], kind: 'assertion' } ],
+                    kind: 'fail'
+                };
 
-    assert.equal(verdictFromOutcome(outcome), 'fail');
+                scope.assert.equal(verdictFromOutcome(outcome), 'fail');
+
+                return scope.assert.collect();
+            }
+        })
+    ]
 });
+
+await runIfMain(import.meta, testSuite, { reporters: [ createOverkillLineReporter() ] });
