@@ -84,8 +84,8 @@ entrypoints rather than as hidden boolean flags.
 
 ## Configuration
 
-| Flag              | Behavior                                                                                       | Reference                                           |
-| ----------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| Flag              | Behavior                                                                                           | Reference                                         |
+| ----------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
 | `--config <path>` | Load project policy from an explicit config file instead of discovering root `overkill.config.ts`. | [Configuration](../architecture/configuration.md) |
 
 `--config` changes where persistent project policy is loaded from. It is not a
