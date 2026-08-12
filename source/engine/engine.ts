@@ -5,17 +5,20 @@ import { createRunIfMain, type RunIfMain } from './run-if-main.ts';
 import {
     createTestNodeOwner,
     createTestNodeFactory,
+    type RootOptions,
     type Suite,
     type SuiteOptions,
     type Table,
     type TableOptions,
     type TestCase,
     type TestCaseOptions,
-    type TestNode
+    type TestNode,
+    type TestRoot
 } from './test-node.ts';
 import { createTestPlanFactory, type TestPlanFactory } from './test-plan.ts';
 
 export type Engine = {
+    readonly createRoot: (options: RootOptions) => TestRoot;
     readonly createSuite: (options: SuiteOptions) => Suite;
     readonly createTable: (options: TableOptions) => Table;
     readonly createTestCase: (options: TestCaseOptions) => TestCase;
@@ -46,6 +49,7 @@ export function createEngine(dependencies: EngineDependencies): Engine {
     const createTestPlan = createTestPlanFactory(owner, constructedNodes);
 
     return {
+        createRoot: nodeFactory.createRoot,
         createSuite: nodeFactory.createSuite,
         createTable: nodeFactory.createTable,
         createTestCase: nodeFactory.createTestCase,
@@ -53,6 +57,7 @@ export function createEngine(dependencies: EngineDependencies): Engine {
         execute,
         formatCaseId,
         runIfMain: createRunIfMain({
+            createRoot: nodeFactory.createRoot,
             createTestPlan,
             execute,
             nodeVersion: dependencies.nodeVersion,

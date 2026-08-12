@@ -27,7 +27,7 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
 
     return await engine.execute(
         engine.createTestPlan(
-            engine.createSuite({
+            engine.createRoot({
                 children: [
                     engine.createTestCase({
                         body,
@@ -52,7 +52,7 @@ export const testSuite = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const testPlan = engine.createTestPlan(
-                    engine.createSuite({
+                    engine.createRoot({
                         children: [
                             engine.createTestCase({
                                 body(testScope: TestScope) {
@@ -80,16 +80,16 @@ export const testSuite = createOverkillSuite({
 
                 scope.assert.deepEqual(
                     {
-                        rootCounts: result.bySuite.root,
+                        rootCounts: result.bySuite.root ?? null,
                         summary: result.summary,
                         verdicts: result.perTest.map(function toVerdict(testResult) {
                             return testResult.verdict;
                         })
                     },
                     {
-                        rootCounts: { discovered: 2, executed: 2, planned: 2 },
+                        rootCounts: null,
                         summary: {
-                            defined: 3,
+                            defined: 2,
                             discovered: 2,
                             failed: 1,
                             inconclusive: 0,
@@ -123,7 +123,7 @@ export const testSuite = createOverkillSuite({
                     name: 'unused rows'
                 });
                 const testPlan = engine.createTestPlan(
-                    engine.createSuite({
+                    engine.createRoot({
                         children: [ reached ],
                         metadata: {},
                         name: 'root'
@@ -133,7 +133,7 @@ export const testSuite = createOverkillSuite({
                 const result = await engine.execute(testPlan);
 
                 scope.assert.deepEqual(result.orphans, [ { file: null, kind: 'table', name: 'unused rows' } ]);
-                scope.assert.equal(result.summary.defined, 3);
+                scope.assert.equal(result.summary.defined, 2);
                 scope.assert.equal(result.summary.discovered, 1);
                 scope.assert.equal(result.summary.planned, 1);
 
@@ -146,7 +146,7 @@ export const testSuite = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const testPlan = engine.createTestPlan(
-                    engine.createSuite({
+                    engine.createRoot({
                         children: [
                             engine.createTestCase({
                                 body(testScope: TestScope) {
@@ -188,7 +188,7 @@ export const testSuite = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const testPlan = engine.createTestPlan(
-                    engine.createSuite({
+                    engine.createRoot({
                         children: [
                             engine.createTestCase({
                                 body(testScope) {
@@ -275,7 +275,7 @@ export const testSuite = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const testPlan = engine.createTestPlan(
-                    engine.createSuite({
+                    engine.createRoot({
                         children: [
                             engine.createTestCase({
                                 body(testScope: TestScope) {
@@ -307,7 +307,7 @@ export const testSuite = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const testPlan = engine.createTestPlan(
-                    engine.createSuite({
+                    engine.createRoot({
                         children: [
                             engine.createTestCase({
                                 body(testScope: TestScope) {

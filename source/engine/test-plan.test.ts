@@ -23,7 +23,7 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
-                const root = engine.createSuite({
+                const root = engine.createRoot({
                     children: [
                         engine.createTestCase({
                             body(testScope) {
@@ -68,19 +68,19 @@ export const testSuite = createOverkillSuite({
                     testCaseShape,
                     [
                         {
-                            id: { file: null, name: 'first', params: null, suite: [ 'root' ] },
+                            id: { file: null, name: 'first', params: null, suite: [] },
                             metadata: { inherited: true, local: true },
-                            suitePath: [ 'root' ]
+                            suitePath: []
                         },
                         {
-                            id: { file: null, name: 'row 1', params: null, suite: [ 'root', 'rows' ] },
+                            id: { file: null, name: 'row 1', params: null, suite: [ 'rows' ] },
                             metadata: { inherited: true, row: 1, table: true },
-                            suitePath: [ 'root', 'rows' ]
+                            suitePath: [ 'rows' ]
                         }
                     ]
                 );
                 scope.assert.deepEqual(testPlan.discoveredCases, testPlan.cases);
-                scope.assert.equal(testPlan.defined, 3);
+                scope.assert.equal(testPlan.defined, 2);
                 scope.assert.deepEqual(testPlan.orphans, []);
 
                 return scope.assert.collect();
@@ -112,7 +112,7 @@ export const testSuite = createOverkillSuite({
                     metadata: {},
                     name: 'unused suite'
                 });
-                const root = engine.createSuite({
+                const root = engine.createRoot({
                     children: [ reached ],
                     metadata: {},
                     name: 'root'
@@ -120,7 +120,7 @@ export const testSuite = createOverkillSuite({
 
                 const testPlan = engine.createTestPlan(root);
 
-                scope.assert.equal(testPlan.defined, 4);
+                scope.assert.equal(testPlan.defined, 3);
                 scope.assert.deepEqual(testPlan.orphans, [
                     { file: null, kind: 'test', name: 'unused test' },
                     { file: null, kind: 'suite', name: 'unused suite' }
@@ -134,7 +134,7 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
-                const root = engine.createSuite({
+                const root = engine.createRoot({
                     children: [],
                     metadata: {},
                     name: 'root'
@@ -142,7 +142,37 @@ export const testSuite = createOverkillSuite({
 
                 scope.assert.throws(function createPlanWithEmptySuite() {
                     engine.createTestPlan(root);
-                }, { message: 'Suite must contain at least one child: root.' });
+                }, { message: 'Root must contain at least one child: root.' });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'createTestPlan() rejects reachable empty nested suites',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const engine = createEngine();
+                const root = engine.createRoot({
+                    children: [
+                        engine.createSuite({
+                            children: [
+                                engine.createSuite({
+                                    children: [],
+                                    metadata: {},
+                                    name: 'empty'
+                                })
+                            ],
+                            metadata: {},
+                            name: 'parent'
+                        })
+                    ],
+                    metadata: {},
+                    name: 'root'
+                });
+
+                scope.assert.throws(function createPlanWithEmptySuite() {
+                    engine.createTestPlan(root);
+                }, { message: 'Suite must contain at least one child: parent > empty.' });
 
                 return scope.assert.collect();
             }
@@ -152,7 +182,7 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
-                const root = engine.createSuite({
+                const root = engine.createRoot({
                     children: [
                         engine.createTable({
                             cases: [],
@@ -166,7 +196,7 @@ export const testSuite = createOverkillSuite({
 
                 scope.assert.throws(function createPlanWithEmptyTable() {
                     engine.createTestPlan(root);
-                }, { message: 'Table must contain at least one case: root > rows.' });
+                }, { message: 'Table must contain at least one case: rows.' });
 
                 return scope.assert.collect();
             }
@@ -176,7 +206,7 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
-                const root = engine.createSuite({
+                const root = engine.createRoot({
                     children: [
                         engine.createTestCase({
                             body(testScope) {
@@ -201,7 +231,28 @@ export const testSuite = createOverkillSuite({
 
                 scope.assert.throws(function createPlanWithDuplicateIds() {
                     engine.createTestPlan(root);
-                }, { message: 'Duplicate test case identity: root > same.' });
+                }, { message: 'Duplicate test case identity: same.' });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'createTestPlan() rejects non-root test nodes',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const engine = createEngine();
+                const testCase = engine.createTestCase({
+                    body(testScope) {
+                        testScope.assert.true(true, { message: 'passes' });
+                        return testScope.assert.collect();
+                    },
+                    metadata: {},
+                    name: 'passes'
+                });
+
+                scope.assert.throws(function createPlanFromTestCase() {
+                    engine.createTestPlan(testCase as never);
+                }, { message: 'Test plan root must be an engine-created TestRoot value.' });
 
                 return scope.assert.collect();
             }
@@ -212,7 +263,7 @@ export const testSuite = createOverkillSuite({
             body(scope: OverkillScope) {
                 const firstEngine = createEngine();
                 const secondEngine = createEngine();
-                const root = firstEngine.createSuite({
+                const root = firstEngine.createRoot({
                     children: [],
                     metadata: {},
                     name: 'root'

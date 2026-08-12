@@ -3,6 +3,7 @@ import { defineCompositeAssertion } from '@overkill-dev/assert';
 import * as doublesPackage from '@overkill-dev/doubles';
 import {
     createEngine,
+    createRoot,
     createSuite,
     createTable,
     createTestCase,
@@ -16,6 +17,8 @@ import {
     type RunResult,
     type SourceLocation,
     type TestCase,
+    type TestNode,
+    type TestRoot,
     type TestScope
 } from '@overkill-dev/engine';
 import { createLineReporter } from '@overkill-dev/reporter-line';
@@ -75,8 +78,8 @@ function locationColumnType(location: SourceLocation | null): string {
 const smokeResult = defineCompositeAssertion({
     name: 'smoke result',
     assert(check, result: RunResult, expectedDefined: number) {
-        const passingCaseId = { file: null, name: 'passes', params: null, suite: [ 'root' ] };
-        const failingCaseId = { file: null, name: 'fails', params: null, suite: [ 'root' ] };
+        const passingCaseId = { file: null, name: 'passes', params: null, suite: [] };
+        const failingCaseId = { file: null, name: 'fails', params: null, suite: [] };
         const location = failedAssertionLocation(result);
         const packagedFile = packagedSourceFile(location);
         const rootCounts = result.bySuite.root ?? null;
@@ -96,9 +99,7 @@ const smokeResult = defineCompositeAssertion({
             check.equal(result.summary.planned, 2),
             check.equal(result.summary.passed, 1),
             check.equal(result.summary.failed, 1),
-            check.equal(rootCounts?.discovered, 2),
-            check.equal(rootCounts?.executed, 2),
-            check.equal(rootCounts?.planned, 2),
+            check.equal(rootCounts, null),
             check.match(
                 packagedFile,
                 /target\/build\/source\/integration-tests\/package-smoke\/engine-direct-execution\.test\.js$/u
@@ -140,7 +141,7 @@ const smokeResult = defineCompositeAssertion({
                 result.perTest.map(function toFormattedId(testResult) {
                     return formatCaseId(testResult.id);
                 }),
-                [ 'root > passes', 'root > fails' ]
+                [ 'passes', 'fails' ]
             )
         ]);
     }
@@ -170,6 +171,14 @@ function createSmokeCase(engine: Engine, definition: SmokeCaseDefinition): TestC
     });
 }
 
+function createSmokeRoot(children: readonly TestNode[]): TestRoot {
+    return createRoot({
+        children,
+        metadata: {},
+        name: 'root'
+    });
+}
+
 async function executeSmokePlan(engine: Engine): Promise<RunResult> {
     const cases = [
         smokeCaseDefinitionFactory.build(),
@@ -179,7 +188,7 @@ async function executeSmokePlan(engine: Engine): Promise<RunResult> {
             name: 'fails'
         })
     ];
-    const root = engine.createSuite({
+    const root = engine.createRoot({
         children: cases.map(function toSmokeCase(smokeCase) {
             return createSmokeCase(engine, smokeCase);
         }),
@@ -202,13 +211,14 @@ export const testSuite = createSuite({
                     createSuite,
                     createTable,
                     createTestCase,
+                    createRoot,
                     createTestPlan,
                     execute,
                     formatCaseId,
                     runIfMain
                 };
 
-                scope.assert(smokeResult, await executeSmokePlan(topLevelEngine), 9);
+                scope.assert(smokeResult, await executeSmokePlan(topLevelEngine), 8);
 
                 return scope.assert.collect();
             }
@@ -239,7 +249,7 @@ export const testSuite = createSuite({
             name: 'consumer imports createEngine() and executes a TestPlan',
             metadata: {},
             async body(scope: TestScope) {
-                scope.assert(smokeResult, await executeSmokePlan(createEngine()), 3);
+                scope.assert(smokeResult, await executeSmokePlan(createEngine()), 2);
 
                 return scope.assert.collect();
             }
@@ -256,7 +266,7 @@ export const testSuite = createSuite({
                     metadata: {},
                     name: 'uses assert package'
                 });
-                const result = await execute(createTestPlan(testCase));
+                const result = await execute(createTestPlan(createSmokeRoot([ testCase ])));
 
                 scope.assert.equal(result.summary.passed, 1);
                 scope.assert.equal(result.summary.failed, 0);
@@ -309,7 +319,7 @@ export const testSuite = createSuite({
                     metadata: {},
                     name: 'uses doubles assertions'
                 });
-                const result = await execute(createTestPlan(testCase));
+                const result = await execute(createTestPlan(createSmokeRoot([ testCase ])));
 
                 scope.assert.deepEqual(
                     {

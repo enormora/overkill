@@ -92,7 +92,12 @@ event and result delivery.
 
 ```ts
 type ReporterEvent =
-    | { kind: 'run-start'; facts: RunFacts; startedAt: string; }
+    | {
+        kind: 'run-start';
+        facts: RunFacts;
+        root: { name: string; metadata: Metadata; };
+        startedAt: string;
+    }
     | { kind: 'suite-start'; suitePath: ReadonlyArray<string>; }
     | { kind: 'test-start'; case: CaseId; attempt: number; }
     | { kind: 'test-progress'; case: CaseId; attempt: number; note: string; }
@@ -113,9 +118,10 @@ Each event carries enough structured data that a reporter never has
 to parse another reporter's output. Event identity is via `kind`;
 new event variants are an additive change.
 
-`suite-start` and `suite-end` identify the grouping by `suitePath`.
-Tables contribute path segments because they are named groupings in
-the resolved plan and in `RunResult.bySuite`.
+`run-start.root` carries the execution root name and metadata for display.
+The root is not a suite path segment. `suite-start` and `suite-end` identify
+visible groupings by `suitePath`. Tables contribute path segments because
+they are named groupings in the resolved plan and in `RunResult.bySuite`.
 
 `test-progress` is intentionally low-detail — just an opaque `note`
 string. Reporters that want richer progress data attach the

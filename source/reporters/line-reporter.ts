@@ -55,7 +55,9 @@ function formatTestResult(id: CaseId, outcome: TestOutcome, wallTimeMs: number):
 }
 
 function formatSuiteName(event: Extract<ReporterEvent, { readonly kind: 'suite-start'; }>): string {
-    return event.suitePath.at(-1) ?? '<root>';
+    return event.suitePath.reduce(function selectLastSuiteName(_previous, suiteName) {
+        return suiteName;
+    });
 }
 
 function formatOrphan(orphan: OrphanedNode): string {
@@ -137,7 +139,7 @@ export function createLineReporter(dependencies: LineReporterDependencies): Real
 
         async onEvent(event) {
             if (event.kind === 'run-start') {
-                terminal.line(infoSymbol, 'Test run started');
+                terminal.line(infoSymbol, `Test run started: ${event.root.name}`);
             } else if (event.kind === 'suite-start') {
                 logSuiteStart(event);
             } else if (event.kind === 'suite-end') {

@@ -24,7 +24,7 @@ the doc does not blur canonical shared types with illustrative sample names.
 ```ts
 type TestId = {
     readonly file: string | null; // canonical source file path, repository-relative; null when unknown to engine
-    readonly suite: ReadonlyArray<string>; // ordered suite names, root to leaf
+    readonly suite: ReadonlyArray<string>; // ordered visible suite names, top-level suite to leaf
     readonly name: string; // test name within its parent
 };
 
@@ -71,6 +71,13 @@ declare const testNodeBrand: unique symbol;
 
 type TestNode = (TestCase | Suite | Table) & {
     readonly [testNodeBrand]: true;
+};
+
+type TestRoot = {
+    readonly kind: 'root';
+    readonly name: string;
+    readonly metadata?: Metadata;
+    readonly children: ReadonlyArray<TestNode>;
 };
 
 type TestCase = {
@@ -457,6 +464,7 @@ type RunIfMainOptions = {
 };
 
 type TestFacade = {
+    readonly root: (name: string, children: ReadonlyArray<TestNode>) => TestRoot;
     readonly test: (name: string, body: TestBody) => TestCase;
     readonly suite: (name: string, children: ReadonlyArray<TestNode>) => Suite;
     readonly table: (options: {
@@ -477,9 +485,11 @@ Canonical: [Assertions And Results](../authoring/assertions-and-results.md).
 ## Run Request, Resolution, And Record
 
 Direct engine consumers can create `TestCase` values with `createTestCase`,
-attach them to a root `Suite` with `createSuite`, build the executable
+attach them to a `TestRoot` with `createRoot`, build the executable
 `TestPlan` with `createTestPlan(root)`, then pass it to
-`execute(testPlan): Promise<RunResult>`.
+`execute(testPlan): Promise<RunResult>`. `TestRoot` carries run-level name
+and metadata. It is not a `TestNode` and does not contribute to
+`CaseId.suite`, `suitePath`, or `RunResult.bySuite`.
 
 ```ts
 type RunConfig = {
@@ -545,6 +555,7 @@ type TestPlan = {
     readonly discoveredCases: NonEmptyReadonlyArray<TestPlanCase>;
     readonly cases: NonEmptyReadonlyArray<TestPlanCase>;
     readonly orphans: ReadonlyArray<{ file: string | null; name: string; kind: 'test' | 'suite' | 'table'; }>;
+    readonly root: { readonly name: string; readonly metadata: Metadata; };
 };
 
 type RunFacts = {

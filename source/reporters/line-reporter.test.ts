@@ -26,23 +26,22 @@ function lineReporterWithLog(log: Log): RealTimeReporter {
 const errorSymbol = colors.red(figures.cross);
 const infoSymbol = colors.cyan(figures.info);
 const successSymbol = colors.green(figures.tick);
-const failingCaseId: CaseId = { file: null, name: 'fails', params: null, suite: [ 'root' ] };
-const passingCaseId: CaseId = { file: null, name: 'passes', params: null, suite: [ 'root' ] };
-const skippedCaseId: CaseId = { file: null, name: 'skips', params: null, suite: [ 'root' ] };
-const inconclusiveCaseId: CaseId = { file: null, name: 'inconclusive', params: null, suite: [ 'root' ] };
+const failingCaseId: CaseId = { file: null, name: 'fails', params: null, suite: [] };
+const passingCaseId: CaseId = { file: null, name: 'passes', params: null, suite: [] };
+const skippedCaseId: CaseId = { file: null, name: 'skips', params: null, suite: [] };
+const inconclusiveCaseId: CaseId = { file: null, name: 'inconclusive', params: null, suite: [] };
 
 async function reportNestedSuiteRun(reporter: RealTimeReporter): Promise<void> {
-    await reporter.onEvent({ kind: 'suite-start', suitePath: [ 'root' ] });
-    await reporter.onEvent({ kind: 'suite-start', suitePath: [ 'root', 'rows' ] });
+    await reporter.onEvent({ kind: 'suite-start', suitePath: [ 'rows' ] });
     await reporter.onEvent({
         attempt: 0,
-        case: { file: null, name: 'row 1', params: 'value=1', suite: [ 'root', 'rows' ] },
+        case: { file: null, name: 'row 1', params: 'value=1', suite: [ 'rows' ] },
         kind: 'test-end',
         outcome: { kind: 'pass' },
         verdict: 'pass',
         wallTimeMs: 7
     });
-    await reporter.onEvent({ kind: 'suite-end', suitePath: [ 'root', 'rows' ] });
+    await reporter.onEvent({ kind: 'suite-end', suitePath: [ 'rows' ] });
     await reporter.onEvent({
         attempt: 0,
         case: passingCaseId,
@@ -51,7 +50,6 @@ async function reportNestedSuiteRun(reporter: RealTimeReporter): Promise<void> {
         verdict: 'pass',
         wallTimeMs: 2
     });
-    await reporter.onEvent({ kind: 'suite-end', suitePath: [ 'root' ] });
 }
 
 export const testSuite = createOverkillSuite({
@@ -68,11 +66,15 @@ export const testSuite = createOverkillSuite({
                 await reporter.onEvent({
                     facts: {},
                     kind: 'run-start',
+                    root: { metadata: {}, name: 'file:///source/reporters/line-reporter.test.ts' },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
 
                 scope.assert(doubleUsage.callCount, log, 1);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ infoSymbol, 'Test run started' ]);
+                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
+                    infoSymbol,
+                    'Test run started: file:///source/reporters/line-reporter.test.ts'
+                ]);
 
                 return scope.assert.collect();
             }
@@ -388,11 +390,10 @@ export const testSuite = createOverkillSuite({
 
                 await reportNestedSuiteRun(reporter);
 
-                scope.assert(doubleUsage.callCount, log, 4);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ infoSymbol, 'root' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ infoSymbol, '  rows' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ successSymbol, '    row 1 [value=1] (7 ms)' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 3, [ successSymbol, '  passes (2 ms)' ]);
+                scope.assert(doubleUsage.callCount, log, 3);
+                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ infoSymbol, 'rows' ]);
+                scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ successSymbol, '  row 1 [value=1] (7 ms)' ]);
+                scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ successSymbol, 'passes (2 ms)' ]);
 
                 return scope.assert.collect();
             }
@@ -444,7 +445,10 @@ export const testSuite = createOverkillSuite({
                 });
                 const { onFinish } = reporter;
 
-                scope.require.notNull(onFinish);
+                if (onFinish === null) {
+                    throw new TypeError('Expected line reporter to expose onFinish.');
+                }
+
                 await onFinish(runResult);
 
                 scope.assert(doubleUsage.callCount, log, 1);
@@ -500,7 +504,10 @@ export const testSuite = createOverkillSuite({
 
                 const { onFinish } = reporter;
 
-                scope.require.notNull(onFinish);
+                if (onFinish === null) {
+                    throw new TypeError('Expected line reporter to expose onFinish.');
+                }
+
                 await onFinish(runResultFactory.build({
                     orphans: [
                         {

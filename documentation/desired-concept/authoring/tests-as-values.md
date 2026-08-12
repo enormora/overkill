@@ -119,8 +119,8 @@ export const testNode = suite('users', [
 ```
 
 That temporary detachment is a feature, not a misuse. The semantic boundary
-is **reachability from the exported root**: only nodes reachable from `testNode`
-participate in the run. Collection, filtering, sharding, and plan freeze
+is **reachability from the execution root**: only nodes reachable from the
+root used for the run participate. Collection, filtering, sharding, and plan freeze
 are described in
 [Composition Order](../architecture/composition-order.md).
 
@@ -181,13 +181,14 @@ import { testNode as users } from './users.test.ts';
 export const testNode = suite('all', [ users, orders ]);
 
 await runIfMain(import.meta, testNode, {
+    root: { name: 'all', metadata: {} },
     reporters: [ createDotReporter() ]
 });
 ```
 
 The aggregate entrypoint is ordinary tests-as-values composition. Leaf files
-keep exporting their `testNode`; only the aggregate file needs `runIfMain(...)` if
-the team wants one bare-`node` command for many files.
+keep exporting composable `TestNode` values; `runIfMain(...)` wraps the chosen
+node in an execution root for direct Node runs.
 
 ## Why This Is Better
 
@@ -226,7 +227,7 @@ This is valid and intentional. The runner should not treat every constructed
 node as an obligation to appear in every final suite tree. What matters is:
 
 - nodes are plain values that may be named, stored, exported, and reused
-- only nodes reachable from the exported root are part of the run
+- only nodes reachable from the execution root are part of the run
 - unreachable nodes may be a mistake, but they may also be a legitimate
   unused subset of a reusable catalog
 

@@ -39,7 +39,12 @@ const inconclusiveCaseId: CaseId = { file: null, name: 'unknown', params: null, 
 const skippedCaseId: CaseId = { file: null, name: 'skip me', params: null, suite: [ 'root' ] };
 
 async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
-    await reporter.onEvent({ facts: {}, kind: 'run-start', startedAt: '2026-07-15T00:00:00.000Z' });
+    await reporter.onEvent({
+        facts: {},
+        kind: 'run-start',
+        root: { metadata: {}, name: 'root' },
+        startedAt: '2026-07-15T00:00:00.000Z'
+    });
     await reporter.onEvent({
         attempt: 0,
         case: passingCaseId,

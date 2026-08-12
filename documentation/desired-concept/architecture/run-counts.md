@@ -144,9 +144,10 @@ mechanism is described in [Orphan Detection](#orphan-detection).
 
 ### `bySuite`
 
-Flat map keyed by suite path. Every named grouping in the resolved
-tree gets an entry — root suite, intermediate suites, leaf suites, and
-tables. Tables are included because they are named groupings that
+Flat map keyed by suite path. Every visible named grouping below the
+execution root gets an entry: intermediate suites, leaf suites, and tables.
+The execution root is run metadata, not a suite, so it does not appear in
+`bySuite`. Tables are included because they are named groupings that
 expand to multiple cases; "did all my round-trip cases run?" is the
 same shape of question as "did all my CRUD tests run?".
 

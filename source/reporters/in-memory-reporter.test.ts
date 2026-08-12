@@ -26,6 +26,7 @@ export const testSuite = createOverkillSuite({
                 const event = {
                     facts: {},
                     kind: 'run-start',
+                    root: { metadata: {}, name: 'root' },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 } as const;
                 const { onFinish } = reporter;
@@ -71,6 +72,7 @@ export const testSuite = createOverkillSuite({
                 const event = {
                     facts: {},
                     kind: 'run-start',
+                    root: { metadata: {}, name: 'root' },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 } as const;
 

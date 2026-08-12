@@ -10,12 +10,17 @@ import { createInMemoryFinalResultReporter } from '../reporters/in-memory-report
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { createEngine, type Engine } from './engine.ts';
 import { createExecute } from './execution.ts';
-import { createReporterDispatcher, type FinalResultReporter, type RealTimeReporter } from './reporter.ts';
+import {
+    createReporterDispatcher,
+    type FinalResultReporter,
+    type ReporterDispatcher,
+    type RealTimeReporter
+} from './reporter.ts';
 import type { TestPlan } from './test-plan.ts';
 
 function createPassingPlan(engine: Engine): TestPlan {
     return engine.createTestPlan(
-        engine.createSuite({
+        engine.createRoot({
             children: [
                 engine.createTestCase({
                     body(testScope) {
@@ -281,6 +286,40 @@ export const testSuite = createOverkillSuite({
                         'first: cleanup failed'
                     ]
                 );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'execute() does not retry disposal after disposal throws',
+            metadata: {},
+            body: async function body(scope: OverkillScope) {
+                const engine = createTestEngine();
+                const wallClock = createDeterministicWallClock();
+                let disposeCalls = 0;
+                const reporterDispatcher: ReporterDispatcher = {
+                    async disposeReporters() {
+                        disposeCalls += 1;
+
+                        throw new Error('disposal transport failed');
+                    },
+                    async reportEvent() {
+                        return [];
+                    },
+                    async reportResult() {
+                        return [];
+                    }
+                };
+                const execute = createExecute({ reporterDispatcher, wallClock });
+
+                await scope.assert.rejects(async function executeWithThrowingDisposal() {
+                    await execute(createPassingPlan(engine), {
+                        reporters: [],
+                        runFacts: {},
+                        startedAt: '2026-07-15T00:00:00.000Z'
+                    });
+                }, { message: 'disposal transport failed' });
+                scope.assert.equal(disposeCalls, 1);
 
                 return scope.assert.collect();
             }
