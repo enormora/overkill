@@ -13,6 +13,7 @@ import { execute } from '@overkill-dev/engine';
 import { createLineReporter } from '@overkill-dev/reporter-line';
 
 await execute(testPlan, {
+    execution: { mode: 'serial-in-process' },
     reporters: [ createLineReporter() ],
     runFacts: {},
     startedAt: new Date().toISOString()

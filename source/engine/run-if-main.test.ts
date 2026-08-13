@@ -151,6 +151,7 @@ export const testSuite = createOverkillSuite({
                 const executeOptions = firstExecute.arguments[1];
                 scope.require.defined(executeOptions);
                 scope.assert.deepEqual(executeOptions, {
+                    execution: { mode: 'serial-in-process' },
                     reporters: [],
                     runFacts: { nodeVersion: '26.1.1' },
                     startedAt: '2026-07-15T12:30:00.000Z'
@@ -187,6 +188,7 @@ export const testSuite = createOverkillSuite({
                 const executeOptions = firstExecute.arguments[1];
                 scope.require.defined(executeOptions);
                 scope.assert.deepEqual(executeOptions, {
+                    execution: { mode: 'serial-in-process' },
                     reporters: [ reporter ],
                     runFacts: {
                         nodeVersion: '26.1.1',

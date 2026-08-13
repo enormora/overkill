@@ -36,8 +36,10 @@ A reproducible run captures, at minimum:
 - the Overkill engine and package versions
 
 Together these form a `RunFacts` value preserved as part of the run record.
-The executable `TestPlan` is in-memory only because it contains callable
-test bodies.
+`RunFacts` is a serializable snapshot with run-level domains and a
+`cases` projection. It is not attached to each executable case. The
+executable `TestPlan` is in-memory only because it contains callable test
+bodies.
 
 For sharded CI runs, the baseline model is that each shard independently
 reconstructs the same `RunFacts` and then executes only its own shard
@@ -49,11 +51,11 @@ it is an optimization, not the required cross-CI baseline.
 ```ts
 type RunRecord = {
     readonly id: string; // ULID
-    readonly seed: bigint;
+    readonly seed: string;
     readonly facts: RunFacts;
     readonly identities: ReadonlyArray<CaseId>;
     readonly runtime: ResolvedRuntime; // see types-index.md
-    readonly versions: { engine: string; node: string; packages: ReadonlyMap<string, string>; };
+    readonly versions: { engine: string; node: string; packages: Readonly<Record<string, string>>; };
     readonly startedAt: string; // ISO 8601
     readonly result?: RunResult; // populated when the run completes
 };

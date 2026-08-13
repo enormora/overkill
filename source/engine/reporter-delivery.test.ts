@@ -114,6 +114,7 @@ export const testSuite = createOverkillSuite({
                 };
 
                 const result = await engine.execute(createPassingPlan(engine), {
+                    execution: { mode: 'serial-in-process' },
                     reporters: [ failingReporter, observer ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
@@ -164,6 +165,7 @@ export const testSuite = createOverkillSuite({
                 };
 
                 const result = await engine.execute(createPassingPlan(engine), {
+                    execution: { mode: 'serial-in-process' },
                     reporters: [ failingReporter, runnerErrorFailingReporter, observer ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
@@ -204,6 +206,7 @@ export const testSuite = createOverkillSuite({
                 };
 
                 const execution = engine.execute(createPassingPlan(engine), {
+                    execution: { mode: 'serial-in-process' },
                     reporters: [ hangingReporter, createInMemoryRealTimeReporter() ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
@@ -237,6 +240,7 @@ export const testSuite = createOverkillSuite({
                 };
 
                 const result = await engine.execute(createPassingPlan(engine), {
+                    execution: { mode: 'serial-in-process' },
                     reporters: [ observer, failingFinalReporter ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
@@ -279,6 +283,7 @@ export const testSuite = createOverkillSuite({
                 };
 
                 await engine.execute(createPassingPlan(engine), {
+                    execution: { mode: 'serial-in-process' },
                     reporters: [ reporter ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
@@ -308,6 +313,7 @@ export const testSuite = createOverkillSuite({
                 };
 
                 const result = await engine.execute(createPassingPlan(engine), {
+                    execution: { mode: 'serial-in-process' },
                     reporters: [ failingReporter ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'

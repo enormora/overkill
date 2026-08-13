@@ -493,10 +493,8 @@ and metadata. It is not a `TestNode` and does not contribute to
 
 ```ts
 type RunConfig = {
-    readonly include: ReadonlyArray<string>;
-    readonly profiles: ReadonlyMap<RunnerProfileName, RunnerProfile>;
     readonly reporters: ReadonlyArray<Reporter>;
-    readonly coverage: CoveragePolicy | null;
+    readonly loader: { readonly stripMode: 'strip-only' | 'transform'; readonly sourceMaps: boolean; };
     readonly runtimeStateDir: string;
 };
 
@@ -509,35 +507,34 @@ declare function defineConfig(config: RunConfig): RunConfig;
 declare function loadRunConfig(request: LoadRunConfigRequest): Promise<RunConfig>;
 
 type RunRequest = {
-    readonly paths?: ReadonlyArray<string>;
-    readonly selection?: {
-        readonly filter?: string;
-        readonly name?: string;
-        readonly file?: string;
-        readonly id?: CaseId;
-        readonly lastFailed?: boolean;
-    };
-    readonly shard?: { readonly index: number; readonly total: number; };
-    readonly profile?: RunnerProfileName;
-    readonly execution?: {
-        readonly mode?: string; // see runtime-behavior.md
-        readonly workers?: number;
-    };
-    readonly coverage?: boolean;
-    readonly capture?: 'buffered' | 'live';
+    readonly paths: ReadonlyArray<string>;
+    readonly selection:
+        | { readonly kind: 'all'; }
+        | { readonly expression: string; readonly kind: 'filter'; }
+        | { readonly id: CaseId; readonly kind: 'case-id'; }
+        | { readonly kind: 'file'; readonly path: string; }
+        | { readonly kind: 'last-failed'; }
+        | { readonly kind: 'name'; readonly pattern: string; };
+    readonly shard: { readonly index: number; readonly total: number; };
+    readonly profile: RunnerProfileName;
+    readonly execution: { readonly mode: 'concurrent-in-process'; };
+    readonly baselineUpdateMode: 'none' | 'update' | 'apply' | 'bootstrap' | 'diff';
+    readonly coverage: boolean;
+    readonly capture: 'buffered' | 'live';
     readonly resourceBudgets: ResourceBudgetOverrides | null;
-    readonly seed?: bigint;
-    readonly order?: 'seeded' | 'lexical';
+    readonly seed: { readonly value: bigint | null; };
+    readonly order: 'plan' | 'seeded' | 'lexical';
     readonly verbose: boolean;
-    readonly debug?: {
+    readonly debug: {
         readonly mode: 'off' | 'all' | 'selected';
-        readonly selectors?: ReadonlyArray<string>;
+        readonly selectors: ReadonlyArray<string>;
     };
 };
 
 type RunCommand = {
     readonly config: RunConfig;
     readonly request: RunRequest;
+    readonly testPlan: TestPlan;
 };
 
 declare function resolveRun(command: RunCommand): Promise<ResolvedRun>;
@@ -559,19 +556,31 @@ type TestPlan = {
 };
 
 type RunFacts = {
-    readonly seed: bigint;
-    readonly identities: ReadonlyArray<CaseId>;
-    readonly runtimes: ReadonlyArray<ResolvedRuntime>;
-    readonly executionStrategy: string; // see runtime-behavior.md
-    readonly capabilityProfile: string;
-    readonly baselineUpdateMode: 'none' | 'update' | 'apply' | 'bootstrap' | 'diff';
-    readonly resourceBudgets: ResolvedResourceBudgets;
-    readonly metadataResolved: ReadonlyMap<string, Metadata>;
-    readonly loaderConfig: { stripMode: 'strip-only' | 'transform'; sourceMaps: boolean; };
-    readonly versions: { engine: string; node: string; packages: ReadonlyMap<string, string>; };
-    // debug mode plumbing, see runtime-behavior.md § Test Debug Mode
-    readonly debugMode: 'off' | 'all' | 'selected';
-    readonly debuggedCases?: ReadonlyArray<CaseId>; // present when debugMode === 'selected'
+    readonly cases: ReadonlyArray<RunCaseFacts>;
+    readonly environment: {
+        readonly node: { readonly arch: string; readonly platform: string; readonly version: string; };
+        readonly runtimeStateDir: string;
+    };
+    readonly execution: {
+        readonly baselineUpdateMode: 'none' | 'update' | 'apply' | 'bootstrap' | 'diff';
+        readonly capture: 'buffered' | 'live';
+        readonly coverage: boolean;
+        readonly debug: { readonly mode: 'off' | 'all' | 'selected'; readonly selectors: ReadonlyArray<string>; };
+        readonly mode: string; // see runtime-behavior.md
+        readonly order: 'plan' | 'seeded' | 'lexical';
+        readonly profile: RunnerProfileName;
+        readonly verbose: boolean;
+    };
+    readonly loader: { readonly stripMode: 'strip-only' | 'transform'; readonly sourceMaps: boolean; };
+    readonly reproducibility: {
+        readonly seed: string;
+        readonly shard: { readonly index: number; readonly total: number; };
+    };
+};
+
+type RunCaseFacts = {
+    readonly id: CaseId;
+    readonly metadata: SerializedValue;
 };
 
 type ResolvedRun = {

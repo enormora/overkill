@@ -180,6 +180,7 @@ export const testSuite = createOverkillSuite({
                 };
 
                 const execution = engine.execute(createPassingPlan(engine), {
+                    execution: { mode: 'serial-in-process' },
                     reporters: [ hangingReporter ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
@@ -230,6 +231,7 @@ export const testSuite = createOverkillSuite({
 
                 await scope.assert.rejects(async function executeWithInvalidReporterSinks() {
                     await engine.execute(createPassingPlan(engine), {
+                        execution: { mode: 'serial-in-process' },
                         reporters: [ firstReporter, secondReporter ],
                         runFacts: {},
                         startedAt: '2026-07-15T00:00:00.000Z'
@@ -269,6 +271,7 @@ export const testSuite = createOverkillSuite({
                 };
 
                 const execution = engine.execute(createPassingPlan(engine), {
+                    execution: { mode: 'serial-in-process' },
                     reporters: [ firstReporter, secondReporter ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
@@ -314,6 +317,7 @@ export const testSuite = createOverkillSuite({
 
                 await scope.assert.rejects(async function executeWithThrowingDisposal() {
                     await execute(createPassingPlan(engine), {
+                        execution: { mode: 'serial-in-process' },
                         reporters: [],
                         runFacts: {},
                         startedAt: '2026-07-15T00:00:00.000Z'
@@ -344,6 +348,7 @@ export const testSuite = createOverkillSuite({
                 };
 
                 const result = await engine.execute(createPassingPlan(engine), {
+                    execution: { mode: 'serial-in-process' },
                     reporters: [ failingReporter, finalReporter ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
@@ -374,6 +379,7 @@ export const testSuite = createOverkillSuite({
                 const fixture = createConcurrentFinishFixture();
 
                 const execution = fixture.engine.execute(createPassingPlan(fixture.engine), {
+                    execution: { mode: 'serial-in-process' },
                     reporters: [ fixture.realTimeReporter, fixture.finalReporter ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
