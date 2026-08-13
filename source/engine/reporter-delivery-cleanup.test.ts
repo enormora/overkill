@@ -6,7 +6,12 @@ import {
     runIfMain,
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
-import { createInMemoryFinalResultReporter } from '../reporters/in-memory-reporter.ts';
+import {
+    createInMemoryFinalResultReporter,
+    createInMemoryRealTimeReporter,
+    type InMemoryFinalResultReporter,
+    type InMemoryRealTimeReporter
+} from '../reporters/in-memory-reporter.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { createEngine, type Engine } from './engine.ts';
 import { createExecute } from './execution.ts';
@@ -16,6 +21,7 @@ import {
     type ReporterDispatcher,
     type RealTimeReporter
 } from './reporter.ts';
+import type { RunResult } from './run-result.ts';
 import type { TestPlan } from './test-plan.ts';
 
 function createPassingPlan(engine: Engine): TestPlan {
@@ -82,6 +88,54 @@ function aggregateErrorEntryMessage(entry: unknown): string {
     }
 
     return entry instanceof Error ? entry.message : String(entry);
+}
+
+function runnerErrorMessages(reporter: InMemoryRealTimeReporter): readonly string[] {
+    return reporter.getRecordedEntries().flatMap(function toRunnerError(entry) {
+        if (entry.event?.kind === 'runner-error') {
+            return [ entry.event.error.message ];
+        }
+
+        return [];
+    });
+}
+
+function resultRunnerErrorMessages(result: RunResult): readonly string[] {
+    return result.runnerErrors.map(function toMessage(error) {
+        return error.message;
+    });
+}
+
+function recordedFinishResult(reporter: InMemoryRealTimeReporter): RunResult | null {
+    const finishEntry = reporter.getRecordedEntries().find(function isFinish(entry) {
+        return entry.type === 'finish';
+    });
+
+    return finishEntry?.result ?? null;
+}
+
+function firstRecordedResult(reporter: InMemoryFinalResultReporter): RunResult | null {
+    return reporter.getRecordedEntries()[0]?.result ?? null;
+}
+
+function createRunEndFailingReporter(): RealTimeReporter {
+    return {
+        dispose: null,
+        kind: 'real-time',
+        name: 'run-end-broken',
+        onEvent(event) {
+            if (event.kind === 'run-end') {
+                throw new Error('cannot close run');
+            }
+        },
+        onFinish: null,
+        sinks: []
+    };
+}
+
+function assertRunEndErrorResult(scope: OverkillScope, result: RunResult | null): void {
+    scope.require.defined(result);
+    scope.assert.deepEqual(resultRunnerErrorMessages(result), [ 'run-end-broken: cannot close run' ]);
 }
 
 async function rejectedValue(promise: Promise<unknown>): Promise<unknown> {
@@ -334,14 +388,35 @@ export const testSuite = createOverkillSuite({
             body: async function body(scope: OverkillScope) {
                 const engine = createTestEngine();
                 const finalReporter = createInMemoryFinalResultReporter();
+                const finishReporter = createInMemoryRealTimeReporter();
+
+                const result = await engine.execute(createPassingPlan(engine), {
+                    execution: { mode: 'serial-in-process' },
+                    reporters: [ createRunEndFailingReporter(), finalReporter, finishReporter ],
+                    runFacts: {},
+                    startedAt: '2026-07-15T00:00:00.000Z'
+                });
+                assertRunEndErrorResult(scope, result);
+                assertRunEndErrorResult(scope, firstRecordedResult(finalReporter));
+                assertRunEndErrorResult(scope, recordedFinishResult(finishReporter));
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'execute() records dispose failures without reporter re-entry',
+            metadata: {},
+            body: async function body(scope: OverkillScope) {
+                const engine = createTestEngine();
+                const observer = createInMemoryRealTimeReporter();
                 const failingReporter: RealTimeReporter = {
-                    dispose: null,
+                    dispose() {
+                        throw new Error('cannot release resources');
+                    },
                     kind: 'real-time',
-                    name: 'run-end-broken',
-                    onEvent(event) {
-                        if (event.kind === 'run-end') {
-                            throw new Error('cannot close run');
-                        }
+                    name: 'dirty',
+                    onEvent() {
+                        return undefined;
                     },
                     onFinish: null,
                     sinks: []
@@ -349,25 +424,18 @@ export const testSuite = createOverkillSuite({
 
                 const result = await engine.execute(createPassingPlan(engine), {
                     execution: { mode: 'serial-in-process' },
-                    reporters: [ failingReporter, finalReporter ],
+                    reporters: [ failingReporter, observer ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
-                const reportedResult = finalReporter.getRecordedEntries()[0]?.result;
-                scope.require.defined(reportedResult);
 
                 scope.assert.deepEqual(
                     result.runnerErrors.map(function toMessage(error) {
                         return error.message;
                     }),
-                    [ 'run-end-broken: cannot close run' ]
+                    [ 'dirty: cannot release resources' ]
                 );
-                scope.assert.deepEqual(
-                    reportedResult.runnerErrors.map(function toMessage(error) {
-                        return error.message;
-                    }),
-                    [ 'run-end-broken: cannot close run' ]
-                );
+                scope.assert.deepEqual(runnerErrorMessages(observer), []);
 
                 return scope.assert.collect();
             }
