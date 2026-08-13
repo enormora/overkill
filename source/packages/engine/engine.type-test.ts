@@ -21,6 +21,7 @@ import type {
     DiffPathSegment,
     ErrorMatcher,
     ExactThrownMatcher,
+    ExecuteExecution,
     ExecuteOptions,
     FailedCheck,
     FailedCompositeCheck,
@@ -521,7 +522,8 @@ describe('RunnerError', function () {
 
 describe('Reporter contract', function () {
     test('uses explicit run facts and nullable finish callbacks', function () {
-        expect<keyof ExecuteOptions>().type.toBe<'reporters' | 'runFacts' | 'startedAt'>();
+        expect<keyof ExecuteOptions>().type.toBe<'execution' | 'reporters' | 'runFacts' | 'startedAt'>();
+        expect<ExecuteExecution['mode']>().type.toBe<'concurrent-in-process' | 'serial-in-process'>();
         expect<RunFacts>().type.toBe<Readonly<Record<string, unknown>>>();
         expect<RealTimeReporter['dispose']>().type.toBe<(() => Promise<void> | void) | null>();
         expect<RealTimeReporter['onFinish']>().type.toBe<((result: RunResult) => Promise<void> | void) | null>();

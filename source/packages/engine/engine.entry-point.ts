@@ -73,7 +73,7 @@ export async function runIfMain(
 }
 
 export type { Engine } from '../../engine/engine.ts';
-export type { Execute, ExecuteOptions } from '../../engine/execution.ts';
+export type { Execute, ExecuteExecution, ExecuteOptions } from '../../engine/execution.ts';
 export type { RunIfMain, RunIfMainOptions, RunIfMainRootOptions } from '../../engine/run-if-main.ts';
 export { formatCaseId } from '../../engine/identity.ts';
 export type { CaseId, TestId } from '../../engine/identity.ts';

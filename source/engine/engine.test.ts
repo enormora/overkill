@@ -55,6 +55,7 @@ export const testSuite = createOverkillSuite({
                     })
                 );
                 const options: ExecuteOptions = {
+                    execution: { mode: 'serial-in-process' },
                     reporters: [],
                     runFacts: { seed: 1 },
                     startedAt: '2026-07-15T00:00:00.000Z'

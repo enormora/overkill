@@ -1,4 +1,3 @@
-import { createFactory } from '@enormora/objectory';
 import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
 import {
     createSuite as createOverkillSuite,
@@ -6,93 +5,310 @@ import {
     runIfMain,
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
+import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
+import { createTestEngine } from '../test-support/create-test-engine.ts';
 import {
+    RunResolutionError,
+    createRunApi,
     resolveRun,
-    run,
-    type RunDebugRequest,
-    type RunExecutionRequest,
+    type RunCommand,
+    type RunConfig,
     type RunRequest,
-    type RunSeed,
-    type RunSelection,
-    type RunShard
+    type RunApi
 } from './run.ts';
 
-const runSelectionFactory = createFactory<RunSelection>(function createRunSelection() {
-    return {
-        kind: 'all',
-        value: null
-    };
-});
+type RunCommandParts = {
+    readonly config: RunConfig;
+    readonly request: RunRequest;
+    readonly testPlan: RunCommand['testPlan'];
+};
 
-const runShardFactory = createFactory<RunShard>(function createRunShard() {
-    return {
-        index: 0,
-        total: 1
-    };
-});
+const defaultConfig: RunConfig = {
+    loader: {
+        sourceMaps: false,
+        stripMode: 'strip-only'
+    },
+    reporters: [],
+    runtimeStateDir: '.overkill'
+};
 
-const runExecutionRequestFactory = createFactory<RunExecutionRequest>(function createRunExecutionRequest() {
-    return {
-        mode: 'single-worker-serial',
-        workers: 1
-    };
-});
-
-const runSeedFactory = createFactory<RunSeed>(function createRunSeed() {
-    return {
-        value: 42n
-    };
-});
-
-const runDebugRequestFactory = createFactory<RunDebugRequest>(function createRunDebugRequest() {
-    return {
+const defaultRequest: RunRequest = {
+    baselineUpdateMode: 'none',
+    capture: 'buffered',
+    coverage: false,
+    debug: {
         mode: 'off',
         selectors: []
-    };
-});
+    },
+    execution: { mode: 'concurrent-in-process' },
+    order: 'plan',
+    paths: [],
+    profile: 'microtest',
+    seed: { value: 42n },
+    selection: { kind: 'all' },
+    shard: { index: 0, total: 1 },
+    verbose: false
+};
 
-const runRequestFactory = createFactory<RunRequest>(function createRunRequest() {
+function plainData(value: unknown): unknown {
+    return structuredClone(value);
+}
+
+function createPassingPlan(): RunCommand['testPlan'] {
+    const engine = createTestEngine();
+
+    return engine.createTestPlan(
+        engine.createRoot({
+            children: [
+                engine.createTestCase({
+                    body(testScope) {
+                        testScope.assert.true(true, { message: 'passes' });
+                        return testScope.assert.collect();
+                    },
+                    metadata: {
+                        count: 1n,
+                        tag: 'fast'
+                    },
+                    name: 'passes'
+                })
+            ],
+            metadata: {},
+            name: 'root'
+        })
+    );
+}
+
+function createRunCommand(overrides: RunCommandParts): RunCommand {
     return {
-        capture: 'buffered',
-        configPath: null,
-        coverage: false,
-        debug: runDebugRequestFactory,
-        execution: runExecutionRequestFactory,
-        order: 'seeded',
-        paths: [ 'source/**/*.test.ts' ],
-        profile: 'microtest',
-        seed: runSeedFactory,
-        selection: runSelectionFactory,
-        shard: runShardFactory
+        config: overrides.config,
+        request: overrides.request,
+        testPlan: overrides.testPlan
     };
-});
+}
+
+function createDeterministicRunApi(): RunApi {
+    const engine = createTestEngine();
+
+    return createRunApi({
+        createSeed() {
+            return 99n;
+        },
+        execute: engine.execute,
+        node: {
+            arch: 'x64',
+            platform: 'linux',
+            version: '26.1.1'
+        },
+        readStartedAt() {
+            return '2026-07-15T12:30:00.000Z';
+        }
+    });
+}
 
 export const testSuite = createOverkillSuite({
     name: 'source/run/run.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'resolveRun() reports that run resolution is not implemented yet',
+            name: 'resolveRun() returns frozen run facts for an explicit test plan',
             metadata: {},
             async body(scope: OverkillScope) {
-                await scope.assert.rejects(async function rejectValue() {
-                    await resolveRun(runRequestFactory.build());
-                }, {
-                    message: 'resolveRun() is not implemented yet.'
+                const runApi = createDeterministicRunApi();
+                const resolvedRun = await runApi.resolveRun(createRunCommand({
+                    config: defaultConfig,
+                    request: defaultRequest,
+                    testPlan: createPassingPlan()
+                }));
+
+                scope.assert.equal(Object.isFrozen(resolvedRun), true);
+                scope.assert.equal(Object.isFrozen(resolvedRun.facts), true);
+                scope.assert.equal(Object.isFrozen(resolvedRun.facts.cases), true);
+                scope.assert.deepEqual(plainData(resolvedRun.facts), {
+                    cases: [
+                        {
+                            id: { file: null, name: 'passes', params: null, suite: [] },
+                            metadata: {
+                                constructorName: 'Object',
+                                entries: [
+                                    { key: { kind: 'string', value: 'count' }, value: { kind: 'bigint', value: '1' } },
+                                    {
+                                        key: { kind: 'string', value: 'tag' },
+                                        value: { kind: 'string', truncation: null, value: 'fast' }
+                                    }
+                                ],
+                                kind: 'object',
+                                truncation: null
+                            }
+                        }
+                    ],
+                    environment: {
+                        node: {
+                            arch: 'x64',
+                            platform: 'linux',
+                            version: '26.1.1'
+                        },
+                        runtimeStateDir: '.overkill'
+                    },
+                    execution: {
+                        baselineUpdateMode: 'none',
+                        capture: 'buffered',
+                        coverage: false,
+                        debug: { mode: 'off', selectors: [] },
+                        mode: 'concurrent-in-process',
+                        order: 'plan',
+                        profile: 'microtest',
+                        verbose: false
+                    },
+                    loader: { sourceMaps: false, stripMode: 'strip-only' },
+                    reproducibility: {
+                        seed: '42',
+                        shard: { index: 0, total: 1 }
+                    }
                 });
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
-            name: 'run() reports that run orchestration is not implemented yet',
+            name: 'resolveRun() generates a seed when the request does not provide one',
             metadata: {},
             async body(scope: OverkillScope) {
-                await scope.assert.rejects(async function rejectValue() {
-                    await run(runRequestFactory.build());
+                const runApi = createDeterministicRunApi();
+                const resolvedRun = await runApi.resolveRun(createRunCommand({
+                    config: defaultConfig,
+                    request: {
+                        ...defaultRequest,
+                        seed: { value: null }
+                    },
+                    testPlan: createPassingPlan()
+                }));
+
+                scope.assert.equal(resolvedRun.facts.reproducibility.seed, '99');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'resolveRun() rejects unsupported path discovery',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                await scope.assert.rejects(async function resolveUnsupportedPaths() {
+                    await resolveRun(createRunCommand({
+                        config: defaultConfig,
+                        request: {
+                            ...defaultRequest,
+                            paths: [ 'source/**/*.test.ts' ]
+                        },
+                        testPlan: createPassingPlan()
+                    }));
                 }, {
-                    message: 'run() is not implemented yet.'
+                    message: 'Path discovery is not implemented yet.'
                 });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'resolveRun() rejects invalid negative seeds',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                await scope.assert.rejects(async function resolveInvalidSeed() {
+                    await resolveRun(createRunCommand({
+                        config: defaultConfig,
+                        request: {
+                            ...defaultRequest,
+                            seed: { value: -1n }
+                        },
+                        testPlan: createPassingPlan()
+                    }));
+                }, {
+                    message: 'Run seed must be a nonnegative bigint.'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'run() executes the resolved plan and reports run facts',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const reporter = createInMemoryRealTimeReporter();
+                const runApi = createDeterministicRunApi();
+                const result = await runApi.run(createRunCommand({
+                    config: {
+                        ...defaultConfig,
+                        reporters: [ reporter ]
+                    },
+                    request: defaultRequest,
+                    testPlan: createPassingPlan()
+                }));
+                const runStartEvent = reporter.getRecordedEntries()[0]?.event;
+
+                scope.require.defined(runStartEvent);
+                scope.assert.equal(runStartEvent.kind, 'run-start');
+                scope.assert.deepEqual(plainData(runStartEvent.kind === 'run-start' ? runStartEvent.facts : null), {
+                    cases: [
+                        {
+                            id: { file: null, name: 'passes', params: null, suite: [] },
+                            metadata: {
+                                constructorName: 'Object',
+                                entries: [
+                                    { key: { kind: 'string', value: 'count' }, value: { kind: 'bigint', value: '1' } },
+                                    {
+                                        key: { kind: 'string', value: 'tag' },
+                                        value: { kind: 'string', truncation: null, value: 'fast' }
+                                    }
+                                ],
+                                kind: 'object',
+                                truncation: null
+                            }
+                        }
+                    ],
+                    environment: {
+                        node: {
+                            arch: 'x64',
+                            platform: 'linux',
+                            version: '26.1.1'
+                        },
+                        runtimeStateDir: '.overkill'
+                    },
+                    execution: {
+                        baselineUpdateMode: 'none',
+                        capture: 'buffered',
+                        coverage: false,
+                        debug: { mode: 'off', selectors: [] },
+                        mode: 'concurrent-in-process',
+                        order: 'plan',
+                        profile: 'microtest',
+                        verbose: false
+                    },
+                    loader: { sourceMaps: false, stripMode: 'strip-only' },
+                    reproducibility: {
+                        seed: '42',
+                        shard: { index: 0, total: 1 }
+                    }
+                });
+                scope.assert.deepEqual(result.summary, {
+                    defined: 1,
+                    discovered: 1,
+                    failed: 0,
+                    inconclusive: 0,
+                    passed: 1,
+                    planned: 1,
+                    skipped: 0
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'RunResolutionError exposes stable error codes',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const error = new RunResolutionError('Unsupported.', undefined, 'unsupported-request');
+
+                scope.assert.equal(error.name, 'RunResolutionError');
+                scope.assert.equal(error.code(), 'unsupported-request');
 
                 return scope.assert.collect();
             }

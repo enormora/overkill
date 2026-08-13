@@ -7,10 +7,16 @@ import {
     type RunFacts,
     validateReporterSinks
 } from './reporter.ts';
-import type { PerTestResult, RunResult, RunnerError } from './run-result.ts';
+import { createReporterEventQueue, type ReporterEventQueue } from './reporter-event-queue.ts';
+import { verdictFromOutcome, type PerTestResult, type RunResult, type RunnerError } from './run-result.ts';
 import type { TestPlan, TestPlanCase } from './test-plan.ts';
 
+export type ExecuteExecution = {
+    readonly mode: 'concurrent-in-process' | 'serial-in-process';
+};
+
 export type ExecuteOptions = {
+    readonly execution: ExecuteExecution;
     readonly reporters: readonly Reporter[];
     readonly runFacts: RunFacts;
     readonly startedAt: string;
@@ -33,6 +39,23 @@ type ReportedCase = {
     readonly result: PerTestResult;
 };
 
+type ConcurrentCase = {
+    readonly result: PerTestResult;
+    readonly wallTimeMs: number;
+};
+
+type ConcurrentCaseExecution = {
+    readonly endReporterErrors: readonly RunnerError[];
+    readonly perTest: readonly PerTestResult[];
+};
+
+type ReportTestEndInput = {
+    readonly attempt: number;
+    readonly result: PerTestResult;
+    readonly testCase: TestPlanCase;
+    readonly wallTimeMs: number;
+};
+
 type RunResultTiming = {
     readonly startedAtMs: number;
     readonly wallClock: WallClock;
@@ -47,26 +70,52 @@ type ReporterDisposal = {
     readonly disposeOnce: () => Promise<readonly RunnerError[]>;
 };
 
+async function reportTestStart(
+    testCase: TestPlanCase,
+    attempt: number,
+    reporters: readonly Reporter[],
+    dependencies: ExecutionDependencies
+): Promise<readonly RunnerError[]> {
+    return await dependencies.reporterDispatcher.reportEvent(reporters, {
+        attempt,
+        case: testCase.id,
+        kind: 'test-start'
+    });
+}
+
+async function reportTestEnd(
+    input: ReportTestEndInput,
+    reporters: readonly Reporter[],
+    dependencies: ExecutionDependencies
+): Promise<readonly RunnerError[]> {
+    return await dependencies.reporterDispatcher.reportEvent(reporters, {
+        attempt: input.attempt,
+        case: input.testCase.id,
+        kind: 'test-end',
+        outcome: input.result.outcome,
+        verdict: input.result.verdict,
+        wallTimeMs: input.wallTimeMs
+    });
+}
+
 async function executeCase(
     testCase: TestPlanCase,
     attempt: number,
     reporters: readonly Reporter[],
     dependencies: ExecutionDependencies
 ): Promise<ReportedCase> {
-    const startErrors = await dependencies.reporterDispatcher.reportEvent(reporters, {
-        attempt,
-        case: testCase.id,
-        kind: 'test-start'
-    });
+    const startErrors = await reportTestStart(testCase, attempt, reporters, dependencies);
     const executedCase = await runTestCase(testCase, dependencies.wallClock);
-    const endErrors = await dependencies.reporterDispatcher.reportEvent(reporters, {
-        attempt,
-        case: testCase.id,
-        kind: 'test-end',
-        outcome: executedCase.result.outcome,
-        verdict: executedCase.result.verdict,
-        wallTimeMs: executedCase.wallTimeMs
-    });
+    const endErrors = await reportTestEnd(
+        {
+            attempt,
+            result: executedCase.result,
+            testCase,
+            wallTimeMs: executedCase.wallTimeMs
+        },
+        reporters,
+        dependencies
+    );
 
     return {
         reporterErrors: [ ...startErrors, ...endErrors ],
@@ -237,6 +286,139 @@ async function executeTestPlanCases(
     };
 }
 
+function describeUnexpectedCaseError(error: unknown): string {
+    if (error instanceof Error) {
+        return error.message;
+    }
+
+    return 'Unknown test execution error.';
+}
+
+function createInconclusiveCaseResult(testCase: TestPlanCase, error: unknown): PerTestResult {
+    const outcome = {
+        kind: 'inconclusive',
+        reason: `Test execution failed before producing a result: ${describeUnexpectedCaseError(error)}`
+    } as const;
+
+    return {
+        id: testCase.id,
+        outcome,
+        verdict: verdictFromOutcome(outcome)
+    };
+}
+
+async function executeConcurrentCaseBody(
+    testCase: TestPlanCase,
+    dependencies: ExecutionDependencies
+): Promise<ConcurrentCase> {
+    try {
+        const executedCase = await runTestCase(testCase, dependencies.wallClock);
+
+        return {
+            result: executedCase.result,
+            wallTimeMs: executedCase.wallTimeMs
+        };
+    } catch (error: unknown) {
+        return {
+            result: createInconclusiveCaseResult(testCase, error),
+            wallTimeMs: 0
+        };
+    }
+}
+
+async function reportConcurrentCaseStarts(
+    testPlan: TestPlan,
+    reporters: readonly Reporter[],
+    dependencies: ExecutionDependencies
+): Promise<readonly RunnerError[]> {
+    let reporterErrors: readonly RunnerError[] = [];
+    let currentSuitePath: readonly string[] = [];
+
+    for (const testCase of testPlan.cases) {
+        const suiteErrors = await reportSuiteTransition(
+            reporters,
+            dependencies,
+            currentSuitePath,
+            testCase.suitePath
+        );
+        const startErrors = await reportTestStart(testCase, 0, reporters, dependencies);
+        currentSuitePath = testCase.suitePath;
+        reporterErrors = [ ...reporterErrors, ...suiteErrors, ...startErrors ];
+    }
+
+    return [
+        ...reporterErrors,
+        ...await reportSuiteTransition(reporters, dependencies, currentSuitePath, [])
+    ];
+}
+
+async function reportConcurrentCaseEnd(
+    testCase: TestPlanCase,
+    executedCase: ConcurrentCase,
+    reportQueue: ReporterEventQueue
+): Promise<readonly RunnerError[]> {
+    return await reportQueue.report({
+        attempt: 0,
+        case: testCase.id,
+        kind: 'test-end',
+        outcome: executedCase.result.outcome,
+        verdict: executedCase.result.verdict,
+        wallTimeMs: executedCase.wallTimeMs
+    });
+}
+
+async function executeConcurrentCases(
+    testPlan: TestPlan,
+    reportQueue: ReporterEventQueue,
+    dependencies: ExecutionDependencies
+): Promise<ConcurrentCaseExecution> {
+    const endReporterErrors: RunnerError[] = [];
+    const caseExecutions = testPlan.cases.map(async function executeCaseConcurrently(testCase) {
+        const executedCase = await executeConcurrentCaseBody(testCase, dependencies);
+        endReporterErrors.push(...await reportConcurrentCaseEnd(testCase, executedCase, reportQueue));
+
+        return executedCase;
+    });
+    const executedCases = await Promise.all(caseExecutions);
+
+    return {
+        endReporterErrors,
+        perTest: executedCases.map(function toPerTest(executedCase) {
+            return executedCase.result;
+        })
+    };
+}
+
+async function executeConcurrentTestPlanCases(
+    testPlan: TestPlan,
+    reporters: readonly Reporter[],
+    dependencies: ExecutionDependencies
+): Promise<ExecutedTestPlan> {
+    const reporterErrors = await reportConcurrentCaseStarts(testPlan, reporters, dependencies);
+    const concurrentCaseExecution = await executeConcurrentCases(
+        testPlan,
+        createReporterEventQueue(reporters, dependencies),
+        dependencies
+    );
+
+    return {
+        perTest: concurrentCaseExecution.perTest,
+        reporterErrors: [ ...reporterErrors, ...concurrentCaseExecution.endReporterErrors ]
+    };
+}
+
+async function executeTestPlanCasesWithMode(
+    testPlan: TestPlan,
+    options: ExecuteOptions,
+    dependencies: ExecutionDependencies
+): Promise<ExecutedTestPlan> {
+    if (options.execution.mode === 'concurrent-in-process') {
+        return await executeConcurrentTestPlanCases(testPlan, options.reporters, dependencies);
+    }
+
+    return await executeTestPlanCases(testPlan, options.reporters, dependencies);
+}
+
 function createRunResult(
     testPlan: TestPlan,
     perTest: readonly PerTestResult[],
@@ -269,6 +451,7 @@ function appendRunnerErrors(result: RunResult, runnerErrors: readonly RunnerErro
 
 function executeOptionsWithDefaults(options: ExecuteOptions | undefined): ExecuteOptions {
     return options ?? {
+        execution: { mode: 'serial-in-process' },
         reporters: [],
         runFacts: {},
         startedAt: epoch.toISOString()
@@ -306,7 +489,7 @@ async function createRunResultBeforeRunEnd(
         root: testPlan.root,
         startedAt: options.startedAt
     });
-    const executedTestPlan = await executeTestPlanCases(testPlan, options.reporters, dependencies);
+    const executedTestPlan = await executeTestPlanCasesWithMode(testPlan, options, dependencies);
     const reporterErrors = [ ...startErrors, ...executedTestPlan.reporterErrors ];
 
     return createRunResult(testPlan, executedTestPlan.perTest, reporterErrors, {

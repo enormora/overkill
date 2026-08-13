@@ -452,6 +452,8 @@ Why randomize by default:
 
 Override surfaces:
 
+- `--order plan` preserves the already resolved `TestPlan` order for explicit
+  programmatic runs
 - `--seed <value>` selects a specific shuffle
 - `--order lexical` disables shuffling and uses deterministic collection
   order

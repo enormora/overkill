@@ -76,6 +76,8 @@ Conceptually:
   for that explicitly
 - `resolveRun(command)` returns a frozen `ResolvedRun`
 - `run(command)` is shorthand for planning plus execution
+- `RunCommand.testPlan` is the explicit programmatic path for callers that
+  already built an executable plan
 - `execute(testPlan)` is the lower-level engine entrypoint once planning is
   already done, and it returns a `RunResult`
 - `runIfMain(import.meta, testNode, options?)` is the lower-level self-running
@@ -284,15 +286,23 @@ Recommended shape:
 
 ```ts
 await run({
-    paths: [ 'source/**/*.test.ts' ],
-    selection: {
-        filter: 'tag=fast'
+    config,
+    request: {
+        baselineUpdateMode: 'none',
+        capture: 'buffered',
+        coverage: true,
+        debug: { mode: 'selected', selectors: [ 'users > round-trip' ] },
+        execution: { mode: 'concurrent-in-process' },
+        order: 'seeded',
+        paths: [ 'source/**/*.test.ts' ],
+        profile: 'microtest',
+        resourceBudgets: null,
+        seed: { value: 42n },
+        selection: { kind: 'filter', expression: 'tag=fast' },
+        shard: { index: 1, total: 4 },
+        verbose: false
     },
-    profile: 'microtest',
-    coverage: true,
-    seed: 42n,
-    shard: { index: 1, total: 4 },
-    debug: { mode: 'selected', selectors: [ 'users > round-trip' ] }
+    testPlan
 });
 ```
 

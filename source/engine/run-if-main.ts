@@ -69,6 +69,7 @@ function createExecuteOptions(
     const startedAt = new Date(dependencies.wallClock.currentTimestampInMilliseconds);
 
     return {
+        execution: { mode: 'serial-in-process' },
         reporters: options?.reporters ?? [],
         runFacts: {
             ...options?.runFacts,
