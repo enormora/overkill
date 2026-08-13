@@ -7,7 +7,9 @@ import {
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
 import {
+    createInMemoryFinalResultReporter,
     createInMemoryRealTimeReporter,
+    type InMemoryFinalResultReporter,
     type InMemoryRealTimeReporter
 } from '../reporters/in-memory-reporter.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
@@ -60,6 +62,14 @@ type ReporterSignal = {
     readonly promise: Promise<void>;
 };
 
+type FinalPhaseReporterFixture = {
+    readonly finalObserver: InMemoryFinalResultReporter;
+    readonly finishObserver: InMemoryRealTimeReporter;
+    readonly readFailingFinalInput: () => RunResult | null;
+    readonly readFailingFinishInput: () => RunResult | null;
+    readonly reporters: readonly (FinalResultReporter | RealTimeReporter)[];
+};
+
 function createReporterSignal(): ReporterSignal {
     let notify: () => void = function notifyUnsetSignal(): void {
         return undefined;
@@ -69,6 +79,95 @@ function createReporterSignal(): ReporterSignal {
     });
 
     return { notify, promise };
+}
+
+function recordedFinishResult(reporter: InMemoryRealTimeReporter): RunResult | null {
+    const finishEntry = reporter.getRecordedEntries().find(function isFinish(entry) {
+        return entry.type === 'finish';
+    });
+
+    return finishEntry?.result ?? null;
+}
+
+function firstRecordedResult(reporter: InMemoryFinalResultReporter): RunResult | null {
+    return reporter.getRecordedEntries()[0]?.result ?? null;
+}
+
+function resultRunnerErrorMessages(result: RunResult): readonly string[] {
+    return result.runnerErrors.map(function toMessage(error) {
+        return error.message;
+    });
+}
+
+function assertEmptyRunnerErrors(scope: OverkillScope, result: RunResult | null): void {
+    scope.require.defined(result);
+    scope.assert.deepEqual(result.runnerErrors, []);
+}
+
+function createFinalPhaseReporterFixture(): FinalPhaseReporterFixture {
+    const finalObserver = createInMemoryFinalResultReporter();
+    const finishObserver = createInMemoryRealTimeReporter();
+    let failingFinalInput: RunResult | null = null;
+    let failingFinishInput: RunResult | null = null;
+    const failingFinalReporter: FinalResultReporter = {
+        dispose: null,
+        kind: 'final-result',
+        name: 'final-broken',
+        onResult(result) {
+            failingFinalInput = result;
+            throw new Error('cannot write final output');
+        },
+        sinks: []
+    };
+    const failingFinishReporter: RealTimeReporter = {
+        dispose: null,
+        kind: 'real-time',
+        name: 'finish-broken',
+        onEvent() {
+            return undefined;
+        },
+        onFinish(result) {
+            failingFinishInput = result;
+            throw new Error('cannot write finish output');
+        },
+        sinks: []
+    };
+
+    return {
+        finalObserver,
+        finishObserver,
+        readFailingFinalInput() {
+            return failingFinalInput;
+        },
+        readFailingFinishInput() {
+            return failingFinishInput;
+        },
+        reporters: [ finalObserver, finishObserver, failingFinalReporter, failingFinishReporter ]
+    };
+}
+
+function assertFinalPhaseCallbackInputsUnchanged(
+    scope: OverkillScope,
+    fixture: FinalPhaseReporterFixture
+): void {
+    assertEmptyRunnerErrors(scope, firstRecordedResult(fixture.finalObserver));
+    assertEmptyRunnerErrors(scope, recordedFinishResult(fixture.finishObserver));
+    assertEmptyRunnerErrors(scope, fixture.readFailingFinalInput());
+    assertEmptyRunnerErrors(scope, fixture.readFailingFinishInput());
+}
+
+function assertFinalPhaseErrorsReturnedAndNotified(
+    scope: OverkillScope,
+    fixture: FinalPhaseReporterFixture,
+    result: RunResult
+): void {
+    const expectedMessages = [
+        'final-broken: cannot write final output',
+        'finish-broken: cannot write finish output'
+    ];
+
+    scope.assert.deepEqual(resultRunnerErrorMessages(result), expectedMessages);
+    scope.assert.deepEqual(runnerErrorMessages(fixture.finishObserver), expectedMessages);
 }
 
 function createReporterDeliveryEngine(wallClock: ReturnType<typeof createDeterministicWallClock>): Engine {
@@ -253,6 +352,25 @@ export const testSuite = createOverkillSuite({
                     [ 'final-broken: cannot finalize' ]
                 );
                 scope.assert.deepEqual(runnerErrorMessages(observer), [ 'final-broken: cannot finalize' ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'execute() returns final-phase reporter errors without changing sibling callback input',
+            metadata: {},
+            body: async function body(scope: OverkillScope) {
+                const engine = createTestEngine();
+                const fixture = createFinalPhaseReporterFixture();
+
+                const result = await engine.execute(createPassingPlan(engine), {
+                    execution: { mode: 'serial-in-process' },
+                    reporters: fixture.reporters,
+                    runFacts: {},
+                    startedAt: '2026-07-15T00:00:00.000Z'
+                });
+                assertFinalPhaseCallbackInputsUnchanged(scope, fixture);
+                assertFinalPhaseErrorsReturnedAndNotified(scope, fixture, result);
 
                 return scope.assert.collect();
             }

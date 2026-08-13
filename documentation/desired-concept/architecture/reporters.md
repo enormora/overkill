@@ -324,8 +324,13 @@ preferable.)
 `run-end`, `onResult`, `onFinish`, and `dispose` failures are recorded as
 reporter runner errors. `run-end` errors are added to the `RunResult` before
 final-result reporters and real-time `onFinish` callbacks receive it.
-`onResult` and `onFinish` callbacks remain concurrent; errors from that phase
-may be reported to real-time reporters after their finish output.
+`onResult` and `onFinish` callbacks remain concurrent. Their failures are
+added to the returned `RunResult`; sibling final-result reporters and real-time
+`onFinish` callbacks are not called again with a second result. Real-time
+reporters may still receive best-effort `runner-error` events for those
+failures after their finish output. `dispose` failures are cleanup failures:
+they are added to the returned `RunResult`, but reporter delivery is already
+shutting down, so they are not sent back through reporters.
 
 ## What This Doc Is Not
 

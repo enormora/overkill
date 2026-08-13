@@ -89,6 +89,11 @@ Default exit codes for the `overkill` CLI:
 | At least one resource exhaustion     | 5         |
 | Runner crashed (internal bug)        | 70        |
 
+Before exiting, the CLI prints runner errors that configured reporters could
+not surface themselves to `stderr`. Those fallback diagnostics do not create a
+separate outcome category; they use the same non-zero exit code the underlying
+error would already require.
+
 Test code calling `process.exit(code)` is treated as a runner-level error
 and attributed to the currently-running test. The default policy is to
 **throw** when the test attempts `process.exit` in a profile that disallows

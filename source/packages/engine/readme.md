@@ -82,6 +82,12 @@ Reporter lifecycle:
 - `dispose` is required and nullable on both reporter lifecycles. When
   present, `execute()` calls it exactly once after the run or after reporter
   validation fails.
+- Reporter callback failures are returned in `RunResult.runnerErrors` with
+  subtype `reporter`. `run-end` failures are included before final-result
+  `onResult` and real-time `onFinish` callbacks receive the result.
+- `onResult`, `onFinish`, and `dispose` failures are added to the returned
+  `RunResult`. Final callbacks are not repeated with sibling final-phase
+  failures, and `dispose` failures are not sent back through reporters.
 - A reporter has one lifecycle. If a package needs both modes, expose two
   reporters that share the same internal formatting or recording logic.
 
