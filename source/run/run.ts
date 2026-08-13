@@ -11,8 +11,6 @@ import type { TestPlan } from '../engine/test-plan.ts';
 const minimumSeedValue = 0n;
 const seedByteLength = 8;
 
-type RunNodePlatform = (typeof process)['platform'];
-
 export type SerializedValue = SerializedValueShape;
 
 export type RunSelection = {
@@ -85,7 +83,7 @@ export type RunCaseFacts = {
 export type RunEnvironmentFacts = {
     readonly node: {
         readonly arch: string;
-        readonly platform: RunNodePlatform;
+        readonly platform: string;
         readonly version: string;
     };
     readonly runtimeStateDir: string;
@@ -136,7 +134,7 @@ export type RunApiDependencies = {
     readonly execute: Execute;
     readonly node: {
         readonly arch: string;
-        readonly platform: RunNodePlatform;
+        readonly platform: string;
         readonly version: string;
     };
     readonly readStartedAt: () => string;

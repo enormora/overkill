@@ -2,6 +2,7 @@ import { createSuite } from '@overkill-dev/engine';
 import { testSuite as identityTestSuite } from '../../engine/identity.test.ts';
 import { testSuite as reporterDeliveryCleanupTestSuite } from '../../engine/reporter-delivery-cleanup.test.ts';
 import { testSuite as reporterDeliveryTestSuite } from '../../engine/reporter-delivery.test.ts';
+import { testSuite as reporterEventQueueTestSuite } from '../../engine/reporter-event-queue.test.ts';
 import { testSuite as reporterTestSuite } from '../../engine/reporter.test.ts';
 import { testSuite as runIfMainTestSuite } from '../../engine/run-if-main.test.ts';
 import { testSuite as runResultTestSuite } from '../../engine/run-result.test.ts';
@@ -15,6 +16,7 @@ export const testSuite = createSuite({
         identityTestSuite,
         reporterDeliveryCleanupTestSuite,
         reporterDeliveryTestSuite,
+        reporterEventQueueTestSuite,
         reporterTestSuite,
         runIfMainTestSuite,
         runResultTestSuite,

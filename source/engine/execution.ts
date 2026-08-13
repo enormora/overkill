@@ -40,7 +40,6 @@ type ReportedCase = {
 };
 
 type ConcurrentCase = {
-    readonly index: number;
     readonly result: PerTestResult;
     readonly wallTimeMs: number;
 };
@@ -308,50 +307,22 @@ function createInconclusiveCaseResult(testCase: TestPlanCase, error: unknown): P
     };
 }
 
-function orderedConcurrentCaseResults(
-    testPlan: TestPlan,
-    perTest: readonly (PerTestResult | null)[]
-): readonly PerTestResult[] {
-    return testPlan.cases.map(function toCaseResult(_testCase, index) {
-        const result = perTest[index];
-
-        if (result === null || result === undefined) {
-            throw new TypeError('Expected every concurrent case to produce a result.');
-        }
-
-        return result;
-    });
-}
-
 async function executeConcurrentCaseBody(
     testCase: TestPlanCase,
-    index: number,
     dependencies: ExecutionDependencies
 ): Promise<ConcurrentCase> {
     try {
         const executedCase = await runTestCase(testCase, dependencies.wallClock);
 
         return {
-            index,
             result: executedCase.result,
             wallTimeMs: executedCase.wallTimeMs
         };
     } catch (error: unknown) {
         return {
-            index,
             result: createInconclusiveCaseResult(testCase, error),
             wallTimeMs: 0
         };
-    }
-}
-
-function throwRejectedCaseExecution(settledCaseExecutions: readonly PromiseSettledResult<void>[]): void {
-    const rejectedExecution = settledCaseExecutions.find(function isRejectedExecution(settledExecution) {
-        return settledExecution.status === 'rejected';
-    });
-
-    if (rejectedExecution !== undefined) {
-        throw rejectedExecution.reason;
     }
 }
 
@@ -381,12 +352,6 @@ async function reportConcurrentCaseStarts(
     ];
 }
 
-function createPendingConcurrentCaseResults(testPlan: TestPlan): (PerTestResult | null)[] {
-    return testPlan.cases.map(function createPendingResult() {
-        return null;
-    });
-}
-
 async function reportConcurrentCaseEnd(
     testCase: TestPlanCase,
     executedCase: ConcurrentCase,
@@ -407,19 +372,20 @@ async function executeConcurrentCases(
     reportQueue: ReporterEventQueue,
     dependencies: ExecutionDependencies
 ): Promise<ConcurrentCaseExecution> {
-    const perTest = createPendingConcurrentCaseResults(testPlan);
     const endReporterErrors: RunnerError[] = [];
-    const caseExecutions = testPlan.cases.map(async function executeCaseConcurrently(testCase, index) {
-        const executedCase = await executeConcurrentCaseBody(testCase, index, dependencies);
-        perTest[executedCase.index] = executedCase.result;
+    const caseExecutions = testPlan.cases.map(async function executeCaseConcurrently(testCase) {
+        const executedCase = await executeConcurrentCaseBody(testCase, dependencies);
         endReporterErrors.push(...await reportConcurrentCaseEnd(testCase, executedCase, reportQueue));
-    });
 
-    throwRejectedCaseExecution(await Promise.allSettled(caseExecutions));
+        return executedCase;
+    });
+    const executedCases = await Promise.all(caseExecutions);
 
     return {
         endReporterErrors,
-        perTest: orderedConcurrentCaseResults(testPlan, perTest)
+        perTest: executedCases.map(function toPerTest(executedCase) {
+            return executedCase.result;
+        })
     };
 }
 
