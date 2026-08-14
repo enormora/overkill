@@ -40,6 +40,15 @@ root runner configuration still owns orchestration.
 
 Source: [Package Architecture](../architecture/package-architecture.md), [Assertions And Results](../authoring/assertions-and-results.md).
 
+## Standard Distribution
+
+The normal user-facing install package, `@overkill-dev/test`. It ships the
+`overkill` binary, exposes the ordinary authoring root import, and re-exports
+standard-stack surfaces through explicit subpaths. It does not replace the
+fine-grained package ownership model.
+
+Source: [Package Architecture](../architecture/package-architecture.md).
+
 ## Test Kind
 
 A closed enumeration that classifies the testing mode of a `TestNode`. The
@@ -77,7 +86,7 @@ Source: [Runtime Behavior](../architecture/runtime-behavior.md), [Package Archit
 
 ## Runner Profile
 
-A named bundle of capability profile, execution strategy, and runner
+A named composition of capability profile, execution strategy, and runner
 configuration. Users select a runner profile per run via CLI or
 programmatic request; configuration may define named profiles but does not own the
 selection itself.

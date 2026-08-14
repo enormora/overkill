@@ -1,8 +1,10 @@
 # CLI Reference
 
 This doc captures the current CLI surface and CLI runtime behavior.
-The first-party CLI belongs to `@overkill-dev/run`; packaging changes would not
-change the concept described here.
+The public `overkill` binary is shipped by `@overkill-dev/test`, the standard
+user-facing distribution. Command semantics belong to `@overkill-dev/run`;
+the binary wrapper delegates to that package instead of defining a separate
+control surface.
 
 This document enumerates Overkill's command-line interface: subcommands
 and flags. It is a reading aid: the canonical behavior of each option
@@ -22,13 +24,25 @@ entry point. Programmatic `@overkill-dev/run` calls do not auto-load config
 files; callers either pass a `RunConfig` value or explicitly call
 `loadRunConfig(...)`.
 
+## Distribution And Loading
+
+`@overkill-dev/test` is the normal install package and the only first-party
+package that declares `bin: overkill`. `@overkill-dev/run` exposes reusable
+command implementation APIs for that binary and for custom orchestrators.
+
+The binary uses command-selected modules: a tiny fixed dispatcher parses the
+command name and `--config`, then loads only the selected command
+implementation. Installing a package does not add commands. There is no
+package-name scan, implicit npm discovery, dynamic command registry, or plugin
+lifecycle in the current concept.
+
 ## Subcommands
 
 ### Run And Replay
 
 | Command                          | Purpose                                                     | Reference                                                                                                              |
 | -------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `overkill run [paths...]`        | Default run mode: discover, plan, and execute.              | [Runtime Behavior](../architecture/runtime-behavior.md)                                                                |
+| `overkill run [paths...]`        | Default ordinary test mode: discover, plan, and execute.    | [Runtime Behavior](../architecture/runtime-behavior.md)                                                                |
 | `overkill list [paths...]`       | Print the resolved test plan without running it.            | [Tests As Values](../authoring/tests-as-values.md)                                                                     |
 | `overkill replay <run-id>`       | Replay a recorded run from `.overkill/runs/<id>.json`.      | [Reproducibility § Replay](../architecture/reproducibility.md#replay)                                                  |
 | `overkill replay-witness <path>` | Replay a single property/simulation failure from a witness. | [Failure Artifacts § Witnesses And Replay Artifacts](../authoring/failure-artifacts.md#witnesses-and-replay-artifacts) |
@@ -56,12 +70,29 @@ gate.
 | `overkill baseline list [paths...]`      | Print all baselines on disk with their resolved identities. Does not run tests; does not write.                          | same                                                                                                 |
 | `overkill baseline diff [paths...]`      | Show what `apply` would change. Runs tests but writes nothing.                                                           | same                                                                                                 |
 
+### Benchmark
+
+Benchmarks use a dedicated namespace because their primary artifact is
+measurement data plus policy evaluation, not an ordinary test verdict.
+`overkill run --profile benchmark` is rejected as an argument error so there is
+one first-party benchmark execution path.
+
+| Command                                        | Behavior                                                                      | Reference                                                          |
+| ---------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `overkill bench run [paths...]`                | Discover, plan, execute, measure, and evaluate benchmark workloads.           | [Benchmarking](../authoring/benchmarking.md)                       |
+| `overkill bench list [paths...]`               | Print the resolved benchmark workload plan without executing measurements.    | [Benchmarking](../authoring/benchmarking.md)                       |
+| `overkill bench baseline update [paths...]`    | Update changed or missing performance baselines; leave stale baselines alone. | [Baselines And Snapshots](../authoring/baselines-and-snapshots.md) |
+| `overkill bench baseline apply [paths...]`     | Reconcile performance baselines, including stale removals.                    | same                                                               |
+| `overkill bench baseline bootstrap [paths...]` | Create missing performance baselines without overwriting existing baselines.  | same                                                               |
+| `overkill bench baseline list [paths...]`      | Print performance baselines on disk with their resolved identities.           | same                                                               |
+| `overkill bench baseline diff [paths...]`      | Show what benchmark baseline reconciliation would change without writing.     | same                                                               |
+
 ## Flags vs Subcommands
 
 A subcommand exists when the _primary artifact_ the user expects from
 the invocation is different from the default verdict:
 
-- `run` produces a verdict
+- `run` produces an ordinary test verdict
 - `list` produces a printed plan
 - `replay` re-produces a past verdict
 - `replay-witness` re-produces a single failure
@@ -69,6 +100,8 @@ the invocation is different from the default verdict:
   `apply`, and `bootstrap` write; `list` and `diff` do not write
   fresh content but operate inside the baseline namespace because
   the user's primary artifact is still baselines, not a verdict)
+- `bench <verb>` produces benchmark plans, measurements, policies, and
+  performance baseline artifacts
 
 A flag refines or augments a `run`. It does not change what the user
 asks for: they still want a verdict; the flag just shapes how the run
@@ -91,8 +124,9 @@ entrypoints rather than as hidden boolean flags.
 `--config` changes where persistent project policy is loaded from. It is not a
 general-purpose policy override channel, and Overkill should not add parallel
 fixed-path config files for suite families such as unit, integration, or
-benchmark runs. Those differences belong in named runner profiles selected
-with `--profile <name>`.
+browser runs. Those differences belong in named runner profiles selected
+with `--profile <name>`. Benchmark policy belongs in the `benchmark`
+configuration domain and benchmark execution uses `overkill bench`.
 
 ## Selection And Iteration
 
@@ -108,12 +142,12 @@ with `--profile <name>`.
 
 ## Capability And Execution
 
-| Flag                             | Behavior                                                                | Reference                                                                                             |
-| -------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `--profile <name>`               | Select a runner profile (e.g. `microtest`, `integration`, `benchmark`). | [Microtests And Capabilities](../authoring/microtests-and-capabilities.md)                            |
-| `--mode <strategy>`              | Override the resolved execution strategy (serial, worker-pool, …).      | [Runtime Behavior § Parallelism Semantics](../architecture/runtime-behavior.md#parallelism-semantics) |
-| `--workers <n>`                  | Override default worker count for worker-pool modes.                    | same                                                                                                  |
-| `--resource-budget <name=value>` | Override one resource budget for this run.                              | [Runtime Behavior § Resource Budgets](../architecture/runtime-behavior.md#resource-budgets)           |
+| Flag                             | Behavior                                                                                                                      | Reference                                                                                             |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `--profile <name>`               | Select an ordinary runner profile (e.g. `microtest`, `integration`, `browser`). `benchmark` is reserved for `overkill bench`. | [Microtests And Capabilities](../authoring/microtests-and-capabilities.md)                            |
+| `--mode <strategy>`              | Override the resolved execution strategy (serial, worker-pool, …).                                                            | [Runtime Behavior § Parallelism Semantics](../architecture/runtime-behavior.md#parallelism-semantics) |
+| `--workers <n>`                  | Override default worker count for worker-pool modes.                                                                          | same                                                                                                  |
+| `--resource-budget <name=value>` | Override one resource budget for this run.                                                                                    | [Runtime Behavior § Resource Budgets](../architecture/runtime-behavior.md#resource-budgets)           |
 
 ## Output And Capture
 

@@ -96,12 +96,12 @@ Overkill should avoid:
 The first-party shape is:
 
 ```ts
-import { defineConfig } from '@overkill-dev/run';
-import { createLineReporter } from '@overkill-dev/reporter-line';
+import { defineConfig } from '@overkill-dev/test/config';
+import { lineReporter } from '@overkill-dev/test/reporters';
 
 export default defineConfig({
     include: [ 'source/**/*.test.ts' ],
-    reporters: [ createLineReporter() ],
+    reporters: [ lineReporter() ],
     coverage: {
         formats: [ 'text', 'lcov' ]
     }
@@ -128,7 +128,8 @@ await run({ config, request });
 Callers that already have policy in memory pass it directly:
 
 ```ts
-import { defineConfig, run } from '@overkill-dev/run';
+import { run } from '@overkill-dev/run';
+import { defineConfig } from '@overkill-dev/test/config';
 
 const config = defineConfig({
     include: [ 'source/**/*.test.ts' ],
@@ -182,18 +183,19 @@ Canonical shape:
 - built-in defaults fill gaps, but there is no second user-level
   configuration layer and no parallel environment-variable configuration
   surface
-- unit, integration, browser, benchmark, and type-test differences normally
-  live as named profiles in that one policy file, not as separate convention
-  files
+- unit, integration, browser, and type-test differences normally live as
+  named profiles in that one policy file, not as separate convention files
+- benchmark policy lives in the standard `benchmark` configuration domain
+  because benchmark execution uses the `overkill bench` namespace
 
 The only configuration-oriented CLI flag should be `--config <path>` to pick
 the configuration file location explicitly when discovery is not enough.
 
 The runner should not search for `overkill.unit.config.ts`,
-`overkill.integration.config.ts`, `overkill.benchmark.config.ts`, or similar
+`overkill.integration.config.ts`, `overkill.browser.config.ts`, or similar
 suite-family files. Those names look convenient, but they create unclear
 precedence and make the final policy harder to explain in `RunFacts`.
-Use profiles instead:
+Use profiles for ordinary and optional runtime families instead:
 
 ```ts
 export default defineConfig({
@@ -205,14 +207,18 @@ export default defineConfig({
         integration: {
             include: [ 'source/integration-tests/**/*.test.ts' ],
             execution: { mode: 'process-per-file' }
-        },
-        benchmark: {
-            include: [ 'source/**/*.bench.ts' ],
-            execution: { mode: 'serial' }
         }
+    },
+    benchmark: {
+        include: [ 'source/**/*.bench.ts' ],
+        execution: { mode: 'serial' }
     }
 });
 ```
+
+Benchmark policy is a standard top-level configuration domain because
+benchmark execution uses `overkill bench`, not `overkill run --profile
+benchmark`.
 
 Important distinction:
 
@@ -235,9 +241,12 @@ ad-hoc precedence rules.
 
 Configuration belongs above the engine. `@overkill-dev/run` owns configuration
 file loading APIs, CLI discovery, and cross-package merging/validation.
-Higher-level packages may still contribute their own configuration domains
-such as browser wiring, benchmark metric collectors, baseline policy, or
-type-test adapters. The detailed package-boundary matrix lives in
+Standard-stack packages may still contribute their own configuration domains
+where that matches project policy, such as reporters, coverage, baseline
+policy, and benchmark policy. Optional packages start with typed imported
+values such as profile factories, runtime/resource factories, reporters,
+baseline adapters, or authoring helpers rather than adding package-owned
+top-level config keys by default. The detailed package-boundary matrix lives in
 [Package Architecture](./package-architecture.md).
 
 ## Custom Assertions Are Lexical Imports
@@ -268,6 +277,8 @@ The concept should favor:
 - direct imports in JS/TS configuration
 - stable package contracts
 - shallow registration objects
+- typed factories for optional-package profiles, runtimes, reporters, and
+  adapters
 
 That is enough for:
 
@@ -276,6 +287,10 @@ That is enough for:
 - benchmark metric collectors
 - type-test adapters
 - mutation integrations
+
+Installing a package does not mutate the CLI, trigger package-name discovery,
+or widen top-level configuration through module augmentation in the current
+concept.
 
 ## What Configuration Should Not Do
 
@@ -295,6 +310,7 @@ magical for configuration too.
 - higher-level configuration files are optional
 - JS/TS configuration is preferred
 - CLI configuration discovery lives above the engine, in `@overkill-dev/run`
+- standard users import `defineConfig(...)` from `@overkill-dev/test/config`
 - programmatic configuration loading is explicit through `loadRunConfig(...)`
 - programmatic `run(...)` and `resolveRun(...)` accept an already resolved
   configuration value and do not auto-load files
