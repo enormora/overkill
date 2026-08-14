@@ -7,6 +7,7 @@ import {
 } from '@overkill-dev/engine';
 import type { Reporter } from '../engine/reporter.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
+import { testDouble } from '../doubles/test-double.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import {
@@ -333,6 +334,29 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'commandLineRunner.runTests() maps reporter sink conflicts to exit code 3',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const result = await runTests(createRunnerDependencies({
+                    orchestrator: {
+                        async resolve(command) {
+                            return await createRunnerDependencies({}).orchestrator.resolve(command);
+                        },
+                        async run() {
+                            throw new TypeError('Reporter sink conflict: stdout is claimed exclusively.');
+                        }
+                    }
+                }));
+
+                scope.assert.equal(result.exitCode, 3);
+                scope.assert.deepEqual(result.fallbackDiagnostics, [
+                    'Overkill configuration error: Reporter sink conflict: stdout is claimed exclusively.'
+                ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'commandLineRunner.runTests() maps request errors to exit code 3',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -354,6 +378,28 @@ export const testSuite = createOverkillSuite({
                 scope.assert.equal(result.exitCode, 3);
                 scope.assert.deepEqual(result.fallbackDiagnostics, [
                     'Overkill argument error: Path discovery is not implemented yet.'
+                ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'commandLineRunner.runTests() formats non-error internal crashes',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const run = testDouble.rejects<RunOrchestrator['run']>('unexpected string failure');
+                const result = await runTests(createRunnerDependencies({
+                    orchestrator: {
+                        async resolve(command) {
+                            return await createRunnerDependencies({}).orchestrator.resolve(command);
+                        },
+                        run
+                    }
+                }));
+
+                scope.assert.equal(result.exitCode, 70);
+                scope.assert.deepEqual(result.fallbackDiagnostics, [
+                    'Overkill internal error: unexpected string failure'
                 ]);
 
                 return scope.assert.collect();

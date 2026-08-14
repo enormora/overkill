@@ -229,6 +229,26 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'orchestrator.resolve() rejects unsupported sharding',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                await scope.assert.rejects(async function resolveUnsupportedShard() {
+                    await orchestrator.resolve(createRunCommand({
+                        config: defaultConfig,
+                        request: {
+                            ...defaultRequest,
+                            shard: { index: 1, total: 2 }
+                        },
+                        testPlan: createPassingPlan()
+                    }));
+                }, {
+                    message: 'Sharding is not implemented yet.'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'orchestrator.run() executes the resolved plan and reports run facts',
             metadata: {},
             async body(scope: OverkillScope) {

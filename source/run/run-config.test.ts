@@ -141,6 +141,22 @@ export const testSuite = createOverkillSuite({
 
                 return scope.assert.collect();
             }
+        }),
+        createOverkillTestCase({
+            name: 'loadRunConfig() reports explicit config import failures',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const cwd = await createTempFolder();
+
+                await scope.assert.rejects(async function loadMissingConfig() {
+                    await loadRunConfig({ configPath: 'missing.config.js', cwd });
+                }, {
+                    type: RunConfigError,
+                    message: /Failed to load config file/
+                });
+
+                return scope.assert.collect();
+            }
         })
     ]
 });
