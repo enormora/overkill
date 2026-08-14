@@ -39,7 +39,8 @@ It is not trying to optimize for maximum Jest API compatibility.
 
 ## Product Shape
 
-Overkill is a monorepo with fine-grained packages as the architectural truth.
+Overkill is a monorepo with fine-grained packages as the architectural truth
+and `@overkill-dev/test` as the standard user-facing distribution.
 
 Core package families:
 
@@ -49,8 +50,10 @@ Core package families:
 - `@overkill-dev/assert`: reusable assertion-extension helpers such as
   composite assertion builders, foreign-assertion bridges, and packaged
   assertion adapters that produce imported assertion reference values
-- `@overkill-dev/test`: default first-party authoring layer built on top of the
-  engine, focused on authoring ergonomics rather than owning assertions
+- `@overkill-dev/test`: standard user-facing package and default
+  first-party authoring layer built on top of the engine. It ships the
+  `overkill` binary, re-exports the standard authoring surface, and keeps
+  semantic ownership in the underlying packages
 - `@overkill-dev/doubles`: explicit, function-first test doubles centered on a single `testDouble()` concept
 - `@overkill-dev/resources`: typed runtimes, resource composition, and execution requirements
 - higher-layer runtime patterns for deterministic services, browser page
@@ -60,9 +63,11 @@ Core package families:
   helpers
 - reporter packages such as `@overkill-dev/reporter-line`, `@overkill-dev/reporter-tap`, `@overkill-dev/reporter-json`, and `@overkill-dev/reporter-html`
 - `@overkill-dev/run`: orchestration for discovery, filtering, seeds, shard
-  selection, debug/coverage/watch intent, and terminal workflows
+  selection, debug/coverage/watch intent, terminal workflows, and the
+  command implementation behind the `overkill` binary
 - `@overkill-dev/baselines`: shared baseline model for snapshots and performance expectations
-- `@overkill-dev/bench`: benchmark-specific package family
+- `@overkill-dev/bench`: benchmark-specific package family included in the
+  standard distribution but not loaded by ordinary test-file imports
 - type-test support through adapters or integrations rather than through a
   custom Overkill type-test engine
 - a first-party Stryker plugin
@@ -237,18 +242,41 @@ The shared workflow matters:
 
 The semantics still differ. Performance baselines need thresholds, normalization, and drift rules that ordinary content snapshots do not.
 
-## Bundles
+## Standard Distribution
 
-Fine-grained packages remain first-class, but some teams will want curated bundle distributions.
+Fine-grained packages remain first-class, but users should not need to
+assemble many packages before getting a normal TypeScript test runner.
+The standard install package is `@overkill-dev/test`.
 
-Possible bundle shapes:
+The standard distribution includes the Node-first stack:
 
-- a minimal microtest bundle
-- a default testing bundle
-- an integration-oriented bundle
-- a full convenience bundle
+- `@overkill-dev/engine`
+- `@overkill-dev/run`
+- `@overkill-dev/assert`
+- `@overkill-dev/doubles`
+- `@overkill-dev/resources`
+- `@overkill-dev/baselines`
+- `@overkill-dev/bench`
+- standard first-party reporters
+- explicit microtest coverage support
 
-Bundles are a distribution convenience, not the architectural source of truth. The documentation should always explain the underlying package model even when bundle entrypoints exist.
+The standard distribution is a packaging convenience, not the architectural
+source of truth. The root `@overkill-dev/test` import is reserved for the
+authoring hot path and lightweight doubles. Other standard features are
+available through explicit subpaths such as `@overkill-dev/test/config`,
+`@overkill-dev/test/reporters`, `@overkill-dev/test/bench`, and
+`@overkill-dev/test/assert`.
+
+Optional packages stay separate installs when they are domain-specific,
+heavyweight, or aimed at a narrower audience. That includes browser and
+browser-benchmark packages, property/model/differential/linearizability
+packages, type-test adapters, mutation integrations, ESLint and AWS CDK
+adapters, contract adapters, accessibility adapters, and similar focused
+integrations.
+
+Installing an optional package does not mutate the CLI. Optional packages
+integrate through explicit imports, typed profiles, resource factories,
+reporters, baseline adapters, or authoring helpers.
 
 ## Metadata And Identity
 

@@ -79,9 +79,11 @@ Explicit update runs:
 
 ## Update Workflow
 
-Baseline operations live under the `baseline` subcommand namespace
-(registered in [CLI Reference § Subcommands](../reference/cli.md#subcommands) § Baseline). The verbs split
-along intent:
+Ordinary baseline operations live under the `baseline` subcommand namespace
+(registered in [CLI Reference § Subcommands](../reference/cli.md#subcommands) § Baseline).
+Performance baselines for benchmarks live under `overkill bench baseline`
+because benchmark execution has a dedicated namespace. The verbs split along
+intent:
 
 | Verb        | Creates missing | Overwrites changed | Removes stale | Runs tests |
 | ----------- | --------------- | ------------------ | ------------- | ---------- |
@@ -92,9 +94,10 @@ along intent:
 | `diff`      | no              | no                 | no            | yes        |
 
 The subcommand framing reflects user intent: the primary artifact is
-on-disk baselines, not the verdict (see [CLI Reference § Flags vs Subcommands](../reference/cli.md#flags-vs-subcommands)). The write verbs (`update`, `apply`, `bootstrap`) accept
-the same selection, capability, and output flags as `run`, since
-updating still requires executing the selected tests.
+on-disk baselines, not the verdict (see [CLI Reference § Flags vs Subcommands](../reference/cli.md#flags-vs-subcommands)). The ordinary write verbs (`update`, `apply`, `bootstrap`) accept
+the same selection, capability, and output flags as `run`, since updating
+still requires executing the selected tests. Benchmark baseline verbs accept
+the benchmark selection and output flags from `overkill bench run`.
 
 Day-to-day choice:
 

@@ -177,7 +177,9 @@ The core should own only the abstractions that truly need to be shared:
 - results
 - reporter and integration contracts
 
-Assertions, runtimes, snapshots, benchmarks, and bundles can be first-party without being core primitives unless research shows they cannot be built cleanly on top.
+Assertions, runtimes, snapshots, benchmarks, and the standard distribution
+can be first-party without being core primitives unless research shows they
+cannot be built cleanly on top.
 
 ## Platform First
 
@@ -210,7 +212,13 @@ The optimization target for the default run mode is cold start, not warm steady-
 Concrete consequences:
 
 - Node built-ins are preferred over loader hooks or custom transforms
-- plugin imports stay lazy; common paths avoid module-graph scans
+- installed package set is not the loaded module graph
+- root `@overkill-dev/test` imports stay narrow enough for ordinary test
+  files and single-process microtests
+- command modules are selected deterministically by the typed command being
+  executed; common paths avoid module-graph scans
+- optional package code loads only through explicit imports, selected config,
+  or selected command paths
 - platform-provided warm optimizations are acceptable only when they do not penalize the cold path
 
 Warm-mode optimizations may exist but never _replace_ a fast cold start as the primary target.

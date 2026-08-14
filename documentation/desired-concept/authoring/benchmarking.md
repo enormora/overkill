@@ -2,7 +2,8 @@
 
 ## Position
 
-Benchmarking is a first-class Overkill package family, not a side mode of the ordinary test runner.
+Benchmarking is a first-class Overkill package family, not a side mode of the
+ordinary test runner.
 
 The core reason is that benchmark suites need a richer model:
 
@@ -65,6 +66,23 @@ This also implies a few non-goals for an ad hoc benchmark helper:
 
 That is strong evidence for Overkill's direction: benchmark suites need a
 dedicated package family, not just "tests with a timer."
+
+`@overkill-dev/bench` is included in the standard `@overkill-dev/test`
+distribution so teams get benchmark support from the normal install. It must
+still stay outside the root `@overkill-dev/test` import graph and ordinary
+single-process microtest startup path.
+
+Benchmarks use a dedicated CLI namespace:
+
+```text
+overkill bench run
+overkill bench list
+overkill bench baseline update
+```
+
+`overkill run --profile benchmark` is rejected. This keeps one first-party
+benchmark execution path and avoids making benchmarks look like ordinary tests
+with a different profile.
 
 It also confirms that Overkill should support:
 

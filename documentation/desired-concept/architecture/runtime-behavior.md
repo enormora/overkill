@@ -683,8 +683,8 @@ This document is the runtime counterpart to several others. Cross-links:
   leaks. The runner should not guess and blame a sibling test by timing
   alone.
 - strict microtest profiles elevate leaked resources to failures by
-  default. Integration and benchmark-oriented profiles report leaks as
-  runner diagnostics by default, with policy able to escalate them.
+  default. Integration profiles and benchmark runs report leaks as runner
+  diagnostics by default, with policy able to escalate them.
 - monorepo cross-package fixture sharing is only valid through explicit
   run-scope or shared resource definitions. It is never inferred from
   package layout or discovery.

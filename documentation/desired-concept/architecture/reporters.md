@@ -174,14 +174,16 @@ mechanism is presentation.
 Config should prefer explicit imported values, for example:
 
 ```ts
-import { defineConfig } from '@overkill-dev/run';
-import { createLineReporter } from '@overkill-dev/reporter-line';
-import { createBenchmarkHtmlReporter } from '@overkill-dev/reporter-benchmark-html';
+import { defineConfig } from '@overkill-dev/test/config';
+import {
+    benchmarkHtmlReporter,
+    lineReporter
+} from '@overkill-dev/test/reporters';
 
 export default defineConfig({
     reporters: [
-        createLineReporter(),
-        createBenchmarkHtmlReporter({
+        lineReporter(),
+        benchmarkHtmlReporter({
             outputDir: '.overkill/bench-report'
         })
     ]
@@ -191,8 +193,9 @@ export default defineConfig({
 There is intentionally no implicit third-party reporter discovery by naming
 convention and no package-name lookup magic in the settled concept.
 
-Bundle packages may re-export the built-in reporter factories so users do not
-need to import each built-in reporter from its leaf package by default.
+`@overkill-dev/test/reporters` may re-export built-in reporter factories so
+standard users do not need to import each built-in reporter from its leaf
+package by default.
 
 ## Multi-Reporter Composition
 

@@ -189,8 +189,9 @@ external coverage tooling.
 
 ### No coverage outside microtest profiles
 
-Coverage is restricted to microtest profiles. Integration, browser,
-and benchmark profiles reject `--coverage`.
+Coverage is restricted to microtest profiles. Integration and browser
+profiles reject `--coverage`; benchmark commands reject coverage because
+instrumentation distorts measurements.
 
 Why: integration tests broad-path through code (their coverage reads
 as "everything was hit," uninformative); benchmarks cannot be
@@ -285,19 +286,22 @@ verdict, not quarantine. A flaky test is fixed or deleted, not parked.
 
 ### No heavy plugin runtime
 
-Overkill does not ship a plugin container, lifecycle bus, or
-configuration-driven hook system.
+Overkill does not ship a plugin container, lifecycle bus,
+configuration-driven hook system, package-name scanner, implicit npm
+discovery, or installed-package command mutation.
 
 Why: stable package contracts are enough; a plugin runtime adds
 indirection without unique reach.
 
 Where: [Package Architecture § Extension Surfaces](../architecture/package-architecture.md#extension-surfaces),
 [Configuration § Configuration Versus Plugins](../architecture/configuration.md#configuration-versus-plugins),
-[Package Architecture § Bundles](../architecture/package-architecture.md#bundles).
+[Package Architecture § Standard Distribution](../architecture/package-architecture.md#standard-distribution).
 
 Alternative: stable APIs in `@overkill-dev/engine`, orchestration-level
 composition in `@overkill-dev/run`, and configuration-driven attachment for
-discovered surfaces (reporters, baseline adapters).
+explicitly imported surfaces such as reporters, typed profiles, resource
+factories, and baseline adapters. Optional packages do not widen top-level
+configuration through module augmentation in the current concept.
 
 ## Deferred With Research
 

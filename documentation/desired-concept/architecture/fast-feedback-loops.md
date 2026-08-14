@@ -11,7 +11,12 @@ tests as a thinking tool.
 This document captures the concrete engineering knobs available in modern Node 26-era runtimes (May 2026)
 that a test runner can pull _today_ to keep the cold path short and the hot path
 sharable. Companion to [Platform-First Implementation Notes](./platform-first-implementation-notes.md) and
-[Package Architecture § Bundles](./package-architecture.md#bundles).
+[Package Architecture § Standard Distribution](./package-architecture.md#standard-distribution).
+
+One-package install must not mean one large startup graph. The standard
+distribution can install benchmark, baseline, reporter, coverage, and resource
+packages while keeping ordinary test-file imports and single-process
+microtests narrow.
 
 The investigation is structured around twelve technical areas; each section is
 deliberately concrete so it can be turned into an issue or RFC without further
@@ -269,13 +274,22 @@ keeping the cold path short and not requiring a hot daemon to feel fast.
   process. Keep the common path focused on module-record reuse and avoid
   inventing custom bytecode-cache layers unless measurement later proves
   they are worth the complexity.
+- **Narrow standard-distribution imports.** The root `@overkill-dev/test`
+  import is the authoring hot path. It may load default authoring helpers,
+  minimal engine construction, and lightweight doubles, but not command
+  parsing, configuration loading, reporters, resources, baselines, benchmark
+  measurement code, coverage tooling, browser support, or optional adapters.
+- **Command-selected modules.** The `overkill` binary should parse the command
+  name and `--config`, then load only the selected command implementation.
+  `overkill run` should not load benchmark measurement or baseline writer
+  modules unless the selected command or configuration needs them.
 - **Inotify-driven run targeting.** When the watcher fires, classify the
   change (test file / source file / configuration / fixture) and run only the
   relevant subset.
-- **No transitive plugin imports at startup.** Plugin manifests register
-  capabilities lazily; their implementation modules import only when a test
-  actually uses them. The runner core imports nothing per-plugin until the
-  first plugin call.
+- **No transitive optional-package imports at startup.** Optional packages load
+  only through explicit imports, selected configuration values, or selected
+  command paths. There is no package scan or dynamic plugin registry on the
+  startup path.
 
 ## Sources
 

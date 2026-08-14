@@ -40,8 +40,8 @@ Why a first-class concept anyway:
 
 ## Settled Decisions
 
-- Coverage is restricted to microtest profiles. Other profiles
-  (integration, browser, benchmark) reject `--coverage`.
+- Coverage is restricted to microtest profiles. Integration and browser
+  profiles reject `--coverage`; benchmark commands reject coverage.
 - Coverage runs single-threaded — one worker process executes all
   selected microtests serially. Worker-pool and process-per-file
   modes do not collect coverage. Supervised microtest mode is
@@ -106,7 +106,7 @@ overkill run --coverage --profile microtest
 ```
 
 `--coverage` combined with a non-microtest profile is rejected at CLI
-parse time.
+parse time. Benchmark commands do not accept `--coverage`.
 
 Configuration (`overkill.config.ts`) — project policy, settled across runs:
 

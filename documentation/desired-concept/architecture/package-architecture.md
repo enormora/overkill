@@ -2,7 +2,9 @@
 
 ## Architectural Rule
 
-Fine-grained packages are the source of truth. Bundles may exist, but they should compose packages rather than replace the model.
+Fine-grained packages are the source of truth. `@overkill-dev/test` is the
+standard user-facing distribution, but it composes those packages rather than
+replacing the ownership model.
 
 This is intentionally closer to the real modularity of Buster and the framework-builder ambition of Folio than to a single monolithic runner with private internals.
 
@@ -40,6 +42,8 @@ The layer split should stay explicit:
 - `@overkill-dev/engine` owns execution of an already-resolved plan
 - `@overkill-dev/run` owns turning human or programmatic run intent into that
   plan
+- `@overkill-dev/test` owns the standard user-facing distribution and ships
+  the thin `overkill` binary wrapper
 
 The CLI must not become a privileged control surface. Any meaningful
 run-intent flag should also exist as a typed programmatic field on the
@@ -47,6 +51,8 @@ semantic owner package. In practice that means:
 
 - CLI flags that shape planning or orchestration map to `@overkill-dev/run`
   request fields
+- the public `overkill` binary is packaged by `@overkill-dev/test`, but its
+  command semantics are implemented by `@overkill-dev/run`
 - engine consumers can still bypass CLI, configuration loading, discovery,
   and `@overkill-dev/run` entirely by constructing a `TestPlan` and calling
   `execute(testPlan)` directly
@@ -55,8 +61,9 @@ Recommended public split:
 
 ```ts
 import { execute, runIfMain } from '@overkill-dev/engine';
+import { defineConfig } from '@overkill-dev/test/config';
+import { suite, test, testDouble } from '@overkill-dev/test';
 import {
-    defineConfig,
     list,
     loadRunConfig,
     mergeResults,
@@ -71,7 +78,9 @@ import {
 Conceptually:
 
 - `defineConfig(config)` preserves typed project policy without requiring a
-  file
+  file. Standard users import it from `@overkill-dev/test/config`; custom
+  orchestrators may import the same underlying capability from
+  `@overkill-dev/run`
 - `loadRunConfig(request)` loads project policy from a file when a caller asks
   for that explicitly
 - `resolveRun(command)` returns a frozen `ResolvedRun`
@@ -87,7 +96,7 @@ Conceptually:
 ## Default Test Authoring
 
 `@overkill-dev/test` should be the single preferred first-party high-level
-authoring layer. It should favor:
+authoring layer and the standard package most users install. It should favor:
 
 - exported suite values
 - direct-file execution through `overkill run path/to/file.test.ts`
@@ -103,6 +112,27 @@ authoring layer. It should favor:
   reusable multi-case macros, and async queue helpers
 - explicit facade creation for suite families that need an extended
   helper surface
+
+The root import is the ordinary test-file hot path:
+
+```ts
+import { suite, test, testDouble } from '@overkill-dev/test';
+```
+
+It should expose authoring helpers plus lightweight doubles:
+
+- `test`
+- `suite`
+- `table`
+- `defineMacro`
+- `createTestFacade`
+- `runIfMain`
+- lightweight doubles APIs and doubles assertion references
+
+It should not expose configuration loading, reporters, resources, benchmark
+APIs, baseline APIs, custom assertion builder APIs, or command implementation
+APIs. Those belong behind explicit subpaths or leaf packages so ordinary
+microtest imports stay small.
 
 Tables or parameterized-case helpers may still exist, but they should be
 framed as specialized helpers built on the macro/value model rather than as
@@ -266,6 +296,7 @@ code should not need Overkill dependencies.
 
 `@overkill-dev/run` should own:
 
+- command parsing and dispatch implementation for the `overkill` binary
 - file discovery
 - filtering
 - seed handling
@@ -281,6 +312,8 @@ code should not need Overkill dependencies.
 
 It should also expose the canonical programmatic mirror of CLI run intent.
 The CLI is a parser for this API, not a second capability layer.
+`@overkill-dev/run` should not declare `bin: overkill`; the binary is shipped
+by `@overkill-dev/test` and delegates to `@overkill-dev/run`.
 
 Recommended shape:
 
@@ -318,11 +351,20 @@ verbs too:
 - `baseline.update(request)`, `baseline.apply(request)`,
   `baseline.bootstrap(request)`, `baseline.diff(request)`,
   `baseline.list(request)` - mirrors of the baseline subcommands
+- `bench.run(request)`, `bench.list(request)`,
+  `bench.baseline.update(request)`, `bench.baseline.apply(request)`,
+  `bench.baseline.bootstrap(request)`, `bench.baseline.diff(request)`,
+  and `bench.baseline.list(request)` - mirrors of benchmark-specific
+  commands
 
-This is also the logical layer for choosing microtest vs integration vs benchmark profiles.
+This is also the logical layer for choosing ordinary runner profiles.
+Benchmark execution is intentionally not a `run --profile benchmark` alias:
+benchmarks use the `overkill bench` namespace because their primary output is
+measurement data and policy evaluation, not an ordinary test verdict.
 
-It is also the home for first-party configuration-file loading and
-`defineConfig(...)` support.
+It is also the semantic home for first-party configuration-file loading and
+`defineConfig(...)` support. Standard users import the helper through
+`@overkill-dev/test/config`.
 
 It should also understand first-class runtime and resource factories as run
 inputs, not just file discovery. Higher layers often construct their real
@@ -386,7 +428,8 @@ being hidden inside `@overkill-dev/bench`.
 Reporter loading should stay explicit and JS/TS-native:
 
 - configuration imports reporter factories/instances directly
-- first-party bundle packages may re-export built-in reporter factories
+- `@overkill-dev/test/reporters` may re-export built-in reporter factories
+  for the standard distribution
 - there is no implicit package-name discovery or naming-convention scan for
   third-party reporters
 - reporter selection is configuration-only, not a duplicate CLI surface
@@ -421,7 +464,7 @@ This is especially important for:
 - artifact naming
 - stale-baseline detection
 - reproducibility
-- configuration-driven extensions such as reporters or baseline adapters
+- configuration-driven attachments such as reporters or baseline adapters
 
 ### Extension Surfaces
 
@@ -447,9 +490,11 @@ runner patch points. That means:
 - benchmark packages contribute workloads, measurements, and policies
 
 Overkill does not need a giant global plugin container to be extensible.
-Stable package-level APIs, stable contracts in `@overkill-dev/engine`, and
+Installing a package does not mutate the `overkill` CLI, widen global
+configuration types, or register commands by naming convention. Stable
+package-level APIs, stable contracts in `@overkill-dev/engine`, and
 orchestration-level composition in `@overkill-dev/run` are enough for many
-extension stories without inventing a heavy plugin runtime. See
+integration stories without inventing a heavy plugin runtime. See
 [Configuration § Configuration Versus Plugins](./configuration.md#configuration-versus-plugins)
 for how configuration-driven attachment composes with direct programmatic
 registration.
@@ -546,7 +591,7 @@ subpackages for:
 Overkill should preserve an explicit builder-oriented layer for higher-level packages. This is where the Folio influence matters most: first-party and third-party packages should be able to assemble specialized test APIs from lower-level execution, runtime, and reporting contracts rather than forking the whole runner.
 
 Conceptually this layer sits above `@overkill-dev/engine` and below finished
-user-facing bundles or DSL packages.
+user-facing distribution or DSL packages.
 
 The important constraint is that Overkill should not ship multiple
 first-party DSLs at the same level. The builder layer exists so third
@@ -561,6 +606,8 @@ or extend the contract but do not redefine it.
 | Concept                                                           | Canonical package                                                      | Notes                                                                                                                                                          |
 | ----------------------------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Test definitions, suites, cases                                   | `@overkill-dev/engine`                                                 | The `TestNode`/`TestCase`/`Suite` shapes; see [Tests As Values](../authoring/tests-as-values.md).                                                              |
+| Standard user-facing distribution                                 | `@overkill-dev/test`                                                   | Normal install package; composes the standard stack without taking over semantic ownership.                                                                    |
+| Public `overkill` binary packaging                                | `@overkill-dev/test`                                                   | Thin wrapper that delegates command behavior to `@overkill-dev/run`.                                                                                           |
 | `TestOutcome` ADT (engine result protocol)                        | `@overkill-dev/engine`                                                 | `Pass`/`Fail`/`Skip`/`Inconclusive`; see [Assertions And Results § Protocol Layer](../authoring/assertions-and-results.md#protocol-layer-structured-outcomes). |
 | Test verdict derivation (crashed, presentation mapping, …)        | `@overkill-dev/run`                                                    | Verdicts derived from `(outcome, metadata, runner-error?)`.                                                                                                    |
 | `RunRequest`, `RunFacts`, `ResolvedRun`, and `RunRecord`          | `@overkill-dev/run`                                                    | `RunFacts` shape sketched in [Reproducibility](./reproducibility.md).                                                                                          |
@@ -586,56 +633,91 @@ or extend the contract but do not redefine it.
 | Failure artifacts (storage + schema)                              | `@overkill-dev/engine` (schema) + `@overkill-dev/run` (storage policy) | Storage layout owned by orchestration.                                                                                                                         |
 | Metadata propagation rules                                        | `@overkill-dev/engine`                                                 | Set merge, array replace-flag, capabilities intersect.                                                                                                         |
 | Configuration loading                                             | `@overkill-dev/run`                                                    | Reads root `overkill.config.ts`; engine has no configuration.                                                                                                  |
+| Standard configuration helper re-export                           | `@overkill-dev/test/config`                                            | User-facing import path for `defineConfig(...)`; custom orchestrators may import from `@overkill-dev/run`.                                                     |
 | Test facade creation                                              | project code + `@overkill-dev/test`                                    | `@overkill-dev/test` owns facade creation for authoring ergonomics only.                                                                                       |
+| Root test authoring import                                        | `@overkill-dev/test`                                                   | `test`, `suite`, `table`, `defineMacro`, `createTestFacade`, `runIfMain`, and lightweight doubles only.                                                        |
 | Assertion reference execution                                     | `@overkill-dev/engine`                                                 | Engine owns callable assertion references, counting, `require` behavior, and result normalization.                                                             |
-| CLI entry, terminal capability detection                          | `@overkill-dev/run`                                                    | The first-party CLI remains part of `@overkill-dev/run`.                                                                                                       |
+| CLI command semantics, terminal capability detection              | `@overkill-dev/run`                                                    | Parses and dispatches command intent behind the `@overkill-dev/test` binary wrapper.                                                                           |
 | Test debug mode artifact                                          | `@overkill-dev/run`                                                    | Activation, storage, retention; see [Test Debug Mode](../authoring/debug-mode.md).                                                                             |
 | Reporter packages (`@overkill-dev/reporter-line`, …)              | `@overkill-dev/reporter-*`                                             | Stable contract from `@overkill-dev/engine`; presentation owned per-package.                                                                                   |
 
-## Bundles
+## Standard Distribution
 
-Some projects will want several Overkill features together and should not
-have to manually assemble every package before getting productive. Bundles
-are the answer to that convenience need.
+Most users should install one package:
 
-### Rule
+```text
+npm install -D @overkill-dev/test
+```
 
-Bundles are a distribution convenience. Fine-grained packages remain the
-architectural truth. That means:
+That package is the standard distribution. It should depend directly on the
+standard stack so users do not need to align package versions by hand:
 
-- documentation describes packages first
-- bundles are documented as curated entrypoints
-- a user can always drop down to explicit composition
+- `@overkill-dev/engine`
+- `@overkill-dev/run`
+- `@overkill-dev/assert`
+- `@overkill-dev/doubles`
+- `@overkill-dev/resources`
+- `@overkill-dev/baselines`
+- `@overkill-dev/bench`
+- standard first-party reporters
+- explicit microtest coverage support
 
-### Candidate Bundle Shapes
+The standard distribution should not hide real package boundaries. Leaf
+packages remain documented for advanced direct use, custom orchestrators, and
+third-party integration authors.
 
-Bundle examples that conceptually make sense:
+### Public Entry Points
 
-- `@overkill-dev/micro`: engine + test + assert + selected reporters +
-  microtest profile helpers. For projects that mainly want pure,
-  capability-restricted microtests.
-- `@overkill-dev/default`: engine + test + assert + resources + selected
-  reporters + run + baselines. For teams that want one standard Overkill
-  setup.
-- `@overkill-dev/integration`: default bundle plus integration-oriented
-  baseline and process features. For broader system and workflow
-  testing.
-- `@overkill-dev/all`: convenience meta-package for adoption or evaluation.
+The root import is for ordinary test files:
 
-### Risks
+```ts
+import { suite, test, testDouble } from '@overkill-dev/test';
+```
 
-Bundles must not:
+Everything outside the authoring hot path uses an explicit subpath:
 
-- hide the real package boundaries
-- force every user into an all-in-one framework mentality
-- become the only documented experience
-- make versioning strategy impossible to reason about
+```ts
+import { defineConfig } from '@overkill-dev/test/config';
+import { lineReporter } from '@overkill-dev/test/reporters';
+import { benchmark, workload } from '@overkill-dev/test/bench';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+```
 
-### Concept Direction
+Subpaths may re-export standard-stack packages for user ergonomics. They do
+not transfer semantic ownership away from those packages.
 
-The documentation should preserve both:
+### Load Boundaries
 
-- expert-friendly explicit composition
-- team-friendly curated bundles
+Installed package set is not the loaded module graph.
 
-Bundles should never be the only documented entrypoint.
+The protected hot paths are:
+
+- root import from `@overkill-dev/test`
+- single-process microtest execution
+
+The root import may load only the default authoring APIs, minimal engine
+construction code, and lightweight doubles. It must not load
+`@overkill-dev/run`, command parsing, configuration loading, reporters,
+resources, baselines, benchmark measurement code, coverage tooling, browser
+support, or optional adapters.
+
+The `overkill` binary should use command-selected modules: a tiny fixed
+dispatcher parses the command name and `--config`, then loads only the
+selected command implementation. There is no package scanning, generated
+command registry, or dynamic command extension in the current concept.
+
+### Optional Packages
+
+Optional packages stay separate installs when they are domain-specific,
+heavyweight, or aimed at a narrower audience. Examples:
+
+- browser and browser-benchmark packages
+- property, model, differential, and linearizability packages
+- type-test adapters
+- mutation integrations
+- ESLint, AWS CDK, contract, accessibility, and similar domain adapters
+
+Optional packages integrate through explicit imports: typed profiles,
+runtime/resource factories, reporters, baseline adapters, and authoring
+helpers. They do not mutate the CLI by being installed, and they do not widen
+top-level configuration through module augmentation in the current concept.
