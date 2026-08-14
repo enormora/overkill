@@ -1,4 +1,4 @@
-export { resolveRun, run } from '../../run/run.ts';
+export { orchestrator, RunResolutionError } from '../../run/run.ts';
 export type {
     ResolvedRun,
     RunCaseFacts,
@@ -10,6 +10,7 @@ export type {
     RunFacts,
     RunExecutionFacts,
     RunLoaderConfig,
+    RunOrchestrator,
     RunReproducibilityFacts,
     RunRequest,
     RunResolutionErrorCode,
@@ -18,4 +19,3 @@ export type {
     RunShard,
     SerializedValue
 } from '../../run/run.ts';
-export { RunResolutionError } from '../../run/run.ts';

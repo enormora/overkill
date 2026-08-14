@@ -279,8 +279,9 @@ keeping the cold path short and not requiring a hot daemon to feel fast.
   minimal engine construction, and lightweight doubles, but not command
   parsing, configuration loading, reporters, resources, baselines, benchmark
   measurement code, coverage tooling, browser support, or optional adapters.
-- **Command-selected modules.** The `overkill` binary should parse the command
-  name and `--config`, then load only the selected command implementation.
+- **Command-selected modules.** The `overkill` binary should parse argv to the
+  command name and `--config`, then load only the selected command
+  implementation.
   `overkill run` should not load benchmark measurement or baseline writer
   modules unless the selected command or configuration needs them.
 - **Inotify-driven run targeting.** When the watcher fires, classify the

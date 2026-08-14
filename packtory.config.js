@@ -109,11 +109,16 @@ export const config = {
         {
             name: '@overkill-dev/run',
             roots: {
+                commandLine: {
+                    js: 'packages/run/command-line.entry-point.js',
+                    declarationFile: 'packages/run/command-line.entry-point.d.ts'
+                },
                 main: {
                     js: 'packages/run/run.entry-point.js',
                     declarationFile: 'packages/run/run.entry-point.d.ts'
                 }
             },
+            defaultModuleRoot: 'main',
             additionalFiles: [
                 {
                     sourceFilePath: path.join(projectFolder, 'source/packages/run/readme.md'),

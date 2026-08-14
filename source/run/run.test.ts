@@ -9,12 +9,12 @@ import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import {
     RunResolutionError,
-    createRunApi,
-    resolveRun,
+    createRunOrchestrator,
+    orchestrator,
     type RunCommand,
     type RunConfig,
     type RunRequest,
-    type RunApi
+    type RunOrchestrator
 } from './run.ts';
 
 type RunCommandParts = {
@@ -86,10 +86,10 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
     };
 }
 
-function createDeterministicRunApi(): RunApi {
+function createDeterministicRunOrchestrator(): RunOrchestrator {
     const engine = createTestEngine();
 
-    return createRunApi({
+    return createRunOrchestrator({
         createSeed() {
             return 99n;
         },
@@ -110,11 +110,11 @@ export const testSuite = createOverkillSuite({
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'resolveRun() returns frozen run facts for an explicit test plan',
+            name: 'orchestrator.resolve() returns frozen run facts for an explicit test plan',
             metadata: {},
             async body(scope: OverkillScope) {
-                const runApi = createDeterministicRunApi();
-                const resolvedRun = await runApi.resolveRun(createRunCommand({
+                const runOrchestrator = createDeterministicRunOrchestrator();
+                const resolvedRun = await runOrchestrator.resolve(createRunCommand({
                     config: defaultConfig,
                     request: defaultRequest,
                     testPlan: createPassingPlan()
@@ -170,11 +170,11 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'resolveRun() generates a seed when the request does not provide one',
+            name: 'orchestrator.resolve() generates a seed when the request does not provide one',
             metadata: {},
             async body(scope: OverkillScope) {
-                const runApi = createDeterministicRunApi();
-                const resolvedRun = await runApi.resolveRun(createRunCommand({
+                const runOrchestrator = createDeterministicRunOrchestrator();
+                const resolvedRun = await runOrchestrator.resolve(createRunCommand({
                     config: defaultConfig,
                     request: {
                         ...defaultRequest,
@@ -189,11 +189,11 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'resolveRun() rejects unsupported path discovery',
+            name: 'orchestrator.resolve() rejects unsupported path discovery',
             metadata: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function resolveUnsupportedPaths() {
-                    await resolveRun(createRunCommand({
+                    await orchestrator.resolve(createRunCommand({
                         config: defaultConfig,
                         request: {
                             ...defaultRequest,
@@ -209,11 +209,11 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'resolveRun() rejects invalid negative seeds',
+            name: 'orchestrator.resolve() rejects invalid negative seeds',
             metadata: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function resolveInvalidSeed() {
-                    await resolveRun(createRunCommand({
+                    await orchestrator.resolve(createRunCommand({
                         config: defaultConfig,
                         request: {
                             ...defaultRequest,
@@ -229,12 +229,12 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'run() executes the resolved plan and reports run facts',
+            name: 'orchestrator.run() executes the resolved plan and reports run facts',
             metadata: {},
             async body(scope: OverkillScope) {
                 const reporter = createInMemoryRealTimeReporter();
-                const runApi = createDeterministicRunApi();
-                const result = await runApi.run(createRunCommand({
+                const runOrchestrator = createDeterministicRunOrchestrator();
+                const result = await runOrchestrator.run(createRunCommand({
                     config: {
                         ...defaultConfig,
                         reporters: [ reporter ]
