@@ -39,6 +39,13 @@ type ReporterSinkDeclaration = FileSystemSinkDeclaration | StandardOutputSinkDec
 
 export type SinkDeclaration = PrivateSinkDeclaration | ReporterSinkDeclaration;
 
+export class ReporterSinkConflictError extends Error {
+    public constructor(message: string, options?: Readonly<ErrorOptions>) {
+        super(message, options);
+        this.name = 'ReporterSinkConflictError';
+    }
+}
+
 type RunStartReporterEvent = {
     readonly facts: RunFacts;
     readonly kind: 'run-start';
@@ -169,7 +176,7 @@ function validateStandardOutputSink(
         existingSink !== undefined &&
         (existingSink.conflictPolicy === 'exclusive' || sink.conflictPolicy === 'exclusive')
     ) {
-        throw new TypeError(`Reporter sink conflict: ${sink.kind} is claimed exclusively.`);
+        throw new ReporterSinkConflictError(`Reporter sink conflict: ${sink.kind} is claimed exclusively.`);
     }
 
     const updatedSinks = new Map(claimedSinks);
@@ -186,7 +193,9 @@ function validatePathSink(
     const key = pathSinkKey(sink);
 
     if (claimedSinks.has(key)) {
-        throw new TypeError(`Reporter sink conflict: path "${sink.path}" is claimed by multiple reporters.`);
+        throw new ReporterSinkConflictError(
+            `Reporter sink conflict: path "${sink.path}" is claimed by multiple reporters.`
+        );
     }
 
     const updatedSinks = new Map(claimedSinks);

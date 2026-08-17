@@ -10,6 +10,7 @@ import {
     createReporterDispatcher,
     type FinalResultReporter,
     type RealTimeReporter,
+    ReporterSinkConflictError,
     type SinkDeclaration,
     validateReporterSinks
 } from './reporter.ts';
@@ -52,7 +53,10 @@ export const testSuite = createOverkillSuite({
                         createFinalReporter('first', [ { conflictPolicy: 'exclusive', kind: 'stderr' } ]),
                         createFinalReporter('second', [ { conflictPolicy: 'shared', kind: 'stderr' } ])
                     ]);
-                }, { message: 'Reporter sink conflict: stderr is claimed exclusively.' });
+                }, {
+                    message: 'Reporter sink conflict: stderr is claimed exclusively.',
+                    type: ReporterSinkConflictError
+                });
 
                 return scope.assert.collect();
             }
@@ -70,7 +74,10 @@ export const testSuite = createOverkillSuite({
                             { conflictPolicy: 'exclusive', kind: 'directory', path: 'target/report' }
                         ])
                     ]);
-                }, { message: 'Reporter sink conflict: path "target/report" is claimed by multiple reporters.' });
+                }, {
+                    message: 'Reporter sink conflict: path "target/report" is claimed by multiple reporters.',
+                    type: ReporterSinkConflictError
+                });
 
                 return scope.assert.collect();
             }
