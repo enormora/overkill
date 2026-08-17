@@ -5,6 +5,10 @@ import {
     type commandLineExitCodes,
     type commandLineRunner,
     type defineConfig,
+    type CommandLineBaselineCommands,
+    type CommandLineBenchmarkCommands,
+    type CommandLineCommand,
+    type CommandLineCommandContext,
     type CommandLineExitCode,
     type CommandLineRunner,
     type CommandLineRunnerResult,
@@ -23,6 +27,11 @@ describe('@overkill-dev/run/command-line', function () {
         expect<typeof commandLineRunner.runTests>().type.toBe<
             (request: CommandLineRunTestsRequest) => Promise<CommandLineRunnerResult>
         >();
+        expect<typeof commandLineRunner.listTests>().type.toBe<CommandLineCommand>();
+        expect<typeof commandLineRunner.replayRun>().type.toBe<CommandLineCommand>();
+        expect<typeof commandLineRunner.replayWitness>().type.toBe<CommandLineCommand>();
+        expect<typeof commandLineRunner.baseline>().type.toBe<CommandLineBaselineCommands>();
+        expect<typeof commandLineRunner.bench>().type.toBe<CommandLineBenchmarkCommands>();
     });
 
     test('keeps command-line run input explicit', function () {
@@ -31,6 +40,10 @@ describe('@overkill-dev/run/command-line', function () {
         expect<CommandLineRunTestsRequest['cwd']>().type.toBe<string>();
         expect<CommandLineRunTestsRequest['request']>().type.toBe<RunRequest>();
         expect<CommandLineRunTestsRequest['testPlan']>().type.toBe<TestPlan>();
+        expect<keyof CommandLineCommandContext>().type.toBe<'arguments' | 'configPath' | 'cwd'>();
+        expect<CommandLineCommandContext['arguments']>().type.toBe<readonly string[]>();
+        expect<CommandLineCommandContext['configPath']>().type.toBe<string | null>();
+        expect<CommandLineCommandContext['cwd']>().type.toBe<string>();
     });
 
     test('exposes stable command-line results and exit codes', function () {

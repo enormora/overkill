@@ -9,6 +9,14 @@ const testSupportFiles = [ '^source/test-support/' ];
 const testFiles = [ '\\.(test|type-test)\\.ts$' ];
 const testAggregatorFiles = [ '^source/test-support/unit-suite-groups/' ];
 const excludedFiles = [ '^(\\./)?target/' ];
+const commandLineLazyModuleBoundaries = [
+    '^source/packages/reporter-(dot|line)/',
+    '^source/reporters/',
+    '^source/.*/baseline',
+    '^source/.*/bench',
+    '^source/.*/benchmark',
+    '^source/.*/coverage'
+];
 
 const ignoreFromOrphans = [ ...configFiles, ...entryPointFiles, ...testFiles, ...testSupportFiles ];
 
@@ -117,6 +125,18 @@ export default {
             },
             to: {
                 path: testFiles
+            }
+        },
+        {
+            name: 'command-line-runner-keeps-lazy-command-boundaries',
+            severity: 'error',
+            from: {
+                path: '^source/run/command-line-runner\\.ts$'
+            },
+            to: {
+                dependencyTypesNot: [ 'type-only' ],
+                dynamic: false,
+                path: commandLineLazyModuleBoundaries
             }
         }
     ],

@@ -703,9 +703,13 @@ resources, baselines, benchmark measurement code, coverage tooling, browser
 support, or optional adapters.
 
 The `overkill` binary should use command-selected modules: a tiny fixed argv
-parser resolves the command name and `--config`, then loads only the selected
-command implementation. There is no package scanning, generated command
-registry, or dynamic command extension in the current concept.
+parser resolves the command name and `--config`, then delegates to the matching
+method on the fixed `commandLineRunner` namespace exposed by
+`@overkill-dev/run/command-line`. Config loading and ordinary run orchestration
+are common command-line infrastructure; benchmark, baseline, coverage, and
+reporter-heavy modules stay behind selected command or reporter boundaries.
+There is no package scanning, generated command registry, or dynamic command
+extension in the current concept.
 
 ### Optional Packages
 
