@@ -10,6 +10,7 @@ import type { TestPlan } from '../engine/test-plan.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import {
+    commandLineRunner,
     createCommandLineRunner,
     type CommandLineBaselineCommands,
     type CommandLineBenchmarkCommands,
@@ -31,6 +32,11 @@ type SelectedCommandResults = {
     readonly baseline: CommandLineRunnerResult;
     readonly benchmark: CommandLineRunnerResult;
     readonly run: CommandLineRunnerResult;
+};
+
+type CommandResultExpectation = {
+    readonly label: string;
+    readonly result: CommandLineRunnerResult;
 };
 
 const memoryReporter: Reporter = {
@@ -196,6 +202,27 @@ async function runSelectedCommands(runner: CommandLineRunner): Promise<SelectedC
     };
 }
 
+async function commandExpectations(runner: CommandLineRunner): Promise<readonly CommandResultExpectation[]> {
+    return [
+        { label: 'baseline apply', result: await runner.baseline.apply(defaultCommandContext()) },
+        { label: 'baseline bootstrap', result: await runner.baseline.bootstrap(defaultCommandContext()) },
+        { label: 'baseline diff', result: await runner.baseline.diff(defaultCommandContext()) },
+        { label: 'baseline list', result: await runner.baseline.list(defaultCommandContext()) },
+        { label: 'bench baseline apply', result: await runner.bench.baseline.apply(defaultCommandContext()) },
+        { label: 'bench baseline bootstrap', result: await runner.bench.baseline.bootstrap(defaultCommandContext()) },
+        { label: 'bench baseline diff', result: await runner.bench.baseline.diff(defaultCommandContext()) },
+        { label: 'bench baseline list', result: await runner.bench.baseline.list(defaultCommandContext()) },
+        { label: 'bench baseline update', result: await runner.bench.baseline.update(defaultCommandContext()) },
+        { label: 'bench run', result: await runner.bench.runBenchmarks(defaultCommandContext()) }
+    ];
+}
+
+function assertCommandResults(scope: OverkillScope, expectations: readonly CommandResultExpectation[]): void {
+    for (const expectation of expectations) {
+        scope.assert.deepEqual(expectation.result.fallbackDiagnostics, [ expectation.label ]);
+    }
+}
+
 export const testSuite = createOverkillSuite({
     name: 'source/run/command-line-runner-namespace.test.ts',
     metadata: {},
@@ -213,10 +240,18 @@ export const testSuite = createOverkillSuite({
                     }
                 }));
                 const result = await runner.listTests(defaultCommandContext());
+                const replayResult = await runner.replayRun({
+                    arguments: [ 'run-1' ],
+                    configPath: null,
+                    cwd: process.cwd()
+                });
 
                 scope.assert.equal(result.exitCode, 3);
                 scope.assert.deepEqual(result.fallbackDiagnostics, [
                     'Overkill argument error: Command "list" is not implemented yet.'
+                ]);
+                scope.assert.deepEqual(replayResult.fallbackDiagnostics, [
+                    'Overkill argument error: Command "replay" with 1 arguments is not implemented yet.'
                 ]);
 
                 return scope.assert.collect();
@@ -245,6 +280,44 @@ export const testSuite = createOverkillSuite({
                 scope.assert.equal(benchmarkLoadCount, 1);
                 scope.assert.deepEqual(results.baseline.fallbackDiagnostics, [ 'baseline update' ]);
                 scope.assert.deepEqual(results.benchmark.fallbackDiagnostics, [ 'bench list' ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'commandLineRunner routes every command family method',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                let benchmarkLoadCount = 0;
+                const runner = createCommandLineRunner(createRunnerDependencies({
+                    async loadBaselineCommands() {
+                        return namedBaselineCommands('baseline');
+                    },
+                    async loadBenchmarkCommands() {
+                        benchmarkLoadCount += 1;
+                        return namedBenchmarkCommands();
+                    }
+                }));
+
+                assertCommandResults(scope, await commandExpectations(runner));
+                scope.assert.equal(benchmarkLoadCount, 6);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'commandLineRunner singleton loads unimplemented command families',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const baseline = await commandLineRunner.baseline.update(defaultCommandContext());
+                const benchmark = await commandLineRunner.bench.runBenchmarks(defaultCommandContext());
+
+                scope.assert.deepEqual(baseline.fallbackDiagnostics, [
+                    'Overkill argument error: Command "baseline update" is not implemented yet.'
+                ]);
+                scope.assert.deepEqual(benchmark.fallbackDiagnostics, [
+                    'Overkill argument error: Command "bench run" is not implemented yet.'
+                ]);
 
                 return scope.assert.collect();
             }
