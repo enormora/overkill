@@ -81,8 +81,8 @@ programmatic API exposed by `@overkill-dev/run` (see `## API-First`) is a
 different layer: it is the unified implementation target that both
 human surfaces reduce to. A custom orchestrator using the API
 expresses both per-run intent and project policy in one call; that is
-not a third configuration surface, it is what the CLI parser and the
-configuration-file loader internally call.
+not a third configuration surface, it is what the binary argv parser and
+the configuration-file loader internally call.
 
 ## Low API Surface
 

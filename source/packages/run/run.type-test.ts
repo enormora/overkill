@@ -2,12 +2,12 @@ import { describe, expect, test } from 'tstyche';
 import type { Reporter, RunResult, TestPlan } from '../engine/engine.entry-point.ts';
 import {
     RunResolutionError,
-    type resolveRun,
-    type run,
+    type orchestrator,
     type ResolvedRun,
     type RunCommand,
     type RunConfig,
     type RunFacts,
+    type RunOrchestrator,
     type RunRequest,
     type SerializedValue
 } from './run.entry-point.ts';
@@ -35,8 +35,9 @@ describe('@overkill-dev/run', function () {
         expect<RunCommand['config']>().type.toBe<RunConfig>();
         expect<RunCommand['request']>().type.toBe<RunRequest>();
         expect<RunCommand['testPlan']>().type.toBe<TestPlan>();
-        expect<typeof resolveRun>().type.toBe<(command: RunCommand) => Promise<ResolvedRun>>();
-        expect<typeof run>().type.toBe<(command: RunCommand) => Promise<RunResult>>();
+        expect<typeof orchestrator>().type.toBe<RunOrchestrator>();
+        expect<typeof orchestrator.resolve>().type.toBe<(command: RunCommand) => Promise<ResolvedRun>>();
+        expect<typeof orchestrator.run>().type.toBe<(command: RunCommand) => Promise<RunResult>>();
     });
 
     test('keeps request fields explicit for the implemented runner slice', function () {

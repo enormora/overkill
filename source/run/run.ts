@@ -129,7 +129,7 @@ export class RunResolutionError extends Error {
     }
 }
 
-export type RunApiDependencies = {
+export type RunOrchestratorDependencies = {
     readonly createSeed: () => bigint;
     readonly execute: Execute;
     readonly node: {
@@ -140,8 +140,8 @@ export type RunApiDependencies = {
     readonly readStartedAt: () => string;
 };
 
-export type RunApi = {
-    readonly resolveRun: (command: RunCommand) => Promise<ResolvedRun>;
+export type RunOrchestrator = {
+    readonly resolve: (command: RunCommand) => Promise<ResolvedRun>;
     readonly run: (command: RunCommand) => Promise<RunResult>;
 };
 
@@ -177,7 +177,7 @@ function validateRunRequest(request: RunRequest): void {
     validateRunSeed(request);
 }
 
-function resolvedSeed(request: RunRequest, dependencies: RunApiDependencies): bigint {
+function resolvedSeed(request: RunRequest, dependencies: RunOrchestratorDependencies): bigint {
     return request.seed.value ?? dependencies.createSeed();
 }
 
@@ -234,7 +234,7 @@ function createRunFacts(
     command: RunCommand,
     request: RunRequest,
     config: RunConfig,
-    dependencies: RunApiDependencies
+    dependencies: RunOrchestratorDependencies
 ): RunFacts {
     return {
         cases: command.testPlan.cases.map(function toRunCaseFacts(testCase) {
@@ -278,7 +278,7 @@ function freezeValue<Value>(value: Value): Value {
     return value;
 }
 
-function createResolvedRun(command: RunCommand, dependencies: RunApiDependencies): ResolvedRun {
+function createResolvedRun(command: RunCommand, dependencies: RunOrchestratorDependencies): ResolvedRun {
     validateRunRequest(command.request);
 
     const request = freezeValue(copyRunRequest(command.request));
@@ -294,9 +294,9 @@ function createResolvedRun(command: RunCommand, dependencies: RunApiDependencies
     });
 }
 
-export function createRunApi(dependencies: RunApiDependencies): RunApi {
+export function createRunOrchestrator(dependencies: RunOrchestratorDependencies): RunOrchestrator {
     return {
-        async resolveRun(command) {
+        async resolve(command) {
             return createResolvedRun(command, dependencies);
         },
 
@@ -318,7 +318,7 @@ function createDefaultSeed(): bigint {
 }
 
 const defaultWallClock = createWallClock();
-const defaultRunApi = createRunApi({
+const defaultRunOrchestrator = createRunOrchestrator({
     createSeed: createDefaultSeed,
     execute: createExecute({
         reporterDispatcher: createReporterDispatcher({ wallClock: defaultWallClock }),
@@ -336,10 +336,4 @@ const defaultRunApi = createRunApi({
     }
 });
 
-export async function resolveRun(command: RunCommand): Promise<ResolvedRun> {
-    return await defaultRunApi.resolveRun(command);
-}
-
-export async function run(command: RunCommand): Promise<RunResult> {
-    return await defaultRunApi.run(command);
-}
+export const orchestrator: RunOrchestrator = defaultRunOrchestrator;

@@ -296,7 +296,7 @@ code should not need Overkill dependencies.
 
 `@overkill-dev/run` should own:
 
-- command parsing and dispatch implementation for the `overkill` binary
+- typed command intent and dispatch implementation for the `overkill` binary
 - file discovery
 - filtering
 - seed handling
@@ -311,7 +311,8 @@ code should not need Overkill dependencies.
 - watch-mode orchestration where explicit runner behavior is needed beyond raw Node `--watch`
 
 It should also expose the canonical programmatic mirror of CLI run intent.
-The CLI is a parser for this API, not a second capability layer.
+The `@overkill-dev/test` binary parser maps argv to this API; it is not a
+second capability layer.
 `@overkill-dev/run` should not declare `bin: overkill`; the binary is shipped
 by `@overkill-dev/test` and delegates to `@overkill-dev/run`.
 
@@ -697,14 +698,14 @@ The protected hot paths are:
 
 The root import may load only the default authoring APIs, minimal engine
 construction code, and lightweight doubles. It must not load
-`@overkill-dev/run`, command parsing, configuration loading, reporters,
+`@overkill-dev/run`, argv parsing, configuration loading, reporters,
 resources, baselines, benchmark measurement code, coverage tooling, browser
 support, or optional adapters.
 
-The `overkill` binary should use command-selected modules: a tiny fixed
-dispatcher parses the command name and `--config`, then loads only the
-selected command implementation. There is no package scanning, generated
-command registry, or dynamic command extension in the current concept.
+The `overkill` binary should use command-selected modules: a tiny fixed argv
+parser resolves the command name and `--config`, then loads only the selected
+command implementation. There is no package scanning, generated command
+registry, or dynamic command extension in the current concept.
 
 ### Optional Packages
 

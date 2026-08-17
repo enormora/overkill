@@ -3,8 +3,8 @@
 This doc captures the current CLI surface and CLI runtime behavior.
 The public `overkill` binary is shipped by `@overkill-dev/test`, the standard
 user-facing distribution. Command semantics belong to `@overkill-dev/run`;
-the binary wrapper delegates to that package instead of defining a separate
-control surface.
+the binary wrapper parses argv and delegates typed command intent to that
+package instead of defining a separate control surface.
 
 This document enumerates Overkill's command-line interface: subcommands
 and flags. It is a reading aid: the canonical behavior of each option
@@ -14,8 +14,9 @@ The CLI surface follows [Principles § One First-Party Path Per Layer](../decisi
 in the configuration file ([Configuration](../architecture/configuration.md)),
 and those two surfaces should not define the same policy.
 
-This does **not** mean the CLI is the only programmatic path. The CLI should
-desugar to the same typed request objects that `@overkill-dev/run` exposes.
+This does **not** mean the CLI is the only programmatic path. The binary parser
+should desugar to the same typed request objects that `@overkill-dev/run`
+exposes.
 There should be no meaningful "CLI-only flag" whose behavior cannot also be
 requested through the public programmatic API.
 
@@ -30,9 +31,9 @@ files; callers either pass a `RunConfig` value or explicitly call
 package that declares `bin: overkill`. `@overkill-dev/run` exposes reusable
 command implementation APIs for that binary and for custom orchestrators.
 
-The binary uses command-selected modules: a tiny fixed dispatcher parses the
-command name and `--config`, then loads only the selected command
-implementation. Installing a package does not add commands. There is no
+The binary uses command-selected modules: a tiny fixed argv parser resolves the
+command name and `--config`, then delegates to the selected command-line
+business method. Installing a package does not add commands. There is no
 package-name scan, implicit npm discovery, dynamic command registry, or plugin
 lifecycle in the current concept.
 
