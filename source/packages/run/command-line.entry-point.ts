@@ -1,5 +1,7 @@
 export {
-    commandLineExitCodes,
+    commandLineExitCodes
+} from '../../run/command-line-command.ts';
+export {
     commandLineRunner
 } from '../../run/command-line-runner.ts';
 export type {
@@ -8,9 +10,11 @@ export type {
     CommandLineCommand,
     CommandLineCommandContext,
     CommandLineExitCode,
-    CommandLineRunner,
     CommandLineRunnerResult,
     CommandLineRunTestsRequest
+} from '../../run/command-line-command.ts';
+export type {
+    CommandLineRunner
 } from '../../run/command-line-runner.ts';
 export {
     defineConfig,
