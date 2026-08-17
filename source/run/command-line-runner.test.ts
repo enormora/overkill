@@ -131,8 +131,14 @@ function createRunnerDependencies(
     };
 
     return {
-        createDefaultReporter() {
+        async createDefaultReporter() {
             return memoryReporter;
+        },
+        async loadBaselineCommands() {
+            throw new Error('Baseline commands are not configured.');
+        },
+        async loadBenchmarkCommands() {
+            throw new Error('Benchmark commands are not configured.');
         },
         async loadRunConfig() {
             return defaultLoadedConfig(null);
@@ -190,7 +196,12 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             async body(scope: OverkillScope) {
                 const receivedCommands: RunCommand[] = [];
+                let defaultReporterLoadCount = 0;
                 const dependencies = createRunnerDependencies({
+                    async createDefaultReporter() {
+                        defaultReporterLoadCount += 1;
+                        return memoryReporter;
+                    },
                     async loadRunConfig() {
                         return defaultLoadedConfig([ terminalReporter ]);
                     },
@@ -210,6 +221,7 @@ export const testSuite = createOverkillSuite({
                 const result = await runTests(dependencies);
 
                 scope.assert.equal(result.exitCode, 0);
+                scope.assert.equal(defaultReporterLoadCount, 0);
                 scope.require.defined(receivedCommands[0]);
                 scope.assert.equal(receivedCommands[0].config.reporters[0], terminalReporter);
 

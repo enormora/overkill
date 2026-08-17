@@ -32,10 +32,16 @@ package that declares `bin: overkill`. `@overkill-dev/run` exposes reusable
 command implementation APIs for that binary and for custom orchestrators.
 
 The binary uses command-selected modules: a tiny fixed argv parser resolves the
-command name and `--config`, then delegates to the selected command-line
-business method. Installing a package does not add commands. There is no
-package-name scan, implicit npm discovery, dynamic command registry, or plugin
-lifecycle in the current concept.
+command name and `--config`, then delegates to the selected
+`commandLineRunner` method from `@overkill-dev/run/command-line`.
+`commandLineRunner` is one fixed first-party command namespace with methods
+for `runTests`, `listTests`, replay, baseline, benchmark, and benchmark
+baseline commands. Config loading is common command-line infrastructure shared
+by those methods.
+
+Installing a package does not add commands. There is no package-name scan,
+implicit npm discovery, dynamic command registry, or plugin lifecycle in the
+current concept.
 
 ## Subcommands
 

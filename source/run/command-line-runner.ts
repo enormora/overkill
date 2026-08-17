@@ -1,4 +1,3 @@
-import { createLineReporter } from '@overkill-dev/reporter-line';
 import type { Reporter, SinkDeclaration } from '../engine/reporter.ts';
 import type { RunResult, RunnerError } from '../engine/run-result.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
@@ -34,18 +33,45 @@ export type CommandLineRunTestsRequest = RunConfigLoadRequest & {
     readonly testPlan: TestPlan;
 };
 
+export type CommandLineCommandContext = RunConfigLoadRequest & {
+    readonly arguments: readonly string[];
+};
+
 export type CommandLineRunnerResult = {
     readonly exitCode: CommandLineExitCode;
     readonly fallbackDiagnostics: readonly string[];
     readonly runResult: RunResult | null;
 };
 
+export type CommandLineCommand = (context: CommandLineCommandContext) => Promise<CommandLineRunnerResult>;
+
+export type CommandLineBaselineCommands = {
+    readonly apply: CommandLineCommand;
+    readonly bootstrap: CommandLineCommand;
+    readonly diff: CommandLineCommand;
+    readonly list: CommandLineCommand;
+    readonly update: CommandLineCommand;
+};
+
+export type CommandLineBenchmarkCommands = {
+    readonly baseline: CommandLineBaselineCommands;
+    readonly listBenchmarks: CommandLineCommand;
+    readonly runBenchmarks: CommandLineCommand;
+};
+
 export type CommandLineRunner = {
+    readonly baseline: CommandLineBaselineCommands;
+    readonly bench: CommandLineBenchmarkCommands;
+    readonly listTests: CommandLineCommand;
+    readonly replayRun: CommandLineCommand;
+    readonly replayWitness: CommandLineCommand;
     readonly runTests: (request: CommandLineRunTestsRequest) => Promise<CommandLineRunnerResult>;
 };
 
 export type CommandLineRunnerDependencies = {
-    readonly createDefaultReporter: () => Reporter;
+    readonly createDefaultReporter: () => Promise<Reporter>;
+    readonly loadBaselineCommands: () => Promise<CommandLineBaselineCommands>;
+    readonly loadBenchmarkCommands: () => Promise<CommandLineBenchmarkCommands>;
     readonly loadRunConfig: (request: RunConfigLoadRequest) => Promise<LoadedRunConfig>;
     readonly orchestrator: RunOrchestrator;
 };
@@ -97,21 +123,35 @@ function exitCodeFromRunResult(result: RunResult): CommandLineExitCode {
     return commandLineExitCodes.pass;
 }
 
-function commandLineConfig(loadedConfig: LoadedRunConfig, dependencies: CommandLineRunnerDependencies): RunConfig {
+async function commandLineReporters(
+    loadedConfig: LoadedRunConfig,
+    dependencies: CommandLineRunnerDependencies
+): Promise<readonly Reporter[]> {
+    if (loadedConfig.reporters !== null) {
+        return loadedConfig.reporters;
+    }
+
+    return [ await dependencies.createDefaultReporter() ];
+}
+
+async function commandLineConfig(
+    loadedConfig: LoadedRunConfig,
+    dependencies: CommandLineRunnerDependencies
+): Promise<RunConfig> {
     return {
         loader: loadedConfig.loader,
-        reporters: loadedConfig.reporters ?? [ dependencies.createDefaultReporter() ],
+        reporters: await commandLineReporters(loadedConfig, dependencies),
         runtimeStateDir: loadedConfig.runtimeStateDir
     };
 }
 
-function commandFromRequest(
+async function commandFromRequest(
     request: CommandLineRunTestsRequest,
     loadedConfig: LoadedRunConfig,
     dependencies: CommandLineRunnerDependencies
-): RunCommand {
+): Promise<RunCommand> {
     return {
-        config: commandLineConfig(loadedConfig, dependencies),
+        config: await commandLineConfig(loadedConfig, dependencies),
         request: request.request,
         testPlan: request.testPlan
     };
@@ -130,7 +170,7 @@ async function runTestsWithLoadedConfig(
     dependencies: CommandLineRunnerDependencies,
     loadedConfig: LoadedRunConfig
 ): Promise<CommandLineRunnerResult> {
-    const command = commandFromRequest(request, loadedConfig, dependencies);
+    const command = await commandFromRequest(request, loadedConfig, dependencies);
     const runResult = await dependencies.orchestrator.run(command);
 
     return {
@@ -156,8 +196,107 @@ function commandLineErrorResult(error: unknown): CommandLineRunnerResult {
     return errorResult(commandLineExitCodes.internalCrash, 'internal error', error);
 }
 
+function unimplementedCommandResult(command: string, context: CommandLineCommandContext): CommandLineRunnerResult {
+    const argumentSuffix = context.arguments.length === 0
+        ? ''
+        : ` with ${context.arguments.length.toString()} arguments`;
+
+    return commandLineErrorResult(
+        new RunResolutionError(
+            `Command "${command}"${argumentSuffix} is not implemented yet.`,
+            undefined,
+            'unsupported-request'
+        )
+    );
+}
+
+function unimplementedCommand(command: string): CommandLineCommand {
+    return async function runUnimplementedCommand(context) {
+        return unimplementedCommandResult(command, context);
+    };
+}
+
+function createUnimplementedBaselineCommands(namespace: string): CommandLineBaselineCommands {
+    return {
+        apply: unimplementedCommand(`${namespace} apply`),
+        bootstrap: unimplementedCommand(`${namespace} bootstrap`),
+        diff: unimplementedCommand(`${namespace} diff`),
+        list: unimplementedCommand(`${namespace} list`),
+        update: unimplementedCommand(`${namespace} update`)
+    };
+}
+
+async function loadUnimplementedBaselineCommands(): Promise<CommandLineBaselineCommands> {
+    return createUnimplementedBaselineCommands('baseline');
+}
+
+async function loadUnimplementedBenchmarkCommands(): Promise<CommandLineBenchmarkCommands> {
+    return {
+        baseline: createUnimplementedBaselineCommands('bench baseline'),
+        listBenchmarks: unimplementedCommand('bench list'),
+        runBenchmarks: unimplementedCommand('bench run')
+    };
+}
+
 export function createCommandLineRunner(dependencies: CommandLineRunnerDependencies): CommandLineRunner {
     return {
+        baseline: {
+            async apply(context) {
+                const commands = await dependencies.loadBaselineCommands();
+                return await commands.apply(context);
+            },
+            async bootstrap(context) {
+                const commands = await dependencies.loadBaselineCommands();
+                return await commands.bootstrap(context);
+            },
+            async diff(context) {
+                const commands = await dependencies.loadBaselineCommands();
+                return await commands.diff(context);
+            },
+            async list(context) {
+                const commands = await dependencies.loadBaselineCommands();
+                return await commands.list(context);
+            },
+            async update(context) {
+                const commands = await dependencies.loadBaselineCommands();
+                return await commands.update(context);
+            }
+        },
+        bench: {
+            baseline: {
+                async apply(context) {
+                    const commands = await dependencies.loadBenchmarkCommands();
+                    return await commands.baseline.apply(context);
+                },
+                async bootstrap(context) {
+                    const commands = await dependencies.loadBenchmarkCommands();
+                    return await commands.baseline.bootstrap(context);
+                },
+                async diff(context) {
+                    const commands = await dependencies.loadBenchmarkCommands();
+                    return await commands.baseline.diff(context);
+                },
+                async list(context) {
+                    const commands = await dependencies.loadBenchmarkCommands();
+                    return await commands.baseline.list(context);
+                },
+                async update(context) {
+                    const commands = await dependencies.loadBenchmarkCommands();
+                    return await commands.baseline.update(context);
+                }
+            },
+            async listBenchmarks(context) {
+                const commands = await dependencies.loadBenchmarkCommands();
+                return await commands.listBenchmarks(context);
+            },
+            async runBenchmarks(context) {
+                const commands = await dependencies.loadBenchmarkCommands();
+                return await commands.runBenchmarks(context);
+            }
+        },
+        listTests: unimplementedCommand('list'),
+        replayRun: unimplementedCommand('replay'),
+        replayWitness: unimplementedCommand('replay-witness'),
         async runTests(request) {
             try {
                 const loadedConfig = await dependencies.loadRunConfig(request);
@@ -169,8 +308,16 @@ export function createCommandLineRunner(dependencies: CommandLineRunnerDependenc
     };
 }
 
+async function loadDefaultLineReporter(): Promise<Reporter> {
+    const reporterModule = await import('../packages/reporter-line/reporter-line.entry-point.ts');
+
+    return reporterModule.createLineReporter();
+}
+
 export const commandLineRunner: CommandLineRunner = createCommandLineRunner({
-    createDefaultReporter: createLineReporter,
+    createDefaultReporter: loadDefaultLineReporter,
+    loadBaselineCommands: loadUnimplementedBaselineCommands,
+    loadBenchmarkCommands: loadUnimplementedBenchmarkCommands,
     loadRunConfig,
     orchestrator
 });

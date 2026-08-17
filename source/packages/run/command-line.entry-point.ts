@@ -3,6 +3,10 @@ export {
     commandLineRunner
 } from '../../run/command-line-runner.ts';
 export type {
+    CommandLineBaselineCommands,
+    CommandLineBenchmarkCommands,
+    CommandLineCommand,
+    CommandLineCommandContext,
     CommandLineExitCode,
     CommandLineRunner,
     CommandLineRunnerResult,

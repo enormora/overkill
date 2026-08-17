@@ -4,7 +4,7 @@ import { testSuite as assertionNodeShapeTestSuite } from '../../assertion-protoc
 import { testSuite as evaluationTestSuite } from '../../assertion-protocol/evaluation.test.ts';
 import { testSuite as partialMatchingTestSuite } from '../../assertion-protocol/partial-matching.test.ts';
 import { testSuite as sourceLocationTestSuite } from '../../assertion-protocol/source-location.test.ts';
-import { testSuite as commandLineRunnerTestSuite } from '../../run/command-line-runner.test.ts';
+import { testSuite as commandLineRunnerTestSuite } from '../../run/command-line-runner-suite.test.ts';
 import { testSuite as runConfigTestSuite } from '../../run/run-config.test.ts';
 import { testSuite as runTestSuite } from '../../run/run.test.ts';
 import { testSuite as runResultFactoryTestSuite } from '../run-result-factory.test.ts';
