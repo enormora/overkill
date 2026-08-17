@@ -90,7 +90,7 @@ export type {
     StandardOutputSinkDeclaration,
     StreamSinkDeclaration
 } from '../../engine/reporter.ts';
-export { validateReporterSinks } from '../../engine/reporter.ts';
+export { ReporterSinkConflictError, validateReporterSinks } from '../../engine/reporter.ts';
 export type { AssertAssertionFacade } from '../../engine/assertion-facade.ts';
 export type { RequireAssertionFacade } from '../../engine/require-assertion-facade.ts';
 export type {

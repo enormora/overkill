@@ -5,7 +5,7 @@ import {
     runIfMain,
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
-import type { Reporter } from '../engine/reporter.ts';
+import { ReporterSinkConflictError, type Reporter } from '../engine/reporter.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { testDouble } from '../doubles/test-double.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
@@ -355,14 +355,57 @@ export const testSuite = createOverkillSuite({
                             return await createRunnerDependencies({}).orchestrator.resolve(command);
                         },
                         async run() {
-                            throw new TypeError('Reporter sink conflict: stdout is claimed exclusively.');
+                            throw new ReporterSinkConflictError(
+                                'Reporter sink conflict: stdout is claimed exclusively.'
+                            );
                         }
                     }
                 }));
 
                 scope.assert.equal(result.exitCode, 3);
+                scope.assert.null(result.runResult);
                 scope.assert.deepEqual(result.fallbackDiagnostics, [
                     'Overkill configuration error: Reporter sink conflict: stdout is claimed exclusively.'
+                ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'commandLineRunner.runTests() maps aggregate sink conflicts to exit code 3',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const conflict = new ReporterSinkConflictError(
+                    'Reporter sink conflict: stdout is claimed exclusively.'
+                );
+                const result = await runTests(createRunnerDependencies({
+                    orchestrator: {
+                        async resolve(command) {
+                            return await createRunnerDependencies({}).orchestrator.resolve(command);
+                        },
+                        async run() {
+                            throw new AggregateError(
+                                [
+                                    conflict,
+                                    {
+                                        attributedTo: null,
+                                        cause: new Error('cleanup failed'),
+                                        message: 'terminal: cleanup failed',
+                                        subtype: 'reporter'
+                                    }
+                                ],
+                                'Execution failed and reporter cleanup failed.',
+                                { cause: conflict }
+                            );
+                        }
+                    }
+                }));
+
+                scope.assert.equal(result.exitCode, 3);
+                scope.assert.null(result.runResult);
+                scope.assert.deepEqual(result.fallbackDiagnostics, [
+                    'Overkill configuration error: Reporter sink conflict: stdout is claimed exclusively.',
+                    'Overkill runner error: terminal: cleanup failed'
                 ]);
 
                 return scope.assert.collect();

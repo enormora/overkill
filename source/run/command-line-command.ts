@@ -1,4 +1,5 @@
 import type { RunResult, RunnerError } from '../engine/run-result.ts';
+import { ReporterSinkConflictError } from '../engine/reporter.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { RunResolutionError, type RunRequest } from './run.ts';
 import { RunConfigError, type RunConfigLoadRequest } from './run-config.ts';
@@ -58,6 +59,62 @@ function formatError(error: unknown): string {
     return String(error);
 }
 
+function isInspectableObject(value: unknown): value is Readonly<Record<string, unknown>> {
+    return typeof value === 'object' && value !== null;
+}
+
+function isRunnerError(value: unknown): value is RunnerError {
+    return isInspectableObject(value) &&
+        Object.hasOwn(value, 'message') &&
+        Object.hasOwn(value, 'subtype') &&
+        typeof value.message === 'string' &&
+        typeof value.subtype === 'string';
+}
+
+function aggregateEntries(error: AggregateError): readonly unknown[] {
+    return Array.isArray(error.errors) ? error.errors : [];
+}
+
+function primaryError(error: unknown): unknown {
+    if (!(error instanceof AggregateError)) {
+        return error;
+    }
+
+    return error.cause ?? aggregateEntries(error)[0] ?? error;
+}
+
+function formatSupplementalError(error: unknown): string {
+    if (isRunnerError(error)) {
+        return formatRunnerError(error);
+    }
+
+    return `Overkill internal error: ${formatError(error)}`;
+}
+
+function formatErrorDiagnostics(label: string, error: unknown): readonly string[] {
+    const primary = primaryError(error);
+    const diagnostics = [ `Overkill ${label}: ${formatError(primary)}` ];
+
+    if (!(error instanceof AggregateError)) {
+        return diagnostics;
+    }
+
+    let skippedPrimary = false;
+
+    return [
+        ...diagnostics,
+        ...aggregateEntries(error).flatMap(function formatAggregateEntry(entry) {
+            if (!skippedPrimary && entry === primary) {
+                skippedPrimary = true;
+
+                return [];
+            }
+
+            return [ formatSupplementalError(entry) ];
+        })
+    ];
+}
+
 export function formatFallbackDiagnostics(
     result: RunResult,
     reportersClaimTerminal: boolean
@@ -93,22 +150,24 @@ function createCommandLineErrorResult(
 ): CommandLineRunnerResult {
     return {
         exitCode,
-        fallbackDiagnostics: [ `Overkill ${label}: ${formatError(error)}` ],
+        fallbackDiagnostics: formatErrorDiagnostics(label, error),
         runResult: null
     };
 }
 
 export function createCommandLineErrorResultFromUnknown(error: unknown): CommandLineRunnerResult {
-    if (error instanceof RunConfigError) {
+    const classifiedError = primaryError(error);
+
+    if (classifiedError instanceof RunConfigError) {
         return createCommandLineErrorResult(commandLineExitCodes.argumentOrConfig, 'configuration error', error);
     }
 
-    if (error instanceof RunResolutionError) {
+    if (classifiedError instanceof ReporterSinkConflictError) {
+        return createCommandLineErrorResult(commandLineExitCodes.argumentOrConfig, 'configuration error', error);
+    }
+
+    if (classifiedError instanceof RunResolutionError) {
         return createCommandLineErrorResult(commandLineExitCodes.argumentOrConfig, 'argument error', error);
-    }
-
-    if (error instanceof TypeError && error.message.startsWith('Reporter sink conflict:')) {
-        return createCommandLineErrorResult(commandLineExitCodes.argumentOrConfig, 'configuration error', error);
     }
 
     return createCommandLineErrorResult(commandLineExitCodes.internalCrash, 'internal error', error);
