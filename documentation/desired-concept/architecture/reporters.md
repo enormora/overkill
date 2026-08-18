@@ -63,8 +63,8 @@ type RealTimeReporter = {
     readonly kind: 'real-time';
     readonly name: string;
     readonly sinks: ReadonlyArray<SinkDeclaration>;
-    onEvent(event: ReporterEvent): ReporterOutput | void | Promise<ReporterOutput | void>;
-    onFinish: ((result: RunResult) => ReporterOutput | void | Promise<ReporterOutput | void>) | null;
+    onEvent(event: ReporterEvent): void | Promise<void>;
+    onFinish: ((result: RunResult) => void | Promise<void>) | null;
 };
 
 type FinalResultReporter = {
@@ -72,7 +72,7 @@ type FinalResultReporter = {
     readonly kind: 'final-result';
     readonly name: string;
     readonly sinks: ReadonlyArray<SinkDeclaration>;
-    onResult(result: RunResult): ReporterOutput | void | Promise<ReporterOutput | void>;
+    onResult(result: RunResult): void | Promise<void>;
 };
 ```
 
@@ -187,6 +187,13 @@ type OutputRenderer = {
     render(intent: OutputLineIntent): string;
 };
 ```
+
+Returned intents are only part of the type contract for reporters whose
+literal `sinks` tuple contains `stdout-managed-*` or `stderr-managed-*`.
+Reporters that declare only raw, file, directory, memory, or private stream
+sinks are side-effect-only: their reporter methods return only `void` or
+`Promise<void>`. Managed reporters may still return `void` for callbacks that
+have nothing to print.
 
 The runner applies one `outputRenderer` to managed output intents. The default
 renderer is plain text and returns `intent.text`. Renderers are pure line

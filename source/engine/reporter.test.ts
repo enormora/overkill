@@ -8,6 +8,8 @@ import {
 } from '@overkill-dev/engine';
 import {
     type FinalResultReporter,
+    type ManagedStandardOutputSinkDeclaration,
+    type ReporterEvent,
     type RealTimeReporter,
     ReporterSinkConflictError,
     type SinkDeclaration,
@@ -28,10 +30,32 @@ function createFinalReporter(name: string, sinks: readonly SinkDeclaration[]): F
     };
 }
 
-function createRealTimeReporter(
+function createRealTimeReporter<
+    const Sinks extends readonly [
+        ManagedStandardOutputSinkDeclaration,
+        ...ManagedStandardOutputSinkDeclaration[]
+    ]
+>(
+    name: string,
+    sinks: Sinks,
+    output: readonly OutputLineIntent[]
+): RealTimeReporter<Sinks> {
+    return {
+        dispose: null,
+        kind: 'real-time',
+        name,
+        onEvent() {
+            return output;
+        },
+        onFinish: null,
+        sinks
+    } as unknown as RealTimeReporter<Sinks>;
+}
+
+function createInvalidOutputReporter(
     name: string,
     sinks: readonly SinkDeclaration[],
-    output: readonly OutputLineIntent[]
+    output: unknown
 ): RealTimeReporter {
     return {
         dispose: null,
@@ -42,7 +66,7 @@ function createRealTimeReporter(
         },
         onFinish: null,
         sinks
-    };
+    } as unknown as RealTimeReporter;
 }
 
 type RecordingDispatcher = {
@@ -263,12 +287,12 @@ export const testSuite = createOverkillSuite({
                     dispose: null,
                     kind: 'real-time',
                     name: 'broken-notification-output',
-                    onEvent(event) {
+                    onEvent(event: ReporterEvent) {
                         return event.kind === 'runner-error' ? [ stdoutPrimaryIntent ] : [];
                     },
                     onFinish: null,
                     sinks: []
-                };
+                } as unknown as RealTimeReporter;
 
                 const errors = await dispatcher.reportEvent(
                     [ failingReporter, notifyingReporter ],
@@ -323,7 +347,7 @@ export const testSuite = createOverkillSuite({
                 const { dispatcher } = createRecordingDispatcher();
                 const errors = await dispatcher.reportEvent(
                     [
-                        createRealTimeReporter('undeclared-output', [], [ stdoutPrimaryIntent ])
+                        createInvalidOutputReporter('undeclared-output', [], [ stdoutPrimaryIntent ])
                     ],
                     { kind: 'suite-start', suitePath: [ 'suite' ] },
                     createPlainOutputRenderer()
@@ -346,7 +370,7 @@ export const testSuite = createOverkillSuite({
                 const { dispatcher } = createRecordingDispatcher();
                 const errors = await dispatcher.reportEvent(
                     [
-                        createRealTimeReporter(
+                        createInvalidOutputReporter(
                             'wrong-role-output',
                             [ { kind: 'stdout-managed-supplemental' } ],
                             [ stdoutPrimaryIntent ]
@@ -361,6 +385,31 @@ export const testSuite = createOverkillSuite({
                         return error.message;
                     }),
                     [ 'wrong-role-output: Reporter returned undeclared managed stdout output.' ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'reporter dispatcher records invalid managed output as a reporter error',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const { dispatcher } = createRecordingDispatcher();
+                const errors = await dispatcher.reportEvent(
+                    [
+                        createInvalidOutputReporter('invalid-output', [ { kind: 'stdout-managed-primary' } ], [
+                            { annotation: null, kind: 'stdout-line', role: 'primary' }
+                        ])
+                    ],
+                    { kind: 'suite-start', suitePath: [ 'suite' ] },
+                    createPlainOutputRenderer()
+                );
+
+                scope.assert.deepEqual(
+                    errors.map(function toMessage(error) {
+                        return error.message;
+                    }),
+                    [ 'invalid-output: Reporter returned invalid managed output.' ]
                 );
 
                 return scope.assert.collect();

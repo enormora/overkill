@@ -106,6 +106,9 @@ type BriefReporterUpdate = {
     readonly state: BriefReporterState;
 };
 
+export type BriefReporterSinks = readonly [{ readonly kind: 'stdout-managed-primary'; }];
+const briefReporterSinks: BriefReporterSinks = [ { kind: 'stdout-managed-primary' } ];
+
 function updateForCompletedTest(state: BriefReporterState, failed: boolean): BriefReporterState {
     return {
         completed: state.completed + 1,
@@ -140,7 +143,7 @@ function testEndUpdate(
     };
 }
 
-export function createBriefReporter(): RealTimeReporter {
+export function createBriefReporter(): RealTimeReporter<BriefReporterSinks> {
     let state: BriefReporterState = {
         completed: 0,
         failed: 0,
@@ -151,7 +154,7 @@ export function createBriefReporter(): RealTimeReporter {
         dispose: null,
         kind: 'real-time',
         name: 'brief',
-        sinks: [ { kind: 'stdout-managed-primary' } ],
+        sinks: briefReporterSinks,
 
         onEvent(event) {
             if (event.kind === 'run-start') {

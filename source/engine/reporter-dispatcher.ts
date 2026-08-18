@@ -1,13 +1,14 @@
 import type { WallClock } from '@enormora/wall-clock';
 import type {
-    OptionalReporterOutput,
     OutputLineIntent,
     OutputLineWriter,
     OutputRenderer,
     ReporterOutput
 } from './reporter-output.ts';
-import type { RealTimeReporter, Reporter, ReporterEvent } from './reporter.ts';
+import type { Reporter, ReporterEvent } from './reporter.ts';
 import type { RunResult, RunnerError } from './run-result.ts';
+
+type RealTimeReporterInDispatch = Extract<Reporter, { readonly kind: 'real-time'; }>;
 
 export type ReporterDispatcher = {
     readonly disposeReporters: (
@@ -56,7 +57,7 @@ type ReporterTimeout = {
     readonly promise: Promise<never>;
 };
 
-type ReporterCallback = () => OptionalReporterOutput | Promise<OptionalReporterOutput>;
+type ReporterCallback = () => unknown;
 
 const callbackTimeoutMs = 100;
 
@@ -92,8 +93,36 @@ function createReporterTimeout(
     };
 }
 
-function normalizeReporterOutput(output: OptionalReporterOutput): ReporterOutput {
-    return output ?? [];
+function isObject(value: unknown): value is Readonly<Record<PropertyKey, unknown>> {
+    return typeof value === 'object' && value !== null;
+}
+
+function isOutputLineKind(value: unknown): value is OutputLineIntent['kind'] {
+    return value === 'stdout-line' || value === 'stderr-line';
+}
+
+function isOutputLineRole(value: unknown): value is OutputLineIntent['role'] {
+    return value === 'primary' || value === 'supplemental';
+}
+
+function isOutputLineIntent(value: unknown): value is OutputLineIntent {
+    return isObject(value) &&
+        isOutputLineKind(value.kind) &&
+        isOutputLineRole(value.role) &&
+        typeof value.text === 'string' &&
+        Object.hasOwn(value, 'annotation');
+}
+
+function normalizeReporterOutput(output: unknown): ReporterOutput {
+    if (output === undefined) {
+        return [];
+    }
+
+    if (Array.isArray(output) && output.every(isOutputLineIntent)) {
+        return output;
+    }
+
+    throw new Error('Reporter returned invalid managed output.');
 }
 
 async function awaitReporterCallback(
@@ -216,7 +245,7 @@ function writeReporterOutputs(
 
 async function reportEventToReporter(
     dependencies: ReporterDispatcherDependencies,
-    reporter: RealTimeReporter,
+    reporter: RealTimeReporterInDispatch,
     event: ReporterEvent
 ): Promise<ReporterCallbackResult> {
     return await awaitReporterCallback(

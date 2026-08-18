@@ -8,6 +8,7 @@ import type {
     OutputRenderer,
     RealTimeReporter,
     ReporterOutput,
+    ReporterEvent,
     RunFacts,
     RunResult,
     SinkDeclaration,
@@ -40,6 +41,24 @@ type SinkKindByName = {
 
 type ExpectedSinkKind = SinkKindByName[keyof SinkKindByName];
 
+type RawStdoutRealTimeReporter = RealTimeReporter<readonly [{ readonly kind: 'stdout-raw'; }]>;
+type ManagedStdoutRealTimeReporter = RealTimeReporter<readonly [{ readonly kind: 'stdout-managed-primary'; }]>;
+type FileAndManagedStderrFinalResultReporter = FinalResultReporter<
+    readonly [
+        { readonly kind: 'file'; readonly path: 'target/report.json'; },
+        { readonly kind: 'stderr-managed-supplemental'; }
+    ]
+>;
+type LateManagedStdoutRealTimeReporter = RealTimeReporter<
+    readonly [
+        { readonly kind: 'memory'; },
+        { readonly kind: 'stream'; readonly provided: WritableStream<unknown>; },
+        { readonly kind: 'file'; readonly path: 'target/report.json'; },
+        { readonly kind: 'directory'; readonly path: 'target/report-dir'; },
+        { readonly kind: 'stdout-managed-supplemental'; }
+    ]
+>;
+
 describe('Reporter contract', function () {
     test('uses explicit run facts and nullable finish callbacks', function () {
         expect<keyof ExecuteOptions>().type.toBe<ExpectedExecuteOptionKey>();
@@ -47,11 +66,28 @@ describe('Reporter contract', function () {
         expect<ExecuteExecution['mode']>().type.toBe<'concurrent-in-process' | 'serial-in-process'>();
         expect<RunFacts>().type.toBe<Readonly<Record<string, unknown>>>();
         expect<RealTimeReporter['dispose']>().type.toBe<(() => Promise<void> | void) | null>();
-        expect<RealTimeReporter['onFinish']>().type.toBe<
-            ((result: RunResult) => Promise<ReporterOutput | undefined> | ReporterOutput | undefined) | null
-        >();
+        expect<RealTimeReporter['onEvent']>().type.toBe<(event: ReporterEvent) => Promise<void> | void>();
+        expect<RealTimeReporter['onFinish']>().type.toBe<((result: RunResult) => Promise<void> | void) | null>();
         expect<FinalResultReporter['dispose']>().type.toBe<(() => Promise<void> | void) | null>();
         expect<FinalResultReporter['kind']>().type.toBe<'final-result'>();
+    });
+
+    test('allows returned output only for managed output sink reporters', function () {
+        expect<RawStdoutRealTimeReporter['onEvent']>().type.not.toBeAssignableFrom<
+            (event: ReporterEvent) => ReporterOutput
+        >();
+        expect<RawStdoutRealTimeReporter['onFinish']>().type.not.toBeAssignableFrom<
+            (result: RunResult) => ReporterOutput
+        >();
+        expect<ManagedStdoutRealTimeReporter['onEvent']>().type.toBeAssignableFrom<
+            (event: ReporterEvent) => ReporterOutput
+        >();
+        expect<FileAndManagedStderrFinalResultReporter['onResult']>().type.toBeAssignableFrom<
+            (result: RunResult) => Promise<ReporterOutput>
+        >();
+        expect<LateManagedStdoutRealTimeReporter['onEvent']>().type.toBeAssignableFrom<
+            (event: ReporterEvent) => ReporterOutput
+        >();
     });
 
     test('exposes sink declarations for every supported sink kind', function () {

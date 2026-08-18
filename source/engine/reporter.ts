@@ -48,6 +48,46 @@ export type StandardOutputSinkDeclaration = ManagedStandardOutputSinkDeclaration
 type ReporterSinkDeclaration = FileSystemSinkDeclaration | StandardOutputSinkDeclaration;
 
 export type SinkDeclaration = PrivateSinkDeclaration | ReporterSinkDeclaration;
+type NonManagedSinkDeclaration = Exclude<SinkDeclaration, ManagedStandardOutputSinkDeclaration>;
+type ManagedSinkAt1 = readonly [ManagedStandardOutputSinkDeclaration, ...SinkDeclaration[]];
+type ManagedSinkAt2 = readonly [
+    NonManagedSinkDeclaration,
+    ManagedStandardOutputSinkDeclaration,
+    ...SinkDeclaration[]
+];
+type ManagedSinkAt3 = readonly [
+    NonManagedSinkDeclaration,
+    NonManagedSinkDeclaration,
+    ManagedStandardOutputSinkDeclaration,
+    ...SinkDeclaration[]
+];
+type ManagedSinkAt4 = readonly [
+    NonManagedSinkDeclaration,
+    NonManagedSinkDeclaration,
+    NonManagedSinkDeclaration,
+    ManagedStandardOutputSinkDeclaration,
+    ...SinkDeclaration[]
+];
+type ManagedSinkAt5 = readonly [
+    NonManagedSinkDeclaration,
+    NonManagedSinkDeclaration,
+    NonManagedSinkDeclaration,
+    NonManagedSinkDeclaration,
+    ManagedStandardOutputSinkDeclaration,
+    ...SinkDeclaration[]
+];
+type ManagedSinkAt6 = readonly [
+    NonManagedSinkDeclaration,
+    NonManagedSinkDeclaration,
+    NonManagedSinkDeclaration,
+    NonManagedSinkDeclaration,
+    NonManagedSinkDeclaration,
+    ManagedStandardOutputSinkDeclaration,
+    ...SinkDeclaration[]
+];
+type ManagedSinkAt1To3 = ManagedSinkAt1 | ManagedSinkAt2 | ManagedSinkAt3;
+type ManagedSinkAt4To6 = ManagedSinkAt4 | ManagedSinkAt5 | ManagedSinkAt6;
+type ManagedStandardOutputSinkTuple = ManagedSinkAt1To3 | ManagedSinkAt4To6;
 
 export class ReporterSinkConflictError extends Error {
     public constructor(message: string, options?: Readonly<ErrorOptions>) {
@@ -114,24 +154,91 @@ type TestReporterEvent = TestEndReporterEvent | TestProgressReporterEvent | Test
 
 export type ReporterEvent = RunReporterEvent | SuiteReporterEvent | TestReporterEvent;
 
-export type RealTimeReporter = {
+type ManagedStandardOutputSinkPresence<
+    FirstSink extends SinkDeclaration,
+    RemainingSinks extends readonly SinkDeclaration[]
+> = FirstSink extends ManagedStandardOutputSinkDeclaration ? true
+    : TupleIncludesManagedStandardOutputSink<RemainingSinks>;
+
+type FirstDeclaredSink<Sinks extends readonly SinkDeclaration[]> = Sinks extends readonly [
+    infer FirstSink extends SinkDeclaration,
+    ...SinkDeclaration[]
+] ? FirstSink
+    : never;
+
+type RemainingDeclaredSinks<Sinks extends readonly SinkDeclaration[]> = Sinks extends readonly [
+    SinkDeclaration,
+    ...infer RemainingSinks extends readonly SinkDeclaration[]
+] ? RemainingSinks
+    : never;
+
+type TupleIncludesManagedStandardOutputSink<Sinks extends readonly SinkDeclaration[]> = Sinks extends readonly []
+    ? false
+    : ManagedStandardOutputSinkPresence<FirstDeclaredSink<Sinks>, RemainingDeclaredSinks<Sinks>>;
+
+type HasManagedStandardOutputSink<Sinks extends readonly SinkDeclaration[]> = number extends Sinks['length'] ? false
+    : TupleIncludesManagedStandardOutputSink<Sinks>;
+
+type BaseRealTimeReporter<Sinks extends readonly SinkDeclaration[]> = {
     readonly dispose: (() => Promise<void> | void) | null;
     readonly kind: 'real-time';
     readonly name: string;
-    readonly sinks: readonly SinkDeclaration[];
-    readonly onEvent: (event: ReporterEvent) => OptionalReporterOutput | Promise<OptionalReporterOutput>;
-    readonly onFinish: ((result: RunResult) => OptionalReporterOutput | Promise<OptionalReporterOutput>) | null;
+    readonly sinks: Sinks;
 };
 
-export type FinalResultReporter = {
+type ManagedOutputEventCallback = (
+    event: ReporterEvent
+) => OptionalReporterOutput | Promise<OptionalReporterOutput>;
+
+type ManagedOutputFinishCallback = (
+    result: RunResult
+) => OptionalReporterOutput | Promise<OptionalReporterOutput>;
+
+type RealTimeReporterWithOutput<Sinks extends readonly SinkDeclaration[]> = BaseRealTimeReporter<Sinks> & {
+    readonly onEvent: ManagedOutputEventCallback;
+    readonly onFinish: ManagedOutputFinishCallback | null;
+};
+
+type RealTimeReporterWithoutOutput<Sinks extends readonly SinkDeclaration[]> = BaseRealTimeReporter<Sinks> & {
+    readonly onEvent: (event: ReporterEvent) => Promise<void> | void;
+    readonly onFinish: ((result: RunResult) => Promise<void> | void) | null;
+};
+
+type BaseFinalResultReporter<Sinks extends readonly SinkDeclaration[]> = {
     readonly dispose: (() => Promise<void> | void) | null;
     readonly kind: 'final-result';
     readonly name: string;
-    readonly sinks: readonly SinkDeclaration[];
-    readonly onResult: (result: RunResult) => OptionalReporterOutput | Promise<OptionalReporterOutput>;
+    readonly sinks: Sinks;
 };
 
-export type Reporter = FinalResultReporter | RealTimeReporter;
+type ManagedOutputResultCallback = (
+    result: RunResult
+) => OptionalReporterOutput | Promise<OptionalReporterOutput>;
+
+type FinalResultReporterWithOutput<Sinks extends readonly SinkDeclaration[]> = BaseFinalResultReporter<Sinks> & {
+    readonly onResult: ManagedOutputResultCallback;
+};
+
+type FinalResultReporterWithoutOutput<Sinks extends readonly SinkDeclaration[]> = BaseFinalResultReporter<Sinks> & {
+    readonly onResult: (result: RunResult) => Promise<void> | void;
+};
+
+export type RealTimeReporter<Sinks extends readonly SinkDeclaration[] = readonly SinkDeclaration[]> =
+    HasManagedStandardOutputSink<Sinks> extends true ? RealTimeReporterWithOutput<Sinks>
+        : RealTimeReporterWithoutOutput<Sinks>;
+
+export type FinalResultReporter<Sinks extends readonly SinkDeclaration[] = readonly SinkDeclaration[]> =
+    HasManagedStandardOutputSink<Sinks> extends true ? FinalResultReporterWithOutput<Sinks>
+        : FinalResultReporterWithoutOutput<Sinks>;
+
+type OutputFinalReporter = FinalResultReporterWithOutput<ManagedStandardOutputSinkTuple>;
+type OutputRealTimeReporter = RealTimeReporterWithOutput<ManagedStandardOutputSinkTuple>;
+type SideEffectFinalReporter = FinalResultReporterWithoutOutput<readonly SinkDeclaration[]>;
+type SideEffectRealTimeReporter = RealTimeReporterWithoutOutput<readonly SinkDeclaration[]>;
+type OutputReporter = OutputFinalReporter | OutputRealTimeReporter;
+type SideEffectReporter = SideEffectFinalReporter | SideEffectRealTimeReporter;
+
+export type Reporter = OutputReporter | SideEffectReporter;
 
 type ClaimedSink = {
     readonly mode: 'managed' | 'raw';

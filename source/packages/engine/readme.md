@@ -99,6 +99,8 @@ Reporter sinks:
   through the reporter callback. A stream can have one managed primary.
 - `stdout-managed-supplemental` and `stderr-managed-supplemental` can
   cooperate with a managed primary and other supplemental reporters.
+- Reporters without managed stdout or stderr sinks return only `void` or
+  `Promise<void>` from reporter methods.
 - `file` and `directory` sinks conflict on the same declared path.
 - `stream` sinks are private to each reporter.
 - `memory` sinks are private to each reporter.

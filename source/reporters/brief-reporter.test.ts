@@ -18,10 +18,10 @@ const caseId = {
     suite: [ 'users' ]
 } as const;
 
-async function readOutput(
-    output: Promise<ReporterOutput | undefined> | ReporterOutput | undefined
-): Promise<readonly OutputLineIntent[]> {
-    return await output ?? [];
+async function readOutput(output: unknown): Promise<readonly OutputLineIntent[]> {
+    const resolvedOutput = await output;
+
+    return resolvedOutput === undefined ? [] : resolvedOutput as ReporterOutput;
 }
 
 function passEvent(): Extract<ReporterEvent, { readonly kind: 'test-end'; }> {
@@ -90,6 +90,35 @@ function assertFailureAnnotations(scope: OverkillScope, failureOutput: readonly 
         line: 10
     });
     scope.assert.equal(unlocatedAnnotation.location, null);
+}
+
+function runnerErrorEvent(): Extract<ReporterEvent, { readonly kind: 'runner-error'; }> {
+    return {
+        error: {
+            attributedTo: null,
+            cause: new Error('cannot collect tests'),
+            message: 'cannot collect tests',
+            subtype: 'crash'
+        },
+        kind: 'runner-error'
+    };
+}
+
+function assertRunnerErrorOutput(scope: OverkillScope, errorOutput: readonly OutputLineIntent[]): void {
+    scope.assert.deepEqual(
+        errorOutput.map(function toText(intent) {
+            return intent.text;
+        }),
+        [ 'runner-error cannot collect tests' ]
+    );
+    scope.require.defined(errorOutput[0]);
+    const runnerErrorIntent = errorOutput[0];
+    scope.require.notNull(runnerErrorIntent.annotation);
+    const { annotation } = runnerErrorIntent;
+
+    scope.assert.equal(annotation.location, null);
+    scope.assert.equal(annotation.severity, 'error');
+    scope.assert.equal(annotation.title, 'Runner error');
 }
 
 export const testSuite = createOverkillSuite({
@@ -236,31 +265,10 @@ export const testSuite = createOverkillSuite({
                     kind: 'suite-start',
                     suitePath: [ 'source' ]
                 }));
-                const errorOutput = await readOutput(reporter.onEvent({
-                    error: {
-                        attributedTo: null,
-                        cause: new Error('cannot collect tests'),
-                        message: 'cannot collect tests',
-                        subtype: 'crash'
-                    },
-                    kind: 'runner-error'
-                }));
+                const errorOutput = await readOutput(reporter.onEvent(runnerErrorEvent()));
 
                 scope.assert.deepEqual(suiteOutput, []);
-                scope.assert.deepEqual(
-                    errorOutput.map(function toText(intent) {
-                        return intent.text;
-                    }),
-                    [ 'runner-error cannot collect tests' ]
-                );
-                scope.require.defined(errorOutput[0]);
-                const runnerErrorIntent = errorOutput[0];
-                scope.require.notNull(runnerErrorIntent.annotation);
-                const { annotation } = runnerErrorIntent;
-
-                scope.assert.equal(annotation.location, null);
-                scope.assert.equal(annotation.severity, 'error');
-                scope.assert.equal(annotation.title, 'Runner error');
+                assertRunnerErrorOutput(scope, errorOutput);
 
                 return scope.assert.collect();
             }

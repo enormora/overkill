@@ -493,8 +493,8 @@ type RealTimeReporter = {
     readonly kind: 'real-time';
     readonly name: string;
     readonly sinks: ReadonlyArray<SinkDeclaration>;
-    onEvent(event: ReporterEvent): ReporterOutput | void | Promise<ReporterOutput | void>;
-    onFinish: ((result: RunResult) => ReporterOutput | void | Promise<ReporterOutput | void>) | null;
+    onEvent(event: ReporterEvent): void | Promise<void>;
+    onFinish: ((result: RunResult) => void | Promise<void>) | null;
 };
 
 type FinalResultReporter = {
@@ -502,7 +502,7 @@ type FinalResultReporter = {
     readonly kind: 'final-result';
     readonly name: string;
     readonly sinks: ReadonlyArray<SinkDeclaration>;
-    onResult(result: RunResult): ReporterOutput | void | Promise<ReporterOutput | void>;
+    onResult(result: RunResult): void | Promise<void>;
 };
 
 type SinkDeclaration =
@@ -536,6 +536,11 @@ type OutputRenderer = {
     render(intent: OutputLineIntent): string;
 };
 ```
+
+Reporter method return types are conditional in the public TypeScript
+contract. A reporter whose literal `sinks` tuple contains a managed stdout or
+stderr sink may return `ReporterOutput` or `void`. Reporters without managed
+stream sinks are side-effect-only and return only `void` or `Promise<void>`.
 
 Canonical: [Reporters](../architecture/reporters.md).
 
