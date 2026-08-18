@@ -183,6 +183,30 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'brief reporter suppresses final progress at the planned count',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const reporter = createBriefReporter();
+
+                await reporter.onEvent({
+                    facts: { cases: Array.from({ length: 100 }) },
+                    kind: 'run-start',
+                    root: { metadata: {}, name: 'source' },
+                    startedAt: '2026-07-15T00:00:00.000Z'
+                });
+
+                for (let index = 0; index < 99; index += 1) {
+                    await reporter.onEvent(passEvent());
+                }
+
+                const finalPassOutput = await readOutput(reporter.onEvent(passEvent()));
+
+                scope.assert.deepEqual(finalPassOutput, []);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'brief reporter prints one diagnostic line per failure cause',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -199,6 +223,44 @@ export const testSuite = createOverkillSuite({
                     ]
                 );
                 assertFailureAnnotations(scope, failureOutput);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'brief reporter prints runner errors and ignores suite events',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const reporter = createBriefReporter();
+                const suiteOutput = await readOutput(reporter.onEvent({
+                    kind: 'suite-start',
+                    suitePath: [ 'source' ]
+                }));
+                const errorOutput = await readOutput(reporter.onEvent({
+                    error: {
+                        attributedTo: null,
+                        cause: new Error('cannot collect tests'),
+                        message: 'cannot collect tests',
+                        subtype: 'crash'
+                    },
+                    kind: 'runner-error'
+                }));
+
+                scope.assert.deepEqual(suiteOutput, []);
+                scope.assert.deepEqual(
+                    errorOutput.map(function toText(intent) {
+                        return intent.text;
+                    }),
+                    [ 'runner-error cannot collect tests' ]
+                );
+                scope.require.defined(errorOutput[0]);
+                const runnerErrorIntent = errorOutput[0];
+                scope.require.notNull(runnerErrorIntent.annotation);
+                const { annotation } = runnerErrorIntent;
+
+                scope.assert.equal(annotation.location, null);
+                scope.assert.equal(annotation.severity, 'error');
+                scope.assert.equal(annotation.title, 'Runner error');
 
                 return scope.assert.collect();
             }

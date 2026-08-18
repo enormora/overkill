@@ -60,6 +60,42 @@ export const testSuite = createOverkillSuite({
 
                 return scope.assert.collect();
             }
+        }),
+        createOverkillTestCase({
+            name: 'GitHub Actions output renderer handles optional annotation properties',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const renderer = createGithubActionsOutputRenderer();
+
+                scope.assert.equal(
+                    renderer.render({
+                        annotation: {
+                            location: { column: null, file: 'source/users-test.ts', line: 10 },
+                            severity: 'warning',
+                            title: null
+                        },
+                        kind: 'stdout-line',
+                        role: 'primary',
+                        text: 'expected value'
+                    }),
+                    '::warning file=source/users-test.ts,line=10::expected value'
+                );
+                scope.assert.equal(
+                    renderer.render({
+                        annotation: {
+                            location: { column: 5, file: 'source/users-test.ts', line: null },
+                            severity: 'error',
+                            title: 'users'
+                        },
+                        kind: 'stdout-line',
+                        role: 'primary',
+                        text: 'expected value'
+                    }),
+                    'expected value'
+                );
+
+                return scope.assert.collect();
+            }
         })
     ]
 });

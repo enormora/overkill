@@ -245,6 +245,51 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'reporter dispatcher records runner-error notification output failures',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const { dispatcher } = createRecordingDispatcher();
+                const failingReporter: RealTimeReporter = {
+                    dispose: null,
+                    kind: 'real-time',
+                    name: 'broken-event',
+                    onEvent() {
+                        throw new Error('cannot render event');
+                    },
+                    onFinish: null,
+                    sinks: []
+                };
+                const notifyingReporter: RealTimeReporter = {
+                    dispose: null,
+                    kind: 'real-time',
+                    name: 'broken-notification-output',
+                    onEvent(event) {
+                        return event.kind === 'runner-error' ? [ stdoutPrimaryIntent ] : [];
+                    },
+                    onFinish: null,
+                    sinks: []
+                };
+
+                const errors = await dispatcher.reportEvent(
+                    [ failingReporter, notifyingReporter ],
+                    { kind: 'suite-start', suitePath: [ 'suite' ] },
+                    createPlainOutputRenderer()
+                );
+
+                scope.assert.deepEqual(
+                    errors.map(function toMessage(error) {
+                        return error.message;
+                    }),
+                    [
+                        'broken-event: cannot render event',
+                        'broken-notification-output: Reporter returned undeclared managed stdout output.'
+                    ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'reporter dispatcher writes managed output in reporter registration order',
             metadata: {},
             async body(scope: OverkillScope) {
