@@ -12,15 +12,10 @@ import {
     type InMemoryFinalResultReporter,
     type InMemoryRealTimeReporter
 } from '../reporters/in-memory-reporter.ts';
-import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { createEngine, type Engine } from './engine.ts';
 import { createExecute } from './execution.ts';
-import {
-    createReporterDispatcher,
-    type FinalResultReporter,
-    type ReporterDispatcher,
-    type RealTimeReporter
-} from './reporter.ts';
+import { createReporterDispatcher, type ReporterDispatcher } from './reporter-dispatcher.ts';
+import type { FinalResultReporter, RealTimeReporter } from './reporter.ts';
 import type { RunResult } from './run-result.ts';
 import type { TestPlan } from './test-plan.ts';
 
@@ -147,10 +142,18 @@ async function rejectedValue(promise: Promise<unknown>): Promise<unknown> {
     }
 }
 
+function ignoreOutputLine(): void {
+    return undefined;
+}
+
 function createReporterDeliveryEngine(wallClock: ReturnType<typeof createDeterministicWallClock>): Engine {
     return createEngine({
         execute: createExecute({
-            reporterDispatcher: createReporterDispatcher({ wallClock }),
+            reporterDispatcher: createReporterDispatcher({
+                stderr: { writeLine: ignoreOutputLine },
+                stdout: { writeLine: ignoreOutputLine },
+                wallClock
+            }),
             wallClock
         }),
         nodeVersion: '26.0.0',
@@ -162,6 +165,10 @@ function createReporterDeliveryEngine(wallClock: ReturnType<typeof createDetermi
             process.exitCode = exitCode;
         }
     });
+}
+
+function createDefaultReporterDeliveryEngine(): Engine {
+    return createReporterDeliveryEngine(createDeterministicWallClock());
 }
 
 function createReporterDeliveryFixture(): ReporterDeliveryFixture {
@@ -258,7 +265,7 @@ export const testSuite = createOverkillSuite({
             name: 'execute() disposes reporters after validation failure',
             metadata: {},
             body: async function body(scope: OverkillScope) {
-                const engine = createTestEngine();
+                const engine = createDefaultReporterDeliveryEngine();
                 let disposed = false;
                 const firstReporter: RealTimeReporter = {
                     dispose() {
@@ -270,7 +277,7 @@ export const testSuite = createOverkillSuite({
                         return undefined;
                     },
                     onFinish: null,
-                    sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ]
+                    sinks: [ { kind: 'stdout-raw' } ]
                 };
                 const secondReporter: RealTimeReporter = {
                     dispose: null,
@@ -280,7 +287,7 @@ export const testSuite = createOverkillSuite({
                         return undefined;
                     },
                     onFinish: null,
-                    sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ]
+                    sinks: [ { kind: 'stdout-raw' } ]
                 };
 
                 await scope.assert.rejects(async function executeWithInvalidReporterSinks() {
@@ -290,7 +297,7 @@ export const testSuite = createOverkillSuite({
                         runFacts: {},
                         startedAt: '2026-07-15T00:00:00.000Z'
                     });
-                }, { message: 'Reporter sink conflict: stdout is claimed exclusively.' });
+                }, { message: 'Reporter sink conflict: stdout is claimed by incompatible reporters.' });
                 scope.assert.equal(disposed, true);
 
                 return scope.assert.collect();
@@ -300,7 +307,7 @@ export const testSuite = createOverkillSuite({
             name: 'execute() throws AggregateError when execution and cleanup both fail',
             metadata: {},
             body: async function body(scope: OverkillScope) {
-                const engine = createTestEngine();
+                const engine = createDefaultReporterDeliveryEngine();
                 const firstReporter: RealTimeReporter = {
                     dispose() {
                         throw new Error('cleanup failed');
@@ -311,7 +318,7 @@ export const testSuite = createOverkillSuite({
                         return undefined;
                     },
                     onFinish: null,
-                    sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ]
+                    sinks: [ { kind: 'stdout-raw' } ]
                 };
                 const secondReporter: RealTimeReporter = {
                     dispose: null,
@@ -321,7 +328,7 @@ export const testSuite = createOverkillSuite({
                         return undefined;
                     },
                     onFinish: null,
-                    sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ]
+                    sinks: [ { kind: 'stdout-raw' } ]
                 };
 
                 const execution = engine.execute(createPassingPlan(engine), {
@@ -339,7 +346,7 @@ export const testSuite = createOverkillSuite({
                 scope.assert.deepEqual(
                     capturedError.errors.map(aggregateErrorEntryMessage),
                     [
-                        'Reporter sink conflict: stdout is claimed exclusively.',
+                        'Reporter sink conflict: stdout is claimed by incompatible reporters.',
                         'first: cleanup failed'
                     ]
                 );
@@ -351,7 +358,7 @@ export const testSuite = createOverkillSuite({
             name: 'execute() does not retry disposal after disposal throws',
             metadata: {},
             body: async function body(scope: OverkillScope) {
-                const engine = createTestEngine();
+                const engine = createDefaultReporterDeliveryEngine();
                 const wallClock = createDeterministicWallClock();
                 let disposeCalls = 0;
                 const reporterDispatcher: ReporterDispatcher = {
@@ -386,7 +393,7 @@ export const testSuite = createOverkillSuite({
             name: 'execute() includes run-end reporter errors before final reporting',
             metadata: {},
             body: async function body(scope: OverkillScope) {
-                const engine = createTestEngine();
+                const engine = createDefaultReporterDeliveryEngine();
                 const finalReporter = createInMemoryFinalResultReporter();
                 const finishReporter = createInMemoryRealTimeReporter();
 
@@ -407,7 +414,7 @@ export const testSuite = createOverkillSuite({
             name: 'execute() records dispose failures without reporter re-entry',
             metadata: {},
             body: async function body(scope: OverkillScope) {
-                const engine = createTestEngine();
+                const engine = createDefaultReporterDeliveryEngine();
                 const observer = createInMemoryRealTimeReporter();
                 const failingReporter: RealTimeReporter = {
                     dispose() {

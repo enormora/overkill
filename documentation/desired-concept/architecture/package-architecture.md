@@ -400,11 +400,13 @@ Reporter support should be modeled as a package family rather than one catch-all
 Examples:
 
 - `@overkill-dev/reporter-dot`
+- `@overkill-dev/reporter-brief`
 - `@overkill-dev/reporter-line`
 - `@overkill-dev/reporter-tap`
 - `@overkill-dev/reporter-json`
 - `@overkill-dev/reporter-html`
 - `@overkill-dev/reporter-benchmark-html`
+- `@overkill-dev/output-renderer-github-actions`
 
 Multiple reporters should be attachable to one run.
 
@@ -413,6 +415,7 @@ The core should expose the reporter contract; individual reporters should live i
 The current first-party reporter set should be treated as settled:
 
 - `dot` for minimal real-time progress output
+- `brief` for sparse managed stdout output suitable for AI-agent and CI logs
 - `line` as the default human terminal reporter
 - `tap` for TAP-oriented integrations
 - `json` as the canonical machine-readable result dump
@@ -425,6 +428,19 @@ need presentation that generic test reporters do not: workload comparisons,
 percentiles, baseline deltas, machine metadata, and plotting-oriented output.
 That reporter should therefore remain a separate reporter package rather than
 being hidden inside `@overkill-dev/bench`.
+
+Output intent and output renderer types belong in `@overkill-dev/engine`
+because reporters return those values through the reporter contract. The
+plain renderer ships from `@overkill-dev/engine` and is the `@overkill-dev/run`
+default. Platform-specific renderers live in narrow packages when they carry
+platform syntax or release cadence. `@overkill-dev/output-renderer-github-actions`
+is the first such package; it converts located diagnostics into GitHub
+workflow commands without using the Checks API.
+
+There should not be a broad `@overkill-dev/report` or
+`@overkill-dev/reporters` package as a semantic owner. Reporter factories can
+still be re-exported from the standard distribution for user convenience, but
+the leaf packages remain the ownership boundary.
 
 Reporter loading should stay explicit and JS/TS-native:
 

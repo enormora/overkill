@@ -16,13 +16,17 @@ The current first-party reporter set should be treated as part of the
 settled concept:
 
 - `@overkill-dev/reporter-dot`
-  - real-time, stdout
+  - real-time, raw stdout
   - minimal progress output for local or CI runs where compactness matters
+- `@overkill-dev/reporter-brief`
+  - real-time, managed stdout primary
+  - sparse progress, final counts, and compact failure diagnostics for
+    token-conscious agent and CI logs
 - `@overkill-dev/reporter-line`
-  - real-time, stdout
+  - real-time, raw stdout
   - default human reporter for ordinary test runs
 - `@overkill-dev/reporter-tap`
-  - real-time, stdout
+  - real-time, raw stdout
   - TAP-compatible stream for existing tooling ecosystems
 - `@overkill-dev/reporter-json`
   - final-result
@@ -59,8 +63,8 @@ type RealTimeReporter = {
     readonly kind: 'real-time';
     readonly name: string;
     readonly sinks: ReadonlyArray<SinkDeclaration>;
-    onEvent(event: ReporterEvent): void | Promise<void>;
-    onFinish: ((result: RunResult) => void | Promise<void>) | null;
+    onEvent(event: ReporterEvent): ReporterOutput | void | Promise<ReporterOutput | void>;
+    onFinish: ((result: RunResult) => ReporterOutput | void | Promise<ReporterOutput | void>) | null;
 };
 
 type FinalResultReporter = {
@@ -68,7 +72,7 @@ type FinalResultReporter = {
     readonly kind: 'final-result';
     readonly name: string;
     readonly sinks: ReadonlyArray<SinkDeclaration>;
-    onResult(result: RunResult): void | Promise<void>;
+    onResult(result: RunResult): ReporterOutput | void | Promise<ReporterOutput | void>;
 };
 ```
 
@@ -134,23 +138,26 @@ A reporter declares the sinks it intends to write to:
 
 ```ts
 type SinkDeclaration =
-    | { kind: 'stdout'; conflictPolicy: 'exclusive' | 'shared'; }
-    | { kind: 'stderr'; conflictPolicy: 'exclusive' | 'shared'; }
-    | { kind: 'file'; path: string; conflictPolicy: 'exclusive'; }
-    | { kind: 'directory'; path: string; conflictPolicy: 'exclusive'; }
-    | { kind: 'memory'; conflictPolicy: 'shared'; }
-    | { kind: 'stream'; provided: WritableStream; conflictPolicy: 'exclusive'; };
+    | { kind: 'stdout-raw'; }
+    | { kind: 'stderr-raw'; }
+    | { kind: 'stdout-managed-primary'; }
+    | { kind: 'stderr-managed-primary'; }
+    | { kind: 'stdout-managed-supplemental'; }
+    | { kind: 'stderr-managed-supplemental'; }
+    | { kind: 'file'; path: string; }
+    | { kind: 'directory'; path: string; }
+    | { kind: 'memory'; }
+    | { kind: 'stream'; provided: WritableStream; };
 ```
 
 Resolution rules at run start:
 
-- two reporters claiming the same `stdout` or `stderr` with
-  `conflictPolicy: 'exclusive'` is a configuration error; the run
-  aborts with exit code 3 (configuration error) before any test
-  runs
-- two reporters claiming `stdout` with `conflictPolicy: 'shared'`
-  are allowed; they interleave on a per-line atomicity guarantee
-  (no half-line bleed)
+- a raw stream sink owns the underlying stream directly and conflicts with
+  every other raw or managed reporter for that same stream
+- a stream may have at most one managed primary reporter
+- managed supplemental reporters may share the same stream with the managed
+  primary and with other managed supplemental reporters
+- raw and managed reporters never share one stream
 - `file` and `directory` sinks are always exclusive; two reporters
   pointing at the same exact declared path is a configuration error
 - `memory` and `stream` sinks are always per-reporter-private
@@ -158,6 +165,36 @@ Resolution rules at run start:
 Direct engine execution validates this subset before emitting
 `run-start`. The orchestration layer (`@overkill-dev/run`) computes
 the conflict graph from declared sinks before starting any worker.
+
+Managed stream reporters do not call `process.stdout.write` or
+`process.stderr.write` themselves. They return line intents:
+
+```ts
+type OutputLineIntent = {
+    readonly annotation: OutputIntentAnnotation | null;
+    readonly kind: 'stdout-line' | 'stderr-line';
+    readonly role: 'primary' | 'supplemental';
+    readonly text: string;
+};
+
+type OutputIntentAnnotation = {
+    readonly location: SourceLocation | null;
+    readonly severity: 'error' | 'notice' | 'warning';
+    readonly title: string | null;
+};
+
+type OutputRenderer = {
+    render(intent: OutputLineIntent): string;
+};
+```
+
+The runner applies one `outputRenderer` to managed output intents. The default
+renderer is plain text and returns `intent.text`. Renderers are pure line
+formatters: they do not own reporter state, do not write to streams, and must
+return one physical line without newline characters. This lets a CI renderer
+such as `@overkill-dev/output-renderer-github-actions` turn located failure
+diagnostics into workflow annotations while ordinary lines remain readable in
+the same stdout log.
 
 ## Registration
 
@@ -244,9 +281,10 @@ needs an isolated render loop (for example a benchmark dashboard or a
 richer TUI), that is a reporter implementation choice above the stable
 reporter contract, not a runner-wide default.
 
-A reporter that needs serialized output (e.g. a TAP reporter writing
-to stdout) declares the sink as `exclusive`; a reporter that
-tolerates interleaving declares `shared`.
+A reporter that needs full ownership of a stream, such as a TAP reporter
+writing to stdout, declares a raw stream sink. A reporter that can express its
+output as isolated lines declares a managed primary or supplemental stream
+sink and returns output intents.
 
 ## Default Line Reporter Rendering
 
@@ -277,8 +315,8 @@ readable; machine-readable reporters still receive the structured result.
 
 ## Dot Reporter Rendering
 
-`@overkill-dev/reporter-dot` is a compact real-time stdout reporter for local
-and CI runs where progress density matters. It is an explicit reporter
+`@overkill-dev/reporter-dot` is a compact raw stdout reporter for local and CI
+runs where progress density matters. It is an explicit reporter
 package, not an implicit `@overkill-dev/run` default.
 
 It emits one mark per completed test and runner error:
@@ -303,6 +341,26 @@ On finish, the progress block is persisted, then the reporter prints a compact
 summary and short detail lines for failed tests, inconclusive tests, and
 runner errors. If a `runner-error` arrives after finish, it prints
 `Runner error: <message>` below the summary.
+
+## Brief Reporter Rendering
+
+`@overkill-dev/reporter-brief` is the first managed stdout primary reporter.
+It is designed for logs that should stay useful to humans while spending very
+few tokens in AI-agent contexts.
+
+It renders:
+
+- one run-start line
+- sparse progress lines, currently every 100 completed tests, with `?` as the
+  denominator when the plan count is unavailable
+- no per-test passing lines
+- one compact line per top-level failure cause
+- one final count line with discovered, planned, executed, passed, failed,
+  skipped, inconclusive, and elapsed milliseconds
+
+Failure lines include source location when a structured failure has one.
+Located failure intents carry annotations so renderers can adapt them for CI
+systems without the reporter knowing platform-specific command syntax.
 
 ## Reporter Errors
 

@@ -2,7 +2,8 @@ import figures from 'figures';
 import colors from 'yoctocolors';
 import { formatCaseId } from '../engine/identity.ts';
 import type { RealTimeReporter, ReporterEvent } from '../engine/reporter.ts';
-import type { RunResult, RunnerError, TestFailure, TestOutcome } from '../engine/run-result.ts';
+import type { RunResult, RunnerError, TestOutcome } from '../engine/run-result.ts';
+import { formatFailureSummary } from './failure-summary.ts';
 import { createTerminalProgressRenderer, type TerminalOutput } from './terminal.ts';
 
 export type DotReporterDependencies = {
@@ -52,21 +53,9 @@ function formatSummary(result: RunResult): string {
     return `${countSummary} (${outcomes})${orphanSummary} in ${formatDuration(result.wallTimeMs)}`;
 }
 
-function failureSummary(failure: TestFailure): string {
-    if (failure.kind === 'assertion') {
-        return failure.checks[0].summary;
-    }
-
-    if (failure.kind === 'body-error') {
-        return failure.error.message;
-    }
-
-    return failure.summary;
-}
-
 function outcomeDetail(outcome: TestOutcome): string | null {
     if (outcome.kind === 'fail') {
-        return failureSummary(outcome.failures[0]);
+        return formatFailureSummary(outcome.failures[0]);
     }
 
     if (outcome.kind === 'inconclusive') {
@@ -139,7 +128,7 @@ export function createDotReporter(dependencies: DotReporterDependencies): RealTi
         },
         kind: 'real-time',
         name: 'dot',
-        sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ],
+        sinks: [ { kind: 'stdout-raw' } ],
 
         async onEvent(event: ReporterEvent) {
             if (event.kind === 'test-end') {

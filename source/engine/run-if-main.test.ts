@@ -9,7 +9,7 @@ import {
 } from '@overkill-dev/engine';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createEngine, type Engine } from './engine.ts';
-import type { Execute } from './execution.ts';
+import type { Execute, ExecuteOptions } from './execution.ts';
 import type { RunResult } from './run-result.ts';
 import type { TestNode } from './test-node.ts';
 
@@ -73,6 +73,18 @@ function createRunIfMainFixture(
         },
         testNode
     };
+}
+
+function readExecuteOptions(scope: OverkillScope, execute: TestDouble<Execute>): ExecuteOptions {
+    const firstExecute = execute.firstCall;
+    scope.require.notNull(firstExecute);
+    const executeOptions = firstExecute.arguments[1];
+
+    scope.require.defined(executeOptions);
+    scope.require.defined(executeOptions.outputRenderer);
+    scope.assert.equal(typeof executeOptions.outputRenderer.render, 'function');
+
+    return executeOptions;
 }
 
 export const testSuite = createOverkillSuite({
@@ -146,11 +158,13 @@ export const testSuite = createOverkillSuite({
 
                 await fixture.engine.runIfMain(importMeta(true), fixture.testNode);
 
-                const firstExecute = fixture.execute.firstCall;
-                scope.require.notNull(firstExecute);
-                const executeOptions = firstExecute.arguments[1];
-                scope.require.defined(executeOptions);
-                scope.assert.deepEqual(executeOptions, {
+                const executeOptions = readExecuteOptions(scope, fixture.execute);
+                scope.assert.deepEqual({
+                    execution: executeOptions.execution,
+                    reporters: executeOptions.reporters,
+                    runFacts: executeOptions.runFacts,
+                    startedAt: executeOptions.startedAt
+                }, {
                     execution: { mode: 'serial-in-process' },
                     reporters: [],
                     runFacts: { nodeVersion: '26.1.1' },
@@ -183,11 +197,13 @@ export const testSuite = createOverkillSuite({
                     }
                 });
 
-                const firstExecute = fixture.execute.firstCall;
-                scope.require.notNull(firstExecute);
-                const executeOptions = firstExecute.arguments[1];
-                scope.require.defined(executeOptions);
-                scope.assert.deepEqual(executeOptions, {
+                const executeOptions = readExecuteOptions(scope, fixture.execute);
+                scope.assert.deepEqual({
+                    execution: executeOptions.execution,
+                    reporters: executeOptions.reporters,
+                    runFacts: executeOptions.runFacts,
+                    startedAt: executeOptions.startedAt
+                }, {
                     execution: { mode: 'serial-in-process' },
                     reporters: [ reporter ],
                     runFacts: {

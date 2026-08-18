@@ -40,7 +40,11 @@ until their command implementations land.
 
 Config loading is common command-line infrastructure, not plugin discovery.
 The command-line runner loads native Node config files, selects the default
-line reporter when project config omits reporters, returns fallback diagnostics
-for the binary wrapper to write, and maps run outcomes to stable exit codes.
+line reporter when project config omits reporters, defaults managed reporter
+output to the plain renderer, returns fallback diagnostics for the binary
+wrapper to write, and maps run outcomes to stable exit codes.
 Installing a package does not add commands, and there is no installed-package
 scan, dynamic command registry, or command plugin lifecycle.
+
+Project config may set `outputRenderer` to adapt managed line intents, for
+example to render GitHub Actions annotations from a brief stdout reporter.

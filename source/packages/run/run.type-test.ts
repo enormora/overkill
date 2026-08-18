@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'tstyche';
-import type { Reporter, RunResult, TestPlan } from '../engine/engine.entry-point.ts';
+import type { OutputRenderer, Reporter, RunResult, TestPlan } from '../engine/engine.entry-point.ts';
 import {
     RunResolutionError,
     type orchestrator,
@@ -53,7 +53,8 @@ describe('@overkill-dev/run', function () {
     });
 
     test('exposes config and resolution errors', function () {
-        expect<keyof RunConfig>().type.toBe<'loader' | 'reporters' | 'runtimeStateDir'>();
+        expect<keyof RunConfig>().type.toBe<'loader' | 'outputRenderer' | 'reporters' | 'runtimeStateDir'>();
+        expect<RunConfig['outputRenderer']>().type.toBe<OutputRenderer>();
         expect<RunConfig['reporters']>().type.toBe<readonly Reporter[]>();
         expect(new RunResolutionError('Unsupported.', undefined, 'unsupported-request')).type.toBe<
             RunResolutionError

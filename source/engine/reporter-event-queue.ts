@@ -1,4 +1,6 @@
-import type { Reporter, ReporterDispatcher, ReporterEvent } from './reporter.ts';
+import type { OutputRenderer } from './reporter-output.ts';
+import type { ReporterDispatcher } from './reporter-dispatcher.ts';
+import type { Reporter, ReporterEvent } from './reporter.ts';
 import type { RunnerError } from './run-result.ts';
 
 export type ReporterEventQueue = {
@@ -21,6 +23,7 @@ async function waitForPreviousReport(previousReport: Promise<readonly RunnerErro
 
 export function createReporterEventQueue(
     reporters: readonly Reporter[],
+    outputRenderer: OutputRenderer,
     dependencies: ReporterEventQueueDependencies
 ): ReporterEventQueue {
     let previousReport = Promise.resolve<readonly RunnerError[]>([]);
@@ -30,7 +33,7 @@ export function createReporterEventQueue(
             const report = (async function reportEventAfterPreviousReport() {
                 await waitForPreviousReport(previousReport);
 
-                return await dependencies.reporterDispatcher.reportEvent(reporters, event);
+                return await dependencies.reporterDispatcher.reportEvent(reporters, event, outputRenderer);
             })();
             previousReport = report;
 

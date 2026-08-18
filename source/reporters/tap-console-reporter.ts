@@ -1,6 +1,7 @@
 import { formatCaseId } from '../engine/identity.ts';
-import type { PerTestResult, RunResult, TestFailure } from '../engine/run-result.ts';
+import type { PerTestResult, RunResult } from '../engine/run-result.ts';
 import type { FinalResultReporter, RealTimeReporter, ReporterEvent } from '../engine/reporter.ts';
+import { formatFailureSummary } from './failure-summary.ts';
 
 export type TapConsoleReporterDependencies = {
     readonly stdoutConsole: Pick<typeof console, 'log'>;
@@ -19,21 +20,9 @@ function statusForOutcome(outcome: TapPoint['outcome']): 'not ok' | 'ok' {
     return 'ok';
 }
 
-function failureReason(failure: TestFailure): string {
-    if (failure.kind === 'assertion') {
-        return failure.checks[0].summary;
-    }
-
-    if (failure.kind === 'body-error') {
-        return failure.error.message;
-    }
-
-    return failure.summary;
-}
-
 function diagnosticReason(outcome: TapPoint['outcome']): string | null {
     if (outcome.kind === 'fail') {
-        return failureReason(outcome.failures[0]);
+        return formatFailureSummary(outcome.failures[0]);
     }
 
     if (outcome.kind === 'inconclusive') {
@@ -91,7 +80,7 @@ export function createTapConsoleReporter(dependencies: TapConsoleReporterDepende
         dispose: null,
         kind: 'final-result',
         name: 'tap',
-        sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ],
+        sinks: [ { kind: 'stdout-raw' } ],
 
         async onResult(currentTestRunResult) {
             stdoutConsole.log(formatResultAsTap(currentTestRunResult));
@@ -107,7 +96,7 @@ export function createTapConsoleRealTimeReporter(dependencies: TapConsoleReporte
         dispose: null,
         kind: 'real-time',
         name: 'tap-real-time',
-        sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ],
+        sinks: [ { kind: 'stdout-raw' } ],
 
         async onEvent(event) {
             if (event.kind === 'run-start') {

@@ -1,11 +1,13 @@
 import type { WallClock } from '@enormora/wall-clock';
 import type { Execute, ExecuteOptions } from './execution.ts';
+import { createPlainOutputRenderer, type OutputRenderer } from './reporter-output.ts';
 import type { Reporter, RunFacts } from './reporter.ts';
 import type { RunResult } from './run-result.ts';
 import type { Metadata, RootOptions, TestNode, TestRoot } from './test-node.ts';
 import type { TestPlanFactory } from './test-plan.ts';
 
 export type RunIfMainOptions = {
+    readonly outputRenderer?: OutputRenderer;
     readonly reporters?: readonly Reporter[];
     readonly root?: RunIfMainRootOptions;
     readonly runFacts?: RunFacts;
@@ -70,6 +72,7 @@ function createExecuteOptions(
 
     return {
         execution: { mode: 'serial-in-process' },
+        outputRenderer: options?.outputRenderer ?? createPlainOutputRenderer(),
         reporters: options?.reporters ?? [],
         runFacts: {
             ...options?.runFacts,

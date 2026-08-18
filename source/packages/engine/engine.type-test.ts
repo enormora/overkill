@@ -21,34 +21,25 @@ import type {
     DiffPathSegment,
     ErrorMatcher,
     ExactThrownMatcher,
-    ExecuteExecution,
-    ExecuteOptions,
     FailedCheck,
     FailedCompositeCheck,
     FailedForeignCheck,
     FailedLeafCheck,
-    FinalResultReporter,
     NonEmptyReadonlyArray,
     PerTestResult,
-    RealTimeReporter,
     ReporterEvent,
     RequireAssertionFacade,
     RequireAssertionNode,
     ResolvableSourceLocation,
-    RunFacts,
-    RunResult,
     RunSummary,
     RunnerError,
     SerializationTruncation,
     SerializedValue,
-    SinkDeclaration,
     SourceLocation,
     SourceLocationProvider,
     TestScope,
     TestFailure,
     TestOutcome,
-    TestPlan,
-    TestPlanCase,
     ThrownMatcher,
     unknownSourceLocation
 } from './engine.entry-point.ts';
@@ -517,26 +508,5 @@ describe('RunSummary', function () {
 describe('RunnerError', function () {
     test('subtype is the documented union', function () {
         expect<RunnerError['subtype']>().type.toBe<ExpectedRunnerErrorSubtype>();
-    });
-});
-
-describe('Reporter contract', function () {
-    test('uses explicit run facts and nullable finish callbacks', function () {
-        expect<keyof ExecuteOptions>().type.toBe<'execution' | 'reporters' | 'runFacts' | 'startedAt'>();
-        expect<ExecuteExecution['mode']>().type.toBe<'concurrent-in-process' | 'serial-in-process'>();
-        expect<RunFacts>().type.toBe<Readonly<Record<string, unknown>>>();
-        expect<RealTimeReporter['dispose']>().type.toBe<(() => Promise<void> | void) | null>();
-        expect<RealTimeReporter['onFinish']>().type.toBe<((result: RunResult) => Promise<void> | void) | null>();
-        expect<FinalResultReporter['dispose']>().type.toBe<(() => Promise<void> | void) | null>();
-        expect<FinalResultReporter['kind']>().type.toBe<'final-result'>();
-    });
-
-    test('exposes sink declarations for every supported sink kind', function () {
-        expect<SinkDeclaration['kind']>().type.toBe<'directory' | 'file' | 'memory' | 'stderr' | 'stdout' | 'stream'>();
-    });
-
-    test('exposes non-empty planned case arrays', function () {
-        expect<TestPlan['cases']>().type.toBe<NonEmptyReadonlyArray<TestPlanCase>>();
-        expect<TestPlan['discoveredCases']>().type.toBe<NonEmptyReadonlyArray<TestPlanCase>>();
     });
 });

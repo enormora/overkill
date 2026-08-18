@@ -49,7 +49,7 @@ export type CommandLineRunnerDependencies = CommandLineCommandLoaders & {
 };
 
 function hasTerminalSink(sink: SinkDeclaration): boolean {
-    return sink.kind === 'stdout' || sink.kind === 'stderr';
+    return sink.kind.startsWith('stdout') || sink.kind.startsWith('stderr');
 }
 
 function hasTerminalReporter(reporters: readonly Reporter[]): boolean {
@@ -79,6 +79,7 @@ async function createCommandLineConfig(
 ): Promise<RunConfig> {
     return {
         loader: loadedConfig.loader,
+        outputRenderer: loadedConfig.outputRenderer,
         reporters: await loadCommandLineReporters(loadedConfig, dependencies),
         runtimeStateDir: loadedConfig.runtimeStateDir
     };

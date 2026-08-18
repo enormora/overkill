@@ -461,7 +461,7 @@ export const testSuite = createOverkillSuite({
                         return undefined;
                     },
                     onFinish: null,
-                    sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ]
+                    sinks: [ { kind: 'stdout-raw' } ]
                 };
                 const testPlan = engine.createTestPlan(
                     engine.createRoot({
@@ -485,13 +485,13 @@ export const testSuite = createOverkillSuite({
                     await engine.execute(testPlan, {
                         execution: { mode: 'serial-in-process' },
                         reporters: [
-                            { ...realTimeReporter, sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ] },
+                            { ...realTimeReporter, sinks: [ { kind: 'stdout-raw' } ] },
                             conflictingReporter
                         ],
                         runFacts: {},
                         startedAt: '2026-07-15T00:00:00.000Z'
                     });
-                }, { message: 'Reporter sink conflict: stdout is claimed exclusively.' });
+                }, { message: 'Reporter sink conflict: stdout is claimed by incompatible reporters.' });
                 scope.assert.equal(bodyRan, false);
                 scope.assert.deepEqual(realTimeReporter.getRecordedEntries(), []);
 

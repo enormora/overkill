@@ -135,7 +135,7 @@ export function createLineReporter(dependencies: LineReporterDependencies): Real
         dispose: null,
         kind: 'real-time',
         name: 'line',
-        sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ],
+        sinks: [ { kind: 'stdout-raw' } ],
 
         async onEvent(event) {
             if (event.kind === 'run-start') {

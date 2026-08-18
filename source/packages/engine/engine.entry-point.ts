@@ -1,7 +1,7 @@
 import { createWallClock } from '@enormora/wall-clock';
 import { createEngine as createEngineInstance, type Engine } from '../../engine/engine.ts';
 import { createExecute } from '../../engine/execution.ts';
-import { createReporterDispatcher } from '../../engine/reporter.ts';
+import { createReporterDispatcher } from '../../engine/reporter-dispatcher.ts';
 import type { RunIfMainOptions } from '../../engine/run-if-main.ts';
 import type {
     RootOptions,
@@ -20,12 +20,24 @@ function writeProcessExitCode(exitCode: number): void {
     process.exitCode = exitCode;
 }
 
+function writeStdoutLine(line: string): void {
+    process.stdout.write(`${line}\n`);
+}
+
+function writeStderrLine(line: string): void {
+    process.stderr.write(`${line}\n`);
+}
+
 export function createEngine(): Engine {
     const wallClock = createWallClock();
 
     return createEngineInstance({
         execute: createExecute({
-            reporterDispatcher: createReporterDispatcher({ wallClock }),
+            reporterDispatcher: createReporterDispatcher({
+                stderr: { writeLine: writeStderrLine },
+                stdout: { writeLine: writeStdoutLine },
+                wallClock
+            }),
             wallClock
         }),
         nodeVersion: process.versions.node,
@@ -82,15 +94,33 @@ export type {
     FileSinkDeclaration,
     FinalResultReporter,
     MemorySinkDeclaration,
+    ManagedStandardOutputSinkDeclaration,
     RealTimeReporter,
     Reporter,
     ReporterEvent,
     RunFacts,
     SinkDeclaration,
+    RawStandardOutputSinkDeclaration,
     StandardOutputSinkDeclaration,
     StreamSinkDeclaration
 } from '../../engine/reporter.ts';
-export { ReporterSinkConflictError, validateReporterSinks } from '../../engine/reporter.ts';
+export type { ReporterDispatcher, ReporterDispatcherDependencies } from '../../engine/reporter-dispatcher.ts';
+export {
+    ReporterSinkConflictError,
+    validateReporterSinks
+} from '../../engine/reporter.ts';
+export {
+    createPlainOutputRenderer
+} from '../../engine/reporter-output.ts';
+export type {
+    OutputIntentAnnotation,
+    OutputIntentRole,
+    OutputIntentSeverity,
+    OutputLineIntent,
+    OutputLineWriter,
+    OutputRenderer,
+    ReporterOutput
+} from '../../engine/reporter-output.ts';
 export type { AssertAssertionFacade } from '../../engine/assertion-facade.ts';
 export type { RequireAssertionFacade } from '../../engine/require-assertion-facade.ts';
 export type {

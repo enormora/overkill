@@ -16,7 +16,7 @@ await execute(testPlan, {
 });
 ```
 
-The reporter writes to `stdout` and declares that sink as exclusive.
+The reporter writes directly to `stdout` and declares `stdout-raw`.
 
 It prints one mark per completed test and runner error, then a compact
 summary and short detail lines for failed tests, inconclusive tests, and

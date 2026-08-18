@@ -5,7 +5,9 @@ import {
     runIfMain,
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
-import type { ReporterDispatcher, ReporterEvent } from './reporter.ts';
+import { createPlainOutputRenderer } from './reporter-output.ts';
+import type { ReporterDispatcher } from './reporter-dispatcher.ts';
+import type { ReporterEvent } from './reporter.ts';
 import { createReporterEventQueue } from './reporter-event-queue.ts';
 
 type RejectingDispatcher = {
@@ -49,7 +51,7 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             async body(scope: OverkillScope) {
                 const rejectingDispatcher = createRejectingDispatcher();
-                const queue = createReporterEventQueue([], {
+                const queue = createReporterEventQueue([], createPlainOutputRenderer(), {
                     reporterDispatcher: rejectingDispatcher.dispatcher
                 });
 

@@ -20,7 +20,7 @@ await execute(testPlan, {
 });
 ```
 
-The reporter writes to `stdout` and declares that sink as exclusive.
+The reporter writes directly to `stdout` and declares `stdout-raw`.
 
 Rendering:
 

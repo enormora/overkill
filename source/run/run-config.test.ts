@@ -35,6 +35,7 @@ export const testSuite = createOverkillSuite({
 
                 scope.assert.equal(config.configPath, null);
                 scope.assert.deepEqual(config.loader, { sourceMaps: false, stripMode: 'strip-only' });
+                scope.assert.equal(typeof config.outputRenderer.render, 'function');
                 scope.assert.equal(config.reporters, null);
                 scope.assert.equal(config.runtimeStateDir, '.overkill');
 
@@ -80,7 +81,7 @@ export const testSuite = createOverkillSuite({
                                 name: 'configured-memory',
                                 onEvent() {},
                                 onFinish: null,
-                                sinks: [ { conflictPolicy: 'shared', kind: 'memory' } ]
+                                sinks: [ { kind: 'memory' } ]
                             }
                         ]
                     };`

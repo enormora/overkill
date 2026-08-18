@@ -459,6 +459,7 @@ type ThrowingTestBody = (case: unknown) => void | Promise<void>;
 type TestBody = BuilderTestBody | ThrowingTestBody;
 
 type RunIfMainOptions = {
+    readonly outputRenderer?: OutputRenderer;
     readonly reporters?: ReadonlyArray<Reporter>;
     readonly runFacts?: RunFacts;
 };
@@ -482,6 +483,62 @@ type TestFacade = {
 
 Canonical: [Assertions And Results](../authoring/assertions-and-results.md).
 
+## Reporters
+
+```ts
+type Reporter = RealTimeReporter | FinalResultReporter;
+
+type RealTimeReporter = {
+    readonly dispose: (() => void | Promise<void>) | null;
+    readonly kind: 'real-time';
+    readonly name: string;
+    readonly sinks: ReadonlyArray<SinkDeclaration>;
+    onEvent(event: ReporterEvent): ReporterOutput | void | Promise<ReporterOutput | void>;
+    onFinish: ((result: RunResult) => ReporterOutput | void | Promise<ReporterOutput | void>) | null;
+};
+
+type FinalResultReporter = {
+    readonly dispose: (() => void | Promise<void>) | null;
+    readonly kind: 'final-result';
+    readonly name: string;
+    readonly sinks: ReadonlyArray<SinkDeclaration>;
+    onResult(result: RunResult): ReporterOutput | void | Promise<ReporterOutput | void>;
+};
+
+type SinkDeclaration =
+    | { readonly kind: 'stdout-raw'; }
+    | { readonly kind: 'stderr-raw'; }
+    | { readonly kind: 'stdout-managed-primary'; }
+    | { readonly kind: 'stderr-managed-primary'; }
+    | { readonly kind: 'stdout-managed-supplemental'; }
+    | { readonly kind: 'stderr-managed-supplemental'; }
+    | { readonly kind: 'file'; readonly path: string; }
+    | { readonly kind: 'directory'; readonly path: string; }
+    | { readonly kind: 'memory'; }
+    | { readonly kind: 'stream'; readonly provided: WritableStream; };
+
+type ReporterOutput = ReadonlyArray<OutputLineIntent>;
+
+type OutputLineIntent = {
+    readonly annotation: OutputIntentAnnotation | null;
+    readonly kind: 'stdout-line' | 'stderr-line';
+    readonly role: 'primary' | 'supplemental';
+    readonly text: string;
+};
+
+type OutputIntentAnnotation = {
+    readonly location: SourceLocation | null;
+    readonly severity: 'error' | 'notice' | 'warning';
+    readonly title: string | null;
+};
+
+type OutputRenderer = {
+    render(intent: OutputLineIntent): string;
+};
+```
+
+Canonical: [Reporters](../architecture/reporters.md).
+
 ## Run Request, Resolution, And Record
 
 Direct engine consumers can create `TestCase` values with `createTestCase`,
@@ -493,6 +550,7 @@ and metadata. It is not a `TestNode` and does not contribute to
 
 ```ts
 type RunConfig = {
+    readonly outputRenderer: OutputRenderer;
     readonly reporters: ReadonlyArray<Reporter>;
     readonly loader: { readonly stripMode: 'strip-only' | 'transform'; readonly sourceMaps: boolean; };
     readonly runtimeStateDir: string;

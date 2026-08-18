@@ -14,10 +14,11 @@ Top-level API:
 - `createEngine()`
 - `formatCaseId(caseId)`
 - `validateReporterSinks(reporters)`
+- `createPlainOutputRenderer()`
 - `captureSourceLocation()`
 - `unknownSourceLocation`
 - `CaseId`, `TestId`, `TestRoot`, `TestPlan`, `ExecuteOptions`, `RunIfMainOptions`, `NonEmptyReadonlyArray`, `DeepComparable`
-- `Reporter`, `ReporterEvent`, `RealTimeReporter`, `FinalResultReporter`, `RunFacts`, `SinkDeclaration`
+- `Reporter`, `ReporterEvent`, `RealTimeReporter`, `FinalResultReporter`, `RunFacts`, `SinkDeclaration`, `OutputLineIntent`, `OutputRenderer`
 - `RunResult`, `TestOutcome`, `PassOutcome`, `FailOutcome`, `SkipOutcome`, `InconclusiveOutcome`
 - `AssertionNode`, `AssertionResult`, `AssertAssertionFacade`, `TestScopeAssertContext`
 - `ThrownMatcher`, `ErrorMatcher`, `ExactThrownMatcher`
@@ -93,10 +94,17 @@ Reporter lifecycle:
 
 Reporter sinks:
 
-- `stdout` and `stderr` can be `exclusive` or `shared`.
-- `file`, `directory`, and `stream` sinks are exclusive.
+- `stdout-raw` and `stderr-raw` own a stream directly and cannot share it.
+- `stdout-managed-primary` and `stderr-managed-primary` return line intents
+  through the reporter callback. A stream can have one managed primary.
+- `stdout-managed-supplemental` and `stderr-managed-supplemental` can
+  cooperate with a managed primary and other supplemental reporters.
+- `file` and `directory` sinks conflict on the same declared path.
+- `stream` sinks are private to each reporter.
 - `memory` sinks are private to each reporter.
 - `execute()` validates declared sink conflicts before emitting `run-start`.
+- Managed output uses one `OutputRenderer`. `createPlainOutputRenderer()`
+  renders each line intent as plain text.
 
 Assertion bodies:
 

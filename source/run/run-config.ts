@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { parse } from '@schema-hub/zod-error-formatter';
 import { z } from 'zod/v4';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import { createPlainOutputRenderer, type OutputRenderer } from '../engine/reporter-output.ts';
 import type { Reporter } from '../engine/reporter.ts';
 import type { RunLoaderConfig } from './run.ts';
 
@@ -11,6 +12,7 @@ const defaultConfigFileNames = [ 'overkill.config.ts', 'overkill.config.js' ];
 
 export type RunProjectConfig = {
     readonly loader?: RunLoaderConfig;
+    readonly outputRenderer?: OutputRenderer;
     readonly reporters?: NonEmptyReadonlyArray<Reporter>;
     readonly runtimeStateDir?: string;
 };
@@ -18,6 +20,7 @@ export type RunProjectConfig = {
 export type LoadedRunConfig = {
     readonly configPath: string | null;
     readonly loader: RunLoaderConfig;
+    readonly outputRenderer: OutputRenderer;
     readonly reporters: NonEmptyReadonlyArray<Reporter> | null;
     readonly runtimeStateDir: string;
 };
@@ -46,6 +49,18 @@ const reporterSchema = z.custom<Reporter>(function isReporter(value) {
         Object.hasOwn(value, 'sinks');
 });
 
+type PossibleOutputRenderer = {
+    readonly render: unknown;
+};
+
+function hasRenderProperty(value: unknown): value is PossibleOutputRenderer {
+    return typeof value === 'object' && value !== null && Object.hasOwn(value, 'render');
+}
+
+const outputRendererSchema = z.custom<OutputRenderer>(function isOutputRenderer(value) {
+    return hasRenderProperty(value) && typeof value.render === 'function';
+});
+
 const loaderSchema = z.strictObject({
     sourceMaps: z.boolean(),
     stripMode: z.union([ z.literal('strip-only'), z.literal('transform') ])
@@ -53,12 +68,14 @@ const loaderSchema = z.strictObject({
 
 const projectConfigSchema = z.strictObject({
     loader: z.optional(loaderSchema),
+    outputRenderer: z.optional(outputRendererSchema),
     reporters: z.optional(z.array(reporterSchema).min(1)),
     runtimeStateDir: z.optional(z.string().min(1))
 });
 
 type ParsedProjectConfig = {
     readonly loader?: RunLoaderConfig | undefined;
+    readonly outputRenderer?: OutputRenderer | undefined;
     readonly reporters?: readonly Reporter[] | undefined;
     readonly runtimeStateDir?: string | undefined;
 };
@@ -139,6 +156,7 @@ function normalizeConfig(parsedConfig: ParsedProjectConfig, configPath: string |
     return {
         configPath,
         loader: parsedConfig.loader ?? defaultLoader,
+        outputRenderer: parsedConfig.outputRenderer ?? createPlainOutputRenderer(),
         reporters: normalizeReporters(parsedConfig.reporters),
         runtimeStateDir: parsedConfig.runtimeStateDir ?? '.overkill'
     };
