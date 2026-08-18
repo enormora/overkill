@@ -10,6 +10,7 @@ import {
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createEngine } from './engine.ts';
 import type { Execute, ExecuteOptions } from './execution.ts';
+import { createPlainOutputRenderer } from './reporter-output.ts';
 import type { RunResult } from './run-result.ts';
 
 export const testSuite = createOverkillSuite({
@@ -56,6 +57,7 @@ export const testSuite = createOverkillSuite({
                 );
                 const options: ExecuteOptions = {
                     execution: { mode: 'serial-in-process' },
+                    outputRenderer: createPlainOutputRenderer(),
                     reporters: [],
                     runFacts: { seed: 1 },
                     startedAt: '2026-07-15T00:00:00.000Z'

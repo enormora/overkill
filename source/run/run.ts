@@ -3,7 +3,7 @@ import { createWallClock } from '@enormora/wall-clock';
 import { serializeValue, type SerializedValue as SerializedValueShape } from '../compare/serialized-value.ts';
 import { createExecute, type Execute } from '../engine/execution.ts';
 import type { CaseId } from '../engine/identity.ts';
-import { createReporterDispatcher, type Reporter } from '../engine/reporter.ts';
+import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import type { Metadata } from '../engine/test-node.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
@@ -12,6 +12,9 @@ const minimumSeedValue = 0n;
 const seedByteLength = 8;
 
 export type SerializedValue = SerializedValueShape;
+type RunExecuteOptions = NonNullable<Parameters<Execute>[1]>;
+type RunOutputRenderer = NonNullable<RunExecuteOptions['outputRenderer']>;
+type RunReporters = RunExecuteOptions['reporters'];
 
 export type RunSelection = {
     readonly kind: 'all';
@@ -42,7 +45,8 @@ export type RunLoaderConfig = {
 
 export type RunConfig = {
     readonly loader: RunLoaderConfig;
-    readonly reporters: readonly Reporter[];
+    readonly outputRenderer: RunOutputRenderer;
+    readonly reporters: RunReporters;
     readonly runtimeStateDir: string;
 };
 
@@ -108,7 +112,7 @@ export type RunReproducibilityFacts = {
 export type ResolvedRun = {
     readonly config: RunConfig;
     readonly facts: RunFacts;
-    readonly reporters: readonly Reporter[];
+    readonly reporters: RunReporters;
     readonly request: RunRequest;
     readonly testPlan: TestPlan;
 };
@@ -218,6 +222,7 @@ function copyRunRequest(request: RunRequest): RunRequest {
 function copyRunConfig(config: RunConfig): RunConfig {
     return {
         loader: copyLoaderConfig(config.loader),
+        outputRenderer: config.outputRenderer,
         reporters: Array.from(config.reporters),
         runtimeStateDir: config.runtimeStateDir
     };
@@ -305,6 +310,7 @@ export function createRunOrchestrator(dependencies: RunOrchestratorDependencies)
 
             return await dependencies.execute(resolvedRun.testPlan, {
                 execution: { mode: 'concurrent-in-process' },
+                outputRenderer: resolvedRun.config.outputRenderer,
                 reporters: resolvedRun.reporters,
                 runFacts: resolvedRun.facts,
                 startedAt: dependencies.readStartedAt()
@@ -318,10 +324,22 @@ function createDefaultSeed(): bigint {
 }
 
 const defaultWallClock = createWallClock();
+function writeStdoutLine(line: string): void {
+    process.stdout.write(`${line}\n`);
+}
+
+function writeStderrLine(line: string): void {
+    process.stderr.write(`${line}\n`);
+}
+
 const defaultRunOrchestrator = createRunOrchestrator({
     createSeed: createDefaultSeed,
     execute: createExecute({
-        reporterDispatcher: createReporterDispatcher({ wallClock: defaultWallClock }),
+        reporterDispatcher: createReporterDispatcher({
+            stderr: { writeLine: writeStderrLine },
+            stdout: { writeLine: writeStdoutLine },
+            wallClock: defaultWallClock
+        }),
         wallClock: defaultWallClock
     }),
     node: {

@@ -5,6 +5,7 @@ import {
     runIfMain,
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
+import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import {
@@ -28,6 +29,7 @@ const defaultConfig: RunConfig = {
         sourceMaps: false,
         stripMode: 'strip-only'
     },
+    outputRenderer: createPlainOutputRenderer(),
     reporters: [],
     runtimeStateDir: '.overkill'
 };

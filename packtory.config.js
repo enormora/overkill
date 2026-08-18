@@ -151,6 +151,26 @@ export const config = {
             }
         },
         {
+            name: '@overkill-dev/reporter-brief',
+            bundlePeerDependencies: [ '@overkill-dev/engine' ],
+            roots: {
+                main: {
+                    js: 'packages/reporter-brief/reporter-brief.entry-point.js',
+                    declarationFile: 'packages/reporter-brief/reporter-brief.entry-point.d.ts'
+                }
+            },
+            additionalFiles: [
+                {
+                    sourceFilePath: path.join(projectFolder, 'source/packages/reporter-brief/readme.md'),
+                    targetFilePath: 'readme.md'
+                }
+            ],
+            additionalPackageJsonAttributes: {
+                ...packageMetadata,
+                description: 'Token-conscious Overkill managed stdout reporter.'
+            }
+        },
+        {
             name: '@overkill-dev/reporter-dot',
             bundlePeerDependencies: [ '@overkill-dev/engine' ],
             roots: {
@@ -168,6 +188,30 @@ export const config = {
             additionalPackageJsonAttributes: {
                 ...packageMetadata,
                 description: 'Compact Overkill dot progress reporter.'
+            }
+        },
+        {
+            name: '@overkill-dev/output-renderer-github-actions',
+            bundlePeerDependencies: [ '@overkill-dev/engine' ],
+            roots: {
+                main: {
+                    js: 'packages/output-renderer-github-actions/output-renderer-github-actions.entry-point.js',
+                    declarationFile:
+                        'packages/output-renderer-github-actions/output-renderer-github-actions.entry-point.d.ts'
+                }
+            },
+            additionalFiles: [
+                {
+                    sourceFilePath: path.join(
+                        projectFolder,
+                        'source/packages/output-renderer-github-actions/readme.md'
+                    ),
+                    targetFilePath: 'readme.md'
+                }
+            ],
+            additionalPackageJsonAttributes: {
+                ...packageMetadata,
+                description: 'GitHub Actions renderer for Overkill managed output.'
             }
         }
     ]

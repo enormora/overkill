@@ -12,10 +12,10 @@ import {
     type InMemoryFinalResultReporter,
     type InMemoryRealTimeReporter
 } from '../reporters/in-memory-reporter.ts';
-import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { createEngine, type Engine } from './engine.ts';
 import { createExecute } from './execution.ts';
-import { createReporterDispatcher, type FinalResultReporter, type RealTimeReporter } from './reporter.ts';
+import { createReporterDispatcher } from './reporter-dispatcher.ts';
+import type { FinalResultReporter, RealTimeReporter } from './reporter.ts';
 import type { RunResult, RunnerError } from './run-result.ts';
 import type { TestPlan } from './test-plan.ts';
 
@@ -170,10 +170,18 @@ function assertFinalPhaseErrorsReturnedAndNotified(
     scope.assert.deepEqual(runnerErrorMessages(fixture.finishObserver), expectedMessages);
 }
 
+function ignoreOutputLine(): void {
+    return undefined;
+}
+
 function createReporterDeliveryEngine(wallClock: ReturnType<typeof createDeterministicWallClock>): Engine {
     return createEngine({
         execute: createExecute({
-            reporterDispatcher: createReporterDispatcher({ wallClock }),
+            reporterDispatcher: createReporterDispatcher({
+                stderr: { writeLine: ignoreOutputLine },
+                stdout: { writeLine: ignoreOutputLine },
+                wallClock
+            }),
             wallClock
         }),
         nodeVersion: '26.0.0',
@@ -187,6 +195,10 @@ function createReporterDeliveryEngine(wallClock: ReturnType<typeof createDetermi
     });
 }
 
+function createDefaultReporterDeliveryEngine(): Engine {
+    return createReporterDeliveryEngine(createDeterministicWallClock());
+}
+
 export const testSuite = createOverkillSuite({
     name: 'source/engine/reporter-delivery.test.ts',
     metadata: {},
@@ -195,13 +207,13 @@ export const testSuite = createOverkillSuite({
             name: 'execute() records reporter callback failures and notifies other real-time reporters',
             metadata: {},
             body: async function body(scope: OverkillScope) {
-                const engine = createTestEngine();
+                const engine = createDefaultReporterDeliveryEngine();
                 const observer = createInMemoryRealTimeReporter();
                 const failingReporter: RealTimeReporter = {
                     dispose: null,
                     kind: 'real-time',
                     name: 'broken',
-                    onEvent(event) {
+                    onEvent(event): Promise<undefined> | undefined {
                         if (event.kind === 'test-start') {
                             throw new Error('cannot render');
                         }
@@ -232,7 +244,7 @@ export const testSuite = createOverkillSuite({
             name: 'execute() does not recurse when a reporter fails while handling runner-error',
             metadata: {},
             body: async function body(scope: OverkillScope) {
-                const engine = createTestEngine();
+                const engine = createDefaultReporterDeliveryEngine();
                 const observer = createInMemoryRealTimeReporter();
                 const failingReporter: RealTimeReporter = {
                     dispose: null,
@@ -292,10 +304,10 @@ export const testSuite = createOverkillSuite({
                     dispose: null,
                     kind: 'real-time',
                     name: 'slow',
-                    onEvent(event): Promise<void> | void {
+                    async onEvent(event): Promise<undefined> {
                         if (event.kind === 'test-start') {
                             testStartSignal.notify();
-                            return Promise.race<never>([]);
+                            await Promise.race<never>([]);
                         }
 
                         return undefined;
@@ -326,7 +338,7 @@ export const testSuite = createOverkillSuite({
             name: 'execute() records final reporter errors and emits them after real-time finish',
             metadata: {},
             body: async function body(scope: OverkillScope) {
-                const engine = createTestEngine();
+                const engine = createDefaultReporterDeliveryEngine();
                 const observer = createInMemoryRealTimeReporter();
                 const failingFinalReporter: FinalResultReporter = {
                     dispose: null,
@@ -360,7 +372,7 @@ export const testSuite = createOverkillSuite({
             name: 'execute() returns final-phase reporter errors without changing sibling callback input',
             metadata: {},
             body: async function body(scope: OverkillScope) {
-                const engine = createTestEngine();
+                const engine = createDefaultReporterDeliveryEngine();
                 const fixture = createFinalPhaseReporterFixture();
 
                 const result = await engine.execute(createPassingPlan(engine), {
@@ -379,7 +391,7 @@ export const testSuite = createOverkillSuite({
             name: 'execute() disposes reporters once after final reporting',
             metadata: {},
             body: async function body(scope: OverkillScope) {
-                const engine = createTestEngine();
+                const engine = createDefaultReporterDeliveryEngine();
                 const calls: string[] = [];
                 const reporter: RealTimeReporter = {
                     dispose() {
@@ -416,7 +428,7 @@ export const testSuite = createOverkillSuite({
             name: 'execute() records dispose failures in the returned result',
             metadata: {},
             body: async function body(scope: OverkillScope) {
-                const engine = createTestEngine();
+                const engine = createDefaultReporterDeliveryEngine();
                 const failingReporter: RealTimeReporter = {
                     dispose() {
                         throw new Error('cannot cleanup');

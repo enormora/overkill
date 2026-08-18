@@ -18,6 +18,16 @@ import {
 import { RunResolutionError, type RunCommand, type RunOrchestrator, type RunRequest } from './run.ts';
 import { RunConfigError, type LoadedRunConfig } from './run-config.ts';
 
+type PlainOutputIntent = {
+    readonly text: string;
+};
+
+const plainOutputRenderer = {
+    render(intent: PlainOutputIntent): string {
+        return intent.text;
+    }
+};
+
 const memoryReporter: Reporter = {
     dispose: null,
     kind: 'real-time',
@@ -26,7 +36,7 @@ const memoryReporter: Reporter = {
         return undefined;
     },
     onFinish: null,
-    sinks: [ { conflictPolicy: 'shared', kind: 'memory' } ]
+    sinks: [ { kind: 'memory' } ]
 };
 
 const terminalReporter: Reporter = {
@@ -37,7 +47,7 @@ const terminalReporter: Reporter = {
         return undefined;
     },
     onFinish: null,
-    sinks: [ { conflictPolicy: 'exclusive', kind: 'stdout' } ]
+    sinks: [ { kind: 'stdout-raw' } ]
 };
 
 const defaultRequest: RunRequest = {
@@ -62,6 +72,7 @@ function defaultLoadedConfig(reporters: LoadedRunConfig['reporters']): LoadedRun
     return {
         configPath: null,
         loader: { sourceMaps: false, stripMode: 'strip-only' },
+        outputRenderer: plainOutputRenderer,
         reporters,
         runtimeStateDir: '.overkill'
     };
@@ -356,7 +367,7 @@ export const testSuite = createOverkillSuite({
                         },
                         async run() {
                             throw new ReporterSinkConflictError(
-                                'Reporter sink conflict: stdout is claimed exclusively.'
+                                'Reporter sink conflict: stdout is claimed by incompatible reporters.'
                             );
                         }
                     }
@@ -365,7 +376,7 @@ export const testSuite = createOverkillSuite({
                 scope.assert.equal(result.exitCode, 3);
                 scope.assert.null(result.runResult);
                 scope.assert.deepEqual(result.fallbackDiagnostics, [
-                    'Overkill configuration error: Reporter sink conflict: stdout is claimed exclusively.'
+                    'Overkill configuration error: Reporter sink conflict: stdout is claimed by incompatible reporters.'
                 ]);
 
                 return scope.assert.collect();
@@ -376,7 +387,7 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             async body(scope: OverkillScope) {
                 const conflict = new ReporterSinkConflictError(
-                    'Reporter sink conflict: stdout is claimed exclusively.'
+                    'Reporter sink conflict: stdout is claimed by incompatible reporters.'
                 );
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: {
@@ -404,7 +415,7 @@ export const testSuite = createOverkillSuite({
                 scope.assert.equal(result.exitCode, 3);
                 scope.assert.null(result.runResult);
                 scope.assert.deepEqual(result.fallbackDiagnostics, [
-                    'Overkill configuration error: Reporter sink conflict: stdout is claimed exclusively.',
+                    'Overkill configuration error: Reporter sink conflict: stdout is claimed by incompatible reporters.',
                     'Overkill runner error: terminal: cleanup failed'
                 ]);
 

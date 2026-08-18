@@ -1,43 +1,93 @@
-import type { WallClock } from '@enormora/wall-clock';
 import type { CaseId } from './identity.ts';
+import type { OptionalReporterOutput, OutputIntentRole } from './reporter-output.ts';
 import type { RunResult, RunnerError, TestOutcome } from './run-result.ts';
 import type { Metadata } from './test-node.ts';
 
 export type RunFacts = Readonly<Record<string, unknown>>;
 
-export type StandardOutputSinkDeclaration = {
-    readonly conflictPolicy: 'exclusive' | 'shared';
-    readonly kind: 'stderr' | 'stdout';
+export type RawStandardOutputSinkDeclaration = {
+    readonly kind: 'stderr-raw' | 'stdout-raw';
+};
+
+const managedStandardOutputSinkKinds = [
+    'stderr-managed-primary',
+    'stderr-managed-supplemental',
+    'stdout-managed-primary',
+    'stdout-managed-supplemental'
+] as const;
+
+type ManagedStandardOutputSinkKind = typeof managedStandardOutputSinkKinds[number];
+const managedStandardOutputSinkKindNames: readonly string[] = managedStandardOutputSinkKinds;
+
+export type ManagedStandardOutputSinkDeclaration = {
+    readonly kind: ManagedStandardOutputSinkKind;
 };
 
 export type FileSinkDeclaration = {
-    readonly conflictPolicy: 'exclusive';
     readonly kind: 'file';
     readonly path: string;
 };
 
 export type DirectorySinkDeclaration = {
-    readonly conflictPolicy: 'exclusive';
     readonly kind: 'directory';
     readonly path: string;
 };
 
 export type MemorySinkDeclaration = {
-    readonly conflictPolicy: 'shared';
     readonly kind: 'memory';
 };
 
 export type StreamSinkDeclaration = {
-    readonly conflictPolicy: 'exclusive';
     readonly kind: 'stream';
     readonly provided: WritableStream<unknown>;
 };
 
 type FileSystemSinkDeclaration = DirectorySinkDeclaration | FileSinkDeclaration;
 type PrivateSinkDeclaration = MemorySinkDeclaration | StreamSinkDeclaration;
+export type StandardOutputSinkDeclaration = ManagedStandardOutputSinkDeclaration | RawStandardOutputSinkDeclaration;
 type ReporterSinkDeclaration = FileSystemSinkDeclaration | StandardOutputSinkDeclaration;
 
 export type SinkDeclaration = PrivateSinkDeclaration | ReporterSinkDeclaration;
+type NonManagedSinkDeclaration = Exclude<SinkDeclaration, ManagedStandardOutputSinkDeclaration>;
+type ManagedSinkAt1 = readonly [ManagedStandardOutputSinkDeclaration, ...SinkDeclaration[]];
+type ManagedSinkAt2 = readonly [
+    NonManagedSinkDeclaration,
+    ManagedStandardOutputSinkDeclaration,
+    ...SinkDeclaration[]
+];
+type ManagedSinkAt3 = readonly [
+    NonManagedSinkDeclaration,
+    NonManagedSinkDeclaration,
+    ManagedStandardOutputSinkDeclaration,
+    ...SinkDeclaration[]
+];
+type ManagedSinkAt4 = readonly [
+    NonManagedSinkDeclaration,
+    NonManagedSinkDeclaration,
+    NonManagedSinkDeclaration,
+    ManagedStandardOutputSinkDeclaration,
+    ...SinkDeclaration[]
+];
+type ManagedSinkAt5 = readonly [
+    NonManagedSinkDeclaration,
+    NonManagedSinkDeclaration,
+    NonManagedSinkDeclaration,
+    NonManagedSinkDeclaration,
+    ManagedStandardOutputSinkDeclaration,
+    ...SinkDeclaration[]
+];
+type ManagedSinkAt6 = readonly [
+    NonManagedSinkDeclaration,
+    NonManagedSinkDeclaration,
+    NonManagedSinkDeclaration,
+    NonManagedSinkDeclaration,
+    NonManagedSinkDeclaration,
+    ManagedStandardOutputSinkDeclaration,
+    ...SinkDeclaration[]
+];
+type ManagedSinkAt1To3 = ManagedSinkAt1 | ManagedSinkAt2 | ManagedSinkAt3;
+type ManagedSinkAt4To6 = ManagedSinkAt4 | ManagedSinkAt5 | ManagedSinkAt6;
+type ManagedStandardOutputSinkTuple = ManagedSinkAt1To3 | ManagedSinkAt4To6;
 
 export class ReporterSinkConflictError extends Error {
     public constructor(message: string, options?: Readonly<ErrorOptions>) {
@@ -104,85 +154,166 @@ type TestReporterEvent = TestEndReporterEvent | TestProgressReporterEvent | Test
 
 export type ReporterEvent = RunReporterEvent | SuiteReporterEvent | TestReporterEvent;
 
-export type RealTimeReporter = {
+type ManagedStandardOutputSinkPresence<
+    FirstSink extends SinkDeclaration,
+    RemainingSinks extends readonly SinkDeclaration[]
+> = FirstSink extends ManagedStandardOutputSinkDeclaration ? true
+    : TupleIncludesManagedStandardOutputSink<RemainingSinks>;
+
+type FirstDeclaredSink<Sinks extends readonly SinkDeclaration[]> = Sinks extends readonly [
+    infer FirstSink extends SinkDeclaration,
+    ...SinkDeclaration[]
+] ? FirstSink
+    : never;
+
+type RemainingDeclaredSinks<Sinks extends readonly SinkDeclaration[]> = Sinks extends readonly [
+    SinkDeclaration,
+    ...infer RemainingSinks extends readonly SinkDeclaration[]
+] ? RemainingSinks
+    : never;
+
+type TupleIncludesManagedStandardOutputSink<Sinks extends readonly SinkDeclaration[]> = Sinks extends readonly []
+    ? false
+    : ManagedStandardOutputSinkPresence<FirstDeclaredSink<Sinks>, RemainingDeclaredSinks<Sinks>>;
+
+type HasManagedStandardOutputSink<Sinks extends readonly SinkDeclaration[]> = number extends Sinks['length'] ? false
+    : TupleIncludesManagedStandardOutputSink<Sinks>;
+
+type BaseRealTimeReporter<Sinks extends readonly SinkDeclaration[]> = {
     readonly dispose: (() => Promise<void> | void) | null;
     readonly kind: 'real-time';
     readonly name: string;
-    readonly sinks: readonly SinkDeclaration[];
+    readonly sinks: Sinks;
+};
+
+type ManagedOutputEventCallback = (
+    event: ReporterEvent
+) => OptionalReporterOutput | Promise<OptionalReporterOutput>;
+
+type ManagedOutputFinishCallback = (
+    result: RunResult
+) => OptionalReporterOutput | Promise<OptionalReporterOutput>;
+
+type RealTimeReporterWithOutput<Sinks extends readonly SinkDeclaration[]> = BaseRealTimeReporter<Sinks> & {
+    readonly onEvent: ManagedOutputEventCallback;
+    readonly onFinish: ManagedOutputFinishCallback | null;
+};
+
+type RealTimeReporterWithoutOutput<Sinks extends readonly SinkDeclaration[]> = BaseRealTimeReporter<Sinks> & {
     readonly onEvent: (event: ReporterEvent) => Promise<void> | void;
     readonly onFinish: ((result: RunResult) => Promise<void> | void) | null;
 };
 
-export type FinalResultReporter = {
+type BaseFinalResultReporter<Sinks extends readonly SinkDeclaration[]> = {
     readonly dispose: (() => Promise<void> | void) | null;
     readonly kind: 'final-result';
     readonly name: string;
-    readonly sinks: readonly SinkDeclaration[];
+    readonly sinks: Sinks;
+};
+
+type ManagedOutputResultCallback = (
+    result: RunResult
+) => OptionalReporterOutput | Promise<OptionalReporterOutput>;
+
+type FinalResultReporterWithOutput<Sinks extends readonly SinkDeclaration[]> = BaseFinalResultReporter<Sinks> & {
+    readonly onResult: ManagedOutputResultCallback;
+};
+
+type FinalResultReporterWithoutOutput<Sinks extends readonly SinkDeclaration[]> = BaseFinalResultReporter<Sinks> & {
     readonly onResult: (result: RunResult) => Promise<void> | void;
 };
 
-export type Reporter = FinalResultReporter | RealTimeReporter;
+export type RealTimeReporter<Sinks extends readonly SinkDeclaration[] = readonly SinkDeclaration[]> =
+    HasManagedStandardOutputSink<Sinks> extends true ? RealTimeReporterWithOutput<Sinks>
+        : RealTimeReporterWithoutOutput<Sinks>;
 
-export type ReporterDispatcher = {
-    readonly disposeReporters: (
-        reporters: readonly Reporter[]
-    ) => Promise<readonly RunnerError[]>;
-    readonly reportEvent: (
-        reporters: readonly Reporter[],
-        event: ReporterEvent
-    ) => Promise<readonly RunnerError[]>;
-    readonly reportResult: (
-        reporters: readonly Reporter[],
-        result: RunResult
-    ) => Promise<readonly RunnerError[]>;
-};
+export type FinalResultReporter<Sinks extends readonly SinkDeclaration[] = readonly SinkDeclaration[]> =
+    HasManagedStandardOutputSink<Sinks> extends true ? FinalResultReporterWithOutput<Sinks>
+        : FinalResultReporterWithoutOutput<Sinks>;
 
-export type ReporterDispatcherDependencies = {
-    readonly wallClock: WallClock;
-};
+type OutputFinalReporter = FinalResultReporterWithOutput<ManagedStandardOutputSinkTuple>;
+type OutputRealTimeReporter = RealTimeReporterWithOutput<ManagedStandardOutputSinkTuple>;
+type SideEffectFinalReporter = FinalResultReporterWithoutOutput<readonly SinkDeclaration[]>;
+type SideEffectRealTimeReporter = RealTimeReporterWithoutOutput<readonly SinkDeclaration[]>;
+type OutputReporter = OutputFinalReporter | OutputRealTimeReporter;
+type SideEffectReporter = SideEffectFinalReporter | SideEffectRealTimeReporter;
 
-const callbackTimeoutMs = 100;
-
-type ReporterCallbackFailure = {
-    readonly error: RunnerError;
-    readonly reporter: Reporter;
-};
+export type Reporter = OutputReporter | SideEffectReporter;
 
 type ClaimedSink = {
-    readonly conflictPolicy: 'exclusive' | 'shared';
+    readonly mode: 'managed' | 'raw';
+    readonly role: OutputIntentRole | null;
 };
-
-function standardOutputSinkKey(sink: StandardOutputSinkDeclaration): string {
-    return `standard-output:${sink.kind}`;
-}
 
 function pathSinkKey(sink: DirectorySinkDeclaration | FileSinkDeclaration): string {
     return `path:${sink.path}`;
 }
 
-type ReporterTimeout = {
-    readonly cancel: () => void;
-    readonly promise: Promise<never>;
-};
+function standardOutputStream(sink: StandardOutputSinkDeclaration): 'stderr' | 'stdout' {
+    return sink.kind.startsWith('stderr') ? 'stderr' : 'stdout';
+}
 
-function validateStandardOutputSink(
-    claimedSinks: ReadonlyMap<string, ClaimedSink>,
-    sink: StandardOutputSinkDeclaration
-): ReadonlyMap<string, ClaimedSink> {
-    const key = standardOutputSinkKey(sink);
-    const existingSink = claimedSinks.get(key);
+function isManagedStandardOutputSink(sink: SinkDeclaration): sink is ManagedStandardOutputSinkDeclaration {
+    return managedStandardOutputSinkKindNames.includes(sink.kind);
+}
 
-    if (
-        existingSink !== undefined &&
-        (existingSink.conflictPolicy === 'exclusive' || sink.conflictPolicy === 'exclusive')
-    ) {
-        throw new ReporterSinkConflictError(`Reporter sink conflict: ${sink.kind} is claimed exclusively.`);
+function standardOutputRole(sink: ManagedStandardOutputSinkDeclaration): OutputIntentRole {
+    if (sink.kind.endsWith('primary')) {
+        return 'primary';
     }
 
+    return 'supplemental';
+}
+
+function standardOutputSinkConflictMessage(stream: 'stderr' | 'stdout'): string {
+    return `Reporter sink conflict: ${stream} is claimed by incompatible reporters.`;
+}
+
+function nextClaimedStandardOutputRole(
+    existingSink: ClaimedSink | undefined,
+    sink: ManagedStandardOutputSinkDeclaration
+): OutputIntentRole {
+    return existingSink?.role === 'primary' ? 'primary' : standardOutputRole(sink);
+}
+
+function claimStandardOutputSink(
+    claimedSinks: ReadonlyMap<string, ClaimedSink>,
+    key: 'stderr' | 'stdout',
+    sink: ClaimedSink
+): ReadonlyMap<string, ClaimedSink> {
     const updatedSinks = new Map(claimedSinks);
 
-    return updatedSinks.set(key, {
-        conflictPolicy: sink.conflictPolicy
+    return updatedSinks.set(key, sink);
+}
+
+function validateRawStandardOutputSink(
+    claimedSinks: ReadonlyMap<string, ClaimedSink>,
+    sink: RawStandardOutputSinkDeclaration
+): ReadonlyMap<string, ClaimedSink> {
+    const key = standardOutputStream(sink);
+
+    if (claimedSinks.has(key)) {
+        throw new ReporterSinkConflictError(standardOutputSinkConflictMessage(key));
+    }
+
+    return claimStandardOutputSink(claimedSinks, key, { mode: 'raw', role: null });
+}
+
+function validateManagedStandardOutputSink(
+    claimedSinks: ReadonlyMap<string, ClaimedSink>,
+    sink: ManagedStandardOutputSinkDeclaration
+): ReadonlyMap<string, ClaimedSink> {
+    const key = standardOutputStream(sink);
+    const existingSink = claimedSinks.get(key);
+    const sinkRole = standardOutputRole(sink);
+
+    if (existingSink?.mode === 'raw' || existingSink?.role === 'primary' && sinkRole === 'primary') {
+        throw new ReporterSinkConflictError(standardOutputSinkConflictMessage(key));
+    }
+
+    return claimStandardOutputSink(claimedSinks, key, {
+        mode: 'managed',
+        role: nextClaimedStandardOutputRole(existingSink, sink)
     });
 }
 
@@ -201,7 +332,8 @@ function validatePathSink(
     const updatedSinks = new Map(claimedSinks);
 
     return updatedSinks.set(key, {
-        conflictPolicy: sink.conflictPolicy
+        mode: 'raw',
+        role: null
     });
 }
 
@@ -209,8 +341,11 @@ function validateReporterSink(
     claimedSinks: ReadonlyMap<string, ClaimedSink>,
     sink: SinkDeclaration
 ): ReadonlyMap<string, ClaimedSink> {
-    if (sink.kind === 'stdout' || sink.kind === 'stderr') {
-        return validateStandardOutputSink(claimedSinks, sink);
+    if (sink.kind === 'stdout-raw' || sink.kind === 'stderr-raw') {
+        return validateRawStandardOutputSink(claimedSinks, sink);
+    }
+    if (isManagedStandardOutputSink(sink)) {
+        return validateManagedStandardOutputSink(claimedSinks, sink);
     }
     if (sink.kind === 'file' || sink.kind === 'directory') {
         return validatePathSink(claimedSinks, sink);
@@ -227,204 +362,4 @@ export function validateReporterSinks(reporters: readonly Reporter[]): void {
             claimedSinks = validateReporterSink(claimedSinks, sink);
         }
     }
-}
-
-function formatReporterError(reporter: Reporter, cause: unknown): RunnerError {
-    const reason = cause instanceof Error ? cause.message : String(cause);
-
-    return {
-        attributedTo: null,
-        cause,
-        message: `${reporter.name}: ${reason}`,
-        subtype: 'reporter'
-    };
-}
-
-function timeoutError(reporter: Reporter): Error {
-    return new Error(`${reporter.name} reporter callback timed out after ${callbackTimeoutMs} ms.`);
-}
-
-async function runReporterCallback(callback: () => Promise<void> | void): Promise<void> {
-    await callback();
-}
-
-export function createReporterDispatcher(dependencies: ReporterDispatcherDependencies): ReporterDispatcher {
-    const { wallClock } = dependencies;
-
-    function createReporterTimeout(reporter: Reporter): ReporterTimeout {
-        const { promise, reject } = Promise.withResolvers<never>();
-        const timeout = wallClock.setTimeout(function rejectTimedOutCallback() {
-            reject(timeoutError(reporter));
-        }, callbackTimeoutMs);
-
-        return {
-            cancel() {
-                wallClock.clearTimeout(timeout);
-            },
-            promise
-        };
-    }
-
-    async function awaitReporterCallback(
-        reporter: Reporter,
-        callback: () => Promise<void> | void
-    ): Promise<RunnerError | null> {
-        const reporterTimeout = createReporterTimeout(reporter);
-        try {
-            await Promise.race([ runReporterCallback(callback), reporterTimeout.promise ]);
-
-            return null;
-        } catch (error: unknown) {
-            return formatReporterError(reporter, error);
-        } finally {
-            reporterTimeout.cancel();
-        }
-    }
-
-    async function reportEventToReporter(
-        reporter: RealTimeReporter,
-        event: ReporterEvent
-    ): Promise<ReporterCallbackFailure | null> {
-        const error = await awaitReporterCallback(reporter, function sendReporterEvent(): Promise<void> | void {
-            return reporter.onEvent(event);
-        });
-
-        if (error === null) {
-            return null;
-        }
-
-        return { error, reporter };
-    }
-
-    async function reportRunnerErrorToOtherReporters(
-        reporters: readonly Reporter[],
-        failedReporter: Reporter,
-        error: RunnerError
-    ): Promise<readonly RunnerError[]> {
-        const event: ReporterEvent = { error, kind: 'runner-error' };
-        const failures = await Promise.all(
-            reporters.map(async function reportRunnerError(reporter): Promise<ReporterCallbackFailure | null> {
-                if (reporter.kind !== 'real-time' || reporter === failedReporter) {
-                    return null;
-                }
-
-                return reportEventToReporter(reporter, event);
-            })
-        );
-
-        return failures.flatMap(function collectFailure(failure) {
-            return failure === null ? [] : [ failure.error ];
-        });
-    }
-
-    async function collectReporterErrorsWithNotifications(
-        reporters: readonly Reporter[],
-        reporterErrors: readonly ReporterCallbackFailure[]
-    ): Promise<readonly RunnerError[]> {
-        const notificationErrors = await Promise.all(
-            reporterErrors.map(async function reportError(failure) {
-                return reportRunnerErrorToOtherReporters(reporters, failure.reporter, failure.error);
-            })
-        );
-
-        return [
-            ...reporterErrors.map(function toError(failure) {
-                return failure.error;
-            }),
-            ...notificationErrors.flat()
-        ];
-    }
-
-    async function reportEvent(
-        reporters: readonly Reporter[],
-        event: ReporterEvent
-    ): Promise<readonly RunnerError[]> {
-        const failures = await Promise.all(
-            reporters.map(async function reportRealTimeEvent(reporter): Promise<ReporterCallbackFailure | null> {
-                if (reporter.kind !== 'real-time') {
-                    return null;
-                }
-
-                return reportEventToReporter(reporter, event);
-            })
-        );
-
-        const reporterErrors = failures.flatMap(function collectFailure(failure) {
-            return failure === null ? [] : [ failure ];
-        });
-
-        if (event.kind === 'runner-error') {
-            return reporterErrors.map(function toError(failure) {
-                return failure.error;
-            });
-        }
-
-        return collectReporterErrorsWithNotifications(reporters, reporterErrors);
-    }
-
-    async function reportResult(
-        reporters: readonly Reporter[],
-        result: RunResult
-    ): Promise<readonly RunnerError[]> {
-        const failures = await Promise.all(reporters.map(async function reportFinalResult(
-            reporter
-        ): Promise<ReporterCallbackFailure | null> {
-            if (reporter.kind === 'final-result') {
-                const error = await awaitReporterCallback(
-                    reporter,
-                    function reportResultToFinalReporter(): Promise<void> | void {
-                        return reporter.onResult(result);
-                    }
-                );
-
-                return error === null ? null : { error, reporter };
-            }
-
-            if (reporter.onFinish === null) {
-                return null;
-            }
-
-            const { onFinish } = reporter;
-            const error = await awaitReporterCallback(
-                reporter,
-                function reportResultToRealTimeReporter(): Promise<void> | void {
-                    return onFinish(result);
-                }
-            );
-
-            return error === null ? null : { error, reporter };
-        }));
-
-        const reporterErrors = failures.flatMap(function collectFailure(failure) {
-            return failure === null ? [] : [ failure ];
-        });
-
-        return collectReporterErrorsWithNotifications(reporters, reporterErrors);
-    }
-
-    async function disposeReporters(reporters: readonly Reporter[]): Promise<readonly RunnerError[]> {
-        const failures = await Promise.all(reporters.map(async function disposeReporter(
-            reporter
-        ): Promise<ReporterCallbackFailure | null> {
-            if (reporter.dispose === null) {
-                return null;
-            }
-
-            const { dispose } = reporter;
-            const error = await awaitReporterCallback(
-                reporter,
-                function disposeReporterResources(): Promise<void> | void {
-                    return dispose();
-                }
-            );
-
-            return error === null ? null : { error, reporter };
-        }));
-
-        return failures.flatMap(function collectFailure(failure) {
-            return failure === null ? [] : [ failure.error ];
-        });
-    }
-
-    return { disposeReporters, reportEvent, reportResult };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'tstyche';
-import type { Reporter, TestPlan } from '../engine/engine.entry-point.ts';
+import type { OutputRenderer, Reporter, TestPlan } from '../engine/engine.entry-point.ts';
 import {
     RunConfigError,
     type commandLineExitCodes,
@@ -54,6 +54,8 @@ describe('@overkill-dev/run/command-line', function () {
 
     test('exposes typed config helpers', function () {
         expect<typeof defineConfig>().type.toBe<(config: RunProjectConfig) => RunProjectConfig>();
+        expect<RunProjectConfig['outputRenderer']>().type.toBe<OutputRenderer | undefined>();
+        expect<LoadedRunConfig['outputRenderer']>().type.toBe<OutputRenderer>();
         expect<RunProjectConfig['reporters']>().type.toBe<readonly [Reporter, ...Reporter[]] | undefined>();
         expect<LoadedRunConfig['reporters']>().type.toBe<readonly [Reporter, ...Reporter[]] | null>();
         expect(new RunConfigError('Invalid config.')).type.toBe<RunConfigError>();

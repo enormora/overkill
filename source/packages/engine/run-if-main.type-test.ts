@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'tstyche';
 import type {
     Engine,
+    OutputRenderer,
     Reporter,
     RunFacts,
     runIfMain,
@@ -12,8 +13,9 @@ import type {
 
 describe('runIfMain', function () {
     test('exposes direct node execution options', function () {
-        expect<keyof RunIfMainOptions>().type.toBe<'reporters' | 'root' | 'runFacts'>();
+        expect<keyof RunIfMainOptions>().type.toBe<'outputRenderer' | 'reporters' | 'root' | 'runFacts'>();
         expect<RunIfMainOptions>().type.toBe<{
+            readonly outputRenderer?: OutputRenderer;
             readonly reporters?: readonly Reporter[];
             readonly root?: RunIfMainRootOptions;
             readonly runFacts?: RunFacts;

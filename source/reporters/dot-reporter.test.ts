@@ -125,7 +125,7 @@ export const testSuite = createOverkillSuite({
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'dot reporter declares exclusive stdout',
+            name: 'dot reporter declares raw stdout',
             metadata: {},
             body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
@@ -134,7 +134,7 @@ export const testSuite = createOverkillSuite({
                     stdout: terminal.output
                 });
 
-                scope.assert.deepEqual(reporter.sinks, [ { conflictPolicy: 'exclusive', kind: 'stdout' } ]);
+                scope.assert.deepEqual(reporter.sinks, [ { kind: 'stdout-raw' } ]);
 
                 return scope.assert.collect();
             }

@@ -61,7 +61,12 @@ Core package families:
 - small advanced ergonomics in `@overkill-dev/test`, such as harnesses,
   interaction transcripts, reusable multi-case macros, and async queue
   helpers
-- reporter packages such as `@overkill-dev/reporter-line`, `@overkill-dev/reporter-tap`, `@overkill-dev/reporter-json`, and `@overkill-dev/reporter-html`
+- reporter packages such as `@overkill-dev/reporter-line`,
+  `@overkill-dev/reporter-brief`, `@overkill-dev/reporter-tap`,
+  `@overkill-dev/reporter-json`, and `@overkill-dev/reporter-html`
+- output renderer packages such as
+  `@overkill-dev/output-renderer-github-actions` for adapting managed
+  reporter output to CI log protocols
 - `@overkill-dev/run`: orchestration for discovery, filtering, seeds, shard
   selection, debug/coverage/watch intent, terminal workflows, and the
   command implementation behind the `overkill` binary
@@ -210,12 +215,16 @@ This matches the existing code direction and keeps HTML or file-writing reports 
 
 When multiple reporters are configured, Overkill should conceptually distinguish output sinks such as:
 
-- stdout
-- stderr
+- raw stdout and stderr
+- managed stdout and stderr line intents
 - files or directories
 - in-memory or machine-consumable event streams
 
-The preferred direction is for orchestration to detect obvious sink conflicts, especially multiple reporters trying to own stdout, and either reject the configuration or require one reporter to be explicitly designated as the stdout reporter. If that proves too heavy in implementation, the user may still override it deliberately, but the concept should treat sink collisions as something the system understands rather than silently ignoring.
+The preferred direction is for orchestration to detect obvious sink conflicts,
+especially multiple reporters trying to own the same raw stream or multiple
+managed primary reporters for the same stream. Managed supplemental reporters
+may cooperate with one managed primary reporter through output intents, which
+the runner renders through a single configured output renderer.
 
 The core should preserve the necessary detail for different reporter styles without forcing one presentation:
 
