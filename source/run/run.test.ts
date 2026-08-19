@@ -9,10 +9,11 @@ import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import type { RunResourceUsageTracker } from '../engine/run-result.ts';
 import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
+import { defaultRunEngine } from './default-run-engine.ts';
+import { RunResolutionError } from './run-errors.ts';
+import { orchestrator } from './run-orchestrator.ts';
 import {
-    RunResolutionError,
     createRunOrchestrator,
-    orchestrator,
     type RunCommand,
     type RunConfig,
     type RunRequest,
@@ -21,9 +22,12 @@ import {
 
 type RunCommandParts = {
     readonly config: RunConfig;
+    readonly cwd: string;
+    readonly engine: RunCommand['engine'];
     readonly request: RunRequest;
-    readonly testPlan: RunCommand['testPlan'];
 };
+
+const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 
 const defaultConfig: RunConfig = {
     loader: {
@@ -58,7 +62,7 @@ const defaultRequest: RunRequest = {
     execution: { mode: 'concurrent-in-process' },
     measureResourceUsage: null,
     order: 'plan',
-    paths: [],
+    paths: [ passingFixturePath ],
     profile: 'microtest',
     resourceBudgetOverrides: null,
     resourceUsageSamplingIntervalMilliseconds: null,
@@ -72,35 +76,12 @@ function plainData(value: unknown): unknown {
     return structuredClone(value);
 }
 
-function createPassingPlan(): RunCommand['testPlan'] {
-    const engine = createTestEngine();
-
-    return engine.createTestPlan(
-        engine.createRoot({
-            children: [
-                engine.createTestCase({
-                    body(testScope) {
-                        testScope.assert.true(true, { message: 'passes' });
-                        return testScope.assert.collect();
-                    },
-                    metadata: {
-                        count: 1n,
-                        tag: 'fast'
-                    },
-                    name: 'passes'
-                })
-            ],
-            metadata: {},
-            name: 'root'
-        })
-    );
-}
-
 function createRunCommand(overrides: RunCommandParts): RunCommand {
     return {
         config: overrides.config,
-        request: overrides.request,
-        testPlan: overrides.testPlan
+        cwd: overrides.cwd,
+        engine: overrides.engine,
+        request: overrides.request
     };
 }
 
@@ -142,6 +123,7 @@ function createDeterministicRunOrchestrator(): RunOrchestrator {
         createSeed() {
             return 99n;
         },
+        defaultEngine: defaultRunEngine,
         execute: engine.execute,
         node: {
             arch: 'x64',
@@ -159,14 +141,15 @@ export const testSuite = createOverkillSuite({
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'orchestrator.resolve() returns frozen run facts for an explicit test plan',
+            name: 'orchestrator.resolve() returns frozen run facts for explicit paths',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const resolvedRun = await runOrchestrator.resolve(createRunCommand({
                     config: defaultConfig,
-                    request: defaultRequest,
-                    testPlan: createPassingPlan()
+                    cwd: process.cwd(),
+                    engine: null,
+                    request: defaultRequest
                 }));
 
                 scope.assert.equal(Object.isFrozen(resolvedRun), true);
@@ -175,11 +158,19 @@ export const testSuite = createOverkillSuite({
                 scope.assert.deepEqual(plainData(resolvedRun.facts), {
                     cases: [
                         {
-                            id: { file: null, name: 'passes', params: null, suite: [] },
+                            id: {
+                                file: passingFixturePath,
+                                name: 'passes',
+                                params: null,
+                                suite: [ 'fixture' ]
+                            },
                             metadata: {
                                 constructorName: 'Object',
                                 entries: [
-                                    { key: { kind: 'string', value: 'count' }, value: { kind: 'bigint', value: '1' } },
+                                    {
+                                        key: { kind: 'string', value: 'file' },
+                                        value: { kind: 'string', truncation: null, value: 'passing' }
+                                    },
                                     {
                                         key: { kind: 'string', value: 'tag' },
                                         value: { kind: 'string', truncation: null, value: 'fast' }
@@ -235,11 +226,12 @@ export const testSuite = createOverkillSuite({
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const resolvedRun = await runOrchestrator.resolve(createRunCommand({
                     config: defaultConfig,
+                    cwd: process.cwd(),
+                    engine: null,
                     request: {
                         ...defaultRequest,
                         seed: { value: null }
-                    },
-                    testPlan: createPassingPlan()
+                    }
                 }));
 
                 scope.assert.equal(resolvedRun.facts.reproducibility.seed, '99');
@@ -248,20 +240,21 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.resolve() rejects unsupported path discovery',
+            name: 'orchestrator.resolve() rejects empty explicit input',
             metadata: {},
             async body(scope: OverkillScope) {
-                await scope.assert.rejects(async function resolveUnsupportedPaths() {
+                await scope.assert.rejects(async function resolveEmptyPaths() {
                     await orchestrator.resolve(createRunCommand({
                         config: defaultConfig,
+                        cwd: process.cwd(),
+                        engine: null,
                         request: {
                             ...defaultRequest,
-                            paths: [ 'source/**/*.test.ts' ]
-                        },
-                        testPlan: createPassingPlan()
+                            paths: []
+                        }
                     }));
                 }, {
-                    message: 'Path discovery is not implemented yet.'
+                    message: 'No explicit run paths were provided.'
                 });
 
                 return scope.assert.collect();
@@ -274,11 +267,12 @@ export const testSuite = createOverkillSuite({
                 await scope.assert.rejects(async function resolveInvalidSeed() {
                     await orchestrator.resolve(createRunCommand({
                         config: defaultConfig,
+                        cwd: process.cwd(),
+                        engine: null,
                         request: {
                             ...defaultRequest,
                             seed: { value: -1n }
-                        },
-                        testPlan: createPassingPlan()
+                        }
                     }));
                 }, {
                     message: 'Run seed must be a nonnegative bigint.'
@@ -294,11 +288,12 @@ export const testSuite = createOverkillSuite({
                 await scope.assert.rejects(async function resolveUnsupportedShard() {
                     await orchestrator.resolve(createRunCommand({
                         config: defaultConfig,
+                        cwd: process.cwd(),
+                        engine: null,
                         request: {
                             ...defaultRequest,
                             shard: { index: 1, total: 2 }
-                        },
-                        testPlan: createPassingPlan()
+                        }
                     }));
                 }, {
                     message: 'Sharding is not implemented yet.'
@@ -318,8 +313,9 @@ export const testSuite = createOverkillSuite({
                         ...defaultConfig,
                         reporters: [ reporter ]
                     },
-                    request: defaultRequest,
-                    testPlan: createPassingPlan()
+                    cwd: process.cwd(),
+                    engine: null,
+                    request: defaultRequest
                 }));
                 const runStartEvent = reporter.getRecordedEntries()[0]?.event;
 
@@ -328,11 +324,19 @@ export const testSuite = createOverkillSuite({
                 scope.assert.deepEqual(plainData(runStartEvent.kind === 'run-start' ? runStartEvent.facts : null), {
                     cases: [
                         {
-                            id: { file: null, name: 'passes', params: null, suite: [] },
+                            id: {
+                                file: passingFixturePath,
+                                name: 'passes',
+                                params: null,
+                                suite: [ 'fixture' ]
+                            },
                             metadata: {
                                 constructorName: 'Object',
                                 entries: [
-                                    { key: { kind: 'string', value: 'count' }, value: { kind: 'bigint', value: '1' } },
+                                    {
+                                        key: { kind: 'string', value: 'file' },
+                                        value: { kind: 'string', truncation: null, value: 'passing' }
+                                    },
                                     {
                                         key: { kind: 'string', value: 'tag' },
                                         value: { kind: 'string', truncation: null, value: 'fast' }
@@ -378,7 +382,7 @@ export const testSuite = createOverkillSuite({
                     }
                 });
                 scope.assert.deepEqual(result.summary, {
-                    defined: 1,
+                    defined: 2,
                     discovered: 1,
                     failed: 0,
                     inconclusive: 0,

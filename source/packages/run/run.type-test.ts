@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'tstyche';
-import type { OutputRenderer, Reporter, RunResult, TestPlan } from '../engine/engine.entry-point.ts';
+import type { Engine, OutputRenderer, Reporter, RunResult } from '../engine/engine.entry-point.ts';
 import {
     RunResolutionError,
     type orchestrator,
@@ -38,10 +38,11 @@ type ExpectedRunRequestKey = RunRequestKeys[number];
 
 describe('@overkill-dev/run', function () {
     test('exposes the typed run command surface', function () {
-        expect<keyof RunCommand>().type.toBe<'config' | 'request' | 'testPlan'>();
+        expect<keyof RunCommand>().type.toBe<'config' | 'cwd' | 'engine' | 'request'>();
         expect<RunCommand['config']>().type.toBe<RunConfig>();
+        expect<RunCommand['cwd']>().type.toBe<string>();
+        expect<RunCommand['engine']>().type.toBe<Engine | null>();
         expect<RunCommand['request']>().type.toBe<RunRequest>();
-        expect<RunCommand['testPlan']>().type.toBe<TestPlan>();
         expect<typeof orchestrator>().type.toBe<RunOrchestrator>();
         expect<typeof orchestrator.resolve>().type.toBe<(command: RunCommand) => Promise<ResolvedRun>>();
         expect<typeof orchestrator.run>().type.toBe<(command: RunCommand) => Promise<RunResult>>();

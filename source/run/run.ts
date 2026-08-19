@@ -1,16 +1,19 @@
-import { randomBytes } from 'node:crypto';
-import { createWallClock } from '@enormora/wall-clock';
 import { serializeValue, type SerializedValue as SerializedValueShape } from '../compare/serialized-value.ts';
-import { createExecute, type Execute } from '../engine/execution.ts';
-import type { CaseId } from '../engine/identity.ts';
-import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
+import type { Execute } from '../engine/execution.ts';
 import type { RunResourceUsageTracker, RunResult } from '../engine/run-result.ts';
+import type { Engine } from '../engine/engine.ts';
 import type { Metadata } from '../engine/test-node.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
-import { createNodeResourceUsageTracker, type ResourceUsageTrackerOptions } from './resource-usage.ts';
+import { discoverRunFiles } from './run-discovery.ts';
+import {
+    invalidRequest,
+    RunCollectionError,
+    unsupportedRequest
+} from './run-errors.ts';
+import { loadRunTestModules } from './run-test-modules.ts';
+import type { ResourceUsageTrackerOptions } from './resource-usage.ts';
 
 const minimumSeedValue = 0n;
-const seedByteLength = 8;
 
 export type SerializedValue = SerializedValueShape;
 type RunExecuteOptions = NonNullable<Parameters<Execute>[1]>;
@@ -41,7 +44,7 @@ export type RunDebugRequest = {
 
 export type RunLoaderConfig = {
     readonly sourceMaps: boolean;
-    readonly stripMode: 'strip-only' | 'transform';
+    readonly stripMode: 'strip-only';
 };
 
 export type RunResourceBudgets = {
@@ -96,8 +99,9 @@ export type RunRequest = {
 
 export type RunCommand = {
     readonly config: RunConfig;
+    readonly cwd: string;
+    readonly engine: Engine | null;
     readonly request: RunRequest;
-    readonly testPlan: TestPlan;
 };
 
 export type RunFacts = {
@@ -109,7 +113,7 @@ export type RunFacts = {
 };
 
 export type RunCaseFacts = {
-    readonly id: CaseId;
+    readonly id: TestPlan['cases'][number]['id'];
     readonly metadata: SerializedValue;
 };
 
@@ -147,25 +151,10 @@ export type ResolvedRun = {
     readonly testPlan: TestPlan;
 };
 
-export type RunResolutionErrorCode = 'invalid-request' | 'unsupported-request';
-
-export class RunResolutionError extends Error {
-    private readonly errorCode: RunResolutionErrorCode;
-
-    public constructor(message: string, options: Readonly<ErrorOptions> | undefined, code: RunResolutionErrorCode) {
-        super(message, options);
-        this.name = 'RunResolutionError';
-        this.errorCode = code;
-    }
-
-    public code(): RunResolutionErrorCode {
-        return this.errorCode;
-    }
-}
-
 export type RunOrchestratorDependencies = {
     readonly createSeed: () => bigint;
     readonly createResourceUsageTracker: (options: ResourceUsageTrackerOptions) => RunResourceUsageTracker;
+    readonly defaultEngine: Engine;
     readonly execute: Execute;
     readonly node: {
         readonly arch: string;
@@ -179,20 +168,6 @@ export type RunOrchestrator = {
     readonly resolve: (command: RunCommand) => Promise<ResolvedRun>;
     readonly run: (command: RunCommand) => Promise<RunResult>;
 };
-
-function unsupportedRequest(message: string): never {
-    throw new RunResolutionError(message, undefined, 'unsupported-request');
-}
-
-function invalidRequest(message: string): never {
-    throw new RunResolutionError(message, undefined, 'invalid-request');
-}
-
-function validateRunPaths(request: RunRequest): void {
-    if (request.paths.length > 0) {
-        unsupportedRequest('Path discovery is not implemented yet.');
-    }
-}
 
 function validateRunShard(request: RunRequest): void {
     if (request.shard.index !== 0 || request.shard.total !== 1) {
@@ -247,7 +222,6 @@ function validateRunResourceUsageRequest(request: RunRequest): void {
 }
 
 function validateRunRequest(request: RunRequest): void {
-    validateRunPaths(request);
     validateRunShard(request);
     validateRunSeed(request);
     validateRunResourceUsageRequest(request);
@@ -348,7 +322,7 @@ function copyRunConfig(config: RunConfig): RunConfig {
     };
 }
 
-function runCaseFacts(metadata: Metadata, id: CaseId): RunCaseFacts {
+function runCaseFacts(metadata: Metadata, id: TestPlan['cases'][number]['id']): RunCaseFacts {
     return {
         id,
         metadata: serializeValue(metadata)
@@ -421,13 +395,13 @@ function resolveResourceUsagePolicy(request: RunRequest, config: RunConfig): Run
 }
 
 function createRunFacts(
-    command: RunCommand,
+    testPlan: TestPlan,
     request: RunRequest,
     config: RunConfig,
     dependencies: RunOrchestratorDependencies
 ): RunFacts {
     return {
-        cases: command.testPlan.cases.map(function toRunCaseFacts(testCase) {
+        cases: testPlan.cases.map(function toRunCaseFacts(testCase) {
             return runCaseFacts(testCase.metadata, testCase.id);
         }),
         environment: {
@@ -469,20 +443,43 @@ function freezeValue<Value>(value: Value): Value {
     return value;
 }
 
-function createResolvedRun(command: RunCommand, dependencies: RunOrchestratorDependencies): ResolvedRun {
+function resolveRunEngine(command: RunCommand, dependencies: RunOrchestratorDependencies): Engine {
+    return command.engine ?? dependencies.defaultEngine;
+}
+
+async function createTestPlan(command: RunCommand, dependencies: RunOrchestratorDependencies): Promise<TestPlan> {
+    const engine = resolveRunEngine(command, dependencies);
+    const files = await discoverRunFiles({ cwd: command.cwd, paths: command.request.paths });
+    const testFiles = await loadRunTestModules(files, engine);
+
+    try {
+        return engine.createTestPlanFromTestFiles({
+            files: testFiles,
+            root: {
+                metadata: {},
+                name: command.cwd
+            }
+        });
+    } catch (error: unknown) {
+        throw new RunCollectionError('Failed to collect tests from explicit run inputs.', { cause: error }, 'loader');
+    }
+}
+
+async function createResolvedRun(command: RunCommand, dependencies: RunOrchestratorDependencies): Promise<ResolvedRun> {
     validateRunRequest(command.request);
     validateRunConfig(command.config);
 
     const request = freezeValue(copyRunRequest(command.request));
     const config = freezeValue(copyRunConfig(command.config));
-    const facts = freezeValue(createRunFacts(command, request, config, dependencies));
+    const testPlan = await createTestPlan(command, dependencies);
+    const facts = freezeValue(createRunFacts(testPlan, request, config, dependencies));
 
     return freezeValue({
         config,
         facts,
         reporters: config.reporters,
         request,
-        testPlan: command.testPlan
+        testPlan
     });
 }
 
@@ -505,14 +502,59 @@ function createExecutionResourceUsageTracker(
     });
 }
 
+function createCollectionErrorRunResult(error: RunCollectionError): RunResult {
+    return {
+        artifacts: [],
+        bySuite: {},
+        orphans: [],
+        perTest: [],
+        resourceUsage: null,
+        runnerErrors: [ error.runnerError() ],
+        summary: {
+            defined: 0,
+            discovered: 0,
+            failed: 0,
+            inconclusive: 0,
+            passed: 0,
+            planned: 0,
+            skipped: 0
+        },
+        wallTimeMs: 0
+    };
+}
+
+function isRunResult(value: ResolvedRun | RunResult): value is RunResult {
+    return Object.hasOwn(value, 'summary');
+}
+
+async function createResolvedRunOrCollectionErrorResult(
+    command: RunCommand,
+    dependencies: RunOrchestratorDependencies
+): Promise<ResolvedRun | RunResult> {
+    try {
+        return await createResolvedRun(command, dependencies);
+    } catch (error: unknown) {
+        if (error instanceof RunCollectionError) {
+            return createCollectionErrorRunResult(error);
+        }
+
+        throw error;
+    }
+}
+
 export function createRunOrchestrator(dependencies: RunOrchestratorDependencies): RunOrchestrator {
     return {
         async resolve(command) {
-            return createResolvedRun(command, dependencies);
+            return await createResolvedRun(command, dependencies);
         },
 
         async run(command) {
-            const resolvedRun = createResolvedRun(command, dependencies);
+            const resolvedRun = await createResolvedRunOrCollectionErrorResult(command, dependencies);
+
+            if (isRunResult(resolvedRun)) {
+                return resolvedRun;
+            }
+
             const { resourceUsagePolicy } = resolvedRun.facts.execution;
 
             assertRunnableResourceUsagePolicy(resourceUsagePolicy);
@@ -528,43 +570,3 @@ export function createRunOrchestrator(dependencies: RunOrchestratorDependencies)
         }
     };
 }
-
-function createDefaultSeed(): bigint {
-    return randomBytes(seedByteLength).readBigUInt64BE();
-}
-
-const defaultWallClock = createWallClock();
-function writeStdoutLine(line: string): void {
-    process.stdout.write(`${line}\n`);
-}
-
-function writeStderrLine(line: string): void {
-    process.stderr.write(`${line}\n`);
-}
-
-const defaultRunOrchestrator = createRunOrchestrator({
-    createSeed: createDefaultSeed,
-    createResourceUsageTracker(options) {
-        return createNodeResourceUsageTracker(defaultWallClock, options);
-    },
-    execute: createExecute({
-        reporterDispatcher: createReporterDispatcher({
-            stderr: { writeLine: writeStderrLine },
-            stdout: { writeLine: writeStdoutLine },
-            wallClock: defaultWallClock
-        }),
-        wallClock: defaultWallClock
-    }),
-    node: {
-        arch: process.arch,
-        platform: process.platform,
-        version: process.versions.node
-    },
-    readStartedAt() {
-        const startedAt = new Date(defaultWallClock.currentTimestampInMilliseconds);
-
-        return startedAt.toISOString();
-    }
-});
-
-export const orchestrator: RunOrchestrator = defaultRunOrchestrator;

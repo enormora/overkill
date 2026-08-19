@@ -1,7 +1,7 @@
 import type { RunResult, RunnerError } from '../engine/run-result.ts';
 import { ReporterSinkConflictError } from '../engine/reporter.ts';
-import type { TestPlan } from '../engine/test-plan.ts';
-import { RunResolutionError, type RunRequest } from './run.ts';
+import type { RunRequest } from './run.ts';
+import { RunResolutionError } from './run-errors.ts';
 import { RunConfigError, type RunConfigLoadRequest } from './run-config.ts';
 
 export const commandLineExitCodes = Object.freeze({
@@ -18,7 +18,6 @@ export type CommandLineExitCode = (typeof commandLineExitCodes)[keyof typeof com
 
 export type CommandLineRunTestsRequest = RunConfigLoadRequest & {
     readonly request: RunRequest;
-    readonly testPlan: TestPlan;
 };
 
 export type CommandLineCommandContext = RunConfigLoadRequest & {
@@ -167,6 +166,10 @@ export function createCommandLineErrorResultFromUnknown(error: unknown): Command
     }
 
     if (classifiedError instanceof RunResolutionError) {
+        if (classifiedError.code() === 'no-tests-collected') {
+            return createCommandLineErrorResult(commandLineExitCodes.noTestsCollected, 'no tests collected', error);
+        }
+
         return createCommandLineErrorResult(commandLineExitCodes.argumentOrConfig, 'argument error', error);
     }
 

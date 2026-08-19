@@ -69,6 +69,12 @@ export function createTestPlan(root: TestRoot): ReturnType<Engine['createTestPla
     return defaultEngine.createTestPlan(root);
 }
 
+export function createTestPlanFromTestFiles(
+    options: Parameters<Engine['createTestPlanFromTestFiles']>[0]
+): ReturnType<Engine['createTestPlanFromTestFiles']> {
+    return defaultEngine.createTestPlanFromTestFiles(options);
+}
+
 export async function execute(
     testPlan: Parameters<Engine['execute']>[0],
     options?: Parameters<Engine['execute']>[1]
@@ -84,9 +90,18 @@ export async function runIfMain(
     await defaultEngine.runIfMain(meta, testNode, options);
 }
 
+export function ownsTestNode(value: unknown): value is TestNode {
+    return defaultEngine.ownsTestNode(value);
+}
+
 export type { Engine } from '../../engine/engine.ts';
 export type { Execute, ExecuteExecution, ExecuteOptions } from '../../engine/execution.ts';
 export type { RunIfMain, RunIfMainOptions, RunIfMainRootOptions } from '../../engine/run-if-main.ts';
+export type {
+    TestPlanFile,
+    TestPlanFromTestFilesFactory,
+    TestPlanFromTestFilesOptions
+} from '../../engine/test-plan.ts';
 export { formatCaseId } from '../../engine/identity.ts';
 export type { CaseId, TestId } from '../../engine/identity.ts';
 export type {

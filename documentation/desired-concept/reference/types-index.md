@@ -557,7 +557,7 @@ and metadata. It is not a `TestNode` and does not contribute to
 type RunConfig = {
     readonly outputRenderer: OutputRenderer;
     readonly reporters: ReadonlyArray<Reporter>;
-    readonly loader: { readonly stripMode: 'strip-only' | 'transform'; readonly sourceMaps: boolean; };
+    readonly loader: { readonly stripMode: 'strip-only'; readonly sourceMaps: boolean; };
     readonly profiles: {
         readonly microtest: {
             readonly measureResourceUsage: boolean;
@@ -605,8 +605,9 @@ type RunRequest = {
 
 type RunCommand = {
     readonly config: RunConfig;
+    readonly cwd: string;
+    readonly engine: Engine | null;
     readonly request: RunRequest;
-    readonly testPlan: TestPlan;
 };
 
 declare function resolveRun(command: RunCommand): Promise<ResolvedRun>;
@@ -648,7 +649,7 @@ type RunFacts = {
         };
         readonly verbose: boolean;
     };
-    readonly loader: { readonly stripMode: 'strip-only' | 'transform'; readonly sourceMaps: boolean; };
+    readonly loader: { readonly stripMode: 'strip-only'; readonly sourceMaps: boolean; };
     readonly reproducibility: {
         readonly seed: string;
         readonly shard: { readonly index: number; readonly total: number; };

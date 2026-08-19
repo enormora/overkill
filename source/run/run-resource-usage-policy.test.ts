@@ -7,6 +7,7 @@ import {
 } from '@overkill-dev/engine';
 import type { RunResourceUsageTracker } from '../engine/run-result.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
+import { defaultRunEngine } from './default-run-engine.ts';
 import {
     createRunOrchestrator,
     type RunCommand,
@@ -14,6 +15,8 @@ import {
     type RunOrchestrator,
     type RunRequest
 } from './run.ts';
+
+const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 
 const defaultConfig: RunConfig = {
     loader: {
@@ -52,7 +55,7 @@ const defaultRequest: RunRequest = {
     execution: { mode: 'concurrent-in-process' },
     measureResourceUsage: null,
     order: 'plan',
-    paths: [],
+    paths: [ passingFixturePath ],
     profile: 'microtest',
     resourceBudgetOverrides: null,
     resourceUsageSamplingIntervalMilliseconds: null,
@@ -64,27 +67,6 @@ const defaultRequest: RunRequest = {
 
 function plainData(value: unknown): unknown {
     return structuredClone(value);
-}
-
-function createPassingPlan(): RunCommand['testPlan'] {
-    const engine = createTestEngine();
-
-    return engine.createTestPlan(
-        engine.createRoot({
-            children: [
-                engine.createTestCase({
-                    body(testScope) {
-                        testScope.assert.true(true, { message: 'passes' });
-                        return testScope.assert.collect();
-                    },
-                    metadata: {},
-                    name: 'passes'
-                })
-            ],
-            metadata: {},
-            name: 'root'
-        })
-    );
 }
 
 function createFinishedResourceUsageTracker(): RunResourceUsageTracker {
@@ -127,6 +109,7 @@ function createDeterministicRunOrchestrator(): RunOrchestrator {
         createSeed() {
             return 99n;
         },
+        defaultEngine: defaultRunEngine,
         execute: engine.execute,
         node: {
             arch: 'x64',
@@ -139,6 +122,15 @@ function createDeterministicRunOrchestrator(): RunOrchestrator {
     });
 }
 
+function createRunCommand(config: RunConfig, request: RunRequest): RunCommand {
+    return {
+        config,
+        cwd: process.cwd(),
+        engine: null,
+        request
+    };
+}
+
 export const testSuite = createOverkillSuite({
     name: 'source/run/run-resource-usage-policy.test.ts',
     metadata: {},
@@ -148,8 +140,8 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
-                const resolvedRun = await runOrchestrator.resolve({
-                    config: {
+                const resolvedRun = await runOrchestrator.resolve(createRunCommand(
+                    {
                         ...defaultConfig,
                         profiles: {
                             microtest: {
@@ -164,7 +156,7 @@ export const testSuite = createOverkillSuite({
                             }
                         }
                     },
-                    request: {
+                    {
                         ...defaultRequest,
                         resourceBudgetOverrides: {
                             activeResourceCount: null,
@@ -173,9 +165,8 @@ export const testSuite = createOverkillSuite({
                             residentSetGrowthBytesPerSecond: null
                         },
                         resourceUsageSamplingIntervalMilliseconds: 10
-                    },
-                    testPlan: createPassingPlan()
-                });
+                    }
+                ));
 
                 scope.assert.equal(Object.isFrozen(resolvedRun.facts.execution.resourceUsagePolicy), true);
                 scope.assert.deepEqual(plainData(resolvedRun.facts.execution.resourceUsagePolicy), {
@@ -197,14 +188,13 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
-                const result = await runOrchestrator.run({
-                    config: defaultConfig,
-                    request: {
+                const result = await runOrchestrator.run(createRunCommand(
+                    defaultConfig,
+                    {
                         ...defaultRequest,
                         measureResourceUsage: true
-                    },
-                    testPlan: createPassingPlan()
-                });
+                    }
+                ));
 
                 scope.assert.deepEqual(plainData(result.resourceUsage), {
                     activeResourceTypes: [],
@@ -239,8 +229,8 @@ export const testSuite = createOverkillSuite({
                 const runOrchestrator = createDeterministicRunOrchestrator();
 
                 await scope.assert.rejects(async function runBudgetedRequest() {
-                    await runOrchestrator.run({
-                        config: {
+                    await runOrchestrator.run(createRunCommand(
+                        {
                             ...defaultConfig,
                             profiles: {
                                 microtest: {
@@ -255,9 +245,8 @@ export const testSuite = createOverkillSuite({
                                 }
                             }
                         },
-                        request: defaultRequest,
-                        testPlan: createPassingPlan()
-                    });
+                        defaultRequest
+                    ));
                 }, {
                     message: 'Resource budget enforcement is not implemented yet.'
                 });
@@ -272,9 +261,9 @@ export const testSuite = createOverkillSuite({
                 const runOrchestrator = createDeterministicRunOrchestrator();
 
                 await scope.assert.rejects(async function resolveUnmeasuredBudgetOverride() {
-                    await runOrchestrator.resolve({
-                        config: defaultConfig,
-                        request: {
+                    await runOrchestrator.resolve(createRunCommand(
+                        defaultConfig,
+                        {
                             ...defaultRequest,
                             resourceBudgetOverrides: {
                                 activeResourceCount: null,
@@ -282,9 +271,8 @@ export const testSuite = createOverkillSuite({
                                 residentSetBytes: 1,
                                 residentSetGrowthBytesPerSecond: null
                             }
-                        },
-                        testPlan: createPassingPlan()
-                    });
+                        }
+                    ));
                 }, {
                     message: 'Resource budget overrides require resource usage measurement.'
                 });
@@ -297,9 +285,9 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
-                const resolvedRun = await runOrchestrator.resolve({
-                    config: defaultConfig,
-                    request: {
+                const resolvedRun = await runOrchestrator.resolve(createRunCommand(
+                    defaultConfig,
+                    {
                         ...defaultRequest,
                         measureResourceUsage: false,
                         resourceBudgetOverrides: {
@@ -308,9 +296,8 @@ export const testSuite = createOverkillSuite({
                             residentSetBytes: null,
                             residentSetGrowthBytesPerSecond: null
                         }
-                    },
-                    testPlan: createPassingPlan()
-                });
+                    }
+                ));
 
                 scope.assert.deepEqual(plainData(resolvedRun.facts.execution.resourceUsagePolicy), {
                     measureResourceUsage: false,
@@ -333,21 +320,20 @@ export const testSuite = createOverkillSuite({
                 const runOrchestrator = createDeterministicRunOrchestrator();
 
                 await scope.assert.rejects(async function resolveInvalidSamplingInterval() {
-                    await runOrchestrator.resolve({
-                        config: defaultConfig,
-                        request: {
+                    await runOrchestrator.resolve(createRunCommand(
+                        defaultConfig,
+                        {
                             ...defaultRequest,
                             resourceUsageSamplingIntervalMilliseconds: 0
-                        },
-                        testPlan: createPassingPlan()
-                    });
+                        }
+                    ));
                 }, {
                     message: 'Resource usage sampling interval must be a positive safe integer.'
                 });
                 await scope.assert.rejects(async function resolveInvalidBudgetOverride() {
-                    await runOrchestrator.resolve({
-                        config: defaultConfig,
-                        request: {
+                    await runOrchestrator.resolve(createRunCommand(
+                        defaultConfig,
+                        {
                             ...defaultRequest,
                             measureResourceUsage: true,
                             resourceBudgetOverrides: {
@@ -356,9 +342,8 @@ export const testSuite = createOverkillSuite({
                                 residentSetBytes: null,
                                 residentSetGrowthBytesPerSecond: null
                             }
-                        },
-                        testPlan: createPassingPlan()
-                    });
+                        }
+                    ));
                 }, {
                     message: 'Active resource count budget must be a positive safe integer.'
                 });
@@ -373,8 +358,8 @@ export const testSuite = createOverkillSuite({
                 const runOrchestrator = createDeterministicRunOrchestrator();
 
                 await scope.assert.rejects(async function resolveDisabledConfigBudget() {
-                    await runOrchestrator.resolve({
-                        config: {
+                    await runOrchestrator.resolve(createRunCommand(
+                        {
                             ...defaultConfig,
                             profiles: {
                                 microtest: {
@@ -389,9 +374,8 @@ export const testSuite = createOverkillSuite({
                                 }
                             }
                         },
-                        request: defaultRequest,
-                        testPlan: createPassingPlan()
-                    });
+                        defaultRequest
+                    ));
                 }, {
                     message: 'Resource budgets require resource usage measurement.'
                 });

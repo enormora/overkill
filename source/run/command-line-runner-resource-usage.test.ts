@@ -146,7 +146,7 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
                 },
                 reporters: command.config.reporters,
                 request: command.request,
-                testPlan: command.testPlan
+                testPlan: createPassingPlan()
             };
         },
         async run(command) {
@@ -233,8 +233,7 @@ export const testSuite = createOverkillSuite({
                             residentSetBytes: null,
                             residentSetGrowthBytesPerSecond: null
                         }
-                    },
-                    testPlan: createPassingPlan()
+                    }
                 });
 
                 scope.assert.equal(result.exitCode, 0);

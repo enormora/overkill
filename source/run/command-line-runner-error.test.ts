@@ -144,7 +144,7 @@ export const testSuite = createOverkillSuite({
                             },
                             reporters: command.config.reporters,
                             request: command.request,
-                            testPlan: command.testPlan
+                            testPlan: createPassingPlan()
                         };
                     },
                     run
@@ -152,8 +152,7 @@ export const testSuite = createOverkillSuite({
                 const result = await runner.runTests({
                     configPath: null,
                     cwd: process.cwd(),
-                    request: defaultRequest,
-                    testPlan: createPassingPlan()
+                    request: defaultRequest
                 });
 
                 scope.assert.equal(result.exitCode, 70);

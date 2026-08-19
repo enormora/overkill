@@ -664,7 +664,7 @@ out for free because every input is explicit.
 
 Because the test definitions are values, an external tool can:
 
-- import the file and walk `default` to enumerate tests
+- import the file and walk `testNode` to enumerate tests
 - call `test.run(scope)` for individual tests with a custom scope
 - compute a stable identity for each test (file + path-in-tree + name +
   parameterization) without parsing source code

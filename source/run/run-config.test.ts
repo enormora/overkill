@@ -63,14 +63,14 @@ export const testSuite = createOverkillSuite({
                     cwd,
                     'overkill.config.ts',
                     `export default {
-                        loader: { sourceMaps: true, stripMode: 'transform' },
+                        loader: { sourceMaps: true, stripMode: 'strip-only' },
                         runtimeStateDir: 'target/overkill-state'
                     };`
                 );
                 const config = await loadRunConfig({ configPath: null, cwd });
 
                 scope.assert.equal(config.configPath, configPath);
-                scope.assert.deepEqual(config.loader, { sourceMaps: true, stripMode: 'transform' });
+                scope.assert.deepEqual(config.loader, { sourceMaps: true, stripMode: 'strip-only' });
                 scope.assert.equal(config.profiles.microtest.measureResourceUsage, false);
                 scope.assert.equal(config.reporters, null);
                 scope.assert.equal(config.runtimeStateDir, 'target/overkill-state');

@@ -14,7 +14,8 @@ import {
     type CommandLineRunnerDependencies,
     type CommandLineRunnerResult
 } from './command-line-runner.ts';
-import { RunResolutionError, type RunCommand, type RunOrchestrator, type RunRequest } from './run.ts';
+import type { RunCommand, RunOrchestrator, RunRequest } from './run.ts';
+import { RunResolutionError } from './run-errors.ts';
 import { RunConfigError, type LoadedRunConfig } from './run-config.ts';
 
 type PlainOutputIntent = {
@@ -145,7 +146,7 @@ function createRunnerDependencies(
                 },
                 reporters: command.config.reporters,
                 request: command.request,
-                testPlan: command.testPlan
+                testPlan: createPassingPlan()
             };
         },
         async run() {
@@ -180,8 +181,7 @@ async function runTests(dependencies: CommandLineRunnerDependencies): Promise<Co
     return await runner.runTests({
         configPath: null,
         cwd: process.cwd(),
-        request: defaultRequest,
-        testPlan: createPassingPlan()
+        request: defaultRequest
     });
 }
 

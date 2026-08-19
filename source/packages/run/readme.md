@@ -35,11 +35,17 @@ Command-line business logic is exposed through `@overkill-dev/run/command-line`:
 - `defineConfig(config)`
 - `loadRunConfig({ cwd, configPath })`
 
-The current runner accepts an explicit `TestPlan` through `RunCommand`. File
-discovery, filtering, sharding, seeded ordering, resources, records, replay,
-and argv parsing are separate runner milestones. The non-`runTests` command
-methods are fixed first-party entrypoints and currently return argument errors
-until their command implementations land.
+The current runner accepts explicit file paths through `RunRequest.paths`.
+Each file is imported as a native Node ESM module and must export a named
+`testNode` value created by the selected engine. `RunCommand.engine` may be
+`null` to use the shared public engine, or a custom `Engine` for programmatic
+callers that also create their test nodes with that engine.
+
+General file discovery, filtering, sharding, seeded ordering, records, replay,
+and argv parsing are separate runner milestones. Direct prebuilt `TestPlan`
+execution belongs to `@overkill-dev/engine` through `execute(testPlan)`. The
+non-`runTests` command methods are fixed first-party entrypoints and currently
+return argument errors until their command implementations land.
 
 Resource usage measurement is explicit. Project config can enable it under
 `profiles.microtest.measureResourceUsage`; `RunRequest.measureResourceUsage`

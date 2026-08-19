@@ -8,9 +8,14 @@ export type CaseId = TestId & {
     readonly params: string | null;
 };
 
-export function createCaseId(suite: readonly string[], name: string, params: string | null): CaseId {
+export function createCaseId(
+    file: string | null,
+    suite: readonly string[],
+    name: string,
+    params: string | null
+): CaseId {
     return {
-        file: null,
+        file,
         name,
         params,
         suite

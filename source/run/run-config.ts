@@ -110,7 +110,7 @@ const outputRendererSchema = z.custom<OutputRenderer>(function isOutputRenderer(
 
 const loaderSchema = z.strictObject({
     sourceMaps: z.boolean(),
-    stripMode: z.union([ z.literal('strip-only'), z.literal('transform') ])
+    stripMode: z.literal('strip-only')
 });
 
 const positiveSafeIntegerSchema = z.number().refine(function isPositiveSafeInteger(value) {
