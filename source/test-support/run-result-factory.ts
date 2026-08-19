@@ -15,7 +15,8 @@ import type {
     RunSummary,
     SuiteRunCounts,
     TestFailure,
-    TestOutcome
+    TestOutcome,
+    TestVerdict
 } from '../engine/run-result.ts';
 
 type FailedCheckOverrides = {
@@ -86,8 +87,8 @@ type TestOutcomeOverrides = TestOutcomeOverrideByKind[keyof TestOutcomeOverrideB
 
 type PerTestResultOverrides = {
     readonly id?: CaseId;
-    readonly outcome?: TestOutcomeOverrides;
-    readonly verdict?: TestOutcome['kind'];
+    readonly outcome?: TestOutcomeOverrides | null;
+    readonly verdict?: TestVerdict;
 };
 
 type OrphanedNodeOverrides = Partial<OrphanedNode>;
@@ -112,12 +113,14 @@ const defaultLocation: SourceLocation = {
 };
 
 const defaultSummary: RunSummary = {
+    crashed: 0,
     defined: 0,
     discovered: 0,
     failed: 0,
     inconclusive: 0,
     passed: 0,
     planned: 0,
+    resourceExhausted: 0,
     skipped: 0
 };
 
@@ -280,12 +283,12 @@ function buildOutcome(overrides: TestOutcomeOverrides = {}): TestOutcome {
 }
 
 function buildPerTestResult(overrides: PerTestResultOverrides = {}): RunResult['perTest'][number] {
-    const outcome = buildOutcome(overrides.outcome);
+    const outcome = overrides.outcome === null ? null : buildOutcome(overrides.outcome);
 
     return {
         id: overrides.id ?? defaultCaseId,
         outcome,
-        verdict: overrides.verdict ?? outcome.kind
+        verdict: overrides.verdict ?? outcome?.kind ?? 'crashed'
     };
 }
 

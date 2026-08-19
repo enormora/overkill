@@ -7,7 +7,6 @@ import { createNodeResourceUsageTracker } from './resource-usage.ts';
 import { createRunOrchestrator, type RunOrchestrator } from './run.ts';
 
 const seedByteLength = 8;
-const defaultWallClock = createWallClock();
 
 function createDefaultSeed(): bigint {
     return randomBytes(seedByteLength).readBigUInt64BE();
@@ -21,6 +20,13 @@ function writeStderrLine(line: string): void {
     process.stderr.write(`${line}\n`);
 }
 
+const defaultWallClock = createWallClock();
+const defaultReporterDispatcher = createReporterDispatcher({
+    stderr: { writeLine: writeStderrLine },
+    stdout: { writeLine: writeStdoutLine },
+    wallClock: defaultWallClock
+});
+
 export const orchestrator: RunOrchestrator = createRunOrchestrator({
     createSeed: createDefaultSeed,
     createResourceUsageTracker(options) {
@@ -28,11 +34,7 @@ export const orchestrator: RunOrchestrator = createRunOrchestrator({
     },
     defaultEngine: defaultRunEngine,
     execute: createExecute({
-        reporterDispatcher: createReporterDispatcher({
-            stderr: { writeLine: writeStderrLine },
-            stdout: { writeLine: writeStdoutLine },
-            wallClock: defaultWallClock
-        }),
+        reporterDispatcher: defaultReporterDispatcher,
         wallClock: defaultWallClock
     }),
     node: {
@@ -40,9 +42,11 @@ export const orchestrator: RunOrchestrator = createRunOrchestrator({
         platform: process.platform,
         version: process.versions.node
     },
+    reporterDispatcher: defaultReporterDispatcher,
     readStartedAt() {
         const startedAt = new Date(defaultWallClock.currentTimestampInMilliseconds);
 
         return startedAt.toISOString();
-    }
+    },
+    wallClock: defaultWallClock
 });

@@ -15,29 +15,39 @@ type RunResultTiming = {
 };
 
 function hasFailed(testResult: PerTestResult): boolean {
-    return testResult.outcome.kind === 'fail';
+    return testResult.verdict === 'fail';
 }
 
 function isInconclusive(testResult: PerTestResult): boolean {
-    return testResult.outcome.kind === 'inconclusive';
+    return testResult.verdict === 'inconclusive';
 }
 
 function hasPassed(testResult: PerTestResult): boolean {
-    return testResult.outcome.kind === 'pass';
+    return testResult.verdict === 'pass';
 }
 
 function wasSkipped(testResult: PerTestResult): boolean {
-    return testResult.outcome.kind === 'skip';
+    return testResult.verdict === 'skip';
+}
+
+function resourceExhausted(testResult: PerTestResult): boolean {
+    return testResult.verdict === 'resource-exhausted';
+}
+
+function crashed(testResult: PerTestResult): boolean {
+    return testResult.verdict === 'crashed';
 }
 
 function countOutcomes(testPlan: TestPlan, perTest: readonly PerTestResult[]): RunResult['summary'] {
     return {
+        crashed: perTest.filter(crashed).length,
         defined: testPlan.defined,
         discovered: testPlan.discoveredCases.length,
         failed: perTest.filter(hasFailed).length,
         inconclusive: perTest.filter(isInconclusive).length,
         passed: perTest.filter(hasPassed).length,
         planned: testPlan.cases.length,
+        resourceExhausted: perTest.filter(resourceExhausted).length,
         skipped: perTest.filter(wasSkipped).length
     };
 }

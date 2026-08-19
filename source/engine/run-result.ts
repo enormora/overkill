@@ -9,6 +9,7 @@ type RunnerErrorSubtypeByName = {
     readonly loader: 'loader';
     readonly permission: 'permission';
     readonly reporter: 'reporter';
+    readonly resourceExhaustion: 'resource-exhaustion';
     readonly unhandledRejection: 'unhandled-rejection';
 };
 
@@ -41,6 +42,7 @@ type TestContractFailureCodeByName = {
     readonly invalidCompositeResult: 'invalid-composite-result';
     readonly invalidDeepAssertionOperand: 'invalid-deep-assertion-operand';
     readonly invalidPlan: 'invalid-plan';
+    readonly invalidTimeoutMetadata: 'invalid-timeout-metadata';
     readonly invalidRequireReference: 'invalid-require-reference';
     readonly noAssertions: 'no-assertions';
     readonly pendingAsyncAssertion: 'pending-async-assertion';
@@ -57,7 +59,13 @@ export type TestContractFailure = {
     readonly summary: string;
 };
 
-export type TestFailure = AssertionTestFailure | BodyErrorTestFailure | TestContractFailure;
+export type TimeoutTestFailure = {
+    readonly deadlineMilliseconds: number;
+    readonly elapsedMilliseconds: number;
+    readonly kind: 'timeout';
+};
+
+export type TestFailure = AssertionTestFailure | BodyErrorTestFailure | TestContractFailure | TimeoutTestFailure;
 
 export function invalidDeepAssertionOperandFailure(actual: InvalidDeepAssertionOperand): TestContractFailure {
     return {
@@ -88,6 +96,7 @@ export type InconclusiveOutcome = {
 };
 
 export type TestOutcome = FailOutcome | InconclusiveOutcome | PassOutcome | SkipOutcome;
+export type TestVerdict = TestOutcome['kind'] | 'crashed' | 'resource-exhausted';
 
 export type RunnerError = {
     readonly attributedTo: CaseId | null;
@@ -97,19 +106,21 @@ export type RunnerError = {
 };
 
 export type RunSummary = {
+    readonly crashed: number;
     readonly defined: number;
     readonly discovered: number;
     readonly failed: number;
     readonly inconclusive: number;
     readonly passed: number;
     readonly planned: number;
+    readonly resourceExhausted: number;
     readonly skipped: number;
 };
 
 export type PerTestResult = {
     readonly id: CaseId;
-    readonly outcome: TestOutcome;
-    readonly verdict: TestOutcome['kind'];
+    readonly outcome: TestOutcome | null;
+    readonly verdict: TestVerdict;
 };
 
 export type SuiteRunCounts = {
@@ -139,7 +150,7 @@ export type RunResourceUsage = {
 
 export type RunResourceUsageTracker = {
     readonly finish: () => RunResourceUsage;
-    readonly start: () => void;
+    readonly start: (onSample?: (snapshot: ResourceUsageSnapshot) => void) => void;
 };
 
 export type OrphanedNode = {
@@ -159,6 +170,6 @@ export type RunResult = {
     readonly wallTimeMs: number;
 };
 
-export function verdictFromOutcome(outcome: TestOutcome): PerTestResult['verdict'] {
+export function verdictFromOutcome(outcome: TestOutcome): TestVerdict {
     return outcome.kind;
 }

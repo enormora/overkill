@@ -1,17 +1,18 @@
 import type { WallClock } from '@enormora/wall-clock';
 import {
-    assertionPasses,
     evaluateAssertion,
     invalidDeepAssertionOperand
 } from '../assertion-protocol/evaluation.ts';
-import type {
-    AssertAssertionNode,
-    AssertionNode,
-    AssertionResult,
-    RequireAssertionNode
-} from '../assertion-protocol/assertion-node.ts';
-import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import type { AssertionNode, AssertionResult } from '../assertion-protocol/assertion-node.ts';
 import { createThrownErrorRecord, type ThrownErrorRecord } from '../assertion-protocol/thrown-error-record.ts';
+import {
+    assertNonEmptyItems,
+    createAssertionRecorder,
+    isTestContractFailure,
+    RequireFailedSignalError,
+    TestContractSignalError,
+    type AssertionRecorder
+} from './assertion-recorder.ts';
 import { createRecordingAssertFacade } from './assertion-facade.ts';
 import { createRecordingRequireFacade } from './require-assertion-facade.ts';
 import {
@@ -24,33 +25,6 @@ import {
 } from './run-result.ts';
 import type { TestScope } from './test-node.ts';
 import type { TestPlanCase } from './test-plan.ts';
-
-type RecordedAssertion = {
-    readonly assertion: AssertionNode | null;
-    readonly builderAssertion: AssertAssertionNode | null;
-};
-
-type RecordedRequireMergeStep = {
-    readonly assertions: readonly AssertionNode[];
-    readonly recordIndex: number;
-};
-
-type PendingRecordedAssert = {
-    readonly resolve: (assertion: AssertAssertionNode) => void;
-};
-
-type AssertionRecorder = {
-    readonly activeRecordedAssertions: () => readonly AssertionNode[];
-    readonly collect: () => NonEmptyReadonlyArray<AssertAssertionNode>;
-    readonly failContract: (failure: TestContractFailure) => never;
-    readonly plan: (count: number) => void;
-    readonly recordAssert: (assertion: AssertAssertionNode) => void;
-    readonly recordPendingAssert: () => PendingRecordedAssert;
-    readonly recordRequire: (assertion: RequireAssertionNode) => void;
-    readonly requireFailed: () => boolean;
-    readonly returnedAssertions: (assertionResult: AssertionResult) => TestContractFailure | readonly AssertionNode[];
-    readonly validateAssertionCount: (assertionCount: number) => TestContractFailure | null;
-};
 
 type BodyErrorRecord = ThrownErrorRecord;
 
@@ -66,340 +40,9 @@ type ExecutedCase = {
     readonly wallTimeMs: number;
 };
 
-class RequireFailedSignalError extends Error {
-    public constructor() {
-        super('Requirement failed.');
-        this.name = 'RequireFailedSignalError';
-    }
-}
-
-class TestContractSignalError extends Error {
-    private readonly contractFailure: TestContractFailure;
-
-    public constructor(failure: TestContractFailure, options: Readonly<ErrorOptions> | undefined) {
-        super(failure.summary, options);
-        this.name = 'TestContractSignalError';
-        this.contractFailure = failure;
-    }
-
-    public failure(): TestContractFailure {
-        return this.contractFailure;
-    }
-}
-
-function assertNonEmptyItems<Item>(
-    items: readonly Item[],
-    message: string
-): asserts items is NonEmptyReadonlyArray<Item> {
-    if (items.length === 0) {
-        throw new TypeError(message);
-    }
-}
-
-function createNoAssertionsFailure(): TestContractFailure {
-    return {
-        actual: 0,
-        code: 'no-assertions',
-        expected: 'at least one assertion',
-        kind: 'test-contract',
-        summary: 'Expected at least one assertion.'
-    };
-}
-
-function createInvalidPlanFailure(actual: unknown): TestContractFailure {
-    return {
-        actual,
-        code: 'invalid-plan',
-        expected: 'positive integer plan before assertions',
-        kind: 'test-contract',
-        summary: 'Assertion plan must be a positive integer before assertions.'
-    };
-}
-
-function createPlanMismatchFailure(actual: number, expected: number): TestContractFailure {
-    return {
-        actual,
-        code: 'plan-mismatch',
-        expected: String(expected),
-        kind: 'test-contract',
-        summary: 'Assertion plan count did not match.'
-    };
-}
-
-function createDeadBuilderAssertionFailure(): TestContractFailure {
-    return {
-        actual: 'missing recorded builder assertion',
-        code: 'dead-builder-assertion',
-        expected: 'returned assertions include every recorded builder assertion',
-        kind: 'test-contract',
-        summary: 'Returned assertions must include every recorded builder assertion.'
-    };
-}
-
-function createPendingAsyncAssertionFailure(): TestContractFailure {
-    return {
-        actual: 'pending async assertion',
-        code: 'pending-async-assertion',
-        expected: 'all async assertions awaited before collect',
-        kind: 'test-contract',
-        summary: 'Async assertion must be awaited before scope.assert.collect().'
-    };
-}
-
-function isTestContractFailure(value: TestContractFailure | readonly AssertionNode[]): value is TestContractFailure {
-    return !Array.isArray(value);
-}
-
-function isAssertionNode(assertionResult: AssertionResult): assertionResult is AssertAssertionNode {
-    return !Array.isArray(assertionResult);
-}
-
-function normalizeAssertionResult(assertionResult: AssertionResult): NonEmptyReadonlyArray<AssertAssertionNode> {
-    const assertions = isAssertionNode(assertionResult) ? [ assertionResult ] : assertionResult;
-
-    assertNonEmptyItems(assertions, 'Expected returned assertions to be non-empty.');
-
-    return assertions;
-}
-
-function builderAssertionsInReturnedOrder(
-    builderAssertions: readonly AssertAssertionNode[],
-    returnedAssertions: readonly AssertAssertionNode[]
-): boolean {
-    let returnedIndex = 0;
-
-    return builderAssertions.every(function builderAssertionReturned(builderAssertion) {
-        while (returnedIndex < returnedAssertions.length) {
-            const returnedAssertion = returnedAssertions[returnedIndex];
-            returnedIndex += 1;
-
-            if (returnedAssertion === builderAssertion) {
-                return true;
-            }
-        }
-
-        return false;
-    });
-}
-
-function recordContainsBuilderAssertion(
-    recorded: RecordedAssertion | undefined,
-    builderAssertion: AssertAssertionNode
-): recorded is RecordedAssertion {
-    return recorded?.builderAssertion === builderAssertion;
-}
-
-function requireAssertionFromRecord(recorded: RecordedAssertion | undefined): RequireAssertionNode | null {
-    if (recorded?.assertion?.source === 'require') {
-        return recorded.assertion;
-    }
-
-    return null;
-}
-
-function requireAssertionsFromRecord(recorded: RecordedAssertion | undefined): readonly RequireAssertionNode[] {
-    const requireAssertion = requireAssertionFromRecord(recorded);
-
-    if (requireAssertion !== null) {
-        return [ requireAssertion ];
-    }
-
-    return [];
-}
-
-function appendRecordedRequiresBeforeBuilderAssertion(
-    recordedAssertions: readonly RecordedAssertion[],
-    recordIndex: number,
-    builderAssertion: AssertAssertionNode
-): RecordedRequireMergeStep {
-    let nextRecordIndex = recordIndex;
-    const assertions: AssertionNode[] = [];
-
-    while (nextRecordIndex < recordedAssertions.length) {
-        const recorded = recordedAssertions[nextRecordIndex];
-
-        if (recordContainsBuilderAssertion(recorded, builderAssertion)) {
-            return { assertions, recordIndex: nextRecordIndex + 1 };
-        }
-
-        assertions.push(...requireAssertionsFromRecord(recorded));
-
-        nextRecordIndex += 1;
-    }
-
-    return { assertions, recordIndex: nextRecordIndex };
-}
-
-function appendRemainingRecordedRequires(
-    recordedAssertions: readonly RecordedAssertion[],
-    recordIndex: number
-): readonly AssertionNode[] {
-    const assertions: AssertionNode[] = [];
-
-    for (const recorded of recordedAssertions.slice(recordIndex)) {
-        if (recorded.assertion?.source === 'require') {
-            assertions.push(recorded.assertion);
-        }
-    }
-
-    return assertions;
-}
-
-function mergeRecordedRequires(
-    recordedAssertions: readonly RecordedAssertion[],
-    returnedAssertions: readonly AssertAssertionNode[]
-): readonly AssertionNode[] {
-    const mergedAssertions: AssertionNode[] = [];
-    let recordIndex = 0;
-
-    for (const returnedAssertion of returnedAssertions) {
-        const step = appendRecordedRequiresBeforeBuilderAssertion(
-            recordedAssertions,
-            recordIndex,
-            returnedAssertion
-        );
-        recordIndex = step.recordIndex;
-        mergedAssertions.push(...step.assertions, returnedAssertion);
-    }
-
-    mergedAssertions.push(...appendRemainingRecordedRequires(recordedAssertions, recordIndex));
-
-    return mergedAssertions;
-}
-
-function createAssertionRecorder(): AssertionRecorder {
-    const builderAssertions: (AssertAssertionNode | null)[] = [];
-    const recordedAssertions: RecordedAssertion[] = [];
-    let failedRequireIndex: number | null = null;
-    let plannedCount: number | null = null;
-
-    function activeRecords(): readonly RecordedAssertion[] {
-        if (failedRequireIndex === null) {
-            return recordedAssertions;
-        }
-
-        return recordedAssertions.slice(0, failedRequireIndex + 1);
-    }
-
-    function pendingAssertionExists(): boolean {
-        return builderAssertions.includes(null);
-    }
-
-    function ensurePlanAllowed(count: number): void {
-        if (!Number.isSafeInteger(count) || count <= 0 || plannedCount !== null || recordedAssertions.length > 0) {
-            throw new TestContractSignalError(createInvalidPlanFailure(count), undefined);
-        }
-    }
-
-    function collect(): NonEmptyReadonlyArray<AssertAssertionNode> {
-        if (builderAssertions.length === 0) {
-            throw new TestContractSignalError(createNoAssertionsFailure(), undefined);
-        }
-
-        if (pendingAssertionExists()) {
-            throw new TestContractSignalError(createPendingAsyncAssertionFailure(), undefined);
-        }
-
-        const resolvedAssertions = builderAssertions.filter(function resolvedAssertion(
-            assertion
-        ): assertion is AssertAssertionNode {
-            return assertion !== null;
-        });
-
-        assertNonEmptyItems(resolvedAssertions, 'Expected builder assertions to be non-empty.');
-
-        return resolvedAssertions;
-    }
-
-    function validateReturnedAssertions(assertions: readonly AssertAssertionNode[]): TestContractFailure | null {
-        if (pendingAssertionExists()) {
-            return createPendingAsyncAssertionFailure();
-        }
-
-        const resolvedAssertions = builderAssertions.filter(function resolvedAssertion(
-            assertion
-        ): assertion is AssertAssertionNode {
-            return assertion !== null;
-        });
-
-        if (!builderAssertionsInReturnedOrder(resolvedAssertions, assertions)) {
-            return createDeadBuilderAssertionFailure();
-        }
-
-        return null;
-    }
-
-    return {
-        activeRecordedAssertions() {
-            return activeRecords().flatMap(function toAssertion(recorded) {
-                return recorded.assertion === null ? [] : [ recorded.assertion ];
-            });
-        },
-
-        collect,
-
-        failContract(failure) {
-            throw new TestContractSignalError(failure, undefined);
-        },
-
-        plan(count) {
-            ensurePlanAllowed(count);
-            plannedCount = count;
-        },
-
-        recordAssert(assertion) {
-            builderAssertions.push(assertion);
-            recordedAssertions.push({ assertion, builderAssertion: assertion });
-        },
-
-        recordPendingAssert() {
-            const builderIndex = builderAssertions.length;
-            const recordIndex = recordedAssertions.length;
-
-            builderAssertions.push(null);
-            recordedAssertions.push({ assertion: null, builderAssertion: null });
-
-            return {
-                resolve(assertion) {
-                    builderAssertions[builderIndex] = assertion;
-                    recordedAssertions[recordIndex] = { assertion, builderAssertion: assertion };
-                }
-            };
-        },
-
-        recordRequire(assertion) {
-            recordedAssertions.push({ assertion, builderAssertion: null });
-
-            if (!assertionPasses(assertion)) {
-                failedRequireIndex = recordedAssertions.length - 1;
-                throw new RequireFailedSignalError();
-            }
-        },
-
-        requireFailed() {
-            return failedRequireIndex !== null;
-        },
-
-        returnedAssertions(assertionResult) {
-            const assertions = normalizeAssertionResult(assertionResult);
-            const contractFailure = validateReturnedAssertions(assertions);
-
-            if (contractFailure !== null) {
-                return contractFailure;
-            }
-
-            return mergeRecordedRequires(activeRecords(), assertions);
-        },
-
-        validateAssertionCount(reachedAssertionCount) {
-            if (plannedCount !== null && plannedCount !== reachedAssertionCount) {
-                return createPlanMismatchFailure(reachedAssertionCount, plannedCount);
-            }
-
-            return null;
-        }
-    };
-}
+export type RunTestCaseOptions = {
+    readonly signal: AbortSignal;
+};
 
 function evaluatedAssertionFailure(assertions: readonly AssertionNode[]): TestFailure | null {
     const checks = assertions.flatMap(function evaluateRecordedAssertion(assertion, index) {
@@ -436,7 +79,7 @@ function assertionFailure(assertions: readonly AssertionNode[]): TestFailure | n
     return assertionContractFailure(assertions) ?? evaluatedAssertionFailure(assertions);
 }
 
-function createTestScope(recorder: AssertionRecorder): TestScope {
+function createTestScope(recorder: AssertionRecorder, signal: AbortSignal): TestScope {
     const assertContext = Object.assign(
         createRecordingAssertFacade(
             {
@@ -474,7 +117,8 @@ function createTestScope(recorder: AssertionRecorder): TestScope {
                 }
             },
             null
-        )
+        ),
+        signal
     };
 }
 
@@ -532,9 +176,13 @@ function failedBody(recorder: AssertionRecorder, error: unknown): ExecutedBody {
         : bodyErrorResult(recorder, error);
 }
 
-async function runCaseBody(testCase: TestPlanCase, recorder: AssertionRecorder): Promise<ExecutedBody> {
+async function runCaseBody(
+    testCase: TestPlanCase,
+    recorder: AssertionRecorder,
+    options: RunTestCaseOptions
+): Promise<ExecutedBody> {
     try {
-        return completedBody(recorder, await testCase.body(createTestScope(recorder)));
+        return completedBody(recorder, await testCase.body(createTestScope(recorder, options.signal)));
     } catch (error: unknown) {
         return failedBody(recorder, error);
     }
@@ -585,11 +233,41 @@ function createOutcome(recorder: AssertionRecorder, executedBody: ExecutedBody):
     };
 }
 
-export async function runTestCase(testCase: TestPlanCase, wallClock: WallClock): Promise<ExecutedCase> {
+function defaultRunTestCaseOptions(): RunTestCaseOptions {
+    const controller = new AbortController();
+
+    return {
+        signal: controller.signal
+    };
+}
+
+export function timeoutFailure(deadlineMilliseconds: number, elapsedMilliseconds: number): TestFailure {
+    return {
+        deadlineMilliseconds,
+        elapsedMilliseconds,
+        kind: 'timeout'
+    };
+}
+
+export function invalidTimeoutMetadataFailure(actual: unknown, expected: string): TestContractFailure {
+    return {
+        actual,
+        code: 'invalid-timeout-metadata',
+        expected,
+        kind: 'test-contract',
+        summary: 'Timeout metadata must be a positive safe integer within the hard timeout.'
+    };
+}
+
+export async function runTestCase(
+    testCase: TestPlanCase,
+    wallClock: WallClock,
+    options: RunTestCaseOptions = defaultRunTestCaseOptions()
+): Promise<ExecutedCase> {
     const recorder = createAssertionRecorder();
     const startedAt = wallClock.currentTimestampInMilliseconds;
 
-    const executedBody = await runCaseBody(testCase, recorder);
+    const executedBody = await runCaseBody(testCase, recorder, options);
     const outcome = createOutcome(recorder, executedBody);
     const verdict = verdictFromOutcome(outcome);
 

@@ -21,6 +21,7 @@ export type TestScope = {
     readonly assert: TestScopeAssertContext;
     readonly plan: (count: number) => void;
     readonly require: RequireAssertionFacade;
+    readonly signal: AbortSignal;
 };
 
 export type TestBody = (scope: TestScope) => AssertionResult | Promise<AssertionResult>;

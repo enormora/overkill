@@ -1,5 +1,7 @@
+import type { WallClock } from '@enormora/wall-clock';
 import { serializeValue, type SerializedValue as SerializedValueShape } from '../compare/serialized-value.ts';
 import type { Execute } from '../engine/execution.ts';
+import type { ReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type { RunResourceUsageTracker, RunResult } from '../engine/run-result.ts';
 import type { Engine } from '../engine/engine.ts';
 import type { Metadata } from '../engine/test-node.ts';
@@ -12,6 +14,7 @@ import {
 } from './run-errors.ts';
 import { loadRunTestModules } from './run-test-modules.ts';
 import type { ResourceUsageTrackerOptions } from './resource-usage.ts';
+import { executeSupervisedRun } from './supervised-run.ts';
 
 const minimumSeedValue = 0n;
 
@@ -30,7 +33,7 @@ export type RunShard = {
 };
 
 export type RunExecutionRequest = {
-    readonly mode: 'concurrent-in-process';
+    readonly mode: 'profile-default';
 };
 
 export type RunSeed = {
@@ -62,13 +65,16 @@ export type ResourceBudgetOverrides = {
 };
 
 export type RunResourceUsagePolicy = {
+    readonly hardTimeoutMilliseconds: number;
     readonly measureResourceUsage: boolean;
     readonly resourceBudgets: RunResourceBudgets;
     readonly resourceUsageSamplingIntervalMilliseconds: number;
+    readonly timeoutMilliseconds: number;
 };
 
 export type RunProfilesConfig = {
     readonly microtest: RunResourceUsagePolicy;
+    readonly microtestSupervised: RunResourceUsagePolicy;
 };
 
 export type RunConfig = {
@@ -88,7 +94,7 @@ export type RunRequest = {
     readonly measureResourceUsage: boolean | null;
     readonly order: 'plan';
     readonly paths: readonly string[];
-    readonly profile: 'microtest';
+    readonly profile: 'microtest' | 'microtest-supervised';
     readonly resourceBudgetOverrides: ResourceBudgetOverrides | null;
     readonly resourceUsageSamplingIntervalMilliseconds: number | null;
     readonly seed: RunSeed;
@@ -131,9 +137,9 @@ export type RunExecutionFacts = {
     readonly capture: 'buffered' | 'live';
     readonly coverage: false;
     readonly debug: RunDebugRequest;
-    readonly mode: 'concurrent-in-process';
+    readonly mode: 'concurrent-in-process' | 'single-child-process';
     readonly order: 'plan';
-    readonly profile: 'microtest';
+    readonly profile: 'microtest' | 'microtest-supervised';
     readonly resourceUsagePolicy: RunResourceUsagePolicy;
     readonly verbose: false;
 };
@@ -145,6 +151,7 @@ export type RunReproducibilityFacts = {
 
 export type ResolvedRun = {
     readonly config: RunConfig;
+    readonly cwd: string;
     readonly facts: RunFacts;
     readonly reporters: RunReporters;
     readonly request: RunRequest;
@@ -161,7 +168,9 @@ export type RunOrchestratorDependencies = {
         readonly platform: string;
         readonly version: string;
     };
+    readonly reporterDispatcher: ReporterDispatcher;
     readonly readStartedAt: () => string;
+    readonly wallClock: WallClock;
 };
 
 export type RunOrchestrator = {
@@ -198,6 +207,15 @@ function validateSamplingInterval(value: number | null): void {
     validatePositiveSafeInteger(value, 'Resource usage sampling interval');
 }
 
+function validateTimeoutPolicy(policy: RunResourceUsagePolicy): void {
+    validatePositiveSafeInteger(policy.timeoutMilliseconds, 'Soft timeout');
+    validatePositiveSafeInteger(policy.hardTimeoutMilliseconds, 'Hard timeout');
+
+    if (policy.timeoutMilliseconds > policy.hardTimeoutMilliseconds) {
+        invalidRequest('Soft timeout must not exceed hard timeout.');
+    }
+}
+
 function hasResourceBudgets(resourceBudgets: RunResourceBudgets): boolean {
     return resourceBudgets.activeResourceCount !== null ||
         resourceBudgets.javaScriptEngineHeapBytes !== null ||
@@ -230,6 +248,7 @@ function validateRunRequest(request: RunRequest): void {
 function validateRunResourceUsagePolicy(policy: RunResourceUsagePolicy): void {
     validateResourceBudgets(policy.resourceBudgets);
     validateSamplingInterval(policy.resourceUsageSamplingIntervalMilliseconds);
+    validateTimeoutPolicy(policy);
 
     if (!policy.measureResourceUsage && hasResourceBudgets(policy.resourceBudgets)) {
         invalidRequest('Resource budgets require resource usage measurement.');
@@ -238,6 +257,7 @@ function validateRunResourceUsagePolicy(policy: RunResourceUsagePolicy): void {
 
 function validateRunConfig(config: RunConfig): void {
     validateRunResourceUsagePolicy(config.profiles.microtest);
+    validateRunResourceUsagePolicy(config.profiles.microtestSupervised);
 }
 
 function resolvedSeed(request: RunRequest, dependencies: RunOrchestratorDependencies): bigint {
@@ -277,15 +297,18 @@ function copyResourceBudgetOverrides(overrides: ResourceBudgetOverrides | null):
 
 function copyResourceUsagePolicy(policy: RunResourceUsagePolicy): RunResourceUsagePolicy {
     return {
+        hardTimeoutMilliseconds: policy.hardTimeoutMilliseconds,
         measureResourceUsage: policy.measureResourceUsage,
         resourceBudgets: copyResourceBudgets(policy.resourceBudgets),
-        resourceUsageSamplingIntervalMilliseconds: policy.resourceUsageSamplingIntervalMilliseconds
+        resourceUsageSamplingIntervalMilliseconds: policy.resourceUsageSamplingIntervalMilliseconds,
+        timeoutMilliseconds: policy.timeoutMilliseconds
     };
 }
 
 function copyRunProfilesConfig(profiles: RunProfilesConfig): RunProfilesConfig {
     return {
-        microtest: copyResourceUsagePolicy(profiles.microtest)
+        microtest: copyResourceUsagePolicy(profiles.microtest),
+        microtestSupervised: copyResourceUsagePolicy(profiles.microtestSupervised)
     };
 }
 
@@ -376,8 +399,20 @@ function assertResourceBudgetOverridesAllowed(
     }
 }
 
+function configuredPolicyForProfile(request: RunRequest, config: RunConfig): RunResourceUsagePolicy {
+    if (request.profile === 'microtest-supervised') {
+        return config.profiles.microtestSupervised;
+    }
+
+    return config.profiles.microtest;
+}
+
+function resolvedExecutionMode(request: RunRequest): RunExecutionFacts['mode'] {
+    return request.profile === 'microtest-supervised' ? 'single-child-process' : 'concurrent-in-process';
+}
+
 function resolveResourceUsagePolicy(request: RunRequest, config: RunConfig): RunResourceUsagePolicy {
-    const configuredPolicy = config.profiles.microtest;
+    const configuredPolicy = configuredPolicyForProfile(request, config);
     const measureResourceUsage = request.measureResourceUsage ?? configuredPolicy.measureResourceUsage;
     const resourceUsageSamplingIntervalMilliseconds = request.resourceUsageSamplingIntervalMilliseconds ??
         configuredPolicy.resourceUsageSamplingIntervalMilliseconds;
@@ -388,9 +423,11 @@ function resolveResourceUsagePolicy(request: RunRequest, config: RunConfig): Run
     assertResourceBudgetOverridesAllowed(measureResourceUsage, request.resourceBudgetOverrides);
 
     return {
+        hardTimeoutMilliseconds: configuredPolicy.hardTimeoutMilliseconds,
         measureResourceUsage,
         resourceBudgets,
-        resourceUsageSamplingIntervalMilliseconds
+        resourceUsageSamplingIntervalMilliseconds,
+        timeoutMilliseconds: configuredPolicy.timeoutMilliseconds
     };
 }
 
@@ -417,7 +454,7 @@ function createRunFacts(
             capture: request.capture,
             coverage: request.coverage,
             debug: request.debug,
-            mode: request.execution.mode,
+            mode: resolvedExecutionMode(request),
             order: request.order,
             profile: request.profile,
             resourceUsagePolicy: resolveResourceUsagePolicy(request, config),
@@ -476,6 +513,7 @@ async function createResolvedRun(command: RunCommand, dependencies: RunOrchestra
 
     return freezeValue({
         config,
+        cwd: command.cwd,
         facts,
         reporters: config.reporters,
         request,
@@ -484,9 +522,7 @@ async function createResolvedRun(command: RunCommand, dependencies: RunOrchestra
 }
 
 function assertRunnableResourceUsagePolicy(policy: RunResourceUsagePolicy): void {
-    if (hasResourceBudgets(policy.resourceBudgets)) {
-        unsupportedRequest('Resource budget enforcement is not implemented yet.');
-    }
+    validateRunResourceUsagePolicy(policy);
 }
 
 function createExecutionResourceUsageTracker(
@@ -511,12 +547,14 @@ function createCollectionErrorRunResult(error: RunCollectionError): RunResult {
         resourceUsage: null,
         runnerErrors: [ error.runnerError() ],
         summary: {
+            crashed: 0,
             defined: 0,
             discovered: 0,
             failed: 0,
             inconclusive: 0,
             passed: 0,
             planned: 0,
+            resourceExhausted: 0,
             skipped: 0
         },
         wallTimeMs: 0
@@ -559,13 +597,22 @@ export function createRunOrchestrator(dependencies: RunOrchestratorDependencies)
 
             assertRunnableResourceUsagePolicy(resourceUsagePolicy);
 
+            if (resolvedRun.facts.execution.mode === 'single-child-process') {
+                return await executeSupervisedRun(resolvedRun, dependencies);
+            }
+
             return await dependencies.execute(resolvedRun.testPlan, {
                 execution: { mode: 'concurrent-in-process' },
                 outputRenderer: resolvedRun.config.outputRenderer,
                 reporters: resolvedRun.reporters,
+                resourceBudgets: resourceUsagePolicy.resourceBudgets,
                 resourceUsageTracker: createExecutionResourceUsageTracker(resourceUsagePolicy, dependencies),
                 runFacts: resolvedRun.facts,
-                startedAt: dependencies.readStartedAt()
+                startedAt: dependencies.readStartedAt(),
+                timeoutPolicy: {
+                    hardTimeoutMilliseconds: resourceUsagePolicy.hardTimeoutMilliseconds,
+                    timeoutMilliseconds: resourceUsagePolicy.timeoutMilliseconds
+                }
             });
         }
     };

@@ -299,6 +299,13 @@ function formatAssertionFailure(failure: Extract<TestFailure, { readonly kind: '
     });
 }
 
+function formatTimeoutFailure(failure: Extract<TestFailure, { readonly kind: 'timeout'; }>): readonly string[] {
+    return [
+        `Timed out after ${failure.deadlineMilliseconds} ms.`,
+        `elapsed: ${failure.elapsedMilliseconds} ms`
+    ];
+}
+
 export function formatFailure(failure: TestFailure): readonly string[] {
     if (failure.kind === 'assertion') {
         return formatAssertionFailure(failure);
@@ -306,6 +313,10 @@ export function formatFailure(failure: TestFailure): readonly string[] {
 
     if (failure.kind === 'body-error') {
         return formatBodyErrorFailure(failure);
+    }
+
+    if (failure.kind === 'timeout') {
+        return formatTimeoutFailure(failure);
     }
 
     return formatTestContractFailure(failure);

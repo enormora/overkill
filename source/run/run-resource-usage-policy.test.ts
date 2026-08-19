@@ -1,10 +1,12 @@
 import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createWallClock } from '@enormora/wall-clock';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
+import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type { RunResourceUsageTracker } from '../engine/run-result.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
@@ -30,6 +32,7 @@ const defaultConfig: RunConfig = {
     },
     profiles: {
         microtest: {
+            hardTimeoutMilliseconds: 1000,
             measureResourceUsage: false,
             resourceBudgets: {
                 activeResourceCount: null,
@@ -37,7 +40,20 @@ const defaultConfig: RunConfig = {
                 residentSetBytes: null,
                 residentSetGrowthBytesPerSecond: null
             },
-            resourceUsageSamplingIntervalMilliseconds: 100
+            resourceUsageSamplingIntervalMilliseconds: 100,
+            timeoutMilliseconds: 500
+        },
+        microtestSupervised: {
+            hardTimeoutMilliseconds: 1000,
+            measureResourceUsage: false,
+            resourceBudgets: {
+                activeResourceCount: null,
+                javaScriptEngineHeapBytes: null,
+                residentSetBytes: null,
+                residentSetGrowthBytesPerSecond: null
+            },
+            resourceUsageSamplingIntervalMilliseconds: 100,
+            timeoutMilliseconds: 500
         }
     },
     reporters: [],
@@ -52,7 +68,7 @@ const defaultRequest: RunRequest = {
         mode: 'off',
         selectors: []
     },
-    execution: { mode: 'concurrent-in-process' },
+    execution: { mode: 'profile-default' },
     measureResourceUsage: null,
     order: 'plan',
     paths: [ passingFixturePath ],
@@ -103,6 +119,20 @@ function createFinishedResourceUsageTracker(): RunResourceUsageTracker {
 
 function createDeterministicRunOrchestrator(): RunOrchestrator {
     const engine = createTestEngine();
+    const wallClock = createWallClock();
+    const reporterDispatcher = createReporterDispatcher({
+        stderr: {
+            writeLine() {
+                return undefined;
+            }
+        },
+        stdout: {
+            writeLine() {
+                return undefined;
+            }
+        },
+        wallClock
+    });
 
     return createRunOrchestrator({
         createResourceUsageTracker: createFinishedResourceUsageTracker,
@@ -116,9 +146,11 @@ function createDeterministicRunOrchestrator(): RunOrchestrator {
             platform: 'linux',
             version: '26.1.1'
         },
+        reporterDispatcher,
         readStartedAt() {
             return '2026-07-15T12:30:00.000Z';
-        }
+        },
+        wallClock
     });
 }
 
@@ -145,6 +177,7 @@ export const testSuite = createOverkillSuite({
                         ...defaultConfig,
                         profiles: {
                             microtest: {
+                                hardTimeoutMilliseconds: 1000,
                                 measureResourceUsage: true,
                                 resourceBudgets: {
                                     activeResourceCount: 8,
@@ -152,8 +185,10 @@ export const testSuite = createOverkillSuite({
                                     residentSetBytes: 200,
                                     residentSetGrowthBytesPerSecond: 50
                                 },
-                                resourceUsageSamplingIntervalMilliseconds: 25
-                            }
+                                resourceUsageSamplingIntervalMilliseconds: 25,
+                                timeoutMilliseconds: 500
+                            },
+                            microtestSupervised: defaultConfig.profiles.microtestSupervised
                         }
                     },
                     {
@@ -170,6 +205,7 @@ export const testSuite = createOverkillSuite({
 
                 scope.assert.equal(Object.isFrozen(resolvedRun.facts.execution.resourceUsagePolicy), true);
                 scope.assert.deepEqual(plainData(resolvedRun.facts.execution.resourceUsagePolicy), {
+                    hardTimeoutMilliseconds: 1000,
                     measureResourceUsage: true,
                     resourceBudgets: {
                         activeResourceCount: 8,
@@ -177,7 +213,8 @@ export const testSuite = createOverkillSuite({
                         residentSetBytes: 200,
                         residentSetGrowthBytesPerSecond: 50
                     },
-                    resourceUsageSamplingIntervalMilliseconds: 10
+                    resourceUsageSamplingIntervalMilliseconds: 10,
+                    timeoutMilliseconds: 500
                 });
 
                 return scope.assert.collect();
@@ -223,33 +260,34 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() rejects budgeted execution until resource enforcement exists',
+            name: 'orchestrator.run() accepts budgeted execution when measurement is enabled',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
 
-                await scope.assert.rejects(async function runBudgetedRequest() {
-                    await runOrchestrator.run(createRunCommand(
-                        {
-                            ...defaultConfig,
-                            profiles: {
-                                microtest: {
-                                    measureResourceUsage: true,
-                                    resourceBudgets: {
-                                        activeResourceCount: null,
-                                        javaScriptEngineHeapBytes: null,
-                                        residentSetBytes: 1,
-                                        residentSetGrowthBytesPerSecond: null
-                                    },
-                                    resourceUsageSamplingIntervalMilliseconds: 100
-                                }
-                            }
-                        },
-                        defaultRequest
-                    ));
-                }, {
-                    message: 'Resource budget enforcement is not implemented yet.'
-                });
+                const result = await runOrchestrator.run(createRunCommand(
+                    {
+                        ...defaultConfig,
+                        profiles: {
+                            microtest: {
+                                hardTimeoutMilliseconds: 1000,
+                                measureResourceUsage: true,
+                                resourceBudgets: {
+                                    activeResourceCount: null,
+                                    javaScriptEngineHeapBytes: null,
+                                    residentSetBytes: 1,
+                                    residentSetGrowthBytesPerSecond: null
+                                },
+                                resourceUsageSamplingIntervalMilliseconds: 100,
+                                timeoutMilliseconds: 500
+                            },
+                            microtestSupervised: defaultConfig.profiles.microtestSupervised
+                        }
+                    },
+                    defaultRequest
+                ));
+
+                scope.assert.equal(result.runnerErrors.length, 0);
 
                 return scope.assert.collect();
             }
@@ -300,6 +338,7 @@ export const testSuite = createOverkillSuite({
                 ));
 
                 scope.assert.deepEqual(plainData(resolvedRun.facts.execution.resourceUsagePolicy), {
+                    hardTimeoutMilliseconds: 1000,
                     measureResourceUsage: false,
                     resourceBudgets: {
                         activeResourceCount: null,
@@ -307,7 +346,8 @@ export const testSuite = createOverkillSuite({
                         residentSetBytes: null,
                         residentSetGrowthBytesPerSecond: null
                     },
-                    resourceUsageSamplingIntervalMilliseconds: 100
+                    resourceUsageSamplingIntervalMilliseconds: 100,
+                    timeoutMilliseconds: 500
                 });
 
                 return scope.assert.collect();
@@ -363,6 +403,7 @@ export const testSuite = createOverkillSuite({
                             ...defaultConfig,
                             profiles: {
                                 microtest: {
+                                    hardTimeoutMilliseconds: 1000,
                                     measureResourceUsage: false,
                                     resourceBudgets: {
                                         activeResourceCount: 1,
@@ -370,8 +411,10 @@ export const testSuite = createOverkillSuite({
                                         residentSetBytes: null,
                                         residentSetGrowthBytesPerSecond: null
                                     },
-                                    resourceUsageSamplingIntervalMilliseconds: 100
-                                }
+                                    resourceUsageSamplingIntervalMilliseconds: 100,
+                                    timeoutMilliseconds: 500
+                                },
+                                microtestSupervised: defaultConfig.profiles.microtestSupervised
                             }
                         },
                         defaultRequest

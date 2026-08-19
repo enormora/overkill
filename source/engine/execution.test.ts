@@ -19,7 +19,7 @@ const failOutcome = defineNarrowingCompositeAssertion<TestOutcome, FailOutcome, 
 });
 
 function firstOutcome(result: RunResult): TestOutcome | undefined {
-    return result.perTest.at(0)?.outcome;
+    return result.perTest.at(0)?.outcome ?? undefined;
 }
 
 async function executeSingleBody(body: TestBody): Promise<RunResult> {
@@ -89,12 +89,14 @@ export const testSuite = createOverkillSuite({
                     {
                         rootCounts: null,
                         summary: {
+                            crashed: 0,
                             defined: 2,
                             discovered: 2,
                             failed: 1,
                             inconclusive: 0,
                             passed: 1,
                             planned: 2,
+                            resourceExhausted: 0,
                             skipped: 0
                         },
                         verdicts: [ 'pass', 'fail' ]
@@ -336,7 +338,7 @@ export const testSuite = createOverkillSuite({
                 scope.assert.equal(result.summary.failed, 2);
                 scope.assert.deepEqual(
                     result.perTest.map(function toSummary(testResult) {
-                        if (testResult.outcome.kind !== 'fail') {
+                        if (testResult.outcome?.kind !== 'fail') {
                             return null;
                         }
 

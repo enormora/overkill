@@ -38,6 +38,7 @@ export const testSuite = createOverkillSuite({
                 scope.assert.equal(typeof config.outputRenderer.render, 'function');
                 scope.assert.deepEqual(config.profiles, {
                     microtest: {
+                        hardTimeoutMilliseconds: 1000,
                         measureResourceUsage: false,
                         resourceBudgets: {
                             activeResourceCount: null,
@@ -45,7 +46,20 @@ export const testSuite = createOverkillSuite({
                             residentSetBytes: null,
                             residentSetGrowthBytesPerSecond: null
                         },
-                        resourceUsageSamplingIntervalMilliseconds: 100
+                        resourceUsageSamplingIntervalMilliseconds: 100,
+                        timeoutMilliseconds: 500
+                    },
+                    microtestSupervised: {
+                        hardTimeoutMilliseconds: 1000,
+                        measureResourceUsage: false,
+                        resourceBudgets: {
+                            activeResourceCount: null,
+                            javaScriptEngineHeapBytes: null,
+                            residentSetBytes: null,
+                            residentSetGrowthBytesPerSecond: null
+                        },
+                        resourceUsageSamplingIntervalMilliseconds: 100,
+                        timeoutMilliseconds: 500
                     }
                 });
                 scope.assert.equal(config.reporters, null);
@@ -104,6 +118,7 @@ export const testSuite = createOverkillSuite({
                 const config = await loadRunConfig({ configPath: null, cwd });
 
                 scope.assert.deepEqual(config.profiles.microtest, {
+                    hardTimeoutMilliseconds: 1000,
                     measureResourceUsage: true,
                     resourceBudgets: {
                         activeResourceCount: 4,
@@ -111,7 +126,8 @@ export const testSuite = createOverkillSuite({
                         residentSetBytes: 200,
                         residentSetGrowthBytesPerSecond: 50
                     },
-                    resourceUsageSamplingIntervalMilliseconds: 25
+                    resourceUsageSamplingIntervalMilliseconds: 25,
+                    timeoutMilliseconds: 500
                 });
 
                 return scope.assert.collect();

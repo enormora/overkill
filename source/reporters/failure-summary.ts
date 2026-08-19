@@ -9,5 +9,9 @@ export function formatFailureSummary(failure: TestFailure): string {
         return failure.error.message;
     }
 
+    if (failure.kind === 'timeout') {
+        return `Timed out after ${failure.deadlineMilliseconds} ms.`;
+    }
+
     return failure.summary;
 }

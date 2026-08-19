@@ -29,7 +29,7 @@ const defaultRequest: RunRequest = {
     capture: 'buffered',
     coverage: false,
     debug: { mode: 'off', selectors: [] },
-    execution: { mode: 'concurrent-in-process' },
+    execution: { mode: 'profile-default' },
     measureResourceUsage: null,
     order: 'plan',
     paths: [],
@@ -53,6 +53,7 @@ async function loadDefaultRunConfig(): Promise<LoadedRunConfig> {
         },
         profiles: {
             microtest: {
+                hardTimeoutMilliseconds: 1000,
                 measureResourceUsage: false,
                 resourceBudgets: {
                     activeResourceCount: null,
@@ -60,7 +61,20 @@ async function loadDefaultRunConfig(): Promise<LoadedRunConfig> {
                     residentSetBytes: null,
                     residentSetGrowthBytesPerSecond: null
                 },
-                resourceUsageSamplingIntervalMilliseconds: 100
+                resourceUsageSamplingIntervalMilliseconds: 100,
+                timeoutMilliseconds: 500
+            },
+            microtestSupervised: {
+                hardTimeoutMilliseconds: 1000,
+                measureResourceUsage: false,
+                resourceBudgets: {
+                    activeResourceCount: null,
+                    javaScriptEngineHeapBytes: null,
+                    residentSetBytes: null,
+                    residentSetGrowthBytesPerSecond: null
+                },
+                resourceUsageSamplingIntervalMilliseconds: 100,
+                timeoutMilliseconds: 500
             }
         },
         reporters: null,
@@ -119,6 +133,7 @@ export const testSuite = createOverkillSuite({
                     async resolve(command) {
                         return {
                             config: command.config,
+                            cwd: command.cwd,
                             facts: {
                                 cases: [],
                                 environment: {
@@ -130,7 +145,7 @@ export const testSuite = createOverkillSuite({
                                     capture: command.request.capture,
                                     coverage: command.request.coverage,
                                     debug: command.request.debug,
-                                    mode: command.request.execution.mode,
+                                    mode: 'concurrent-in-process',
                                     order: command.request.order,
                                     profile: command.request.profile,
                                     resourceUsagePolicy: command.config.profiles.microtest,

@@ -2,7 +2,7 @@ import figures from 'figures';
 import colors from 'yoctocolors';
 import { formatCaseId } from '../engine/identity.ts';
 import type { RealTimeReporter, ReporterEvent } from '../engine/reporter.ts';
-import type { RunResult, RunnerError, TestOutcome } from '../engine/run-result.ts';
+import type { RunResult, RunnerError, TestOutcome, TestVerdict } from '../engine/run-result.ts';
 import { formatFailureSummary } from './failure-summary.ts';
 import { createTerminalProgressRenderer, type TerminalOutput } from './terminal.ts';
 
@@ -23,14 +23,8 @@ function formatDuration(wallTimeMs: number): string {
 
 function executedCount(result: RunResult): number {
     const { summary } = result;
-    const crashCount = result
-        .runnerErrors
-        .filter(function isCrash(error) {
-            return error.subtype === 'crash';
-        })
-        .length;
-
-    return summary.passed + summary.failed + summary.skipped + summary.inconclusive + crashCount;
+    return summary.passed + summary.failed + summary.skipped + summary.inconclusive +
+        summary.resourceExhausted + summary.crashed;
 }
 
 function formatSummary(result: RunResult): string {
@@ -39,7 +33,9 @@ function formatSummary(result: RunResult): string {
         `${summary.passed} pass`,
         `${summary.failed} fail`,
         `${summary.skipped} skip`,
-        ...summary.inconclusive === 0 ? [] : [ `${summary.inconclusive} inconclusive` ]
+        ...summary.inconclusive === 0 ? [] : [ `${summary.inconclusive} inconclusive` ],
+        ...summary.resourceExhausted === 0 ? [] : [ `${summary.resourceExhausted} resource-exhausted` ],
+        ...summary.crashed === 0 ? [] : [ `${summary.crashed} crash` ]
     ]
         .join(', ');
     const orphanSummary = result.orphans.length === 0 ? '' : `, ${result.orphans.length} orphaned`;
@@ -65,16 +61,20 @@ function outcomeDetail(outcome: TestOutcome): string | null {
     return null;
 }
 
-function markForOutcome(outcome: TestOutcome): string {
-    if (outcome.kind === 'pass') {
-        return passMark;
+function markForVerdict(verdict: TestVerdict): string {
+    if (verdict === 'resource-exhausted' || verdict === 'crashed') {
+        return runnerErrorMark;
     }
 
-    if (outcome.kind === 'fail') {
+    if (verdict === 'fail') {
         return failMark;
     }
 
-    if (outcome.kind === 'skip') {
+    if (verdict === 'pass') {
+        return passMark;
+    }
+
+    if (verdict === 'skip') {
         return skipMark;
     }
 
@@ -88,6 +88,12 @@ function formatRunnerError(error: RunnerError): string {
 function detailLines(result: RunResult): readonly string[] {
     return [
         ...result.perTest.flatMap(function testDetail(testResult) {
+            if (testResult.outcome === null) {
+                const prefix = testResult.verdict === 'resource-exhausted' ? 'Resource exhausted' : 'Crashed';
+
+                return [ `${prefix}: ${formatCaseId(testResult.id)}` ];
+            }
+
             const detail = outcomeDetail(testResult.outcome);
 
             if (detail === null || testResult.outcome.kind === 'skip') {
@@ -132,7 +138,7 @@ export function createDotReporter(dependencies: DotReporterDependencies): RealTi
 
         async onEvent(event: ReporterEvent) {
             if (event.kind === 'test-end') {
-                progress.writeMark(markForOutcome(event.outcome));
+                progress.writeMark(markForVerdict(event.verdict));
             } else if (event.kind === 'runner-error') {
                 if (finished) {
                     writeLine(formatRunnerError(event.error));

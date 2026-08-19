@@ -1,16 +1,24 @@
 import type { WallClock } from '@enormora/wall-clock';
-import { runTestCase } from './case-execution.ts';
 import { createRunResult } from './execution-result.ts';
+import {
+    createExecutionSupervision,
+    executeCaseBody,
+    recordResourceUsageSample,
+    type ConcurrentCase,
+    type ExecuteResourceBudgets,
+    type ExecuteTimeoutPolicy,
+    type ExecutionSupervision
+} from './execution-supervision.ts';
 import { createPlainOutputRenderer, type OutputRenderer } from './reporter-output.ts';
 import type { ReporterDispatcher } from './reporter-dispatcher.ts';
 import { type Reporter, type RunFacts, validateReporterSinks } from './reporter.ts';
 import { createReporterEventQueue, type ReporterEventQueue } from './reporter-event-queue.ts';
-import {
-    verdictFromOutcome,
-    type PerTestResult,
-    type RunResourceUsageTracker,
-    type RunResult,
-    type RunnerError
+import type {
+    PerTestResult,
+    ResourceUsageSnapshot,
+    RunResourceUsageTracker,
+    RunResult,
+    RunnerError
 } from './run-result.ts';
 import type { TestPlan, TestPlanCase } from './test-plan.ts';
 
@@ -22,9 +30,11 @@ export type ExecuteOptions = {
     readonly execution: ExecuteExecution;
     readonly outputRenderer?: OutputRenderer;
     readonly reporters: readonly Reporter[];
+    readonly resourceBudgets?: ExecuteResourceBudgets | null;
     readonly resourceUsageTracker?: RunResourceUsageTracker | null;
     readonly runFacts: RunFacts;
     readonly startedAt: string;
+    readonly timeoutPolicy?: ExecuteTimeoutPolicy | null;
 };
 
 type NormalizedExecuteOptions = ExecuteOptions & {
@@ -53,14 +63,10 @@ type ReportedCase = {
     readonly result: PerTestResult;
 };
 
-type ConcurrentCase = {
-    readonly result: PerTestResult;
-    readonly wallTimeMs: number;
-};
-
 type ConcurrentCaseExecution = {
     readonly endReporterErrors: readonly RunnerError[];
     readonly perTest: readonly PerTestResult[];
+    readonly runnerErrors: readonly RunnerError[];
 };
 
 type ReportTestEndInput = {
@@ -68,6 +74,22 @@ type ReportTestEndInput = {
     readonly result: PerTestResult;
     readonly testCase: TestPlanCase;
     readonly wallTimeMs: number;
+};
+
+type ExecuteCaseInput = {
+    readonly attempt: number;
+    readonly context: ExecutionReportingContext;
+    readonly options: NormalizedExecuteOptions;
+    readonly supervision: ExecutionSupervision;
+    readonly testCase: TestPlanCase;
+};
+
+type ExecuteConcurrentCasesInput = {
+    readonly dependencies: ExecutionDependencies;
+    readonly options: NormalizedExecuteOptions;
+    readonly reportQueue: ReporterEventQueue;
+    readonly supervision: ExecutionSupervision;
+    readonly testPlan: TestPlan;
 };
 
 type ExecutionDependencies = {
@@ -111,21 +133,22 @@ async function reportTestEnd(
     }, context.outputRenderer);
 }
 
-async function executeCase(
-    testCase: TestPlanCase,
-    attempt: number,
-    context: ExecutionReportingContext
-): Promise<ReportedCase> {
-    const startErrors = await reportTestStart(testCase, attempt, context);
-    const executedCase = await runTestCase(testCase, context.dependencies.wallClock);
+async function executeCase(input: ExecuteCaseInput): Promise<ReportedCase> {
+    const startErrors = await reportTestStart(input.testCase, input.attempt, input.context);
+    const executedCase = await executeCaseBody(
+        input.testCase,
+        input.options.timeoutPolicy,
+        input.supervision,
+        input.context.dependencies
+    );
     const endErrors = await reportTestEnd(
         {
-            attempt,
+            attempt: input.attempt,
             result: executedCase.result,
-            testCase,
+            testCase: input.testCase,
             wallTimeMs: executedCase.wallTimeMs
         },
-        context
+        input.context
     );
 
     return {
@@ -178,9 +201,9 @@ async function reportSuiteTransition(
 
 async function executeTestPlanCases(
     testPlan: TestPlan,
-    reporters: readonly Reporter[],
-    outputRenderer: OutputRenderer,
-    dependencies: ExecutionDependencies
+    options: NormalizedExecuteOptions,
+    dependencies: ExecutionDependencies,
+    supervision: ExecutionSupervision
 ): Promise<ExecutedTestPlan> {
     let perTest: readonly PerTestResult[] = [];
     let reporterErrors: readonly RunnerError[] = [];
@@ -188,13 +211,19 @@ async function executeTestPlanCases(
 
     for (const testCase of testPlan.cases) {
         const suiteErrors = await reportSuiteTransition(
-            { dependencies, outputRenderer, reporters },
+            { dependencies, outputRenderer: options.outputRenderer, reporters: options.reporters },
             currentSuitePath,
             testCase.suitePath
         );
         currentSuitePath = testCase.suitePath;
 
-        const testRun = await executeCase(testCase, 0, { dependencies, outputRenderer, reporters });
+        const testRun = await executeCase({
+            attempt: 0,
+            context: { dependencies, outputRenderer: options.outputRenderer, reporters: options.reporters },
+            options,
+            supervision,
+            testCase
+        });
         reporterErrors = [ ...reporterErrors, ...suiteErrors, ...testRun.reporterErrors ];
         perTest = [ ...perTest, testRun.result ];
     }
@@ -203,49 +232,14 @@ async function executeTestPlanCases(
         perTest,
         reporterErrors: [
             ...reporterErrors,
-            ...await reportSuiteTransition({ dependencies, outputRenderer, reporters }, currentSuitePath, [])
+            ...supervision.runnerErrors,
+            ...await reportSuiteTransition(
+                { dependencies, outputRenderer: options.outputRenderer, reporters: options.reporters },
+                currentSuitePath,
+                []
+            )
         ]
     };
-}
-
-function describeUnexpectedCaseError(error: unknown): string {
-    if (error instanceof Error) {
-        return error.message;
-    }
-
-    return 'Unknown test execution error.';
-}
-
-function createInconclusiveCaseResult(testCase: TestPlanCase, error: unknown): PerTestResult {
-    const outcome = {
-        kind: 'inconclusive',
-        reason: `Test execution failed before producing a result: ${describeUnexpectedCaseError(error)}`
-    } as const;
-
-    return {
-        id: testCase.id,
-        outcome,
-        verdict: verdictFromOutcome(outcome)
-    };
-}
-
-async function executeConcurrentCaseBody(
-    testCase: TestPlanCase,
-    dependencies: ExecutionDependencies
-): Promise<ConcurrentCase> {
-    try {
-        const executedCase = await runTestCase(testCase, dependencies.wallClock);
-
-        return {
-            result: executedCase.result,
-            wallTimeMs: executedCase.wallTimeMs
-        };
-    } catch (error: unknown) {
-        return {
-            result: createInconclusiveCaseResult(testCase, error),
-            wallTimeMs: 0
-        };
-    }
 }
 
 async function reportConcurrentCaseStarts(
@@ -294,15 +288,16 @@ async function reportConcurrentCaseEnd(
     });
 }
 
-async function executeConcurrentCases(
-    testPlan: TestPlan,
-    reportQueue: ReporterEventQueue,
-    dependencies: ExecutionDependencies
-): Promise<ConcurrentCaseExecution> {
+async function executeConcurrentCases(input: ExecuteConcurrentCasesInput): Promise<ConcurrentCaseExecution> {
     const endReporterErrors: RunnerError[] = [];
-    const caseExecutions = testPlan.cases.map(async function executeCaseConcurrently(testCase) {
-        const executedCase = await executeConcurrentCaseBody(testCase, dependencies);
-        endReporterErrors.push(...await reportConcurrentCaseEnd(testCase, executedCase, reportQueue));
+    const caseExecutions = input.testPlan.cases.map(async function executeCaseConcurrently(testCase) {
+        const executedCase = await executeCaseBody(
+            testCase,
+            input.options.timeoutPolicy,
+            input.supervision,
+            input.dependencies
+        );
+        endReporterErrors.push(...await reportConcurrentCaseEnd(testCase, executedCase, input.reportQueue));
 
         return executedCase;
     });
@@ -312,44 +307,83 @@ async function executeConcurrentCases(
         endReporterErrors,
         perTest: executedCases.map(function toPerTest(executedCase) {
             return executedCase.result;
-        })
+        }),
+        runnerErrors: input.supervision.runnerErrors
     };
 }
 
 async function executeConcurrentTestPlanCases(
     testPlan: TestPlan,
-    reporters: readonly Reporter[],
-    outputRenderer: OutputRenderer,
-    dependencies: ExecutionDependencies
+    options: NormalizedExecuteOptions,
+    dependencies: ExecutionDependencies,
+    supervision: ExecutionSupervision
 ): Promise<ExecutedTestPlan> {
-    const reporterErrors = await reportConcurrentCaseStarts(testPlan, reporters, outputRenderer, dependencies);
-    const concurrentCaseExecution = await executeConcurrentCases(
+    const reporterErrors = await reportConcurrentCaseStarts(
         testPlan,
-        createReporterEventQueue(reporters, outputRenderer, dependencies),
+        options.reporters,
+        options.outputRenderer,
         dependencies
     );
+    const concurrentCaseExecution = await executeConcurrentCases({
+        dependencies,
+        options,
+        reportQueue: createReporterEventQueue(options.reporters, options.outputRenderer, dependencies),
+        supervision,
+        testPlan
+    });
 
     return {
         perTest: concurrentCaseExecution.perTest,
-        reporterErrors: [ ...reporterErrors, ...concurrentCaseExecution.endReporterErrors ]
+        reporterErrors: [
+            ...reporterErrors,
+            ...concurrentCaseExecution.runnerErrors,
+            ...concurrentCaseExecution.endReporterErrors
+        ]
     };
 }
 
 async function executeTestPlanCasesWithMode(
     testPlan: TestPlan,
     options: NormalizedExecuteOptions,
-    dependencies: ExecutionDependencies
+    dependencies: ExecutionDependencies,
+    supervision: ExecutionSupervision
 ): Promise<ExecutedTestPlan> {
     if (options.execution.mode === 'concurrent-in-process') {
         return await executeConcurrentTestPlanCases(
             testPlan,
-            options.reporters,
-            options.outputRenderer,
-            dependencies
+            options,
+            dependencies,
+            supervision
         );
     }
 
-    return await executeTestPlanCases(testPlan, options.reporters, options.outputRenderer, dependencies);
+    return await executeTestPlanCases(testPlan, options, dependencies, supervision);
+}
+
+function startResourceUsageTracking(
+    options: NormalizedExecuteOptions,
+    supervision: ExecutionSupervision,
+    dependencies: ExecutionDependencies
+): void {
+    let previousSample: ResourceUsageSnapshot | null = null;
+    let breached = false;
+
+    options.resourceUsageTracker?.start(function observeResourceUsage(sample) {
+        if (breached) {
+            previousSample = sample;
+            return;
+        }
+
+        const breachedNow = recordResourceUsageSample({
+            budgets: options.resourceBudgets,
+            dependencies,
+            previousSample,
+            sample,
+            supervision
+        });
+        previousSample = sample;
+        breached = breachedNow;
+    });
 }
 
 async function executeTestPlanCasesAndMeasureResourceUsage(
@@ -357,17 +391,19 @@ async function executeTestPlanCasesAndMeasureResourceUsage(
     options: NormalizedExecuteOptions,
     dependencies: ExecutionDependencies
 ): Promise<ExecutedTestPlanWithResourceUsage> {
+    const supervision = createExecutionSupervision();
+
     if (options.resourceUsageTracker === null || options.resourceUsageTracker === undefined) {
         return {
-            executedTestPlan: await executeTestPlanCasesWithMode(testPlan, options, dependencies),
+            executedTestPlan: await executeTestPlanCasesWithMode(testPlan, options, dependencies, supervision),
             resourceUsage: null
         };
     }
 
-    options.resourceUsageTracker.start();
+    startResourceUsageTracking(options, supervision, dependencies);
 
     try {
-        const executedTestPlan = await executeTestPlanCasesWithMode(testPlan, options, dependencies);
+        const executedTestPlan = await executeTestPlanCasesWithMode(testPlan, options, dependencies, supervision);
 
         return {
             executedTestPlan,
@@ -395,7 +431,9 @@ function executeOptionsWithDefaults(options: ExecuteOptions | undefined): Normal
     if (options !== undefined) {
         return {
             ...options,
-            outputRenderer: options.outputRenderer ?? createPlainOutputRenderer()
+            outputRenderer: options.outputRenderer ?? createPlainOutputRenderer(),
+            resourceBudgets: options.resourceBudgets ?? null,
+            timeoutPolicy: options.timeoutPolicy ?? null
         };
     }
 
@@ -403,9 +441,11 @@ function executeOptionsWithDefaults(options: ExecuteOptions | undefined): Normal
         execution: { mode: 'serial-in-process' },
         outputRenderer: createPlainOutputRenderer(),
         reporters: [],
+        resourceBudgets: null,
         resourceUsageTracker: null,
         runFacts: {},
-        startedAt: epoch.toISOString()
+        startedAt: epoch.toISOString(),
+        timeoutPolicy: null
     };
 }
 

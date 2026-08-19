@@ -21,6 +21,7 @@ import type { LoadedRunConfig } from '../../run/run-config.ts';
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const duplicateFixtureAPath = 'source/integration-tests/run/fixtures/duplicate-a.test.ts';
 const duplicateFixtureBPath = 'source/integration-tests/run/fixtures/duplicate-b.test.ts';
+const endlessLoopFixturePath = 'source/integration-tests/run/fixtures/endless-loop.test.ts';
 const emptySuiteFixturePath = 'source/integration-tests/run/fixtures/empty-suite.test.ts';
 const missingTestNodeFixturePath = 'source/integration-tests/run/fixtures/missing-test-node.test.ts';
 const plainTestNodeFixturePath = 'source/integration-tests/run/fixtures/plain-test-node.test.ts';
@@ -46,6 +47,7 @@ const defaultConfig: RunConfig = {
     },
     profiles: {
         microtest: {
+            hardTimeoutMilliseconds: 1000,
             measureResourceUsage: false,
             resourceBudgets: {
                 activeResourceCount: null,
@@ -53,7 +55,20 @@ const defaultConfig: RunConfig = {
                 residentSetBytes: null,
                 residentSetGrowthBytesPerSecond: null
             },
-            resourceUsageSamplingIntervalMilliseconds: 100
+            resourceUsageSamplingIntervalMilliseconds: 100,
+            timeoutMilliseconds: 500
+        },
+        microtestSupervised: {
+            hardTimeoutMilliseconds: 1000,
+            measureResourceUsage: false,
+            resourceBudgets: {
+                activeResourceCount: null,
+                javaScriptEngineHeapBytes: null,
+                residentSetBytes: null,
+                residentSetGrowthBytesPerSecond: null
+            },
+            resourceUsageSamplingIntervalMilliseconds: 100,
+            timeoutMilliseconds: 500
         }
     },
     reporters: [],
@@ -66,7 +81,7 @@ function createRunRequest(paths: readonly string[]): RunRequest {
         capture: 'buffered',
         coverage: false,
         debug: { mode: 'off', selectors: [] },
-        execution: { mode: 'concurrent-in-process' },
+        execution: { mode: 'profile-default' },
         measureResourceUsage: null,
         order: 'plan',
         paths,
@@ -93,6 +108,18 @@ function createRunCommand(paths: readonly string[]): RunCommand {
         cwd: process.cwd(),
         engine: null,
         request: createRunRequest(paths)
+    };
+}
+
+function createSupervisedRunCommand(paths: readonly string[], config: RunConfig): RunCommand {
+    return {
+        config,
+        cwd: process.cwd(),
+        engine: null,
+        request: {
+            ...createRunRequest(paths),
+            profile: 'microtest-supervised'
+        }
     };
 }
 
@@ -137,6 +164,10 @@ function selectedEngineDiagnostic(path: string): string {
     return `Overkill argument error: Test module testNode must be created by the selected engine: ${path}`;
 }
 
+function plainData(value: unknown): unknown {
+    return structuredClone(value);
+}
+
 export const testSuite = createSuite({
     name: 'source/integration-tests/run/runner-explicit-files.test.ts',
     metadata: {},
@@ -155,12 +186,88 @@ export const testSuite = createSuite({
                     suite: [ 'fixture' ]
                 });
                 scope.assert.deepEqual(result.summary, {
+                    crashed: 0,
                     defined: 2,
                     discovered: 1,
                     failed: 0,
                     inconclusive: 0,
                     passed: 1,
                     planned: 1,
+                    resourceExhausted: 0,
+                    skipped: 0
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            name: 'runner executes a supervised microtest in a child process',
+            metadata: {},
+            async body(scope: TestScope) {
+                const result = await orchestrator.run(
+                    createSupervisedRunCommand([ passingFixturePath ], createRunConfig())
+                );
+
+                scope.assert.deepEqual(result.summary, {
+                    crashed: 0,
+                    defined: 2,
+                    discovered: 1,
+                    failed: 0,
+                    inconclusive: 0,
+                    passed: 1,
+                    planned: 1,
+                    resourceExhausted: 0,
+                    skipped: 0
+                });
+                scope.assert.equal(result.runnerErrors.length, 0);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            name: 'runner kills a supervised microtest that blocks past hard timeout',
+            metadata: {},
+            async body(scope: TestScope) {
+                const result = await orchestrator.run(createSupervisedRunCommand(
+                    [ endlessLoopFixturePath ],
+                    {
+                        ...createRunConfig(),
+                        profiles: {
+                            microtest: defaultConfig.profiles.microtest,
+                            microtestSupervised: {
+                                hardTimeoutMilliseconds: 50,
+                                measureResourceUsage: false,
+                                resourceBudgets: {
+                                    activeResourceCount: null,
+                                    javaScriptEngineHeapBytes: null,
+                                    residentSetBytes: null,
+                                    residentSetGrowthBytesPerSecond: null
+                                },
+                                resourceUsageSamplingIntervalMilliseconds: 100,
+                                timeoutMilliseconds: 10
+                            }
+                        }
+                    }
+                ));
+                const error = result.runnerErrors[0];
+
+                scope.require.defined(error);
+                scope.assert.equal(error.subtype, 'crash');
+                scope.assert.deepEqual(plainData(error.attributedTo), {
+                    file: endlessLoopFixturePath,
+                    name: 'loops',
+                    params: null,
+                    suite: []
+                });
+                scope.assert.deepEqual(result.summary, {
+                    crashed: 1,
+                    defined: 1,
+                    discovered: 1,
+                    failed: 0,
+                    inconclusive: 0,
+                    passed: 0,
+                    planned: 1,
+                    resourceExhausted: 0,
                     skipped: 0
                 });
 
