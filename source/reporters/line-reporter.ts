@@ -2,7 +2,7 @@ import figures from 'figures';
 import colors from 'yoctocolors';
 import type { CaseId } from '../engine/identity.ts';
 import type { RealTimeReporter, ReporterEvent } from '../engine/reporter.ts';
-import type { FailOutcome, OrphanedNode, RunResult, TestOutcome } from '../engine/run-result.ts';
+import type { FailOutcome, OrphanedNode, RunResult, TestOutcome, TestVerdict } from '../engine/run-result.ts';
 import { formatFailure } from './line-failure-rendering.ts';
 import { createTerminalLineLogger, type TerminalLineLogger } from './terminal.ts';
 
@@ -54,6 +54,16 @@ function formatTestResult(id: CaseId, outcome: TestOutcome, wallTimeMs: number):
     return [ infoSymbol, message ];
 }
 
+function formatTerminalTestResult(id: CaseId, verdict: TestVerdict, wallTimeMs: number): readonly [string, string] {
+    const message = `${formatCaseName(id)} (${formatDuration(wallTimeMs)})`;
+
+    if (verdict === 'resource-exhausted') {
+        return [ errorSymbol, `${message}: resource exhausted` ];
+    }
+
+    return [ errorSymbol, `${message}: crashed` ];
+}
+
 function formatSuiteName(event: Extract<ReporterEvent, { readonly kind: 'suite-start'; }>): string {
     return event.suitePath.reduce(function selectLastSuiteName(_previous, suiteName) {
         return suiteName;
@@ -78,19 +88,15 @@ function logFailures(
 
 function logSummary(terminal: TerminalLineLogger, result: RunResult): void {
     const { summary } = result;
-    const crashCount = result
-        .runnerErrors
-        .filter(function isCrash(error) {
-            return error.subtype === 'crash';
-        })
-        .length;
-    const executed = summary.passed + summary.failed + summary.skipped + summary.inconclusive + crashCount;
+    const executed = summary.passed + summary.failed + summary.skipped + summary.inconclusive +
+        summary.crashed + summary.resourceExhausted;
     const outcomes = [
         `${summary.passed} pass`,
         `${summary.failed} fail`,
         `${summary.skipped} skip`,
         ...summary.inconclusive === 0 ? [] : [ `${summary.inconclusive} inconclusive` ],
-        ...crashCount === 0 ? [] : [ `${crashCount} crash` ]
+        ...summary.resourceExhausted === 0 ? [] : [ `${summary.resourceExhausted} resource-exhausted` ],
+        ...summary.crashed === 0 ? [] : [ `${summary.crashed} crash` ]
     ]
         .join(', ');
     const orphanSummary = result.orphans.length === 0 ? '' : `, ${result.orphans.length} orphaned`;
@@ -118,10 +124,12 @@ export function createLineReporter(dependencies: LineReporterDependencies): Real
     let suiteDepth = 0;
 
     function logTestEnd(event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>): void {
-        const [ symbol, message ] = formatTestResult(event.case, event.outcome, event.wallTimeMs);
+        const [ symbol, message ] = event.outcome === null
+            ? formatTerminalTestResult(event.case, event.verdict, event.wallTimeMs)
+            : formatTestResult(event.case, event.outcome, event.wallTimeMs);
 
         terminal.line(symbol, `${indent(suiteDepth)}${message}`);
-        if (event.outcome.kind === 'fail') {
+        if (event.outcome?.kind === 'fail') {
             logFailures(terminal, suiteDepth, event.outcome);
         }
     }

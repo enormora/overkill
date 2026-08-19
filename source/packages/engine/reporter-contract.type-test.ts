@@ -20,9 +20,11 @@ type ExecuteOptionKeyByName = {
     readonly execution: true;
     readonly outputRenderer: true;
     readonly reporters: true;
+    readonly resourceBudgets: true;
     readonly resourceUsageTracker: true;
     readonly runFacts: true;
     readonly startedAt: true;
+    readonly timeoutPolicy: true;
 };
 
 type ExpectedExecuteOptionKey = keyof ExecuteOptionKeyByName;

@@ -8,11 +8,7 @@ import type {
 
 const millisecondsPerSecond = 1000;
 
-type ResourceUsageSample = {
-    readonly capturedAtMilliseconds: number;
-    readonly javaScriptEngineHeapBytes: number;
-    readonly residentSetBytes: number;
-};
+type ResourceUsageSample = ResourceUsageSnapshot;
 
 type ResourceUsageTrackerDependencies = {
     readonly readActiveResourceTypes: () => readonly string[];
@@ -32,23 +28,14 @@ function sortedUnique(values: readonly string[]): readonly string[] {
 }
 
 function readResourceUsageSample(dependencies: ResourceUsageTrackerDependencies): ResourceUsageSample {
-    return {
-        capturedAtMilliseconds: dependencies.wallClock.currentTimestampInMilliseconds,
-        javaScriptEngineHeapBytes: dependencies.readJavaScriptEngineHeapBytes(),
-        residentSetBytes: dependencies.readResidentSetBytes()
-    };
-}
-
-function readResourceUsageSnapshot(dependencies: ResourceUsageTrackerDependencies): ResourceUsageSnapshot {
-    const sample = readResourceUsageSample(dependencies);
     const activeResourceTypes = dependencies.readActiveResourceTypes();
 
     return {
         activeResourceCount: activeResourceTypes.length,
         activeResourceTypes: sortedUnique(activeResourceTypes),
-        capturedAtMilliseconds: sample.capturedAtMilliseconds,
-        javaScriptEngineHeapBytes: sample.javaScriptEngineHeapBytes,
-        residentSetBytes: sample.residentSetBytes
+        capturedAtMilliseconds: dependencies.wallClock.currentTimestampInMilliseconds,
+        javaScriptEngineHeapBytes: dependencies.readJavaScriptEngineHeapBytes(),
+        residentSetBytes: dependencies.readResidentSetBytes()
     };
 }
 
@@ -98,9 +85,16 @@ function createResourceUsage(
     samples: readonly ResourceUsageSample[]
 ): RunResourceUsage {
     return {
-        activeResourceTypes: sortedUnique([ ...start.activeResourceTypes, ...end.activeResourceTypes ]),
+        activeResourceTypes: sortedUnique(samples.flatMap(function toActiveResourceTypes(sample) {
+            return sample.activeResourceTypes;
+        })),
         end,
-        peakActiveResourceCount: Math.max(start.activeResourceCount, end.activeResourceCount),
+        peakActiveResourceCount: maximumSampleValue(
+            samples,
+            function readActiveResourceCount(sample) {
+                return sample.activeResourceCount;
+            }
+        ),
         peakJavaScriptEngineHeapBytes: maximumSampleValue(
             samples,
             function readJavaScriptEngineHeapBytes(sample) {
@@ -138,20 +132,23 @@ export function createResourceUsageTracker(
                 intervalIdentifier = null;
             }
 
-            const endSnapshot = readResourceUsageSnapshot(dependencies);
+            const endSnapshot = readResourceUsageSample(dependencies);
             samples = [ ...samples, endSnapshot ];
 
             return createResourceUsage(startSnapshot, endSnapshot, samples);
         },
-        start() {
+        start(onSample) {
             if (startSnapshot !== null) {
                 throw new Error('Resource usage tracking already started.');
             }
 
-            startSnapshot = readResourceUsageSnapshot(dependencies);
+            startSnapshot = readResourceUsageSample(dependencies);
             samples = [ startSnapshot ];
+            onSample?.(startSnapshot);
             intervalIdentifier = dependencies.wallClock.setInterval(function collectResourceUsageSample() {
-                samples = [ ...samples, readResourceUsageSample(dependencies) ];
+                const sample = readResourceUsageSample(dependencies);
+                samples = [ ...samples, sample ];
+                onSample?.(sample);
             }, options.samplingIntervalMilliseconds);
         }
     };

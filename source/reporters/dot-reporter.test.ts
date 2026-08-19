@@ -63,7 +63,7 @@ async function reportTestEnd(
         case: id,
         kind: 'test-end',
         outcome,
-        verdict: outcome.kind,
+        verdict: outcome?.kind ?? 'crashed',
         wallTimeMs: 1
     });
 }

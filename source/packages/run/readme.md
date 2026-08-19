@@ -9,7 +9,6 @@ Top-level API:
 - `RunFacts`
 - `RunResourceBudgets`
 - `RunResourceUsagePolicy`
-- `ResourceBudgetOverrides`
 - `ResolvedRun`
 - `orchestrator.resolve(command)`
 - `orchestrator.run(command)`

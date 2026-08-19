@@ -49,7 +49,7 @@ const foreignFailureAssertion = defineCompositeAssertion({
 function firstFailOutcome(result: RunResult): FailOutcome | null {
     const firstResult = result.perTest.at(0);
 
-    if (firstResult?.outcome.kind === 'fail') {
+    if (firstResult?.outcome?.kind === 'fail') {
         return firstResult.outcome;
     }
 

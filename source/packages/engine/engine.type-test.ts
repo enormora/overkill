@@ -30,12 +30,7 @@ import type {
     ReporterEvent,
     RequireAssertionFacade,
     RequireAssertionNode,
-    ResourceUsageSnapshot,
     ResolvableSourceLocation,
-    RunResourceUsage,
-    RunResourceUsageTracker,
-    RunResult,
-    RunSummary,
     RunnerError,
     SerializationTruncation,
     SerializedValue,
@@ -120,35 +115,12 @@ declare const objectValues: readonly { readonly id: number; }[];
 declare const unknownValue: unknown;
 declare const unknownValues: readonly unknown[];
 
-type OutcomeKind = 'fail' | 'inconclusive' | 'pass' | 'skip';
-type ExpectedRunnerErrorSubtypeByName = {
-    readonly attributionDrift: 'attribution-drift';
-    readonly crash: 'crash';
-    readonly fixture: 'fixture';
-    readonly loader: 'loader';
-    readonly permission: 'permission';
-    readonly reporter: 'reporter';
-    readonly unhandledRejection: 'unhandled-rejection';
-};
-type ExpectedRunnerErrorSubtype = ExpectedRunnerErrorSubtypeByName[keyof ExpectedRunnerErrorSubtypeByName];
-type RunResultKeys = readonly [
-    'artifacts',
-    'bySuite',
-    'orphans',
-    'perTest',
-    'resourceUsage',
-    'runnerErrors',
-    'summary',
-    'wallTimeMs'
-];
-type ExpectedRunResultKey = RunResultKeys[number];
 type CaseIdFixture = {
     readonly file: null;
     readonly name: 'case';
     readonly params: null;
     readonly suite: readonly ['suite'];
 };
-type TestEndReporterEvent = Extract<ReporterEvent, { readonly kind: 'test-end'; }>;
 type TestStartReporterEvent = Extract<ReporterEvent, { readonly kind: 'test-start'; }>;
 type SuiteStartReporterEvent = Extract<ReporterEvent, { readonly kind: 'suite-start'; }>;
 type ExpectedAssertFacadeKeys = keyof {
@@ -483,13 +455,6 @@ describe('Deep assertion operands', function () {
     });
 });
 
-describe('run result verdicts', function () {
-    test('per-test and reporter verdicts accept only outcome kinds', function () {
-        expect<PerTestResult['verdict']>().type.toBe<OutcomeKind>();
-        expect<TestEndReporterEvent['verdict']>().type.toBe<OutcomeKind>();
-    });
-});
-
 describe('CaseId', function () {
     test('accepts structured public identity shapes', function () {
         expect<CaseId>().type.toBeAssignableFrom<CaseIdFixture>();
@@ -509,28 +474,5 @@ describe('CaseId', function () {
             readonly name: 'case';
             readonly suite: readonly ['suite'];
         }>();
-    });
-});
-
-describe('RunSummary', function () {
-    test('includes planned as a public run count', function () {
-        expect<keyof RunSummary>().type.toBe<
-            'defined' | 'discovered' | 'failed' | 'inconclusive' | 'passed' | 'planned' | 'skipped'
-        >();
-    });
-});
-
-describe('RunResult', function () {
-    test('includes resource usage as nullable measured data', function () {
-        expect<keyof RunResult>().type.toBe<ExpectedRunResultKey>();
-        expect<RunResult['resourceUsage']>().type.toBe<RunResourceUsage | null>();
-        expect<RunResourceUsage['start']>().type.toBe<ResourceUsageSnapshot>();
-        expect<RunResourceUsageTracker['finish']>().type.toBe<() => RunResourceUsage>();
-    });
-});
-
-describe('RunnerError', function () {
-    test('subtype is the documented union', function () {
-        expect<RunnerError['subtype']>().type.toBe<ExpectedRunnerErrorSubtype>();
     });
 });

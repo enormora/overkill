@@ -11,7 +11,7 @@ import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createCommandLineRunner, type CommandLineRunnerDependencies } from './command-line-runner.ts';
 import type { LoadedRunConfig } from './run-config.ts';
-import type { RunCommand, RunOrchestrator, RunRequest } from './run.ts';
+import type { RunCommand, RunOrchestrator, RunRequest } from './run-types.ts';
 
 type PlainOutputIntent = {
     readonly text: string;
@@ -47,7 +47,7 @@ const defaultRequest: RunRequest = {
         mode: 'off',
         selectors: []
     },
-    execution: { mode: 'concurrent-in-process' },
+    execution: { mode: 'profile-default' },
     measureResourceUsage: null,
     order: 'plan',
     paths: [],
@@ -67,6 +67,7 @@ function defaultLoadedConfig(): LoadedRunConfig {
         outputRenderer: plainOutputRenderer,
         profiles: {
             microtest: {
+                hardTimeoutMilliseconds: 1000,
                 measureResourceUsage: false,
                 resourceBudgets: {
                     activeResourceCount: null,
@@ -74,7 +75,20 @@ function defaultLoadedConfig(): LoadedRunConfig {
                     residentSetBytes: null,
                     residentSetGrowthBytesPerSecond: null
                 },
-                resourceUsageSamplingIntervalMilliseconds: 100
+                resourceUsageSamplingIntervalMilliseconds: 100,
+                timeoutMilliseconds: 500
+            },
+            microtestSupervised: {
+                hardTimeoutMilliseconds: 1000,
+                measureResourceUsage: false,
+                resourceBudgets: {
+                    activeResourceCount: null,
+                    javaScriptEngineHeapBytes: null,
+                    residentSetBytes: null,
+                    residentSetGrowthBytesPerSecond: null
+                },
+                resourceUsageSamplingIntervalMilliseconds: 100,
+                timeoutMilliseconds: 500
             }
         },
         reporters: [ terminalReporter ],
@@ -121,6 +135,7 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
         async resolve(command) {
             return {
                 config: command.config,
+                cwd: command.cwd,
                 facts: {
                     cases: [],
                     environment: {
@@ -132,7 +147,7 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
                         capture: command.request.capture,
                         coverage: command.request.coverage,
                         debug: command.request.debug,
-                        mode: command.request.execution.mode,
+                        mode: 'concurrent-in-process',
                         order: command.request.order,
                         profile: command.request.profile,
                         resourceUsagePolicy: command.config.profiles.microtest,
@@ -174,6 +189,7 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
                 ...defaultLoadedConfig(),
                 profiles: {
                     microtest: {
+                        hardTimeoutMilliseconds: 1000,
                         measureResourceUsage: true,
                         resourceBudgets: {
                             activeResourceCount: 2,
@@ -181,8 +197,10 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
                             residentSetBytes: 200,
                             residentSetGrowthBytesPerSecond: null
                         },
-                        resourceUsageSamplingIntervalMilliseconds: 25
-                    }
+                        resourceUsageSamplingIntervalMilliseconds: 25,
+                        timeoutMilliseconds: 500
+                    },
+                    microtestSupervised: defaultLoadedConfig().profiles.microtestSupervised
                 }
             };
         },
@@ -192,6 +210,7 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
 
 function assertResourceUsageCommand(scope: OverkillScope, command: RunCommand): void {
     scope.assert.deepEqual(command.config.profiles.microtest, {
+        hardTimeoutMilliseconds: 1000,
         measureResourceUsage: true,
         resourceBudgets: {
             activeResourceCount: 2,
@@ -199,7 +218,8 @@ function assertResourceUsageCommand(scope: OverkillScope, command: RunCommand): 
             residentSetBytes: 200,
             residentSetGrowthBytesPerSecond: null
         },
-        resourceUsageSamplingIntervalMilliseconds: 25
+        resourceUsageSamplingIntervalMilliseconds: 25,
+        timeoutMilliseconds: 500
     });
     const { resourceBudgetOverrides } = command.request;
 

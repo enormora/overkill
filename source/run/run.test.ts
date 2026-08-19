@@ -5,20 +5,11 @@ import {
     runIfMain,
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
-import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
-import type { RunResourceUsageTracker } from '../engine/run-result.ts';
 import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
-import { createTestEngine } from '../test-support/create-test-engine.ts';
-import { defaultRunEngine } from './default-run-engine.ts';
+import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { RunResolutionError } from './run-errors.ts';
 import { orchestrator } from './run-orchestrator.ts';
-import {
-    createRunOrchestrator,
-    type RunCommand,
-    type RunConfig,
-    type RunRequest,
-    type RunOrchestrator
-} from './run.ts';
+import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
 
 type RunCommandParts = {
     readonly config: RunConfig;
@@ -36,9 +27,14 @@ const defaultConfig: RunConfig = {
         sourceMaps: false,
         stripMode: 'strip-only'
     },
-    outputRenderer: createPlainOutputRenderer(),
+    outputRenderer: {
+        render(intent) {
+            return intent.text;
+        }
+    },
     profiles: {
         microtest: {
+            hardTimeoutMilliseconds: 1000,
             measureResourceUsage: false,
             resourceBudgets: {
                 activeResourceCount: null,
@@ -46,7 +42,20 @@ const defaultConfig: RunConfig = {
                 residentSetBytes: null,
                 residentSetGrowthBytesPerSecond: null
             },
-            resourceUsageSamplingIntervalMilliseconds: 100
+            resourceUsageSamplingIntervalMilliseconds: 100,
+            timeoutMilliseconds: 500
+        },
+        microtestSupervised: {
+            hardTimeoutMilliseconds: 1000,
+            measureResourceUsage: false,
+            resourceBudgets: {
+                activeResourceCount: null,
+                javaScriptEngineHeapBytes: null,
+                residentSetBytes: null,
+                residentSetGrowthBytesPerSecond: null
+            },
+            resourceUsageSamplingIntervalMilliseconds: 100,
+            timeoutMilliseconds: 500
         }
     },
     reporters: [],
@@ -61,7 +70,7 @@ const defaultRequest: RunRequest = {
         mode: 'off',
         selectors: []
     },
-    execution: { mode: 'concurrent-in-process' },
+    execution: { mode: 'profile-default' },
     measureResourceUsage: null,
     order: 'plan',
     paths: [ passingFixturePath ],
@@ -85,57 +94,6 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
         engine: overrides.engine,
         request: overrides.request
     };
-}
-
-function createDeterministicRunOrchestrator(): RunOrchestrator {
-    const engine = createTestEngine();
-
-    return createRunOrchestrator({
-        createResourceUsageTracker(): RunResourceUsageTracker {
-            return {
-                finish() {
-                    return {
-                        activeResourceTypes: [],
-                        end: {
-                            activeResourceCount: 0,
-                            activeResourceTypes: [],
-                            capturedAtMilliseconds: 1,
-                            javaScriptEngineHeapBytes: 2,
-                            residentSetBytes: 3
-                        },
-                        peakActiveResourceCount: 0,
-                        peakJavaScriptEngineHeapBytes: 2,
-                        peakResidentSetBytes: 3,
-                        peakResidentSetGrowthBytesPerSecond: 0,
-                        sampleCount: 2,
-                        start: {
-                            activeResourceCount: 0,
-                            activeResourceTypes: [],
-                            capturedAtMilliseconds: 0,
-                            javaScriptEngineHeapBytes: 1,
-                            residentSetBytes: 2
-                        }
-                    };
-                },
-                start() {
-                    return undefined;
-                }
-            };
-        },
-        createSeed() {
-            return 99n;
-        },
-        defaultEngine: defaultRunEngine,
-        execute: engine.execute,
-        node: {
-            arch: 'x64',
-            platform: 'linux',
-            version: '26.1.1'
-        },
-        readStartedAt() {
-            return '2026-07-15T12:30:00.000Z';
-        }
-    });
 }
 
 export const testSuite = createOverkillSuite({
@@ -200,6 +158,7 @@ export const testSuite = createOverkillSuite({
                         order: 'plan',
                         profile: 'microtest',
                         resourceUsagePolicy: {
+                            hardTimeoutMilliseconds: 1000,
                             measureResourceUsage: false,
                             resourceBudgets: {
                                 activeResourceCount: null,
@@ -207,7 +166,8 @@ export const testSuite = createOverkillSuite({
                                 residentSetBytes: null,
                                 residentSetGrowthBytesPerSecond: null
                             },
-                            resourceUsageSamplingIntervalMilliseconds: 100
+                            resourceUsageSamplingIntervalMilliseconds: 100,
+                            timeoutMilliseconds: 500
                         },
                         verbose: false
                     },
@@ -366,6 +326,7 @@ export const testSuite = createOverkillSuite({
                         order: 'plan',
                         profile: 'microtest',
                         resourceUsagePolicy: {
+                            hardTimeoutMilliseconds: 1000,
                             measureResourceUsage: false,
                             resourceBudgets: {
                                 activeResourceCount: null,
@@ -373,7 +334,8 @@ export const testSuite = createOverkillSuite({
                                 residentSetBytes: null,
                                 residentSetGrowthBytesPerSecond: null
                             },
-                            resourceUsageSamplingIntervalMilliseconds: 100
+                            resourceUsageSamplingIntervalMilliseconds: 100,
+                            timeoutMilliseconds: 500
                         },
                         verbose: false
                     },
@@ -384,12 +346,45 @@ export const testSuite = createOverkillSuite({
                     }
                 });
                 scope.assert.deepEqual(result.summary, {
+                    crashed: 0,
                     defined: 2,
                     discovered: 1,
                     failed: 0,
                     inconclusive: 0,
                     passed: 1,
                     planned: 1,
+                    resourceExhausted: 0,
+                    skipped: 0
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'orchestrator.run() executes the supervised profile in a child process',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const runOrchestrator = createDeterministicRunOrchestrator();
+                const result = await runOrchestrator.run(createRunCommand({
+                    config: defaultConfig,
+                    cwd: process.cwd(),
+                    engine: null,
+                    request: {
+                        ...defaultRequest,
+                        profile: 'microtest-supervised'
+                    }
+                }));
+
+                scope.assert.deepEqual(result.runnerErrors, []);
+                scope.assert.deepEqual(result.summary, {
+                    crashed: 0,
+                    defined: 2,
+                    discovered: 1,
+                    failed: 0,
+                    inconclusive: 0,
+                    passed: 1,
+                    planned: 1,
+                    resourceExhausted: 0,
                     skipped: 0
                 });
 
@@ -421,12 +416,14 @@ export const testSuite = createOverkillSuite({
                 }));
 
                 scope.assert.deepEqual(importFailureResult.summary, {
+                    crashed: 0,
                     defined: 0,
                     discovered: 0,
                     failed: 0,
                     inconclusive: 0,
                     passed: 0,
                     planned: 0,
+                    resourceExhausted: 0,
                     skipped: 0
                 });
                 scope.assert.deepEqual(

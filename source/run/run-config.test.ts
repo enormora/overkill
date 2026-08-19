@@ -38,6 +38,7 @@ export const testSuite = createOverkillSuite({
                 scope.assert.equal(typeof config.outputRenderer.render, 'function');
                 scope.assert.deepEqual(config.profiles, {
                     microtest: {
+                        hardTimeoutMilliseconds: 1000,
                         measureResourceUsage: false,
                         resourceBudgets: {
                             activeResourceCount: null,
@@ -45,7 +46,20 @@ export const testSuite = createOverkillSuite({
                             residentSetBytes: null,
                             residentSetGrowthBytesPerSecond: null
                         },
-                        resourceUsageSamplingIntervalMilliseconds: 100
+                        resourceUsageSamplingIntervalMilliseconds: 100,
+                        timeoutMilliseconds: 500
+                    },
+                    microtestSupervised: {
+                        hardTimeoutMilliseconds: 1000,
+                        measureResourceUsage: false,
+                        resourceBudgets: {
+                            activeResourceCount: null,
+                            javaScriptEngineHeapBytes: null,
+                            residentSetBytes: null,
+                            residentSetGrowthBytesPerSecond: null
+                        },
+                        resourceUsageSamplingIntervalMilliseconds: 100,
+                        timeoutMilliseconds: 500
                     }
                 });
                 scope.assert.equal(config.reporters, null);
@@ -104,6 +118,7 @@ export const testSuite = createOverkillSuite({
                 const config = await loadRunConfig({ configPath: null, cwd });
 
                 scope.assert.deepEqual(config.profiles.microtest, {
+                    hardTimeoutMilliseconds: 1000,
                     measureResourceUsage: true,
                     resourceBudgets: {
                         activeResourceCount: 4,
@@ -111,7 +126,119 @@ export const testSuite = createOverkillSuite({
                         residentSetBytes: 200,
                         residentSetGrowthBytesPerSecond: 50
                     },
-                    resourceUsageSamplingIntervalMilliseconds: 25
+                    resourceUsageSamplingIntervalMilliseconds: 25,
+                    timeoutMilliseconds: 500
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'loadRunConfig() normalizes supervised profile overrides',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const cwd = await createTempFolder();
+                await writeConfig(
+                    cwd,
+                    'overkill.config.js',
+                    `export default {
+                        profiles: {
+                            microtest: {
+                                measureResourceUsage: true,
+                                resourceUsageSamplingIntervalMilliseconds: 25
+                            },
+                            microtestSupervised: {
+                                hardTimeoutMilliseconds: 2000,
+                                measureResourceUsage: true,
+                                resourceBudgets: {
+                                    residentSetBytes: null
+                                }
+                            }
+                        }
+                    };`
+                );
+                const config = await loadRunConfig({ configPath: null, cwd });
+
+                scope.assert.deepEqual(config.profiles.microtestSupervised, {
+                    hardTimeoutMilliseconds: 2000,
+                    measureResourceUsage: true,
+                    resourceBudgets: {
+                        activeResourceCount: null,
+                        javaScriptEngineHeapBytes: null,
+                        residentSetBytes: null,
+                        residentSetGrowthBytesPerSecond: null
+                    },
+                    resourceUsageSamplingIntervalMilliseconds: 25,
+                    timeoutMilliseconds: 500
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'loadRunConfig() normalizes unmeasured supervised profile overrides',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const cwd = await createTempFolder();
+                await writeConfig(
+                    cwd,
+                    'overkill.config.js',
+                    `export default {
+                        profiles: {
+                            microtestSupervised: {
+                                hardTimeoutMilliseconds: 2000,
+                                timeoutMilliseconds: 300
+                            }
+                        }
+                    };`
+                );
+                const config = await loadRunConfig({ configPath: null, cwd });
+
+                scope.assert.deepEqual(config.profiles.microtestSupervised, {
+                    hardTimeoutMilliseconds: 2000,
+                    measureResourceUsage: false,
+                    resourceBudgets: {
+                        activeResourceCount: null,
+                        javaScriptEngineHeapBytes: null,
+                        residentSetBytes: null,
+                        residentSetGrowthBytesPerSecond: null
+                    },
+                    resourceUsageSamplingIntervalMilliseconds: 100,
+                    timeoutMilliseconds: 300
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'loadRunConfig() inherits unmeasured supervised profile timeouts',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const cwd = await createTempFolder();
+                await writeConfig(
+                    cwd,
+                    'overkill.config.js',
+                    `export default {
+                        profiles: {
+                            microtestSupervised: {
+                                measureResourceUsage: false
+                            }
+                        }
+                    };`
+                );
+                const config = await loadRunConfig({ configPath: null, cwd });
+
+                scope.assert.deepEqual(config.profiles.microtestSupervised, {
+                    hardTimeoutMilliseconds: 1000,
+                    measureResourceUsage: false,
+                    resourceBudgets: {
+                        activeResourceCount: null,
+                        javaScriptEngineHeapBytes: null,
+                        residentSetBytes: null,
+                        residentSetGrowthBytesPerSecond: null
+                    },
+                    resourceUsageSamplingIntervalMilliseconds: 100,
+                    timeoutMilliseconds: 500
                 });
 
                 return scope.assert.collect();
@@ -253,7 +380,7 @@ export const testSuite = createOverkillSuite({
                 await scope.assert.rejects(async function loadInvalidConfig() {
                     await loadRunConfig({ configPath: null, cwd });
                 }, {
-                    message: /array must contain at least 1 element/
+                    message: /at reporters\[0\]: Invalid input/
                 });
 
                 return scope.assert.collect();

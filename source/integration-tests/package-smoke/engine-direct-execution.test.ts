@@ -52,7 +52,7 @@ function plainDataShape(value: unknown): unknown {
 function failedAssertionLocation(result: RunResult): SourceLocation | null {
     const failedResult = result.perTest.at(1);
 
-    if (failedResult?.outcome.kind !== 'fail') {
+    if (failedResult?.outcome?.kind !== 'fail') {
         return null;
     }
 

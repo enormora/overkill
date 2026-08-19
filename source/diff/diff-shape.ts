@@ -10,9 +10,14 @@ type IndexPathSegment = {
     readonly kind: 'index';
 };
 
-type MapPathSegment = {
+type MapKeyPathSegment = {
     readonly key: SerializedValue;
-    readonly kind: 'map-key' | 'map-value';
+    readonly kind: 'map-key';
+};
+
+type MapValuePathSegment = {
+    readonly key: SerializedValue;
+    readonly kind: 'map-value';
 };
 
 type PropertyPathSegment = {
@@ -26,6 +31,8 @@ type SetValuePathSegment = {
 };
 
 type IndexedPathSegment = BytePathSegment | IndexPathSegment;
+
+type MapPathSegment = MapKeyPathSegment | MapValuePathSegment;
 
 type KeyedPathSegment = MapPathSegment | PropertyPathSegment | SetValuePathSegment;
 

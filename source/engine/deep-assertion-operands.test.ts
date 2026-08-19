@@ -21,7 +21,7 @@ const failOutcome = defineNarrowingCompositeAssertion<TestOutcome, FailOutcome, 
 });
 
 function firstOutcome(result: RunResult): TestOutcome | undefined {
-    return result.perTest.at(0)?.outcome;
+    return result.perTest.at(0)?.outcome ?? undefined;
 }
 
 async function executeSingleBody(body: TestBody): Promise<RunResult> {

@@ -170,8 +170,8 @@ export const testSuite = createOverkillSuite({
                     ]
                 });
 
-                scope.assert.equal(runResult.perTest[0]?.outcome.kind, 'fail');
-                scope.assert.equal(runResult.perTest[1]?.outcome.kind, 'fail');
+                scope.assert.equal(runResult.perTest[0]?.outcome?.kind, 'fail');
+                scope.assert.equal(runResult.perTest[1]?.outcome?.kind, 'fail');
 
                 return scope.assert.collect();
             }

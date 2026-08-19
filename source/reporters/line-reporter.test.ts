@@ -468,8 +468,8 @@ export const testSuite = createOverkillSuite({
                 const reporter = lineReporterWithLog(log);
 
                 const runResult: RunResult = runResultFactory.build({
-                    runnerErrors: [ { subtype: 'crash' } ],
                     summary: {
+                        crashed: 1,
                         discovered: 4,
                         failed: 1,
                         inconclusive: 1,

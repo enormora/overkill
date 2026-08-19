@@ -14,7 +14,7 @@ import {
     type CommandLineRunnerDependencies,
     type CommandLineRunnerResult
 } from './command-line-runner.ts';
-import type { RunCommand, RunOrchestrator, RunRequest } from './run.ts';
+import type { RunCommand, RunOrchestrator, RunRequest } from './run-types.ts';
 import { RunResolutionError } from './run-errors.ts';
 import { RunConfigError, type LoadedRunConfig } from './run-config.ts';
 
@@ -58,7 +58,7 @@ const defaultRequest: RunRequest = {
         mode: 'off',
         selectors: []
     },
-    execution: { mode: 'concurrent-in-process' },
+    execution: { mode: 'profile-default' },
     measureResourceUsage: null,
     order: 'plan',
     paths: [],
@@ -78,6 +78,7 @@ function defaultLoadedConfig(reporters: LoadedRunConfig['reporters']): LoadedRun
         outputRenderer: plainOutputRenderer,
         profiles: {
             microtest: {
+                hardTimeoutMilliseconds: 1000,
                 measureResourceUsage: false,
                 resourceBudgets: {
                     activeResourceCount: null,
@@ -85,7 +86,20 @@ function defaultLoadedConfig(reporters: LoadedRunConfig['reporters']): LoadedRun
                     residentSetBytes: null,
                     residentSetGrowthBytesPerSecond: null
                 },
-                resourceUsageSamplingIntervalMilliseconds: 100
+                resourceUsageSamplingIntervalMilliseconds: 100,
+                timeoutMilliseconds: 500
+            },
+            microtestSupervised: {
+                hardTimeoutMilliseconds: 1000,
+                measureResourceUsage: false,
+                resourceBudgets: {
+                    activeResourceCount: null,
+                    javaScriptEngineHeapBytes: null,
+                    residentSetBytes: null,
+                    residentSetGrowthBytesPerSecond: null
+                },
+                resourceUsageSamplingIntervalMilliseconds: 100,
+                timeoutMilliseconds: 500
             }
         },
         reporters,
@@ -121,6 +135,7 @@ function createRunnerDependencies(
         async resolve(command) {
             return {
                 config: command.config,
+                cwd: command.cwd,
                 facts: {
                     cases: [],
                     environment: {
@@ -132,7 +147,7 @@ function createRunnerDependencies(
                         capture: command.request.capture,
                         coverage: command.request.coverage,
                         debug: command.request.debug,
-                        mode: command.request.execution.mode,
+                        mode: 'concurrent-in-process',
                         order: command.request.order,
                         profile: command.request.profile,
                         resourceUsagePolicy: command.config.profiles.microtest,

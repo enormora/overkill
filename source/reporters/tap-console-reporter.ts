@@ -10,9 +10,14 @@ export type TapConsoleReporterDependencies = {
 type TapPoint = {
     readonly id: PerTestResult['id'];
     readonly outcome: PerTestResult['outcome'];
+    readonly verdict: PerTestResult['verdict'];
 };
 
-function statusForOutcome(outcome: TapPoint['outcome']): 'not ok' | 'ok' {
+function statusForOutcome(outcome: TapPoint['outcome'], verdict: TapPoint['verdict']): 'not ok' | 'ok' {
+    if (outcome === null) {
+        return verdict === 'resource-exhausted' || verdict === 'crashed' ? 'not ok' : 'ok';
+    }
+
     if (outcome.kind === 'fail' || outcome.kind === 'inconclusive') {
         return 'not ok';
     }
@@ -21,6 +26,10 @@ function statusForOutcome(outcome: TapPoint['outcome']): 'not ok' | 'ok' {
 }
 
 function diagnosticReason(outcome: TapPoint['outcome']): string | null {
+    if (outcome === null) {
+        return null;
+    }
+
     if (outcome.kind === 'fail') {
         return formatFailureSummary(outcome.failures[0]);
     }
@@ -39,6 +48,10 @@ function formatDiagnostics(outcome: TapPoint['outcome']): string {
 }
 
 function formatDirective(outcome: TapPoint['outcome']): string {
+    if (outcome === null) {
+        return '';
+    }
+
     if (outcome.kind === 'skip') {
         return ` # SKIP ${outcome.reason}`;
     }
@@ -48,7 +61,7 @@ function formatDirective(outcome: TapPoint['outcome']): string {
 
 function formatTapPoint(tapPoint: TapPoint, index: number): string {
     return [
-        `${statusForOutcome(tapPoint.outcome)} ${index + 1} - ${formatCaseId(tapPoint.id)}`,
+        `${statusForOutcome(tapPoint.outcome, tapPoint.verdict)} ${index + 1} - ${formatCaseId(tapPoint.id)}`,
         formatDirective(tapPoint.outcome),
         formatDiagnostics(tapPoint.outcome)
     ]
@@ -58,7 +71,13 @@ function formatTapPoint(tapPoint: TapPoint, index: number): string {
 function formatResultAsTap(testRunResult: RunResult): string {
     const version = 'TAP version 14';
     const plan = `1..${testRunResult.summary.planned}`;
-    const testPoints = testRunResult.perTest.map(formatTapPoint);
+    const testPoints = testRunResult.perTest.map(function toTapPoint(testResult, index) {
+        return formatTapPoint({
+            id: testResult.id,
+            outcome: testResult.outcome,
+            verdict: testResult.verdict
+        }, index);
+    });
 
     return `${version}\n${plan}\n${testPoints.join('\n')}\n`;
 }
@@ -69,7 +88,8 @@ function formatEventAsTapPoint(
 ): string {
     return formatTapPoint({
         id: event.case,
-        outcome: event.outcome
+        outcome: event.outcome,
+        verdict: event.verdict
     }, index);
 }
 

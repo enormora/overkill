@@ -78,14 +78,16 @@ function shouldReportProgress(state: BriefReporterState): boolean {
 function executedCount(result: RunResult): number {
     const { summary } = result;
 
-    return summary.passed + summary.failed + summary.skipped + summary.inconclusive;
+    return summary.passed + summary.failed + summary.skipped + summary.inconclusive +
+        summary.resourceExhausted + summary.crashed;
 }
 
 function finishIntent(result: RunResult): OutputLineIntent {
     const { summary } = result;
     const discoveryCounts = `done discovered=${summary.discovered} planned=${summary.planned}`;
     const executionCounts = `executed=${executedCount(result)} passed=${summary.passed} failed=${summary.failed}`;
-    const remainingCounts = `skipped=${summary.skipped} inconclusive=${summary.inconclusive} ms=${result.wallTimeMs}`;
+    const remainingCounts = `skipped=${summary.skipped} inconclusive=${summary.inconclusive} ` +
+        `resourceExhausted=${summary.resourceExhausted} crashed=${summary.crashed} ms=${result.wallTimeMs}`;
 
     return stdout(
         `${discoveryCounts} ${executionCounts} ${remainingCounts}`,
@@ -121,9 +123,9 @@ function testEndUpdate(
     state: BriefReporterState,
     event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>
 ): BriefReporterUpdate {
-    const nextState = updateForCompletedTest(state, event.outcome.kind === 'fail');
+    const nextState = updateForCompletedTest(state, event.verdict === 'fail');
 
-    if (event.outcome.kind !== 'fail') {
+    if (event.outcome?.kind !== 'fail') {
         return {
             intents: shouldReportProgress(nextState) ? [ progressIntent(nextState) ] : [],
             state: nextState

@@ -6,6 +6,7 @@ import { testSuite as runConfigTestSuite } from './run-config.test.ts';
 import { testSuite as runDiscoveryTestSuite } from './run-discovery.test.ts';
 import { testSuite as runTestModulesTestSuite } from './run-test-modules.test.ts';
 import { testSuite as runTestSuite } from './run.test.ts';
+import { testSuite as supervisedRunTestSuite } from './supervised-run.test.ts';
 
 export const testSuite = createOverkillSuite({
     name: 'source/run/run-suite.test.ts',
@@ -16,7 +17,8 @@ export const testSuite = createOverkillSuite({
         runConfigTestSuite,
         runDiscoveryTestSuite,
         runTestModulesTestSuite,
-        runTestSuite
+        runTestSuite,
+        supervisedRunTestSuite
     ]
 });
 

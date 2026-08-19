@@ -1,6 +1,6 @@
 import type { Reporter, SinkDeclaration } from '../engine/reporter.ts';
 import type { RunResult } from '../engine/run-result.ts';
-import type { RunCommand, RunConfig, RunOrchestrator } from './run.ts';
+import type { RunCommand, RunConfig, RunOrchestrator } from './run-types.ts';
 import { orchestrator } from './run-orchestrator.ts';
 import {
     loadRunConfig,

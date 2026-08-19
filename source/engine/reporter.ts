@@ -1,6 +1,6 @@
 import type { CaseId } from './identity.ts';
 import type { OptionalReporterOutput, OutputIntentRole } from './reporter-output.ts';
-import type { RunResult, RunnerError, TestOutcome } from './run-result.ts';
+import type { RunResult, RunnerError, TestOutcome, TestVerdict } from './run-result.ts';
 import type { Metadata } from './test-node.ts';
 
 export type RunFacts = Readonly<Record<string, unknown>>;
@@ -143,8 +143,8 @@ type TestEndReporterEvent = {
     readonly attempt: number;
     readonly case: CaseId;
     readonly kind: 'test-end';
-    readonly outcome: TestOutcome;
-    readonly verdict: TestOutcome['kind'];
+    readonly outcome: TestOutcome | null;
+    readonly verdict: TestVerdict;
     readonly wallTimeMs: number;
 };
 
