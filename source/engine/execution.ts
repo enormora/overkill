@@ -1,11 +1,17 @@
 import type { WallClock } from '@enormora/wall-clock';
 import { runTestCase } from './case-execution.ts';
-import { caseIdentityKey } from './identity.ts';
+import { createRunResult } from './execution-result.ts';
 import { createPlainOutputRenderer, type OutputRenderer } from './reporter-output.ts';
 import type { ReporterDispatcher } from './reporter-dispatcher.ts';
 import { type Reporter, type RunFacts, validateReporterSinks } from './reporter.ts';
 import { createReporterEventQueue, type ReporterEventQueue } from './reporter-event-queue.ts';
-import { verdictFromOutcome, type PerTestResult, type RunResult, type RunnerError } from './run-result.ts';
+import {
+    verdictFromOutcome,
+    type PerTestResult,
+    type RunResourceUsageTracker,
+    type RunResult,
+    type RunnerError
+} from './run-result.ts';
 import type { TestPlan, TestPlanCase } from './test-plan.ts';
 
 export type ExecuteExecution = {
@@ -16,6 +22,7 @@ export type ExecuteOptions = {
     readonly execution: ExecuteExecution;
     readonly outputRenderer?: OutputRenderer;
     readonly reporters: readonly Reporter[];
+    readonly resourceUsageTracker?: RunResourceUsageTracker | null;
     readonly runFacts: RunFacts;
     readonly startedAt: string;
 };
@@ -34,6 +41,11 @@ const epoch = new Date(0);
 type ExecutedTestPlan = {
     readonly perTest: readonly PerTestResult[];
     readonly reporterErrors: readonly RunnerError[];
+};
+
+type ExecutedTestPlanWithResourceUsage = {
+    readonly executedTestPlan: ExecutedTestPlan;
+    readonly resourceUsage: RunResult['resourceUsage'];
 };
 
 type ReportedCase = {
@@ -56,11 +68,6 @@ type ReportTestEndInput = {
     readonly result: PerTestResult;
     readonly testCase: TestPlanCase;
     readonly wallTimeMs: number;
-};
-
-type RunResultTiming = {
-    readonly startedAtMs: number;
-    readonly wallClock: WallClock;
 };
 
 type ExecutionDependencies = {
@@ -125,94 +132,6 @@ async function executeCase(
         reporterErrors: [ ...startErrors, ...endErrors ],
         result: executedCase.result
     };
-}
-
-function hasFailed(testResult: PerTestResult): boolean {
-    return testResult.outcome.kind === 'fail';
-}
-
-function isInconclusive(testResult: PerTestResult): boolean {
-    return testResult.outcome.kind === 'inconclusive';
-}
-
-function hasPassed(testResult: PerTestResult): boolean {
-    return testResult.outcome.kind === 'pass';
-}
-
-function wasSkipped(testResult: PerTestResult): boolean {
-    return testResult.outcome.kind === 'skip';
-}
-
-function countOutcomes(testPlan: TestPlan, perTest: readonly PerTestResult[]): RunResult['summary'] {
-    return {
-        defined: testPlan.defined,
-        discovered: testPlan.discoveredCases.length,
-        failed: perTest.filter(hasFailed).length,
-        inconclusive: perTest.filter(isInconclusive).length,
-        passed: perTest.filter(hasPassed).length,
-        planned: testPlan.cases.length,
-        skipped: perTest.filter(wasSkipped).length
-    };
-}
-
-function suiteKey(suitePath: readonly string[]): string {
-    return suitePath.join(' > ');
-}
-
-function emptySuiteRunCounts(): RunResult['bySuite'][string] {
-    return { discovered: 0, executed: 0, planned: 0 };
-}
-
-function incrementSuiteRunCounts(
-    counts: RunResult['bySuite'][string],
-    field: 'discovered' | 'executed' | 'planned'
-): RunResult['bySuite'][string] {
-    return {
-        discovered: counts.discovered + (field === 'discovered' ? 1 : 0),
-        executed: counts.executed + (field === 'executed' ? 1 : 0),
-        planned: counts.planned + (field === 'planned' ? 1 : 0)
-    };
-}
-
-function countSuitePath(
-    counts: RunResult['bySuite'],
-    suitePath: readonly string[],
-    field: 'discovered' | 'executed' | 'planned'
-): RunResult['bySuite'] {
-    let updatedCounts = counts;
-
-    for (let pathLength = 1; pathLength <= suitePath.length; pathLength += 1) {
-        const key = suiteKey(suitePath.slice(0, pathLength));
-        updatedCounts = {
-            ...updatedCounts,
-            [key]: incrementSuiteRunCounts(updatedCounts[key] ?? emptySuiteRunCounts(), field)
-        };
-    }
-
-    return updatedCounts;
-}
-
-function countSuites(testPlan: TestPlan, perTest: readonly PerTestResult[]): RunResult['bySuite'] {
-    let counts: RunResult['bySuite'] = {};
-    const executedIds = new Set(
-        perTest.map(function toId(result) {
-            return caseIdentityKey(result.id);
-        })
-    );
-
-    for (const testCase of testPlan.discoveredCases) {
-        counts = countSuitePath(counts, testCase.suitePath, 'discovered');
-    }
-
-    for (const testCase of testPlan.cases) {
-        counts = countSuitePath(counts, testCase.suitePath, 'planned');
-
-        if (executedIds.has(caseIdentityKey(testCase.id))) {
-            counts = countSuitePath(counts, testCase.suitePath, 'executed');
-        }
-    }
-
-    return counts;
 }
 
 function commonSuitePrefixLength(firstSuitePath: readonly string[], secondSuitePath: readonly string[]): number {
@@ -433,23 +352,32 @@ async function executeTestPlanCasesWithMode(
     return await executeTestPlanCases(testPlan, options.reporters, options.outputRenderer, dependencies);
 }
 
-function createRunResult(
+async function executeTestPlanCasesAndMeasureResourceUsage(
     testPlan: TestPlan,
-    perTest: readonly PerTestResult[],
-    reporterErrors: readonly RunnerError[],
-    timing: RunResultTiming
-): RunResult {
-    const result: RunResult = {
-        artifacts: [],
-        bySuite: countSuites(testPlan, perTest),
-        orphans: testPlan.orphans,
-        perTest,
-        runnerErrors: reporterErrors,
-        summary: countOutcomes(testPlan, perTest),
-        wallTimeMs: timing.wallClock.currentTimestampInMilliseconds - timing.startedAtMs
-    };
+    options: NormalizedExecuteOptions,
+    dependencies: ExecutionDependencies
+): Promise<ExecutedTestPlanWithResourceUsage> {
+    if (options.resourceUsageTracker === null || options.resourceUsageTracker === undefined) {
+        return {
+            executedTestPlan: await executeTestPlanCasesWithMode(testPlan, options, dependencies),
+            resourceUsage: null
+        };
+    }
 
-    return result;
+    options.resourceUsageTracker.start();
+
+    try {
+        const executedTestPlan = await executeTestPlanCasesWithMode(testPlan, options, dependencies);
+
+        return {
+            executedTestPlan,
+            resourceUsage: options.resourceUsageTracker.finish()
+        };
+    } catch (error: unknown) {
+        options.resourceUsageTracker.finish();
+
+        throw error;
+    }
 }
 
 function appendRunnerErrors(result: RunResult, runnerErrors: readonly RunnerError[]): RunResult {
@@ -475,6 +403,7 @@ function executeOptionsWithDefaults(options: ExecuteOptions | undefined): Normal
         execution: { mode: 'serial-in-process' },
         outputRenderer: createPlainOutputRenderer(),
         reporters: [],
+        resourceUsageTracker: null,
         runFacts: {},
         startedAt: epoch.toISOString()
     };
@@ -511,10 +440,15 @@ async function createRunResultBeforeRunEnd(
         root: testPlan.root,
         startedAt: options.startedAt
     }, options.outputRenderer);
-    const executedTestPlan = await executeTestPlanCasesWithMode(testPlan, options, dependencies);
+    const { executedTestPlan, resourceUsage } = await executeTestPlanCasesAndMeasureResourceUsage(
+        testPlan,
+        options,
+        dependencies
+    );
     const reporterErrors = [ ...startErrors, ...executedTestPlan.reporterErrors ];
 
     return createRunResult(testPlan, executedTestPlan.perTest, reporterErrors, {
+        resourceUsage,
         startedAtMs,
         wallClock: dependencies.wallClock
     });

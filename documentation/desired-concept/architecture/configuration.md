@@ -55,8 +55,9 @@ Configuration should mainly cover orchestration and package wiring:
 - baseline policy (paths, write directory, explicit update behavior,
   no environment-based write gate)
 - coverage policy (formats, thresholds, include/exclude, output paths)
-- resource-budget policy (Node-first heap, RSS, resident-growth, and
-  active-resource limits by profile)
+- resource usage policy and resource-budget thresholds (Node-first JavaScript
+  engine heap, resident set, resident-set growth, and active-resource limits by
+  profile)
 - optional global assertion budget policy
 - mutation integration
 - type-test integration
@@ -137,13 +138,25 @@ const config = defineConfig({
         microtest: {
             coverage: {
                 formats: [ 'text', 'lcov' ]
-            }
+            },
+            measureResourceUsage: true,
+            resourceBudgets: {
+                javaScriptEngineHeapBytes: 128000000,
+                residentSetBytes: 512000000,
+                residentSetGrowthBytesPerSecond: 50000000,
+                activeResourceCount: 40
+            },
+            resourceUsageSamplingIntervalMilliseconds: 100
         }
     }
 });
 
 await run({ config, request });
 ```
+
+`measureResourceUsage: true` enables run-level diagnostic measurement for the
+profile. `resourceBudgets` are thresholds and therefore require measurement.
+Omitting `resourceBudgets` records usage without requesting enforcement.
 
 Important ownership split:
 
@@ -158,7 +171,10 @@ So, for example:
 
 - `--profile <name>` chooses which runner profile to use for this run
 - `--coverage` chooses whether this run collects coverage
+- `--measure-resource-usage` chooses per-run diagnostic resource usage
+  measurement
 - `--resource-budget <name=value>` chooses per-run resource-budget overrides
+  and enables resource usage measurement
 - `run({ profile: 'microtest', coverage: true })` should express the same
   intent directly through `@overkill-dev/run`
 - an optional global assertion budget policy lives in configuration because

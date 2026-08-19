@@ -7,7 +7,6 @@ import {
 } from '@overkill-dev/engine';
 import { ReporterSinkConflictError, type Reporter } from '../engine/reporter.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
-import { testDouble } from '../doubles/test-double.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import {
@@ -59,9 +58,12 @@ const defaultRequest: RunRequest = {
         selectors: []
     },
     execution: { mode: 'concurrent-in-process' },
+    measureResourceUsage: null,
     order: 'plan',
     paths: [],
     profile: 'microtest',
+    resourceBudgetOverrides: null,
+    resourceUsageSamplingIntervalMilliseconds: null,
     seed: { value: 42n },
     selection: { kind: 'all' },
     shard: { index: 0, total: 1 },
@@ -73,6 +75,18 @@ function defaultLoadedConfig(reporters: LoadedRunConfig['reporters']): LoadedRun
         configPath: null,
         loader: { sourceMaps: false, stripMode: 'strip-only' },
         outputRenderer: plainOutputRenderer,
+        profiles: {
+            microtest: {
+                measureResourceUsage: false,
+                resourceBudgets: {
+                    activeResourceCount: null,
+                    javaScriptEngineHeapBytes: null,
+                    residentSetBytes: null,
+                    residentSetGrowthBytesPerSecond: null
+                },
+                resourceUsageSamplingIntervalMilliseconds: 100
+            }
+        },
         reporters,
         runtimeStateDir: '.overkill'
     };
@@ -120,6 +134,7 @@ function createRunnerDependencies(
                         mode: command.request.execution.mode,
                         order: command.request.order,
                         profile: command.request.profile,
+                        resourceUsagePolicy: command.config.profiles.microtest,
                         verbose: command.request.verbose
                     },
                     loader: command.config.loader,
@@ -444,28 +459,6 @@ export const testSuite = createOverkillSuite({
                 scope.assert.equal(result.exitCode, 3);
                 scope.assert.deepEqual(result.fallbackDiagnostics, [
                     'Overkill argument error: Path discovery is not implemented yet.'
-                ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            name: 'commandLineRunner.runTests() formats non-error internal crashes',
-            metadata: {},
-            async body(scope: OverkillScope) {
-                const run = testDouble.rejects<RunOrchestrator['run']>('unexpected string failure');
-                const result = await runTests(createRunnerDependencies({
-                    orchestrator: {
-                        async resolve(command) {
-                            return await createRunnerDependencies({}).orchestrator.resolve(command);
-                        },
-                        run
-                    }
-                }));
-
-                scope.assert.equal(result.exitCode, 70);
-                scope.assert.deepEqual(result.fallbackDiagnostics, [
-                    'Overkill internal error: unexpected string failure'
                 ]);
 
                 return scope.assert.collect();

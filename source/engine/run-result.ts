@@ -118,6 +118,30 @@ export type SuiteRunCounts = {
     readonly planned: number;
 };
 
+export type ResourceUsageSnapshot = {
+    readonly activeResourceCount: number;
+    readonly activeResourceTypes: readonly string[];
+    readonly capturedAtMilliseconds: number;
+    readonly javaScriptEngineHeapBytes: number;
+    readonly residentSetBytes: number;
+};
+
+export type RunResourceUsage = {
+    readonly activeResourceTypes: readonly string[];
+    readonly end: ResourceUsageSnapshot;
+    readonly peakActiveResourceCount: number;
+    readonly peakJavaScriptEngineHeapBytes: number;
+    readonly peakResidentSetBytes: number;
+    readonly peakResidentSetGrowthBytesPerSecond: number;
+    readonly sampleCount: number;
+    readonly start: ResourceUsageSnapshot;
+};
+
+export type RunResourceUsageTracker = {
+    readonly finish: () => RunResourceUsage;
+    readonly start: () => void;
+};
+
 export type OrphanedNode = {
     readonly file: string | null;
     readonly kind: 'suite' | 'table' | 'test';
@@ -129,6 +153,7 @@ export type RunResult = {
     readonly bySuite: Readonly<Record<string, SuiteRunCounts>>;
     readonly orphans: readonly OrphanedNode[];
     readonly perTest: readonly PerTestResult[];
+    readonly resourceUsage: RunResourceUsage | null;
     readonly runnerErrors: readonly RunnerError[];
     readonly summary: RunSummary;
     readonly wallTimeMs: number;

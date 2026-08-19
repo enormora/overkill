@@ -149,12 +149,16 @@ configuration domain and benchmark execution uses `overkill bench`.
 
 ## Capability And Execution
 
-| Flag                             | Behavior                                                                                                                      | Reference                                                                                             |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `--profile <name>`               | Select an ordinary runner profile (e.g. `microtest`, `integration`, `browser`). `benchmark` is reserved for `overkill bench`. | [Microtests And Capabilities](../authoring/microtests-and-capabilities.md)                            |
-| `--mode <strategy>`              | Override the resolved execution strategy (serial, worker-pool, …).                                                            | [Runtime Behavior § Parallelism Semantics](../architecture/runtime-behavior.md#parallelism-semantics) |
-| `--workers <n>`                  | Override default worker count for worker-pool modes.                                                                          | same                                                                                                  |
-| `--resource-budget <name=value>` | Override one resource budget for this run.                                                                                    | [Runtime Behavior § Resource Budgets](../architecture/runtime-behavior.md#resource-budgets)           |
+- `--profile <name>` selects an ordinary runner profile, such as `microtest`,
+  `integration`, or `browser`. `benchmark` is reserved for `overkill bench`.
+  See [Microtests And Capabilities](../authoring/microtests-and-capabilities.md).
+- `--mode <strategy>` overrides the resolved execution strategy. See
+  [Runtime Behavior § Parallelism Semantics](../architecture/runtime-behavior.md#parallelism-semantics).
+- `--workers <n>` overrides default worker count for worker-pool modes.
+- `--measure-resource-usage` collects run-level resource usage diagnostics for
+  this run. See [Runtime Behavior § Resource Budgets](../architecture/runtime-behavior.md#resource-budgets).
+- `--resource-budget <name=value>` overrides one resource budget for this run
+  and enables resource usage measurement.
 
 ## Output And Capture
 

@@ -4,10 +4,14 @@ import {
     RunResolutionError,
     type orchestrator,
     type ResolvedRun,
+    type ResourceBudgetOverrides,
     type RunCommand,
     type RunConfig,
+    type RunExecutionFacts,
     type RunFacts,
     type RunOrchestrator,
+    type RunResourceBudgets,
+    type RunResourceUsagePolicy,
     type RunRequest,
     type SerializedValue
 } from './run.entry-point.ts';
@@ -18,9 +22,12 @@ type RunRequestKeys = readonly [
     'coverage',
     'debug',
     'execution',
+    'measureResourceUsage',
     'order',
     'paths',
     'profile',
+    'resourceBudgetOverrides',
+    'resourceUsageSamplingIntervalMilliseconds',
     'seed',
     'selection',
     'shard',
@@ -43,19 +50,28 @@ describe('@overkill-dev/run', function () {
     test('keeps request fields explicit for the implemented runner slice', function () {
         expect<keyof RunRequest>().type.toBe<ExpectedRunRequestKey>();
         expect<RunRequest['execution']['mode']>().type.toBe<'concurrent-in-process'>();
+        expect<RunRequest['measureResourceUsage']>().type.toBe<boolean | null>();
+        expect<RunRequest['resourceBudgetOverrides']>().type.toBe<ResourceBudgetOverrides | null>();
         expect<RunRequest['order']>().type.toBe<'plan'>();
     });
 
     test('exposes serializable run facts with case metadata', function () {
         expect<keyof RunFacts>().type.toBe<'cases' | 'environment' | 'execution' | 'loader' | 'reproducibility'>();
+        expect<RunExecutionFacts['resourceUsagePolicy']>().type.toBe<RunResourceUsagePolicy>();
         expect<RunFacts['cases'][number]['metadata']>().type.toBe<SerializedValue>();
         expect<RunFacts>().type.toBeAssignableTo<Readonly<Record<string, unknown>>>();
     });
 
     test('exposes config and resolution errors', function () {
-        expect<keyof RunConfig>().type.toBe<'loader' | 'outputRenderer' | 'reporters' | 'runtimeStateDir'>();
+        expect<keyof RunConfig>().type.toBe<
+            'loader' | 'outputRenderer' | 'profiles' | 'reporters' | 'runtimeStateDir'
+        >();
         expect<RunConfig['outputRenderer']>().type.toBe<OutputRenderer>();
+        expect<RunConfig['profiles']['microtest']>().type.toBe<RunResourceUsagePolicy>();
         expect<RunConfig['reporters']>().type.toBe<readonly Reporter[]>();
+        expect<keyof RunResourceBudgets>().type.toBe<
+            'activeResourceCount' | 'javaScriptEngineHeapBytes' | 'residentSetBytes' | 'residentSetGrowthBytesPerSecond'
+        >();
         expect(new RunResolutionError('Unsupported.', undefined, 'unsupported-request')).type.toBe<
             RunResolutionError
         >();
