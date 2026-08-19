@@ -1,5 +1,6 @@
 import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
 import { createSuite as createOverkillSuite, runIfMain } from '@overkill-dev/engine';
+import { testSuite as commandLineCommandTestSuite } from './command-line-command.test.ts';
 import { testSuite as commandLineCommandNamespaceTestSuite } from './command-line-command-namespace.test.ts';
 import { testSuite as commandLineRunnerErrorTestSuite } from './command-line-runner-error.test.ts';
 import { testSuite as commandLineRunnerResourceUsageTestSuite } from './command-line-runner-resource-usage.test.ts';
@@ -10,6 +11,7 @@ export const testSuite = createOverkillSuite({
     name: 'source/run/command-line-runner-suite.test.ts',
     metadata: {},
     children: [
+        commandLineCommandTestSuite,
         commandLineCommandNamespaceTestSuite,
         commandLineRunnerErrorTestSuite,
         commandLineRunnerResourceUsageTestSuite,

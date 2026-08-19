@@ -6,21 +6,17 @@ import { invalidRequest, RunCollectionError } from './run-errors.ts';
 
 type TestModuleNamespace = Readonly<Record<string, unknown>>;
 
+async function importUnknownModule(href: string): Promise<unknown> {
+    return await import(href) as unknown;
+}
+
 function isTestModuleNamespace(value: unknown): value is TestModuleNamespace {
     return typeof value === 'object' && value !== null;
 }
 
-function assertNonEmptyTestPlanFiles(
-    files: readonly TestPlanFile[]
-): asserts files is NonEmptyReadonlyArray<TestPlanFile> {
-    if (files.length === 0) {
-        throw new RunCollectionError('No test modules were loaded.', { cause: null }, 'loader');
-    }
-}
-
 async function importRawTestModule(file: DiscoveredRunFile): Promise<unknown> {
     try {
-        return await import(file.href);
+        return await importUnknownModule(file.href);
     } catch (error: unknown) {
         throw new RunCollectionError(`Failed to load test module: ${file.file}`, { cause: error }, 'loader');
     }
@@ -61,13 +57,13 @@ export async function loadRunTestModules(
     files: NonEmptyReadonlyArray<DiscoveredRunFile>,
     engine: Engine
 ): Promise<NonEmptyReadonlyArray<TestPlanFile>> {
-    const testFiles: TestPlanFile[] = [];
+    const [ firstFile, ...remainingFiles ] = files;
+    const firstTestFile = readTestNode(await importTestModule(firstFile), firstFile, engine);
+    const remainingTestFiles: TestPlanFile[] = [];
 
-    for (const file of files) {
-        testFiles.push(readTestNode(await importTestModule(file), file, engine));
+    for (const file of remainingFiles) {
+        remainingTestFiles.push(readTestNode(await importTestModule(file), file, engine));
     }
 
-    assertNonEmptyTestPlanFiles(testFiles);
-
-    return testFiles;
+    return [ firstTestFile, ...remainingTestFiles ];
 }

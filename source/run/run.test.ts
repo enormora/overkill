@@ -28,6 +28,8 @@ type RunCommandParts = {
 };
 
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
+const emptySuiteFixturePath = 'source/integration-tests/run/fixtures/empty-suite.test.ts';
+const throwsOnImportFixturePath = 'source/integration-tests/run/fixtures/throws-on-import.test.ts';
 
 const defaultConfig: RunConfig = {
     loader: {
@@ -390,6 +392,86 @@ export const testSuite = createOverkillSuite({
                     planned: 1,
                     skipped: 0
                 });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'orchestrator.run() returns collection failures as runner errors',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const runOrchestrator = createDeterministicRunOrchestrator();
+                const importFailureResult = await runOrchestrator.run(createRunCommand({
+                    config: defaultConfig,
+                    cwd: process.cwd(),
+                    engine: null,
+                    request: {
+                        ...defaultRequest,
+                        paths: [ throwsOnImportFixturePath ]
+                    }
+                }));
+                const collectionFailureResult = await runOrchestrator.run(createRunCommand({
+                    config: defaultConfig,
+                    cwd: process.cwd(),
+                    engine: null,
+                    request: {
+                        ...defaultRequest,
+                        paths: [ emptySuiteFixturePath ]
+                    }
+                }));
+
+                scope.assert.deepEqual(importFailureResult.summary, {
+                    defined: 0,
+                    discovered: 0,
+                    failed: 0,
+                    inconclusive: 0,
+                    passed: 0,
+                    planned: 0,
+                    skipped: 0
+                });
+                scope.assert.deepEqual(
+                    importFailureResult.runnerErrors.map(function toRunnerError(error) {
+                        return {
+                            attributedTo: error.attributedTo,
+                            message: error.message,
+                            subtype: error.subtype
+                        };
+                    }),
+                    [
+                        {
+                            attributedTo: null,
+                            message: `Failed to load test module: ${throwsOnImportFixturePath}`,
+                            subtype: 'loader'
+                        }
+                    ]
+                );
+                scope.assert.deepEqual(
+                    collectionFailureResult.runnerErrors.map(function toMessage(error) {
+                        return error.message;
+                    }),
+                    [ 'Failed to collect tests from explicit run inputs.' ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'orchestrator.run() rejects invalid requests before collection',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const runOrchestrator = createDeterministicRunOrchestrator();
+
+                await scope.assert.rejects(async function runInvalidRequest() {
+                    await runOrchestrator.run(createRunCommand({
+                        config: defaultConfig,
+                        cwd: process.cwd(),
+                        engine: null,
+                        request: {
+                            ...defaultRequest,
+                            seed: { value: -1n }
+                        }
+                    }));
+                }, { message: 'Run seed must be a nonnegative bigint.' });
 
                 return scope.assert.collect();
             }

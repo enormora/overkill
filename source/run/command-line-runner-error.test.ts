@@ -159,7 +159,6 @@ export const testSuite = createOverkillSuite({
                 scope.assert.deepEqual(result.fallbackDiagnostics, [
                     'Overkill internal error: unexpected string failure'
                 ]);
-
                 return scope.assert.collect();
             }
         })
