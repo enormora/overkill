@@ -118,10 +118,9 @@ Inside a single Node process:
 - The strip output itself is not cached across processes by Node. The
   per-file strip cost is single-digit milliseconds; in practice the compile
   cache plus in-memory module cache cover the common case.
-- Detecting that strip-only failed is straightforward: `amaro.transformSync`
-  throws a structured parser error indicating non-erasable syntax. The runner
-  can catch, fall through to transform mode, and surface a one-time hint
-  (“this file uses enums; switching to transform”).
+- If native type stripping fails, the runner should surface the module-load
+  failure directly. Supporting non-erasable TypeScript syntax requires a
+  deliberate Node or project-level transform outside Overkill's default path.
 
 Recommendation: lean on Node's compile cache. Overkill should not ship its
 own strip or bytecode cache by default; consider one only if measurement on a

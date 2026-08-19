@@ -147,6 +147,10 @@ export function isTestRoot(value: unknown): value is TestRoot {
     return typeof value === 'object' && value !== null && Object.hasOwn(value, testRootBrand);
 }
 
+export function isOwnedTestNode(value: unknown, owner: TestNodeOwner): value is TestNode {
+    return isTestNode(value) && value[testNodeOwnerBrand] === owner;
+}
+
 function hasTestNodeOwner(value: TestNode, owner: TestNodeOwner): boolean {
     return value[testNodeOwnerBrand] === owner;
 }

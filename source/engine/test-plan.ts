@@ -3,8 +3,10 @@ import { caseIdentityKey, createCaseId, formatCaseId, type CaseId } from './iden
 import type { OrphanedNode } from './run-result.ts';
 import {
     ensureOwnedTestRoot,
+    isOwnedTestNode,
     mergeMetadata,
     type Metadata,
+    type RootOptions,
     type Table,
     type TestBody,
     type TestCase,
@@ -37,6 +39,18 @@ type TestPlanRoot = {
 
 export type TestPlanFactory = (root: TestRoot) => TestPlan;
 
+export type TestPlanFile = {
+    readonly file: string;
+    readonly testNode: TestNode;
+};
+
+export type TestPlanFromTestFilesOptions = {
+    readonly files: NonEmptyReadonlyArray<TestPlanFile>;
+    readonly root: TestPlanRoot;
+};
+
+export type TestPlanFromTestFilesFactory = (options: TestPlanFromTestFilesOptions) => TestPlan;
+
 type CollectedTestCases = {
     readonly cases: readonly TestPlanCase[];
     readonly reachedNodes: readonly TestNode[];
@@ -44,6 +58,7 @@ type CollectedTestCases = {
 
 function collectTestCase(
     testCase: TestCase,
+    file: string | null,
     suitePath: readonly string[],
     metadata: Metadata
 ): CollectedTestCases {
@@ -53,7 +68,7 @@ function collectTestCase(
         cases: [
             {
                 body: testCase.body,
-                id: createCaseId(suitePath, testCase.name, null),
+                id: createCaseId(file, suitePath, testCase.name, null),
                 metadata: resolvedMetadata,
                 suitePath
             }
@@ -64,6 +79,7 @@ function collectTestCase(
 
 function collectTable(
     table: Table,
+    file: string | null,
     suitePath: readonly string[],
     metadata: Metadata
 ): CollectedTestCases {
@@ -80,7 +96,7 @@ function collectTable(
 
             return {
                 body: tableCase.body,
-                id: createCaseId(tablePath, tableCase.name, null),
+                id: createCaseId(file, tablePath, tableCase.name, null),
                 metadata: resolvedMetadata,
                 suitePath: tablePath
             };
@@ -102,15 +118,16 @@ function mergeCollectedTestCases(collections: readonly CollectedTestCases[]): Co
 
 function collectNode(
     node: TestNode,
+    file: string | null,
     suitePath: readonly string[],
     metadata: Metadata
 ): CollectedTestCases {
     if (node.kind === 'test') {
-        return collectTestCase(node, suitePath, metadata);
+        return collectTestCase(node, file, suitePath, metadata);
     }
 
     if (node.kind === 'table') {
-        return collectTable(node, suitePath, metadata);
+        return collectTable(node, file, suitePath, metadata);
     }
 
     if (node.children.length === 0) {
@@ -120,7 +137,7 @@ function collectNode(
     const childPath = [ ...suitePath, node.name ];
     const childMetadata = mergeMetadata(metadata, node.metadata);
     const children = mergeCollectedTestCases(node.children.map(function collectChild(child) {
-        return collectNode(child, childPath, childMetadata);
+        return collectNode(child, file, childPath, childMetadata);
     }));
 
     return {
@@ -135,7 +152,19 @@ function collectRoot(root: TestRoot): CollectedTestCases {
     }
 
     return mergeCollectedTestCases(root.children.map(function collectChild(child) {
-        return collectNode(child, [], root.metadata);
+        return collectNode(child, null, [], root.metadata);
+    }));
+}
+
+function collectTestFiles(root: TestRoot, files: NonEmptyReadonlyArray<TestPlanFile>): CollectedTestCases {
+    return mergeCollectedTestCases(root.children.map(function collectChild(child, index) {
+        const file = files[index];
+
+        if (file === undefined) {
+            throw new TypeError('Every test file must map to one root child.');
+        }
+
+        return collectNode(child, file.file, [], root.metadata);
     }));
 }
 
@@ -204,6 +233,53 @@ export function createTestPlanFactory(owner: TestNodeOwner, constructedNodes: Re
             defined: constructedNodes.size,
             discoveredCases,
             orphans: collectOrphans(constructedNodes, reachedNodes),
+            root: {
+                metadata: root.metadata,
+                name: root.name
+            }
+        };
+    };
+}
+
+function ensureTestPlanFile(file: TestPlanFile, owner: TestNodeOwner): void {
+    if (file.file.trim().length === 0) {
+        throw new TypeError('Test file identity must not be empty.');
+    }
+
+    if (!isOwnedTestNode(file.testNode, owner)) {
+        throw new TypeError('Test file must provide a TestNode created by the selected engine.');
+    }
+}
+
+function countReachedNodes(reachedNodes: readonly TestNode[]): number {
+    return reachedNodes.length;
+}
+
+export function createTestPlanFromTestFilesFactory(
+    owner: TestNodeOwner,
+    createRoot: (options: RootOptions) => TestRoot
+): TestPlanFromTestFilesFactory {
+    return function createTestPlanFromTestFiles(options): TestPlan {
+        for (const file of options.files) {
+            ensureTestPlanFile(file, owner);
+        }
+
+        const root = createRoot({
+            children: options.files.map(function toTestNode(file) {
+                return file.testNode;
+            }),
+            metadata: options.root.metadata,
+            name: options.root.name
+        });
+        const { cases: discoveredCases, reachedNodes } = collectTestFiles(root, options.files);
+        assertNonEmptyCases(discoveredCases);
+        assertUniqueCaseIds(discoveredCases);
+
+        return {
+            cases: discoveredCases,
+            defined: countReachedNodes(reachedNodes),
+            discoveredCases,
+            orphans: [],
             root: {
                 metadata: root.metadata,
                 name: root.name

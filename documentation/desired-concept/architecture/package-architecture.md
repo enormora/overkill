@@ -85,8 +85,8 @@ Conceptually:
   for that explicitly
 - `resolveRun(command)` returns a frozen `ResolvedRun`
 - `run(command)` is shorthand for planning plus execution
-- `RunCommand.testPlan` is the explicit programmatic path for callers that
-  already built an executable plan
+- `RunCommand` carries explicit run inputs plus configuration and the engine
+  selection used to validate imported test nodes
 - `execute(testPlan)` is the lower-level engine entrypoint once planning is
   already done, and it returns a `RunResult`
 - `runIfMain(import.meta, testNode, options?)` is the lower-level self-running

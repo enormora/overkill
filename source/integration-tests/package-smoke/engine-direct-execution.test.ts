@@ -8,8 +8,10 @@ import {
     createTable,
     createTestCase,
     createTestPlan,
+    createTestPlanFromTestFiles,
     execute,
     formatCaseId,
+    ownsTestNode,
     runIfMain,
     serializeValue,
     type Engine,
@@ -213,8 +215,10 @@ export const testSuite = createSuite({
                     createTestCase,
                     createRoot,
                     createTestPlan,
+                    createTestPlanFromTestFiles,
                     execute,
                     formatCaseId,
+                    ownsTestNode,
                     runIfMain
                 };
 

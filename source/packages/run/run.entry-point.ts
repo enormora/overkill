@@ -1,4 +1,6 @@
-export { orchestrator, RunResolutionError } from '../../run/run.ts';
+export { orchestrator } from '../../run/run-orchestrator.ts';
+export { RunResolutionError } from '../../run/run-errors.ts';
+export type { RunResolutionErrorCode } from '../../run/run-errors.ts';
 export type {
     ResolvedRun,
     ResourceBudgetOverrides,
@@ -17,7 +19,6 @@ export type {
     RunResourceUsagePolicy,
     RunReproducibilityFacts,
     RunRequest,
-    RunResolutionErrorCode,
     RunSeed,
     RunSelection,
     RunShard,

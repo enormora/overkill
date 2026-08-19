@@ -98,8 +98,9 @@ tend to surprise tooling.
 
 Where: [Fast Feedback Loops § 5. Loader Hooks](../architecture/fast-feedback-loops.md#5-loader-hooks).
 
-Alternative: Node's built-in TypeScript stripping; transform mode only
-where the file actually needs it.
+Alternative: Node's built-in TypeScript stripping. Files that need JavaScript
+generation should use a deliberate Node or project-level transform outside
+Overkill's default loader story.
 
 ### No module-graph dependency tracking in core
 

@@ -1,11 +1,7 @@
 import type { Reporter, SinkDeclaration } from '../engine/reporter.ts';
 import type { RunResult } from '../engine/run-result.ts';
-import {
-    orchestrator,
-    type RunCommand,
-    type RunConfig,
-    type RunOrchestrator
-} from './run.ts';
+import type { RunCommand, RunConfig, RunOrchestrator } from './run.ts';
+import { orchestrator } from './run-orchestrator.ts';
 import {
     loadRunConfig,
     type LoadedRunConfig,
@@ -93,8 +89,9 @@ async function createCommandFromRequest(
 ): Promise<RunCommand> {
     return {
         config: await createCommandLineConfig(loadedConfig, dependencies),
-        request: request.request,
-        testPlan: request.testPlan
+        cwd: request.cwd,
+        engine: null,
+        request: request.request
     };
 }
 

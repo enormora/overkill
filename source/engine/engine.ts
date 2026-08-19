@@ -5,6 +5,7 @@ import { createRunIfMain, type RunIfMain } from './run-if-main.ts';
 import {
     createTestNodeOwner,
     createTestNodeFactory,
+    isOwnedTestNode,
     type RootOptions,
     type Suite,
     type SuiteOptions,
@@ -15,7 +16,12 @@ import {
     type TestNode,
     type TestRoot
 } from './test-node.ts';
-import { createTestPlanFactory, type TestPlanFactory } from './test-plan.ts';
+import {
+    createTestPlanFactory,
+    createTestPlanFromTestFilesFactory,
+    type TestPlanFactory,
+    type TestPlanFromTestFilesFactory
+} from './test-plan.ts';
 
 export type Engine = {
     readonly createRoot: (options: RootOptions) => TestRoot;
@@ -23,8 +29,10 @@ export type Engine = {
     readonly createTable: (options: TableOptions) => Table;
     readonly createTestCase: (options: TestCaseOptions) => TestCase;
     readonly createTestPlan: TestPlanFactory;
+    readonly createTestPlanFromTestFiles: TestPlanFromTestFilesFactory;
     readonly execute: Execute;
     readonly formatCaseId: typeof formatCaseId;
+    readonly ownsTestNode: (value: unknown) => value is TestNode;
     readonly runIfMain: RunIfMain;
 };
 
@@ -47,6 +55,7 @@ export function createEngine(dependencies: EngineDependencies): Engine {
         }
     });
     const createTestPlan = createTestPlanFactory(owner, constructedNodes);
+    const createTestPlanFromTestFiles = createTestPlanFromTestFilesFactory(owner, nodeFactory.createRoot);
 
     return {
         createRoot: nodeFactory.createRoot,
@@ -54,8 +63,12 @@ export function createEngine(dependencies: EngineDependencies): Engine {
         createTable: nodeFactory.createTable,
         createTestCase: nodeFactory.createTestCase,
         createTestPlan,
+        createTestPlanFromTestFiles,
         execute,
         formatCaseId,
+        ownsTestNode(value): value is TestNode {
+            return isOwnedTestNode(value, owner);
+        },
         runIfMain: createRunIfMain({
             createRoot: nodeFactory.createRoot,
             createTestPlan,
