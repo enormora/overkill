@@ -1,7 +1,4 @@
-import type { WallClock } from '@enormora/wall-clock';
-import { serializeValue, type SerializedValue as SerializedValueShape } from '../compare/serialized-value.ts';
-import type { Execute } from '../engine/execution.ts';
-import type { ReporterDispatcher } from '../engine/reporter-dispatcher.ts';
+import { serializeValue } from '../compare/serialized-value.ts';
 import type { RunResourceUsageTracker, RunResult } from '../engine/run-result.ts';
 import type { Engine } from '../engine/engine.ts';
 import type { Metadata } from '../engine/test-node.ts';
@@ -13,170 +10,25 @@ import {
     unsupportedRequest
 } from './run-errors.ts';
 import { loadRunTestModules } from './run-test-modules.ts';
-import type { ResourceUsageTrackerOptions } from './resource-usage.ts';
 import { executeSupervisedRun } from './supervised-run.ts';
+import type {
+    ResolvedRun,
+    RunCommand,
+    RunConfig,
+    RunCaseFacts,
+    RunExecutionFacts,
+    RunFacts,
+    RunLoaderConfig,
+    RunOrchestrator,
+    RunOrchestratorDependencies,
+    RunProfilesConfig,
+    RunRequest,
+    RunResourceBudgets,
+    RunResourceUsagePolicy,
+    RunShard
+} from './run-types.ts';
 
 const minimumSeedValue = 0n;
-
-export type SerializedValue = SerializedValueShape;
-type RunExecuteOptions = NonNullable<Parameters<Execute>[1]>;
-type RunOutputRenderer = NonNullable<RunExecuteOptions['outputRenderer']>;
-type RunReporters = RunExecuteOptions['reporters'];
-
-export type RunSelection = {
-    readonly kind: 'all';
-};
-
-export type RunShard = {
-    readonly index: number;
-    readonly total: number;
-};
-
-export type RunExecutionRequest = {
-    readonly mode: 'profile-default';
-};
-
-export type RunSeed = {
-    readonly value: bigint | null;
-};
-
-export type RunDebugRequest = {
-    readonly mode: 'off';
-    readonly selectors: readonly [];
-};
-
-export type RunLoaderConfig = {
-    readonly sourceMaps: boolean;
-    readonly stripMode: 'strip-only';
-};
-
-export type RunResourceBudgets = {
-    readonly activeResourceCount: number | null;
-    readonly javaScriptEngineHeapBytes: number | null;
-    readonly residentSetBytes: number | null;
-    readonly residentSetGrowthBytesPerSecond: number | null;
-};
-
-export type ResourceBudgetOverrides = {
-    readonly activeResourceCount: number | null;
-    readonly javaScriptEngineHeapBytes: number | null;
-    readonly residentSetBytes: number | null;
-    readonly residentSetGrowthBytesPerSecond: number | null;
-};
-
-export type RunResourceUsagePolicy = {
-    readonly hardTimeoutMilliseconds: number;
-    readonly measureResourceUsage: boolean;
-    readonly resourceBudgets: RunResourceBudgets;
-    readonly resourceUsageSamplingIntervalMilliseconds: number;
-    readonly timeoutMilliseconds: number;
-};
-
-export type RunProfilesConfig = {
-    readonly microtest: RunResourceUsagePolicy;
-    readonly microtestSupervised: RunResourceUsagePolicy;
-};
-
-export type RunConfig = {
-    readonly loader: RunLoaderConfig;
-    readonly outputRenderer: RunOutputRenderer;
-    readonly profiles: RunProfilesConfig;
-    readonly reporters: RunReporters;
-    readonly runtimeStateDir: string;
-};
-
-export type RunRequest = {
-    readonly baselineUpdateMode: 'none';
-    readonly capture: 'buffered' | 'live';
-    readonly coverage: false;
-    readonly debug: RunDebugRequest;
-    readonly execution: RunExecutionRequest;
-    readonly measureResourceUsage: boolean | null;
-    readonly order: 'plan';
-    readonly paths: readonly string[];
-    readonly profile: 'microtest' | 'microtest-supervised';
-    readonly resourceBudgetOverrides: ResourceBudgetOverrides | null;
-    readonly resourceUsageSamplingIntervalMilliseconds: number | null;
-    readonly seed: RunSeed;
-    readonly selection: RunSelection;
-    readonly shard: RunShard;
-    readonly verbose: false;
-};
-
-export type RunCommand = {
-    readonly config: RunConfig;
-    readonly cwd: string;
-    readonly engine: Engine | null;
-    readonly request: RunRequest;
-};
-
-export type RunFacts = {
-    readonly cases: readonly RunCaseFacts[];
-    readonly environment: RunEnvironmentFacts;
-    readonly execution: RunExecutionFacts;
-    readonly loader: RunLoaderConfig;
-    readonly reproducibility: RunReproducibilityFacts;
-};
-
-export type RunCaseFacts = {
-    readonly id: TestPlan['cases'][number]['id'];
-    readonly metadata: SerializedValue;
-};
-
-export type RunEnvironmentFacts = {
-    readonly node: {
-        readonly arch: string;
-        readonly platform: string;
-        readonly version: string;
-    };
-    readonly runtimeStateDir: string;
-};
-
-export type RunExecutionFacts = {
-    readonly baselineUpdateMode: 'none';
-    readonly capture: 'buffered' | 'live';
-    readonly coverage: false;
-    readonly debug: RunDebugRequest;
-    readonly mode: 'concurrent-in-process' | 'single-child-process';
-    readonly order: 'plan';
-    readonly profile: 'microtest' | 'microtest-supervised';
-    readonly resourceUsagePolicy: RunResourceUsagePolicy;
-    readonly verbose: false;
-};
-
-export type RunReproducibilityFacts = {
-    readonly seed: string;
-    readonly shard: RunShard;
-};
-
-export type ResolvedRun = {
-    readonly config: RunConfig;
-    readonly cwd: string;
-    readonly facts: RunFacts;
-    readonly reporters: RunReporters;
-    readonly request: RunRequest;
-    readonly testPlan: TestPlan;
-};
-
-export type RunOrchestratorDependencies = {
-    readonly createSeed: () => bigint;
-    readonly createResourceUsageTracker: (options: ResourceUsageTrackerOptions) => RunResourceUsageTracker;
-    readonly defaultEngine: Engine;
-    readonly execute: Execute;
-    readonly node: {
-        readonly arch: string;
-        readonly platform: string;
-        readonly version: string;
-    };
-    readonly reporterDispatcher: ReporterDispatcher;
-    readonly readStartedAt: () => string;
-    readonly wallClock: WallClock;
-};
-
-export type RunOrchestrator = {
-    readonly resolve: (command: RunCommand) => Promise<ResolvedRun>;
-    readonly run: (command: RunCommand) => Promise<RunResult>;
-};
 
 function validateRunShard(request: RunRequest): void {
     if (request.shard.index !== 0 || request.shard.total !== 1) {
@@ -287,7 +139,7 @@ function copyResourceBudgets(resourceBudgets: RunResourceBudgets): RunResourceBu
     };
 }
 
-function copyResourceBudgetOverrides(overrides: ResourceBudgetOverrides | null): ResourceBudgetOverrides | null {
+function copyResourceBudgetOverrides(overrides: RunResourceBudgets | null): RunResourceBudgets | null {
     if (overrides === null) {
         return null;
     }
@@ -367,7 +219,7 @@ function readBudgetOverride(configValue: number | null, requestValue: number | n
 
 function resolveResourceBudgets(
     configBudgets: RunResourceBudgets,
-    requestOverrides: ResourceBudgetOverrides | null
+    requestOverrides: RunResourceBudgets | null
 ): RunResourceBudgets {
     if (requestOverrides === null) {
         return copyResourceBudgets(configBudgets);
@@ -392,7 +244,7 @@ function resolveResourceBudgets(
 
 function assertResourceBudgetOverridesAllowed(
     measureResourceUsage: boolean,
-    requestOverrides: ResourceBudgetOverrides | null
+    requestOverrides: RunResourceBudgets | null
 ): void {
     if (!measureResourceUsage && requestOverrides !== null && hasResourceBudgets(requestOverrides)) {
         invalidRequest('Resource budget overrides require resource usage measurement.');

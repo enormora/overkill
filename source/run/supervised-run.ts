@@ -11,24 +11,8 @@ import type {
 import { createRunResult } from '../engine/execution-result.ts';
 import { caseIdentityKey, formatCaseId } from '../engine/identity.ts';
 import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
-import type { ResolvedRun, RunOrchestratorDependencies, RunResourceBudgets } from './run.ts';
-
-type SupervisedChildEvent = {
-    readonly event: ReporterEvent;
-    readonly kind: 'event';
-};
-
-type SupervisedChildResult = {
-    readonly kind: 'result';
-    readonly result: RunResult;
-};
-
-type SupervisedChildSample = {
-    readonly kind: 'sample';
-    readonly sample: ResourceUsageSnapshot;
-};
-
-type SupervisedChildMessage = SupervisedChildEvent | SupervisedChildResult | SupervisedChildSample;
+import type { ResolvedRun, RunOrchestratorDependencies, RunResourceBudgets } from './run-types.ts';
+import type { SupervisedChildMessage, SupervisedRunCommand } from './supervised-protocol.ts';
 
 type ResourceBudgetMetric = keyof RunResourceBudgets;
 
@@ -39,14 +23,21 @@ type ResourceBudgetBreach = {
     readonly sample: ResourceUsageSnapshot;
 };
 
-type ActiveCaseMap = Map<string, TestPlanCase>;
-type PerTestResults = Map<string, PerTestResult>;
-type RunnerErrors = RunnerError[];
+type BudgetValueReader = (
+    sample: ResourceUsageSnapshot,
+    previousSample: ResourceUsageSnapshot | null
+) => number;
 
 type SupervisedRunState = {
-    readonly activeCases: ActiveCaseMap;
-    readonly perTest: PerTestResults;
-    readonly runnerErrors: RunnerErrors;
+    readonly activeCases: ReadonlyMap<string, TestPlanCase>;
+    readonly addActiveCase: (key: string, testCase: TestPlanCase) => void;
+    readonly perTestResults: () => readonly PerTestResult[];
+    readonly recordPerTestResult: (key: string, result: PerTestResult) => void;
+    readonly recordRunnerError: (error: RunnerError) => void;
+    readonly recordRunnerErrors: (errors: readonly RunnerError[]) => void;
+    readonly recordTerminalActiveCases: (verdict: PerTestResult['verdict']) => void;
+    readonly removeActiveCase: (key: string) => void;
+    readonly runnerErrors: () => readonly RunnerError[];
 };
 
 type ReporterContext = {
@@ -54,25 +45,123 @@ type ReporterContext = {
     readonly reporters: readonly Reporter[];
 };
 
-const childEntryPoint = fileURLToPath(new URL('./supervised-child.ts', import.meta.url));
+type ReporterEventQueue = {
+    readonly add: (eventReport: Promise<void>) => void;
+    readonly wait: () => Promise<void>;
+};
 
-function observedBudgetValue(
-    metric: ResourceBudgetMetric,
+type StoredRunValue<Value> = {
+    readonly read: () => Value;
+    readonly write: (value: Value) => void;
+};
+
+type SupervisedHardTimeout = {
+    readonly clear: () => void;
+    readonly start: () => void;
+};
+
+type SupervisedRunRuntimeSeed = {
+    readonly cases: ReadonlyMap<string, TestPlanCase>;
+    readonly child: ChildProcess;
+    readonly completedResult: StoredRunValue<RunResult | null>;
+    readonly dependencies: RunOrchestratorDependencies;
+    readonly previousSample: StoredRunValue<ResourceUsageSnapshot | null>;
+    readonly reporterContext: ReporterContext;
+    readonly reporterEvents: ReporterEventQueue;
+    readonly resolvedRun: ResolvedRun;
+    readonly state: SupervisedRunState;
+    readonly terminalFailure: StoredRunValue<boolean>;
+};
+
+type SupervisedRunRuntime = SupervisedRunRuntimeSeed & {
+    readonly timeout: SupervisedHardTimeout;
+};
+
+const childEntryPoint = fileURLToPath(new URL('./supervised-child.ts', import.meta.url));
+const millisecondsPerSecond = 1000;
+const resourceBudgetMetrics: readonly ResourceBudgetMetric[] = [
+    'activeResourceCount',
+    'javaScriptEngineHeapBytes',
+    'residentSetBytes',
+    'residentSetGrowthBytesPerSecond'
+];
+
+function terminalResult(testCase: TestPlanCase, verdict: PerTestResult['verdict']): PerTestResult {
+    return {
+        id: testCase.id,
+        outcome: null,
+        verdict
+    };
+}
+
+function createStoredRunValue<Value>(initialValue: Value): StoredRunValue<Value> {
+    let currentValue = initialValue;
+
+    return {
+        read() {
+            return currentValue;
+        },
+        write(value) {
+            currentValue = value;
+        }
+    };
+}
+
+function createSupervisedRunState(): SupervisedRunState {
+    const activeCases = new Map<string, TestPlanCase>();
+    const perTest = new Map<string, PerTestResult>();
+    const runnerErrors: RunnerError[] = [];
+
+    return {
+        activeCases,
+        addActiveCase(key, testCase) {
+            activeCases.set(key, testCase);
+        },
+        perTestResults() {
+            return Array.from(perTest.values());
+        },
+        recordPerTestResult(key, result) {
+            perTest.set(key, result);
+        },
+        recordRunnerError(error) {
+            runnerErrors.push(error);
+        },
+        recordRunnerErrors(errors) {
+            runnerErrors.push(...errors);
+        },
+        recordTerminalActiveCases(verdict) {
+            for (const [ key, testCase ] of activeCases) {
+                perTest.set(key, terminalResult(testCase, verdict));
+            }
+
+            activeCases.clear();
+        },
+        removeActiveCase(key) {
+            activeCases.delete(key);
+        },
+        runnerErrors() {
+            return runnerErrors;
+        }
+    };
+}
+
+function createReporterEventQueue(): ReporterEventQueue {
+    const eventReports: Promise<void>[] = [];
+
+    return {
+        add(eventReport) {
+            eventReports.push(eventReport);
+        },
+        async wait() {
+            await Promise.all(eventReports);
+        }
+    };
+}
+
+function observedResidentSetGrowth(
     sample: ResourceUsageSnapshot,
     previousSample: ResourceUsageSnapshot | null
 ): number {
-    if (metric === 'activeResourceCount') {
-        return sample.activeResourceCount;
-    }
-
-    if (metric === 'javaScriptEngineHeapBytes') {
-        return sample.javaScriptEngineHeapBytes;
-    }
-
-    if (metric === 'residentSetBytes') {
-        return sample.residentSetBytes;
-    }
-
     if (previousSample === null) {
         return 0;
     }
@@ -83,7 +172,31 @@ function observedBudgetValue(
         return 0;
     }
 
-    return Math.max(0, (sample.residentSetBytes - previousSample.residentSetBytes) * 1000 / elapsedMilliseconds);
+    return Math.max(
+        0,
+        (sample.residentSetBytes - previousSample.residentSetBytes) * millisecondsPerSecond / elapsedMilliseconds
+    );
+}
+
+const budgetValueReaders: Readonly<Record<ResourceBudgetMetric, BudgetValueReader>> = {
+    activeResourceCount(sample) {
+        return sample.activeResourceCount;
+    },
+    javaScriptEngineHeapBytes(sample) {
+        return sample.javaScriptEngineHeapBytes;
+    },
+    residentSetBytes(sample) {
+        return sample.residentSetBytes;
+    },
+    residentSetGrowthBytesPerSecond: observedResidentSetGrowth
+};
+
+function observedBudgetValue(
+    metric: ResourceBudgetMetric,
+    sample: ResourceUsageSnapshot,
+    previousSample: ResourceUsageSnapshot | null
+): number {
+    return budgetValueReaders[metric](sample, previousSample);
 }
 
 function findResourceBudgetBreach(
@@ -91,14 +204,7 @@ function findResourceBudgetBreach(
     sample: ResourceUsageSnapshot,
     previousSample: ResourceUsageSnapshot | null
 ): ResourceBudgetBreach | null {
-    const metrics: readonly ResourceBudgetMetric[] = [
-        'activeResourceCount',
-        'javaScriptEngineHeapBytes',
-        'residentSetBytes',
-        'residentSetGrowthBytesPerSecond'
-    ];
-
-    for (const metric of metrics) {
+    for (const metric of resourceBudgetMetrics) {
         const budget = budgets[metric];
 
         if (budget !== null) {
@@ -145,22 +251,6 @@ function crashError(state: SupervisedRunState, reason: string): RunnerError {
     };
 }
 
-function terminalResult(testCase: TestPlanCase, verdict: PerTestResult['verdict']): PerTestResult {
-    return {
-        id: testCase.id,
-        outcome: null,
-        verdict
-    };
-}
-
-function recordTerminalActiveCases(state: SupervisedRunState, verdict: PerTestResult['verdict']): void {
-    for (const [ key, testCase ] of state.activeCases) {
-        state.perTest.set(key, terminalResult(testCase, verdict));
-    }
-
-    state.activeCases.clear();
-}
-
 async function recordReporterEventErrors(
     event: ReporterEvent,
     state: SupervisedRunState,
@@ -174,7 +264,7 @@ async function recordReporterEventErrors(
     );
 
     if (errors.length > 0) {
-        state.runnerErrors.push(...errors);
+        state.recordRunnerErrors(errors);
     }
 }
 
@@ -189,18 +279,18 @@ function applyEvent(event: ReporterEvent, state: SupervisedRunState, cases: Read
         const testCase = cases.get(caseIdentityKey(event.case));
 
         if (testCase !== undefined) {
-            state.activeCases.set(caseIdentityKey(event.case), testCase);
+            state.addActiveCase(caseIdentityKey(event.case), testCase);
         }
     } else if (event.kind === 'test-end') {
         const key = caseIdentityKey(event.case);
-        state.activeCases.delete(key);
-        state.perTest.set(key, {
+        state.removeActiveCase(key);
+        state.recordPerTestResult(key, {
             id: event.case,
             outcome: event.outcome,
             verdict: event.verdict
         });
     } else if (event.kind === 'runner-error') {
-        state.runnerErrors.push(event.error);
+        state.recordRunnerError(event.error);
     }
 }
 
@@ -212,8 +302,8 @@ function createPartialRunResult(
 ): RunResult {
     return createRunResult(
         resolvedRun.testPlan,
-        Array.from(state.perTest.values()),
-        state.runnerErrors,
+        state.perTestResults(),
+        state.runnerErrors(),
         {
             resourceUsage: null,
             startedAtMs,
@@ -228,118 +318,47 @@ function kill(child: ChildProcess): void {
     }
 }
 
-export async function executeSupervisedRun(
-    resolvedRun: ResolvedRun,
-    dependencies: RunOrchestratorDependencies
-): Promise<RunResult> {
-    const reporterContext: ReporterContext = {
+function createReporterContext(resolvedRun: ResolvedRun): ReporterContext {
+    return {
         outputRenderer: resolvedRun.config.outputRenderer,
         reporters: resolvedRun.reporters
     };
-    const state: SupervisedRunState = {
-        activeCases: new Map(),
-        perTest: new Map(),
-        runnerErrors: []
-    };
-    const cases = caseByKey(resolvedRun.testPlan);
-    const startedAtMs = dependencies.wallClock.currentTimestampInMilliseconds;
-    const child = fork(childEntryPoint, [], {
+}
+
+function startSupervisedChild(resolvedRun: ResolvedRun): ChildProcess {
+    return fork(childEntryPoint, [], {
         cwd: resolvedRun.cwd,
         stdio: [ 'inherit', 'inherit', 'inherit', 'ipc' ]
     });
-    let previousSample: ResourceUsageSnapshot | null = null;
-    let completedResult: RunResult | null = null;
-    let terminalFailureRecorded = false;
+}
+
+function createHardTimeout(runtime: SupervisedRunRuntimeSeed): SupervisedHardTimeout {
     let hardTimeout: ReturnType<RunOrchestratorDependencies['wallClock']['setTimeout']> | null = null;
 
-    function clearHardTimeout(): void {
-        if (hardTimeout !== null) {
-            dependencies.wallClock.clearTimeout(hardTimeout);
-            hardTimeout = null;
-        }
-    }
-
-    function startHardTimeout(): void {
-        if (hardTimeout !== null || state.activeCases.size === 0) {
-            return;
-        }
-
-        hardTimeout = dependencies.wallClock.setTimeout(function killHardTimedOutChild() {
-            terminalFailureRecorded = true;
-            state.runnerErrors.push(crashError(state, 'Supervised child exceeded hard timeout.'));
-            recordTerminalActiveCases(state, 'crashed');
-            kill(child);
-        }, resolvedRun.facts.execution.resourceUsagePolicy.hardTimeoutMilliseconds);
-    }
-
-    await recordReporterEventErrors(
-        {
-            facts: resolvedRun.facts,
-            kind: 'run-start',
-            root: resolvedRun.testPlan.root,
-            startedAt: dependencies.readStartedAt()
+    return {
+        clear() {
+            if (hardTimeout !== null) {
+                runtime.dependencies.wallClock.clearTimeout(hardTimeout);
+                hardTimeout = null;
+            }
         },
-        state,
-        reporterContext,
-        dependencies
-    );
-
-    const childFinished = new Promise<void>(function waitForChild(resolve) {
-        child.on('message', function receiveMessage(message: SupervisedChildMessage) {
-            if (message.kind === 'event') {
-                applyEvent(message.event, state, cases);
-                if (message.event.kind === 'test-start') {
-                    startHardTimeout();
-                } else if (message.event.kind === 'test-end' && state.activeCases.size === 0) {
-                    clearHardTimeout();
-                }
-                void recordReporterEventErrors(message.event, state, reporterContext, dependencies);
-            } else if (message.kind === 'sample') {
-                if (terminalFailureRecorded) {
-                    return;
-                }
-
-                const breach = findResourceBudgetBreach(
-                    resolvedRun.facts.execution.resourceUsagePolicy.resourceBudgets,
-                    message.sample,
-                    previousSample
-                );
-                previousSample = message.sample;
-
-                if (breach !== null) {
-                    terminalFailureRecorded = true;
-                    const error = resourceExhaustionError(breach, state);
-                    state.runnerErrors.push(error);
-                    void recordReporterEventErrors(
-                        { error, kind: 'runner-error' },
-                        state,
-                        reporterContext,
-                        dependencies
-                    );
-                    recordTerminalActiveCases(state, 'resource-exhausted');
-                    clearHardTimeout();
-                    kill(child);
-                }
-            } else {
-                completedResult = {
-                    ...message.result,
-                    runnerErrors: [ ...state.runnerErrors, ...message.result.runnerErrors ]
-                };
+        start() {
+            if (hardTimeout !== null || runtime.state.activeCases.size === 0) {
+                return;
             }
-        });
-        child.on('error', function recordChildError(error) {
-            if (!terminalFailureRecorded) {
-                terminalFailureRecorded = true;
-                state.runnerErrors.push(crashError(state, error.message));
-                recordTerminalActiveCases(state, 'crashed');
-            }
-        });
-        child.on('exit', function resolveExit() {
-            resolve();
-        });
-    });
 
-    child.send?.({
+            hardTimeout = runtime.dependencies.wallClock.setTimeout(function killHardTimedOutChild() {
+                runtime.terminalFailure.write(true);
+                runtime.state.recordRunnerError(crashError(runtime.state, 'Supervised child exceeded hard timeout.'));
+                runtime.state.recordTerminalActiveCases('crashed');
+                kill(runtime.child);
+            }, runtime.resolvedRun.facts.execution.resourceUsagePolicy.hardTimeoutMilliseconds);
+        }
+    };
+}
+
+function createRunCommand(resolvedRun: ResolvedRun): SupervisedRunCommand {
+    return {
         assignedCaseKeys: resolvedRun.testPlan.cases.map(function toCaseKey(testCase) {
             return formatCaseId(testCase.id);
         }),
@@ -354,30 +373,181 @@ export async function executeSupervisedRun(
             .resourceUsagePolicy
             .resourceUsageSamplingIntervalMilliseconds,
         timeoutMilliseconds: resolvedRun.facts.execution.resourceUsagePolicy.timeoutMilliseconds
+    };
+}
+
+function sendRunCommand(runtime: SupervisedRunRuntime): void {
+    runtime.child.send(createRunCommand(runtime.resolvedRun));
+}
+
+function handleChildEvent(event: ReporterEvent, runtime: SupervisedRunRuntime): void {
+    applyEvent(event, runtime.state, runtime.cases);
+
+    if (event.kind === 'test-start') {
+        runtime.timeout.start();
+    } else if (event.kind === 'test-end' && runtime.state.activeCases.size === 0) {
+        runtime.timeout.clear();
+    }
+
+    runtime.reporterEvents.add(recordReporterEventErrors(
+        event,
+        runtime.state,
+        runtime.reporterContext,
+        runtime.dependencies
+    ));
+}
+
+function handleResourceBudgetBreach(
+    breach: ResourceBudgetBreach,
+    runtime: SupervisedRunRuntime
+): void {
+    runtime.terminalFailure.write(true);
+    const error = resourceExhaustionError(breach, runtime.state);
+    runtime.state.recordRunnerError(error);
+    runtime.reporterEvents.add(recordReporterEventErrors(
+        { error, kind: 'runner-error' },
+        runtime.state,
+        runtime.reporterContext,
+        runtime.dependencies
+    ));
+    runtime.state.recordTerminalActiveCases('resource-exhausted');
+    runtime.timeout.clear();
+    kill(runtime.child);
+}
+
+function handleChildSample(sample: ResourceUsageSnapshot, runtime: SupervisedRunRuntime): void {
+    if (runtime.terminalFailure.read()) {
+        return;
+    }
+
+    const breach = findResourceBudgetBreach(
+        runtime.resolvedRun.facts.execution.resourceUsagePolicy.resourceBudgets,
+        sample,
+        runtime.previousSample.read()
+    );
+    runtime.previousSample.write(sample);
+
+    if (breach !== null) {
+        handleResourceBudgetBreach(breach, runtime);
+    }
+}
+
+function handleCompletedResult(result: RunResult, runtime: SupervisedRunRuntime): void {
+    runtime.completedResult.write({
+        ...result,
+        runnerErrors: [ ...runtime.state.runnerErrors(), ...result.runnerErrors ]
     });
+}
 
-    await childFinished;
-    clearHardTimeout();
+function handleChildMessage(message: SupervisedChildMessage, runtime: SupervisedRunRuntime): void {
+    if (message.kind === 'event') {
+        handleChildEvent(message.event, runtime);
+    } else if (message.kind === 'sample') {
+        handleChildSample(message.sample, runtime);
+    } else {
+        handleCompletedResult(message.result, runtime);
+    }
+}
 
-    const result = completedResult ?? createPartialRunResult(resolvedRun, state, dependencies, startedAtMs);
-    const runEndErrors = await dependencies.reporterDispatcher.reportEvent(
-        reporterContext.reporters,
+async function observeChild(runtime: SupervisedRunRuntime): Promise<void> {
+    return new Promise(function waitForChild(resolve) {
+        runtime.child.on('message', function receiveMessage(message: SupervisedChildMessage) {
+            handleChildMessage(message, runtime);
+        });
+        runtime.child.on('error', function recordChildError(error) {
+            if (!runtime.terminalFailure.read()) {
+                runtime.terminalFailure.write(true);
+                runtime.state.recordRunnerError(crashError(runtime.state, error.message));
+                runtime.state.recordTerminalActiveCases('crashed');
+            }
+        });
+        runtime.child.on('exit', function resolveExit() {
+            resolve();
+        });
+    });
+}
+
+function selectRunResult(runtime: SupervisedRunRuntime, startedAtMs: number): RunResult {
+    const completedResult = runtime.completedResult.read();
+
+    if (completedResult === null) {
+        return createPartialRunResult(runtime.resolvedRun, runtime.state, runtime.dependencies, startedAtMs);
+    }
+
+    return completedResult;
+}
+
+async function reportFinalResult(result: RunResult, runtime: SupervisedRunRuntime): Promise<RunResult> {
+    const runEndErrors = await runtime.dependencies.reporterDispatcher.reportEvent(
+        runtime.reporterContext.reporters,
         { kind: 'run-end', result },
-        reporterContext.outputRenderer
+        runtime.reporterContext.outputRenderer
     );
     const resultForFinalReporting = {
         ...result,
         runnerErrors: [ ...result.runnerErrors, ...runEndErrors ]
     };
-    const finalReporterErrors = await dependencies.reporterDispatcher.reportResult(
-        reporterContext.reporters,
+    const finalReporterErrors = await runtime.dependencies.reporterDispatcher.reportResult(
+        runtime.reporterContext.reporters,
         resultForFinalReporting,
-        reporterContext.outputRenderer
+        runtime.reporterContext.outputRenderer
     );
-    const disposeErrors = await dependencies.reporterDispatcher.disposeReporters(reporterContext.reporters);
+    const disposeErrors = await runtime.dependencies.reporterDispatcher.disposeReporters(
+        runtime.reporterContext.reporters
+    );
 
     return {
         ...resultForFinalReporting,
         runnerErrors: [ ...resultForFinalReporting.runnerErrors, ...finalReporterErrors, ...disposeErrors ]
     };
+}
+
+function createRuntime(
+    resolvedRun: ResolvedRun,
+    dependencies: RunOrchestratorDependencies
+): SupervisedRunRuntime {
+    const runtimeWithoutTimeout = {
+        cases: caseByKey(resolvedRun.testPlan),
+        child: startSupervisedChild(resolvedRun),
+        completedResult: createStoredRunValue<RunResult | null>(null),
+        dependencies,
+        previousSample: createStoredRunValue<ResourceUsageSnapshot | null>(null),
+        reporterContext: createReporterContext(resolvedRun),
+        reporterEvents: createReporterEventQueue(),
+        resolvedRun,
+        state: createSupervisedRunState(),
+        terminalFailure: createStoredRunValue(false)
+    };
+
+    return {
+        ...runtimeWithoutTimeout,
+        timeout: createHardTimeout(runtimeWithoutTimeout)
+    };
+}
+
+export async function executeSupervisedRun(
+    resolvedRun: ResolvedRun,
+    dependencies: RunOrchestratorDependencies
+): Promise<RunResult> {
+    const runtime = createRuntime(resolvedRun, dependencies);
+    const startedAtMs = dependencies.wallClock.currentTimestampInMilliseconds;
+    await recordReporterEventErrors(
+        {
+            facts: resolvedRun.facts,
+            kind: 'run-start',
+            root: resolvedRun.testPlan.root,
+            startedAt: dependencies.readStartedAt()
+        },
+        runtime.state,
+        runtime.reporterContext,
+        dependencies
+    );
+
+    const childFinished = observeChild(runtime);
+    sendRunCommand(runtime);
+    await childFinished;
+    runtime.timeout.clear();
+    await runtime.reporterEvents.wait();
+
+    return reportFinalResult(selectRunResult(runtime, startedAtMs), runtime);
 }

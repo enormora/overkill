@@ -14,7 +14,7 @@ import {
     type CommandLineRunnerDependencies,
     type CommandLineRunnerResult
 } from './command-line-runner.ts';
-import type { RunCommand, RunOrchestrator, RunRequest } from './run.ts';
+import type { RunCommand, RunOrchestrator, RunRequest } from './run-types.ts';
 import { RunResolutionError } from './run-errors.ts';
 import { RunConfigError, type LoadedRunConfig } from './run-config.ts';
 

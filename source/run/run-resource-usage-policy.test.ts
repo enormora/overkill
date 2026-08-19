@@ -10,13 +10,8 @@ import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type { RunResourceUsageTracker } from '../engine/run-result.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
-import {
-    createRunOrchestrator,
-    type RunCommand,
-    type RunConfig,
-    type RunOrchestrator,
-    type RunRequest
-} from './run.ts';
+import { createRunOrchestrator } from './run.ts';
+import type { RunCommand, RunConfig, RunOrchestrator, RunRequest } from './run-types.ts';
 
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 

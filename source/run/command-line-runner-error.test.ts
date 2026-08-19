@@ -11,7 +11,7 @@ import { testDouble } from '../doubles/test-double.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { createCommandLineRunner, type CommandLineRunnerDependencies } from './command-line-runner.ts';
 import type { LoadedRunConfig } from './run-config.ts';
-import type { RunOrchestrator, RunRequest } from './run.ts';
+import type { RunOrchestrator, RunRequest } from './run-types.ts';
 
 const memoryReporter: Reporter = {
     dispose: null,

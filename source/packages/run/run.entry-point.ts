@@ -3,7 +3,6 @@ export { RunResolutionError } from '../../run/run-errors.ts';
 export type { RunResolutionErrorCode } from '../../run/run-errors.ts';
 export type {
     ResolvedRun,
-    ResourceBudgetOverrides,
     RunCaseFacts,
     RunCommand,
     RunConfig,
@@ -23,4 +22,4 @@ export type {
     RunSelection,
     RunShard,
     SerializedValue
-} from '../../run/run.ts';
+} from '../../run/run-types.ts';

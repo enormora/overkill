@@ -71,9 +71,13 @@ export type ExecutionSupervision = {
     readonly runnerErrors: readonly RunnerError[];
 };
 
-type SoftTimeoutResolution =
-    | { readonly failure: TestFailure; readonly kind: 'failure'; }
-    | { readonly kind: 'milliseconds'; readonly milliseconds: number | null; };
+type SoftTimeoutResolution = {
+    readonly failure: TestFailure;
+    readonly kind: 'failure';
+} | {
+    readonly kind: 'milliseconds';
+    readonly milliseconds: number | null;
+};
 
 type ActiveCaseInput = {
     readonly completion: CaseCompletion;
@@ -319,16 +323,16 @@ async function runCaseWithSoftTimeout(
         return await runTestCase(testCase, dependencies.wallClock, { signal: controller.signal });
     }
 
-    let timedOut = false;
+    const timing = { timedOut: false };
     const softTimeout = dependencies.wallClock.setTimeout(function abortTimedOutCase() {
-        timedOut = true;
+        timing.timedOut = true;
         controller.abort();
     }, timeoutMilliseconds);
     const executedCase = await runTestCase(testCase, dependencies.wallClock, { signal: controller.signal });
 
     clearTimer(dependencies.wallClock, softTimeout);
 
-    if (timedOut) {
+    if (timing.timedOut) {
         return resultWithTimeoutFailure(executedCase, timeoutMilliseconds, executedCase.wallTimeMs);
     }
 

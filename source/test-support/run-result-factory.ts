@@ -282,13 +282,20 @@ function buildOutcome(overrides: TestOutcomeOverrides = {}): TestOutcome {
     return { kind: 'pass' };
 }
 
+function buildPerTestVerdict(
+    overrides: PerTestResultOverrides,
+    outcome: TestOutcome | null
+): RunResult['perTest'][number]['verdict'] {
+    return overrides.verdict ?? outcome?.kind ?? 'crashed';
+}
+
 function buildPerTestResult(overrides: PerTestResultOverrides = {}): RunResult['perTest'][number] {
     const outcome = overrides.outcome === null ? null : buildOutcome(overrides.outcome);
 
     return {
         id: overrides.id ?? defaultCaseId,
         outcome,
-        verdict: overrides.verdict ?? outcome?.kind ?? 'crashed'
+        verdict: buildPerTestVerdict(overrides, outcome)
     };
 }
 

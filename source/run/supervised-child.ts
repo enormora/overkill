@@ -1,33 +1,17 @@
 import { createWallClock } from '@enormora/wall-clock';
+import type { Reporter, RunResourceUsageTracker, TestPlan } from '../packages/engine/engine.entry-point.ts';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
-import type { Reporter, ReporterEvent } from '../engine/reporter.ts';
-import type { ResourceUsageSnapshot, RunResourceUsageTracker, RunResult } from '../engine/run-result.ts';
-import type { TestPlan } from '../engine/test-plan.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import { createNodeResourceUsageTracker } from './resource-usage.ts';
 import { discoverRunFiles } from './run-discovery.ts';
 import { loadRunTestModules } from './run-test-modules.ts';
-import type { RunResourceBudgets } from './run.ts';
+import type { SupervisedChildMessage, SupervisedRunCommand } from './supervised-protocol.ts';
 
-type ChildRunCommand = {
-    readonly assignedCaseKeys: readonly string[];
-    readonly cwd: string;
-    readonly hardTimeoutMilliseconds: number;
-    readonly kind: 'run';
-    readonly paths: readonly string[];
-    readonly resourceBudgets: RunResourceBudgets;
-    readonly resourceUsageSamplingIntervalMilliseconds: number;
-    readonly timeoutMilliseconds: number;
-};
-
-type ChildMessage =
-    | { readonly event: ReporterEvent; readonly kind: 'event'; }
-    | { readonly kind: 'result'; readonly result: RunResult; }
-    | { readonly kind: 'sample'; readonly sample: ResourceUsageSnapshot; };
-
-function send(message: ChildMessage): void {
-    process.send?.(message);
+function send(message: SupervisedChildMessage): void {
+    if (process.send !== undefined) {
+        process.send(message);
+    }
 }
 
 function ignoreLine(): void {
@@ -53,7 +37,7 @@ function createIpcReporter(): Reporter {
     };
 }
 
-async function createTestPlan(command: ChildRunCommand): Promise<TestPlan> {
+async function createTestPlan(command: SupervisedRunCommand): Promise<TestPlan> {
     const files = await discoverRunFiles({ cwd: command.cwd, paths: command.paths });
     const testFiles = await loadRunTestModules(files, defaultRunEngine);
 
@@ -66,7 +50,10 @@ async function createTestPlan(command: ChildRunCommand): Promise<TestPlan> {
     });
 }
 
-function selectAssignedCases(testPlan: TestPlan, assignedCaseKeys: readonly string[]): TestPlan {
+function selectAssignedCases(
+    testPlan: TestPlan,
+    assignedCaseKeys: readonly string[]
+): TestPlan {
     const assigned = new Set(assignedCaseKeys);
     const cases = testPlan.cases.filter(function assignedCase(testCase) {
         return assigned.has(defaultRunEngine.formatCaseId(testCase.id));
@@ -83,7 +70,7 @@ function selectAssignedCases(testPlan: TestPlan, assignedCaseKeys: readonly stri
     };
 }
 
-function createResourceUsageTracker(command: ChildRunCommand): RunResourceUsageTracker {
+function createResourceUsageTracker(command: SupervisedRunCommand): RunResourceUsageTracker {
     const tracker = createNodeResourceUsageTracker(createWallClock(), {
         samplingIntervalMilliseconds: command.resourceUsageSamplingIntervalMilliseconds
     });
@@ -99,7 +86,7 @@ function createResourceUsageTracker(command: ChildRunCommand): RunResourceUsageT
     };
 }
 
-async function run(command: ChildRunCommand): Promise<void> {
+async function run(command: SupervisedRunCommand): Promise<void> {
     const wallClock = createWallClock();
     const startedAt = new Date(wallClock.currentTimestampInMilliseconds);
     const execute = createExecute({
@@ -128,10 +115,13 @@ async function run(command: ChildRunCommand): Promise<void> {
     send({ kind: 'result', result });
 }
 
-function isChildRunCommand(message: unknown): message is ChildRunCommand {
-    return typeof message === 'object' &&
-        message !== null &&
-        'kind' in message &&
+function isRecord(value: unknown): value is Readonly<Record<PropertyKey, unknown>> {
+    return typeof value === 'object' && value !== null;
+}
+
+function isChildRunCommand(message: unknown): message is SupervisedRunCommand {
+    return isRecord(message) &&
+        Object.hasOwn(message, 'kind') &&
         message.kind === 'run';
 }
 
@@ -150,7 +140,7 @@ function sendFailure(error: unknown): void {
     });
 }
 
-async function runReceivedCommand(command: ChildRunCommand): Promise<void> {
+async function runReceivedCommand(command: SupervisedRunCommand): Promise<void> {
     try {
         await run(command);
         process.exitCode = 0;
@@ -158,12 +148,20 @@ async function runReceivedCommand(command: ChildRunCommand): Promise<void> {
         sendFailure(error);
         process.exitCode = 1;
     } finally {
-        process.disconnect?.();
+        if (process.disconnect !== undefined) {
+            process.disconnect();
+        }
     }
 }
 
-process.on('message', async function receiveCommand(message: unknown) {
-    if (isChildRunCommand(message)) {
-        await runReceivedCommand(message);
-    }
-});
+async function receiveRunCommand(): Promise<SupervisedRunCommand> {
+    return new Promise(function waitForRunCommand(resolve) {
+        process.once('message', function receiveCommand(message: unknown) {
+            if (isChildRunCommand(message)) {
+                resolve(message);
+            }
+        });
+    });
+}
+
+await runReceivedCommand(await receiveRunCommand());

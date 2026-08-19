@@ -11,7 +11,7 @@ import type {
     RunProfilesConfig,
     RunResourceBudgets,
     RunResourceUsagePolicy
-} from './run.ts';
+} from './run-types.ts';
 
 const defaultConfigFileNames = [ 'overkill.config.ts', 'overkill.config.js' ];
 const defaultResourceUsageSamplingIntervalMilliseconds = 100;

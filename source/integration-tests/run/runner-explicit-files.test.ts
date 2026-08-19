@@ -15,7 +15,7 @@ import {
     type CommandLineRunnerResult
 } from '../../run/command-line-runner.ts';
 import { orchestrator } from '../../run/run-orchestrator.ts';
-import type { RunCommand, RunConfig, RunRequest } from '../../run/run.ts';
+import type { RunCommand, RunConfig, RunRequest } from '../../run/run-types.ts';
 import type { LoadedRunConfig } from '../../run/run-config.ts';
 
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';

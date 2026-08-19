@@ -4,7 +4,6 @@ import {
     RunResolutionError,
     type orchestrator,
     type ResolvedRun,
-    type ResourceBudgetOverrides,
     type RunCommand,
     type RunConfig,
     type RunExecutionFacts,
@@ -50,9 +49,9 @@ describe('@overkill-dev/run', function () {
 
     test('keeps request fields explicit for the implemented runner slice', function () {
         expect<keyof RunRequest>().type.toBe<ExpectedRunRequestKey>();
-        expect<RunRequest['execution']['mode']>().type.toBe<'concurrent-in-process'>();
+        expect<RunRequest['execution']['mode']>().type.toBe<'profile-default'>();
         expect<RunRequest['measureResourceUsage']>().type.toBe<boolean | null>();
-        expect<RunRequest['resourceBudgetOverrides']>().type.toBe<ResourceBudgetOverrides | null>();
+        expect<RunRequest['resourceBudgetOverrides']>().type.toBe<RunResourceBudgets | null>();
         expect<RunRequest['order']>().type.toBe<'plan'>();
     });
 

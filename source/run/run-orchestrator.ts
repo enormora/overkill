@@ -4,7 +4,8 @@ import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import { createNodeResourceUsageTracker } from './resource-usage.ts';
-import { createRunOrchestrator, type RunOrchestrator } from './run.ts';
+import { createRunOrchestrator } from './run.ts';
+import type { RunOrchestrator } from './run-types.ts';
 
 const seedByteLength = 8;
 

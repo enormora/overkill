@@ -11,7 +11,7 @@ import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createCommandLineRunner, type CommandLineRunnerDependencies } from './command-line-runner.ts';
 import type { LoadedRunConfig } from './run-config.ts';
-import type { RunCommand, RunOrchestrator, RunRequest } from './run.ts';
+import type { RunCommand, RunOrchestrator, RunRequest } from './run-types.ts';
 
 type PlainOutputIntent = {
     readonly text: string;

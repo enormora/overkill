@@ -59,7 +59,7 @@ export type TestContractFailure = {
     readonly summary: string;
 };
 
-export type TimeoutTestFailure = {
+type TimeoutTestFailure = {
     readonly deadlineMilliseconds: number;
     readonly elapsedMilliseconds: number;
     readonly kind: 'timeout';
