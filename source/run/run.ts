@@ -4,9 +4,10 @@ import { serializeValue, type SerializedValue as SerializedValueShape } from '..
 import { createExecute, type Execute } from '../engine/execution.ts';
 import type { CaseId } from '../engine/identity.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
-import type { RunResult } from '../engine/run-result.ts';
+import type { RunResourceUsageTracker, RunResult } from '../engine/run-result.ts';
 import type { Metadata } from '../engine/test-node.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
+import { createNodeResourceUsageTracker, type ResourceUsageTrackerOptions } from './resource-usage.ts';
 
 const minimumSeedValue = 0n;
 const seedByteLength = 8;
@@ -43,9 +44,34 @@ export type RunLoaderConfig = {
     readonly stripMode: 'strip-only' | 'transform';
 };
 
+export type RunResourceBudgets = {
+    readonly activeResourceCount: number | null;
+    readonly javaScriptEngineHeapBytes: number | null;
+    readonly residentSetBytes: number | null;
+    readonly residentSetGrowthBytesPerSecond: number | null;
+};
+
+export type ResourceBudgetOverrides = {
+    readonly activeResourceCount: number | null;
+    readonly javaScriptEngineHeapBytes: number | null;
+    readonly residentSetBytes: number | null;
+    readonly residentSetGrowthBytesPerSecond: number | null;
+};
+
+export type RunResourceUsagePolicy = {
+    readonly measureResourceUsage: boolean;
+    readonly resourceBudgets: RunResourceBudgets;
+    readonly resourceUsageSamplingIntervalMilliseconds: number;
+};
+
+export type RunProfilesConfig = {
+    readonly microtest: RunResourceUsagePolicy;
+};
+
 export type RunConfig = {
     readonly loader: RunLoaderConfig;
     readonly outputRenderer: RunOutputRenderer;
+    readonly profiles: RunProfilesConfig;
     readonly reporters: RunReporters;
     readonly runtimeStateDir: string;
 };
@@ -56,9 +82,12 @@ export type RunRequest = {
     readonly coverage: false;
     readonly debug: RunDebugRequest;
     readonly execution: RunExecutionRequest;
+    readonly measureResourceUsage: boolean | null;
     readonly order: 'plan';
     readonly paths: readonly string[];
     readonly profile: 'microtest';
+    readonly resourceBudgetOverrides: ResourceBudgetOverrides | null;
+    readonly resourceUsageSamplingIntervalMilliseconds: number | null;
     readonly seed: RunSeed;
     readonly selection: RunSelection;
     readonly shard: RunShard;
@@ -101,6 +130,7 @@ export type RunExecutionFacts = {
     readonly mode: 'concurrent-in-process';
     readonly order: 'plan';
     readonly profile: 'microtest';
+    readonly resourceUsagePolicy: RunResourceUsagePolicy;
     readonly verbose: false;
 };
 
@@ -135,6 +165,7 @@ export class RunResolutionError extends Error {
 
 export type RunOrchestratorDependencies = {
     readonly createSeed: () => bigint;
+    readonly createResourceUsageTracker: (options: ResourceUsageTrackerOptions) => RunResourceUsageTracker;
     readonly execute: Execute;
     readonly node: {
         readonly arch: string;
@@ -175,10 +206,64 @@ function validateRunSeed(request: RunRequest): void {
     }
 }
 
+function validatePositiveSafeInteger(value: number | null, label: string): void {
+    if (value !== null && (!Number.isSafeInteger(value) || value <= 0)) {
+        invalidRequest(`${label} must be a positive safe integer.`);
+    }
+}
+
+function validateResourceBudgets(resourceBudgets: RunResourceBudgets): void {
+    validatePositiveSafeInteger(resourceBudgets.activeResourceCount, 'Active resource count budget');
+    validatePositiveSafeInteger(resourceBudgets.javaScriptEngineHeapBytes, 'JavaScript engine heap budget');
+    validatePositiveSafeInteger(resourceBudgets.residentSetBytes, 'Resident set budget');
+    validatePositiveSafeInteger(resourceBudgets.residentSetGrowthBytesPerSecond, 'Resident set growth budget');
+}
+
+function validateSamplingInterval(value: number | null): void {
+    validatePositiveSafeInteger(value, 'Resource usage sampling interval');
+}
+
+function hasResourceBudgets(resourceBudgets: RunResourceBudgets): boolean {
+    return resourceBudgets.activeResourceCount !== null ||
+        resourceBudgets.javaScriptEngineHeapBytes !== null ||
+        resourceBudgets.residentSetBytes !== null ||
+        resourceBudgets.residentSetGrowthBytesPerSecond !== null;
+}
+
+function validateRunResourceUsageRequest(request: RunRequest): void {
+    if (request.resourceBudgetOverrides !== null) {
+        validateResourceBudgets(request.resourceBudgetOverrides);
+    }
+
+    validateSamplingInterval(request.resourceUsageSamplingIntervalMilliseconds);
+
+    if (
+        request.measureResourceUsage === false &&
+        request.resourceBudgetOverrides !== null &&
+        hasResourceBudgets(request.resourceBudgetOverrides)
+    ) {
+        invalidRequest('Resource budget overrides require resource usage measurement.');
+    }
+}
+
 function validateRunRequest(request: RunRequest): void {
     validateRunPaths(request);
     validateRunShard(request);
     validateRunSeed(request);
+    validateRunResourceUsageRequest(request);
+}
+
+function validateRunResourceUsagePolicy(policy: RunResourceUsagePolicy): void {
+    validateResourceBudgets(policy.resourceBudgets);
+    validateSamplingInterval(policy.resourceUsageSamplingIntervalMilliseconds);
+
+    if (!policy.measureResourceUsage && hasResourceBudgets(policy.resourceBudgets)) {
+        invalidRequest('Resource budgets require resource usage measurement.');
+    }
+}
+
+function validateRunConfig(config: RunConfig): void {
+    validateRunResourceUsagePolicy(config.profiles.microtest);
 }
 
 function resolvedSeed(request: RunRequest, dependencies: RunOrchestratorDependencies): bigint {
@@ -199,6 +284,37 @@ function copyRunShard(shard: RunShard): RunShard {
     };
 }
 
+function copyResourceBudgets(resourceBudgets: RunResourceBudgets): RunResourceBudgets {
+    return {
+        activeResourceCount: resourceBudgets.activeResourceCount,
+        javaScriptEngineHeapBytes: resourceBudgets.javaScriptEngineHeapBytes,
+        residentSetBytes: resourceBudgets.residentSetBytes,
+        residentSetGrowthBytesPerSecond: resourceBudgets.residentSetGrowthBytesPerSecond
+    };
+}
+
+function copyResourceBudgetOverrides(overrides: ResourceBudgetOverrides | null): ResourceBudgetOverrides | null {
+    if (overrides === null) {
+        return null;
+    }
+
+    return copyResourceBudgets(overrides);
+}
+
+function copyResourceUsagePolicy(policy: RunResourceUsagePolicy): RunResourceUsagePolicy {
+    return {
+        measureResourceUsage: policy.measureResourceUsage,
+        resourceBudgets: copyResourceBudgets(policy.resourceBudgets),
+        resourceUsageSamplingIntervalMilliseconds: policy.resourceUsageSamplingIntervalMilliseconds
+    };
+}
+
+function copyRunProfilesConfig(profiles: RunProfilesConfig): RunProfilesConfig {
+    return {
+        microtest: copyResourceUsagePolicy(profiles.microtest)
+    };
+}
+
 function copyRunRequest(request: RunRequest): RunRequest {
     return {
         baselineUpdateMode: request.baselineUpdateMode,
@@ -209,9 +325,12 @@ function copyRunRequest(request: RunRequest): RunRequest {
             selectors: []
         },
         execution: { mode: request.execution.mode },
+        measureResourceUsage: request.measureResourceUsage,
         order: request.order,
         paths: Array.from(request.paths),
         profile: request.profile,
+        resourceBudgetOverrides: copyResourceBudgetOverrides(request.resourceBudgetOverrides),
+        resourceUsageSamplingIntervalMilliseconds: request.resourceUsageSamplingIntervalMilliseconds,
         seed: { value: request.seed.value },
         selection: { kind: request.selection.kind },
         shard: copyRunShard(request.shard),
@@ -223,6 +342,7 @@ function copyRunConfig(config: RunConfig): RunConfig {
     return {
         loader: copyLoaderConfig(config.loader),
         outputRenderer: config.outputRenderer,
+        profiles: copyRunProfilesConfig(config.profiles),
         reporters: Array.from(config.reporters),
         runtimeStateDir: config.runtimeStateDir
     };
@@ -232,6 +352,71 @@ function runCaseFacts(metadata: Metadata, id: CaseId): RunCaseFacts {
     return {
         id,
         metadata: serializeValue(metadata)
+    };
+}
+
+function disabledResourceBudgets(): RunResourceBudgets {
+    return {
+        activeResourceCount: null,
+        javaScriptEngineHeapBytes: null,
+        residentSetBytes: null,
+        residentSetGrowthBytesPerSecond: null
+    };
+}
+
+function readBudgetOverride(configValue: number | null, requestValue: number | null): number | null {
+    return requestValue ?? configValue;
+}
+
+function resolveResourceBudgets(
+    configBudgets: RunResourceBudgets,
+    requestOverrides: ResourceBudgetOverrides | null
+): RunResourceBudgets {
+    if (requestOverrides === null) {
+        return copyResourceBudgets(configBudgets);
+    }
+
+    return {
+        activeResourceCount: readBudgetOverride(
+            configBudgets.activeResourceCount,
+            requestOverrides.activeResourceCount
+        ),
+        javaScriptEngineHeapBytes: readBudgetOverride(
+            configBudgets.javaScriptEngineHeapBytes,
+            requestOverrides.javaScriptEngineHeapBytes
+        ),
+        residentSetBytes: readBudgetOverride(configBudgets.residentSetBytes, requestOverrides.residentSetBytes),
+        residentSetGrowthBytesPerSecond: readBudgetOverride(
+            configBudgets.residentSetGrowthBytesPerSecond,
+            requestOverrides.residentSetGrowthBytesPerSecond
+        )
+    };
+}
+
+function assertResourceBudgetOverridesAllowed(
+    measureResourceUsage: boolean,
+    requestOverrides: ResourceBudgetOverrides | null
+): void {
+    if (!measureResourceUsage && requestOverrides !== null && hasResourceBudgets(requestOverrides)) {
+        invalidRequest('Resource budget overrides require resource usage measurement.');
+    }
+}
+
+function resolveResourceUsagePolicy(request: RunRequest, config: RunConfig): RunResourceUsagePolicy {
+    const configuredPolicy = config.profiles.microtest;
+    const measureResourceUsage = request.measureResourceUsage ?? configuredPolicy.measureResourceUsage;
+    const resourceUsageSamplingIntervalMilliseconds = request.resourceUsageSamplingIntervalMilliseconds ??
+        configuredPolicy.resourceUsageSamplingIntervalMilliseconds;
+    const resourceBudgets = measureResourceUsage
+        ? resolveResourceBudgets(configuredPolicy.resourceBudgets, request.resourceBudgetOverrides)
+        : disabledResourceBudgets();
+
+    assertResourceBudgetOverridesAllowed(measureResourceUsage, request.resourceBudgetOverrides);
+
+    return {
+        measureResourceUsage,
+        resourceBudgets,
+        resourceUsageSamplingIntervalMilliseconds
     };
 }
 
@@ -261,6 +446,7 @@ function createRunFacts(
             mode: request.execution.mode,
             order: request.order,
             profile: request.profile,
+            resourceUsagePolicy: resolveResourceUsagePolicy(request, config),
             verbose: request.verbose
         },
         loader: config.loader,
@@ -285,6 +471,7 @@ function freezeValue<Value>(value: Value): Value {
 
 function createResolvedRun(command: RunCommand, dependencies: RunOrchestratorDependencies): ResolvedRun {
     validateRunRequest(command.request);
+    validateRunConfig(command.config);
 
     const request = freezeValue(copyRunRequest(command.request));
     const config = freezeValue(copyRunConfig(command.config));
@@ -299,6 +486,25 @@ function createResolvedRun(command: RunCommand, dependencies: RunOrchestratorDep
     });
 }
 
+function assertRunnableResourceUsagePolicy(policy: RunResourceUsagePolicy): void {
+    if (hasResourceBudgets(policy.resourceBudgets)) {
+        unsupportedRequest('Resource budget enforcement is not implemented yet.');
+    }
+}
+
+function createExecutionResourceUsageTracker(
+    policy: RunResourceUsagePolicy,
+    dependencies: RunOrchestratorDependencies
+): RunResourceUsageTracker | null {
+    if (!policy.measureResourceUsage) {
+        return null;
+    }
+
+    return dependencies.createResourceUsageTracker({
+        samplingIntervalMilliseconds: policy.resourceUsageSamplingIntervalMilliseconds
+    });
+}
+
 export function createRunOrchestrator(dependencies: RunOrchestratorDependencies): RunOrchestrator {
     return {
         async resolve(command) {
@@ -307,11 +513,15 @@ export function createRunOrchestrator(dependencies: RunOrchestratorDependencies)
 
         async run(command) {
             const resolvedRun = createResolvedRun(command, dependencies);
+            const { resourceUsagePolicy } = resolvedRun.facts.execution;
+
+            assertRunnableResourceUsagePolicy(resourceUsagePolicy);
 
             return await dependencies.execute(resolvedRun.testPlan, {
                 execution: { mode: 'concurrent-in-process' },
                 outputRenderer: resolvedRun.config.outputRenderer,
                 reporters: resolvedRun.reporters,
+                resourceUsageTracker: createExecutionResourceUsageTracker(resourceUsagePolicy, dependencies),
                 runFacts: resolvedRun.facts,
                 startedAt: dependencies.readStartedAt()
             });
@@ -334,6 +544,9 @@ function writeStderrLine(line: string): void {
 
 const defaultRunOrchestrator = createRunOrchestrator({
     createSeed: createDefaultSeed,
+    createResourceUsageTracker(options) {
+        return createNodeResourceUsageTracker(defaultWallClock, options);
+    },
     execute: createExecute({
         reporterDispatcher: createReporterDispatcher({
             stderr: { writeLine: writeStderrLine },

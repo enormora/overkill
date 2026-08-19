@@ -36,6 +36,18 @@ export const testSuite = createOverkillSuite({
                 scope.assert.equal(config.configPath, null);
                 scope.assert.deepEqual(config.loader, { sourceMaps: false, stripMode: 'strip-only' });
                 scope.assert.equal(typeof config.outputRenderer.render, 'function');
+                scope.assert.deepEqual(config.profiles, {
+                    microtest: {
+                        measureResourceUsage: false,
+                        resourceBudgets: {
+                            activeResourceCount: null,
+                            javaScriptEngineHeapBytes: null,
+                            residentSetBytes: null,
+                            residentSetGrowthBytesPerSecond: null
+                        },
+                        resourceUsageSamplingIntervalMilliseconds: 100
+                    }
+                });
                 scope.assert.equal(config.reporters, null);
                 scope.assert.equal(config.runtimeStateDir, '.overkill');
 
@@ -59,8 +71,48 @@ export const testSuite = createOverkillSuite({
 
                 scope.assert.equal(config.configPath, configPath);
                 scope.assert.deepEqual(config.loader, { sourceMaps: true, stripMode: 'transform' });
+                scope.assert.equal(config.profiles.microtest.measureResourceUsage, false);
                 scope.assert.equal(config.reporters, null);
                 scope.assert.equal(config.runtimeStateDir, 'target/overkill-state');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'loadRunConfig() loads microtest resource usage policy',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const cwd = await createTempFolder();
+                await writeConfig(
+                    cwd,
+                    'overkill.config.js',
+                    `export default {
+                        profiles: {
+                            microtest: {
+                                measureResourceUsage: true,
+                                resourceBudgets: {
+                                    activeResourceCount: 4,
+                                    javaScriptEngineHeapBytes: 100,
+                                    residentSetBytes: 200,
+                                    residentSetGrowthBytesPerSecond: 50
+                                },
+                                resourceUsageSamplingIntervalMilliseconds: 25
+                            }
+                        }
+                    };`
+                );
+                const config = await loadRunConfig({ configPath: null, cwd });
+
+                scope.assert.deepEqual(config.profiles.microtest, {
+                    measureResourceUsage: true,
+                    resourceBudgets: {
+                        activeResourceCount: 4,
+                        javaScriptEngineHeapBytes: 100,
+                        residentSetBytes: 200,
+                        residentSetGrowthBytesPerSecond: 50
+                    },
+                    resourceUsageSamplingIntervalMilliseconds: 25
+                });
 
                 return scope.assert.collect();
             }
@@ -105,6 +157,87 @@ export const testSuite = createOverkillSuite({
                     await loadRunConfig({ configPath: null, cwd });
                 }, {
                     message: /unexpected additional property: "include"/
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'loadRunConfig() rejects resource budgets without measurement',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const cwd = await createTempFolder();
+                await writeConfig(
+                    cwd,
+                    'overkill.config.js',
+                    `export default {
+                        profiles: {
+                            microtest: {
+                                resourceBudgets: { residentSetBytes: 200 }
+                            }
+                        }
+                    };`
+                );
+
+                await scope.assert.rejects(async function loadInvalidConfig() {
+                    await loadRunConfig({ configPath: null, cwd });
+                }, {
+                    message: /Invalid config file/
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'loadRunConfig() rejects invalid resource usage numbers',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const cwd = await createTempFolder();
+                await writeConfig(
+                    cwd,
+                    'overkill.config.js',
+                    `export default {
+                        profiles: {
+                            microtest: {
+                                measureResourceUsage: true,
+                                resourceUsageSamplingIntervalMilliseconds: 0
+                            }
+                        }
+                    };`
+                );
+
+                await scope.assert.rejects(async function loadInvalidConfig() {
+                    await loadRunConfig({ configPath: null, cwd });
+                }, {
+                    message: /positive safe integer/
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'loadRunConfig() rejects unknown microtest profile keys',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const cwd = await createTempFolder();
+                await writeConfig(
+                    cwd,
+                    'overkill.config.js',
+                    `export default {
+                        profiles: {
+                            microtest: {
+                                measureResourceUsage: true,
+                                resourceBudgets: {},
+                                unknownPolicy: true
+                            }
+                        }
+                    };`
+                );
+
+                await scope.assert.rejects(async function loadInvalidConfig() {
+                    await loadRunConfig({ configPath: null, cwd });
+                }, {
+                    message: /unexpected additional property/
                 });
 
                 return scope.assert.collect();

@@ -558,6 +558,13 @@ type RunConfig = {
     readonly outputRenderer: OutputRenderer;
     readonly reporters: ReadonlyArray<Reporter>;
     readonly loader: { readonly stripMode: 'strip-only' | 'transform'; readonly sourceMaps: boolean; };
+    readonly profiles: {
+        readonly microtest: {
+            readonly measureResourceUsage: boolean;
+            readonly resourceBudgets: ResourceBudgets;
+            readonly resourceUsageSamplingIntervalMilliseconds: number;
+        };
+    };
     readonly runtimeStateDir: string;
 };
 
@@ -584,7 +591,9 @@ type RunRequest = {
     readonly baselineUpdateMode: 'none' | 'update' | 'apply' | 'bootstrap' | 'diff';
     readonly coverage: boolean;
     readonly capture: 'buffered' | 'live';
-    readonly resourceBudgets: ResourceBudgetOverrides | null;
+    readonly measureResourceUsage: boolean | null;
+    readonly resourceBudgetOverrides: ResourceBudgetOverrides | null;
+    readonly resourceUsageSamplingIntervalMilliseconds: number | null;
     readonly seed: { readonly value: bigint | null; };
     readonly order: 'plan' | 'seeded' | 'lexical';
     readonly verbose: boolean;
@@ -632,6 +641,11 @@ type RunFacts = {
         readonly mode: string; // see runtime-behavior.md
         readonly order: 'plan' | 'seeded' | 'lexical';
         readonly profile: RunnerProfileName;
+        readonly resourceUsagePolicy: {
+            readonly measureResourceUsage: boolean;
+            readonly resourceBudgets: ResourceBudgets;
+            readonly resourceUsageSamplingIntervalMilliseconds: number;
+        };
         readonly verbose: boolean;
     };
     readonly loader: { readonly stripMode: 'strip-only' | 'transform'; readonly sourceMaps: boolean; };
@@ -689,6 +703,7 @@ type RunResult = {
     readonly orphans: ReadonlyArray<{ file: string | null; name: string; kind: 'test' | 'suite' | 'table'; }>;
     readonly runnerErrors: ReadonlyArray<RunnerError>;
     readonly artifacts: ReadonlyArray<ArtifactId>;
+    readonly resourceUsage: RunResourceUsage | null;
     readonly wallTimeMs: number;
 };
 
@@ -726,21 +741,32 @@ type RuntimePolicyViolation = {
 ```
 
 ```ts
-type ResourceBudgetOverrides = {
-    readonly v8HeapBytes: number | null;
-    readonly rssBytes: number | null;
-    readonly residentGrowthBytesPerSecond: number | null;
+type ResourceBudgets = {
+    readonly javaScriptEngineHeapBytes: number | null;
+    readonly residentSetBytes: number | null;
+    readonly residentSetGrowthBytesPerSecond: number | null;
     readonly activeResourceCount: number | null;
-    readonly enforcement: 'diagnostic' | 'supervised' | null;
 };
 
-type ResolvedResourceBudgets = {
-    readonly v8HeapBytes: number | null;
-    readonly rssBytes: number | null;
-    readonly residentGrowthBytesPerSecond: number | null;
-    readonly activeResourceCount: number | null;
-    readonly enforcement: 'diagnostic' | 'supervised';
-    readonly sampleIntervalMs: number;
+type ResourceBudgetOverrides = ResourceBudgets;
+
+type ResourceUsageSnapshot = {
+    readonly capturedAtMilliseconds: number;
+    readonly javaScriptEngineHeapBytes: number;
+    readonly residentSetBytes: number;
+    readonly activeResourceCount: number;
+    readonly activeResourceTypes: ReadonlyArray<string>;
+};
+
+type RunResourceUsage = {
+    readonly start: ResourceUsageSnapshot;
+    readonly end: ResourceUsageSnapshot;
+    readonly peakJavaScriptEngineHeapBytes: number;
+    readonly peakResidentSetBytes: number;
+    readonly peakResidentSetGrowthBytesPerSecond: number;
+    readonly peakActiveResourceCount: number;
+    readonly activeResourceTypes: ReadonlyArray<string>;
+    readonly sampleCount: number;
 };
 ```
 
@@ -822,15 +848,15 @@ type WorkerCrash = {
 type ResourceExhaustion = {
     readonly timestamp: string; // ISO 8601
     readonly metric:
-        | 'v8HeapBytes'
-        | 'rssBytes'
-        | 'residentGrowthBytesPerSecond'
+        | 'javaScriptEngineHeapBytes'
+        | 'residentSetBytes'
+        | 'residentSetGrowthBytesPerSecond'
         | 'activeResourceCount'
         | 'libuvHandleCount';
     readonly budget: number;
     readonly observed: number;
     readonly enforcement: 'v8-heap-limit' | 'sampled' | 'post-test-diagnostic';
-    readonly sampleIntervalMs: number;
+    readonly resourceUsageSamplingIntervalMilliseconds: number;
     readonly workerId: string;
     readonly activeCase: CaseId;
 };

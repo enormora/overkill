@@ -30,7 +30,11 @@ import type {
     ReporterEvent,
     RequireAssertionFacade,
     RequireAssertionNode,
+    ResourceUsageSnapshot,
     ResolvableSourceLocation,
+    RunResourceUsage,
+    RunResourceUsageTracker,
+    RunResult,
     RunSummary,
     RunnerError,
     SerializationTruncation,
@@ -127,6 +131,17 @@ type ExpectedRunnerErrorSubtypeByName = {
     readonly unhandledRejection: 'unhandled-rejection';
 };
 type ExpectedRunnerErrorSubtype = ExpectedRunnerErrorSubtypeByName[keyof ExpectedRunnerErrorSubtypeByName];
+type RunResultKeys = readonly [
+    'artifacts',
+    'bySuite',
+    'orphans',
+    'perTest',
+    'resourceUsage',
+    'runnerErrors',
+    'summary',
+    'wallTimeMs'
+];
+type ExpectedRunResultKey = RunResultKeys[number];
 type CaseIdFixture = {
     readonly file: null;
     readonly name: 'case';
@@ -502,6 +517,15 @@ describe('RunSummary', function () {
         expect<keyof RunSummary>().type.toBe<
             'defined' | 'discovered' | 'failed' | 'inconclusive' | 'passed' | 'planned' | 'skipped'
         >();
+    });
+});
+
+describe('RunResult', function () {
+    test('includes resource usage as nullable measured data', function () {
+        expect<keyof RunResult>().type.toBe<ExpectedRunResultKey>();
+        expect<RunResult['resourceUsage']>().type.toBe<RunResourceUsage | null>();
+        expect<RunResourceUsage['start']>().type.toBe<ResourceUsageSnapshot>();
+        expect<RunResourceUsageTracker['finish']>().type.toBe<() => RunResourceUsage>();
     });
 });
 

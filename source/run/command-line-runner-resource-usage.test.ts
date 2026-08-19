@@ -1,0 +1,251 @@
+import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import {
+    createSuite as createOverkillSuite,
+    createTestCase as createOverkillTestCase,
+    runIfMain,
+    type TestScope as OverkillScope
+} from '@overkill-dev/engine';
+import type { Reporter } from '../engine/reporter.ts';
+import type { TestPlan } from '../engine/test-plan.ts';
+import { createTestEngine } from '../test-support/create-test-engine.ts';
+import { runResultFactory } from '../test-support/run-result-factory.ts';
+import { createCommandLineRunner, type CommandLineRunnerDependencies } from './command-line-runner.ts';
+import type { LoadedRunConfig } from './run-config.ts';
+import type { RunCommand, RunOrchestrator, RunRequest } from './run.ts';
+
+type PlainOutputIntent = {
+    readonly text: string;
+};
+
+type RecordedRunCommands = {
+    readonly first: () => RunCommand | undefined;
+    readonly record: (command: RunCommand) => void;
+};
+
+const plainOutputRenderer = {
+    render(intent: PlainOutputIntent): string {
+        return intent.text;
+    }
+};
+
+const terminalReporter: Reporter = {
+    dispose: null,
+    kind: 'real-time',
+    name: 'terminal',
+    onEvent() {
+        return undefined;
+    },
+    onFinish: null,
+    sinks: [ { kind: 'stdout-raw' } ]
+};
+
+const defaultRequest: RunRequest = {
+    baselineUpdateMode: 'none',
+    capture: 'buffered',
+    coverage: false,
+    debug: {
+        mode: 'off',
+        selectors: []
+    },
+    execution: { mode: 'concurrent-in-process' },
+    measureResourceUsage: null,
+    order: 'plan',
+    paths: [],
+    profile: 'microtest',
+    resourceBudgetOverrides: null,
+    resourceUsageSamplingIntervalMilliseconds: null,
+    seed: { value: 42n },
+    selection: { kind: 'all' },
+    shard: { index: 0, total: 1 },
+    verbose: false
+};
+
+function defaultLoadedConfig(): LoadedRunConfig {
+    return {
+        configPath: null,
+        loader: { sourceMaps: false, stripMode: 'strip-only' },
+        outputRenderer: plainOutputRenderer,
+        profiles: {
+            microtest: {
+                measureResourceUsage: false,
+                resourceBudgets: {
+                    activeResourceCount: null,
+                    javaScriptEngineHeapBytes: null,
+                    residentSetBytes: null,
+                    residentSetGrowthBytesPerSecond: null
+                },
+                resourceUsageSamplingIntervalMilliseconds: 100
+            }
+        },
+        reporters: [ terminalReporter ],
+        runtimeStateDir: '.overkill'
+    };
+}
+
+function createPassingPlan(): TestPlan {
+    const engine = createTestEngine();
+
+    return engine.createTestPlan(
+        engine.createRoot({
+            children: [
+                engine.createTestCase({
+                    body(scope) {
+                        scope.assert.true(true);
+                        return scope.assert.collect();
+                    },
+                    metadata: {},
+                    name: 'passes'
+                })
+            ],
+            metadata: {},
+            name: 'root'
+        })
+    );
+}
+
+function createRecordedRunCommands(): RecordedRunCommands {
+    const commands: RunCommand[] = [];
+
+    return {
+        first() {
+            return commands[0];
+        },
+        record(command) {
+            commands.push(command);
+        }
+    };
+}
+
+function createRunnerDependencies(recordedCommands: RecordedRunCommands): CommandLineRunnerDependencies {
+    const orchestrator: RunOrchestrator = {
+        async resolve(command) {
+            return {
+                config: command.config,
+                facts: {
+                    cases: [],
+                    environment: {
+                        node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
+                        runtimeStateDir: command.config.runtimeStateDir
+                    },
+                    execution: {
+                        baselineUpdateMode: command.request.baselineUpdateMode,
+                        capture: command.request.capture,
+                        coverage: command.request.coverage,
+                        debug: command.request.debug,
+                        mode: command.request.execution.mode,
+                        order: command.request.order,
+                        profile: command.request.profile,
+                        resourceUsagePolicy: command.config.profiles.microtest,
+                        verbose: command.request.verbose
+                    },
+                    loader: command.config.loader,
+                    reproducibility: {
+                        seed: '42',
+                        shard: command.request.shard
+                    }
+                },
+                reporters: command.config.reporters,
+                request: command.request,
+                testPlan: command.testPlan
+            };
+        },
+        async run(command) {
+            recordedCommands.record(command);
+
+            return runResultFactory.build({
+                perTest: [ { outcome: { kind: 'pass' } } ],
+                summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }
+            });
+        }
+    };
+
+    return {
+        async createDefaultReporter() {
+            return terminalReporter;
+        },
+        async loadBaselineCommands() {
+            throw new Error('Baseline commands are not configured.');
+        },
+        async loadBenchmarkCommands() {
+            throw new Error('Benchmark commands are not configured.');
+        },
+        async loadRunConfig() {
+            return {
+                ...defaultLoadedConfig(),
+                profiles: {
+                    microtest: {
+                        measureResourceUsage: true,
+                        resourceBudgets: {
+                            activeResourceCount: 2,
+                            javaScriptEngineHeapBytes: null,
+                            residentSetBytes: 200,
+                            residentSetGrowthBytesPerSecond: null
+                        },
+                        resourceUsageSamplingIntervalMilliseconds: 25
+                    }
+                }
+            };
+        },
+        orchestrator
+    };
+}
+
+function assertResourceUsageCommand(scope: OverkillScope, command: RunCommand): void {
+    scope.assert.deepEqual(command.config.profiles.microtest, {
+        measureResourceUsage: true,
+        resourceBudgets: {
+            activeResourceCount: 2,
+            javaScriptEngineHeapBytes: null,
+            residentSetBytes: 200,
+            residentSetGrowthBytesPerSecond: null
+        },
+        resourceUsageSamplingIntervalMilliseconds: 25
+    });
+    const { resourceBudgetOverrides } = command.request;
+
+    scope.require.notNull(resourceBudgetOverrides);
+    scope.assert.deepEqual(resourceBudgetOverrides, {
+        activeResourceCount: null,
+        javaScriptEngineHeapBytes: 100,
+        residentSetBytes: null,
+        residentSetGrowthBytesPerSecond: null
+    });
+}
+
+export const testSuite = createOverkillSuite({
+    name: 'source/run/command-line-runner-resource-usage.test.ts',
+    metadata: {},
+    children: [
+        createOverkillTestCase({
+            name: 'commandLineRunner.runTests() carries resource usage config and request values',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const recordedCommands = createRecordedRunCommands();
+                const runner = createCommandLineRunner(createRunnerDependencies(recordedCommands));
+                const result = await runner.runTests({
+                    configPath: null,
+                    cwd: process.cwd(),
+                    request: {
+                        ...defaultRequest,
+                        resourceBudgetOverrides: {
+                            activeResourceCount: null,
+                            javaScriptEngineHeapBytes: 100,
+                            residentSetBytes: null,
+                            residentSetGrowthBytesPerSecond: null
+                        }
+                    },
+                    testPlan: createPassingPlan()
+                });
+
+                scope.assert.equal(result.exitCode, 0);
+                const receivedCommand = recordedCommands.first();
+                scope.require.defined(receivedCommand);
+                assertResourceUsageCommand(scope, receivedCommand);
+
+                return scope.assert.collect();
+            }
+        })
+    ]
+});
+
+await runIfMain(import.meta, testSuite, { reporters: [ createOverkillLineReporter() ] });

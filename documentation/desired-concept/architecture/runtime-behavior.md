@@ -192,11 +192,11 @@ only supervision.
 
 ## Resource Budgets
 
-Resource budgets prevent one test from consuming enough memory or runtime
-resources to kill the host before the runner can name the culprit. They are
-part of runtime policy, not benchmark policy: a benchmark asks "how much did
-this workload use?", while a resource budget asks "did this test exceed the
-ceiling for this profile?"
+Resource usage measurement observes how much process memory and runtime state a
+run used. Resource budgets are thresholds over that data. They are part of
+runtime policy, not benchmark policy: a benchmark asks "how much did this
+workload use?", while a resource budget asks "did this test exceed the ceiling
+for this profile?"
 
 Overkill uses Node runtime APIs first. The default implementation should not
 shell out to `ps`, read `/proc`, install native addons, or require cgroup
@@ -218,10 +218,12 @@ management. Useful built-ins include:
 First-party resource budgets should start with metrics Node can observe or
 influence portably:
 
-- `v8HeapBytes` checked by a child process heap ceiling and telemetry
-- `rssBytes` sampled with `process.memoryUsage.rss()` while the worker event
-  loop can run
-- `residentGrowthBytesPerSecond` derived from consecutive RSS samples
+- `javaScriptEngineHeapBytes` checked by a child process heap ceiling and
+  telemetry
+- `residentSetBytes` sampled with `process.memoryUsage.rss()` while the worker
+  event loop can run
+- `residentSetGrowthBytesPerSecond` derived from consecutive resident-set
+  samples
 - `activeResourceCount` and `activeResourceTypes` from
   `process.getActiveResourcesInfo()`
 - `libuvHandleCount` from diagnostic reports when available
@@ -243,11 +245,12 @@ parent process or sidecar that can outlive the test body. Therefore:
 
 - assertion value serialization and diff construction are always bounded
 - active test identity is emitted before the body starts
-- resource telemetry may be sampled between turns of the event loop
-- post-test heap, RSS, and active-resource deltas may be reported in verbose
-  or debug output
-- resource budgets in this mode are diagnostic unless configured to upgrade
-  the execution profile
+- run-level resource usage may be sampled between turns of the event loop when
+  explicitly enabled
+- post-test heap, resident set, and active-resource deltas may be reported in
+  verbose or debug output
+- configured resource budgets require an execution profile that can enforce
+  them
 
 Single-process microtests do not produce a hard `resource-exhausted` kill
 for a CPU-bound loop or a synchronous allocation that prevents the event loop
@@ -255,10 +258,11 @@ from reaching the sampler. If the process dies, the last streamed active test
 identity is useful evidence, but the runner process may not survive to turn it
 into a complete `RunResult`.
 
-When a run requests enforced resource budgets for ordinary microtests,
-orchestration should resolve the run to `microtest-supervised` unless the user
-explicitly selects diagnostic-only policy. This keeps the default path cheap
-while avoiding false guarantees.
+When a run requests resource budgets for ordinary microtests, orchestration
+should resolve the run to `microtest-supervised`. This keeps the default path
+cheap while avoiding false guarantees. A run may explicitly enable
+`measureResourceUsage` without budgets to collect diagnostic usage data without
+requesting enforcement.
 
 ### Supervised Execution
 
@@ -267,7 +271,7 @@ budgets through disposable child processes:
 
 - the parent assigns one active case to a worker at a time
 - the worker sends an `active-case` event before evaluating the body
-- the worker streams resource samples while its event loop can run
+- the worker streams resource usage samples while its event loop can run
 - the parent records the latest active `CaseId`, file, and display name
 - the parent kills the child with `process.kill(pid, 'SIGKILL')` when a
   streamed sample breaches policy
@@ -296,12 +300,12 @@ reported as:
 - test verdict `resource-exhausted`
 - runner error subtype `resource-exhaustion`
 - a `ResourceExhaustion` artifact containing the metric, budget, observed
-  value, enforcement mode, sample interval, worker id, and active case
+  value, enforcement mode, sampling interval, worker id, and active case
 
 The default human message names the test file, test name, metric, budget,
-observed peak, and enforcement mode. Verbose mode reports peak resource usage
-per test file even when no budget was exceeded, so growth is visible before it
-becomes a ceiling.
+observed peak, and enforcement mode. Verbose mode may report peak resource
+usage even when no budget was exceeded, so growth is visible before it becomes
+a ceiling.
 
 ## Leaked Promises, Timers, And Handles
 

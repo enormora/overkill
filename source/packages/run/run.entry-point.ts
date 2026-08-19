@@ -1,6 +1,7 @@
 export { orchestrator, RunResolutionError } from '../../run/run.ts';
 export type {
     ResolvedRun,
+    ResourceBudgetOverrides,
     RunCaseFacts,
     RunCommand,
     RunConfig,
@@ -11,6 +12,9 @@ export type {
     RunExecutionFacts,
     RunLoaderConfig,
     RunOrchestrator,
+    RunProfilesConfig,
+    RunResourceBudgets,
+    RunResourceUsagePolicy,
     RunReproducibilityFacts,
     RunRequest,
     RunResolutionErrorCode,

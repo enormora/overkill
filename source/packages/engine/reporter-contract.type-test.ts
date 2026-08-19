@@ -20,6 +20,7 @@ type ExecuteOptionKeyByName = {
     readonly execution: true;
     readonly outputRenderer: true;
     readonly reporters: true;
+    readonly resourceUsageTracker: true;
     readonly runFacts: true;
     readonly startedAt: true;
 };

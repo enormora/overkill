@@ -80,6 +80,7 @@ async function createCommandLineConfig(
     return {
         loader: loadedConfig.loader,
         outputRenderer: loadedConfig.outputRenderer,
+        profiles: loadedConfig.profiles,
         reporters: await loadCommandLineReporters(loadedConfig, dependencies),
         runtimeStateDir: loadedConfig.runtimeStateDir
     };

@@ -9,6 +9,7 @@ import type { DiffPathSegment } from '../diff/diff-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import type {
     OrphanedNode,
+    RunResourceUsage,
     RunnerError,
     RunResult,
     RunSummary,
@@ -98,6 +99,7 @@ type RunResultOverrides = {
     readonly bySuite?: Readonly<Record<string, SuiteRunCounts>>;
     readonly orphans?: readonly OrphanedNodeOverrides[];
     readonly perTest?: readonly PerTestResultOverrides[];
+    readonly resourceUsage?: RunResourceUsage | null;
     readonly runnerErrors?: readonly RunnerErrorOverrides[];
     readonly summary?: Partial<RunSummary>;
     readonly wallTimeMs?: number;
@@ -329,6 +331,7 @@ function buildRunResult(overrides: RunResultOverrides = {}): RunResult {
         bySuite: overrides.bySuite ?? {},
         orphans: buildOrphanedNodes(overrides.orphans),
         perTest: buildPerTestResults(overrides.perTest),
+        resourceUsage: overrides.resourceUsage ?? null,
         runnerErrors: buildRunnerErrors(overrides.runnerErrors),
         summary: buildSummary(overrides.summary),
         wallTimeMs: overrides.wallTimeMs ?? 0

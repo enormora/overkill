@@ -331,15 +331,15 @@ When a supervised worker exceeds an enforced resource budget:
 type ResourceExhaustion = {
     readonly timestamp: string;
     readonly metric:
-        | 'v8HeapBytes'
-        | 'rssBytes'
-        | 'residentGrowthBytesPerSecond'
+        | 'javaScriptEngineHeapBytes'
+        | 'residentSetBytes'
+        | 'residentSetGrowthBytesPerSecond'
         | 'activeResourceCount'
         | 'libuvHandleCount';
     readonly budget: number;
     readonly observed: number;
     readonly enforcement: 'v8-heap-limit' | 'sampled' | 'post-test-diagnostic';
-    readonly sampleIntervalMs: number;
+    readonly resourceUsageSamplingIntervalMilliseconds: number;
     readonly workerId: string;
     readonly activeCase: CaseId;
 };

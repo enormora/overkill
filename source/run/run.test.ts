@@ -6,6 +6,7 @@ import {
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
 import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
+import type { RunResourceUsageTracker } from '../engine/run-result.ts';
 import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import {
@@ -30,6 +31,18 @@ const defaultConfig: RunConfig = {
         stripMode: 'strip-only'
     },
     outputRenderer: createPlainOutputRenderer(),
+    profiles: {
+        microtest: {
+            measureResourceUsage: false,
+            resourceBudgets: {
+                activeResourceCount: null,
+                javaScriptEngineHeapBytes: null,
+                residentSetBytes: null,
+                residentSetGrowthBytesPerSecond: null
+            },
+            resourceUsageSamplingIntervalMilliseconds: 100
+        }
+    },
     reporters: [],
     runtimeStateDir: '.overkill'
 };
@@ -43,9 +56,12 @@ const defaultRequest: RunRequest = {
         selectors: []
     },
     execution: { mode: 'concurrent-in-process' },
+    measureResourceUsage: null,
     order: 'plan',
     paths: [],
     profile: 'microtest',
+    resourceBudgetOverrides: null,
+    resourceUsageSamplingIntervalMilliseconds: null,
     seed: { value: 42n },
     selection: { kind: 'all' },
     shard: { index: 0, total: 1 },
@@ -92,6 +108,37 @@ function createDeterministicRunOrchestrator(): RunOrchestrator {
     const engine = createTestEngine();
 
     return createRunOrchestrator({
+        createResourceUsageTracker(): RunResourceUsageTracker {
+            return {
+                finish() {
+                    return {
+                        activeResourceTypes: [],
+                        end: {
+                            activeResourceCount: 0,
+                            activeResourceTypes: [],
+                            capturedAtMilliseconds: 1,
+                            javaScriptEngineHeapBytes: 2,
+                            residentSetBytes: 3
+                        },
+                        peakActiveResourceCount: 0,
+                        peakJavaScriptEngineHeapBytes: 2,
+                        peakResidentSetBytes: 3,
+                        peakResidentSetGrowthBytesPerSecond: 0,
+                        sampleCount: 2,
+                        start: {
+                            activeResourceCount: 0,
+                            activeResourceTypes: [],
+                            capturedAtMilliseconds: 0,
+                            javaScriptEngineHeapBytes: 1,
+                            residentSetBytes: 2
+                        }
+                    };
+                },
+                start() {
+                    return undefined;
+                }
+            };
+        },
         createSeed() {
             return 99n;
         },
@@ -159,6 +206,16 @@ export const testSuite = createOverkillSuite({
                         mode: 'concurrent-in-process',
                         order: 'plan',
                         profile: 'microtest',
+                        resourceUsagePolicy: {
+                            measureResourceUsage: false,
+                            resourceBudgets: {
+                                activeResourceCount: null,
+                                javaScriptEngineHeapBytes: null,
+                                residentSetBytes: null,
+                                residentSetGrowthBytesPerSecond: null
+                            },
+                            resourceUsageSamplingIntervalMilliseconds: 100
+                        },
                         verbose: false
                     },
                     loader: { sourceMaps: false, stripMode: 'strip-only' },
@@ -302,6 +359,16 @@ export const testSuite = createOverkillSuite({
                         mode: 'concurrent-in-process',
                         order: 'plan',
                         profile: 'microtest',
+                        resourceUsagePolicy: {
+                            measureResourceUsage: false,
+                            resourceBudgets: {
+                                activeResourceCount: null,
+                                javaScriptEngineHeapBytes: null,
+                                residentSetBytes: null,
+                                residentSetGrowthBytesPerSecond: null
+                            },
+                            resourceUsageSamplingIntervalMilliseconds: 100
+                        },
                         verbose: false
                     },
                     loader: { sourceMaps: false, stripMode: 'strip-only' },
