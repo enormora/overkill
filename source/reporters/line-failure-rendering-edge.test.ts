@@ -228,6 +228,88 @@ export const testSuite = createOverkillSuite({
 
                 return scope.assert.collect();
             }
+        }),
+        createOverkillTestCase({
+            name: 'line failure formatter renders missing collection operations',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const objectLines = formatFailure({
+                    checks: [
+                        failedCheck({
+                            kind: 'object',
+                            operations: [
+                                {
+                                    operation: 'missing-property',
+                                    path: [ { key: { kind: 'string', value: 'first-name' }, kind: 'property' } ],
+                                    value: serializeValue('Ada')
+                                }
+                            ]
+                        })
+                    ],
+                    kind: 'assertion'
+                });
+                const arrayLines = formatFailure({
+                    checks: [
+                        failedCheck({
+                            kind: 'array',
+                            operations: [
+                                { index: 2, operation: 'missing-index', value: serializeValue('Ada') },
+                                { operation: 'missing-member', value: serializeValue('Grace') }
+                            ]
+                        })
+                    ],
+                    kind: 'assertion'
+                });
+                const mapLines = formatFailure({
+                    checks: [
+                        failedCheck({
+                            kind: 'map',
+                            operations: [
+                                {
+                                    key: serializeValue('id'),
+                                    operation: 'missing-entry',
+                                    value: serializeValue(1)
+                                }
+                            ]
+                        })
+                    ],
+                    kind: 'assertion'
+                });
+                const setLines = formatFailure({
+                    checks: [
+                        failedCheck({
+                            kind: 'set',
+                            operations: [ { operation: 'missing-member', value: serializeValue('admin') } ]
+                        })
+                    ],
+                    kind: 'assertion'
+                });
+                scope.assert.true(objectLines.includes('missing ["first-name"]: "Ada"'));
+                scope.assert.true(arrayLines.includes('missing [2]: "Ada"'));
+                scope.assert.true(arrayLines.includes('missing array member: "Grace"'));
+                scope.assert.true(mapLines.includes('missing map entry "id": 1'));
+                scope.assert.true(setLines.includes('missing set member: "admin"'));
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'line failure formatter renders timeout failures',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const timeoutLines = formatFailure({
+                    deadlineMilliseconds: 10,
+                    elapsedMilliseconds: 12,
+                    kind: 'timeout'
+                });
+
+                scope.assert.deepEqual(timeoutLines, [
+                    'Timed out after 10 ms.',
+                    'elapsed: 12 ms'
+                ]);
+
+                return scope.assert.collect();
+            }
         })
     ]
 });

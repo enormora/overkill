@@ -227,9 +227,10 @@ function activeCaseIds(state: SupervisedRunState): readonly TestPlanCase['id'][]
 
 function resourceExhaustionError(breach: ResourceBudgetBreach, state: SupervisedRunState): RunnerError {
     const activeCases = activeCaseIds(state);
+    const [ activeCase = null ] = activeCases;
 
     return {
-        attributedTo: activeCases.length === 1 ? activeCases[0] ?? null : null,
+        attributedTo: activeCases.length === 1 ? activeCase : null,
         cause: {
             ...breach,
             activeCases,
@@ -242,9 +243,10 @@ function resourceExhaustionError(breach: ResourceBudgetBreach, state: Supervised
 
 function crashError(state: SupervisedRunState, reason: string): RunnerError {
     const activeCases = activeCaseIds(state);
+    const [ activeCase = null ] = activeCases;
 
     return {
-        attributedTo: activeCases.length === 1 ? activeCases[0] ?? null : null,
+        attributedTo: activeCases.length === 1 ? activeCase : null,
         cause: { activeCases, reason },
         message: reason,
         subtype: 'crash'

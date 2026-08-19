@@ -241,8 +241,10 @@ function activeCaseIds(activeCases: ReadonlyMap<string, ActiveCase>): readonly T
 }
 
 function resourceExhaustionError(cause: ResourceExhaustionCause): RunnerError {
+    const [ activeCase = null ] = cause.activeCases;
+
     return {
-        attributedTo: cause.activeCases.length === 1 ? cause.activeCases[0] ?? null : null,
+        attributedTo: cause.activeCases.length === 1 ? activeCase : null,
         cause,
         message: `Resource budget exceeded: ${cause.metric} observed ${cause.observed}, budget ${cause.budget}.`,
         subtype: 'resource-exhaustion'
@@ -250,8 +252,10 @@ function resourceExhaustionError(cause: ResourceExhaustionCause): RunnerError {
 }
 
 function crashError(cause: CrashCause): RunnerError {
+    const [ activeCase = null ] = cause.activeCases;
+
     return {
-        attributedTo: cause.activeCases.length === 1 ? cause.activeCases[0] ?? null : null,
+        attributedTo: cause.activeCases.length === 1 ? activeCase : null,
         cause,
         message: 'Test execution exceeded hard timeout.',
         subtype: 'crash'

@@ -387,6 +387,34 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'orchestrator.resolve() rejects timeout policies where soft exceeds hard timeout',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const runOrchestrator = createDeterministicRunOrchestrator();
+
+                await scope.assert.rejects(async function resolveInvalidTimeoutPolicy() {
+                    await runOrchestrator.resolve(createRunCommand(
+                        {
+                            ...defaultConfig,
+                            profiles: {
+                                ...defaultConfig.profiles,
+                                microtest: {
+                                    ...defaultConfig.profiles.microtest,
+                                    hardTimeoutMilliseconds: 10,
+                                    timeoutMilliseconds: 20
+                                }
+                            }
+                        },
+                        defaultRequest
+                    ));
+                }, {
+                    message: 'Soft timeout must not exceed hard timeout.'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'orchestrator.resolve() rejects config budgets without measurement',
             metadata: {},
             async body(scope: OverkillScope) {

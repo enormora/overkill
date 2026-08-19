@@ -361,6 +361,37 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'orchestrator.run() executes the supervised profile in a child process',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const runOrchestrator = createDeterministicRunOrchestrator();
+                const result = await runOrchestrator.run(createRunCommand({
+                    config: defaultConfig,
+                    cwd: process.cwd(),
+                    engine: null,
+                    request: {
+                        ...defaultRequest,
+                        profile: 'microtest-supervised'
+                    }
+                }));
+
+                scope.assert.deepEqual(result.runnerErrors, []);
+                scope.assert.deepEqual(result.summary, {
+                    crashed: 0,
+                    defined: 2,
+                    discovered: 1,
+                    failed: 0,
+                    inconclusive: 0,
+                    passed: 1,
+                    planned: 1,
+                    resourceExhausted: 0,
+                    skipped: 0
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'orchestrator.run() returns collection failures as runner errors',
             metadata: {},
             async body(scope: OverkillScope) {

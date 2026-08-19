@@ -4,6 +4,7 @@ import { testSuite as executionConcurrentReportingTestSuite } from './execution-
 import { testSuite as executionReportingTestSuite } from './execution-reporting.test.ts';
 import { testSuite as executionResourceUsageTestSuite } from './execution-resource-usage.test.ts';
 import { testSuite as executionTestSuite } from './execution.test.ts';
+import { testSuite as executionTimeoutSupervisionTestSuite } from './execution-timeout-supervision.test.ts';
 
 export const testSuite = createOverkillSuite({
     name: 'source/engine/execution-suite.test.ts',
@@ -12,6 +13,7 @@ export const testSuite = createOverkillSuite({
         executionConcurrentReportingTestSuite,
         executionReportingTestSuite,
         executionResourceUsageTestSuite,
+        executionTimeoutSupervisionTestSuite,
         executionTestSuite
     ]
 });

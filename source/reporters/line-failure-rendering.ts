@@ -74,10 +74,6 @@ function formatPropertySegment(segment: PropertySegment): string {
     return /^[A-Za-z_$][\w$]*$/u.test(key) ? `.${key}` : `[${JSON.stringify(key)}]`;
 }
 
-function isPropertySegment(segment: KeyedSegment): segment is PropertySegment {
-    return segment.kind === 'property';
-}
-
 function formatKeyedSegment(segment: KeyedSegment): string {
     if (segment.kind === 'set-value') {
         return `[set ${formatSerializedValue(segment.value)}]`;
@@ -91,7 +87,7 @@ function formatKeyedSegment(segment: KeyedSegment): string {
         return `[map value ${formatSerializedValue(segment.key)}]`;
     }
 
-    return isPropertySegment(segment) ? formatPropertySegment(segment) : '';
+    return formatPropertySegment(segment);
 }
 
 function formatSegment(segment: DiffPathSegment): string {
@@ -177,7 +173,22 @@ function formatStringDiff(diff: Extract<Diff, { readonly kind: 'string'; }>): re
     });
 }
 
-function formatCollectionDiff(diff: Diff): readonly string[] | null {
+function formatBinaryDiff(diff: Extract<Diff, { readonly kind: 'binary'; }>): readonly string[] {
+    const expectedSummary = `expected ${diff.expectedSize} bytes ${diff.expectedHash}`;
+    const actualSummary = `actual ${diff.actualSize} bytes ${diff.actualHash}`;
+    const header = `binary differs: ${expectedSummary}, ${actualSummary}`;
+
+    return [
+        header,
+        ...diff.ranges.map(function formatRange(range) {
+            return `byte ${range.offset}: expected [${range.expected.join(', ')}], actual [${range.actual.join(', ')}]`;
+        })
+    ];
+}
+
+type NonScalarDiff = Exclude<Diff, { readonly kind: 'string' | 'value'; }>;
+
+function formatNonScalarDiff(diff: NonScalarDiff): readonly string[] {
     if (diff.kind === 'object') {
         return diff.operations.map(formatObjectOperation);
     }
@@ -194,20 +205,7 @@ function formatCollectionDiff(diff: Diff): readonly string[] | null {
         return diff.operations.map(formatSetOperation);
     }
 
-    return null;
-}
-
-function formatBinaryDiff(diff: Extract<Diff, { readonly kind: 'binary'; }>): readonly string[] {
-    const expectedSummary = `expected ${diff.expectedSize} bytes ${diff.expectedHash}`;
-    const actualSummary = `actual ${diff.actualSize} bytes ${diff.actualHash}`;
-    const header = `binary differs: ${expectedSummary}, ${actualSummary}`;
-
-    return [
-        header,
-        ...diff.ranges.map(function formatRange(range) {
-            return `byte ${range.offset}: expected [${range.expected.join(', ')}], actual [${range.actual.join(', ')}]`;
-        })
-    ];
+    return formatBinaryDiff(diff);
 }
 
 function formatDiff(diff: Diff): readonly string[] {
@@ -219,13 +217,7 @@ function formatDiff(diff: Diff): readonly string[] {
         return formatStringDiff(diff);
     }
 
-    const collection = formatCollectionDiff(diff);
-
-    if (collection !== null) {
-        return collection;
-    }
-
-    return diff.kind === 'binary' ? formatBinaryDiff(diff) : [];
+    return formatNonScalarDiff(diff);
 }
 
 function failedCheckDetailLines(check: FailedCheck): readonly string[] {

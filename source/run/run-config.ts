@@ -158,7 +158,7 @@ const projectConfigSchema = z.strictObject({
     loader: z.optional(loaderSchema),
     outputRenderer: z.optional(outputRendererSchema),
     profiles: z.optional(profilesSchema),
-    reporters: z.optional(z.array(reporterSchema).min(1)),
+    reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema)),
     runtimeStateDir: z.optional(z.string().min(1))
 });
 
@@ -166,7 +166,7 @@ type ParsedProjectConfig = {
     readonly loader?: RunLoaderConfig | undefined;
     readonly outputRenderer?: OutputRenderer | undefined;
     readonly profiles?: RunProjectProfilesConfig | undefined;
-    readonly reporters?: readonly Reporter[] | undefined;
+    readonly reporters?: NonEmptyReadonlyArray<Reporter> | undefined;
     readonly runtimeStateDir?: string | undefined;
 };
 
@@ -228,18 +228,8 @@ function readDefaultExport(configModule: unknown, configPath: string): unknown {
     throw new RunConfigError(`Config file "${configPath}" must export a default config object.`);
 }
 
-function normalizeReporters(reporters: readonly Reporter[] | undefined): LoadedRunConfig['reporters'] {
-    if (reporters === undefined) {
-        return null;
-    }
-
-    const [ firstReporter, ...remainingReporters ] = reporters;
-
-    if (firstReporter === undefined) {
-        throw new RunConfigError('Config reporters must not be empty.');
-    }
-
-    return [ firstReporter, ...remainingReporters ];
+function normalizeReporters(reporters: NonEmptyReadonlyArray<Reporter> | undefined): LoadedRunConfig['reporters'] {
+    return reporters ?? null;
 }
 
 function normalizeBudgetValue(value: number | null | undefined): number | null {
@@ -351,11 +341,7 @@ function parseConfig(configValue: unknown, configPath: string): ParsedProjectCon
 
         return parsedConfig;
     } catch (error: unknown) {
-        if (error instanceof Error) {
-            throw new RunConfigError(`Invalid config file "${configPath}": ${error.message}`, { cause: error });
-        }
-
-        throw error;
+        throw new RunConfigError(`Invalid config file "${configPath}": ${String(error)}`, { cause: error });
     }
 }
 
