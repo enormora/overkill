@@ -291,6 +291,113 @@ export const testSuite = createOverkillSuite({
 
                 return scope.assert.collect();
             }
+        }),
+        createOverkillTestCase({
+            name: 'orchestrator.resolve() accepts disabled measurement with empty resource budget overrides',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const runOrchestrator = createDeterministicRunOrchestrator();
+                const resolvedRun = await runOrchestrator.resolve({
+                    config: defaultConfig,
+                    request: {
+                        ...defaultRequest,
+                        measureResourceUsage: false,
+                        resourceBudgetOverrides: {
+                            activeResourceCount: null,
+                            javaScriptEngineHeapBytes: null,
+                            residentSetBytes: null,
+                            residentSetGrowthBytesPerSecond: null
+                        }
+                    },
+                    testPlan: createPassingPlan()
+                });
+
+                scope.assert.deepEqual(plainData(resolvedRun.facts.execution.resourceUsagePolicy), {
+                    measureResourceUsage: false,
+                    resourceBudgets: {
+                        activeResourceCount: null,
+                        javaScriptEngineHeapBytes: null,
+                        residentSetBytes: null,
+                        residentSetGrowthBytesPerSecond: null
+                    },
+                    resourceUsageSamplingIntervalMilliseconds: 100
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'orchestrator.resolve() rejects invalid resource usage request values',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const runOrchestrator = createDeterministicRunOrchestrator();
+
+                await scope.assert.rejects(async function resolveInvalidSamplingInterval() {
+                    await runOrchestrator.resolve({
+                        config: defaultConfig,
+                        request: {
+                            ...defaultRequest,
+                            resourceUsageSamplingIntervalMilliseconds: 0
+                        },
+                        testPlan: createPassingPlan()
+                    });
+                }, {
+                    message: 'Resource usage sampling interval must be a positive safe integer.'
+                });
+                await scope.assert.rejects(async function resolveInvalidBudgetOverride() {
+                    await runOrchestrator.resolve({
+                        config: defaultConfig,
+                        request: {
+                            ...defaultRequest,
+                            measureResourceUsage: true,
+                            resourceBudgetOverrides: {
+                                activeResourceCount: 1.5,
+                                javaScriptEngineHeapBytes: null,
+                                residentSetBytes: null,
+                                residentSetGrowthBytesPerSecond: null
+                            }
+                        },
+                        testPlan: createPassingPlan()
+                    });
+                }, {
+                    message: 'Active resource count budget must be a positive safe integer.'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'orchestrator.resolve() rejects config budgets without measurement',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const runOrchestrator = createDeterministicRunOrchestrator();
+
+                await scope.assert.rejects(async function resolveDisabledConfigBudget() {
+                    await runOrchestrator.resolve({
+                        config: {
+                            ...defaultConfig,
+                            profiles: {
+                                microtest: {
+                                    measureResourceUsage: false,
+                                    resourceBudgets: {
+                                        activeResourceCount: 1,
+                                        javaScriptEngineHeapBytes: null,
+                                        residentSetBytes: null,
+                                        residentSetGrowthBytesPerSecond: null
+                                    },
+                                    resourceUsageSamplingIntervalMilliseconds: 100
+                                }
+                            }
+                        },
+                        request: defaultRequest,
+                        testPlan: createPassingPlan()
+                    });
+                }, {
+                    message: 'Resource budgets require resource usage measurement.'
+                });
+
+                return scope.assert.collect();
+            }
         })
     ]
 });

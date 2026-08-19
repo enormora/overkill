@@ -6,6 +6,7 @@ import {
     runIfMain,
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
+import type { RunResourceUsageTracker } from '../engine/run-result.ts';
 import { createResourceUsageTracker } from './resource-usage.ts';
 
 function readSequence(values: readonly number[]): () => number {
@@ -17,6 +18,23 @@ function readSequence(values: readonly number[]): () => number {
 
         return value ?? 0;
     };
+}
+
+function createEmptyResourceUsageTracker(): RunResourceUsageTracker {
+    return createResourceUsageTracker({
+        readActiveResourceTypes() {
+            return [];
+        },
+        readJavaScriptEngineHeapBytes() {
+            return 0;
+        },
+        readResidentSetBytes() {
+            return 0;
+        },
+        wallClock: createDeterministicWallClock()
+    }, {
+        samplingIntervalMilliseconds: 100
+    });
 }
 
 export const testSuite = createOverkillSuite({
@@ -72,6 +90,29 @@ export const testSuite = createOverkillSuite({
                         javaScriptEngineHeapBytes: 10,
                         residentSetBytes: 100
                     }
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'resource usage tracker rejects invalid lifecycle calls',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const unfinishedTracker = createEmptyResourceUsageTracker();
+                const startedTracker = createEmptyResourceUsageTracker();
+
+                startedTracker.start();
+
+                scope.assert.throws(function finishBeforeStart() {
+                    unfinishedTracker.finish();
+                }, {
+                    message: 'Resource usage tracking must start before it can finish.'
+                });
+                scope.assert.throws(function startTwice() {
+                    startedTracker.start();
+                }, {
+                    message: 'Resource usage tracking already started.'
                 });
 
                 return scope.assert.collect();
