@@ -39,7 +39,7 @@
         "@enormora/eslint-config-typescript": "0.0.58",
         "@enormora/objectory": "0.0.15",
         "@ls-lint/ls-lint": "2.3.1",
-        "@overkill-dev/assert": "0.0.6",
+        "@overkill-dev/assert": "0.0.13",
         "@overkill-dev/doubles": "0.0.4",
         "@overkill-dev/engine": "0.0.6",
         "@packtory/cli": "0.0.93",
