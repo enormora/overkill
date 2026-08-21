@@ -46,18 +46,37 @@ export type RunResourceBudgets = {
     readonly residentSetGrowthBytesPerSecond: number | null;
 };
 
-export type RunResourceUsagePolicy = {
-    readonly hardTimeoutMilliseconds: number;
-    readonly measureResourceUsage: boolean;
-    readonly resourceBudgets: RunResourceBudgets;
-    readonly resourceUsageSamplingIntervalMilliseconds: number;
-    readonly timeoutMilliseconds: number;
+export type RunTestFamily = 'microtest';
+
+export type RunProcessModel = 'in-process' | 'supervised-process';
+
+export type RunScheduling = 'concurrent' | 'serial';
+
+export type RunMicrotestExecution = {
+    readonly processModel: RunProcessModel;
+    readonly scheduling: RunScheduling;
 };
 
-export type RunProfilesConfig = {
-    readonly microtest: RunResourceUsagePolicy;
-    readonly microtestSupervised: RunResourceUsagePolicy;
+export type RunResourceUsagePolicy = {
+    readonly budgets: RunResourceBudgets;
+    readonly measure: boolean;
+    readonly samplingIntervalMilliseconds: number;
 };
+
+export type RunTimeoutPolicy = {
+    readonly hardMilliseconds: number;
+    readonly softMilliseconds: number;
+};
+
+export type RunMicrotestProfileConfig = {
+    readonly execution: RunMicrotestExecution;
+    readonly reporters: RunReporters | null;
+    readonly resourceUsage: RunResourceUsagePolicy;
+    readonly testFamily: 'microtest';
+    readonly timeouts: RunTimeoutPolicy;
+};
+
+export type RunProfilesConfig = Readonly<Record<string, RunMicrotestProfileConfig>>;
 
 export type RunConfig = {
     readonly loader: RunLoaderConfig;
@@ -70,13 +89,12 @@ export type RunConfig = {
 export type RunRequest = {
     readonly baselineUpdateMode: 'none';
     readonly capture: 'buffered' | 'live';
-    readonly coverage: false;
     readonly debug: RunDebugRequest;
     readonly execution: RunExecutionRequest;
     readonly measureResourceUsage: boolean | null;
     readonly order: 'plan';
     readonly paths: readonly string[];
-    readonly profile: 'microtest' | 'microtest-supervised';
+    readonly profile: string;
     readonly resourceBudgetOverrides: RunResourceBudgets | null;
     readonly resourceUsageSamplingIntervalMilliseconds: number | null;
     readonly seed: RunSeed;
@@ -117,12 +135,14 @@ export type RunEnvironmentFacts = {
 export type RunExecutionFacts = {
     readonly baselineUpdateMode: 'none';
     readonly capture: 'buffered' | 'live';
-    readonly coverage: false;
     readonly debug: RunDebugRequest;
-    readonly mode: 'concurrent-in-process' | 'single-child-process';
     readonly order: 'plan';
-    readonly profile: 'microtest' | 'microtest-supervised';
+    readonly processModel: RunProcessModel;
+    readonly profile: string;
     readonly resourceUsagePolicy: RunResourceUsagePolicy;
+    readonly scheduling: RunScheduling;
+    readonly testFamily: RunTestFamily;
+    readonly timeoutPolicy: RunTimeoutPolicy;
     readonly verbose: false;
 };
 

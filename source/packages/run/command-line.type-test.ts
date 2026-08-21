@@ -61,11 +61,9 @@ describe('@overkill-dev/run/command-line', function () {
         expect<RunProjectConfig['reporters']>().type.toBe<readonly [Reporter, ...Reporter[]] | undefined>();
         expect<LoadedRunConfig['reporters']>().type.toBe<readonly [Reporter, ...Reporter[]] | null>();
         expect<RunProjectConfig['profiles']>().type.toBe<RunProjectProfilesConfig | undefined>();
-        expect<RunProjectProfilesConfig['microtest']>().type.toBe<
-            RunProjectMicrotestProfileConfig | undefined
-        >();
+        expect<RunProjectProfilesConfig['microtest']>().type.toBe<RunProjectMicrotestProfileConfig>();
         expect<RunProjectResourceBudgets['residentSetBytes']>().type.toBe<number | null | undefined>();
-        expect<LoadedRunConfig['profiles']['microtest']['measureResourceUsage']>().type.toBe<boolean>();
+        expect<LoadedRunConfig['profiles']['microtest']['resourceUsage']['measure']>().type.toBe<boolean>();
         expect(new RunConfigError('Invalid config.')).type.toBe<RunConfigError>();
     });
 });

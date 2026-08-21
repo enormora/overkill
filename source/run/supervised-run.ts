@@ -354,7 +354,7 @@ function createHardTimeout(runtime: SupervisedRunRuntimeSeed): SupervisedHardTim
                 runtime.state.recordRunnerError(crashError(runtime.state, 'Supervised child exceeded hard timeout.'));
                 runtime.state.recordTerminalActiveCases('crashed');
                 kill(runtime.child);
-            }, runtime.resolvedRun.facts.execution.resourceUsagePolicy.hardTimeoutMilliseconds);
+            }, runtime.resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds);
         }
     };
 }
@@ -365,16 +365,17 @@ function createRunCommand(resolvedRun: ResolvedRun): SupervisedRunCommand {
             return formatCaseId(testCase.id);
         }),
         cwd: resolvedRun.cwd,
-        hardTimeoutMilliseconds: resolvedRun.facts.execution.resourceUsagePolicy.hardTimeoutMilliseconds,
+        hardTimeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds,
         kind: 'run',
         paths: resolvedRun.request.paths,
-        resourceBudgets: resolvedRun.facts.execution.resourceUsagePolicy.resourceBudgets,
+        resourceBudgets: resolvedRun.facts.execution.resourceUsagePolicy.budgets,
         resourceUsageSamplingIntervalMilliseconds: resolvedRun
             .facts
             .execution
             .resourceUsagePolicy
-            .resourceUsageSamplingIntervalMilliseconds,
-        timeoutMilliseconds: resolvedRun.facts.execution.resourceUsagePolicy.timeoutMilliseconds
+            .samplingIntervalMilliseconds,
+        scheduling: resolvedRun.facts.execution.scheduling,
+        timeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.softMilliseconds
     };
 }
 
@@ -423,7 +424,7 @@ function handleChildSample(sample: ResourceUsageSnapshot, runtime: SupervisedRun
     }
 
     const breach = findResourceBudgetBreach(
-        runtime.resolvedRun.facts.execution.resourceUsagePolicy.resourceBudgets,
+        runtime.resolvedRun.facts.execution.resourceUsagePolicy.budgets,
         sample,
         runtime.previousSample.read()
     );

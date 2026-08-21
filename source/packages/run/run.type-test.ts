@@ -8,17 +8,19 @@ import {
     type RunConfig,
     type RunExecutionFacts,
     type RunFacts,
+    type RunMicrotestProfileConfig,
     type RunOrchestrator,
+    type RunProcessModel,
     type RunResourceBudgets,
     type RunResourceUsagePolicy,
     type RunRequest,
+    type RunScheduling,
     type SerializedValue
 } from './run.entry-point.ts';
 
 type RunRequestKeys = readonly [
     'baselineUpdateMode',
     'capture',
-    'coverage',
     'debug',
     'execution',
     'measureResourceUsage',
@@ -57,7 +59,11 @@ describe('@overkill-dev/run', function () {
 
     test('exposes serializable run facts with case metadata', function () {
         expect<keyof RunFacts>().type.toBe<'cases' | 'environment' | 'execution' | 'loader' | 'reproducibility'>();
+        expect<RunExecutionFacts['processModel']>().type.toBe<RunProcessModel>();
         expect<RunExecutionFacts['resourceUsagePolicy']>().type.toBe<RunResourceUsagePolicy>();
+        expect<RunExecutionFacts['scheduling']>().type.toBe<RunScheduling>();
+        expect<RunExecutionFacts['testFamily']>().type.toBe<'microtest'>();
+        expect<RunExecutionFacts['timeoutPolicy']['hardMilliseconds']>().type.toBe<number>();
         expect<RunFacts['cases'][number]['metadata']>().type.toBe<SerializedValue>();
         expect<RunFacts>().type.toBeAssignableTo<Readonly<Record<string, unknown>>>();
     });
@@ -67,7 +73,7 @@ describe('@overkill-dev/run', function () {
             'loader' | 'outputRenderer' | 'profiles' | 'reporters' | 'runtimeStateDir'
         >();
         expect<RunConfig['outputRenderer']>().type.toBe<OutputRenderer>();
-        expect<RunConfig['profiles']['microtest']>().type.toBe<RunResourceUsagePolicy>();
+        expect<RunConfig['profiles']['microtest']>().type.toBe<RunMicrotestProfileConfig>();
         expect<RunConfig['reporters']>().type.toBe<readonly Reporter[]>();
         expect<keyof RunResourceBudgets>().type.toBe<
             'activeResourceCount' | 'javaScriptEngineHeapBytes' | 'residentSetBytes' | 'residentSetGrowthBytesPerSecond'

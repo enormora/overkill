@@ -1,6 +1,6 @@
 import type { ReporterEvent } from '../engine/reporter.ts';
 import type { ResourceUsageSnapshot, RunResult } from '../engine/run-result.ts';
-import type { RunResourceBudgets } from './run-types.ts';
+import type { RunResourceBudgets, RunScheduling } from './run-types.ts';
 
 export type SupervisedRunCommand = {
     readonly assignedCaseKeys: readonly string[];
@@ -10,6 +10,7 @@ export type SupervisedRunCommand = {
     readonly paths: readonly string[];
     readonly resourceBudgets: RunResourceBudgets;
     readonly resourceUsageSamplingIntervalMilliseconds: number;
+    readonly scheduling: RunScheduling;
     readonly timeoutMilliseconds: number;
 };
 

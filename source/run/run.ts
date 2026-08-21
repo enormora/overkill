@@ -16,16 +16,18 @@ import type {
     RunCommand,
     RunConfig,
     RunCaseFacts,
-    RunExecutionFacts,
     RunFacts,
     RunLoaderConfig,
+    RunMicrotestExecution,
+    RunMicrotestProfileConfig,
     RunOrchestrator,
     RunOrchestratorDependencies,
     RunProfilesConfig,
     RunRequest,
     RunResourceBudgets,
     RunResourceUsagePolicy,
-    RunShard
+    RunShard,
+    RunTimeoutPolicy
 } from './run-types.ts';
 
 const minimumSeedValue = 0n;
@@ -59,11 +61,11 @@ function validateSamplingInterval(value: number | null): void {
     validatePositiveSafeInteger(value, 'Resource usage sampling interval');
 }
 
-function validateTimeoutPolicy(policy: RunResourceUsagePolicy): void {
-    validatePositiveSafeInteger(policy.timeoutMilliseconds, 'Soft timeout');
-    validatePositiveSafeInteger(policy.hardTimeoutMilliseconds, 'Hard timeout');
+function validateTimeoutPolicy(policy: RunTimeoutPolicy): void {
+    validatePositiveSafeInteger(policy.softMilliseconds, 'Soft timeout');
+    validatePositiveSafeInteger(policy.hardMilliseconds, 'Hard timeout');
 
-    if (policy.timeoutMilliseconds > policy.hardTimeoutMilliseconds) {
+    if (policy.softMilliseconds > policy.hardMilliseconds) {
         invalidRequest('Soft timeout must not exceed hard timeout.');
     }
 }
@@ -98,18 +100,23 @@ function validateRunRequest(request: RunRequest): void {
 }
 
 function validateRunResourceUsagePolicy(policy: RunResourceUsagePolicy): void {
-    validateResourceBudgets(policy.resourceBudgets);
-    validateSamplingInterval(policy.resourceUsageSamplingIntervalMilliseconds);
-    validateTimeoutPolicy(policy);
+    validateResourceBudgets(policy.budgets);
+    validateSamplingInterval(policy.samplingIntervalMilliseconds);
 
-    if (!policy.measureResourceUsage && hasResourceBudgets(policy.resourceBudgets)) {
+    if (!policy.measure && hasResourceBudgets(policy.budgets)) {
         invalidRequest('Resource budgets require resource usage measurement.');
     }
 }
 
+function validateRunProfile(profile: RunMicrotestProfileConfig): void {
+    validateRunResourceUsagePolicy(profile.resourceUsage);
+    validateTimeoutPolicy(profile.timeouts);
+}
+
 function validateRunConfig(config: RunConfig): void {
-    validateRunResourceUsagePolicy(config.profiles.microtest);
-    validateRunResourceUsagePolicy(config.profiles.microtestSupervised);
+    for (const profile of Object.values(config.profiles)) {
+        validateRunProfile(profile);
+    }
 }
 
 function resolvedSeed(request: RunRequest, dependencies: RunOrchestratorDependencies): bigint {
@@ -149,26 +156,48 @@ function copyResourceBudgetOverrides(overrides: RunResourceBudgets | null): RunR
 
 function copyResourceUsagePolicy(policy: RunResourceUsagePolicy): RunResourceUsagePolicy {
     return {
-        hardTimeoutMilliseconds: policy.hardTimeoutMilliseconds,
-        measureResourceUsage: policy.measureResourceUsage,
-        resourceBudgets: copyResourceBudgets(policy.resourceBudgets),
-        resourceUsageSamplingIntervalMilliseconds: policy.resourceUsageSamplingIntervalMilliseconds,
-        timeoutMilliseconds: policy.timeoutMilliseconds
+        budgets: copyResourceBudgets(policy.budgets),
+        measure: policy.measure,
+        samplingIntervalMilliseconds: policy.samplingIntervalMilliseconds
+    };
+}
+
+function copyTimeoutPolicy(policy: RunTimeoutPolicy): RunTimeoutPolicy {
+    return {
+        hardMilliseconds: policy.hardMilliseconds,
+        softMilliseconds: policy.softMilliseconds
+    };
+}
+
+function copyExecution(execution: RunMicrotestExecution): RunMicrotestExecution {
+    return {
+        processModel: execution.processModel,
+        scheduling: execution.scheduling
+    };
+}
+
+function copyProfileConfig(profile: RunMicrotestProfileConfig): RunMicrotestProfileConfig {
+    return {
+        execution: copyExecution(profile.execution),
+        reporters: profile.reporters === null ? null : Array.from(profile.reporters),
+        resourceUsage: copyResourceUsagePolicy(profile.resourceUsage),
+        testFamily: profile.testFamily,
+        timeouts: copyTimeoutPolicy(profile.timeouts)
     };
 }
 
 function copyRunProfilesConfig(profiles: RunProfilesConfig): RunProfilesConfig {
-    return {
-        microtest: copyResourceUsagePolicy(profiles.microtest),
-        microtestSupervised: copyResourceUsagePolicy(profiles.microtestSupervised)
-    };
+    return Object.fromEntries(
+        Object.entries(profiles).map(function copyProfileEntry([ name, profile ]) {
+            return [ name, copyProfileConfig(profile) ];
+        })
+    );
 }
 
 function copyRunRequest(request: RunRequest): RunRequest {
     return {
         baselineUpdateMode: request.baselineUpdateMode,
         capture: request.capture,
-        coverage: request.coverage,
         debug: {
             mode: request.debug.mode,
             selectors: []
@@ -251,35 +280,35 @@ function assertResourceBudgetOverridesAllowed(
     }
 }
 
-function configuredPolicyForProfile(request: RunRequest, config: RunConfig): RunResourceUsagePolicy {
-    if (request.profile === 'microtest-supervised') {
-        return config.profiles.microtestSupervised;
+function selectedProfile(request: RunRequest, config: RunConfig): RunMicrotestProfileConfig {
+    const profile = config.profiles[request.profile];
+
+    if (profile === undefined) {
+        invalidRequest(`Unknown run profile: ${request.profile}`);
     }
 
-    return config.profiles.microtest;
+    return profile;
 }
 
-function resolvedExecutionMode(request: RunRequest): RunExecutionFacts['mode'] {
-    return request.profile === 'microtest-supervised' ? 'single-child-process' : 'concurrent-in-process';
+function resolveEngineExecutionMode(execution: RunMicrotestExecution): 'concurrent-in-process' | 'serial-in-process' {
+    return execution.scheduling === 'concurrent' ? 'concurrent-in-process' : 'serial-in-process';
 }
 
-function resolveResourceUsagePolicy(request: RunRequest, config: RunConfig): RunResourceUsagePolicy {
-    const configuredPolicy = configuredPolicyForProfile(request, config);
-    const measureResourceUsage = request.measureResourceUsage ?? configuredPolicy.measureResourceUsage;
+function resolveResourceUsagePolicy(request: RunRequest, profile: RunMicrotestProfileConfig): RunResourceUsagePolicy {
+    const configuredPolicy = profile.resourceUsage;
+    const measureResourceUsage = request.measureResourceUsage ?? configuredPolicy.measure;
     const resourceUsageSamplingIntervalMilliseconds = request.resourceUsageSamplingIntervalMilliseconds ??
-        configuredPolicy.resourceUsageSamplingIntervalMilliseconds;
+        configuredPolicy.samplingIntervalMilliseconds;
     const resourceBudgets = measureResourceUsage
-        ? resolveResourceBudgets(configuredPolicy.resourceBudgets, request.resourceBudgetOverrides)
+        ? resolveResourceBudgets(configuredPolicy.budgets, request.resourceBudgetOverrides)
         : disabledResourceBudgets();
 
     assertResourceBudgetOverridesAllowed(measureResourceUsage, request.resourceBudgetOverrides);
 
     return {
-        hardTimeoutMilliseconds: configuredPolicy.hardTimeoutMilliseconds,
-        measureResourceUsage,
-        resourceBudgets,
-        resourceUsageSamplingIntervalMilliseconds,
-        timeoutMilliseconds: configuredPolicy.timeoutMilliseconds
+        budgets: resourceBudgets,
+        measure: measureResourceUsage,
+        samplingIntervalMilliseconds: resourceUsageSamplingIntervalMilliseconds
     };
 }
 
@@ -289,6 +318,8 @@ function createRunFacts(
     config: RunConfig,
     dependencies: RunOrchestratorDependencies
 ): RunFacts {
+    const profile = selectedProfile(request, config);
+
     return {
         cases: testPlan.cases.map(function toRunCaseFacts(testCase) {
             return runCaseFacts(testCase.metadata, testCase.id);
@@ -304,12 +335,14 @@ function createRunFacts(
         execution: {
             baselineUpdateMode: request.baselineUpdateMode,
             capture: request.capture,
-            coverage: request.coverage,
             debug: request.debug,
-            mode: resolvedExecutionMode(request),
             order: request.order,
+            processModel: profile.execution.processModel,
             profile: request.profile,
-            resourceUsagePolicy: resolveResourceUsagePolicy(request, config),
+            resourceUsagePolicy: resolveResourceUsagePolicy(request, profile),
+            scheduling: profile.execution.scheduling,
+            testFamily: profile.testFamily,
+            timeoutPolicy: profile.timeouts,
             verbose: request.verbose
         },
         loader: config.loader,
@@ -362,12 +395,13 @@ async function createResolvedRun(command: RunCommand, dependencies: RunOrchestra
     const config = freezeValue(copyRunConfig(command.config));
     const testPlan = await createTestPlan(command, dependencies);
     const facts = freezeValue(createRunFacts(testPlan, request, config, dependencies));
+    const profile = selectedProfile(request, config);
 
     return freezeValue({
         config,
         cwd: command.cwd,
         facts,
-        reporters: config.reporters,
+        reporters: profile.reporters ?? config.reporters,
         request,
         testPlan
     });
@@ -381,12 +415,12 @@ function createExecutionResourceUsageTracker(
     policy: RunResourceUsagePolicy,
     dependencies: RunOrchestratorDependencies
 ): RunResourceUsageTracker | null {
-    if (!policy.measureResourceUsage) {
+    if (!policy.measure) {
         return null;
     }
 
     return dependencies.createResourceUsageTracker({
-        samplingIntervalMilliseconds: policy.resourceUsageSamplingIntervalMilliseconds
+        samplingIntervalMilliseconds: policy.samplingIntervalMilliseconds
     });
 }
 
@@ -449,21 +483,21 @@ export function createRunOrchestrator(dependencies: RunOrchestratorDependencies)
 
             assertRunnableResourceUsagePolicy(resourceUsagePolicy);
 
-            if (resolvedRun.facts.execution.mode === 'single-child-process') {
+            if (resolvedRun.facts.execution.processModel === 'supervised-process') {
                 return await executeSupervisedRun(resolvedRun, dependencies);
             }
 
             return await dependencies.execute(resolvedRun.testPlan, {
-                execution: { mode: 'concurrent-in-process' },
+                execution: { mode: resolveEngineExecutionMode(resolvedRun.facts.execution) },
                 outputRenderer: resolvedRun.config.outputRenderer,
                 reporters: resolvedRun.reporters,
-                resourceBudgets: resourceUsagePolicy.resourceBudgets,
+                resourceBudgets: resourceUsagePolicy.budgets,
                 resourceUsageTracker: createExecutionResourceUsageTracker(resourceUsagePolicy, dependencies),
                 runFacts: resolvedRun.facts,
                 startedAt: dependencies.readStartedAt(),
                 timeoutPolicy: {
-                    hardTimeoutMilliseconds: resourceUsagePolicy.hardTimeoutMilliseconds,
-                    timeoutMilliseconds: resourceUsagePolicy.timeoutMilliseconds
+                    hardTimeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds,
+                    timeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.softMilliseconds
                 }
             });
         }

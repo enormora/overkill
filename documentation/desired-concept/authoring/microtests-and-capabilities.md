@@ -224,29 +224,29 @@ Sources:
 - <https://nodejs.org/api/v8.html>
 - <https://nodejs.org/dist/latest/docs/api/cli.html#node_v8_coveragedir>
 
-## Runner Profiles
+## Microtest Profile Policy
 
-Standard public runner profiles (see [Glossary](../reference/glossary.md)):
+`microtest` is a `testFamily`, not a closed set of public profile names.
+Projects define named profiles such as `unit-fast`, `unit-covered`, or
+`mutation-smoke` and set `testFamily: 'microtest'` on each.
 
-- `microtest` — default microtest profile; capability-restricted,
-  concurrent-in-process, seeded randomized order; resource budgets are
-  diagnostic except for bounded assertion formatting
-- `microtest-supervised` — same microtest boundary, but with subprocess
-  supervision for crash-only recovery and enforceable resource-budget
-  attribution
-- `microtest-with-coverage` — microtest profile plus the narrow coverage
-  write exception; runs single-threaded when coverage is active (see
-  [Coverage](../architecture/coverage.md))
-- `integration` — allows FS write within a per-test temporary directory,
-  loopback net, and child process use
-- `benchmark` — integration-style capability envelope plus
-  single-worker serialization
-- `simulation` — deterministic-simulation profile, with adapter-owned
-  execution/runtime details
+Microtest profile policy may include:
 
-These public names resolve to lower-level capability presets and execution
-strategies. Implementation details (exact permission flag set, exact
-temporary-directory layout, exact supervision mechanism) are runner-internal.
+- `files.include` and `files.exclude` discovery policy
+- `execution.processModel`: `in-process` or `supervised-process`
+- `execution.scheduling`: `concurrent` or `serial`
+- `resourceUsage.measure`, `resourceUsage.budgets`, and
+  `resourceUsage.samplingIntervalMilliseconds`
+- `timeouts.softMilliseconds` and `timeouts.hardMilliseconds`
+- microtest-only `coverage` policy
+- profile-specific reporters that replace global reporter defaults
+
+The no-config built-in `microtest` profile is only the small direct-run
+fallback. It uses supervised concurrent execution and no discovery policy.
+Configured profiles are explicit project policy.
+
+Implementation details such as exact permission flags, exact temporary
+directory layout, and exact supervision mechanism are runner-internal.
 
 Modern Node diagnostics channels provide built-in `console.log`,
 `console.info`, `console.debug`, `console.warn`, and `console.error`

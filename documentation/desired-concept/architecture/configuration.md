@@ -101,10 +101,21 @@ import { defineConfig } from '@overkill-dev/test/config';
 import { lineReporter } from '@overkill-dev/test/reporters';
 
 export default defineConfig({
-    include: [ 'source/**/*.test.ts' ],
     reporters: [ lineReporter() ],
-    coverage: {
-        formats: [ 'text', 'lcov' ]
+    profiles: {
+        unit: {
+            testFamily: 'microtest',
+            files: {
+                include: [ 'source/**/*.test.ts' ],
+                exclude: [ 'source/integration-tests/**/*.test.ts' ]
+            }
+        },
+        'backend-http': {
+            testFamily: 'integration',
+            files: {
+                include: [ 'source/integration-tests/http/**/*.test.ts' ]
+            }
+        }
     }
 });
 ```
@@ -133,20 +144,33 @@ import { run } from '@overkill-dev/run';
 import { defineConfig } from '@overkill-dev/test/config';
 
 const config = defineConfig({
-    include: [ 'source/**/*.test.ts' ],
     profiles: {
-        microtest: {
+        'unit-covered': {
+            testFamily: 'microtest',
+            files: {
+                include: [ 'source/**/*.test.ts' ]
+            },
             coverage: {
                 formats: [ 'text', 'lcov' ]
             },
-            measureResourceUsage: true,
-            resourceBudgets: {
-                javaScriptEngineHeapBytes: 128000000,
-                residentSetBytes: 512000000,
-                residentSetGrowthBytesPerSecond: 50000000,
-                activeResourceCount: 40
+            resourceUsage: {
+                measure: true,
+                budgets: {
+                    javaScriptEngineHeapBytes: 128000000,
+                    residentSetBytes: 512000000,
+                    residentSetGrowthBytesPerSecond: 50000000,
+                    activeResourceCount: 40
+                },
+                samplingIntervalMilliseconds: 100
             },
-            resourceUsageSamplingIntervalMilliseconds: 100
+            execution: {
+                processModel: 'supervised-process',
+                scheduling: 'serial'
+            },
+            timeouts: {
+                softMilliseconds: 500,
+                hardMilliseconds: 1000
+            }
         }
     }
 });
@@ -154,9 +178,9 @@ const config = defineConfig({
 await run({ config, cwd: process.cwd(), engine: null, request });
 ```
 
-`measureResourceUsage: true` enables run-level diagnostic measurement for the
-profile. `resourceBudgets` are thresholds and therefore require measurement.
-Omitting `resourceBudgets` records usage without requesting enforcement.
+`resourceUsage.measure: true` enables run-level diagnostic measurement for the
+profile. `resourceUsage.budgets` are thresholds and therefore require measurement.
+Omitting `resourceUsage.budgets` records usage without requesting enforcement.
 
 Important ownership split:
 
@@ -170,21 +194,19 @@ Important ownership split:
 So, for example:
 
 - `--profile <name>` chooses which runner profile to use for this run
-- `--coverage` chooses whether this run collects coverage
 - `--measure-resource-usage` chooses per-run diagnostic resource usage
   measurement
 - `--resource-budget <name=value>` chooses per-run resource-budget overrides
   and enables resource usage measurement
-- `run({ profile: 'microtest', coverage: true })` should express the same
-  intent directly through `@overkill-dev/run`
+- `run({ profile: 'unit-covered' })` should express coverage intent through
+  profile selection
 - an optional global assertion budget policy lives in configuration because
   it is centrally enforced suite policy rather than per-test authoring
 - resource-budget defaults live in configuration because they describe suite
   policy; per-run overrides are allowed for intentionally heavy runs and must
   be visible in failure messages
-- `coverage.formats`, `coverage.thresholds`, `coverage.include`, and
-  `coverage.outputDir` live in configuration because they describe how
-  coverage behaves once activated
+- microtest `coverage` policy lives on the selected profile because coverage
+  is a microtest-only execution policy
 
 ## Configuration Layering
 
@@ -215,19 +237,40 @@ Use profiles for ordinary and optional runtime families instead:
 
 ```ts
 export default defineConfig({
+    reporters: [ lineReporter() ],
     profiles: {
-        microtest: {
-            include: [ 'source/**/*.test.ts' ],
-            execution: { mode: 'worker-pool' }
+        'unit-fast': {
+            testFamily: 'microtest',
+            files: {
+                include: [ 'source/**/*.test.ts' ],
+                exclude: [ 'source/integration-tests/**/*.test.ts' ]
+            },
+            execution: {
+                processModel: 'in-process',
+                scheduling: 'concurrent'
+            }
         },
-        integration: {
-            include: [ 'source/integration-tests/**/*.test.ts' ],
-            execution: { mode: 'process-per-file' }
+        'backend-http': {
+            testFamily: 'integration',
+            files: {
+                include: [ 'source/integration-tests/http/**/*.test.ts' ],
+                exclude: []
+            },
+            execution: {
+                processModel: 'process-per-file',
+                scheduling: 'concurrent'
+            }
         }
     },
     benchmark: {
-        include: [ 'source/**/*.bench.ts' ],
-        execution: { mode: 'serial' }
+        profiles: {
+            'cli-cold-start': {
+                files: {
+                    include: [ 'source/**/*.bench.ts' ],
+                    exclude: []
+                }
+            }
+        }
     }
 });
 ```
@@ -235,6 +278,26 @@ export default defineConfig({
 Benchmark policy is a standard top-level configuration domain because
 benchmark execution uses `overkill bench`, not `overkill run --profile
 benchmark`.
+
+Profile names are project-owned strings. First-party config validates that a
+profile name is non-empty and contains only letters, numbers, dots,
+underscores, and hyphens. Names such as `backend-http`, `ui.integration`, and
+`unit_fast` are valid. Spaces, slashes, backslashes, and punctuation outside
+that set are rejected.
+
+Configured profile file discovery uses a single shape:
+
+```ts
+files: {
+    include: [ 'source/**/*.test.ts' ],
+    exclude: [ 'source/**/*.slow.test.ts' ]
+}
+```
+
+`include` is required for configured discovery and `exclude` defaults to
+`[]`. Negated glob patterns are not a second exclusion mechanism. Overkill
+uses Node's glob support with the separate `exclude` option, so negated
+patterns are not part of the public config language.
 
 Important distinction:
 

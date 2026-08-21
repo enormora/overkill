@@ -25,9 +25,12 @@ export type {
     LoadedRunConfig,
     RunConfigLoadRequest,
     RunProjectConfig,
-    RunProjectMeasuredMicrotestProfileConfig,
+    RunProjectMeasuredResourceUsage,
+    RunProjectMicrotestExecution,
     RunProjectMicrotestProfileConfig,
     RunProjectProfilesConfig,
     RunProjectResourceBudgets,
-    RunProjectUnmeasuredMicrotestProfileConfig
+    RunProjectResourceUsageConfig,
+    RunProjectTimeoutConfig,
+    RunProjectUnmeasuredResourceUsage
 } from '../../run/run-config.ts';

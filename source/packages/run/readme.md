@@ -47,11 +47,10 @@ non-`runTests` command methods are fixed first-party entrypoints and currently
 return argument errors until their command implementations land.
 
 Resource usage measurement is explicit. Project config can enable it under
-`profiles.microtest.measureResourceUsage`; `RunRequest.measureResourceUsage`
-can override that policy for one run. `resourceBudgets` are thresholds and
-require measurement, while `RunRequest.resourceBudgetOverrides` changes
-individual thresholds for one run. Budgeted execution is rejected until
-supervised resource enforcement lands. Textual parsing for
+`profiles.<name>.resourceUsage.measure`; `RunRequest.measureResourceUsage`
+can override that policy for one run. `resourceUsage.budgets` are thresholds
+and require measurement, while `RunRequest.resourceBudgetOverrides` changes
+individual thresholds for one run. Textual parsing for
 `--measure-resource-usage` and `--resource-budget <name=value>` belongs to the
 later command-line implementation milestone.
 

@@ -9,9 +9,13 @@ import type { Reporter } from '../engine/reporter.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { testDouble } from '../doubles/test-double.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
+import {
+    defaultMicrotestProfile,
+    defaultRunRequest
+} from '../test-support/run-command-factory.ts';
 import { createCommandLineRunner, type CommandLineRunnerDependencies } from './command-line-runner.ts';
 import type { LoadedRunConfig } from './run-config.ts';
-import type { RunOrchestrator, RunRequest } from './run-types.ts';
+import type { RunCommand, RunMicrotestProfileConfig, RunOrchestrator, RunRequest } from './run-types.ts';
 
 const memoryReporter: Reporter = {
     dispose: null,
@@ -24,23 +28,7 @@ const memoryReporter: Reporter = {
     sinks: [ { kind: 'memory' } ]
 };
 
-const defaultRequest: RunRequest = {
-    baselineUpdateMode: 'none',
-    capture: 'buffered',
-    coverage: false,
-    debug: { mode: 'off', selectors: [] },
-    execution: { mode: 'profile-default' },
-    measureResourceUsage: null,
-    order: 'plan',
-    paths: [],
-    profile: 'microtest',
-    resourceBudgetOverrides: null,
-    resourceUsageSamplingIntervalMilliseconds: null,
-    seed: { value: 42n },
-    selection: { kind: 'all' },
-    shard: { index: 0, total: 1 },
-    verbose: false
-};
+const defaultRequest: RunRequest = defaultRunRequest();
 
 async function loadDefaultRunConfig(): Promise<LoadedRunConfig> {
     return {
@@ -52,34 +40,21 @@ async function loadDefaultRunConfig(): Promise<LoadedRunConfig> {
             }
         },
         profiles: {
-            microtest: {
-                hardTimeoutMilliseconds: 1000,
-                measureResourceUsage: false,
-                resourceBudgets: {
-                    activeResourceCount: null,
-                    javaScriptEngineHeapBytes: null,
-                    residentSetBytes: null,
-                    residentSetGrowthBytesPerSecond: null
-                },
-                resourceUsageSamplingIntervalMilliseconds: 100,
-                timeoutMilliseconds: 500
-            },
-            microtestSupervised: {
-                hardTimeoutMilliseconds: 1000,
-                measureResourceUsage: false,
-                resourceBudgets: {
-                    activeResourceCount: null,
-                    javaScriptEngineHeapBytes: null,
-                    residentSetBytes: null,
-                    residentSetGrowthBytesPerSecond: null
-                },
-                resourceUsageSamplingIntervalMilliseconds: 100,
-                timeoutMilliseconds: 500
-            }
+            microtest: defaultMicrotestProfile()
         },
         reporters: null,
         runtimeStateDir: '.overkill'
     };
+}
+
+function selectedProfile(command: RunCommand): RunMicrotestProfileConfig {
+    const profile = command.config.profiles[command.request.profile];
+
+    if (profile === undefined) {
+        throw new Error(`Missing profile ${command.request.profile}.`);
+    }
+
+    return profile;
 }
 
 function createRunnerDependencies(orchestrator: RunOrchestrator): CommandLineRunnerDependencies {
@@ -131,6 +106,8 @@ export const testSuite = createOverkillSuite({
                 const run = testDouble.rejects<RunOrchestrator['run']>('unexpected string failure');
                 const runner = createCommandLineRunner(createRunnerDependencies({
                     async resolve(command) {
+                        const profile = selectedProfile(command);
+
                         return {
                             config: command.config,
                             cwd: command.cwd,
@@ -143,12 +120,14 @@ export const testSuite = createOverkillSuite({
                                 execution: {
                                     baselineUpdateMode: command.request.baselineUpdateMode,
                                     capture: command.request.capture,
-                                    coverage: command.request.coverage,
                                     debug: command.request.debug,
-                                    mode: 'concurrent-in-process',
                                     order: command.request.order,
+                                    processModel: profile.execution.processModel,
                                     profile: command.request.profile,
-                                    resourceUsagePolicy: command.config.profiles.microtest,
+                                    resourceUsagePolicy: profile.resourceUsage,
+                                    scheduling: profile.execution.scheduling,
+                                    testFamily: profile.testFamily,
+                                    timeoutPolicy: profile.timeouts,
                                     verbose: command.request.verbose
                                 },
                                 loader: command.config.loader,

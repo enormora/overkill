@@ -40,19 +40,19 @@ Why a first-class concept anyway:
 
 ## Settled Decisions
 
-- Coverage is restricted to microtest profiles. Integration and browser
-  profiles reject `--coverage`; benchmark commands reject coverage.
+- Coverage is restricted to microtest profiles. Integration, property,
+  type-test, and benchmark profiles reject coverage configuration.
 - Coverage runs single-threaded — one worker process executes all
   selected microtests serially. Worker-pool and process-per-file
   modes do not collect coverage. Supervised microtest mode is
   supported because supervision does not introduce parallelism.
-- Coverage is opt-in per run; there is no global "always on"
+- Coverage is opt-in per profile; there is no global "always on"
   default mode in any first-party profile.
 - Overkill does not ship its own instrumenter or coverage reporter
   package — it integrates with existing tools.
-- The runner-side surface is a single CLI flag plus a Node
-  permission grant scoping filesystem writes to the coverage
-  artifact directory; no Overkill-specific authority abstraction.
+- The runner-side surface is profile selection plus a Node permission grant
+  scoping filesystem writes to the coverage artifact directory; no
+  Overkill-specific authority abstraction.
 - Coverage data lives under `.overkill/runs/<run-id>/coverage/` by
   default and is garbage-collected with the rest of the run record.
 
@@ -92,70 +92,73 @@ substantive enough that re-implementing it would duplicate effort
 `c8` already maintains. `c8` is the right pipeline wrapper as long as
 V8 doesn't ship all-files synthesis itself.
 
-## CLI And Configuration Split
+## Profile Configuration
 
-Following [Principles § One First-Party Path Per Layer](../decisions/principles.md#one-first-party-path-per-layer) (each
-setting has one canonical place: per-run intent on the CLI,
-persistent project policy in the configuration file, and no setting
-reachable from both surfaces), the coverage surface splits this way:
+Coverage is selected by choosing a profile whose `testFamily` is `microtest`
+and whose profile config includes `coverage`.
 
-CLI — per-run intent, asks "do I want coverage on _this_ run":
-
-```text
-overkill run --coverage --profile microtest
+```ts
+export default defineConfig({
+    profiles: {
+        'unit-covered': {
+            testFamily: 'microtest',
+            files: {
+                include: [ 'source/**/*.test.ts' ],
+                exclude: [ 'source/integration-tests/**/*.test.ts' ]
+            },
+            coverage: {
+                formats: [ 'text', 'lcov' ],
+                include: [ 'source/**/*.ts' ],
+                exclude: [ 'source/**/*.type-test.ts' ]
+            },
+            execution: {
+                processModel: 'supervised-process',
+                scheduling: 'serial'
+            }
+        }
+    }
+});
 ```
 
-`--coverage` combined with a non-microtest profile is rejected at CLI
-parse time. Benchmark commands do not accept `--coverage`.
+Coverage policy fields:
 
-Configuration (`overkill.config.ts`) — project policy, settled across runs:
+- `coverage.formats`: which report formats to emit (`v8`, `lcov`, `json`,
+  `html`, `text`); default: `['lcov', 'v8']`
+- `coverage.include` and `coverage.exclude`: glob patterns driving `c8`'s
+  all-files reporting
+- `coverage.thresholds`: pass/fail thresholds for lines, functions, and
+  branches
+- `coverage.outputDir`: override for `.overkill/runs/<run-id>/coverage/`
 
-- `coverage.formats` — which report formats to emit (`v8`, `lcov`,
-  `json`, `html`); default: `['lcov', 'v8']`
-- `coverage.include` / `coverage.exclude` — glob patterns driving
-  `c8`'s all-files reporting
-- `coverage.thresholds` — pass/fail thresholds (lines, functions,
-  branches) when coverage gating is wanted
-- `coverage.outputDir` — override for `.overkill/runs/<run-id>/coverage/`
+There is no ordinary `overkill run --coverage` flag in the current concept.
+The CLI selects a profile:
 
-### Why The Split, Not Both Surfaces?
+```text
+overkill run --profile unit-covered
+```
 
-Some tools (ESLint, Jest) let the same setting be configured from
-either the CLI or the configuration file, with the CLI winning when both are
-set. Coverage does not work that way.
-
-Each coverage setting fits cleanly on one side of the split. Enabling
-coverage is a per-run choice (an audit, a CI check, a debug session).
-Formats and thresholds are project decisions written down in configuration
-and reviewed in code. There is no single coverage setting where
-someone would want to set it in configuration and then override it on the
-CLI just for one run.
-
-Letting both surfaces own the same setting would mean adding
-precedence rules ("CLI wins over configuration") and twice the documentation
-surface. The canonical-input rule rejects that trade unless a setting
-truly needs both lifetimes — and coverage does not.
+This keeps coverage behavior reviewable in configuration and avoids a second
+activation surface. Programmatic callers make the same choice by setting
+`request.profile`.
 
 ### Other Behaviour
 
-- coverage scope = the `coverage.include`/`coverage.exclude` source
+- coverage scope = the selected profile's `coverage.include` and
+  `coverage.exclude` source
   set ∩ the executed-test set. A filtered or narrowed run does not
   claim suite-wide coverage; the run record (see
   [Metadata And Selection § Selection Model](./metadata-and-selection.md#selection-model)) records which
   cases were actually executed so reports remain interpretable.
-- the programmatic API in `@overkill-dev/run` accepts both the per-run
-  flag (`coverage: true`) and the policy values (formats,
-  thresholds, etc.) in a single `run(config)` call — it is the
-  unified target the CLI and configuration file both reduce to (see
-  [Principles § One First-Party Path Per Layer](../decisions/principles.md#one-first-party-path-per-layer) for why the
-  API is a different layer from the human-facing surfaces).
+- the programmatic API in `@overkill-dev/run` records the selected profile
+  and resolved coverage policy in the run record so reports remain
+  reproducible.
 
 ## Single-Process Execution Model
 
 Coverage runs **single-threaded**: one Node worker process executes
 all selected microtests serially. Worker-pool and process-per-file
 modes do not collect coverage, even when invoked under a microtest
-profile. `--coverage` forces serial execution for the run.
+profile. A coverage-enabled microtest profile resolves to serial scheduling.
 
 Coverage attribution is **per-test**: each executed case has its
 own coverage record (keyed by `CaseId`) in the run-record coverage
@@ -175,16 +178,15 @@ Why single-threaded:
   in the inner-loop microtest workflow. Trading parallelism for
   simpler internals is a reasonable bargain.
 
-Supervised microtest mode (where the parent supervises the child
-process for crash recovery) still works — supervision does not
+Supervised microtest execution (where the parent supervises the child
+process for crash recovery) still works because supervision does not
 introduce parallelism; the supervised process executes tests
-serially. The `microtest-supervised` runner profile may be combined with
-`--coverage` for that scenario.
+serially.
 
 The runner is responsible for:
 
 - starting the worker subprocess with `NODE_V8_COVERAGE` set to
-  the run's coverage directory when `--coverage` is on
+  the run's coverage directory when profile coverage is active
 - adding `--allow-fs-write=<run-coverage-dir>/*` to the worker's
   Node permission flags (see [Microtests And Capabilities § Capability Defaults](../authoring/microtests-and-capabilities.md#capability-defaults) for the mechanism)
 - handing the V8 output to `c8` for all-files synthesis and format
@@ -194,10 +196,9 @@ Tests do not interact with coverage instrumentation directly.
 
 ## Permission Surface
 
-Microtest profiles deny filesystem writes by default. The
-`microtest-with-coverage` runner profile — the canonical public
-coverage-enabled profile — grants `--allow-fs-write` scoped to the
-resolved coverage directory for the current run:
+Microtest profiles deny filesystem writes by default. A coverage-enabled
+microtest profile grants `--allow-fs-write` scoped to the resolved coverage
+directory for the current run:
 
 ```text
 --allow-fs-write=<absolute-coverage-dir>/*

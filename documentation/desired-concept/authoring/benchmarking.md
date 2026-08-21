@@ -84,6 +84,27 @@ overkill bench baseline update
 benchmark execution path and avoids making benchmarks look like ordinary tests
 with a different profile.
 
+Benchmark suites still need named configuration. They use a separate
+`benchmark.profiles` namespace:
+
+```ts
+export default defineConfig({
+    benchmark: {
+        profiles: {
+            'cli-cold-start': {
+                files: {
+                    include: [ 'source/**/*.bench.ts' ],
+                    exclude: []
+                }
+            }
+        }
+    }
+});
+```
+
+This lets `overkill bench run --profile cli-cold-start` select benchmark
+policy without making `benchmark` an ordinary `overkill run` profile.
+
 It also confirms that Overkill should support:
 
 - benchmark registries or service handles as resources
