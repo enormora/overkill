@@ -1,5 +1,11 @@
 import type { RunResult } from '../engine/run-result.ts';
-import type { FinalResultReporter, RealTimeReporter, ReporterEvent } from '../engine/reporter.ts';
+import {
+    defineReporter,
+    type DefinedReporter,
+    type FinalResultReporter,
+    type RealTimeReporter,
+    type ReporterEvent
+} from '../engine/reporter.ts';
 
 type RecordedReportEntry = {
     readonly event: ReporterEvent | null;
@@ -7,13 +13,13 @@ type RecordedReportEntry = {
     readonly type: 'event' | 'finish' | 'result';
 };
 
-export type InMemoryRealTimeReporter = {
+export type InMemoryRealTimeReporter = DefinedReporter<{
     readonly getRecordedEntries: () => readonly RecordedReportEntry[];
-} & RealTimeReporter;
+} & RealTimeReporter>;
 
-export type InMemoryFinalResultReporter = {
+export type InMemoryFinalResultReporter = DefinedReporter<{
     readonly getRecordedEntries: () => readonly RecordedReportEntry[];
-} & FinalResultReporter;
+} & FinalResultReporter>;
 
 export type InMemoryReporterOptions = {
     readonly mode: 'final-result' | 'real-time';
@@ -36,7 +42,7 @@ function createRecordedEntries(): RecordedReportEntry[] {
 export function createInMemoryRealTimeReporter(): InMemoryRealTimeReporter {
     const recordedEntries = createRecordedEntries();
 
-    return {
+    return defineReporter({
         dispose: null,
         kind: 'real-time',
         name: 'in-memory-real-time',
@@ -53,13 +59,13 @@ export function createInMemoryRealTimeReporter(): InMemoryRealTimeReporter {
         getRecordedEntries() {
             return recordedEntries;
         }
-    };
+    });
 }
 
 export function createInMemoryFinalResultReporter(): InMemoryFinalResultReporter {
     const recordedEntries = createRecordedEntries();
 
-    return {
+    return defineReporter({
         dispose: null,
         kind: 'final-result',
         name: 'in-memory-final-result',
@@ -72,7 +78,7 @@ export function createInMemoryFinalResultReporter(): InMemoryFinalResultReporter
         getRecordedEntries() {
             return recordedEntries;
         }
-    };
+    });
 }
 
 export function createInMemoryReporter(

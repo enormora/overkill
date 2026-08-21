@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'tstyche';
-import type { OutputRenderer, Reporter } from '../engine/engine.entry-point.ts';
+import type {
+    DefinedOutputRenderer,
+    DefinedReporter,
+    OutputRenderer,
+    Reporter
+} from '../engine/engine.entry-point.ts';
 import {
     RunConfigError,
     type commandLineExitCodes,
@@ -56,9 +61,11 @@ describe('@overkill-dev/run/command-line', function () {
 
     test('exposes typed config helpers', function () {
         expect<typeof defineConfig>().type.toBe<(config: RunProjectConfig) => RunProjectConfig>();
-        expect<RunProjectConfig['outputRenderer']>().type.toBe<OutputRenderer | undefined>();
+        expect<RunProjectConfig['outputRenderer']>().type.toBe<DefinedOutputRenderer | undefined>();
         expect<LoadedRunConfig['outputRenderer']>().type.toBe<OutputRenderer>();
-        expect<RunProjectConfig['reporters']>().type.toBe<readonly [Reporter, ...Reporter[]] | undefined>();
+        expect<RunProjectConfig['reporters']>().type.toBe<
+            readonly [DefinedReporter, ...DefinedReporter[]] | undefined
+        >();
         expect<LoadedRunConfig['reporters']>().type.toBe<readonly [Reporter, ...Reporter[]] | null>();
         expect<RunProjectConfig['profiles']>().type.toBe<RunProjectProfilesConfig | undefined>();
         expect<RunProjectProfilesConfig['microtest']>().type.toBe<RunProjectMicrotestProfileConfig>();

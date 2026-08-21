@@ -7,7 +7,7 @@ import { defineConfig } from '@overkill-dev/run/command-line';
 import { createBriefReporter } from '@overkill-dev/reporter-brief';
 import { createGithubActionsOutputRenderer } from '@overkill-dev/output-renderer-github-actions';
 
-export default defineConfig({
+export const config = defineConfig({
     outputRenderer: createGithubActionsOutputRenderer(),
     reporters: [ createBriefReporter() ]
 });

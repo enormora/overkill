@@ -4,8 +4,13 @@ import { pathToFileURL } from 'node:url';
 import { parse } from '@schema-hub/zod-error-formatter';
 import { z } from 'zod/v4';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
-import { createPlainOutputRenderer, type OutputRenderer } from '../engine/reporter-output.ts';
-import type { Reporter } from '../engine/reporter.ts';
+import {
+    createPlainOutputRenderer,
+    isOutputRenderer,
+    type DefinedOutputRenderer,
+    type OutputRenderer
+} from '../engine/reporter-output.ts';
+import { isReporter, type DefinedReporter, type Reporter } from '../engine/reporter.ts';
 import type {
     RunLoaderConfig,
     RunMicrotestExecution,
@@ -23,9 +28,9 @@ const defaultMicrotestTimeoutMilliseconds = 500;
 
 export type RunProjectConfig = {
     readonly loader?: RunLoaderConfig | undefined;
-    readonly outputRenderer?: OutputRenderer | undefined;
+    readonly outputRenderer?: DefinedOutputRenderer | undefined;
     readonly profiles?: RunProjectProfilesConfig | undefined;
-    readonly reporters?: NonEmptyReadonlyArray<Reporter> | undefined;
+    readonly reporters?: NonEmptyReadonlyArray<DefinedReporter> | undefined;
     readonly runtimeStateDir?: string | undefined;
 };
 
@@ -74,7 +79,7 @@ export type RunProjectMicrotestExecution = {
 
 export type RunProjectMicrotestProfileConfig = {
     readonly execution?: RunProjectMicrotestExecution | undefined;
-    readonly reporters?: NonEmptyReadonlyArray<Reporter> | undefined;
+    readonly reporters?: NonEmptyReadonlyArray<DefinedReporter> | undefined;
     readonly resourceUsage?: RunProjectResourceUsageConfig | undefined;
     readonly testFamily: 'microtest';
     readonly timeouts?: RunProjectTimeoutConfig | undefined;
@@ -120,24 +125,12 @@ const defaultMicrotestExecution: RunMicrotestExecution = {
     scheduling: 'concurrent'
 };
 
-const reporterSchema = z.custom<Reporter>(function isReporter(value) {
-    return typeof value === 'object' && value !== null &&
-        Object.hasOwn(value, 'kind') &&
-        Object.hasOwn(value, 'name') &&
-        Object.hasOwn(value, 'sinks');
-});
+const reporterSchema = z.custom<Reporter>(isReporter, 'must be created with defineReporter(...)');
 
-type PossibleOutputRenderer = {
-    readonly render: unknown;
-};
-
-function hasRenderProperty(value: unknown): value is PossibleOutputRenderer {
-    return typeof value === 'object' && value !== null && Object.hasOwn(value, 'render');
-}
-
-const outputRendererSchema = z.custom<OutputRenderer>(function isOutputRenderer(value) {
-    return hasRenderProperty(value) && typeof value.render === 'function';
-});
+const outputRendererSchema = z.custom<OutputRenderer>(
+    isOutputRenderer,
+    'must be created with defineOutputRenderer(...)'
+);
 
 const loaderSchema = z.strictObject({
     sourceMaps: z.boolean(),
@@ -206,10 +199,20 @@ const projectConfigSchema = z.strictObject({
 type ParsedProjectConfig = {
     readonly loader?: RunLoaderConfig | undefined;
     readonly outputRenderer?: OutputRenderer | undefined;
-    readonly profiles?: RunProjectProfilesConfig | undefined;
+    readonly profiles?: ParsedProjectProfilesConfig | undefined;
     readonly reporters?: NonEmptyReadonlyArray<Reporter> | undefined;
     readonly runtimeStateDir?: string | undefined;
 };
+
+type ParsedProjectMicrotestProfileConfig = {
+    readonly execution?: RunProjectMicrotestExecution | undefined;
+    readonly reporters?: NonEmptyReadonlyArray<Reporter> | undefined;
+    readonly resourceUsage?: RunProjectResourceUsageConfig | undefined;
+    readonly testFamily: 'microtest';
+    readonly timeouts?: RunProjectTimeoutConfig | undefined;
+};
+
+type ParsedProjectProfilesConfig = Readonly<Record<string, ParsedProjectMicrotestProfileConfig>>;
 
 export function defineConfig(config: RunProjectConfig): RunProjectConfig {
     return config;
@@ -257,16 +260,42 @@ type ConfigModuleWithDefaultExport = {
     readonly default: unknown;
 };
 
+type ConfigModuleWithNamedConfigExport = {
+    readonly config: unknown;
+};
+
 function hasDefaultExport(configModule: unknown): configModule is ConfigModuleWithDefaultExport {
     return typeof configModule === 'object' && configModule !== null && Object.hasOwn(configModule, 'default');
 }
 
-function readDefaultExport(configModule: unknown, configPath: string): unknown {
+function hasNamedConfigExport(configModule: unknown): configModule is ConfigModuleWithNamedConfigExport {
+    return typeof configModule === 'object' && configModule !== null && Object.hasOwn(configModule, 'config');
+}
+
+function moduleExportNames(configModule: unknown): readonly string[] {
+    return typeof configModule === 'object' && configModule !== null ? Object.keys(configModule) : [];
+}
+
+function readNamedConfigExport(configModule: unknown, configPath: string): unknown {
     if (hasDefaultExport(configModule)) {
-        return configModule.default;
+        throw new RunConfigError(`Config file "${configPath}" must not export a default config.`);
     }
 
-    throw new RunConfigError(`Config file "${configPath}" must export a default config object.`);
+    if (hasNamedConfigExport(configModule)) {
+        return configModule.config;
+    }
+
+    throw new RunConfigError(`Config file "${configPath}" must export a named config value.`);
+}
+
+function assertNoExtraConfigExports(configModule: unknown, configPath: string): void {
+    const extraExports = moduleExportNames(configModule).filter(function isExtraExport(exportName) {
+        return exportName !== 'config';
+    });
+
+    if (extraExports.length > 0) {
+        throw new RunConfigError(`Config file "${configPath}" must only export a named config value.`);
+    }
 }
 
 function normalizeReporters(reporters: NonEmptyReadonlyArray<Reporter> | undefined): LoadedRunConfig['reporters'] {
@@ -350,6 +379,14 @@ function normalizeTimeouts(timeouts: RunProjectTimeoutConfig | undefined): RunTi
     };
 }
 
+function assertValidTimeouts(timeouts: RunTimeoutPolicy): void {
+    if (timeouts.softMilliseconds > timeouts.hardMilliseconds) {
+        throw new RunConfigError(
+            'Invalid profile timeouts: softMilliseconds must be less than or equal to hardMilliseconds.'
+        );
+    }
+}
+
 function normalizeExecution(execution: RunProjectMicrotestExecution | undefined): RunMicrotestExecution {
     return {
         processModel: execution?.processModel ?? defaultMicrotestExecution.processModel,
@@ -357,13 +394,17 @@ function normalizeExecution(execution: RunProjectMicrotestExecution | undefined)
     };
 }
 
-function normalizeMicrotestProfile(profile: RunProjectMicrotestProfileConfig): RunMicrotestProfileConfig {
+function normalizeMicrotestProfile(profile: ParsedProjectMicrotestProfileConfig): RunMicrotestProfileConfig {
+    const timeouts = normalizeTimeouts(profile.timeouts);
+
+    assertValidTimeouts(timeouts);
+
     return {
         execution: normalizeExecution(profile.execution),
         reporters: normalizeReporters(profile.reporters),
         resourceUsage: normalizeResourceUsage(profile.resourceUsage),
         testFamily: 'microtest',
-        timeouts: normalizeTimeouts(profile.timeouts)
+        timeouts
     };
 }
 
@@ -380,7 +421,7 @@ function defaultMicrotestProfile(): RunMicrotestProfileConfig {
     return normalizeMicrotestProfile({ testFamily: 'microtest' });
 }
 
-function normalizeConfiguredProfiles(profiles: RunProjectProfilesConfig | undefined): RunProfilesConfig {
+function normalizeConfiguredProfiles(profiles: ParsedProjectProfilesConfig | undefined): RunProfilesConfig {
     const normalizedProfiles: Record<string, RunMicrotestProfileConfig> = {};
     const profileEntries = Object.entries(profiles ?? {});
 
@@ -425,7 +466,8 @@ export async function loadRunConfig(request: RunConfigLoadRequest): Promise<Load
     }
 
     const configModule = await importConfigModule(configPath);
-    const configValue = readDefaultExport(configModule, configPath);
+    const configValue = readNamedConfigExport(configModule, configPath);
+    assertNoExtraConfigExports(configModule, configPath);
 
     return normalizeConfig(parseConfig(configValue, configPath), configPath);
 }

@@ -1,7 +1,7 @@
 import figures from 'figures';
 import colors from 'yoctocolors';
 import type { CaseId } from '../engine/identity.ts';
-import type { RealTimeReporter, ReporterEvent } from '../engine/reporter.ts';
+import { defineReporter, type DefinedReporter, type RealTimeReporter, type ReporterEvent } from '../engine/reporter.ts';
 import type { FailOutcome, OrphanedNode, RunResult, TestOutcome, TestVerdict } from '../engine/run-result.ts';
 import { formatFailure } from './line-failure-rendering.ts';
 import { createTerminalLineLogger, type TerminalLineLogger } from './terminal.ts';
@@ -118,7 +118,7 @@ function logOrphans(terminal: TerminalLineLogger, orphans: readonly OrphanedNode
     }
 }
 
-export function createLineReporter(dependencies: LineReporterDependencies): RealTimeReporter {
+export function createLineReporter(dependencies: LineReporterDependencies): DefinedReporter<RealTimeReporter> {
     const { stdoutConsole } = dependencies;
     const terminal = createTerminalLineLogger({ stdoutConsole });
     let suiteDepth = 0;
@@ -139,7 +139,7 @@ export function createLineReporter(dependencies: LineReporterDependencies): Real
         suiteDepth += 1;
     }
 
-    return {
+    return defineReporter({
         dispose: null,
         kind: 'real-time',
         name: 'line',
@@ -163,5 +163,5 @@ export function createLineReporter(dependencies: LineReporterDependencies): Real
             logSummary(terminal, finalResult);
             logOrphans(terminal, finalResult.orphans);
         }
-    };
+    });
 }

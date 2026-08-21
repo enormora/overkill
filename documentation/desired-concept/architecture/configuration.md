@@ -100,7 +100,7 @@ The first-party shape is:
 import { defineConfig } from '@overkill-dev/test/config';
 import { lineReporter } from '@overkill-dev/test/reporters';
 
-export default defineConfig({
+export const config = defineConfig({
     reporters: [ lineReporter() ],
     profiles: {
         unit: {
@@ -236,7 +236,7 @@ precedence and make the final policy harder to explain in `RunFacts`.
 Use profiles for ordinary and optional runtime families instead:
 
 ```ts
-export default defineConfig({
+export const config = defineConfig({
     reporters: [ lineReporter() ],
     profiles: {
         'unit-fast': {

@@ -1,7 +1,7 @@
 import figures from 'figures';
 import colors from 'yoctocolors';
 import { formatCaseId } from '../engine/identity.ts';
-import type { RealTimeReporter, ReporterEvent } from '../engine/reporter.ts';
+import { defineReporter, type DefinedReporter, type RealTimeReporter, type ReporterEvent } from '../engine/reporter.ts';
 import type { RunResult, RunnerError, TestOutcome, TestVerdict } from '../engine/run-result.ts';
 import { formatFailureSummary } from './failure-summary.ts';
 import { createTerminalProgressRenderer, type TerminalOutput } from './terminal.ts';
@@ -108,7 +108,7 @@ function detailLines(result: RunResult): readonly string[] {
     ];
 }
 
-export function createDotReporter(dependencies: DotReporterDependencies): RealTimeReporter {
+export function createDotReporter(dependencies: DotReporterDependencies): DefinedReporter<RealTimeReporter> {
     const progress = createTerminalProgressRenderer({
         interactive: dependencies.interactive,
         output: dependencies.stdout
@@ -128,7 +128,7 @@ export function createDotReporter(dependencies: DotReporterDependencies): RealTi
         progress.finish();
     }
 
-    return {
+    return defineReporter({
         dispose() {
             progress.dispose();
         },
@@ -155,5 +155,5 @@ export function createDotReporter(dependencies: DotReporterDependencies): RealTi
                 writeLine(detailLine);
             }
         }
-    };
+    });
 }

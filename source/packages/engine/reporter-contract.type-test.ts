@@ -2,6 +2,8 @@ import { describe, expect, test } from 'tstyche';
 import type {
     ExecuteExecution,
     ExecuteOptions,
+    DefinedOutputRenderer,
+    DefinedReporter,
     FinalResultReporter,
     NonEmptyReadonlyArray,
     OutputLineIntent,
@@ -14,6 +16,12 @@ import type {
     SinkDeclaration,
     TestPlan,
     TestPlanCase
+} from './engine.entry-point.ts';
+import {
+    defineOutputRenderer,
+    defineReporter,
+    isOutputRenderer,
+    isReporter
 } from './engine.entry-point.ts';
 
 type ExecuteOptionKeyByName = {
@@ -102,6 +110,28 @@ describe('Reporter contract', function () {
         expect<OutputLineIntent['role']>().type.toBe<'primary' | 'supplemental'>();
         expect<OutputRenderer['render']>().type.toBe<(intent: OutputLineIntent) => string>();
         expect<ReporterOutput>().type.toBe<readonly OutputLineIntent[]>();
+    });
+
+    test('exposes extension branding helpers without replacing structural contracts', function () {
+        const reporter = defineReporter({
+            dispose: null,
+            kind: 'final-result',
+            name: 'typed',
+            sinks: [],
+            onResult() {}
+        });
+        const outputRenderer = defineOutputRenderer({
+            render(intent) {
+                return intent.text;
+            }
+        });
+
+        expect(reporter).type.toBeAssignableTo<DefinedReporter>();
+        expect(reporter).type.toBeAssignableTo<FinalResultReporter>();
+        expect<typeof isReporter>().type.toBe<(value: unknown) => value is DefinedReporter>();
+        expect(outputRenderer).type.toBeAssignableTo<DefinedOutputRenderer>();
+        expect(outputRenderer).type.toBeAssignableTo<OutputRenderer>();
+        expect<typeof isOutputRenderer>().type.toBe<(value: unknown) => value is DefinedOutputRenderer>();
     });
 
     test('exposes non-empty planned case arrays', function () {

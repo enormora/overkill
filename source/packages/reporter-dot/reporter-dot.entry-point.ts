@@ -1,7 +1,7 @@
 import isInteractive from 'is-interactive';
 import { createDotReporter as createDotReporterInstance } from '../../reporters/dot-reporter.ts';
 import type { TerminalOutput } from '../../reporters/terminal.ts';
-import type { RealTimeReporter } from '../engine/engine.entry-point.ts';
+import type { DefinedReporter, RealTimeReporter } from '../engine/engine.entry-point.ts';
 
 const stdout: TerminalOutput = {
     get columns() {
@@ -18,7 +18,7 @@ const stdout: TerminalOutput = {
     }
 };
 
-export function createDotReporter(): RealTimeReporter {
+export function createDotReporter(): DefinedReporter<RealTimeReporter> {
     return createDotReporterInstance({
         interactive: isInteractive({ stream: process.stdout }),
         stdout
