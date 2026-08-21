@@ -103,7 +103,7 @@ type Table = {
 
 type Metadata = {
     readonly tags?: ReadonlySet<string>;
-    readonly kind?: TestKind;
+    readonly kind?: TestFamily;
     readonly runtimes?: ReadonlyArray<string>;
     readonly capabilities?: ReadonlyArray<Capability>;
     readonly baselines?: ReadonlyArray<BaselineSubtype>;
@@ -114,15 +114,9 @@ type Metadata = {
     readonly extra?: ReadonlyMap<string, unknown>;
 };
 
-type TestKind = 'microtest' | 'integration' | 'browser' | 'benchmark' | 'type-test' | 'property' | 'simulation';
+type TestFamily = 'microtest' | 'integration' | 'property' | 'benchmark' | 'type-test';
 
-type RunnerProfileName =
-    | 'microtest'
-    | 'microtest-supervised'
-    | 'microtest-with-coverage'
-    | 'integration'
-    | 'benchmark'
-    | 'simulation';
+type ProfileName = string;
 
 type BaselineSubtype = 'content-snapshot' | 'visual-snapshot' | 'terminal-snapshot' | 'performance-baseline';
 
@@ -558,14 +552,96 @@ type RunConfig = {
     readonly outputRenderer: OutputRenderer;
     readonly reporters: ReadonlyArray<Reporter>;
     readonly loader: { readonly stripMode: 'strip-only'; readonly sourceMaps: boolean; };
-    readonly profiles: {
-        readonly microtest: {
-            readonly measureResourceUsage: boolean;
-            readonly resourceBudgets: ResourceBudgets;
-            readonly resourceUsageSamplingIntervalMilliseconds: number;
-        };
+    readonly profiles: Readonly<Record<ProfileName, RunProfileConfig>>;
+    readonly benchmark?: {
+        readonly profiles: Readonly<Record<ProfileName, BenchmarkProfileConfig>>;
     };
     readonly runtimeStateDir: string;
+};
+
+type RunProfileConfig =
+    | MicrotestProfileConfig
+    | IntegrationProfileConfig
+    | PropertyProfileConfig
+    | TypeTestProfileConfig;
+
+type MicrotestProfileConfig = {
+    readonly testFamily: 'microtest';
+    readonly files: ProfileFiles;
+    readonly reporters?: ReadonlyArray<Reporter>;
+    readonly execution?: MicrotestExecutionConfig;
+    readonly resourceUsage?: ResourceUsagePolicy;
+    readonly timeouts?: TimeoutPolicy;
+    readonly coverage?: MicrotestCoveragePolicy;
+};
+
+type IntegrationProfileConfig = {
+    readonly testFamily: 'integration';
+    readonly files: ProfileFiles;
+    readonly reporters?: ReadonlyArray<Reporter>;
+    readonly execution?: IntegrationExecutionConfig;
+    readonly resourceUsage?: ResourceUsagePolicy;
+    readonly timeouts?: TimeoutPolicy;
+};
+
+type PropertyProfileConfig = {
+    readonly testFamily: 'property';
+    readonly files: ProfileFiles;
+    readonly reporters?: ReadonlyArray<Reporter>;
+    readonly execution?: MicrotestExecutionConfig;
+    readonly resourceUsage?: ResourceUsagePolicy;
+    readonly timeouts?: TimeoutPolicy;
+    readonly coverage?: never;
+};
+
+type TypeTestProfileConfig = {
+    readonly testFamily: 'type-test';
+    readonly files: ProfileFiles;
+    readonly reporters?: ReadonlyArray<Reporter>;
+};
+
+type BenchmarkProfileConfig = {
+    readonly files: ProfileFiles;
+};
+
+type ProfileFiles = {
+    readonly include: ReadonlyArray<string>;
+    readonly exclude: ReadonlyArray<string>;
+};
+
+type MicrotestExecutionConfig = {
+    readonly processModel: 'in-process' | 'supervised-process';
+    readonly scheduling: 'serial' | 'concurrent';
+};
+
+type IntegrationExecutionConfig = {
+    readonly processModel: 'process-per-file' | 'worker-pool' | 'supervised-process';
+    readonly scheduling: 'serial' | 'concurrent';
+};
+
+type ResourceUsagePolicy = {
+    readonly measure: boolean;
+    readonly budgets: ResourceBudgets;
+    readonly samplingIntervalMilliseconds: number;
+};
+
+type TimeoutPolicy = {
+    readonly softMilliseconds: number;
+    readonly hardMilliseconds: number;
+};
+
+type MicrotestCoveragePolicy = {
+    readonly formats: ReadonlyArray<'text' | 'lcov' | 'json' | 'html' | 'v8'>;
+    readonly include: ReadonlyArray<string>;
+    readonly exclude: ReadonlyArray<string>;
+    readonly thresholds?: CoverageThresholds;
+    readonly outputDir?: string;
+};
+
+type CoverageThresholds = {
+    readonly branches?: number;
+    readonly functions?: number;
+    readonly lines?: number;
 };
 
 type LoadRunConfigRequest = {
@@ -586,10 +662,9 @@ type RunRequest = {
         | { readonly kind: 'last-failed'; }
         | { readonly kind: 'name'; readonly pattern: string; };
     readonly shard: { readonly index: number; readonly total: number; };
-    readonly profile: RunnerProfileName;
-    readonly execution: { readonly mode: 'concurrent-in-process'; };
+    readonly profile: ProfileName;
+    readonly execution: { readonly mode: 'profile-default'; };
     readonly baselineUpdateMode: 'none' | 'update' | 'apply' | 'bootstrap' | 'diff';
-    readonly coverage: boolean;
     readonly capture: 'buffered' | 'live';
     readonly measureResourceUsage: boolean | null;
     readonly resourceBudgetOverrides: ResourceBudgetOverrides | null;
@@ -637,16 +712,14 @@ type RunFacts = {
     readonly execution: {
         readonly baselineUpdateMode: 'none' | 'update' | 'apply' | 'bootstrap' | 'diff';
         readonly capture: 'buffered' | 'live';
-        readonly coverage: boolean;
         readonly debug: { readonly mode: 'off' | 'all' | 'selected'; readonly selectors: ReadonlyArray<string>; };
-        readonly mode: string; // see runtime-behavior.md
         readonly order: 'plan' | 'seeded' | 'lexical';
-        readonly profile: RunnerProfileName;
-        readonly resourceUsagePolicy: {
-            readonly measureResourceUsage: boolean;
-            readonly resourceBudgets: ResourceBudgets;
-            readonly resourceUsageSamplingIntervalMilliseconds: number;
-        };
+        readonly processModel: string;
+        readonly profile: ProfileName;
+        readonly resourceUsagePolicy: ResourceUsagePolicy;
+        readonly scheduling: 'serial' | 'concurrent';
+        readonly testFamily: TestFamily;
+        readonly timeoutPolicy: TimeoutPolicy;
         readonly verbose: boolean;
     };
     readonly loader: { readonly stripMode: 'strip-only'; readonly sourceMaps: boolean; };

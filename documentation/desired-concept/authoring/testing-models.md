@@ -148,6 +148,17 @@ behavior. They need different primitives such as generators, integrated
 shrinking, edge cases, witnesses, corpora, model state, and targeted
 search.
 
+Property-based tests are their own `testFamily`. They are microtest-like in
+capability boundaries and supervision needs, but they should not be mixed into
+ordinary microtest or integration profiles by default. Generated input volume,
+shrinking, witness storage, and timeout policy are different enough that a
+dedicated profile is clearer and safer.
+
+Property-based integration tests are possible in principle, but they are not a
+first-party default shape. Projects that need that combination should model it
+through an explicit higher-layer package or adapter instead of silently mixing
+property tests into an integration profile.
+
 The settled package split is:
 
 - `@overkill-dev/property` for generator-driven property testing

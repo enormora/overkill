@@ -15,7 +15,7 @@ ad-hoc naming conventions — the metadata-layer expression of
 Likely metadata categories:
 
 - **tags** — free-form labels (`'fast'`, `'flaky'`, `'auth'`)
-- **kind** — closed enumeration (see [Glossary § Test Kind](../reference/glossary.md#test-kind))
+- **kind** - closed enumeration (see [Glossary § Test Family](../reference/glossary.md#test-family))
 - **runtimes** — declared runtime matrix entries
 - **capabilities** — required capability profile
 - **baselines** — baseline subtypes the test consumes

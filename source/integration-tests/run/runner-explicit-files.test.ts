@@ -38,6 +38,31 @@ const memoryReporter: Reporter = {
     sinks: [ { kind: 'memory' } ]
 };
 
+function createDefaultMicrotestProfile(): RunConfig['profiles'][string] {
+    return {
+        execution: {
+            processModel: 'supervised-process',
+            scheduling: 'concurrent'
+        },
+        reporters: null,
+        resourceUsage: {
+            budgets: {
+                activeResourceCount: null,
+                javaScriptEngineHeapBytes: null,
+                residentSetBytes: null,
+                residentSetGrowthBytesPerSecond: null
+            },
+            measure: false,
+            samplingIntervalMilliseconds: 100
+        },
+        testFamily: 'microtest',
+        timeouts: {
+            hardMilliseconds: 1000,
+            softMilliseconds: 500
+        }
+    };
+}
+
 const defaultConfig: RunConfig = {
     loader: { sourceMaps: false, stripMode: 'strip-only' },
     outputRenderer: {
@@ -46,30 +71,7 @@ const defaultConfig: RunConfig = {
         }
     },
     profiles: {
-        microtest: {
-            hardTimeoutMilliseconds: 1000,
-            measureResourceUsage: false,
-            resourceBudgets: {
-                activeResourceCount: null,
-                javaScriptEngineHeapBytes: null,
-                residentSetBytes: null,
-                residentSetGrowthBytesPerSecond: null
-            },
-            resourceUsageSamplingIntervalMilliseconds: 100,
-            timeoutMilliseconds: 500
-        },
-        microtestSupervised: {
-            hardTimeoutMilliseconds: 1000,
-            measureResourceUsage: false,
-            resourceBudgets: {
-                activeResourceCount: null,
-                javaScriptEngineHeapBytes: null,
-                residentSetBytes: null,
-                residentSetGrowthBytesPerSecond: null
-            },
-            resourceUsageSamplingIntervalMilliseconds: 100,
-            timeoutMilliseconds: 500
-        }
+        microtest: createDefaultMicrotestProfile()
     },
     reporters: [],
     runtimeStateDir: '.overkill'
@@ -79,7 +81,6 @@ function createRunRequest(paths: readonly string[]): RunRequest {
     return {
         baselineUpdateMode: 'none',
         capture: 'buffered',
-        coverage: false,
         debug: { mode: 'off', selectors: [] },
         execution: { mode: 'profile-default' },
         measureResourceUsage: null,
@@ -118,7 +119,7 @@ function createSupervisedRunCommand(paths: readonly string[], config: RunConfig)
         engine: null,
         request: {
             ...createRunRequest(paths),
-            profile: 'microtest-supervised'
+            profile: 'microtest'
         }
     };
 }
@@ -233,18 +234,12 @@ export const testSuite = createSuite({
                     {
                         ...createRunConfig(),
                         profiles: {
-                            microtest: defaultConfig.profiles.microtest,
-                            microtestSupervised: {
-                                hardTimeoutMilliseconds: 50,
-                                measureResourceUsage: false,
-                                resourceBudgets: {
-                                    activeResourceCount: null,
-                                    javaScriptEngineHeapBytes: null,
-                                    residentSetBytes: null,
-                                    residentSetGrowthBytesPerSecond: null
-                                },
-                                resourceUsageSamplingIntervalMilliseconds: 100,
-                                timeoutMilliseconds: 10
+                            microtest: {
+                                ...createDefaultMicrotestProfile(),
+                                timeouts: {
+                                    hardMilliseconds: 50,
+                                    softMilliseconds: 10
+                                }
                             }
                         }
                     }

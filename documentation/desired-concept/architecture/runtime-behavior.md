@@ -238,10 +238,10 @@ Overkill may count file resources it owns or observes through Node handle
 diagnostics, but it should not claim a complete cross-platform descriptor
 count unless Node exposes one.
 
-### Single-Process Microtests
+### In-Process Microtests
 
-Default `microtest` execution is single-process and concurrent. It has no
-parent process or sidecar that can outlive the test body. Therefore:
+An `in-process` microtest profile has no parent process or sidecar that can
+outlive the test body. Therefore:
 
 - assertion value serialization and diff construction are always bounded
 - active test identity is emitted before the body starts
@@ -258,16 +258,16 @@ from reaching the sampler. If the process dies, the last streamed active test
 identity is useful evidence, but the runner process may not survive to turn it
 into a complete `RunResult`.
 
-When a run requests resource budgets for ordinary microtests, orchestration
-should resolve the run to `microtest-supervised`. This keeps the default path
-cheap while avoiding false guarantees. A run may explicitly enable
-`measureResourceUsage` without budgets to collect diagnostic usage data without
-requesting enforcement.
+When a microtest profile configures resource budgets, orchestration should
+require `execution.processModel: 'supervised-process'`. A run may explicitly
+enable `measureResourceUsage` without budgets to collect diagnostic usage data
+without requesting enforcement.
 
 ### Supervised Execution
 
-`microtest-supervised` and other owned-boundary profiles enforce resource
-budgets through disposable child processes:
+Microtest profiles with `execution.processModel: 'supervised-process'` and
+other owned-boundary profiles enforce resource budgets through disposable
+child processes:
 
 - the parent assigns one active case to a worker at a time
 - the worker sends an `active-case` event before evaluating the body
@@ -330,15 +330,15 @@ sees as an aborted `AbortSignal` (cooperative cancellation), and a
 **hard timeout** that the runner uses to kill or abandon a wedged
 worker (only available in supervised profiles).
 
-Defaults per profile:
+Defaults by family:
 
-| Profile                | Soft timeout     | Hard timeout                                                      |
-| ---------------------- | ---------------- | ----------------------------------------------------------------- |
-| `microtest`            | 0.5 s            | not available (in-process; no hard recovery from CPU-bound hangs) |
-| `microtest-supervised` | 0.5 s            | 1 s (subprocess kill; partial state is discarded)                 |
-| `integration`          | 5 s              | 7 s (worker terminate)                                            |
-| `benchmark`            | per-workload     | 1.5 × workload budget, capped at 60 s (single-worker-serial)      |
-| `simulation`           | adapter-declared | adapter-declared                                                  |
+| Test family   | Soft timeout     | Hard timeout                                                  |
+| ------------- | ---------------- | ------------------------------------------------------------- |
+| `microtest`   | 0.5 s            | 1 s when supervised; not enforceable for CPU-bound in-process |
+| `integration` | 5 s              | 7 s when the profile owns a worker or process boundary        |
+| `property`    | 1 s              | 2 s when supervised                                           |
+| `benchmark`   | per-workload     | 1.5 x workload budget, capped at 60 s                         |
+| `type-test`   | adapter-declared | adapter-declared                                              |
 
 Rationale for the tight numbers: tests should be categorised
 correctly. A microtest that needs more than 500 ms is misclassified;
@@ -375,7 +375,7 @@ Hard-timeout mechanics:
 
 - only available in profiles that own a worker or subprocess
   boundary (supervised microtests, integration runs with workers,
-  benchmark, simulation)
+  benchmark execution, or adapter-owned simulation runs)
 - the watchdog terminates the worker after the hard timeout; the
   test is recorded as `crashed`
 - crash-budget rules (`Process Crash Handling`) apply
@@ -396,46 +396,50 @@ reporter interaction, overhead, retry/replay behavior, and the
 interpretation patterns the artifact surfaces, and lives in
 [Test Debug Mode](../authoring/debug-mode.md).
 
-## Parallelism Semantics
+## Process Model And Scheduling
 
-Parallelism happens at multiple grains. The default for `@overkill-dev/test`
-is **concurrent-in-process with seeded randomized scheduling**. Other
-modes remain available when the suite or resource model calls for them:
+Execution has two independent axes.
 
-In the unconstrained microtest path, this is conceptually a
-`Promise.all(...)`-style launch of the selected cases inside one process
-after the seeded plan order has been fixed. The ordering still matters for
-plan identity, derived seeds, and any scheduler decisions that must stage
-work before resource constraints narrow the runnable set.
+`processModel` describes the boundary:
 
-| Mode                    | Description                                           | When useful                                         |
-| ----------------------- | ----------------------------------------------------- | --------------------------------------------------- |
-| `serial`                | One test at a time, single process                    | deterministic simulation, debugger-focused runs     |
-| `concurrent-in-process` | Multiple tests' async work interleaves in one process | default for microtests                              |
-| `worker-pool`           | N worker threads, file-level distribution             | CPU-bound suites, big monorepos                     |
-| `process-per-file`      | Subprocess per test file                              | strong isolation, capability resets, native crashes |
-| `single-worker-serial`  | Single worker thread, no concurrency                  | benchmarks, deterministic-simulation                |
+| Process model        | Description                                    | Families                               |
+| -------------------- | ---------------------------------------------- | -------------------------------------- |
+| `in-process`         | The runner process executes the selected plan  | `microtest`, `property`                |
+| `supervised-process` | A parent process supervises a disposable child | `microtest`, `property`, `integration` |
+| `worker-pool`        | N workers execute assigned plan items          | `integration`                          |
+| `process-per-file`   | One subprocess executes one assigned file      | `integration`                          |
 
-Rationale for the default:
+`scheduling` describes how selected cases are started within that boundary:
+
+| Scheduling   | Description                               |
+| ------------ | ----------------------------------------- |
+| `concurrent` | Multiple tests' async work may interleave |
+| `serial`     | One selected case runs at a time          |
+
+Default ordinary microtests use `supervised-process` with `concurrent`
+scheduling. `in-process` remains available for deliberately cheaper local
+profiles.
+
+Rationale for the microtest default:
 
 - microtests should surface accidental coupling early; a concurrent
   default is better at exposing hidden dependence on ambient global state,
   fake timers, console ordering assumptions, and resource ownership leaks
-- same-process concurrency preserves the low cold-start budget while still
-  allowing unrelated async work to overlap
+- supervised execution gives crash and hard-timeout attribution while
+  concurrent scheduling still allows unrelated async work to overlap
 - strict serialization remains useful, but it is a debugging and
   determinism tool rather than the default shape for the suite
 - tests that genuinely require serialization should declare it through
-  resources or run under `--mode serial`, rather than relying on an
-  implicitly serialized suite
+  resources or a serial profile, rather than relying on an implicitly
+  serialized suite
 
 Selection rules:
 
-- the runner profile names a default mode
+- the runner profile names default process model and scheduling
 - resource execution requirements ([Higher Test Layers § Resource Factories](../authoring/higher-test-layers.md#1-resource-factories-as-the-main-higher-layer-primitive)) can
-  upgrade the mode (e.g. exclusive resource forces serialization within
+  upgrade the execution plan, for example exclusive resource forces serialization within
   its scope)
-- `--mode` overrides at the CLI
+- there is no request-level execution override in the current concept
 
 ## Execution Order
 

@@ -8,6 +8,8 @@ import { discoverRunFiles } from './run-discovery.ts';
 import { loadRunTestModules } from './run-test-modules.ts';
 import type { SupervisedChildMessage, SupervisedRunCommand } from './supervised-protocol.ts';
 
+type ChildExecutionMode = 'concurrent-in-process' | 'serial-in-process';
+
 function send(message: SupervisedChildMessage): void {
     if (process.send !== undefined) {
         process.send(message);
@@ -86,6 +88,10 @@ function createResourceUsageTracker(command: SupervisedRunCommand): RunResourceU
     };
 }
 
+function executionMode(command: SupervisedRunCommand): ChildExecutionMode {
+    return command.scheduling === 'concurrent' ? 'concurrent-in-process' : 'serial-in-process';
+}
+
 async function run(command: SupervisedRunCommand): Promise<void> {
     const wallClock = createWallClock();
     const startedAt = new Date(wallClock.currentTimestampInMilliseconds);
@@ -99,7 +105,7 @@ async function run(command: SupervisedRunCommand): Promise<void> {
     });
     const testPlan = selectAssignedCases(await createTestPlan(command), command.assignedCaseKeys);
     const result = await execute(testPlan, {
-        execution: { mode: 'concurrent-in-process' },
+        execution: { mode: executionMode(command) },
         outputRenderer: { render: renderNothing },
         reporters: [ createIpcReporter() ],
         resourceBudgets: command.resourceBudgets,

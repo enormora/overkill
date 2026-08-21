@@ -8,6 +8,7 @@ import {
     runIfMain,
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
+import { defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
 import { loadRunConfig, RunConfigError } from './run-config.ts';
 
 async function createTempFolder(): Promise<string> {
@@ -20,6 +21,15 @@ async function writeConfig(folder: string, fileName: string, source: string): Pr
     await fs.writeFile(filePath, source, 'utf8');
 
     return filePath;
+}
+
+type LoadedConfig = Awaited<ReturnType<typeof loadRunConfig>>;
+
+function assertDefaultMicrotestResourceUsage(scope: OverkillScope, config: LoadedConfig): void {
+    const profile = config.profiles.microtest;
+
+    scope.require.defined(profile);
+    scope.assert.deepEqual(profile.resourceUsage, defaultMicrotestProfile().resourceUsage);
 }
 
 export const testSuite = createOverkillSuite({
@@ -37,30 +47,7 @@ export const testSuite = createOverkillSuite({
                 scope.assert.deepEqual(config.loader, { sourceMaps: false, stripMode: 'strip-only' });
                 scope.assert.equal(typeof config.outputRenderer.render, 'function');
                 scope.assert.deepEqual(config.profiles, {
-                    microtest: {
-                        hardTimeoutMilliseconds: 1000,
-                        measureResourceUsage: false,
-                        resourceBudgets: {
-                            activeResourceCount: null,
-                            javaScriptEngineHeapBytes: null,
-                            residentSetBytes: null,
-                            residentSetGrowthBytesPerSecond: null
-                        },
-                        resourceUsageSamplingIntervalMilliseconds: 100,
-                        timeoutMilliseconds: 500
-                    },
-                    microtestSupervised: {
-                        hardTimeoutMilliseconds: 1000,
-                        measureResourceUsage: false,
-                        resourceBudgets: {
-                            activeResourceCount: null,
-                            javaScriptEngineHeapBytes: null,
-                            residentSetBytes: null,
-                            residentSetGrowthBytesPerSecond: null
-                        },
-                        resourceUsageSamplingIntervalMilliseconds: 100,
-                        timeoutMilliseconds: 500
-                    }
+                    microtest: defaultMicrotestProfile()
                 });
                 scope.assert.equal(config.reporters, null);
                 scope.assert.equal(config.runtimeStateDir, '.overkill');
@@ -85,7 +72,7 @@ export const testSuite = createOverkillSuite({
 
                 scope.assert.equal(config.configPath, configPath);
                 scope.assert.deepEqual(config.loader, { sourceMaps: true, stripMode: 'strip-only' });
-                scope.assert.equal(config.profiles.microtest.measureResourceUsage, false);
+                assertDefaultMicrotestResourceUsage(scope, config);
                 scope.assert.equal(config.reporters, null);
                 scope.assert.equal(config.runtimeStateDir, 'target/overkill-state');
 
@@ -103,38 +90,46 @@ export const testSuite = createOverkillSuite({
                     `export default {
                         profiles: {
                             microtest: {
-                                measureResourceUsage: true,
-                                resourceBudgets: {
-                                    activeResourceCount: 4,
-                                    javaScriptEngineHeapBytes: 100,
-                                    residentSetBytes: 200,
-                                    residentSetGrowthBytesPerSecond: 50
+                                testFamily: 'microtest',
+                                resourceUsage: {
+                                    measure: true,
+                                    budgets: {
+                                        activeResourceCount: 4,
+                                        javaScriptEngineHeapBytes: 100,
+                                        residentSetBytes: 200,
+                                        residentSetGrowthBytesPerSecond: 50
+                                    },
+                                    samplingIntervalMilliseconds: 25
                                 },
-                                resourceUsageSamplingIntervalMilliseconds: 25
                             }
                         }
                     };`
                 );
                 const config = await loadRunConfig({ configPath: null, cwd });
+                const profile = config.profiles.microtest;
 
-                scope.assert.deepEqual(config.profiles.microtest, {
-                    hardTimeoutMilliseconds: 1000,
-                    measureResourceUsage: true,
-                    resourceBudgets: {
-                        activeResourceCount: 4,
-                        javaScriptEngineHeapBytes: 100,
-                        residentSetBytes: 200,
-                        residentSetGrowthBytesPerSecond: 50
-                    },
-                    resourceUsageSamplingIntervalMilliseconds: 25,
-                    timeoutMilliseconds: 500
-                });
+                scope.require.defined(profile);
+                scope.assert.deepEqual(
+                    profile,
+                    defaultMicrotestProfile({
+                        resourceUsage: {
+                            budgets: {
+                                activeResourceCount: 4,
+                                javaScriptEngineHeapBytes: 100,
+                                residentSetBytes: 200,
+                                residentSetGrowthBytesPerSecond: 50
+                            },
+                            measure: true,
+                            samplingIntervalMilliseconds: 25
+                        }
+                    })
+                );
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() normalizes supervised profile overrides',
+            name: 'loadRunConfig() normalizes named profile overrides',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -144,39 +139,59 @@ export const testSuite = createOverkillSuite({
                     `export default {
                         profiles: {
                             microtest: {
-                                measureResourceUsage: true,
-                                resourceUsageSamplingIntervalMilliseconds: 25
+                                testFamily: 'microtest',
+                                resourceUsage: {
+                                    measure: true,
+                                    samplingIntervalMilliseconds: 25
+                                }
                             },
-                            microtestSupervised: {
-                                hardTimeoutMilliseconds: 2000,
-                                measureResourceUsage: true,
-                                resourceBudgets: {
-                                    residentSetBytes: null
+                            safe: {
+                                testFamily: 'microtest',
+                                execution: {
+                                    processModel: 'in-process',
+                                    scheduling: 'serial'
+                                },
+                                resourceUsage: {
+                                    measure: true,
+                                    budgets: {
+                                        residentSetBytes: null
+                                    }
+                                },
+                                timeouts: {
+                                    hardMilliseconds: 2000
                                 }
                             }
                         }
                     };`
                 );
                 const config = await loadRunConfig({ configPath: null, cwd });
+                const profile = config.profiles.safe;
 
-                scope.assert.deepEqual(config.profiles.microtestSupervised, {
-                    hardTimeoutMilliseconds: 2000,
-                    measureResourceUsage: true,
-                    resourceBudgets: {
-                        activeResourceCount: null,
-                        javaScriptEngineHeapBytes: null,
-                        residentSetBytes: null,
-                        residentSetGrowthBytesPerSecond: null
-                    },
-                    resourceUsageSamplingIntervalMilliseconds: 25,
-                    timeoutMilliseconds: 500
-                });
+                scope.require.defined(profile);
+                scope.assert.deepEqual(
+                    profile,
+                    defaultMicrotestProfile({
+                        execution: {
+                            processModel: 'in-process',
+                            scheduling: 'serial'
+                        },
+                        resourceUsage: {
+                            budgets: {
+                                residentSetBytes: null
+                            },
+                            measure: true
+                        },
+                        timeouts: {
+                            hardMilliseconds: 2000
+                        }
+                    })
+                );
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() normalizes unmeasured supervised profile overrides',
+            name: 'loadRunConfig() normalizes unmeasured named profile overrides',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -185,33 +200,35 @@ export const testSuite = createOverkillSuite({
                     'overkill.config.js',
                     `export default {
                         profiles: {
-                            microtestSupervised: {
-                                hardTimeoutMilliseconds: 2000,
-                                timeoutMilliseconds: 300
+                            safe: {
+                                testFamily: 'microtest',
+                                timeouts: {
+                                    hardMilliseconds: 2000,
+                                    softMilliseconds: 300
+                                }
                             }
                         }
                     };`
                 );
                 const config = await loadRunConfig({ configPath: null, cwd });
+                const profile = config.profiles.safe;
 
-                scope.assert.deepEqual(config.profiles.microtestSupervised, {
-                    hardTimeoutMilliseconds: 2000,
-                    measureResourceUsage: false,
-                    resourceBudgets: {
-                        activeResourceCount: null,
-                        javaScriptEngineHeapBytes: null,
-                        residentSetBytes: null,
-                        residentSetGrowthBytesPerSecond: null
-                    },
-                    resourceUsageSamplingIntervalMilliseconds: 100,
-                    timeoutMilliseconds: 300
-                });
+                scope.require.defined(profile);
+                scope.assert.deepEqual(
+                    profile,
+                    defaultMicrotestProfile({
+                        timeouts: {
+                            hardMilliseconds: 2000,
+                            softMilliseconds: 300
+                        }
+                    })
+                );
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() inherits unmeasured supervised profile timeouts',
+            name: 'loadRunConfig() inherits unmeasured named profile defaults',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -220,26 +237,20 @@ export const testSuite = createOverkillSuite({
                     'overkill.config.js',
                     `export default {
                         profiles: {
-                            microtestSupervised: {
-                                measureResourceUsage: false
+                            safe: {
+                                testFamily: 'microtest',
+                                resourceUsage: {
+                                    measure: false
+                                }
                             }
                         }
                     };`
                 );
                 const config = await loadRunConfig({ configPath: null, cwd });
+                const profile = config.profiles.safe;
 
-                scope.assert.deepEqual(config.profiles.microtestSupervised, {
-                    hardTimeoutMilliseconds: 1000,
-                    measureResourceUsage: false,
-                    resourceBudgets: {
-                        activeResourceCount: null,
-                        javaScriptEngineHeapBytes: null,
-                        residentSetBytes: null,
-                        residentSetGrowthBytesPerSecond: null
-                    },
-                    resourceUsageSamplingIntervalMilliseconds: 100,
-                    timeoutMilliseconds: 500
-                });
+                scope.require.defined(profile);
+                scope.assert.deepEqual(profile, defaultMicrotestProfile());
 
                 return scope.assert.collect();
             }
@@ -300,7 +311,10 @@ export const testSuite = createOverkillSuite({
                     `export default {
                         profiles: {
                             microtest: {
-                                resourceBudgets: { residentSetBytes: 200 }
+                                testFamily: 'microtest',
+                                resourceUsage: {
+                                    budgets: { residentSetBytes: 200 }
+                                }
                             }
                         }
                     };`
@@ -326,8 +340,11 @@ export const testSuite = createOverkillSuite({
                     `export default {
                         profiles: {
                             microtest: {
-                                measureResourceUsage: true,
-                                resourceUsageSamplingIntervalMilliseconds: 0
+                                testFamily: 'microtest',
+                                resourceUsage: {
+                                    measure: true,
+                                    samplingIntervalMilliseconds: 0
+                                }
                             }
                         }
                     };`
@@ -353,8 +370,11 @@ export const testSuite = createOverkillSuite({
                     `export default {
                         profiles: {
                             microtest: {
-                                measureResourceUsage: true,
-                                resourceBudgets: {},
+                                testFamily: 'microtest',
+                                resourceUsage: {
+                                    measure: true,
+                                    budgets: {}
+                                },
                                 unknownPolicy: true
                             }
                         }
@@ -365,6 +385,32 @@ export const testSuite = createOverkillSuite({
                     await loadRunConfig({ configPath: null, cwd });
                 }, {
                     message: /unexpected additional property/
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'loadRunConfig() rejects invalid profile names',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const cwd = await createTempFolder();
+                await writeConfig(
+                    cwd,
+                    'overkill.config.js',
+                    `export default {
+                        profiles: {
+                            "backend/http": {
+                                testFamily: 'microtest'
+                            }
+                        }
+                    };`
+                );
+
+                await scope.assert.rejects(async function loadInvalidConfig() {
+                    await loadRunConfig({ configPath: null, cwd });
+                }, {
+                    message: /Invalid profile name "backend\/http"/
                 });
 
                 return scope.assert.collect();

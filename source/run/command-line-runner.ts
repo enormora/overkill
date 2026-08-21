@@ -71,13 +71,18 @@ async function loadCommandLineReporters(
 
 async function createCommandLineConfig(
     loadedConfig: LoadedRunConfig,
+    request: CommandLineRunTestsRequest,
     dependencies: CommandLineRunnerDependencies
 ): Promise<RunConfig> {
+    const selectedProfile = loadedConfig.profiles[request.request.profile];
+
     return {
         loader: loadedConfig.loader,
         outputRenderer: loadedConfig.outputRenderer,
         profiles: loadedConfig.profiles,
-        reporters: await loadCommandLineReporters(loadedConfig, dependencies),
+        reporters: selectedProfile?.reporters === null || selectedProfile === undefined
+            ? await loadCommandLineReporters(loadedConfig, dependencies)
+            : loadedConfig.reporters ?? [],
         runtimeStateDir: loadedConfig.runtimeStateDir
     };
 }
@@ -88,7 +93,7 @@ async function createCommandFromRequest(
     dependencies: CommandLineRunnerDependencies
 ): Promise<RunCommand> {
     return {
-        config: await createCommandLineConfig(loadedConfig, dependencies),
+        config: await createCommandLineConfig(loadedConfig, request, dependencies),
         cwd: request.cwd,
         engine: null,
         request: request.request

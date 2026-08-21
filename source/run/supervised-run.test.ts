@@ -9,8 +9,12 @@ import {
 } from '@overkill-dev/engine';
 import type { Reporter } from '../engine/reporter.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
+import {
+    defaultMicrotestProfile,
+    defaultRunRequest
+} from '../test-support/run-command-factory.ts';
 import { orchestrator } from './run-orchestrator.ts';
-import type { RunCommand, RunConfig, RunRequest, RunResourceUsagePolicy } from './run-types.ts';
+import type { RunCommand, RunConfig, RunMicrotestProfileConfig, RunRequest } from './run-types.ts';
 
 const delayedPassFixturePath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
 const endlessLoopFixturePath = 'source/integration-tests/run/fixtures/endless-loop.test.ts';
@@ -20,32 +24,21 @@ const generousResourceBudget = Number.MAX_SAFE_INTEGER;
 const hardTimeoutMilliseconds = 50;
 const resourceGrowthBudgetBytesPerSecond = 1;
 const samplingIntervalMilliseconds = 1;
-const timeoutMilliseconds = 10;
+const softTimeoutMilliseconds = 10;
 
-const microtestPolicy: RunResourceUsagePolicy = {
-    hardTimeoutMilliseconds: 1000,
-    measureResourceUsage: false,
-    resourceBudgets: {
-        activeResourceCount: null,
-        javaScriptEngineHeapBytes: null,
-        residentSetBytes: null,
-        residentSetGrowthBytesPerSecond: null
-    },
-    resourceUsageSamplingIntervalMilliseconds: 100,
-    timeoutMilliseconds: 500
-};
-
-const generousMeasuredPolicy: RunResourceUsagePolicy = {
-    ...microtestPolicy,
-    measureResourceUsage: true,
-    resourceBudgets: {
-        activeResourceCount: generousResourceBudget,
-        javaScriptEngineHeapBytes: generousResourceBudget,
-        residentSetBytes: generousResourceBudget,
-        residentSetGrowthBytesPerSecond: generousResourceBudget
-    },
-    resourceUsageSamplingIntervalMilliseconds: samplingIntervalMilliseconds
-};
+const microtestProfile = defaultMicrotestProfile();
+const generousMeasuredProfile = defaultMicrotestProfile({
+    resourceUsage: {
+        budgets: {
+            activeResourceCount: generousResourceBudget,
+            javaScriptEngineHeapBytes: generousResourceBudget,
+            residentSetBytes: generousResourceBudget,
+            residentSetGrowthBytesPerSecond: generousResourceBudget
+        },
+        measure: true,
+        samplingIntervalMilliseconds
+    }
+});
 
 const failingEventReporter: Reporter = {
     dispose: null,
@@ -58,7 +51,7 @@ const failingEventReporter: Reporter = {
     sinks: [ { kind: 'memory' } ]
 };
 
-function createRunConfig(supervisedPolicy: RunResourceUsagePolicy): RunConfig {
+function createRunConfig(profile: RunMicrotestProfileConfig): RunConfig {
     return {
         loader: {
             sourceMaps: false,
@@ -70,8 +63,7 @@ function createRunConfig(supervisedPolicy: RunResourceUsagePolicy): RunConfig {
             }
         },
         profiles: {
-            microtest: microtestPolicy,
-            microtestSupervised: supervisedPolicy
+            microtest: profile
         },
         reporters: [],
         runtimeStateDir: '.overkill'
@@ -79,42 +71,29 @@ function createRunConfig(supervisedPolicy: RunResourceUsagePolicy): RunConfig {
 }
 
 function createRunConfigWithReporters(
-    supervisedPolicy: RunResourceUsagePolicy,
+    profile: RunMicrotestProfileConfig,
     reporters: readonly Reporter[]
 ): RunConfig {
     return {
-        ...createRunConfig(supervisedPolicy),
+        ...createRunConfig(profile),
         reporters
     };
 }
 
 function createRunRequest(path: string): RunRequest {
-    return {
-        baselineUpdateMode: 'none',
-        capture: 'buffered',
-        coverage: false,
-        debug: { mode: 'off', selectors: [] },
-        execution: { mode: 'profile-default' },
-        measureResourceUsage: null,
-        order: 'plan',
+    return defaultRunRequest({
         paths: [ path ],
-        profile: 'microtest-supervised',
-        resourceBudgetOverrides: null,
-        resourceUsageSamplingIntervalMilliseconds: null,
-        seed: { value: 42n },
-        selection: { kind: 'all' },
-        shard: { index: 0, total: 1 },
-        verbose: false
-    };
+        profile: 'microtest'
+    });
 }
 
 function createRunCommand(
     path: string,
-    supervisedPolicy: RunResourceUsagePolicy,
+    profile: RunMicrotestProfileConfig,
     request: RunRequest = createRunRequest(path)
 ): RunCommand {
     return {
-        config: createRunConfig(supervisedPolicy),
+        config: createRunConfig(profile),
         cwd: process.cwd(),
         engine: null,
         request
@@ -185,9 +164,11 @@ export const testSuite = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand(endlessLoopFixturePath, {
-                    ...microtestPolicy,
-                    hardTimeoutMilliseconds,
-                    timeoutMilliseconds
+                    ...microtestProfile,
+                    timeouts: {
+                        hardMilliseconds: hardTimeoutMilliseconds,
+                        softMilliseconds: softTimeoutMilliseconds
+                    }
                 }));
                 const error = result.runnerErrors[0];
 
@@ -207,15 +188,17 @@ export const testSuite = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand(delayedPassFixturePath, {
-                    ...microtestPolicy,
-                    measureResourceUsage: true,
-                    resourceBudgets: {
-                        activeResourceCount: null,
-                        javaScriptEngineHeapBytes: null,
-                        residentSetBytes: null,
-                        residentSetGrowthBytesPerSecond: resourceGrowthBudgetBytesPerSecond
-                    },
-                    resourceUsageSamplingIntervalMilliseconds: samplingIntervalMilliseconds
+                    ...microtestProfile,
+                    resourceUsage: {
+                        budgets: {
+                            activeResourceCount: null,
+                            javaScriptEngineHeapBytes: null,
+                            residentSetBytes: null,
+                            residentSetGrowthBytesPerSecond: resourceGrowthBudgetBytesPerSecond
+                        },
+                        measure: true,
+                        samplingIntervalMilliseconds
+                    }
                 }));
                 const error = result.runnerErrors[0];
 
@@ -235,15 +218,17 @@ export const testSuite = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand(delayedPassFixturePath, {
-                    ...microtestPolicy,
-                    measureResourceUsage: true,
-                    resourceBudgets: {
-                        activeResourceCount: 1,
-                        javaScriptEngineHeapBytes: null,
-                        residentSetBytes: null,
-                        residentSetGrowthBytesPerSecond: null
-                    },
-                    resourceUsageSamplingIntervalMilliseconds: samplingIntervalMilliseconds
+                    ...microtestProfile,
+                    resourceUsage: {
+                        budgets: {
+                            activeResourceCount: 1,
+                            javaScriptEngineHeapBytes: null,
+                            residentSetBytes: null,
+                            residentSetGrowthBytesPerSecond: null
+                        },
+                        measure: true,
+                        samplingIntervalMilliseconds
+                    }
                 }));
                 const error = result.runnerErrors.find(function isResourceExhaustion(runnerError) {
                     return runnerError.subtype === 'resource-exhaustion';
@@ -263,7 +248,7 @@ export const testSuite = createOverkillSuite({
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand(
                     delayedPassFixturePath,
-                    generousMeasuredPolicy
+                    generousMeasuredProfile
                 ));
 
                 scope.assert.equal(result.summary.passed, 1);
@@ -278,7 +263,7 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await orchestrator.run({
-                    config: createRunConfigWithReporters(generousMeasuredPolicy, [ failingEventReporter ]),
+                    config: createRunConfigWithReporters(generousMeasuredProfile, [ failingEventReporter ]),
                     cwd: process.cwd(),
                     engine: null,
                     request: createRunRequest(delayedPassFixturePath)
@@ -296,7 +281,7 @@ export const testSuite = createOverkillSuite({
             name: 'orchestrator.run() covers default singleton resource tracking dependencies',
             metadata: {},
             async body(scope: OverkillScope) {
-                const result = await orchestrator.run(createRunCommand(delayedPassFixturePath, microtestPolicy, {
+                const result = await orchestrator.run(createRunCommand(delayedPassFixturePath, microtestProfile, {
                     ...createRunRequest(delayedPassFixturePath),
                     measureResourceUsage: true,
                     profile: 'microtest',
@@ -325,9 +310,10 @@ export const testSuite = createOverkillSuite({
                     hardTimeoutMilliseconds,
                     kind: 'run',
                     paths: [ delayedPassFixturePath ],
-                    resourceBudgets: microtestPolicy.resourceBudgets,
+                    resourceBudgets: microtestProfile.resourceUsage.budgets,
                     resourceUsageSamplingIntervalMilliseconds: samplingIntervalMilliseconds,
-                    timeoutMilliseconds
+                    scheduling: 'concurrent',
+                    timeoutMilliseconds: softTimeoutMilliseconds
                 });
                 const exitCode = await waitForExit(child);
 

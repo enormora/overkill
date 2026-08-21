@@ -7,6 +7,11 @@ import {
 } from '@overkill-dev/engine';
 import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
+import {
+    defaultMicrotestProfile,
+    defaultRunConfig,
+    defaultRunRequest
+} from '../test-support/run-command-factory.ts';
 import { RunResolutionError } from './run-errors.ts';
 import { orchestrator } from './run-orchestrator.ts';
 import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
@@ -22,66 +27,9 @@ const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.t
 const emptySuiteFixturePath = 'source/integration-tests/run/fixtures/empty-suite.test.ts';
 const throwsOnImportFixturePath = 'source/integration-tests/run/fixtures/throws-on-import.test.ts';
 
-const defaultConfig: RunConfig = {
-    loader: {
-        sourceMaps: false,
-        stripMode: 'strip-only'
-    },
-    outputRenderer: {
-        render(intent) {
-            return intent.text;
-        }
-    },
-    profiles: {
-        microtest: {
-            hardTimeoutMilliseconds: 1000,
-            measureResourceUsage: false,
-            resourceBudgets: {
-                activeResourceCount: null,
-                javaScriptEngineHeapBytes: null,
-                residentSetBytes: null,
-                residentSetGrowthBytesPerSecond: null
-            },
-            resourceUsageSamplingIntervalMilliseconds: 100,
-            timeoutMilliseconds: 500
-        },
-        microtestSupervised: {
-            hardTimeoutMilliseconds: 1000,
-            measureResourceUsage: false,
-            resourceBudgets: {
-                activeResourceCount: null,
-                javaScriptEngineHeapBytes: null,
-                residentSetBytes: null,
-                residentSetGrowthBytesPerSecond: null
-            },
-            resourceUsageSamplingIntervalMilliseconds: 100,
-            timeoutMilliseconds: 500
-        }
-    },
-    reporters: [],
-    runtimeStateDir: '.overkill'
-};
+const defaultConfig: RunConfig = defaultRunConfig();
 
-const defaultRequest: RunRequest = {
-    baselineUpdateMode: 'none',
-    capture: 'buffered',
-    coverage: false,
-    debug: {
-        mode: 'off',
-        selectors: []
-    },
-    execution: { mode: 'profile-default' },
-    measureResourceUsage: null,
-    order: 'plan',
-    paths: [ passingFixturePath ],
-    profile: 'microtest',
-    resourceBudgetOverrides: null,
-    resourceUsageSamplingIntervalMilliseconds: null,
-    seed: { value: 42n },
-    selection: { kind: 'all' },
-    shard: { index: 0, total: 1 },
-    verbose: false
-};
+const defaultRequest: RunRequest = defaultRunRequest({ paths: [ passingFixturePath ] });
 
 function plainData(value: unknown): unknown {
     return structuredClone(value);
@@ -152,22 +100,25 @@ export const testSuite = createOverkillSuite({
                     execution: {
                         baselineUpdateMode: 'none',
                         capture: 'buffered',
-                        coverage: false,
                         debug: { mode: 'off', selectors: [] },
-                        mode: 'concurrent-in-process',
                         order: 'plan',
+                        processModel: 'supervised-process',
                         profile: 'microtest',
                         resourceUsagePolicy: {
-                            hardTimeoutMilliseconds: 1000,
-                            measureResourceUsage: false,
-                            resourceBudgets: {
+                            budgets: {
                                 activeResourceCount: null,
                                 javaScriptEngineHeapBytes: null,
                                 residentSetBytes: null,
                                 residentSetGrowthBytesPerSecond: null
                             },
-                            resourceUsageSamplingIntervalMilliseconds: 100,
-                            timeoutMilliseconds: 500
+                            measure: false,
+                            samplingIntervalMilliseconds: 100
+                        },
+                        scheduling: 'concurrent',
+                        testFamily: 'microtest',
+                        timeoutPolicy: {
+                            hardMilliseconds: 1000,
+                            softMilliseconds: 500
                         },
                         verbose: false
                     },
@@ -265,6 +216,54 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'orchestrator.resolve() rejects unknown profiles',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                await scope.assert.rejects(async function resolveUnknownProfile() {
+                    await orchestrator.resolve(createRunCommand({
+                        config: defaultConfig,
+                        cwd: process.cwd(),
+                        engine: null,
+                        request: {
+                            ...defaultRequest,
+                            profile: 'missing'
+                        }
+                    }));
+                }, {
+                    message: 'Unknown run profile: missing'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'orchestrator.resolve() rejects resource budget overrides without measurement',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                await scope.assert.rejects(async function resolveInvalidResourceUsage() {
+                    await orchestrator.resolve(createRunCommand({
+                        config: defaultConfig,
+                        cwd: process.cwd(),
+                        engine: null,
+                        request: {
+                            ...defaultRequest,
+                            measureResourceUsage: false,
+                            resourceBudgetOverrides: {
+                                activeResourceCount: 1,
+                                javaScriptEngineHeapBytes: null,
+                                residentSetBytes: null,
+                                residentSetGrowthBytesPerSecond: null
+                            }
+                        }
+                    }));
+                }, {
+                    message: 'Resource budget overrides require resource usage measurement.'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'orchestrator.run() executes the resolved plan and reports run facts',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -273,6 +272,13 @@ export const testSuite = createOverkillSuite({
                 const result = await runOrchestrator.run(createRunCommand({
                     config: {
                         ...defaultConfig,
+                        profiles: {
+                            microtest: defaultMicrotestProfile({
+                                execution: {
+                                    processModel: 'in-process'
+                                }
+                            })
+                        },
                         reporters: [ reporter ]
                     },
                     cwd: process.cwd(),
@@ -320,22 +326,25 @@ export const testSuite = createOverkillSuite({
                     execution: {
                         baselineUpdateMode: 'none',
                         capture: 'buffered',
-                        coverage: false,
                         debug: { mode: 'off', selectors: [] },
-                        mode: 'concurrent-in-process',
                         order: 'plan',
+                        processModel: 'in-process',
                         profile: 'microtest',
                         resourceUsagePolicy: {
-                            hardTimeoutMilliseconds: 1000,
-                            measureResourceUsage: false,
-                            resourceBudgets: {
+                            budgets: {
                                 activeResourceCount: null,
                                 javaScriptEngineHeapBytes: null,
                                 residentSetBytes: null,
                                 residentSetGrowthBytesPerSecond: null
                             },
-                            resourceUsageSamplingIntervalMilliseconds: 100,
-                            timeoutMilliseconds: 500
+                            measure: false,
+                            samplingIntervalMilliseconds: 100
+                        },
+                        scheduling: 'concurrent',
+                        testFamily: 'microtest',
+                        timeoutPolicy: {
+                            hardMilliseconds: 1000,
+                            softMilliseconds: 500
                         },
                         verbose: false
                     },
@@ -361,7 +370,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() executes the supervised profile in a child process',
+            name: 'orchestrator.run() executes the supervised process profile in a child process',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -369,10 +378,7 @@ export const testSuite = createOverkillSuite({
                     config: defaultConfig,
                     cwd: process.cwd(),
                     engine: null,
-                    request: {
-                        ...defaultRequest,
-                        profile: 'microtest-supervised'
-                    }
+                    request: defaultRequest
                 }));
 
                 scope.assert.deepEqual(result.runnerErrors, []);

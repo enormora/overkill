@@ -8,9 +8,12 @@ import { createPlainOutputRenderer, type OutputRenderer } from '../engine/report
 import type { Reporter } from '../engine/reporter.ts';
 import type {
     RunLoaderConfig,
+    RunMicrotestExecution,
+    RunMicrotestProfileConfig,
     RunProfilesConfig,
     RunResourceBudgets,
-    RunResourceUsagePolicy
+    RunResourceUsagePolicy,
+    RunTimeoutPolicy
 } from './run-types.ts';
 
 const defaultConfigFileNames = [ 'overkill.config.ts', 'overkill.config.js' ];
@@ -42,31 +45,42 @@ export type RunProjectResourceBudgets = {
     readonly residentSetGrowthBytesPerSecond?: number | null | undefined;
 };
 
-export type RunProjectMeasuredMicrotestProfileConfig = {
-    readonly hardTimeoutMilliseconds?: number | undefined;
-    readonly measureResourceUsage: true;
-    readonly resourceBudgets?: RunProjectResourceBudgets | undefined;
-    readonly resourceUsageSamplingIntervalMilliseconds?: number | undefined;
-    readonly timeoutMilliseconds?: number | undefined;
+export type RunProjectMeasuredResourceUsage = {
+    readonly budgets?: RunProjectResourceBudgets | undefined;
+    readonly measure: true;
+    readonly samplingIntervalMilliseconds?: number | undefined;
 };
 
-export type RunProjectUnmeasuredMicrotestProfileConfig = {
-    readonly hardTimeoutMilliseconds?: number | undefined;
-    readonly measureResourceUsage?: false | undefined;
-    readonly timeoutMilliseconds?: number | undefined;
+export type RunProjectUnmeasuredResourceUsage = {
+    readonly budgets?: never;
+    readonly measure?: false | undefined;
+    readonly samplingIntervalMilliseconds?: never;
 };
 
-type RunProjectMicrotestProfileConfigVariants = readonly [
-    RunProjectMeasuredMicrotestProfileConfig,
-    RunProjectUnmeasuredMicrotestProfileConfig
-];
+export type RunProjectResourceUsageConfig = RunProjectMeasuredResourceUsage | RunProjectUnmeasuredResourceUsage;
 
-export type RunProjectMicrotestProfileConfig = RunProjectMicrotestProfileConfigVariants[number];
-
-export type RunProjectProfilesConfig = {
-    readonly microtest?: RunProjectMicrotestProfileConfig | undefined;
-    readonly microtestSupervised?: RunProjectMicrotestProfileConfig | undefined;
+export type RunProjectTimeoutConfig = {
+    readonly hardMilliseconds?: number | undefined;
+    readonly softMilliseconds?: number | undefined;
 };
+
+export type RunProjectMicrotestExecution = {
+    readonly processModel: 'in-process';
+    readonly scheduling?: 'concurrent' | 'serial' | undefined;
+} | {
+    readonly processModel: 'supervised-process';
+    readonly scheduling?: 'concurrent' | 'serial' | undefined;
+};
+
+export type RunProjectMicrotestProfileConfig = {
+    readonly execution?: RunProjectMicrotestExecution | undefined;
+    readonly reporters?: NonEmptyReadonlyArray<Reporter> | undefined;
+    readonly resourceUsage?: RunProjectResourceUsageConfig | undefined;
+    readonly testFamily: 'microtest';
+    readonly timeouts?: RunProjectTimeoutConfig | undefined;
+};
+
+export type RunProjectProfilesConfig = Readonly<Record<string, RunProjectMicrotestProfileConfig>>;
 
 export type RunConfigLoadRequest = {
     readonly configPath: string | null;
@@ -86,16 +100,24 @@ const defaultLoader: RunLoaderConfig = {
 };
 
 const defaultResourceUsagePolicy: RunResourceUsagePolicy = {
-    hardTimeoutMilliseconds: defaultMicrotestHardTimeoutMilliseconds,
-    measureResourceUsage: false,
-    resourceBudgets: {
+    budgets: {
         activeResourceCount: null,
         javaScriptEngineHeapBytes: null,
         residentSetBytes: null,
         residentSetGrowthBytesPerSecond: null
     },
-    resourceUsageSamplingIntervalMilliseconds: defaultResourceUsageSamplingIntervalMilliseconds,
-    timeoutMilliseconds: defaultMicrotestTimeoutMilliseconds
+    measure: false,
+    samplingIntervalMilliseconds: defaultResourceUsageSamplingIntervalMilliseconds
+};
+
+const defaultTimeoutPolicy: RunTimeoutPolicy = {
+    hardMilliseconds: defaultMicrotestHardTimeoutMilliseconds,
+    softMilliseconds: defaultMicrotestTimeoutMilliseconds
+};
+
+const defaultMicrotestExecution: RunMicrotestExecution = {
+    processModel: 'supervised-process',
+    scheduling: 'concurrent'
 };
 
 const reporterSchema = z.custom<Reporter>(function isReporter(value) {
@@ -133,26 +155,45 @@ const resourceBudgetsSchema = z.strictObject({
     residentSetGrowthBytesPerSecond: z.optional(z.nullable(positiveSafeIntegerSchema))
 });
 
-const measuredMicrotestProfileSchema = z.strictObject({
-    hardTimeoutMilliseconds: z.optional(positiveSafeIntegerSchema),
-    measureResourceUsage: z.literal(true),
-    resourceBudgets: z.optional(resourceBudgetsSchema),
-    resourceUsageSamplingIntervalMilliseconds: z.optional(positiveSafeIntegerSchema),
-    timeoutMilliseconds: z.optional(positiveSafeIntegerSchema)
+const measuredResourceUsageSchema = z.strictObject({
+    budgets: z.optional(resourceBudgetsSchema),
+    measure: z.literal(true),
+    samplingIntervalMilliseconds: z.optional(positiveSafeIntegerSchema)
 });
 
-const unmeasuredMicrotestProfileSchema = z.strictObject({
-    hardTimeoutMilliseconds: z.optional(positiveSafeIntegerSchema),
-    measureResourceUsage: z.optional(z.literal(false)),
-    timeoutMilliseconds: z.optional(positiveSafeIntegerSchema)
+const unmeasuredResourceUsageSchema = z.strictObject({
+    measure: z.optional(z.literal(false))
 });
 
-const microtestProfileSchema = z.union([ measuredMicrotestProfileSchema, unmeasuredMicrotestProfileSchema ]);
+const resourceUsageSchema = z.union([ measuredResourceUsageSchema, unmeasuredResourceUsageSchema ]);
 
-const profilesSchema = z.strictObject({
-    microtest: z.optional(microtestProfileSchema),
-    microtestSupervised: z.optional(microtestProfileSchema)
+const timeoutSchema = z.strictObject({
+    hardMilliseconds: z.optional(positiveSafeIntegerSchema),
+    softMilliseconds: z.optional(positiveSafeIntegerSchema)
 });
+
+const microtestExecutionSchema = z.discriminatedUnion('processModel', [
+    z.strictObject({
+        processModel: z.literal('in-process'),
+        scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ]))
+    }),
+    z.strictObject({
+        processModel: z.literal('supervised-process'),
+        scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ]))
+    })
+]);
+
+const profileSchema = z.discriminatedUnion('testFamily', [
+    z.strictObject({
+        execution: z.optional(microtestExecutionSchema),
+        reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema)),
+        resourceUsage: z.optional(resourceUsageSchema),
+        testFamily: z.literal('microtest'),
+        timeouts: z.optional(timeoutSchema)
+    })
+]);
+
+const profilesSchema = z.record(z.string(), profileSchema);
 
 const projectConfigSchema = z.strictObject({
     loader: z.optional(loaderSchema),
@@ -265,63 +306,94 @@ function copyResourceBudgets(resourceBudgets: RunResourceBudgets): RunResourceBu
 
 function copyResourceUsagePolicy(policy: RunResourceUsagePolicy): RunResourceUsagePolicy {
     return {
-        hardTimeoutMilliseconds: policy.hardTimeoutMilliseconds,
-        measureResourceUsage: policy.measureResourceUsage,
-        resourceBudgets: copyResourceBudgets(policy.resourceBudgets),
-        resourceUsageSamplingIntervalMilliseconds: policy.resourceUsageSamplingIntervalMilliseconds,
-        timeoutMilliseconds: policy.timeoutMilliseconds
+        budgets: copyResourceBudgets(policy.budgets),
+        measure: policy.measure,
+        samplingIntervalMilliseconds: policy.samplingIntervalMilliseconds
     };
 }
 
-function normalizeUnmeasuredMicrotestProfile(
-    profile: RunProjectMicrotestProfileConfig,
-    inheritedPolicy: RunResourceUsagePolicy
-): RunResourceUsagePolicy {
+function normalizeUnmeasuredResourceUsage(): RunResourceUsagePolicy {
     return {
-        hardTimeoutMilliseconds: profile.hardTimeoutMilliseconds ?? inheritedPolicy.hardTimeoutMilliseconds,
-        measureResourceUsage: false,
-        resourceBudgets: disabledResourceBudgets(),
-        resourceUsageSamplingIntervalMilliseconds: inheritedPolicy.resourceUsageSamplingIntervalMilliseconds,
-        timeoutMilliseconds: profile.timeoutMilliseconds ?? inheritedPolicy.timeoutMilliseconds
+        budgets: disabledResourceBudgets(),
+        measure: false,
+        samplingIntervalMilliseconds: defaultResourceUsageSamplingIntervalMilliseconds
     };
 }
 
-function normalizeMeasuredMicrotestProfile(
-    profile: RunProjectMeasuredMicrotestProfileConfig,
-    inheritedPolicy: RunResourceUsagePolicy
-): RunResourceUsagePolicy {
+function normalizeMeasuredResourceUsage(profile: RunProjectMeasuredResourceUsage): RunResourceUsagePolicy {
     return {
-        hardTimeoutMilliseconds: profile.hardTimeoutMilliseconds ?? inheritedPolicy.hardTimeoutMilliseconds,
-        measureResourceUsage: true,
-        resourceBudgets: normalizeResourceBudgets(profile.resourceBudgets),
-        resourceUsageSamplingIntervalMilliseconds: profile.resourceUsageSamplingIntervalMilliseconds ??
-            inheritedPolicy.resourceUsageSamplingIntervalMilliseconds,
-        timeoutMilliseconds: profile.timeoutMilliseconds ?? inheritedPolicy.timeoutMilliseconds
+        budgets: normalizeResourceBudgets(profile.budgets),
+        measure: true,
+        samplingIntervalMilliseconds: profile.samplingIntervalMilliseconds ??
+            defaultResourceUsageSamplingIntervalMilliseconds
     };
 }
 
-function normalizeMicrotestProfile(
-    profile: RunProjectMicrotestProfileConfig | undefined,
-    inheritedPolicy: RunResourceUsagePolicy
+function normalizeResourceUsage(
+    profile: RunProjectResourceUsageConfig | undefined
 ): RunResourceUsagePolicy {
     if (profile === undefined) {
-        return copyResourceUsagePolicy(inheritedPolicy);
+        return copyResourceUsagePolicy(defaultResourceUsagePolicy);
     }
 
-    if (profile.measureResourceUsage !== true) {
-        return normalizeUnmeasuredMicrotestProfile(profile, inheritedPolicy);
+    if (profile.measure !== true) {
+        return normalizeUnmeasuredResourceUsage();
     }
 
-    return normalizeMeasuredMicrotestProfile(profile, inheritedPolicy);
+    return normalizeMeasuredResourceUsage(profile);
 }
 
-function normalizeProfiles(profiles: RunProjectProfilesConfig | undefined): RunProfilesConfig {
-    const microtest = normalizeMicrotestProfile(profiles?.microtest, defaultResourceUsagePolicy);
-
+function normalizeTimeouts(timeouts: RunProjectTimeoutConfig | undefined): RunTimeoutPolicy {
     return {
-        microtest,
-        microtestSupervised: normalizeMicrotestProfile(profiles?.microtestSupervised, microtest)
+        hardMilliseconds: timeouts?.hardMilliseconds ?? defaultTimeoutPolicy.hardMilliseconds,
+        softMilliseconds: timeouts?.softMilliseconds ?? defaultTimeoutPolicy.softMilliseconds
     };
+}
+
+function normalizeExecution(execution: RunProjectMicrotestExecution | undefined): RunMicrotestExecution {
+    return {
+        processModel: execution?.processModel ?? defaultMicrotestExecution.processModel,
+        scheduling: execution?.scheduling ?? defaultMicrotestExecution.scheduling
+    };
+}
+
+function normalizeMicrotestProfile(profile: RunProjectMicrotestProfileConfig): RunMicrotestProfileConfig {
+    return {
+        execution: normalizeExecution(profile.execution),
+        reporters: normalizeReporters(profile.reporters),
+        resourceUsage: normalizeResourceUsage(profile.resourceUsage),
+        testFamily: 'microtest',
+        timeouts: normalizeTimeouts(profile.timeouts)
+    };
+}
+
+function assertValidProfileName(profileName: string): void {
+    if (!/^[A-Za-z0-9._-]+$/u.test(profileName)) {
+        const message = `Invalid profile name "${profileName}". ` +
+            'Profile names may only contain letters, numbers, dots, underscores, and hyphens.';
+
+        throw new RunConfigError(message);
+    }
+}
+
+function defaultMicrotestProfile(): RunMicrotestProfileConfig {
+    return normalizeMicrotestProfile({ testFamily: 'microtest' });
+}
+
+function normalizeConfiguredProfiles(profiles: RunProjectProfilesConfig | undefined): RunProfilesConfig {
+    const normalizedProfiles: Record<string, RunMicrotestProfileConfig> = {};
+    const profileEntries = Object.entries(profiles ?? {});
+
+    for (const [ profileName, profile ] of profileEntries) {
+        assertValidProfileName(profileName);
+        normalizedProfiles[profileName] = normalizeMicrotestProfile(profile);
+    }
+
+    if (normalizedProfiles.microtest === undefined) {
+        normalizedProfiles.microtest = defaultMicrotestProfile();
+    }
+
+    return normalizedProfiles;
 }
 
 function normalizeConfig(parsedConfig: ParsedProjectConfig, configPath: string | null): LoadedRunConfig {
@@ -329,7 +401,7 @@ function normalizeConfig(parsedConfig: ParsedProjectConfig, configPath: string |
         configPath,
         loader: parsedConfig.loader ?? defaultLoader,
         outputRenderer: parsedConfig.outputRenderer ?? createPlainOutputRenderer(),
-        profiles: normalizeProfiles(parsedConfig.profiles),
+        profiles: normalizeConfiguredProfiles(parsedConfig.profiles),
         reporters: normalizeReporters(parsedConfig.reporters),
         runtimeStateDir: parsedConfig.runtimeStateDir ?? '.overkill'
     };

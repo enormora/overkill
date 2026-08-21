@@ -9,72 +9,33 @@ import {
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type { RunResourceUsageTracker } from '../engine/run-result.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
+import {
+    defaultMicrotestProfile,
+    defaultRunConfig,
+    defaultRunRequest
+} from '../test-support/run-command-factory.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import { createRunOrchestrator } from './run.ts';
 import type { RunCommand, RunConfig, RunOrchestrator, RunRequest } from './run-types.ts';
 
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 
-const defaultConfig: RunConfig = {
-    loader: {
-        sourceMaps: false,
-        stripMode: 'strip-only'
-    },
+const defaultConfig: RunConfig = defaultRunConfig({
     outputRenderer: {
         render() {
             return '';
         }
     },
     profiles: {
-        microtest: {
-            hardTimeoutMilliseconds: 1000,
-            measureResourceUsage: false,
-            resourceBudgets: {
-                activeResourceCount: null,
-                javaScriptEngineHeapBytes: null,
-                residentSetBytes: null,
-                residentSetGrowthBytesPerSecond: null
-            },
-            resourceUsageSamplingIntervalMilliseconds: 100,
-            timeoutMilliseconds: 500
-        },
-        microtestSupervised: {
-            hardTimeoutMilliseconds: 1000,
-            measureResourceUsage: false,
-            resourceBudgets: {
-                activeResourceCount: null,
-                javaScriptEngineHeapBytes: null,
-                residentSetBytes: null,
-                residentSetGrowthBytesPerSecond: null
-            },
-            resourceUsageSamplingIntervalMilliseconds: 100,
-            timeoutMilliseconds: 500
-        }
-    },
-    reporters: [],
-    runtimeStateDir: '.overkill'
-};
+        microtest: defaultMicrotestProfile({
+            execution: {
+                processModel: 'in-process'
+            }
+        })
+    }
+});
 
-const defaultRequest: RunRequest = {
-    baselineUpdateMode: 'none',
-    capture: 'buffered',
-    coverage: false,
-    debug: {
-        mode: 'off',
-        selectors: []
-    },
-    execution: { mode: 'profile-default' },
-    measureResourceUsage: null,
-    order: 'plan',
-    paths: [ passingFixturePath ],
-    profile: 'microtest',
-    resourceBudgetOverrides: null,
-    resourceUsageSamplingIntervalMilliseconds: null,
-    seed: { value: 42n },
-    selection: { kind: 'all' },
-    shard: { index: 0, total: 1 },
-    verbose: false
-};
+const defaultRequest: RunRequest = defaultRunRequest({ paths: [ passingFixturePath ] });
 
 function plainData(value: unknown): unknown {
     return structuredClone(value);
@@ -171,19 +132,20 @@ export const testSuite = createOverkillSuite({
                     {
                         ...defaultConfig,
                         profiles: {
-                            microtest: {
-                                hardTimeoutMilliseconds: 1000,
-                                measureResourceUsage: true,
-                                resourceBudgets: {
-                                    activeResourceCount: 8,
-                                    javaScriptEngineHeapBytes: null,
-                                    residentSetBytes: 200,
-                                    residentSetGrowthBytesPerSecond: 50
+                            microtest: defaultMicrotestProfile({
+                                execution: {
+                                    processModel: 'in-process'
                                 },
-                                resourceUsageSamplingIntervalMilliseconds: 25,
-                                timeoutMilliseconds: 500
-                            },
-                            microtestSupervised: defaultConfig.profiles.microtestSupervised
+                                resourceUsage: {
+                                    budgets: {
+                                        activeResourceCount: 8,
+                                        residentSetBytes: 200,
+                                        residentSetGrowthBytesPerSecond: 50
+                                    },
+                                    measure: true,
+                                    samplingIntervalMilliseconds: 25
+                                }
+                            })
                         }
                     },
                     {
@@ -200,16 +162,14 @@ export const testSuite = createOverkillSuite({
 
                 scope.assert.equal(Object.isFrozen(resolvedRun.facts.execution.resourceUsagePolicy), true);
                 scope.assert.deepEqual(plainData(resolvedRun.facts.execution.resourceUsagePolicy), {
-                    hardTimeoutMilliseconds: 1000,
-                    measureResourceUsage: true,
-                    resourceBudgets: {
+                    budgets: {
                         activeResourceCount: 8,
                         javaScriptEngineHeapBytes: 100,
                         residentSetBytes: 200,
                         residentSetGrowthBytesPerSecond: 50
                     },
-                    resourceUsageSamplingIntervalMilliseconds: 10,
-                    timeoutMilliseconds: 500
+                    measure: true,
+                    samplingIntervalMilliseconds: 10
                 });
 
                 return scope.assert.collect();
@@ -264,19 +224,17 @@ export const testSuite = createOverkillSuite({
                     {
                         ...defaultConfig,
                         profiles: {
-                            microtest: {
-                                hardTimeoutMilliseconds: 1000,
-                                measureResourceUsage: true,
-                                resourceBudgets: {
-                                    activeResourceCount: null,
-                                    javaScriptEngineHeapBytes: null,
-                                    residentSetBytes: 1,
-                                    residentSetGrowthBytesPerSecond: null
+                            microtest: defaultMicrotestProfile({
+                                execution: {
+                                    processModel: 'in-process'
                                 },
-                                resourceUsageSamplingIntervalMilliseconds: 100,
-                                timeoutMilliseconds: 500
-                            },
-                            microtestSupervised: defaultConfig.profiles.microtestSupervised
+                                resourceUsage: {
+                                    budgets: {
+                                        residentSetBytes: 1
+                                    },
+                                    measure: true
+                                }
+                            })
                         }
                     },
                     defaultRequest
@@ -333,16 +291,14 @@ export const testSuite = createOverkillSuite({
                 ));
 
                 scope.assert.deepEqual(plainData(resolvedRun.facts.execution.resourceUsagePolicy), {
-                    hardTimeoutMilliseconds: 1000,
-                    measureResourceUsage: false,
-                    resourceBudgets: {
+                    budgets: {
                         activeResourceCount: null,
                         javaScriptEngineHeapBytes: null,
                         residentSetBytes: null,
                         residentSetGrowthBytesPerSecond: null
                     },
-                    resourceUsageSamplingIntervalMilliseconds: 100,
-                    timeoutMilliseconds: 500
+                    measure: false,
+                    samplingIntervalMilliseconds: 100
                 });
 
                 return scope.assert.collect();
@@ -398,11 +354,15 @@ export const testSuite = createOverkillSuite({
                             ...defaultConfig,
                             profiles: {
                                 ...defaultConfig.profiles,
-                                microtest: {
-                                    ...defaultConfig.profiles.microtest,
-                                    hardTimeoutMilliseconds: 10,
-                                    timeoutMilliseconds: 20
-                                }
+                                microtest: defaultMicrotestProfile({
+                                    execution: {
+                                        processModel: 'in-process'
+                                    },
+                                    timeouts: {
+                                        hardMilliseconds: 10,
+                                        softMilliseconds: 20
+                                    }
+                                })
                             }
                         },
                         defaultRequest
@@ -425,19 +385,17 @@ export const testSuite = createOverkillSuite({
                         {
                             ...defaultConfig,
                             profiles: {
-                                microtest: {
-                                    hardTimeoutMilliseconds: 1000,
-                                    measureResourceUsage: false,
-                                    resourceBudgets: {
-                                        activeResourceCount: 1,
-                                        javaScriptEngineHeapBytes: null,
-                                        residentSetBytes: null,
-                                        residentSetGrowthBytesPerSecond: null
+                                microtest: defaultMicrotestProfile({
+                                    execution: {
+                                        processModel: 'in-process'
                                     },
-                                    resourceUsageSamplingIntervalMilliseconds: 100,
-                                    timeoutMilliseconds: 500
-                                },
-                                microtestSupervised: defaultConfig.profiles.microtestSupervised
+                                    resourceUsage: {
+                                        budgets: {
+                                            activeResourceCount: 1
+                                        },
+                                        measure: false
+                                    }
+                                })
                             }
                         },
                         defaultRequest

@@ -8,10 +8,14 @@ import {
 import type { Reporter } from '../engine/reporter.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
+import {
+    defaultMicrotestProfile,
+    defaultRunRequest
+} from '../test-support/run-command-factory.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createCommandLineRunner, type CommandLineRunnerDependencies } from './command-line-runner.ts';
 import type { LoadedRunConfig } from './run-config.ts';
-import type { RunCommand, RunOrchestrator, RunRequest } from './run-types.ts';
+import type { RunCommand, RunMicrotestProfileConfig, RunOrchestrator, RunRequest } from './run-types.ts';
 
 type PlainOutputIntent = {
     readonly text: string;
@@ -39,26 +43,7 @@ const terminalReporter: Reporter = {
     sinks: [ { kind: 'stdout-raw' } ]
 };
 
-const defaultRequest: RunRequest = {
-    baselineUpdateMode: 'none',
-    capture: 'buffered',
-    coverage: false,
-    debug: {
-        mode: 'off',
-        selectors: []
-    },
-    execution: { mode: 'profile-default' },
-    measureResourceUsage: null,
-    order: 'plan',
-    paths: [],
-    profile: 'microtest',
-    resourceBudgetOverrides: null,
-    resourceUsageSamplingIntervalMilliseconds: null,
-    seed: { value: 42n },
-    selection: { kind: 'all' },
-    shard: { index: 0, total: 1 },
-    verbose: false
-};
+const defaultRequest: RunRequest = defaultRunRequest();
 
 function defaultLoadedConfig(): LoadedRunConfig {
     return {
@@ -66,34 +51,21 @@ function defaultLoadedConfig(): LoadedRunConfig {
         loader: { sourceMaps: false, stripMode: 'strip-only' },
         outputRenderer: plainOutputRenderer,
         profiles: {
-            microtest: {
-                hardTimeoutMilliseconds: 1000,
-                measureResourceUsage: false,
-                resourceBudgets: {
-                    activeResourceCount: null,
-                    javaScriptEngineHeapBytes: null,
-                    residentSetBytes: null,
-                    residentSetGrowthBytesPerSecond: null
-                },
-                resourceUsageSamplingIntervalMilliseconds: 100,
-                timeoutMilliseconds: 500
-            },
-            microtestSupervised: {
-                hardTimeoutMilliseconds: 1000,
-                measureResourceUsage: false,
-                resourceBudgets: {
-                    activeResourceCount: null,
-                    javaScriptEngineHeapBytes: null,
-                    residentSetBytes: null,
-                    residentSetGrowthBytesPerSecond: null
-                },
-                resourceUsageSamplingIntervalMilliseconds: 100,
-                timeoutMilliseconds: 500
-            }
+            microtest: defaultMicrotestProfile()
         },
         reporters: [ terminalReporter ],
         runtimeStateDir: '.overkill'
     };
+}
+
+function selectedProfile(command: RunCommand): RunMicrotestProfileConfig {
+    const profile = command.config.profiles[command.request.profile];
+
+    if (profile === undefined) {
+        throw new Error(`Missing profile ${command.request.profile}.`);
+    }
+
+    return profile;
 }
 
 function createPassingPlan(): TestPlan {
@@ -133,6 +105,8 @@ function createRecordedRunCommands(): RecordedRunCommands {
 function createRunnerDependencies(recordedCommands: RecordedRunCommands): CommandLineRunnerDependencies {
     const orchestrator: RunOrchestrator = {
         async resolve(command) {
+            const profile = selectedProfile(command);
+
             return {
                 config: command.config,
                 cwd: command.cwd,
@@ -145,12 +119,14 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
                     execution: {
                         baselineUpdateMode: command.request.baselineUpdateMode,
                         capture: command.request.capture,
-                        coverage: command.request.coverage,
                         debug: command.request.debug,
-                        mode: 'concurrent-in-process',
                         order: command.request.order,
+                        processModel: profile.execution.processModel,
                         profile: command.request.profile,
-                        resourceUsagePolicy: command.config.profiles.microtest,
+                        resourceUsagePolicy: profile.resourceUsage,
+                        scheduling: profile.execution.scheduling,
+                        testFamily: profile.testFamily,
+                        timeoutPolicy: profile.timeouts,
                         verbose: command.request.verbose
                     },
                     loader: command.config.loader,
@@ -188,19 +164,16 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
             return {
                 ...defaultLoadedConfig(),
                 profiles: {
-                    microtest: {
-                        hardTimeoutMilliseconds: 1000,
-                        measureResourceUsage: true,
-                        resourceBudgets: {
-                            activeResourceCount: 2,
-                            javaScriptEngineHeapBytes: null,
-                            residentSetBytes: 200,
-                            residentSetGrowthBytesPerSecond: null
-                        },
-                        resourceUsageSamplingIntervalMilliseconds: 25,
-                        timeoutMilliseconds: 500
-                    },
-                    microtestSupervised: defaultLoadedConfig().profiles.microtestSupervised
+                    microtest: defaultMicrotestProfile({
+                        resourceUsage: {
+                            budgets: {
+                                activeResourceCount: 2,
+                                residentSetBytes: 200
+                            },
+                            measure: true,
+                            samplingIntervalMilliseconds: 25
+                        }
+                    })
                 }
             };
         },
@@ -209,17 +182,30 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
 }
 
 function assertResourceUsageCommand(scope: OverkillScope, command: RunCommand): void {
-    scope.assert.deepEqual(command.config.profiles.microtest, {
-        hardTimeoutMilliseconds: 1000,
-        measureResourceUsage: true,
-        resourceBudgets: {
-            activeResourceCount: 2,
-            javaScriptEngineHeapBytes: null,
-            residentSetBytes: 200,
-            residentSetGrowthBytesPerSecond: null
+    const profile = command.config.profiles.microtest;
+
+    scope.require.defined(profile);
+    scope.assert.deepEqual(profile, {
+        execution: {
+            processModel: 'supervised-process',
+            scheduling: 'concurrent'
         },
-        resourceUsageSamplingIntervalMilliseconds: 25,
-        timeoutMilliseconds: 500
+        reporters: null,
+        resourceUsage: {
+            budgets: {
+                activeResourceCount: 2,
+                javaScriptEngineHeapBytes: null,
+                residentSetBytes: 200,
+                residentSetGrowthBytesPerSecond: null
+            },
+            measure: true,
+            samplingIntervalMilliseconds: 25
+        },
+        testFamily: 'microtest',
+        timeouts: {
+            hardMilliseconds: 1000,
+            softMilliseconds: 500
+        }
     });
     const { resourceBudgetOverrides } = command.request;
 

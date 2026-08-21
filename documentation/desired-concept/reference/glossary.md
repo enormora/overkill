@@ -49,21 +49,21 @@ fine-grained package ownership model.
 
 Source: [Package Architecture](../architecture/package-architecture.md).
 
-## Test Kind
+## Test Family
 
-A closed enumeration that classifies the testing mode of a `TestNode`. The
-first-party kinds:
+A closed enumeration that classifies the semantic family a profile runs.
+First-party families:
 
 - `microtest`
 - `integration`
-- `browser`
 - `benchmark`
 - `type-test`
 - `property`
-- `simulation` (deterministic-simulation tests)
 
-Higher-level packages may extend the enumeration with additional kinds via
-the engine's metadata contract; the core kinds are stable.
+Browser execution, deterministic simulation, model checking, and similar
+runtime styles are expressed through fixtures, resources, runtimes, or
+higher-layer packages. They are not separate families unless they define a
+different semantic contract for planning, reporting, and policy.
 
 Source: [Metadata And Selection](../architecture/metadata-and-selection.md), [Testing Models](../authoring/testing-models.md).
 
@@ -75,21 +75,29 @@ concept, distinct from execution strategy.
 
 Source: [Microtests And Capabilities](../authoring/microtests-and-capabilities.md).
 
-## Execution Strategy
+## Process Model
 
-A resolved decision about how tests execute: process model, worker count,
-isolation grain, and scheduling policy. It is resolved by `@overkill-dev/run`
-from package constraints and runner configuration, and it is distinct from
-capability profile.
+A profile-level decision about the process boundary used for execution.
+Ordinary microtests support `in-process` and `supervised-process`.
+Other families may define their own valid process models.
 
-Source: [Runtime Behavior](../architecture/runtime-behavior.md), [Package Architecture](../architecture/package-architecture.md).
+Source: [Runtime Behavior](../architecture/runtime-behavior.md).
+
+## Scheduling
+
+A profile-level decision about how selected cases are started once the
+process model is chosen. Common values are `serial` and `concurrent`.
+Scheduling is distinct from process isolation.
+
+Source: [Runtime Behavior](../architecture/runtime-behavior.md).
 
 ## Runner Profile
 
-A named composition of capability profile, execution strategy, and runner
-configuration. Users select a runner profile per run via CLI or
-programmatic request; configuration may define named profiles but does not own the
-selection itself.
+A project-owned run target in configuration. A profile has a required
+`testFamily` and may define discovery, reporters, resource usage policy,
+timeouts, coverage policy, process model, and scheduling. Users select a
+profile per run via CLI or programmatic request. Global configuration may
+provide fallback reporters, but profile reporters replace them when present.
 
 Source: [Microtests And Capabilities](../authoring/microtests-and-capabilities.md), [Package Architecture](../architecture/package-architecture.md).
 

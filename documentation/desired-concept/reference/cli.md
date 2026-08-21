@@ -112,8 +112,8 @@ the invocation is different from the default verdict:
 
 A flag refines or augments a `run`. It does not change what the user
 asks for: they still want a verdict; the flag just shapes how the run
-gets there or what extra artifacts are emitted alongside (`--coverage`,
-`--debug`, `--watch`, `--filter`).
+gets there or what extra artifacts are emitted alongside (`--debug`,
+`--watch`, `--filter`).
 
 The destructive variant (`apply`, which removes stale entries) is its
 own verb rather than a flag on `update` so that the dangerous behaviour
@@ -149,12 +149,11 @@ configuration domain and benchmark execution uses `overkill bench`.
 
 ## Capability And Execution
 
-- `--profile <name>` selects an ordinary runner profile, such as `microtest`,
-  `integration`, or `browser`. `benchmark` is reserved for `overkill bench`.
+- `--profile <name>` selects an ordinary runner profile, such as `unit`,
+  `backend-http`, or `ui-browser`. `benchmark` is reserved for `overkill bench`.
   See [Microtests And Capabilities](../authoring/microtests-and-capabilities.md).
-- `--mode <strategy>` overrides the resolved execution strategy. See
-  [Runtime Behavior § Parallelism Semantics](../architecture/runtime-behavior.md#parallelism-semantics).
-- `--workers <n>` overrides default worker count for worker-pool modes.
+- Process model and scheduling come from the selected profile. There is no
+  first-party request-level execution override in the current concept.
 - `--measure-resource-usage` collects run-level resource usage diagnostics for
   this run. See [Runtime Behavior § Resource Budgets](../architecture/runtime-behavior.md#resource-budgets).
 - `--resource-budget <name=value>` overrides one resource budget for this run
@@ -162,10 +161,9 @@ configuration domain and benchmark execution uses `overkill bench`.
 
 ## Output And Capture
 
-| Flag           | Behavior                                                               | Reference                                                                                               |
-| -------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `--coverage`   | Collect coverage for microtest profiles only. Forces serial execution. | [Coverage](../architecture/coverage.md)                                                                 |
-| `--no-capture` | Pass stdout/stderr through live instead of buffering.                  | [Runtime Behavior § Console Output Capture](../architecture/runtime-behavior.md#console-output-capture) |
+| Flag           | Behavior                                              | Reference                                                                                               |
+| -------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `--no-capture` | Pass stdout/stderr through live instead of buffering. | [Runtime Behavior § Console Output Capture](../architecture/runtime-behavior.md#console-output-capture) |
 
 ## Lifecycle And Edge Cases
 
