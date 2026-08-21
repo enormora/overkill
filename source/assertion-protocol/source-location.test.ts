@@ -82,6 +82,22 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'sourceLocationFromStack() preserves invalid file URL stack frames',
+            metadata: {},
+            body(scope: OverkillScope) {
+                scope.assert.deepEqual(
+                    sourceLocationFromStack('Error\n    at body (file:///%zz/source/users.test.ts:13:8)'),
+                    {
+                        column: 8,
+                        file: 'file:///%zz/source/users.test.ts',
+                        line: 13
+                    }
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'captureSourceLocation() returns a memoized provider for the capture callsite',
             metadata: {},
             body(scope: OverkillScope) {

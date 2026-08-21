@@ -66,6 +66,10 @@ export const testSuite = createOverkillSuite({
                     count: 0,
                     supported: false
                 });
+                scope.assert.deepEqual(collectionCount(new Date('2026-08-21T00:00:00.000Z'), 10), {
+                    count: 0,
+                    supported: false
+                });
 
                 return scope.assert.collect();
             }

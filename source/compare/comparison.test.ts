@@ -12,6 +12,7 @@ import {
     compareEqualValues,
     compareStringEquality
 } from './comparison.ts';
+import { failedResult } from './comparison-result.ts';
 
 const mapDiff = defineNarrowingCompositeAssertion<Diff, Extract<Diff, { readonly kind: 'map'; }>, readonly []>({
     name: 'map diff',
@@ -77,6 +78,17 @@ export const testSuite = createOverkillSuite({
                     kind: 'string'
                 });
                 scope.assert.equal(compareEqualValues('actual', 'expected').diff, null);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'failedResult() uses an empty path for structured diffs without operations',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const result = failedResult([ 1 ], [ 2 ], { kind: 'array', operations: [] });
+
+                scope.assert.deepEqual(result.path, []);
 
                 return scope.assert.collect();
             }
