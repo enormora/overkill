@@ -1,27 +1,25 @@
 import { describe, expect, test } from 'tstyche';
-import type {
-    ExecuteExecution,
-    ExecuteOptions,
-    DefinedOutputRenderer,
-    DefinedReporter,
-    FinalResultReporter,
-    NonEmptyReadonlyArray,
-    OutputLineIntent,
-    OutputRenderer,
-    RealTimeReporter,
-    ReporterOutput,
-    ReporterEvent,
-    RunFacts,
-    RunResult,
-    SinkDeclaration,
-    TestPlan,
-    TestPlanCase
-} from './engine.entry-point.ts';
 import {
     defineOutputRenderer,
     defineReporter,
-    isOutputRenderer,
-    isReporter
+    type ExecuteExecution,
+    type ExecuteOptions,
+    type DefinedOutputRenderer,
+    type DefinedReporter,
+    type FinalResultReporter,
+    type NonEmptyReadonlyArray,
+    type OutputLineIntent,
+    type OutputRenderer,
+    type RealTimeReporter,
+    type ReporterOutput,
+    type ReporterEvent,
+    type RunFacts,
+    type RunResult,
+    type SinkDeclaration,
+    type TestPlan,
+    type TestPlanCase,
+    type isOutputRenderer,
+    type isReporter
 } from './engine.entry-point.ts';
 
 type ExecuteOptionKeyByName = {
@@ -118,7 +116,9 @@ describe('Reporter contract', function () {
             kind: 'final-result',
             name: 'typed',
             sinks: [],
-            onResult() {}
+            onResult() {
+                return undefined;
+            }
         });
         const outputRenderer = defineOutputRenderer({
             render(intent) {

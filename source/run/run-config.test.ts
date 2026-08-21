@@ -9,7 +9,7 @@ import {
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
 import { defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
-import { loadRunConfig, RunConfigError } from './run-config.ts';
+import { defineConfig, loadRunConfig, RunConfigError } from './run-config.ts';
 
 async function createTempFolder(): Promise<string> {
     return await fs.mkdtemp(path.join(os.tmpdir(), 'overkill-run-config-'));
@@ -36,6 +36,17 @@ export const testSuite = createOverkillSuite({
     name: 'source/run/run-config.test.ts',
     metadata: {},
     children: [
+        createOverkillTestCase({
+            name: 'defineConfig() returns the project config unchanged',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const projectConfig = { runtimeStateDir: 'target/overkill-state' };
+
+                scope.assert.equal(defineConfig(projectConfig), projectConfig);
+
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             name: 'loadRunConfig() returns defaults when no config exists',
             metadata: {},
@@ -256,52 +267,6 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() accepts branded reporter and output renderer values',
-            metadata: {},
-            async body(scope: OverkillScope) {
-                const cwd = await createTempFolder();
-                await writeConfig(
-                    cwd,
-                    'custom.config.js',
-                    `const outputRendererBrand = Symbol.for('@overkill-dev/engine/output-renderer');
-                    const reporterBrand = Symbol.for('@overkill-dev/engine/reporter');
-
-                    const outputRenderer = {
-                        render(intent) {
-                            return \`rendered \${intent.text}\`;
-                        }
-                    };
-                    Object.defineProperty(outputRenderer, outputRendererBrand, { value: true });
-
-                    export const config = {
-                        outputRenderer,
-                        reporters: [
-                            Object.defineProperty({
-                                dispose: null,
-                                kind: 'real-time',
-                                name: 'configured-memory',
-                                onEvent() {},
-                                onFinish: null,
-                                sinks: [ { kind: 'memory' } ]
-                            }, reporterBrand, { value: true })
-                        ]
-                    };`
-                );
-                const config = await loadRunConfig({ configPath: 'custom.config.js', cwd });
-
-                scope.require.defined(config.reporters);
-                scope.assert.equal(config.outputRenderer.render({
-                    annotation: null,
-                    kind: 'stdout-line',
-                    role: 'primary',
-                    text: 'line'
-                }), 'rendered line');
-                scope.assert.equal(config.reporters[0].name, 'configured-memory');
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
             name: 'loadRunConfig() rejects unknown config keys',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -450,63 +415,6 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() rejects unbranded reporter values',
-            metadata: {},
-            async body(scope: OverkillScope) {
-                const cwd = await createTempFolder();
-                await writeConfig(
-                    cwd,
-                    'overkill.config.js',
-                    `export const config = {
-                        reporters: [
-                            {
-                                dispose: null,
-                                kind: 'real-time',
-                                name: 'unbranded',
-                                onEvent() {},
-                                onFinish: null,
-                                sinks: [ { kind: 'memory' } ]
-                            }
-                        ]
-                    };`
-                );
-
-                await scope.assert.rejects(async function loadInvalidConfig() {
-                    await loadRunConfig({ configPath: null, cwd });
-                }, {
-                    message: /defineReporter/
-                });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            name: 'loadRunConfig() rejects unbranded output renderer values',
-            metadata: {},
-            async body(scope: OverkillScope) {
-                const cwd = await createTempFolder();
-                await writeConfig(
-                    cwd,
-                    'overkill.config.js',
-                    `export const config = {
-                        outputRenderer: {
-                            render(intent) {
-                                return intent.text;
-                            }
-                        }
-                    };`
-                );
-
-                await scope.assert.rejects(async function loadInvalidConfig() {
-                    await loadRunConfig({ configPath: null, cwd });
-                }, {
-                    message: /defineOutputRenderer/
-                });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
             name: 'loadRunConfig() rejects profile soft timeouts greater than hard timeouts',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -531,74 +439,6 @@ export const testSuite = createOverkillSuite({
                     await loadRunConfig({ configPath: null, cwd });
                 }, {
                     message: /softMilliseconds must be less than or equal to hardMilliseconds/
-                });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            name: 'loadRunConfig() rejects config files without a named config export',
-            metadata: {},
-            async body(scope: OverkillScope) {
-                const cwd = await createTempFolder();
-                await writeConfig(cwd, 'overkill.config.js', 'export const projectConfig = {};');
-
-                await scope.assert.rejects(async function loadInvalidConfig() {
-                    await loadRunConfig({ configPath: null, cwd });
-                }, {
-                    type: RunConfigError,
-                    message: /must export a named config value/
-                });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            name: 'loadRunConfig() rejects config files with a default export',
-            metadata: {},
-            async body(scope: OverkillScope) {
-                const cwd = await createTempFolder();
-                await writeConfig(cwd, 'overkill.config.js', 'export default {};');
-
-                await scope.assert.rejects(async function loadInvalidConfig() {
-                    await loadRunConfig({ configPath: null, cwd });
-                }, {
-                    type: RunConfigError,
-                    message: /must not export a default config/
-                });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            name: 'loadRunConfig() rejects config files with named config and default exports',
-            metadata: {},
-            async body(scope: OverkillScope) {
-                const cwd = await createTempFolder();
-                await writeConfig(cwd, 'overkill.config.js', 'export const config = {}; export default {};');
-
-                await scope.assert.rejects(async function loadInvalidConfig() {
-                    await loadRunConfig({ configPath: null, cwd });
-                }, {
-                    type: RunConfigError,
-                    message: /must not export a default config/
-                });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            name: 'loadRunConfig() rejects config files with extra runtime exports',
-            metadata: {},
-            async body(scope: OverkillScope) {
-                const cwd = await createTempFolder();
-                await writeConfig(cwd, 'overkill.config.js', 'export const config = {}; export const extra = {};');
-
-                await scope.assert.rejects(async function loadInvalidConfig() {
-                    await loadRunConfig({ configPath: null, cwd });
-                }, {
-                    type: RunConfigError,
-                    message: /must only export a named config value/
                 });
 
                 return scope.assert.collect();

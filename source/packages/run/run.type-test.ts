@@ -17,6 +17,7 @@ import {
     type ResolvedRun,
     type RunCommand,
     type RunConfig,
+    type RunConfigLoadRequest,
     type RunExecutionFacts,
     type RunFacts,
     type RunMicrotestProfileConfig,
@@ -98,7 +99,7 @@ describe('@overkill-dev/run', function () {
     test('exposes config loading helpers from the main package surface', function () {
         expect<typeof defineConfig>().type.toBe<(config: RunProjectConfig) => RunProjectConfig>();
         expect<typeof loadRunConfig>().type.toBe<
-            (request: { readonly configPath: string | null; readonly cwd: string; }) => Promise<LoadedRunConfig>
+            (request: RunConfigLoadRequest) => Promise<LoadedRunConfig>
         >();
         expect<RunProjectConfig['outputRenderer']>().type.toBe<DefinedOutputRenderer | undefined>();
         expect<RunProjectConfig['reporters']>().type.toBe<

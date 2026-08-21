@@ -3,7 +3,7 @@ import type { OptionalReporterOutput, OutputIntentRole } from './reporter-output
 import type { RunResult, RunnerError, TestOutcome, TestVerdict } from './run-result.ts';
 import type { Metadata } from './test-node.ts';
 
-const reporterBrand: unique symbol = Symbol.for('@overkill-dev/engine/reporter') as never;
+const reporterBrand = Symbol.for('@overkill-dev/engine/reporter');
 
 export type RunFacts = Readonly<Record<string, unknown>>;
 
@@ -248,12 +248,7 @@ export type DefinedReporter<ReporterValue extends Reporter = Reporter> = Reporte
 export function defineReporter<ReporterValue extends Reporter>(
     reporter: ReporterValue
 ): DefinedReporter<ReporterValue> {
-    Object.defineProperty(reporter, reporterBrand, {
-        enumerable: false,
-        value: true
-    });
-
-    return reporter as DefinedReporter<ReporterValue>;
+    return Object.assign(reporter, { [reporterBrand]: true as const });
 }
 
 export function isReporter(value: unknown): value is DefinedReporter {

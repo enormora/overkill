@@ -272,8 +272,14 @@ function hasNamedConfigExport(configModule: unknown): configModule is ConfigModu
     return typeof configModule === 'object' && configModule !== null && Object.hasOwn(configModule, 'config');
 }
 
-function moduleExportNames(configModule: unknown): readonly string[] {
-    return typeof configModule === 'object' && configModule !== null ? Object.keys(configModule) : [];
+function assertNoExtraConfigExports(configModule: ConfigModuleWithNamedConfigExport, configPath: string): void {
+    const extraExports = Object.keys(configModule).filter(function isExtraExport(exportName) {
+        return exportName !== 'config';
+    });
+
+    if (extraExports.length > 0) {
+        throw new RunConfigError(`Config file "${configPath}" must only export a named config value.`);
+    }
 }
 
 function readNamedConfigExport(configModule: unknown, configPath: string): unknown {
@@ -282,20 +288,12 @@ function readNamedConfigExport(configModule: unknown, configPath: string): unkno
     }
 
     if (hasNamedConfigExport(configModule)) {
+        assertNoExtraConfigExports(configModule, configPath);
+
         return configModule.config;
     }
 
     throw new RunConfigError(`Config file "${configPath}" must export a named config value.`);
-}
-
-function assertNoExtraConfigExports(configModule: unknown, configPath: string): void {
-    const extraExports = moduleExportNames(configModule).filter(function isExtraExport(exportName) {
-        return exportName !== 'config';
-    });
-
-    if (extraExports.length > 0) {
-        throw new RunConfigError(`Config file "${configPath}" must only export a named config value.`);
-    }
 }
 
 function normalizeReporters(reporters: NonEmptyReadonlyArray<Reporter> | undefined): LoadedRunConfig['reporters'] {
@@ -467,7 +465,6 @@ export async function loadRunConfig(request: RunConfigLoadRequest): Promise<Load
 
     const configModule = await importConfigModule(configPath);
     const configValue = readNamedConfigExport(configModule, configPath);
-    assertNoExtraConfigExports(configModule, configPath);
 
     return normalizeConfig(parseConfig(configValue, configPath), configPath);
 }

@@ -13,13 +13,17 @@ type RecordedReportEntry = {
     readonly type: 'event' | 'finish' | 'result';
 };
 
-export type InMemoryRealTimeReporter = DefinedReporter<{
-    readonly getRecordedEntries: () => readonly RecordedReportEntry[];
-} & RealTimeReporter>;
+export type InMemoryRealTimeReporter = DefinedReporter<
+    {
+        readonly getRecordedEntries: () => readonly RecordedReportEntry[];
+    } & RealTimeReporter
+>;
 
-export type InMemoryFinalResultReporter = DefinedReporter<{
-    readonly getRecordedEntries: () => readonly RecordedReportEntry[];
-} & FinalResultReporter>;
+export type InMemoryFinalResultReporter = DefinedReporter<
+    {
+        readonly getRecordedEntries: () => readonly RecordedReportEntry[];
+    } & FinalResultReporter
+>;
 
 export type InMemoryReporterOptions = {
     readonly mode: 'final-result' | 'real-time';
