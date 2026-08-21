@@ -391,6 +391,32 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'loadRunConfig() rejects invalid profile names',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const cwd = await createTempFolder();
+                await writeConfig(
+                    cwd,
+                    'overkill.config.js',
+                    `export default {
+                        profiles: {
+                            "backend/http": {
+                                testFamily: 'microtest'
+                            }
+                        }
+                    };`
+                );
+
+                await scope.assert.rejects(async function loadInvalidConfig() {
+                    await loadRunConfig({ configPath: null, cwd });
+                }, {
+                    message: /Invalid profile name "backend\/http"/
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'loadRunConfig() rejects an explicit empty reporter list',
             metadata: {},
             async body(scope: OverkillScope) {

@@ -216,6 +216,54 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'orchestrator.resolve() rejects unknown profiles',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                await scope.assert.rejects(async function resolveUnknownProfile() {
+                    await orchestrator.resolve(createRunCommand({
+                        config: defaultConfig,
+                        cwd: process.cwd(),
+                        engine: null,
+                        request: {
+                            ...defaultRequest,
+                            profile: 'missing'
+                        }
+                    }));
+                }, {
+                    message: 'Unknown run profile: missing'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'orchestrator.resolve() rejects resource budget overrides without measurement',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                await scope.assert.rejects(async function resolveInvalidResourceUsage() {
+                    await orchestrator.resolve(createRunCommand({
+                        config: defaultConfig,
+                        cwd: process.cwd(),
+                        engine: null,
+                        request: {
+                            ...defaultRequest,
+                            measureResourceUsage: false,
+                            resourceBudgetOverrides: {
+                                activeResourceCount: 1,
+                                javaScriptEngineHeapBytes: null,
+                                residentSetBytes: null,
+                                residentSetGrowthBytesPerSecond: null
+                            }
+                        }
+                    }));
+                }, {
+                    message: 'Resource budget overrides require resource usage measurement.'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'orchestrator.run() executes the resolved plan and reports run facts',
             metadata: {},
             async body(scope: OverkillScope) {

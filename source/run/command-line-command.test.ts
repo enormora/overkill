@@ -45,6 +45,22 @@ export const testSuite = createOverkillSuite({
 
                 return scope.assert.collect();
             }
+        }),
+        createOverkillTestCase({
+            name: 'createCommandLineErrorResultFromUnknown() falls back to the aggregate message',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const aggregateError = new AggregateError([], 'aggregate failure');
+                Object.defineProperty(aggregateError, 'errors', { value: 'not-an-array' });
+                const result = createCommandLineErrorResultFromUnknown(aggregateError);
+
+                scope.assert.equal(result.exitCode, 70);
+                scope.assert.deepEqual(result.fallbackDiagnostics, [
+                    'Overkill internal error: aggregate failure'
+                ]);
+
+                return scope.assert.collect();
+            }
         })
     ]
 });

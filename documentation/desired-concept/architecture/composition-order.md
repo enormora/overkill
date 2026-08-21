@@ -44,7 +44,7 @@ layer resolves the run in this order:
    order. See [Runtime Behavior § Execution Order](./runtime-behavior.md#execution-order).
 6. **Worker assignment.** The execution strategy (resolved from
    profile + resource constraints) decides workers, processes,
-   isolation grain. See [Runtime Behavior § Parallelism Semantics](./runtime-behavior.md#parallelism-semantics) and [Package Architecture § Orchestration](./package-architecture.md#orchestration).
+   isolation grain. See [Runtime Behavior § Process Model And Scheduling](./runtime-behavior.md#process-model-and-scheduling) and [Package Architecture § Orchestration](./package-architecture.md#orchestration).
 7. **Resolution freeze.** The resulting `ResolvedRun` contains
    serializable `RunFacts` for records and replay plus an executable
    `TestPlan` for `execute(testPlan)`.
