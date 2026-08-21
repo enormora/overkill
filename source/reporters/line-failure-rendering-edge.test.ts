@@ -9,6 +9,7 @@ import type { FailedForeignCheck, FailedLeafCheck } from '../assertion-protocol/
 import { serializeValue } from '../compare/serialized-value.ts';
 import type { Diff } from '../diff/diff-shape.ts';
 import type { TestFailure } from '../engine/run-result.ts';
+import { formatFailureSummary } from './failure-summary.ts';
 import { formatFailure } from './line-failure-rendering.ts';
 
 function failedCheck(diff: Diff | null): FailedLeafCheck {
@@ -307,6 +308,22 @@ export const testSuite = createOverkillSuite({
                     'Timed out after 10 ms.',
                     'elapsed: 12 ms'
                 ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'failure summary formats timeout failures',
+            metadata: {},
+            body(scope: OverkillScope) {
+                scope.assert.equal(
+                    formatFailureSummary({
+                        deadlineMilliseconds: 250,
+                        elapsedMilliseconds: 300,
+                        kind: 'timeout'
+                    }),
+                    'Timed out after 250 ms.'
+                );
 
                 return scope.assert.collect();
             }

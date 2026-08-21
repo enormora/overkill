@@ -1,6 +1,12 @@
 import { formatCaseId } from '../engine/identity.ts';
 import type { PerTestResult, RunResult } from '../engine/run-result.ts';
-import type { FinalResultReporter, RealTimeReporter, ReporterEvent } from '../engine/reporter.ts';
+import {
+    defineReporter,
+    type DefinedReporter,
+    type FinalResultReporter,
+    type RealTimeReporter,
+    type ReporterEvent
+} from '../engine/reporter.ts';
 import { formatFailureSummary } from './failure-summary.ts';
 
 export type TapConsoleReporterDependencies = {
@@ -93,10 +99,12 @@ function formatEventAsTapPoint(
     }, index);
 }
 
-export function createTapConsoleReporter(dependencies: TapConsoleReporterDependencies): FinalResultReporter {
+export function createTapConsoleReporter(
+    dependencies: TapConsoleReporterDependencies
+): DefinedReporter<FinalResultReporter> {
     const { stdoutConsole } = dependencies;
 
-    return {
+    return defineReporter({
         dispose: null,
         kind: 'final-result',
         name: 'tap',
@@ -105,14 +113,16 @@ export function createTapConsoleReporter(dependencies: TapConsoleReporterDepende
         async onResult(currentTestRunResult) {
             stdoutConsole.log(formatResultAsTap(currentTestRunResult));
         }
-    };
+    });
 }
 
-export function createTapConsoleRealTimeReporter(dependencies: TapConsoleReporterDependencies): RealTimeReporter {
+export function createTapConsoleRealTimeReporter(
+    dependencies: TapConsoleReporterDependencies
+): DefinedReporter<RealTimeReporter> {
     const { stdoutConsole } = dependencies;
     let nextTestPointIndex = 0;
 
-    return {
+    return defineReporter({
         dispose: null,
         kind: 'real-time',
         name: 'tap-real-time',
@@ -132,5 +142,5 @@ export function createTapConsoleRealTimeReporter(dependencies: TapConsoleReporte
         },
 
         onFinish: null
-    };
+    });
 }

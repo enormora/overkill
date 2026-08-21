@@ -1,5 +1,9 @@
 import type { SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
-import type { OutputLineIntent, OutputRenderer } from '../engine/reporter-output.ts';
+import {
+    defineOutputRenderer,
+    type DefinedOutputRenderer,
+    type OutputLineIntent
+} from '../engine/reporter-output.ts';
 
 type RenderableLocation = SourceLocation & {
     readonly line: number;
@@ -58,10 +62,10 @@ function renderGitHubAnnotation(intent: OutputLineIntent): string | null {
     return `::${annotation.severity} ${properties}::${escapeCommandValue(intent.text)}`;
 }
 
-export function createGithubActionsOutputRenderer(): OutputRenderer {
-    return {
+export function createGithubActionsOutputRenderer(): DefinedOutputRenderer {
+    return defineOutputRenderer({
         render(intent) {
             return renderGitHubAnnotation(intent) ?? intent.text;
         }
-    };
+    });
 }

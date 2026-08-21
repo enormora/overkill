@@ -7,12 +7,12 @@ treats it as **explicit, off by default, and scoped to microtests**.
 
 Why microtests only:
 
-- coverage answers "what code do my unit-level tests exercise?" —
+- coverage answers "what code do my unit-level tests exercise?" -
   the question fits microtests, where individual case attribution
   is meaningful
 - integration tests broad-path through code; their coverage
   typically reads as "everything was hit," which tells you little
-- benchmarks must not be instrumented — instrumentation distorts
+- benchmarks must not be instrumented - instrumentation distorts
   timing (an explicit non-goal: see [Non-Goals § No always-on coverage in the default run mode](../decisions/non-goals.md#no-always-on-coverage-in-the-default-run-mode))
 - browser tests have their own coverage story via the browser's
   own instrumentation (out of scope here)
@@ -42,14 +42,14 @@ Why a first-class concept anyway:
 
 - Coverage is restricted to microtest profiles. Integration, property,
   type-test, and benchmark profiles reject coverage configuration.
-- Coverage runs single-threaded — one worker process executes all
+- Coverage runs single-threaded - one worker process executes all
   selected microtests serially. Worker-pool and process-per-file
   modes do not collect coverage. Supervised microtest mode is
   supported because supervision does not introduce parallelism.
 - Coverage is opt-in per profile; there is no global "always on"
   default mode in any first-party profile.
 - Overkill does not ship its own instrumenter or coverage reporter
-  package — it integrates with existing tools.
+  package - it integrates with existing tools.
 - The runner-side surface is profile selection plus a Node permission grant
   scoping filesystem writes to the coverage artifact directory; no
   Overkill-specific authority abstraction.
@@ -72,8 +72,8 @@ shape:
 
 1. **All-files reporting.** V8 only emits coverage for files that
    were actually loaded by the process. To report 0% on files that
-   were never loaded — typically the most useful signal in a
-   coverage report — `c8`'s `all: true` mode globs the source tree
+   were never loaded - typically the most useful signal in a
+   coverage report - `c8`'s `all: true` mode globs the source tree
    using include/exclude patterns and synthesises empty coverage
    records for files V8 didn't see. Without this, a brand-new file
    with no tests would simply be invisible in the report.
@@ -82,7 +82,7 @@ shape:
 
 Overkill orchestrates the V8 engine and configures `c8` for both
 jobs. The include/exclude patterns that drive all-files reporting
-live in `overkill.config.ts` (project policy, not per-run intent —
+live in `overkill.config.ts` (project policy, not per-run intent -
 see [Principles § One First-Party Path Per Layer](../decisions/principles.md#one-first-party-path-per-layer)).
 
 Format emission inside `c8` delegates to the `istanbul-lib-report`
@@ -98,7 +98,7 @@ Coverage is selected by choosing a profile whose `testFamily` is `microtest`
 and whose profile config includes `coverage`.
 
 ```ts
-export default defineConfig({
+export const config = defineConfig({
     profiles: {
         'unit-covered': {
             testFamily: 'microtest',
@@ -162,8 +162,8 @@ profile. A coverage-enabled microtest profile resolves to serial scheduling.
 
 Coverage attribution is **per-test**: each executed case has its
 own coverage record (keyed by `CaseId`) in the run-record coverage
-directory. Single-process collection makes that trivial — one
-timeline of test boundaries, one V8 slice — so per-case attribution
+directory. Single-process collection makes that trivial - one
+timeline of test boundaries, one V8 slice - so per-case attribution
 falls out of the model without extra machinery.
 
 Why single-threaded:
@@ -209,9 +209,9 @@ spawn time (the run record is created just before workers start).
 The runner resolves the configured path to absolute and adds the
 wildcard before passing it to Node.
 
-For the general permission mechanism — how Node flags are applied per
+For the general permission mechanism - how Node flags are applied per
 worker, why workers are separate Node processes, the symlink caveat,
-and that permissions do not inherit — see
+and that permissions do not inherit - see
 [Microtests And Capabilities § Capability Defaults](../authoring/microtests-and-capabilities.md#capability-defaults). There is no
 Overkill-specific authority abstraction layered on top.
 
@@ -253,7 +253,7 @@ configured path, follows symlinks, and refuses to start workers if
 the result:
 
 - is `/`, `/etc`, `/usr`, or another well-known system path
-- contains a symlink that escapes the project root — same caveat
+- contains a symlink that escapes the project root - same caveat
   as [Microtests And Capabilities § Capability Defaults](../authoring/microtests-and-capabilities.md#capability-defaults), with
   extra weight because the path is user-supplied
 

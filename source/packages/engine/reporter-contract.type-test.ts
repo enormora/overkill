@@ -1,19 +1,25 @@
 import { describe, expect, test } from 'tstyche';
-import type {
-    ExecuteExecution,
-    ExecuteOptions,
-    FinalResultReporter,
-    NonEmptyReadonlyArray,
-    OutputLineIntent,
-    OutputRenderer,
-    RealTimeReporter,
-    ReporterOutput,
-    ReporterEvent,
-    RunFacts,
-    RunResult,
-    SinkDeclaration,
-    TestPlan,
-    TestPlanCase
+import {
+    defineOutputRenderer,
+    defineReporter,
+    type ExecuteExecution,
+    type ExecuteOptions,
+    type DefinedOutputRenderer,
+    type DefinedReporter,
+    type FinalResultReporter,
+    type NonEmptyReadonlyArray,
+    type OutputLineIntent,
+    type OutputRenderer,
+    type RealTimeReporter,
+    type ReporterOutput,
+    type ReporterEvent,
+    type RunFacts,
+    type RunResult,
+    type SinkDeclaration,
+    type TestPlan,
+    type TestPlanCase,
+    type isOutputRenderer,
+    type isReporter
 } from './engine.entry-point.ts';
 
 type ExecuteOptionKeyByName = {
@@ -102,6 +108,30 @@ describe('Reporter contract', function () {
         expect<OutputLineIntent['role']>().type.toBe<'primary' | 'supplemental'>();
         expect<OutputRenderer['render']>().type.toBe<(intent: OutputLineIntent) => string>();
         expect<ReporterOutput>().type.toBe<readonly OutputLineIntent[]>();
+    });
+
+    test('exposes extension branding helpers without replacing structural contracts', function () {
+        const reporter = defineReporter({
+            dispose: null,
+            kind: 'final-result',
+            name: 'typed',
+            sinks: [],
+            onResult() {
+                return undefined;
+            }
+        });
+        const outputRenderer = defineOutputRenderer({
+            render(intent) {
+                return intent.text;
+            }
+        });
+
+        expect(reporter).type.toBeAssignableTo<DefinedReporter>();
+        expect(reporter).type.toBeAssignableTo<FinalResultReporter>();
+        expect<typeof isReporter>().type.toBe<(value: unknown) => value is DefinedReporter>();
+        expect(outputRenderer).type.toBeAssignableTo<DefinedOutputRenderer>();
+        expect(outputRenderer).type.toBeAssignableTo<OutputRenderer>();
+        expect<typeof isOutputRenderer>().type.toBe<(value: unknown) => value is DefinedOutputRenderer>();
     });
 
     test('exposes non-empty planned case arrays', function () {

@@ -3,6 +3,8 @@ import type { OptionalReporterOutput, OutputIntentRole } from './reporter-output
 import type { RunResult, RunnerError, TestOutcome, TestVerdict } from './run-result.ts';
 import type { Metadata } from './test-node.ts';
 
+const reporterBrand = Symbol.for('@overkill-dev/engine/reporter');
+
 export type RunFacts = Readonly<Record<string, unknown>>;
 
 export type RawStandardOutputSinkDeclaration = {
@@ -239,6 +241,19 @@ type OutputReporter = OutputFinalReporter | OutputRealTimeReporter;
 type SideEffectReporter = SideEffectFinalReporter | SideEffectRealTimeReporter;
 
 export type Reporter = OutputReporter | SideEffectReporter;
+export type DefinedReporter<ReporterValue extends Reporter = Reporter> = ReporterValue & {
+    readonly [reporterBrand]: true;
+};
+
+export function defineReporter<ReporterValue extends Reporter>(
+    reporter: ReporterValue
+): DefinedReporter<ReporterValue> {
+    return Object.assign(reporter, { [reporterBrand]: true as const });
+}
+
+export function isReporter(value: unknown): value is DefinedReporter {
+    return typeof value === 'object' && value !== null && Object.hasOwn(value, reporterBrand);
+}
 
 type ClaimedSink = {
     readonly mode: 'managed' | 'raw';

@@ -105,6 +105,7 @@ export type {
 export { formatCaseId } from '../../engine/identity.ts';
 export type { CaseId, TestId } from '../../engine/identity.ts';
 export type {
+    DefinedReporter,
     DirectorySinkDeclaration,
     FileSinkDeclaration,
     FinalResultReporter,
@@ -121,13 +122,18 @@ export type {
 } from '../../engine/reporter.ts';
 export type { ReporterDispatcher, ReporterDispatcherDependencies } from '../../engine/reporter-dispatcher.ts';
 export {
+    defineReporter,
+    isReporter,
     ReporterSinkConflictError,
     validateReporterSinks
 } from '../../engine/reporter.ts';
 export {
-    createPlainOutputRenderer
+    createPlainOutputRenderer,
+    defineOutputRenderer,
+    isOutputRenderer
 } from '../../engine/reporter-output.ts';
 export type {
+    DefinedOutputRenderer,
     OutputIntentAnnotation,
     OutputIntentRole,
     OutputIntentSeverity,

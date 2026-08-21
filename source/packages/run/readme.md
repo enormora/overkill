@@ -10,6 +10,8 @@ Top-level API:
 - `RunResourceBudgets`
 - `RunResourceUsagePolicy`
 - `ResolvedRun`
+- `defineConfig(config)`
+- `loadRunConfig({ cwd, configPath })`
 - `orchestrator.resolve(command)`
 - `orchestrator.run(command)`
 
@@ -54,7 +56,7 @@ individual thresholds for one run. Textual parsing for
 `--measure-resource-usage` and `--resource-budget <name=value>` belongs to the
 later command-line implementation milestone.
 
-Config loading is common command-line infrastructure, not plugin discovery.
+Config loading is common runner infrastructure, not plugin discovery.
 The command-line runner loads native Node config files, selects the default
 line reporter when project config omits reporters, defaults managed reporter
 output to the plain renderer, returns fallback diagnostics for the binary
@@ -64,3 +66,5 @@ scan, dynamic command registry, or command plugin lifecycle.
 
 Project config may set `outputRenderer` to adapt managed line intents, for
 example to render GitHub Actions annotations from a brief stdout reporter.
+Config files must export `config` as a named export. Default exports are
+configuration errors.

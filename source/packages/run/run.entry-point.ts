@@ -1,5 +1,23 @@
 export { orchestrator } from '../../run/run-orchestrator.ts';
+export {
+    defineConfig,
+    loadRunConfig,
+    RunConfigError
+} from '../../run/run-config.ts';
 export { RunResolutionError } from '../../run/run-errors.ts';
+export type {
+    LoadedRunConfig,
+    RunConfigLoadRequest,
+    RunProjectConfig,
+    RunProjectMeasuredResourceUsage,
+    RunProjectMicrotestExecution,
+    RunProjectMicrotestProfileConfig,
+    RunProjectProfilesConfig,
+    RunProjectResourceBudgets,
+    RunProjectResourceUsageConfig,
+    RunProjectTimeoutConfig,
+    RunProjectUnmeasuredResourceUsage
+} from '../../run/run-config.ts';
 export type { RunResolutionErrorCode } from '../../run/run-errors.ts';
 export type {
     ResolvedRun,

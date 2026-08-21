@@ -127,7 +127,7 @@ The root is not a suite path segment. `suite-start` and `suite-end` identify
 visible groupings by `suitePath`. Tables contribute path segments because
 they are named groupings in the resolved plan and in `RunResult.bySuite`.
 
-`test-progress` is intentionally low-detail — just an opaque `note`
+`test-progress` is intentionally low-detail - just an opaque `note`
 string. Reporters that want richer progress data attach the
 `TestDebugArtifact` (when `--debug` is on) rather than expanding this
 event.
@@ -207,9 +207,9 @@ the same stdout log.
 
 Two attachment surfaces:
 
-- **Programmatic** — `runner.run({ reporters: [reporterA, reporterB] })`
+- **Programmatic** - `runner.run({ reporters: [reporterA, reporterB] })`
   accepts already-instantiated reporter objects
-- **Configuration-driven** — `overkill.config.ts` imports reporter factories or
+- **Configuration-driven** - `overkill.config.ts` imports reporter factories or
   reporter values directly and passes instantiated reporters to the runner
 
 Both forms produce the same `Reporter[]` array; the registration
@@ -224,7 +224,7 @@ import {
     lineReporter
 } from '@overkill-dev/test/reporters';
 
-export default defineConfig({
+export const config = defineConfig({
     reporters: [
         lineReporter(),
         benchmarkHtmlReporter({
@@ -402,13 +402,13 @@ shutting down, so they are not sent back through reporters.
 
 ## What This Doc Is Not
 
-- not a concrete reporter (terminal, JSON, HTML, TAP) — those are
+- not a concrete reporter (terminal, JSON, HTML, TAP) - those are
   separate packages with their own documentation
 - not a guarantee that every event includes every conceivable
   field; reporters that need richer data declare it through
   additional artifacts (debug, witness, baselines), not by
   expanding events
-- not a recommendation to write a custom reporter — first-party
+- not a recommendation to write a custom reporter - first-party
   reporters cover the common cases; third-party reporters exist
   for specialised pipelines
 
@@ -430,9 +430,9 @@ to render nonsense.
 
 ## Cross-References
 
-- [Package Architecture § Reporters](./package-architecture.md#reporters) — the package-family stance
-- [Runtime Behavior § Console Output Capture](./runtime-behavior.md#console-output-capture) — how reporters
+- [Package Architecture § Reporters](./package-architecture.md#reporters) - the package-family stance
+- [Runtime Behavior § Console Output Capture](./runtime-behavior.md#console-output-capture) - how reporters
   interact with captured stdout/stderr
-- [Failure Artifacts](../authoring/failure-artifacts.md) — the artifacts reporters consume
+- [Failure Artifacts](../authoring/failure-artifacts.md) - the artifacts reporters consume
 - [Types Index](../reference/types-index.md) - `RunFacts`, `RunResult`, `TestOutcome`,
   `RunnerError`, `CaseId`, `TestDebugArtifact`

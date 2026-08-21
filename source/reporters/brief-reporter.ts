@@ -1,7 +1,13 @@
 import { formatCaseId } from '../engine/identity.ts';
 import type { FailedCheck, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import type { OutputLineIntent } from '../engine/reporter-output.ts';
-import type { RealTimeReporter, ReporterEvent, RunFacts } from '../engine/reporter.ts';
+import {
+    defineReporter,
+    type DefinedReporter,
+    type RealTimeReporter,
+    type ReporterEvent,
+    type RunFacts
+} from '../engine/reporter.ts';
 import type { RunResult, RunnerError, TestFailure } from '../engine/run-result.ts';
 import { formatFailureSummary } from './failure-summary.ts';
 import { formatSourceLocation } from './source-location-rendering.ts';
@@ -145,14 +151,14 @@ function testEndUpdate(
     };
 }
 
-export function createBriefReporter(): RealTimeReporter<BriefReporterSinks> {
+export function createBriefReporter(): DefinedReporter<RealTimeReporter<BriefReporterSinks>> {
     let state: BriefReporterState = {
         completed: 0,
         failed: 0,
         planned: null
     };
 
-    return {
+    return defineReporter({
         dispose: null,
         kind: 'real-time',
         name: 'brief',
@@ -186,5 +192,5 @@ export function createBriefReporter(): RealTimeReporter<BriefReporterSinks> {
         onFinish(result) {
             return [ finishIntent(result) ];
         }
-    };
+    });
 }

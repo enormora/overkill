@@ -88,7 +88,7 @@ Benchmark suites still need named configuration. They use a separate
 `benchmark.profiles` namespace:
 
 ```ts
-export default defineConfig({
+export const config = defineConfig({
     benchmark: {
         profiles: {
             'cli-cold-start': {
@@ -339,8 +339,8 @@ This is critical for real tool benchmarking and should not require ad hoc custom
 ## Event Loop And Runtime Health
 
 Some performance metrics describe the health of the runtime itself rather than the
-throughput or latency of a specific workload. These apply to any JavaScript runtime —
-Node servers, workers, and browser pages alike — and should be a first-class metric
+throughput or latency of a specific workload. These apply to any JavaScript runtime -
+Node servers, workers, and browser pages alike - and should be a first-class metric
 family rather than something only the browser layer cares about.
 
 Examples:

@@ -4,8 +4,13 @@ import { pathToFileURL } from 'node:url';
 import { parse } from '@schema-hub/zod-error-formatter';
 import { z } from 'zod/v4';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
-import { createPlainOutputRenderer, type OutputRenderer } from '../engine/reporter-output.ts';
-import type { Reporter } from '../engine/reporter.ts';
+import {
+    createPlainOutputRenderer,
+    isOutputRenderer,
+    type DefinedOutputRenderer,
+    type OutputRenderer
+} from '../engine/reporter-output.ts';
+import { isReporter, type DefinedReporter, type Reporter } from '../engine/reporter.ts';
 import type {
     RunLoaderConfig,
     RunMicrotestExecution,
@@ -21,14 +26,6 @@ const defaultResourceUsageSamplingIntervalMilliseconds = 100;
 const defaultMicrotestHardTimeoutMilliseconds = 1000;
 const defaultMicrotestTimeoutMilliseconds = 500;
 
-export type RunProjectConfig = {
-    readonly loader?: RunLoaderConfig | undefined;
-    readonly outputRenderer?: OutputRenderer | undefined;
-    readonly profiles?: RunProjectProfilesConfig | undefined;
-    readonly reporters?: NonEmptyReadonlyArray<Reporter> | undefined;
-    readonly runtimeStateDir?: string | undefined;
-};
-
 export type LoadedRunConfig = {
     readonly configPath: string | null;
     readonly loader: RunLoaderConfig;
@@ -37,50 +34,6 @@ export type LoadedRunConfig = {
     readonly reporters: NonEmptyReadonlyArray<Reporter> | null;
     readonly runtimeStateDir: string;
 };
-
-export type RunProjectResourceBudgets = {
-    readonly activeResourceCount?: number | null | undefined;
-    readonly javaScriptEngineHeapBytes?: number | null | undefined;
-    readonly residentSetBytes?: number | null | undefined;
-    readonly residentSetGrowthBytesPerSecond?: number | null | undefined;
-};
-
-export type RunProjectMeasuredResourceUsage = {
-    readonly budgets?: RunProjectResourceBudgets | undefined;
-    readonly measure: true;
-    readonly samplingIntervalMilliseconds?: number | undefined;
-};
-
-export type RunProjectUnmeasuredResourceUsage = {
-    readonly budgets?: never;
-    readonly measure?: false | undefined;
-    readonly samplingIntervalMilliseconds?: never;
-};
-
-export type RunProjectResourceUsageConfig = RunProjectMeasuredResourceUsage | RunProjectUnmeasuredResourceUsage;
-
-export type RunProjectTimeoutConfig = {
-    readonly hardMilliseconds?: number | undefined;
-    readonly softMilliseconds?: number | undefined;
-};
-
-export type RunProjectMicrotestExecution = {
-    readonly processModel: 'in-process';
-    readonly scheduling?: 'concurrent' | 'serial' | undefined;
-} | {
-    readonly processModel: 'supervised-process';
-    readonly scheduling?: 'concurrent' | 'serial' | undefined;
-};
-
-export type RunProjectMicrotestProfileConfig = {
-    readonly execution?: RunProjectMicrotestExecution | undefined;
-    readonly reporters?: NonEmptyReadonlyArray<Reporter> | undefined;
-    readonly resourceUsage?: RunProjectResourceUsageConfig | undefined;
-    readonly testFamily: 'microtest';
-    readonly timeouts?: RunProjectTimeoutConfig | undefined;
-};
-
-export type RunProjectProfilesConfig = Readonly<Record<string, RunProjectMicrotestProfileConfig>>;
 
 export type RunConfigLoadRequest = {
     readonly configPath: string | null;
@@ -120,96 +73,104 @@ const defaultMicrotestExecution: RunMicrotestExecution = {
     scheduling: 'concurrent'
 };
 
-const reporterSchema = z.custom<Reporter>(function isReporter(value) {
-    return typeof value === 'object' && value !== null &&
-        Object.hasOwn(value, 'kind') &&
-        Object.hasOwn(value, 'name') &&
-        Object.hasOwn(value, 'sinks');
-});
+const reporterSchema = z.custom<DefinedReporter>(isReporter, 'must be created with defineReporter(...)');
 
-type PossibleOutputRenderer = {
-    readonly render: unknown;
-};
+const outputRendererSchema = z.custom<DefinedOutputRenderer>(
+    isOutputRenderer,
+    'must be created with defineOutputRenderer(...)'
+);
 
-function hasRenderProperty(value: unknown): value is PossibleOutputRenderer {
-    return typeof value === 'object' && value !== null && Object.hasOwn(value, 'render');
-}
-
-const outputRendererSchema = z.custom<OutputRenderer>(function isOutputRenderer(value) {
-    return hasRenderProperty(value) && typeof value.render === 'function';
-});
-
-const loaderSchema = z.strictObject({
-    sourceMaps: z.boolean(),
-    stripMode: z.literal('strip-only')
-});
+const loaderSchema = z
+    .strictObject({
+        sourceMaps: z.boolean(),
+        stripMode: z.literal('strip-only')
+    })
+    .readonly();
 
 const positiveSafeIntegerSchema = z.number().refine(function isPositiveSafeInteger(value) {
     return Number.isSafeInteger(value) && value > 0;
 }, 'must be a positive safe integer');
 
-const resourceBudgetsSchema = z.strictObject({
-    activeResourceCount: z.optional(z.nullable(positiveSafeIntegerSchema)),
-    javaScriptEngineHeapBytes: z.optional(z.nullable(positiveSafeIntegerSchema)),
-    residentSetBytes: z.optional(z.nullable(positiveSafeIntegerSchema)),
-    residentSetGrowthBytesPerSecond: z.optional(z.nullable(positiveSafeIntegerSchema))
-});
+const resourceBudgetsSchema = z
+    .strictObject({
+        activeResourceCount: z.optional(z.nullable(positiveSafeIntegerSchema)),
+        javaScriptEngineHeapBytes: z.optional(z.nullable(positiveSafeIntegerSchema)),
+        residentSetBytes: z.optional(z.nullable(positiveSafeIntegerSchema)),
+        residentSetGrowthBytesPerSecond: z.optional(z.nullable(positiveSafeIntegerSchema))
+    })
+    .readonly();
 
-const measuredResourceUsageSchema = z.strictObject({
-    budgets: z.optional(resourceBudgetsSchema),
-    measure: z.literal(true),
-    samplingIntervalMilliseconds: z.optional(positiveSafeIntegerSchema)
-});
+const measuredResourceUsageSchema = z
+    .strictObject({
+        budgets: z.optional(resourceBudgetsSchema),
+        measure: z.literal(true),
+        samplingIntervalMilliseconds: z.optional(positiveSafeIntegerSchema)
+    })
+    .readonly();
 
-const unmeasuredResourceUsageSchema = z.strictObject({
-    measure: z.optional(z.literal(false))
-});
+const unmeasuredResourceUsageSchema = z
+    .strictObject({
+        measure: z.optional(z.literal(false))
+    })
+    .readonly();
 
 const resourceUsageSchema = z.union([ measuredResourceUsageSchema, unmeasuredResourceUsageSchema ]);
 
-const timeoutSchema = z.strictObject({
-    hardMilliseconds: z.optional(positiveSafeIntegerSchema),
-    softMilliseconds: z.optional(positiveSafeIntegerSchema)
-});
+const timeoutSchema = z
+    .strictObject({
+        hardMilliseconds: z.optional(positiveSafeIntegerSchema),
+        softMilliseconds: z.optional(positiveSafeIntegerSchema)
+    })
+    .readonly();
 
 const microtestExecutionSchema = z.discriminatedUnion('processModel', [
-    z.strictObject({
-        processModel: z.literal('in-process'),
-        scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ]))
-    }),
-    z.strictObject({
-        processModel: z.literal('supervised-process'),
-        scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ]))
-    })
+    z
+        .strictObject({
+            processModel: z.literal('in-process'),
+            scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ]))
+        })
+        .readonly(),
+    z
+        .strictObject({
+            processModel: z.literal('supervised-process'),
+            scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ]))
+        })
+        .readonly()
 ]);
 
 const profileSchema = z.discriminatedUnion('testFamily', [
-    z.strictObject({
-        execution: z.optional(microtestExecutionSchema),
-        reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema)),
-        resourceUsage: z.optional(resourceUsageSchema),
-        testFamily: z.literal('microtest'),
-        timeouts: z.optional(timeoutSchema)
-    })
+    z
+        .strictObject({
+            execution: z.optional(microtestExecutionSchema),
+            reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
+            resourceUsage: z.optional(resourceUsageSchema),
+            testFamily: z.literal('microtest'),
+            timeouts: z.optional(timeoutSchema)
+        })
+        .readonly()
 ]);
 
-const profilesSchema = z.record(z.string(), profileSchema);
+const profilesSchema = z.record(z.string(), profileSchema).readonly();
 
-const projectConfigSchema = z.strictObject({
-    loader: z.optional(loaderSchema),
-    outputRenderer: z.optional(outputRendererSchema),
-    profiles: z.optional(profilesSchema),
-    reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema)),
-    runtimeStateDir: z.optional(z.string().min(1))
-});
+const projectConfigSchema = z
+    .strictObject({
+        loader: z.optional(loaderSchema),
+        outputRenderer: z.optional(outputRendererSchema),
+        profiles: z.optional(profilesSchema),
+        reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
+        runtimeStateDir: z.optional(z.string().min(1))
+    })
+    .readonly();
 
-type ParsedProjectConfig = {
-    readonly loader?: RunLoaderConfig | undefined;
-    readonly outputRenderer?: OutputRenderer | undefined;
-    readonly profiles?: RunProjectProfilesConfig | undefined;
-    readonly reporters?: NonEmptyReadonlyArray<Reporter> | undefined;
-    readonly runtimeStateDir?: string | undefined;
-};
+export type RunProjectResourceBudgets = z.infer<typeof resourceBudgetsSchema>;
+export type RunProjectMeasuredResourceUsage = z.infer<typeof measuredResourceUsageSchema>;
+export type RunProjectUnmeasuredResourceUsage = z.infer<typeof unmeasuredResourceUsageSchema>;
+export type RunProjectResourceUsageConfig = z.infer<typeof resourceUsageSchema>;
+export type RunProjectTimeoutConfig = z.infer<typeof timeoutSchema>;
+export type RunProjectMicrotestExecution = z.infer<typeof microtestExecutionSchema>;
+export type RunProjectMicrotestProfileConfig = z.infer<typeof profileSchema>;
+export type RunProjectProfilesConfig = z.infer<typeof profilesSchema>;
+export type RunProjectConfig = z.infer<typeof projectConfigSchema>;
 
 export function defineConfig(config: RunProjectConfig): RunProjectConfig {
     return config;
@@ -257,16 +218,40 @@ type ConfigModuleWithDefaultExport = {
     readonly default: unknown;
 };
 
+type ConfigModuleWithNamedConfigExport = {
+    readonly config: unknown;
+};
+
 function hasDefaultExport(configModule: unknown): configModule is ConfigModuleWithDefaultExport {
     return typeof configModule === 'object' && configModule !== null && Object.hasOwn(configModule, 'default');
 }
 
-function readDefaultExport(configModule: unknown, configPath: string): unknown {
+function hasNamedConfigExport(configModule: unknown): configModule is ConfigModuleWithNamedConfigExport {
+    return typeof configModule === 'object' && configModule !== null && Object.hasOwn(configModule, 'config');
+}
+
+function assertNoExtraConfigExports(configModule: ConfigModuleWithNamedConfigExport, configPath: string): void {
+    const extraExports = Object.keys(configModule).filter(function isExtraExport(exportName) {
+        return exportName !== 'config';
+    });
+
+    if (extraExports.length > 0) {
+        throw new RunConfigError(`Config file "${configPath}" must only export a named config value.`);
+    }
+}
+
+function readNamedConfigExport(configModule: unknown, configPath: string): unknown {
     if (hasDefaultExport(configModule)) {
-        return configModule.default;
+        throw new RunConfigError(`Config file "${configPath}" must not export a default config.`);
     }
 
-    throw new RunConfigError(`Config file "${configPath}" must export a default config object.`);
+    if (hasNamedConfigExport(configModule)) {
+        assertNoExtraConfigExports(configModule, configPath);
+
+        return configModule.config;
+    }
+
+    throw new RunConfigError(`Config file "${configPath}" must export a named config value.`);
 }
 
 function normalizeReporters(reporters: NonEmptyReadonlyArray<Reporter> | undefined): LoadedRunConfig['reporters'] {
@@ -350,6 +335,14 @@ function normalizeTimeouts(timeouts: RunProjectTimeoutConfig | undefined): RunTi
     };
 }
 
+function assertValidTimeouts(timeouts: RunTimeoutPolicy): void {
+    if (timeouts.softMilliseconds > timeouts.hardMilliseconds) {
+        throw new RunConfigError(
+            'Invalid profile timeouts: softMilliseconds must be less than or equal to hardMilliseconds.'
+        );
+    }
+}
+
 function normalizeExecution(execution: RunProjectMicrotestExecution | undefined): RunMicrotestExecution {
     return {
         processModel: execution?.processModel ?? defaultMicrotestExecution.processModel,
@@ -358,12 +351,16 @@ function normalizeExecution(execution: RunProjectMicrotestExecution | undefined)
 }
 
 function normalizeMicrotestProfile(profile: RunProjectMicrotestProfileConfig): RunMicrotestProfileConfig {
+    const timeouts = normalizeTimeouts(profile.timeouts);
+
+    assertValidTimeouts(timeouts);
+
     return {
         execution: normalizeExecution(profile.execution),
         reporters: normalizeReporters(profile.reporters),
         resourceUsage: normalizeResourceUsage(profile.resourceUsage),
         testFamily: 'microtest',
-        timeouts: normalizeTimeouts(profile.timeouts)
+        timeouts
     };
 }
 
@@ -396,7 +393,7 @@ function normalizeConfiguredProfiles(profiles: RunProjectProfilesConfig | undefi
     return normalizedProfiles;
 }
 
-function normalizeConfig(parsedConfig: ParsedProjectConfig, configPath: string | null): LoadedRunConfig {
+function normalizeConfig(parsedConfig: RunProjectConfig, configPath: string | null): LoadedRunConfig {
     return {
         configPath,
         loader: parsedConfig.loader ?? defaultLoader,
@@ -407,9 +404,9 @@ function normalizeConfig(parsedConfig: ParsedProjectConfig, configPath: string |
     };
 }
 
-function parseConfig(configValue: unknown, configPath: string): ParsedProjectConfig {
+function parseConfig(configValue: unknown, configPath: string): RunProjectConfig {
     try {
-        const parsedConfig: ParsedProjectConfig = parse(projectConfigSchema, configValue);
+        const parsedConfig: RunProjectConfig = parse(projectConfigSchema, configValue);
 
         return parsedConfig;
     } catch (error: unknown) {
@@ -425,7 +422,7 @@ export async function loadRunConfig(request: RunConfigLoadRequest): Promise<Load
     }
 
     const configModule = await importConfigModule(configPath);
-    const configValue = readDefaultExport(configModule, configPath);
+    const configValue = readNamedConfigExport(configModule, configPath);
 
     return normalizeConfig(parseConfig(configValue, configPath), configPath);
 }

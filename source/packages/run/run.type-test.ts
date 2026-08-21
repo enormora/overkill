@@ -1,16 +1,29 @@
 import { describe, expect, test } from 'tstyche';
-import type { Engine, OutputRenderer, Reporter, RunResult } from '../engine/engine.entry-point.ts';
+import type {
+    DefinedOutputRenderer,
+    DefinedReporter,
+    Engine,
+    OutputRenderer,
+    Reporter,
+    RunResult
+} from '../engine/engine.entry-point.ts';
 import {
+    RunConfigError,
     RunResolutionError,
+    type defineConfig,
+    type loadRunConfig,
+    type LoadedRunConfig,
     type orchestrator,
     type ResolvedRun,
     type RunCommand,
     type RunConfig,
+    type RunConfigLoadRequest,
     type RunExecutionFacts,
     type RunFacts,
     type RunMicrotestProfileConfig,
     type RunOrchestrator,
     type RunProcessModel,
+    type RunProjectConfig,
     type RunResourceBudgets,
     type RunResourceUsagePolicy,
     type RunRequest,
@@ -81,5 +94,17 @@ describe('@overkill-dev/run', function () {
         expect(new RunResolutionError('Unsupported.', undefined, 'unsupported-request')).type.toBe<
             RunResolutionError
         >();
+    });
+
+    test('exposes config loading helpers from the main package surface', function () {
+        expect<typeof defineConfig>().type.toBe<(config: RunProjectConfig) => RunProjectConfig>();
+        expect<typeof loadRunConfig>().type.toBe<
+            (request: RunConfigLoadRequest) => Promise<LoadedRunConfig>
+        >();
+        expect<RunProjectConfig['outputRenderer']>().type.toBe<DefinedOutputRenderer | undefined>();
+        expect<RunProjectConfig['reporters']>().type.toBe<
+            readonly [DefinedReporter, ...DefinedReporter[]] | undefined
+        >();
+        expect(new RunConfigError('Invalid config.')).type.toBe<RunConfigError>();
     });
 });
