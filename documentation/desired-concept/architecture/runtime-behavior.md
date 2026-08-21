@@ -249,8 +249,8 @@ outlive the test body. Therefore:
   explicitly enabled
 - post-test heap, resident set, and active-resource deltas may be reported in
   verbose or debug output
-- configured resource budgets require an execution profile that can enforce
-  them
+- configured resource budgets are enforced on a best-effort basis when
+  measurement is enabled
 
 Single-process microtests do not produce a hard `resource-exhausted` kill
 for a CPU-bound loop or a synchronous allocation that prevents the event loop
@@ -258,10 +258,10 @@ from reaching the sampler. If the process dies, the last streamed active test
 identity is useful evidence, but the runner process may not survive to turn it
 into a complete `RunResult`.
 
-When a microtest profile configures resource budgets, orchestration should
-require `execution.processModel: 'supervised-process'`. A run may explicitly
-enable `measureResourceUsage` without budgets to collect diagnostic usage data
-without requesting enforcement.
+When an `in-process` microtest profile configures resource budgets, orchestration
+checks sampled usage while the event loop can run and checks the final usage
+snapshot after the run. A final-only breach is reported as a post-test
+diagnostic because the active test can no longer be attributed reliably.
 
 ### Supervised Execution
 

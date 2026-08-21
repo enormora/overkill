@@ -230,7 +230,7 @@ export const testSuite = createOverkillSuite({
                                 },
                                 resourceUsage: {
                                     budgets: {
-                                        residentSetBytes: 1
+                                        residentSetBytes: 4
                                     },
                                     measure: true
                                 }
@@ -241,6 +241,54 @@ export const testSuite = createOverkillSuite({
                 ));
 
                 scope.assert.equal(result.runnerErrors.length, 0);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'orchestrator.run() reports final resource budget breaches for in-process microtests',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const runOrchestrator = createDeterministicRunOrchestrator();
+
+                const result = await runOrchestrator.run(createRunCommand(
+                    {
+                        ...defaultConfig,
+                        profiles: {
+                            microtest: defaultMicrotestProfile({
+                                execution: {
+                                    processModel: 'in-process'
+                                },
+                                resourceUsage: {
+                                    budgets: {
+                                        residentSetBytes: 1
+                                    },
+                                    measure: true
+                                }
+                            })
+                        }
+                    },
+                    defaultRequest
+                ));
+                const error = result.runnerErrors[0];
+
+                scope.require.defined(error);
+                scope.assert.equal(error.subtype, 'resource-exhaustion');
+                scope.assert.equal(error.attributedTo, null);
+                scope.assert.deepEqual(plainData(error.cause), {
+                    activeCases: [],
+                    budget: 1,
+                    enforcement: 'post-test-diagnostic',
+                    metric: 'residentSetBytes',
+                    observed: 3,
+                    sample: {
+                        activeResourceCount: 0,
+                        activeResourceTypes: [],
+                        capturedAtMilliseconds: 1,
+                        javaScriptEngineHeapBytes: 2,
+                        residentSetBytes: 3
+                    }
+                });
 
                 return scope.assert.collect();
             }
