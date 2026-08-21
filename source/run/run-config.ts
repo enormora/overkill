@@ -26,14 +26,6 @@ const defaultResourceUsageSamplingIntervalMilliseconds = 100;
 const defaultMicrotestHardTimeoutMilliseconds = 1000;
 const defaultMicrotestTimeoutMilliseconds = 500;
 
-export type RunProjectConfig = {
-    readonly loader?: RunLoaderConfig | undefined;
-    readonly outputRenderer?: DefinedOutputRenderer | undefined;
-    readonly profiles?: RunProjectProfilesConfig | undefined;
-    readonly reporters?: NonEmptyReadonlyArray<DefinedReporter> | undefined;
-    readonly runtimeStateDir?: string | undefined;
-};
-
 export type LoadedRunConfig = {
     readonly configPath: string | null;
     readonly loader: RunLoaderConfig;
@@ -42,50 +34,6 @@ export type LoadedRunConfig = {
     readonly reporters: NonEmptyReadonlyArray<Reporter> | null;
     readonly runtimeStateDir: string;
 };
-
-export type RunProjectResourceBudgets = {
-    readonly activeResourceCount?: number | null | undefined;
-    readonly javaScriptEngineHeapBytes?: number | null | undefined;
-    readonly residentSetBytes?: number | null | undefined;
-    readonly residentSetGrowthBytesPerSecond?: number | null | undefined;
-};
-
-export type RunProjectMeasuredResourceUsage = {
-    readonly budgets?: RunProjectResourceBudgets | undefined;
-    readonly measure: true;
-    readonly samplingIntervalMilliseconds?: number | undefined;
-};
-
-export type RunProjectUnmeasuredResourceUsage = {
-    readonly budgets?: never;
-    readonly measure?: false | undefined;
-    readonly samplingIntervalMilliseconds?: never;
-};
-
-export type RunProjectResourceUsageConfig = RunProjectMeasuredResourceUsage | RunProjectUnmeasuredResourceUsage;
-
-export type RunProjectTimeoutConfig = {
-    readonly hardMilliseconds?: number | undefined;
-    readonly softMilliseconds?: number | undefined;
-};
-
-export type RunProjectMicrotestExecution = {
-    readonly processModel: 'in-process';
-    readonly scheduling?: 'concurrent' | 'serial' | undefined;
-} | {
-    readonly processModel: 'supervised-process';
-    readonly scheduling?: 'concurrent' | 'serial' | undefined;
-};
-
-export type RunProjectMicrotestProfileConfig = {
-    readonly execution?: RunProjectMicrotestExecution | undefined;
-    readonly reporters?: NonEmptyReadonlyArray<DefinedReporter> | undefined;
-    readonly resourceUsage?: RunProjectResourceUsageConfig | undefined;
-    readonly testFamily: 'microtest';
-    readonly timeouts?: RunProjectTimeoutConfig | undefined;
-};
-
-export type RunProjectProfilesConfig = Readonly<Record<string, RunProjectMicrotestProfileConfig>>;
 
 export type RunConfigLoadRequest = {
     readonly configPath: string | null;
@@ -125,94 +73,104 @@ const defaultMicrotestExecution: RunMicrotestExecution = {
     scheduling: 'concurrent'
 };
 
-const reporterSchema = z.custom<Reporter>(isReporter, 'must be created with defineReporter(...)');
+const reporterSchema = z.custom<DefinedReporter>(isReporter, 'must be created with defineReporter(...)');
 
-const outputRendererSchema = z.custom<OutputRenderer>(
+const outputRendererSchema = z.custom<DefinedOutputRenderer>(
     isOutputRenderer,
     'must be created with defineOutputRenderer(...)'
 );
 
-const loaderSchema = z.strictObject({
-    sourceMaps: z.boolean(),
-    stripMode: z.literal('strip-only')
-});
+const loaderSchema = z
+    .strictObject({
+        sourceMaps: z.boolean(),
+        stripMode: z.literal('strip-only')
+    })
+    .readonly();
 
 const positiveSafeIntegerSchema = z.number().refine(function isPositiveSafeInteger(value) {
     return Number.isSafeInteger(value) && value > 0;
 }, 'must be a positive safe integer');
 
-const resourceBudgetsSchema = z.strictObject({
-    activeResourceCount: z.optional(z.nullable(positiveSafeIntegerSchema)),
-    javaScriptEngineHeapBytes: z.optional(z.nullable(positiveSafeIntegerSchema)),
-    residentSetBytes: z.optional(z.nullable(positiveSafeIntegerSchema)),
-    residentSetGrowthBytesPerSecond: z.optional(z.nullable(positiveSafeIntegerSchema))
-});
+const resourceBudgetsSchema = z
+    .strictObject({
+        activeResourceCount: z.optional(z.nullable(positiveSafeIntegerSchema)),
+        javaScriptEngineHeapBytes: z.optional(z.nullable(positiveSafeIntegerSchema)),
+        residentSetBytes: z.optional(z.nullable(positiveSafeIntegerSchema)),
+        residentSetGrowthBytesPerSecond: z.optional(z.nullable(positiveSafeIntegerSchema))
+    })
+    .readonly();
 
-const measuredResourceUsageSchema = z.strictObject({
-    budgets: z.optional(resourceBudgetsSchema),
-    measure: z.literal(true),
-    samplingIntervalMilliseconds: z.optional(positiveSafeIntegerSchema)
-});
+const measuredResourceUsageSchema = z
+    .strictObject({
+        budgets: z.optional(resourceBudgetsSchema),
+        measure: z.literal(true),
+        samplingIntervalMilliseconds: z.optional(positiveSafeIntegerSchema)
+    })
+    .readonly();
 
-const unmeasuredResourceUsageSchema = z.strictObject({
-    measure: z.optional(z.literal(false))
-});
+const unmeasuredResourceUsageSchema = z
+    .strictObject({
+        measure: z.optional(z.literal(false))
+    })
+    .readonly();
 
 const resourceUsageSchema = z.union([ measuredResourceUsageSchema, unmeasuredResourceUsageSchema ]);
 
-const timeoutSchema = z.strictObject({
-    hardMilliseconds: z.optional(positiveSafeIntegerSchema),
-    softMilliseconds: z.optional(positiveSafeIntegerSchema)
-});
+const timeoutSchema = z
+    .strictObject({
+        hardMilliseconds: z.optional(positiveSafeIntegerSchema),
+        softMilliseconds: z.optional(positiveSafeIntegerSchema)
+    })
+    .readonly();
 
 const microtestExecutionSchema = z.discriminatedUnion('processModel', [
-    z.strictObject({
-        processModel: z.literal('in-process'),
-        scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ]))
-    }),
-    z.strictObject({
-        processModel: z.literal('supervised-process'),
-        scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ]))
-    })
+    z
+        .strictObject({
+            processModel: z.literal('in-process'),
+            scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ]))
+        })
+        .readonly(),
+    z
+        .strictObject({
+            processModel: z.literal('supervised-process'),
+            scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ]))
+        })
+        .readonly()
 ]);
 
 const profileSchema = z.discriminatedUnion('testFamily', [
-    z.strictObject({
-        execution: z.optional(microtestExecutionSchema),
-        reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema)),
-        resourceUsage: z.optional(resourceUsageSchema),
-        testFamily: z.literal('microtest'),
-        timeouts: z.optional(timeoutSchema)
-    })
+    z
+        .strictObject({
+            execution: z.optional(microtestExecutionSchema),
+            reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
+            resourceUsage: z.optional(resourceUsageSchema),
+            testFamily: z.literal('microtest'),
+            timeouts: z.optional(timeoutSchema)
+        })
+        .readonly()
 ]);
 
-const profilesSchema = z.record(z.string(), profileSchema);
+const profilesSchema = z.record(z.string(), profileSchema).readonly();
 
-const projectConfigSchema = z.strictObject({
-    loader: z.optional(loaderSchema),
-    outputRenderer: z.optional(outputRendererSchema),
-    profiles: z.optional(profilesSchema),
-    reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema)),
-    runtimeStateDir: z.optional(z.string().min(1))
-});
+const projectConfigSchema = z
+    .strictObject({
+        loader: z.optional(loaderSchema),
+        outputRenderer: z.optional(outputRendererSchema),
+        profiles: z.optional(profilesSchema),
+        reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
+        runtimeStateDir: z.optional(z.string().min(1))
+    })
+    .readonly();
 
-type ParsedProjectConfig = {
-    readonly loader?: RunLoaderConfig | undefined;
-    readonly outputRenderer?: OutputRenderer | undefined;
-    readonly profiles?: ParsedProjectProfilesConfig | undefined;
-    readonly reporters?: NonEmptyReadonlyArray<Reporter> | undefined;
-    readonly runtimeStateDir?: string | undefined;
-};
-
-type ParsedProjectMicrotestProfileConfig = {
-    readonly execution?: RunProjectMicrotestExecution | undefined;
-    readonly reporters?: NonEmptyReadonlyArray<Reporter> | undefined;
-    readonly resourceUsage?: RunProjectResourceUsageConfig | undefined;
-    readonly testFamily: 'microtest';
-    readonly timeouts?: RunProjectTimeoutConfig | undefined;
-};
-
-type ParsedProjectProfilesConfig = Readonly<Record<string, ParsedProjectMicrotestProfileConfig>>;
+export type RunProjectResourceBudgets = z.infer<typeof resourceBudgetsSchema>;
+export type RunProjectMeasuredResourceUsage = z.infer<typeof measuredResourceUsageSchema>;
+export type RunProjectUnmeasuredResourceUsage = z.infer<typeof unmeasuredResourceUsageSchema>;
+export type RunProjectResourceUsageConfig = z.infer<typeof resourceUsageSchema>;
+export type RunProjectTimeoutConfig = z.infer<typeof timeoutSchema>;
+export type RunProjectMicrotestExecution = z.infer<typeof microtestExecutionSchema>;
+export type RunProjectMicrotestProfileConfig = z.infer<typeof profileSchema>;
+export type RunProjectProfilesConfig = z.infer<typeof profilesSchema>;
+export type RunProjectConfig = z.infer<typeof projectConfigSchema>;
 
 export function defineConfig(config: RunProjectConfig): RunProjectConfig {
     return config;
@@ -392,7 +350,7 @@ function normalizeExecution(execution: RunProjectMicrotestExecution | undefined)
     };
 }
 
-function normalizeMicrotestProfile(profile: ParsedProjectMicrotestProfileConfig): RunMicrotestProfileConfig {
+function normalizeMicrotestProfile(profile: RunProjectMicrotestProfileConfig): RunMicrotestProfileConfig {
     const timeouts = normalizeTimeouts(profile.timeouts);
 
     assertValidTimeouts(timeouts);
@@ -419,7 +377,7 @@ function defaultMicrotestProfile(): RunMicrotestProfileConfig {
     return normalizeMicrotestProfile({ testFamily: 'microtest' });
 }
 
-function normalizeConfiguredProfiles(profiles: ParsedProjectProfilesConfig | undefined): RunProfilesConfig {
+function normalizeConfiguredProfiles(profiles: RunProjectProfilesConfig | undefined): RunProfilesConfig {
     const normalizedProfiles: Record<string, RunMicrotestProfileConfig> = {};
     const profileEntries = Object.entries(profiles ?? {});
 
@@ -435,7 +393,7 @@ function normalizeConfiguredProfiles(profiles: ParsedProjectProfilesConfig | und
     return normalizedProfiles;
 }
 
-function normalizeConfig(parsedConfig: ParsedProjectConfig, configPath: string | null): LoadedRunConfig {
+function normalizeConfig(parsedConfig: RunProjectConfig, configPath: string | null): LoadedRunConfig {
     return {
         configPath,
         loader: parsedConfig.loader ?? defaultLoader,
@@ -446,9 +404,9 @@ function normalizeConfig(parsedConfig: ParsedProjectConfig, configPath: string |
     };
 }
 
-function parseConfig(configValue: unknown, configPath: string): ParsedProjectConfig {
+function parseConfig(configValue: unknown, configPath: string): RunProjectConfig {
     try {
-        const parsedConfig: ParsedProjectConfig = parse(projectConfigSchema, configValue);
+        const parsedConfig: RunProjectConfig = parse(projectConfigSchema, configValue);
 
         return parsedConfig;
     } catch (error: unknown) {
