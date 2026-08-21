@@ -41,7 +41,7 @@
         "@ls-lint/ls-lint": "2.3.1",
         "@overkill-dev/assert": "0.0.6",
         "@overkill-dev/doubles": "0.0.4",
-        "@overkill-dev/engine": "0.0.6",
+        "@overkill-dev/engine": "0.0.12",
         "@packtory/cli": "0.0.93",
         "@packtory/github-release-gate": "0.0.56",
         "@types/node": "26.2.0",
