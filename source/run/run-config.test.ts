@@ -91,6 +91,26 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'loadRunConfig() discovers a JavaScript named config export',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const cwd = await createTempFolder();
+                const configPath = await writeConfig(
+                    cwd,
+                    'overkill.config.js',
+                    `export const config = {
+                        runtimeStateDir: 'target/js-config-state'
+                    };`
+                );
+                const config = await loadRunConfig({ configPath: null, cwd });
+
+                scope.assert.equal(config.configPath, configPath);
+                scope.assert.equal(config.runtimeStateDir, 'target/js-config-state');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'loadRunConfig() loads microtest resource usage policy',
             metadata: {},
             async body(scope: OverkillScope) {
