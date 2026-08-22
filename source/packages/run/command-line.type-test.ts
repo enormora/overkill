@@ -24,7 +24,7 @@ import {
     type RunProjectProfilesConfig,
     type RunProjectResourceBudgets
 } from './command-line.entry-point.ts';
-import type { RunRequest } from './run.entry-point.ts';
+import type { RunProfileName, RunRequest } from './run.entry-point.ts';
 
 type CommandLineRunnerResultKeys = keyof CommandLineRunnerResult;
 type ExpectedCommandLineExitCode = (typeof commandLineExitCodes)[keyof typeof commandLineExitCodes];
@@ -68,9 +68,10 @@ describe('@overkill-dev/run/command-line', function () {
         >();
         expect<LoadedRunConfig['reporters']>().type.toBe<readonly [Reporter, ...Reporter[]] | null>();
         expect<RunProjectConfig['profiles']>().type.toBe<RunProjectProfilesConfig | undefined>();
-        expect<RunProjectProfilesConfig['microtest']>().type.toBe<RunProjectMicrotestProfileConfig>();
+        expect<RunProjectProfilesConfig[RunProfileName]>().type.toBe<RunProjectMicrotestProfileConfig>();
+        expect<RunProjectProfilesConfig['backend-http']>().type.toBe<RunProjectMicrotestProfileConfig>();
         expect<RunProjectResourceBudgets['residentSetBytes']>().type.toBe<number | null | undefined>();
-        expect<LoadedRunConfig['profiles']['microtest']['resourceUsage']['measure']>().type.toBe<boolean>();
+        expect<LoadedRunConfig['profiles']['backend-http']['resourceUsage']['measure']>().type.toBe<boolean>();
         expect(new RunConfigError('Invalid config.')).type.toBe<RunConfigError>();
     });
 });

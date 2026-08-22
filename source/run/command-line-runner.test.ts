@@ -248,6 +248,51 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'commandLineRunner.runTests() injects the default reporter for a project-owned profile name',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const receivedCommands: RunCommand[] = [];
+                const dependencies = createRunnerDependencies({
+                    async loadRunConfig() {
+                        return {
+                            ...defaultLoadedConfig(null),
+                            profiles: {
+                                'backend-http': defaultMicrotestProfile()
+                            }
+                        };
+                    },
+                    orchestrator: {
+                        async resolve(command) {
+                            return await createRunnerDependencies({}).orchestrator.resolve(command);
+                        },
+                        async run(command) {
+                            receivedCommands.push(command);
+                            return runResultFactory.build({
+                                perTest: [ { outcome: { kind: 'pass' } } ],
+                                summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }
+                            });
+                        }
+                    }
+                });
+                const runner = createCommandLineRunner(dependencies);
+                const result = await runner.runTests({
+                    configPath: null,
+                    cwd: process.cwd(),
+                    request: {
+                        ...defaultRequest,
+                        profile: 'backend-http'
+                    }
+                });
+
+                scope.assert.equal(result.exitCode, 0);
+                scope.require.defined(receivedCommands[0]);
+                scope.assert.equal(receivedCommands[0].request.profile, 'backend-http');
+                scope.assert.equal(receivedCommands[0].config.reporters[0], memoryReporter);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'commandLineRunner.runTests() preserves configured reporters',
             metadata: {},
             async body(scope: OverkillScope) {

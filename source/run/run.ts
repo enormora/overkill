@@ -9,6 +9,7 @@ import {
     RunCollectionError,
     unsupportedRequest
 } from './run-errors.ts';
+import { invalidRunProfileNameMessage } from './run-profile-name.ts';
 import { loadRunTestModules } from './run-test-modules.ts';
 import { executeSupervisedRun } from './supervised-run.ts';
 import type {
@@ -93,7 +94,16 @@ function validateRunResourceUsageRequest(request: RunRequest): void {
     }
 }
 
+function assertValidRunProfileName(profileName: string): void {
+    const message = invalidRunProfileNameMessage(profileName);
+
+    if (message !== null) {
+        invalidRequest(message);
+    }
+}
+
 function validateRunRequest(request: RunRequest): void {
+    assertValidRunProfileName(request.profile);
     validateRunShard(request);
     validateRunSeed(request);
     validateRunResourceUsageRequest(request);
@@ -114,7 +124,8 @@ function validateRunProfile(profile: RunMicrotestProfileConfig): void {
 }
 
 function validateRunConfig(config: RunConfig): void {
-    for (const profile of Object.values(config.profiles)) {
+    for (const [ profileName, profile ] of Object.entries(config.profiles)) {
+        assertValidRunProfileName(profileName);
         validateRunProfile(profile);
     }
 }

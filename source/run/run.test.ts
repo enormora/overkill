@@ -153,6 +153,46 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'orchestrator.resolve() selects a project-owned profile name',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const runOrchestrator = createDeterministicRunOrchestrator();
+                const resolvedRun = await runOrchestrator.resolve(createRunCommand({
+                    config: defaultRunConfig({
+                        profiles: {
+                            'backend-http': defaultMicrotestProfile({
+                                execution: {
+                                    processModel: 'in-process',
+                                    scheduling: 'serial'
+                                },
+                                timeouts: {
+                                    hardMilliseconds: 2000,
+                                    softMilliseconds: 750
+                                }
+                            })
+                        }
+                    }),
+                    cwd: process.cwd(),
+                    engine: null,
+                    request: {
+                        ...defaultRequest,
+                        profile: 'backend-http'
+                    }
+                }));
+
+                scope.assert.equal(resolvedRun.facts.execution.profile, 'backend-http');
+                scope.assert.equal(resolvedRun.facts.execution.testFamily, 'microtest');
+                scope.assert.equal(resolvedRun.facts.execution.processModel, 'in-process');
+                scope.assert.equal(resolvedRun.facts.execution.scheduling, 'serial');
+                scope.assert.deepEqual(resolvedRun.facts.execution.timeoutPolicy, {
+                    hardMilliseconds: 2000,
+                    softMilliseconds: 750
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'orchestrator.resolve() rejects empty explicit input',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -231,6 +271,77 @@ export const testSuite = createOverkillSuite({
                     }));
                 }, {
                     message: 'Unknown run profile: missing'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'orchestrator.resolve() rejects invalid request profile names',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                await scope.assert.rejects(async function resolveInvalidProfileName() {
+                    await orchestrator.resolve(createRunCommand({
+                        config: defaultConfig,
+                        cwd: process.cwd(),
+                        engine: null,
+                        request: {
+                            ...defaultRequest,
+                            profile: 'backend/http'
+                        }
+                    }));
+                }, {
+                    message: 'Invalid profile name "backend/http". ' +
+                        'Profile names may only contain letters, numbers, dots, underscores, and hyphens.'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'orchestrator.resolve() rejects invalid config profile names',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                await scope.assert.rejects(async function resolveInvalidConfigProfileName() {
+                    await orchestrator.resolve(createRunCommand({
+                        config: defaultRunConfig({
+                            profiles: {
+                                'backend/http': defaultMicrotestProfile()
+                            }
+                        }),
+                        cwd: process.cwd(),
+                        engine: null,
+                        request: defaultRequest
+                    }));
+                }, {
+                    message: 'Invalid profile name "backend/http". ' +
+                        'Profile names may only contain letters, numbers, dots, underscores, and hyphens.'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'orchestrator.resolve() rejects reserved benchmark profile names',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                await scope.assert.rejects(async function resolveReservedRequestProfileName() {
+                    await orchestrator.resolve(createRunCommand({
+                        config: defaultRunConfig({
+                            profiles: {
+                                benchmark: defaultMicrotestProfile()
+                            }
+                        }),
+                        cwd: process.cwd(),
+                        engine: null,
+                        request: {
+                            ...defaultRequest,
+                            profile: 'benchmark'
+                        }
+                    }));
+                }, {
+                    message: 'Invalid profile name "benchmark". ' +
+                        'The "benchmark" profile name is reserved for benchmark commands.'
                 });
 
                 return scope.assert.collect();

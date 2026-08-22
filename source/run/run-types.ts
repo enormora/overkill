@@ -48,6 +48,8 @@ export type RunResourceBudgets = {
 
 export type RunTestFamily = 'microtest';
 
+export type RunProfileName = string;
+
 export type RunProcessModel = 'in-process' | 'supervised-process';
 
 export type RunScheduling = 'concurrent' | 'serial';
@@ -76,7 +78,7 @@ export type RunMicrotestProfileConfig = {
     readonly timeouts: RunTimeoutPolicy;
 };
 
-export type RunProfilesConfig = Readonly<Record<string, RunMicrotestProfileConfig>>;
+export type RunProfilesConfig = Readonly<Record<RunProfileName, RunMicrotestProfileConfig>>;
 
 export type RunConfig = {
     readonly loader: RunLoaderConfig;
@@ -94,7 +96,7 @@ export type RunRequest = {
     readonly measureResourceUsage: boolean | null;
     readonly order: 'plan';
     readonly paths: readonly string[];
-    readonly profile: string;
+    readonly profile: RunProfileName;
     readonly resourceBudgetOverrides: RunResourceBudgets | null;
     readonly resourceUsageSamplingIntervalMilliseconds: number | null;
     readonly seed: RunSeed;
@@ -138,7 +140,7 @@ export type RunExecutionFacts = {
     readonly debug: RunDebugRequest;
     readonly order: 'plan';
     readonly processModel: RunProcessModel;
-    readonly profile: string;
+    readonly profile: RunProfileName;
     readonly resourceUsagePolicy: RunResourceUsagePolicy;
     readonly scheduling: RunScheduling;
     readonly testFamily: RunTestFamily;

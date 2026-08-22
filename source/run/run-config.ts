@@ -11,6 +11,7 @@ import {
     type OutputRenderer
 } from '../engine/reporter-output.ts';
 import { isReporter, type DefinedReporter, type Reporter } from '../engine/reporter.ts';
+import { invalidRunProfileNameMessage } from './run-profile-name.ts';
 import type {
     RunLoaderConfig,
     RunMicrotestExecution,
@@ -365,10 +366,9 @@ function normalizeMicrotestProfile(profile: RunProjectMicrotestProfileConfig): R
 }
 
 function assertValidProfileName(profileName: string): void {
-    if (!/^[A-Za-z0-9._-]+$/u.test(profileName)) {
-        const message = `Invalid profile name "${profileName}". ` +
-            'Profile names may only contain letters, numbers, dots, underscores, and hyphens.';
+    const message = invalidRunProfileNameMessage(profileName);
 
+    if (message !== null) {
         throw new RunConfigError(message);
     }
 }
