@@ -28,6 +28,7 @@ export type {
     RunProjectMeasuredResourceUsage,
     RunProjectMicrotestExecution,
     RunProjectMicrotestProfileConfig,
+    RunProjectProfileConfig,
     RunProjectProfilesConfig,
     RunProjectResourceBudgets,
     RunProjectResourceUsageConfig,

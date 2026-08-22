@@ -303,6 +303,56 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'loadRunConfig() rejects profiles without a test family',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const cwd = await createTempFolder();
+                await writeConfig(
+                    cwd,
+                    'overkill.config.js',
+                    `export const config = {
+                        profiles: {
+                            microtest: {}
+                        }
+                    };`
+                );
+
+                await scope.assert.rejects(async function loadInvalidConfig() {
+                    await loadRunConfig({ configPath: null, cwd });
+                }, {
+                    message: /testFamily/
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'loadRunConfig() rejects unsupported profile test families',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const cwd = await createTempFolder();
+                await writeConfig(
+                    cwd,
+                    'overkill.config.js',
+                    `export const config = {
+                        profiles: {
+                            backend: {
+                                testFamily: 'integration'
+                            }
+                        }
+                    };`
+                );
+
+                await scope.assert.rejects(async function loadInvalidConfig() {
+                    await loadRunConfig({ configPath: null, cwd });
+                }, {
+                    message: /testFamily/
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'loadRunConfig() rejects resource budgets without measurement',
             metadata: {},
             async body(scope: OverkillScope) {

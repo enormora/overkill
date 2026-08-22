@@ -23,7 +23,10 @@ import {
     type RunMicrotestProfileConfig,
     type RunOrchestrator,
     type RunProcessModel,
+    type RunProfileConfig,
     type RunProjectConfig,
+    type RunProjectMicrotestProfileConfig,
+    type RunProjectProfileConfig,
     type RunResourceBudgets,
     type RunResourceUsagePolicy,
     type RunRequest,
@@ -88,7 +91,8 @@ describe('@overkill-dev/run', function () {
             'loader' | 'outputRenderer' | 'profiles' | 'reporters' | 'runtimeStateDir'
         >();
         expect<RunConfig['outputRenderer']>().type.toBe<OutputRenderer>();
-        expect<RunConfig['profiles'][string]>().type.toBe<RunMicrotestProfileConfig>();
+        expect<RunConfig['profiles'][string]>().type.toBe<RunProfileConfig>();
+        expect<RunProfileConfig>().type.toBe<RunMicrotestProfileConfig>();
         expect<RunConfig['profiles']['backend-http']>().type.toBe<RunMicrotestProfileConfig>();
         expect<RunConfig['reporters']>().type.toBe<readonly Reporter[]>();
         expect<keyof RunResourceBudgets>().type.toBe<
@@ -108,6 +112,11 @@ describe('@overkill-dev/run', function () {
         expect<RunProjectConfig['reporters']>().type.toBe<
             readonly [DefinedReporter, ...DefinedReporter[]] | undefined
         >();
+        expect<RunProjectProfileConfig>().type.toBe<RunProjectMicrotestProfileConfig>();
+        expect<RunProjectProfileConfig>().type.not.toBeAssignableFrom<{
+            readonly execution: RunProjectMicrotestProfileConfig['execution'];
+        }>();
+        expect<RunProjectProfileConfig>().type.not.toBeAssignableFrom<{ readonly testFamily: 'integration'; }>();
         expect(new RunConfigError('Invalid config.')).type.toBe<RunConfigError>();
     });
 });
