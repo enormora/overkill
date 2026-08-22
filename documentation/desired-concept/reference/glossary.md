@@ -371,7 +371,8 @@ Source: [Runtime Behavior § Process Crash Handling](../architecture/runtime-beh
 
 A per-profile ceiling for runtime resources such as JavaScript engine heap,
 resident set size, resident-set growth, or active resource count. Node-first
-resource budgets are enforced in supervised process-boundary profiles.
+resource budgets are enforced strongly in supervised process-boundary profiles
+and on a best-effort basis in in-process profiles.
 
 Source: [Runtime Behavior § Resource Budgets](../architecture/runtime-behavior.md#resource-budgets).
 

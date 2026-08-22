@@ -1,9 +1,9 @@
 import type { WallClock } from '@enormora/wall-clock';
 import { createRunResult } from './execution-result.ts';
+import { startResourceBudgetTracking } from './execution-resource-budget-tracking.ts';
 import {
     createExecutionSupervision,
     executeCaseBody,
-    recordResourceUsageSample,
     type ConcurrentCase,
     type ExecuteResourceBudgets,
     type ExecuteTimeoutPolicy,
@@ -15,7 +15,6 @@ import { type Reporter, type RunFacts, validateReporterSinks } from './reporter.
 import { createReporterEventQueue, type ReporterEventQueue } from './reporter-event-queue.ts';
 import type {
     PerTestResult,
-    ResourceUsageSnapshot,
     RunResourceUsageTracker,
     RunResult,
     RunnerError
@@ -360,32 +359,6 @@ async function executeTestPlanCasesWithMode(
     return await executeTestPlanCases(testPlan, options, dependencies, supervision);
 }
 
-function startResourceUsageTracking(
-    options: NormalizedExecuteOptions,
-    supervision: ExecutionSupervision,
-    dependencies: ExecutionDependencies
-): void {
-    let previousSample: ResourceUsageSnapshot | null = null;
-    let breached = false;
-
-    options.resourceUsageTracker?.start(function observeResourceUsage(sample) {
-        if (breached) {
-            previousSample = sample;
-            return;
-        }
-
-        const breachedNow = recordResourceUsageSample({
-            budgets: options.resourceBudgets,
-            dependencies,
-            previousSample,
-            sample,
-            supervision
-        });
-        previousSample = sample;
-        breached = breachedNow;
-    });
-}
-
 async function executeTestPlanCasesAndMeasureResourceUsage(
     testPlan: TestPlan,
     options: NormalizedExecuteOptions,
@@ -400,17 +373,29 @@ async function executeTestPlanCasesAndMeasureResourceUsage(
         };
     }
 
-    startResourceUsageTracking(options, supervision, dependencies);
+    const resourceBudgetTracking = startResourceBudgetTracking({
+        dependencies,
+        resourceBudgets: options.resourceBudgets ?? null,
+        resourceUsageTracker: options.resourceUsageTracker,
+        supervision
+    });
 
     try {
         const executedTestPlan = await executeTestPlanCasesWithMode(testPlan, options, dependencies, supervision);
+        const resourceBudgetResult = resourceBudgetTracking.finish();
 
         return {
-            executedTestPlan,
-            resourceUsage: options.resourceUsageTracker.finish()
+            executedTestPlan: {
+                ...executedTestPlan,
+                reporterErrors: [
+                    ...executedTestPlan.reporterErrors,
+                    ...resourceBudgetResult.runnerErrors
+                ]
+            },
+            resourceUsage: resourceBudgetResult.resourceUsage
         };
     } catch (error: unknown) {
-        options.resourceUsageTracker.finish();
+        resourceBudgetTracking.stop();
 
         throw error;
     }

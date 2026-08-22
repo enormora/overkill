@@ -280,8 +280,9 @@ The same boundary rule applies to resource exhaustion. The default
 single-process microtest profile can keep assertion formatting bounded and
 report post-test or between-tick resource diagnostics, but it cannot guarantee
 that the runner will survive a synchronous allocation that kills the process.
-Enforced resource budgets require the supervised microtest profile or another
-owned process boundary.
+Hard resource budget enforcement requires the supervised microtest profile or
+another owned process boundary. In-process microtests only enforce resource
+budgets on a best-effort basis with sampled and final usage diagnostics.
 
 Concept direction:
 
