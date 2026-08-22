@@ -48,7 +48,7 @@
         "c8": "12.0.0",
         "dependency-cruiser": "18.2.0",
         "eslint": "10.7.0",
-        "jscpd": "5.0.15",
+        "jscpd": "5.0.16",
         "knip": "6.32.2",
         "rust-just": "1.57.0",
         "tstyche": "7.2.2",
