@@ -61,7 +61,9 @@ Runner profile names are project-owned. Names such as `microtest`,
 entries exactly. Behavior comes from the selected profile config, not from the
 name. Profile names must be non-empty and contain only letters, numbers, dots,
 underscores, and hyphens. The exact lowercase name `benchmark` is reserved for
-benchmark commands.
+benchmark commands. Every configured runner profile must declare
+`testFamily: 'microtest'`; the selected profile's test family is recorded in
+`RunFacts.execution.testFamily`.
 
 Config loading is common runner infrastructure, not plugin discovery.
 The command-line runner loads native Node config files, selects the default

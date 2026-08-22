@@ -21,6 +21,7 @@ import {
     type LoadedRunConfig,
     type RunProjectConfig,
     type RunProjectMicrotestProfileConfig,
+    type RunProjectProfileConfig,
     type RunProjectProfilesConfig,
     type RunProjectResourceBudgets
 } from './command-line.entry-point.ts';
@@ -73,7 +74,11 @@ describe('@overkill-dev/run/command-line', function () {
 
     test('exposes typed runner profiles', function () {
         expect<RunProjectConfig['profiles']>().type.toBe<RunProjectProfilesConfig | undefined>();
-        expect<RunProjectProfilesConfig[string]>().type.toBe<RunProjectMicrotestProfileConfig>();
+        expect<RunProjectProfilesConfig[string]>().type.toBe<RunProjectProfileConfig>();
+        expect<RunProjectProfileConfig>().type.toBe<RunProjectMicrotestProfileConfig>();
+        expect<RunProjectProfileConfig>().type.not.toBeAssignableFrom<{
+            readonly execution: RunProjectMicrotestProfileConfig['execution'];
+        }>();
         expect<RunProjectProfilesConfig['backend-http']>().type.toBe<RunProjectMicrotestProfileConfig>();
         expect<LoadedRunConfig['profiles']['backend-http']['resourceUsage']['measure']>().type.toBe<boolean>();
     });

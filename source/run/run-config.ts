@@ -16,6 +16,7 @@ import {
     type RunLoaderConfig,
     type RunMicrotestExecution,
     type RunMicrotestProfileConfig,
+    type RunProfileConfig,
     type RunProfilesConfig,
     type RunResourceBudgets,
     type RunResourceUsagePolicy,
@@ -139,16 +140,18 @@ const microtestExecutionSchema = z.discriminatedUnion('processModel', [
         .readonly()
 ]);
 
+const microtestProfileSchema = z
+    .strictObject({
+        execution: z.optional(microtestExecutionSchema),
+        reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
+        resourceUsage: z.optional(resourceUsageSchema),
+        testFamily: z.literal('microtest'),
+        timeouts: z.optional(timeoutSchema)
+    })
+    .readonly();
+
 const profileSchema = z.discriminatedUnion('testFamily', [
-    z
-        .strictObject({
-            execution: z.optional(microtestExecutionSchema),
-            reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
-            resourceUsage: z.optional(resourceUsageSchema),
-            testFamily: z.literal('microtest'),
-            timeouts: z.optional(timeoutSchema)
-        })
-        .readonly()
+    microtestProfileSchema
 ]);
 
 const profilesSchema = z.record(z.string(), profileSchema).readonly();
@@ -169,7 +172,8 @@ export type RunProjectUnmeasuredResourceUsage = z.infer<typeof unmeasuredResourc
 export type RunProjectResourceUsageConfig = z.infer<typeof resourceUsageSchema>;
 export type RunProjectTimeoutConfig = z.infer<typeof timeoutSchema>;
 export type RunProjectMicrotestExecution = z.infer<typeof microtestExecutionSchema>;
-export type RunProjectMicrotestProfileConfig = z.infer<typeof profileSchema>;
+export type RunProjectMicrotestProfileConfig = z.infer<typeof microtestProfileSchema>;
+export type RunProjectProfileConfig = z.infer<typeof profileSchema>;
 export type RunProjectProfilesConfig = z.infer<typeof profilesSchema>;
 export type RunProjectConfig = z.infer<typeof projectConfigSchema>;
 
@@ -365,6 +369,16 @@ function normalizeMicrotestProfile(profile: RunProjectMicrotestProfileConfig): R
     };
 }
 
+const profileNormalizers: Readonly<
+    Record<RunProjectProfileConfig['testFamily'], (profile: RunProjectProfileConfig) => RunProfileConfig>
+> = {
+    microtest: normalizeMicrotestProfile
+};
+
+function normalizeProfile(profile: RunProjectProfileConfig): RunProfileConfig {
+    return profileNormalizers[profile.testFamily](profile);
+}
+
 function assertValidProfileName(profileName: string): void {
     const message = invalidRunProfileNameMessage(profileName);
 
@@ -378,12 +392,12 @@ function defaultMicrotestProfile(): RunMicrotestProfileConfig {
 }
 
 function normalizeConfiguredProfiles(profiles: RunProjectProfilesConfig | undefined): RunProfilesConfig {
-    const normalizedProfiles: Record<string, RunMicrotestProfileConfig> = {};
+    const normalizedProfiles: Record<string, RunProfileConfig> = {};
     const profileEntries = Object.entries(profiles ?? {});
 
     for (const [ profileName, profile ] of profileEntries) {
         assertValidProfileName(profileName);
-        normalizedProfiles[profileName] = normalizeMicrotestProfile(profile);
+        normalizedProfiles[profileName] = normalizeProfile(profile);
     }
 
     if (normalizedProfiles.microtest === undefined) {

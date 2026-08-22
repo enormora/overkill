@@ -79,7 +79,13 @@ export type RunMicrotestProfileConfig = {
     readonly timeouts: RunTimeoutPolicy;
 };
 
-export type RunProfilesConfig = Readonly<Record<string, RunMicrotestProfileConfig>>;
+export type RunProfileConfig = Readonly<
+    {
+        [Property in keyof RunMicrotestProfileConfig]: RunMicrotestProfileConfig[Property];
+    }
+>;
+
+export type RunProfilesConfig = Readonly<Record<string, RunProfileConfig>>;
 
 export type RunConfig = {
     readonly loader: RunLoaderConfig;
