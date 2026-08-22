@@ -23,11 +23,13 @@ import {
     type RunMicrotestProfileConfig,
     type RunOrchestrator,
     type RunOrchestratorDependencies,
+    type RunProfileConfig,
     type RunProfilesConfig,
     type RunRequest,
     type RunResourceBudgets,
     type RunResourceUsagePolicy,
     type RunShard,
+    type RunTestFamily,
     type RunTimeoutPolicy
 } from './run-types.ts';
 
@@ -118,15 +120,37 @@ function validateRunResourceUsagePolicy(policy: RunResourceUsagePolicy): void {
     }
 }
 
-function validateRunProfile(profile: RunMicrotestProfileConfig): void {
+function validateRunMicrotestProfile(profile: RunMicrotestProfileConfig): void {
     validateRunResourceUsagePolicy(profile.resourceUsage);
     validateTimeoutPolicy(profile.timeouts);
+}
+
+const runProfileValidators: Readonly<Record<RunTestFamily, (profile: RunProfileConfig) => void>> = {
+    microtest: validateRunMicrotestProfile
+};
+
+function readProfileTestFamily(profile: RunProfileConfig): unknown {
+    return (profile as { readonly testFamily?: unknown; }).testFamily;
+}
+
+function isRunTestFamily(value: unknown): value is RunTestFamily {
+    return value === 'microtest';
+}
+
+function validateRunProfile(profileName: string, profile: RunProfileConfig): void {
+    const testFamily = readProfileTestFamily(profile);
+
+    if (!isRunTestFamily(testFamily)) {
+        invalidRequest(`Invalid run profile "${profileName}": testFamily must be "microtest".`);
+    }
+
+    runProfileValidators[testFamily](profile);
 }
 
 function validateRunConfig(config: RunConfig): void {
     for (const [ profileName, profile ] of Object.entries(config.profiles)) {
         assertValidRunProfileName(profileName);
-        validateRunProfile(profile);
+        validateRunProfile(profileName, profile);
     }
 }
 
