@@ -52,7 +52,7 @@
         "knip": "6.32.2",
         "rust-just": "1.57.0",
         "tstyche": "7.2.2",
-        "typescript": "6.0.3"
+        "typescript": "7.0.2"
     },
     "engines": {
         "node": "^26"
