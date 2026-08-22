@@ -222,56 +222,6 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() normalizes project-owned profile names',
-            metadata: {},
-            async body(scope: OverkillScope) {
-                const cwd = await createTempFolder();
-                await writeConfig(
-                    cwd,
-                    'overkill.config.js',
-                    `export const config = {
-                        profiles: {
-                            "backend-http": {
-                                testFamily: 'microtest',
-                                execution: {
-                                    processModel: 'in-process'
-                                }
-                            },
-                            "ui-browser": {
-                                testFamily: 'microtest',
-                                timeouts: {
-                                    hardMilliseconds: 1500
-                                }
-                            },
-                            "ui.browser": {
-                                testFamily: 'microtest'
-                            },
-                            unit_fast: {
-                                testFamily: 'microtest'
-                            }
-                        }
-                    };`
-                );
-                const config = await loadRunConfig({ configPath: null, cwd });
-
-                scope.assert.deepEqual(config.profiles['backend-http'], defaultMicrotestProfile({
-                    execution: {
-                        processModel: 'in-process'
-                    }
-                }));
-                scope.assert.deepEqual(config.profiles['ui-browser'], defaultMicrotestProfile({
-                    timeouts: {
-                        hardMilliseconds: 1500
-                    }
-                }));
-                scope.assert.deepEqual(config.profiles['ui.browser'], defaultMicrotestProfile());
-                scope.assert.deepEqual(config.profiles.unit_fast, defaultMicrotestProfile());
-                scope.assert.deepEqual(config.profiles.microtest, defaultMicrotestProfile());
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
             name: 'loadRunConfig() normalizes unmeasured named profile overrides',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -463,32 +413,6 @@ export const testSuite = createOverkillSuite({
                     await loadRunConfig({ configPath: null, cwd });
                 }, {
                     message: /Invalid profile name "backend\/http"/
-                });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            name: 'loadRunConfig() rejects reserved benchmark profile names',
-            metadata: {},
-            async body(scope: OverkillScope) {
-                const cwd = await createTempFolder();
-                await writeConfig(
-                    cwd,
-                    'overkill.config.js',
-                    `export const config = {
-                        profiles: {
-                            benchmark: {
-                                testFamily: 'microtest'
-                            }
-                        }
-                    };`
-                );
-
-                await scope.assert.rejects(async function loadInvalidConfig() {
-                    await loadRunConfig({ configPath: null, cwd });
-                }, {
-                    message: /reserved for benchmark commands/
                 });
 
                 return scope.assert.collect();

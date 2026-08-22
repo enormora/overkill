@@ -7,7 +7,6 @@ Top-level API:
 - `RunCommand`
 - `RunRequest`
 - `RunFacts`
-- `RunProfileName`
 - `RunResourceBudgets`
 - `RunResourceUsagePolicy`
 - `ResolvedRun`

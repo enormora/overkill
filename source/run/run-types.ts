@@ -46,9 +46,10 @@ export type RunResourceBudgets = {
     readonly residentSetGrowthBytesPerSecond: number | null;
 };
 
-export type RunTestFamily = 'microtest';
+const runProfileNamePattern = /^[A-Za-z0-9._-]+$/u;
+const reservedBenchmarkProfileName = 'benchmark';
 
-export type RunProfileName = string;
+export type RunTestFamily = 'microtest';
 
 export type RunProcessModel = 'in-process' | 'supervised-process';
 
@@ -78,7 +79,7 @@ export type RunMicrotestProfileConfig = {
     readonly timeouts: RunTimeoutPolicy;
 };
 
-export type RunProfilesConfig = Readonly<Record<RunProfileName, RunMicrotestProfileConfig>>;
+export type RunProfilesConfig = Readonly<Record<string, RunMicrotestProfileConfig>>;
 
 export type RunConfig = {
     readonly loader: RunLoaderConfig;
@@ -96,7 +97,7 @@ export type RunRequest = {
     readonly measureResourceUsage: boolean | null;
     readonly order: 'plan';
     readonly paths: readonly string[];
-    readonly profile: RunProfileName;
+    readonly profile: string;
     readonly resourceBudgetOverrides: RunResourceBudgets | null;
     readonly resourceUsageSamplingIntervalMilliseconds: number | null;
     readonly seed: RunSeed;
@@ -140,7 +141,7 @@ export type RunExecutionFacts = {
     readonly debug: RunDebugRequest;
     readonly order: 'plan';
     readonly processModel: RunProcessModel;
-    readonly profile: RunProfileName;
+    readonly profile: string;
     readonly resourceUsagePolicy: RunResourceUsagePolicy;
     readonly scheduling: RunScheduling;
     readonly testFamily: RunTestFamily;
@@ -181,3 +182,16 @@ export type RunOrchestrator = {
     readonly resolve: (command: RunCommand) => Promise<ResolvedRun>;
     readonly run: (command: RunCommand) => Promise<RunResult>;
 };
+
+export function invalidRunProfileNameMessage(profileName: string): string | null {
+    if (!runProfileNamePattern.test(profileName)) {
+        return `Invalid profile name "${profileName}". ` +
+            'Profile names may only contain letters, numbers, dots, underscores, and hyphens.';
+    }
+
+    if (profileName === reservedBenchmarkProfileName) {
+        return 'Invalid profile name "benchmark". The "benchmark" profile name is reserved for benchmark commands.';
+    }
+
+    return null;
+}

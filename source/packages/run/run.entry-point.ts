@@ -34,7 +34,6 @@ export type {
     RunMicrotestProfileConfig,
     RunOrchestrator,
     RunProcessModel,
-    RunProfileName,
     RunProfilesConfig,
     RunResourceBudgets,
     RunResourceUsagePolicy,

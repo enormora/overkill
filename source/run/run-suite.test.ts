@@ -2,8 +2,7 @@ import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/
 import { createSuite as createOverkillSuite, runIfMain } from '@overkill-dev/engine';
 import { testSuite as commandLineRunnerTestSuite } from './command-line-runner-suite.test.ts';
 import { testSuite as resourceUsageTestSuite } from './resource-usage-suite.test.ts';
-import { testSuite as runConfigExportsTestSuite } from './run-config-exports.test.ts';
-import { testSuite as runConfigTestSuite } from './run-config.test.ts';
+import { testSuite as runConfigurationTestSuite } from './run-configuration-suite.test.ts';
 import { testSuite as runDiscoveryTestSuite } from './run-discovery.test.ts';
 import { testSuite as runTestModulesTestSuite } from './run-test-modules.test.ts';
 import { testSuite as runTestSuite } from './run.test.ts';
@@ -15,8 +14,7 @@ export const testSuite = createOverkillSuite({
     children: [
         commandLineRunnerTestSuite,
         resourceUsageTestSuite,
-        runConfigExportsTestSuite,
-        runConfigTestSuite,
+        runConfigurationTestSuite,
         runDiscoveryTestSuite,
         runTestModulesTestSuite,
         runTestSuite,

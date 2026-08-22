@@ -11,15 +11,15 @@ import {
     type OutputRenderer
 } from '../engine/reporter-output.ts';
 import { isReporter, type DefinedReporter, type Reporter } from '../engine/reporter.ts';
-import { invalidRunProfileNameMessage } from './run-profile-name.ts';
-import type {
-    RunLoaderConfig,
-    RunMicrotestExecution,
-    RunMicrotestProfileConfig,
-    RunProfilesConfig,
-    RunResourceBudgets,
-    RunResourceUsagePolicy,
-    RunTimeoutPolicy
+import {
+    invalidRunProfileNameMessage,
+    type RunLoaderConfig,
+    type RunMicrotestExecution,
+    type RunMicrotestProfileConfig,
+    type RunProfilesConfig,
+    type RunResourceBudgets,
+    type RunResourceUsagePolicy,
+    type RunTimeoutPolicy
 } from './run-types.ts';
 
 const defaultConfigFileNames = [ 'overkill.config.ts', 'overkill.config.js' ];
