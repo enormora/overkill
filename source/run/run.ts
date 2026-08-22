@@ -11,23 +11,24 @@ import {
 } from './run-errors.ts';
 import { loadRunTestModules } from './run-test-modules.ts';
 import { executeSupervisedRun } from './supervised-run.ts';
-import type {
-    ResolvedRun,
-    RunCommand,
-    RunConfig,
-    RunCaseFacts,
-    RunFacts,
-    RunLoaderConfig,
-    RunMicrotestExecution,
-    RunMicrotestProfileConfig,
-    RunOrchestrator,
-    RunOrchestratorDependencies,
-    RunProfilesConfig,
-    RunRequest,
-    RunResourceBudgets,
-    RunResourceUsagePolicy,
-    RunShard,
-    RunTimeoutPolicy
+import {
+    invalidRunProfileNameMessage,
+    type ResolvedRun,
+    type RunCommand,
+    type RunConfig,
+    type RunCaseFacts,
+    type RunFacts,
+    type RunLoaderConfig,
+    type RunMicrotestExecution,
+    type RunMicrotestProfileConfig,
+    type RunOrchestrator,
+    type RunOrchestratorDependencies,
+    type RunProfilesConfig,
+    type RunRequest,
+    type RunResourceBudgets,
+    type RunResourceUsagePolicy,
+    type RunShard,
+    type RunTimeoutPolicy
 } from './run-types.ts';
 
 const minimumSeedValue = 0n;
@@ -93,7 +94,16 @@ function validateRunResourceUsageRequest(request: RunRequest): void {
     }
 }
 
+function assertValidRunProfileName(profileName: string): void {
+    const message = invalidRunProfileNameMessage(profileName);
+
+    if (message !== null) {
+        invalidRequest(message);
+    }
+}
+
 function validateRunRequest(request: RunRequest): void {
+    assertValidRunProfileName(request.profile);
     validateRunShard(request);
     validateRunSeed(request);
     validateRunResourceUsageRequest(request);
@@ -114,7 +124,8 @@ function validateRunProfile(profile: RunMicrotestProfileConfig): void {
 }
 
 function validateRunConfig(config: RunConfig): void {
-    for (const profile of Object.values(config.profiles)) {
+    for (const [ profileName, profile ] of Object.entries(config.profiles)) {
+        assertValidRunProfileName(profileName);
         validateRunProfile(profile);
     }
 }

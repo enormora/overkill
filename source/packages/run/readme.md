@@ -56,6 +56,13 @@ individual thresholds for one run. Textual parsing for
 `--measure-resource-usage` and `--resource-budget <name=value>` belongs to the
 later command-line implementation milestone.
 
+Runner profile names are project-owned. Names such as `microtest`,
+`backend-http`, `ui-browser`, `ui.browser`, and `unit_fast` select profile
+entries exactly. Behavior comes from the selected profile config, not from the
+name. Profile names must be non-empty and contain only letters, numbers, dots,
+underscores, and hyphens. The exact lowercase name `benchmark` is reserved for
+benchmark commands.
+
 Config loading is common runner infrastructure, not plugin discovery.
 The command-line runner loads native Node config files, selects the default
 line reporter when project config omits reporters, defaults managed reporter

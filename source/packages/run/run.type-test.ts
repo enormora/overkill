@@ -66,6 +66,7 @@ describe('@overkill-dev/run', function () {
         expect<keyof RunRequest>().type.toBe<ExpectedRunRequestKey>();
         expect<RunRequest['execution']['mode']>().type.toBe<'profile-default'>();
         expect<RunRequest['measureResourceUsage']>().type.toBe<boolean | null>();
+        expect<RunRequest['profile']>().type.toBe<string>();
         expect<RunRequest['resourceBudgetOverrides']>().type.toBe<RunResourceBudgets | null>();
         expect<RunRequest['order']>().type.toBe<'plan'>();
     });
@@ -73,6 +74,7 @@ describe('@overkill-dev/run', function () {
     test('exposes serializable run facts with case metadata', function () {
         expect<keyof RunFacts>().type.toBe<'cases' | 'environment' | 'execution' | 'loader' | 'reproducibility'>();
         expect<RunExecutionFacts['processModel']>().type.toBe<RunProcessModel>();
+        expect<RunExecutionFacts['profile']>().type.toBe<string>();
         expect<RunExecutionFacts['resourceUsagePolicy']>().type.toBe<RunResourceUsagePolicy>();
         expect<RunExecutionFacts['scheduling']>().type.toBe<RunScheduling>();
         expect<RunExecutionFacts['testFamily']>().type.toBe<'microtest'>();
@@ -86,7 +88,8 @@ describe('@overkill-dev/run', function () {
             'loader' | 'outputRenderer' | 'profiles' | 'reporters' | 'runtimeStateDir'
         >();
         expect<RunConfig['outputRenderer']>().type.toBe<OutputRenderer>();
-        expect<RunConfig['profiles']['microtest']>().type.toBe<RunMicrotestProfileConfig>();
+        expect<RunConfig['profiles'][string]>().type.toBe<RunMicrotestProfileConfig>();
+        expect<RunConfig['profiles']['backend-http']>().type.toBe<RunMicrotestProfileConfig>();
         expect<RunConfig['reporters']>().type.toBe<readonly Reporter[]>();
         expect<keyof RunResourceBudgets>().type.toBe<
             'activeResourceCount' | 'javaScriptEngineHeapBytes' | 'residentSetBytes' | 'residentSetGrowthBytesPerSecond'

@@ -95,6 +95,43 @@ function createPassingPlan(): TestPlan {
     );
 }
 
+async function resolvePassingRun(command: RunCommand): Promise<Awaited<ReturnType<RunOrchestrator['resolve']>>> {
+    const profile = selectedProfile(command);
+
+    return {
+        config: command.config,
+        cwd: command.cwd,
+        facts: {
+            cases: [],
+            environment: {
+                node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
+                runtimeStateDir: command.config.runtimeStateDir
+            },
+            execution: {
+                baselineUpdateMode: command.request.baselineUpdateMode,
+                capture: command.request.capture,
+                debug: command.request.debug,
+                order: command.request.order,
+                processModel: profile.execution.processModel,
+                profile: command.request.profile,
+                resourceUsagePolicy: profile.resourceUsage,
+                scheduling: profile.execution.scheduling,
+                testFamily: profile.testFamily,
+                timeoutPolicy: profile.timeouts,
+                verbose: command.request.verbose
+            },
+            loader: command.config.loader,
+            reproducibility: {
+                seed: '42',
+                shard: command.request.shard
+            }
+        },
+        reporters: command.config.reporters,
+        request: command.request,
+        testPlan: createPassingPlan()
+    };
+}
+
 export const testSuite = createOverkillSuite({
     name: 'source/run/command-line-runner-error.test.ts',
     metadata: {},
@@ -105,42 +142,7 @@ export const testSuite = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const run = testDouble.rejects<RunOrchestrator['run']>('unexpected string failure');
                 const runner = createCommandLineRunner(createRunnerDependencies({
-                    async resolve(command) {
-                        const profile = selectedProfile(command);
-
-                        return {
-                            config: command.config,
-                            cwd: command.cwd,
-                            facts: {
-                                cases: [],
-                                environment: {
-                                    node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
-                                    runtimeStateDir: command.config.runtimeStateDir
-                                },
-                                execution: {
-                                    baselineUpdateMode: command.request.baselineUpdateMode,
-                                    capture: command.request.capture,
-                                    debug: command.request.debug,
-                                    order: command.request.order,
-                                    processModel: profile.execution.processModel,
-                                    profile: command.request.profile,
-                                    resourceUsagePolicy: profile.resourceUsage,
-                                    scheduling: profile.execution.scheduling,
-                                    testFamily: profile.testFamily,
-                                    timeoutPolicy: profile.timeouts,
-                                    verbose: command.request.verbose
-                                },
-                                loader: command.config.loader,
-                                reproducibility: {
-                                    seed: '42',
-                                    shard: command.request.shard
-                                }
-                            },
-                            reporters: command.config.reporters,
-                            request: command.request,
-                            testPlan: createPassingPlan()
-                        };
-                    },
+                    resolve: resolvePassingRun,
                     run
                 }));
                 const result = await runner.runTests({
@@ -152,6 +154,28 @@ export const testSuite = createOverkillSuite({
                 scope.assert.equal(result.exitCode, 70);
                 scope.assert.deepEqual(result.fallbackDiagnostics, [
                     'Overkill internal error: unexpected string failure'
+                ]);
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'commandLineRunner.runTests() formats Error internal crashes',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const run = testDouble.rejects<RunOrchestrator['run']>(new Error('Unexpected failure.'));
+                const runner = createCommandLineRunner(createRunnerDependencies({
+                    resolve: resolvePassingRun,
+                    run
+                }));
+                const result = await runner.runTests({
+                    configPath: null,
+                    cwd: process.cwd(),
+                    request: defaultRequest
+                });
+
+                scope.assert.equal(result.exitCode, 70);
+                scope.assert.deepEqual(result.fallbackDiagnostics, [
+                    'Overkill internal error: Unexpected failure.'
                 ]);
                 return scope.assert.collect();
             }

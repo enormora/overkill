@@ -46,6 +46,9 @@ export type RunResourceBudgets = {
     readonly residentSetGrowthBytesPerSecond: number | null;
 };
 
+const runProfileNamePattern = /^[A-Za-z0-9._-]+$/u;
+const reservedBenchmarkProfileName = 'benchmark';
+
 export type RunTestFamily = 'microtest';
 
 export type RunProcessModel = 'in-process' | 'supervised-process';
@@ -179,3 +182,16 @@ export type RunOrchestrator = {
     readonly resolve: (command: RunCommand) => Promise<ResolvedRun>;
     readonly run: (command: RunCommand) => Promise<RunResult>;
 };
+
+export function invalidRunProfileNameMessage(profileName: string): string | null {
+    if (!runProfileNamePattern.test(profileName)) {
+        return `Invalid profile name "${profileName}". ` +
+            'Profile names may only contain letters, numbers, dots, underscores, and hyphens.';
+    }
+
+    if (profileName === reservedBenchmarkProfileName) {
+        return 'Invalid profile name "benchmark". The "benchmark" profile name is reserved for benchmark commands.';
+    }
+
+    return null;
+}

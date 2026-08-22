@@ -11,14 +11,15 @@ import {
     type OutputRenderer
 } from '../engine/reporter-output.ts';
 import { isReporter, type DefinedReporter, type Reporter } from '../engine/reporter.ts';
-import type {
-    RunLoaderConfig,
-    RunMicrotestExecution,
-    RunMicrotestProfileConfig,
-    RunProfilesConfig,
-    RunResourceBudgets,
-    RunResourceUsagePolicy,
-    RunTimeoutPolicy
+import {
+    invalidRunProfileNameMessage,
+    type RunLoaderConfig,
+    type RunMicrotestExecution,
+    type RunMicrotestProfileConfig,
+    type RunProfilesConfig,
+    type RunResourceBudgets,
+    type RunResourceUsagePolicy,
+    type RunTimeoutPolicy
 } from './run-types.ts';
 
 const defaultConfigFileNames = [ 'overkill.config.ts', 'overkill.config.js' ];
@@ -365,10 +366,9 @@ function normalizeMicrotestProfile(profile: RunProjectMicrotestProfileConfig): R
 }
 
 function assertValidProfileName(profileName: string): void {
-    if (!/^[A-Za-z0-9._-]+$/u.test(profileName)) {
-        const message = `Invalid profile name "${profileName}". ` +
-            'Profile names may only contain letters, numbers, dots, underscores, and hyphens.';
+    const message = invalidRunProfileNameMessage(profileName);
 
+    if (message !== null) {
         throw new RunConfigError(message);
     }
 }

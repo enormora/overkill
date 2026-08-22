@@ -493,29 +493,6 @@ export const testSuite = createOverkillSuite({
 
                 return scope.assert.collect();
             }
-        }),
-        createOverkillTestCase({
-            name: 'commandLineRunner.runTests() maps internal crashes to exit code 70',
-            metadata: {},
-            async body(scope: OverkillScope) {
-                const result = await runTests(createRunnerDependencies({
-                    orchestrator: {
-                        async resolve(command) {
-                            return await createRunnerDependencies({}).orchestrator.resolve(command);
-                        },
-                        async run() {
-                            throw new Error('Unexpected failure.');
-                        }
-                    }
-                }));
-
-                scope.assert.equal(result.exitCode, 70);
-                scope.assert.deepEqual(result.fallbackDiagnostics, [
-                    'Overkill internal error: Unexpected failure.'
-                ]);
-
-                return scope.assert.collect();
-            }
         })
     ]
 });
