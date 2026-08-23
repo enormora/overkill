@@ -15,7 +15,7 @@ import {
     type CommandLineRunnerResult
 } from '../../run/command-line-runner.ts';
 import { orchestrator } from '../../run/run-orchestrator.ts';
-import type { RunCommand, RunConfig, RunRequest } from '../../run/run-types.ts';
+import type { RunCommand, RunConfig, RunProcessModel, RunRequest, RunScheduling } from '../../run/run-types.ts';
 import type { LoadedRunConfig } from '../../run/run-config.ts';
 
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
@@ -25,7 +25,15 @@ const endlessLoopFixturePath = 'source/integration-tests/run/fixtures/endless-lo
 const emptySuiteFixturePath = 'source/integration-tests/run/fixtures/empty-suite.test.ts';
 const missingTestNodeFixturePath = 'source/integration-tests/run/fixtures/missing-test-node.test.ts';
 const plainTestNodeFixturePath = 'source/integration-tests/run/fixtures/plain-test-node.test.ts';
+const schedulingFixturePath = 'source/integration-tests/run/fixtures/scheduling.test.ts';
 const throwsOnImportFixturePath = 'source/integration-tests/run/fixtures/throws-on-import.test.ts';
+
+type SchedulingEvent = `end:${string}` | `start:${string}`;
+
+type SchedulingEventRecorder = {
+    readonly events: () => readonly SchedulingEvent[];
+    readonly reporter: Reporter;
+};
 
 const memoryReporter: Reporter = {
     dispose: null,
@@ -103,6 +111,47 @@ function createRunConfig(): RunConfig {
     };
 }
 
+function createSchedulingEventRecorder(): SchedulingEventRecorder {
+    const events: SchedulingEvent[] = [];
+
+    return {
+        events() {
+            return events;
+        },
+        reporter: {
+            dispose: null,
+            kind: 'real-time',
+            name: 'scheduling-recorder',
+            onEvent(event) {
+                if (event.kind === 'test-start') {
+                    events.push(`start:${event.case.name}`);
+                } else if (event.kind === 'test-end') {
+                    events.push(`end:${event.case.name}`);
+                }
+            },
+            onFinish: null,
+            sinks: [ { kind: 'memory' } ]
+        }
+    };
+}
+
+function createSchedulingRunConfig(
+    processModel: RunProcessModel,
+    scheduling: RunScheduling,
+    reporter: Reporter
+): RunConfig {
+    return {
+        ...defaultConfig,
+        profiles: {
+            microtest: {
+                ...createDefaultMicrotestProfile(),
+                execution: { processModel, scheduling }
+            }
+        },
+        reporters: [ reporter ]
+    };
+}
+
 function createRunCommand(paths: readonly string[]): RunCommand {
     return {
         config: createRunConfig(),
@@ -122,6 +171,19 @@ function createSupervisedRunCommand(paths: readonly string[], config: RunConfig)
             profile: 'microtest'
         }
     };
+}
+
+async function runSchedulingScenario(
+    processModel: RunProcessModel,
+    scheduling: RunScheduling
+): Promise<readonly SchedulingEvent[]> {
+    const recorder = createSchedulingEventRecorder();
+    await orchestrator.run(createSupervisedRunCommand(
+        [ schedulingFixturePath ],
+        createSchedulingRunConfig(processModel, scheduling, recorder.reporter)
+    ));
+
+    return recorder.events();
 }
 
 async function loadConfiguredRunConfig(): Promise<LoadedRunConfig> {
@@ -221,6 +283,70 @@ export const testSuite = createSuite({
                     skipped: 0
                 });
                 scope.assert.equal(result.runnerErrors.length, 0);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            name: 'runner runs in-process microtests concurrently from profile scheduling',
+            metadata: {},
+            async body(scope: TestScope) {
+                const events = await runSchedulingScenario('in-process', 'concurrent');
+
+                scope.assert.deepEqual(events, [
+                    'start:delayed',
+                    'start:immediate',
+                    'end:immediate',
+                    'end:delayed'
+                ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            name: 'runner runs in-process microtests serially from profile scheduling',
+            metadata: {},
+            async body(scope: TestScope) {
+                const events = await runSchedulingScenario('in-process', 'serial');
+
+                scope.assert.deepEqual(events, [
+                    'start:delayed',
+                    'end:delayed',
+                    'start:immediate',
+                    'end:immediate'
+                ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            name: 'runner runs supervised microtests concurrently from profile scheduling',
+            metadata: {},
+            async body(scope: TestScope) {
+                const events = await runSchedulingScenario('supervised-process', 'concurrent');
+
+                scope.assert.deepEqual(events, [
+                    'start:delayed',
+                    'start:immediate',
+                    'end:immediate',
+                    'end:delayed'
+                ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            name: 'runner runs supervised microtests serially from profile scheduling',
+            metadata: {},
+            async body(scope: TestScope) {
+                const events = await runSchedulingScenario('supervised-process', 'serial');
+
+                scope.assert.deepEqual(events, [
+                    'start:delayed',
+                    'end:delayed',
+                    'start:immediate',
+                    'end:immediate'
+                ]);
 
                 return scope.assert.collect();
             }

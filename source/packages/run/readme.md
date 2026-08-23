@@ -65,6 +65,12 @@ benchmark commands. Every configured runner profile must declare
 `testFamily: 'microtest'`; the selected profile's test family is recorded in
 `RunFacts.execution.testFamily`.
 
+Microtest profile execution is modeled with two independent fields:
+`execution.processModel` is `in-process` or `supervised-process`, and
+`execution.scheduling` is `concurrent` or `serial`. The default `microtest`
+profile uses supervised concurrent execution. The selected values are recorded
+in `RunFacts.execution` and drive the current explicit-file runner path.
+
 Config loading is common runner infrastructure, not plugin discovery.
 The command-line runner loads native Node config files, selects the default
 line reporter when project config omits reporters, defaults managed reporter
