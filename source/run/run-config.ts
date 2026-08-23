@@ -2,15 +2,22 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parse } from '@schema-hub/zod-error-formatter';
-import { z } from 'zod/v4';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import { createPlainOutputRenderer, type OutputRenderer } from '../engine/reporter-output.ts';
+import type { Reporter } from '../engine/reporter.ts';
 import {
-    createPlainOutputRenderer,
-    isOutputRenderer,
-    type DefinedOutputRenderer,
-    type OutputRenderer
-} from '../engine/reporter-output.ts';
-import { isReporter, type DefinedReporter, type Reporter } from '../engine/reporter.ts';
+    projectConfigSchema,
+    type RunProjectConfig as ParsedRunProjectConfig,
+    type RunProjectMeasuredResourceUsage as ParsedRunProjectMeasuredResourceUsage,
+    type RunProjectMicrotestExecution as ParsedRunProjectMicrotestExecution,
+    type RunProjectMicrotestProfileConfig as ParsedRunProjectMicrotestProfileConfig,
+    type RunProjectProfileConfig as ParsedRunProjectProfileConfig,
+    type RunProjectProfilesConfig as ParsedRunProjectProfilesConfig,
+    type RunProjectResourceBudgets as ParsedRunProjectResourceBudgets,
+    type RunProjectResourceUsageConfig as ParsedRunProjectResourceUsageConfig,
+    type RunProjectTimeoutConfig as ParsedRunProjectTimeoutConfig,
+    type RunProjectUnmeasuredResourceUsage as ParsedRunProjectUnmeasuredResourceUsage
+} from './run-config-schema.ts';
 import {
     invalidRunProfileNameMessage,
     type RunLoaderConfig,
@@ -22,6 +29,17 @@ import {
     type RunResourceUsagePolicy,
     type RunTimeoutPolicy
 } from './run-types.ts';
+
+export type RunProjectConfig = ParsedRunProjectConfig;
+export type RunProjectMeasuredResourceUsage = ParsedRunProjectMeasuredResourceUsage;
+export type RunProjectMicrotestExecution = ParsedRunProjectMicrotestExecution;
+export type RunProjectMicrotestProfileConfig = ParsedRunProjectMicrotestProfileConfig;
+export type RunProjectProfileConfig = ParsedRunProjectProfileConfig;
+export type RunProjectProfilesConfig = ParsedRunProjectProfilesConfig;
+export type RunProjectResourceBudgets = ParsedRunProjectResourceBudgets;
+export type RunProjectResourceUsageConfig = ParsedRunProjectResourceUsageConfig;
+export type RunProjectTimeoutConfig = ParsedRunProjectTimeoutConfig;
+export type RunProjectUnmeasuredResourceUsage = ParsedRunProjectUnmeasuredResourceUsage;
 
 const defaultConfigFileNames = [ 'overkill.config.ts', 'overkill.config.js' ];
 const defaultResourceUsageSamplingIntervalMilliseconds = 100;
@@ -74,108 +92,6 @@ const defaultMicrotestExecution: RunMicrotestExecution = {
     processModel: 'supervised-process',
     scheduling: 'concurrent'
 };
-
-const reporterSchema = z.custom<DefinedReporter>(isReporter, 'must be created with defineReporter(...)');
-
-const outputRendererSchema = z.custom<DefinedOutputRenderer>(
-    isOutputRenderer,
-    'must be created with defineOutputRenderer(...)'
-);
-
-const loaderSchema = z
-    .strictObject({
-        sourceMaps: z.boolean(),
-        stripMode: z.literal('strip-only')
-    })
-    .readonly();
-
-const positiveSafeIntegerSchema = z.number().refine(function isPositiveSafeInteger(value) {
-    return Number.isSafeInteger(value) && value > 0;
-}, 'must be a positive safe integer');
-
-const resourceBudgetsSchema = z
-    .strictObject({
-        activeResourceCount: z.optional(z.nullable(positiveSafeIntegerSchema)),
-        javaScriptEngineHeapBytes: z.optional(z.nullable(positiveSafeIntegerSchema)),
-        residentSetBytes: z.optional(z.nullable(positiveSafeIntegerSchema)),
-        residentSetGrowthBytesPerSecond: z.optional(z.nullable(positiveSafeIntegerSchema))
-    })
-    .readonly();
-
-const measuredResourceUsageSchema = z
-    .strictObject({
-        budgets: z.optional(resourceBudgetsSchema),
-        measure: z.literal(true),
-        samplingIntervalMilliseconds: z.optional(positiveSafeIntegerSchema)
-    })
-    .readonly();
-
-const unmeasuredResourceUsageSchema = z
-    .strictObject({
-        measure: z.optional(z.literal(false))
-    })
-    .readonly();
-
-const resourceUsageSchema = z.union([ measuredResourceUsageSchema, unmeasuredResourceUsageSchema ]);
-
-const timeoutSchema = z
-    .strictObject({
-        hardMilliseconds: z.optional(positiveSafeIntegerSchema),
-        softMilliseconds: z.optional(positiveSafeIntegerSchema)
-    })
-    .readonly();
-
-const microtestExecutionSchema = z.discriminatedUnion('processModel', [
-    z
-        .strictObject({
-            processModel: z.literal('in-process'),
-            scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ]))
-        })
-        .readonly(),
-    z
-        .strictObject({
-            processModel: z.literal('supervised-process'),
-            scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ]))
-        })
-        .readonly()
-]);
-
-const microtestProfileSchema = z
-    .strictObject({
-        execution: z.optional(microtestExecutionSchema),
-        reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
-        resourceUsage: z.optional(resourceUsageSchema),
-        testFamily: z.literal('microtest'),
-        timeouts: z.optional(timeoutSchema)
-    })
-    .readonly();
-
-const profileSchema = z.discriminatedUnion('testFamily', [
-    microtestProfileSchema
-]);
-
-const profilesSchema = z.record(z.string(), profileSchema).readonly();
-
-const projectConfigSchema = z
-    .strictObject({
-        loader: z.optional(loaderSchema),
-        outputRenderer: z.optional(outputRendererSchema),
-        profiles: z.optional(profilesSchema),
-        reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
-        runtimeStateDir: z.optional(z.string().min(1))
-    })
-    .readonly();
-
-export type RunProjectResourceBudgets = z.infer<typeof resourceBudgetsSchema>;
-export type RunProjectMeasuredResourceUsage = z.infer<typeof measuredResourceUsageSchema>;
-export type RunProjectUnmeasuredResourceUsage = z.infer<typeof unmeasuredResourceUsageSchema>;
-export type RunProjectResourceUsageConfig = z.infer<typeof resourceUsageSchema>;
-export type RunProjectTimeoutConfig = z.infer<typeof timeoutSchema>;
-export type RunProjectMicrotestExecution = z.infer<typeof microtestExecutionSchema>;
-export type RunProjectMicrotestProfileConfig = z.infer<typeof microtestProfileSchema>;
-export type RunProjectProfileConfig = z.infer<typeof profileSchema>;
-export type RunProjectProfilesConfig = z.infer<typeof profilesSchema>;
-export type RunProjectConfig = z.infer<typeof projectConfigSchema>;
 
 export function defineConfig(config: RunProjectConfig): RunProjectConfig {
     return config;
