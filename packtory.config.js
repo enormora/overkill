@@ -14,6 +14,37 @@ const packageMetadata = {
     engines: rootPackageJson.engines
 };
 
+const packageFilterEnvironmentVariable = 'PACKTORY_INCLUDED_PACKAGES';
+
+function packageFilter() {
+    const rawValue = process.env[packageFilterEnvironmentVariable];
+
+    if (rawValue === undefined) {
+        return null;
+    }
+
+    return new Set(
+        rawValue
+            .split(',')
+            .map(function trimPackageName(name) {
+                return name.trim();
+            })
+            .filter(Boolean)
+    );
+}
+
+function selectPackages(packages) {
+    const includedPackages = packageFilter();
+
+    if (includedPackages === null) {
+        return packages;
+    }
+
+    return packages.filter(function includePackage(packageConfig) {
+        return includedPackages.has(packageConfig.name);
+    });
+}
+
 export const config = {
     registrySettings: {
         auth: {
@@ -37,7 +68,7 @@ export const config = {
         },
         additionalFiles: [ { sourceFilePath: path.join(projectFolder, 'LICENSE'), targetFilePath: 'LICENSE' } ]
     },
-    packages: [
+    packages: selectPackages([
         {
             name: '@overkill-dev/engine',
             roots: {
@@ -214,5 +245,5 @@ export const config = {
                 description: 'GitHub Actions renderer for Overkill managed output.'
             }
         }
-    ]
+    ])
 };

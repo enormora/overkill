@@ -1,6 +1,5 @@
 import asyncHooks, { AsyncLocalStorage } from 'node:async_hooks';
 import diagnosticsChannel from 'node:diagnostics_channel';
-import type { Except } from 'type-fest';
 import { caseIdentityKey, type CaseId } from '../engine/identity.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import type { TestRuntimePolicy } from '../engine/case-execution.ts';
@@ -73,7 +72,11 @@ type RuntimePolicyViolation = {
     readonly strictness: RuntimePolicyStrictness;
 };
 
-type RuntimePolicyReport = Except<RuntimePolicyViolation, 'caseId' | 'phase'>;
+type RuntimePolicyReport = {
+    readonly capability: RuntimePolicyCapability;
+    readonly message: string;
+    readonly strictness: RuntimePolicyStrictness;
+};
 
 type Subscription = {
     readonly unsubscribe: () => void;
