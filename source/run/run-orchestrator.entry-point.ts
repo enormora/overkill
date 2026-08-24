@@ -1,4 +1,8 @@
 import { createNodeRunOrchestrator } from './run-orchestrator.ts';
+import {
+    installIpcRestriction as installProcessIpcRestriction,
+    installProcessExecutionRestriction as installNodeProcessExecutionRestriction
+} from './node-process-capability-restrictions.ts';
 import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
 
 function writeStdoutLine(line: string): void {
@@ -10,6 +14,12 @@ function writeStderrLine(line: string): void {
 }
 
 export const orchestrator = createNodeRunOrchestrator({
+    installIpcRestriction(record) {
+        return installProcessIpcRestriction(process, record);
+    },
+    installProcessExecutionRestriction(record) {
+        return installNodeProcessExecutionRestriction(process, record);
+    },
     node: {
         arch: process.arch,
         platform: process.platform,
@@ -17,11 +27,6 @@ export const orchestrator = createNodeRunOrchestrator({
     },
     readEnvironment() {
         return readProcessEnvironment(process);
-    },
-    readStartedAt() {
-        const startedAt = new Date();
-
-        return startedAt.toISOString();
     },
     readStorage(name) {
         return readWebStorage(globalThis, name);

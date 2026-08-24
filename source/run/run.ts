@@ -38,6 +38,12 @@ import {
 
 const minimumSeedValue = 0n;
 
+function currentRunStartTime(dependencies: RunOrchestratorDependencies): string {
+    const startedAt = new Date(dependencies.wallClock.currentTimestampInMilliseconds);
+
+    return startedAt.toISOString();
+}
+
 function validateRunShard(request: RunRequest): void {
     if (request.shard.index !== 0 || request.shard.total !== 1) {
         unsupportedRequest('Sharding is not implemented yet.');
@@ -488,7 +494,7 @@ async function executeResolvedRun(
         resourceUsageTracker: createExecutionResourceUsageTracker(resourceUsagePolicy, dependencies),
         runtimePolicy,
         runFacts: resolvedRun.facts,
-        startedAt: dependencies.readStartedAt(),
+        startedAt: currentRunStartTime(dependencies),
         timeoutPolicy: {
             hardTimeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds,
             timeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.softMilliseconds

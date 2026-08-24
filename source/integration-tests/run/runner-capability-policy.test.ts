@@ -1,3 +1,4 @@
+import { rm } from 'node:fs/promises';
 import { createLineReporter } from '@overkill-dev/reporter-line';
 import {
     createSuite,
@@ -9,8 +10,19 @@ import type { Reporter } from '../../engine/reporter.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import type { RunCommand, RunConfig, RunProcessModel, RunRequest, RunScheduling } from '../../run/run-types.ts';
 
+const consolePolicyFixturePath = 'source/integration-tests/run/fixtures/console-policy.test.ts';
+const envPolicyFixturePath = 'source/integration-tests/run/fixtures/env-policy.test.ts';
 const fsWritePolicyFixturePath = 'source/integration-tests/run/fixtures/fs-write-policy.test.ts';
+const fsWritePolicyOutputPath = 'source/integration-tests/run/fixtures/fs-write-policy-output.txt';
+const ipcPolicyFixturePath = 'source/integration-tests/run/fixtures/ipc-policy.test.ts';
+const processExitPolicyFixturePath = 'source/integration-tests/run/fixtures/process-exit-policy.test.ts';
 const timerPolicyFixturePath = 'source/integration-tests/run/fixtures/timer-policy.test.ts';
+
+type PolicyFixture = {
+    readonly expectedCapability: Readonly<Record<RunProcessModel, string>>;
+    readonly name: string;
+    readonly path: string;
+};
 
 const memoryReporter: Reporter = {
     dispose: null,
@@ -86,49 +98,137 @@ function createRunCommand(paths: readonly string[], config: RunConfig): RunComma
     };
 }
 
+function deleteEnvironmentValue(name: string): void {
+    const environment: unknown = Reflect.get(process, 'env');
+
+    if (typeof environment === 'object' && environment !== null) {
+        Reflect.deleteProperty(environment, name);
+    }
+}
+
+async function cleanupPolicyFixture(path: string): Promise<void> {
+    if (path === envPolicyFixturePath) {
+        deleteEnvironmentValue('OVERKILL_CASE_POLICY_FIXTURE');
+    }
+
+    if (path === fsWritePolicyFixturePath) {
+        await rm(fsWritePolicyOutputPath, { force: true });
+    }
+}
+
+function isRecord(value: unknown): value is Readonly<Record<PropertyKey, unknown>> {
+    return typeof value === 'object' && value !== null;
+}
+
+function recordValue(value: unknown, key: string): unknown {
+    return isRecord(value) && Object.hasOwn(value, key) ? value[key] : null;
+}
+
+function runnerErrorCapability(error: unknown): string | null {
+    const capability = recordValue(recordValue(error, 'cause'), 'capability');
+
+    return typeof capability === 'string' ? capability : null;
+}
+
+function runnerErrorCapabilities(result: Awaited<ReturnType<typeof orchestrator.run>>): readonly string[] {
+    return result.runnerErrors.flatMap(function toCapability(error) {
+        const capability = runnerErrorCapability(error);
+
+        return capability === null ? [] : [ capability ];
+    });
+}
+
+const policyFixtures: readonly PolicyFixture[] = [
+    {
+        expectedCapability: {
+            'in-process': 'console',
+            'supervised-process': 'console'
+        },
+        name: 'console output',
+        path: consolePolicyFixturePath
+    },
+    {
+        expectedCapability: {
+            'in-process': 'process-env',
+            'supervised-process': 'process-env'
+        },
+        name: 'process.env mutation',
+        path: envPolicyFixturePath
+    },
+    {
+        expectedCapability: {
+            'in-process': 'timer',
+            'supervised-process': 'timer'
+        },
+        name: 'timer creation',
+        path: timerPolicyFixturePath
+    },
+    {
+        expectedCapability: {
+            'in-process': 'process-execute',
+            'supervised-process': 'process-execute'
+        },
+        name: 'process execution',
+        path: processExitPolicyFixturePath
+    },
+    {
+        expectedCapability: {
+            'in-process': 'child-process',
+            'supervised-process': 'child-process'
+        },
+        name: 'ipc listener registration',
+        path: ipcPolicyFixturePath
+    },
+    {
+        expectedCapability: {
+            'in-process': 'fs-read',
+            'supervised-process': 'fs-write'
+        },
+        name: 'filesystem write',
+        path: fsWritePolicyFixturePath
+    }
+];
+
+const policyProcessModels: readonly {
+    readonly processModel: RunProcessModel;
+    readonly scheduling: RunScheduling;
+}[] = [
+    {
+        processModel: 'in-process',
+        scheduling: 'serial'
+    },
+    {
+        processModel: 'supervised-process',
+        scheduling: 'concurrent'
+    }
+];
+
 export const testSuite = createSuite({
     name: 'source/integration-tests/run/runner-capability-policy.test.ts',
     metadata: {},
-    children: [
-        createTestCase({
-            name: 'supervised microtest capability restrictions block filesystem writes',
-            metadata: {},
-            async body(scope: TestScope) {
-                const result = await orchestrator.run(createRunCommand(
-                    [ fsWritePolicyFixturePath ],
-                    createRunConfig('supervised-process', 'concurrent', memoryReporter)
-                ));
-                const [ testResult ] = result.perTest;
-                const [ runnerError ] = result.runnerErrors;
+    children: policyFixtures.flatMap(function createPolicyFixtureTests(fixture) {
+        return policyProcessModels.map(function createPolicyFixtureProcessTest(model) {
+            return createTestCase({
+                name: `${model.processModel} microtest capability restrictions fail ${fixture.name}`,
+                metadata: {},
+                async body(scope: TestScope) {
+                    const result = await orchestrator.run(createRunCommand(
+                        [ fixture.path ],
+                        createRunConfig(model.processModel, model.scheduling, memoryReporter)
+                    ));
+                    const [ testResult ] = result.perTest;
+                    const capabilities = runnerErrorCapabilities(result);
 
-                scope.assert.equal(testResult?.verdict, 'runtime-policy');
-                scope.assert.equal(result.summary.runtimePolicy, 1);
-                scope.assert.equal(runnerError?.subtype, 'runtime-policy');
-                scope.assert.equal(String(runnerError?.message).includes('fs-write'), true);
+                    await cleanupPolicyFixture(fixture.path);
+                    scope.assert.equal(testResult?.verdict, 'runtime-policy');
+                    scope.assert.equal(result.summary.runtimePolicy, 1);
+                    scope.assert.equal(capabilities.includes(fixture.expectedCapability[model.processModel]), true);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            name: 'in-process microtest capability restrictions fail timer creation',
-            metadata: {},
-            async body(scope: TestScope) {
-                const result = await orchestrator.run(createRunCommand(
-                    [ timerPolicyFixturePath ],
-                    createRunConfig('in-process', 'serial', memoryReporter)
-                ));
-                const [ testResult ] = result.perTest;
-                const [ runnerError ] = result.runnerErrors;
-
-                scope.assert.equal(testResult?.verdict, 'runtime-policy');
-                scope.assert.equal(result.summary.runtimePolicy, 1);
-                scope.assert.equal(runnerError?.subtype, 'runtime-policy');
-                scope.assert.equal(String(runnerError?.message).includes('timer'), true);
-
-                return scope.assert.collect();
-            }
-        })
-    ]
+                    return scope.assert.collect();
+                }
+            });
+        });
+    })
 });
 
 await runIfMain(import.meta, testSuite, { reporters: [ createLineReporter() ] });

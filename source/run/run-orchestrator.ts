@@ -13,11 +13,14 @@ function createDefaultSeed(): bigint {
     return randomBytes(seedByteLength).readBigUInt64BE();
 }
 
+type RuntimeCapabilityPolicyInput = RunOrchestratorDependencies['runtimeCapabilityPolicy'];
+
 type NodeRunOrchestratorInput = {
+    readonly installIpcRestriction: RuntimeCapabilityPolicyInput['installIpcRestriction'];
+    readonly installProcessExecutionRestriction: RuntimeCapabilityPolicyInput['installProcessExecutionRestriction'];
     readonly node: RunOrchestratorDependencies['node'];
-    readonly readEnvironment: RunOrchestratorDependencies['runtimeCapabilityPolicy']['readEnvironment'];
-    readonly readStartedAt: RunOrchestratorDependencies['readStartedAt'];
-    readonly readStorage: RunOrchestratorDependencies['runtimeCapabilityPolicy']['readStorage'];
+    readonly readEnvironment: RuntimeCapabilityPolicyInput['readEnvironment'];
+    readonly readStorage: RuntimeCapabilityPolicyInput['readStorage'];
     readonly stderr: {
         readonly writeLine: (line: string) => void;
     };
@@ -46,8 +49,9 @@ export function createNodeRunOrchestrator(input: NodeRunOrchestratorInput): RunO
         }),
         node: input.node,
         reporterDispatcher,
-        readStartedAt: input.readStartedAt,
         runtimeCapabilityPolicy: {
+            installIpcRestriction: input.installIpcRestriction,
+            installProcessExecutionRestriction: input.installProcessExecutionRestriction,
             readEnvironment: input.readEnvironment,
             readStorage: input.readStorage
         },

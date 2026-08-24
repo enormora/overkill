@@ -5,7 +5,7 @@ import { typescriptConfig } from '@enormora/eslint-config-typescript';
 
 export default [
     {
-        ignores: [ 'target/**/*' ]
+        ignores: [ 'source/integration-tests/run/fixtures/**/*.test.ts', 'target/**/*' ]
     },
     ...baseConfig,
     {

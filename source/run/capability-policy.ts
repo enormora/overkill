@@ -4,7 +4,13 @@ import { caseIdentityKey, type CaseId } from '../engine/identity.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import type { TestRuntimePolicy } from '../engine/case-execution.ts';
 
-export type RuntimeCapabilityPolicy = TestRuntimePolicy;
+export type RuntimeCapabilityPolicy = TestRuntimePolicy & {
+    readonly recordViolation: (
+        capability: RuntimePolicyCapability,
+        message: string,
+        strictness: RuntimePolicyStrictness
+    ) => void;
+};
 export type RuntimeCapabilityPolicyEnvironment = Readonly<Record<string, string | undefined>>;
 
 const runtimePolicyCapabilities = {
@@ -60,6 +66,8 @@ export type WebStorageLike = {
 };
 
 export type RuntimeCapabilityPolicyDependencies = {
+    readonly installIpcRestriction: (record: (message: string) => void) => () => void;
+    readonly installProcessExecutionRestriction: (record: (message: string) => void) => () => void;
     readonly readEnvironment: () => RuntimeCapabilityPolicyEnvironment;
     readonly readStorage: (name: 'localStorage' | 'sessionStorage') => WebStorageLike | null;
 };
@@ -85,6 +93,12 @@ type Subscription = {
 type AsyncResourceHook = {
     readonly disable: () => void;
     readonly enable: () => void;
+};
+
+type RuntimePolicyMonitoring = {
+    readonly hook: AsyncResourceHook;
+    readonly restoreRestrictions: () => void;
+    readonly subscriptions: readonly Subscription[];
 };
 
 type RuntimeSnapshots = {
@@ -409,7 +423,77 @@ function recordSnapshotChanges(
     }
 }
 
-export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions): TestRuntimePolicy {
+function installRuntimePolicyRestrictions(
+    dependencies: RuntimeCapabilityPolicyDependencies,
+    record: (violation: RuntimePolicyReport) => void
+): () => void {
+    const restoreProcessExecution = dependencies.installProcessExecutionRestriction(
+        function recordProcessExecutionViolation(message) {
+            record({
+                capability: runtimePolicyCapabilities.processExecute,
+                message,
+                strictness: 'blocked'
+            });
+        }
+    );
+    const restoreIpc = dependencies.installIpcRestriction(function recordIpcViolation(message) {
+        record({
+            capability: runtimePolicyCapabilities.childProcess,
+            message,
+            strictness: 'blocked'
+        });
+    });
+
+    return function restoreRuntimePolicyRestrictions(): void {
+        restoreIpc();
+        restoreProcessExecution();
+    };
+}
+
+function startRuntimePolicyMonitoring(
+    activeCaseStorage: AsyncLocalStorage<ActiveCase>,
+    record: (violation: RuntimePolicyReport) => void,
+    dependencies: RuntimeCapabilityPolicyDependencies
+): RuntimePolicyMonitoring {
+    const subscriptions = createDiagnosticsSubscriptions(record);
+    const hook = createAsyncResourceHook(activeCaseStorage, record);
+    const restoreRestrictions = installRuntimePolicyRestrictions(dependencies, record);
+
+    hook.enable();
+
+    return { hook, restoreRestrictions, subscriptions };
+}
+
+function stopRuntimePolicyMonitoring(monitoring: RuntimePolicyMonitoring): void {
+    monitoring.hook.disable();
+    monitoring.restoreRestrictions();
+
+    for (const subscription of monitoring.subscriptions) {
+        subscription.unsubscribe();
+    }
+}
+
+function rawOutputPolicyError(capability: RuntimePolicyCapability, message: string): RunnerError {
+    return runtimePolicyError({
+        capability,
+        caseId: null,
+        message,
+        phase: 'out-of-test',
+        strictness: 'observed'
+    });
+}
+
+function rawOutputPolicyErrors(options: CapabilityPolicyOptions): readonly RunnerError[] {
+    const errors: RunnerError[] = [];
+    if (options.observedStdout) {
+        errors.push(rawOutputPolicyError('raw-stdout', 'Runtime policy violation: unexpected stdout output.'));
+    }
+    if (options.observedStderr) {
+        errors.push(rawOutputPolicyError('raw-stderr', 'Runtime policy violation: unexpected stderr output.'));
+    }
+    return errors;
+}
+export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions): RuntimeCapabilityPolicy {
     const activeCaseStorage = new AsyncLocalStorage<ActiveCase>();
     const caseErrors = new Map<string, RunnerError[]>();
     const runErrors: RunnerError[] = [];
@@ -444,11 +528,12 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
         }
     }
 
-    const subscriptions = createDiagnosticsSubscriptions(tryRecord);
-    const hook = createAsyncResourceHook(activeCaseStorage, tryRecord);
-    hook.enable();
+    const monitoring = startRuntimePolicyMonitoring(activeCaseStorage, tryRecord, options.dependencies);
 
     return {
+        recordViolation(capability, message, strictness) {
+            record({ capability, message, strictness });
+        },
         async runCase(testCase, run) {
             loadComplete = true;
             const activeCase = {
@@ -483,31 +568,8 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
             return errors;
         },
         takeRunErrors() {
-            hook.disable();
-
-            for (const subscription of subscriptions) {
-                subscription.unsubscribe();
-            }
-
-            if (options.observedStdout) {
-                runErrors.push(runtimePolicyError({
-                    capability: 'raw-stdout',
-                    caseId: null,
-                    message: 'Runtime policy violation: unexpected stdout output.',
-                    phase: 'out-of-test',
-                    strictness: 'observed'
-                }));
-            }
-
-            if (options.observedStderr) {
-                runErrors.push(runtimePolicyError({
-                    capability: 'raw-stderr',
-                    caseId: null,
-                    message: 'Runtime policy violation: unexpected stderr output.',
-                    phase: 'out-of-test',
-                    strictness: 'observed'
-                }));
-            }
+            stopRuntimePolicyMonitoring(monitoring);
+            runErrors.push(...rawOutputPolicyErrors(options));
 
             const errors = Array.from(runErrors);
             runErrors.length = 0;

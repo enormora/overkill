@@ -1,17 +1,20 @@
 import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
+import {
+    installIpcRestriction as installProcessIpcRestriction,
+    installProcessExecutionRestriction as installNodeProcessExecutionRestriction
+} from './node-process-capability-restrictions.ts';
 import { runSupervisedChild, type SupervisedChildHost } from './supervised-child.ts';
 import type { SupervisedRunCommand } from './supervised-protocol.ts';
 
+const sendMessage = process.send?.bind(process);
+const disconnectProcess = process.disconnect?.bind(process);
+
 function send(message: Parameters<SupervisedChildHost['send']>[0]): void {
-    if (process.send !== undefined) {
-        process.send(message);
-    }
+    sendMessage?.(message);
 }
 
 function disconnect(): void {
-    if (process.disconnect !== undefined) {
-        process.disconnect();
-    }
+    disconnectProcess?.();
 }
 
 function isRecord(value: unknown): value is Readonly<Record<PropertyKey, unknown>> {
@@ -61,13 +64,14 @@ function dropBodyReadPermission(command: SupervisedRunCommand): void {
 await runSupervisedChild({
     disconnect,
     dropBodyReadPermission,
+    installIpcRestriction(record) {
+        return installProcessIpcRestriction(process, record);
+    },
+    installProcessExecutionRestriction(record) {
+        return installNodeProcessExecutionRestriction(process, record);
+    },
     readEnvironment() {
         return readProcessEnvironment(process);
-    },
-    readStartedAt() {
-        const startedAt = new Date();
-
-        return startedAt.toISOString();
     },
     readStorage(name) {
         return readWebStorage(globalThis, name);

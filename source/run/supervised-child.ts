@@ -15,10 +15,15 @@ import type { SupervisedChildMessage, SupervisedRunCommand } from './supervised-
 
 type ChildExecutionMode = 'concurrent-in-process' | 'serial-in-process';
 
+function currentRunStartTime(wallClock: ReturnType<typeof createWallClock>): string {
+    const startedAt = new Date(wallClock.currentTimestampInMilliseconds);
+
+    return startedAt.toISOString();
+}
+
 export type SupervisedChildHost = RuntimeCapabilityPolicyDependencies & {
     readonly disconnect: () => void;
     readonly dropBodyReadPermission: (command: SupervisedRunCommand) => void;
-    readonly readStartedAt: () => string;
     readonly receiveRunCommand: () => Promise<SupervisedRunCommand>;
     readonly send: (message: SupervisedChildMessage) => void;
     readonly setExitCode: (code: number) => void;
@@ -111,6 +116,8 @@ function createRuntimePolicy(
     return command.capabilityRestrictions.mode === 'enabled'
         ? createRuntimeCapabilityPolicy({
             dependencies: {
+                installIpcRestriction: host.installIpcRestriction,
+                installProcessExecutionRestriction: host.installProcessExecutionRestriction,
                 readEnvironment: host.readEnvironment,
                 readStorage: host.readStorage
             },
@@ -184,7 +191,7 @@ async function run(command: SupervisedRunCommand, host: SupervisedChildHost): Pr
         resourceUsageTracker: createResourceUsageTracker(command, host),
         runtimePolicy,
         runFacts: {},
-        startedAt: host.readStartedAt(),
+        startedAt: currentRunStartTime(wallClock),
         timeoutPolicy: {
             hardTimeoutMilliseconds: command.hardTimeoutMilliseconds,
             timeoutMilliseconds: command.timeoutMilliseconds

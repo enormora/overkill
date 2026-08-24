@@ -8,6 +8,12 @@ import { createTestEngine } from './create-test-engine.ts';
 
 const deterministicSeed = 99n;
 
+function installNoPolicyRestriction(): () => void {
+    return function restoreNoPolicyRestriction(): void {
+        return undefined;
+    };
+}
+
 export function createDeterministicRunOrchestrator(): RunOrchestrator {
     const engine = createTestEngine();
     const wallClock = createWallClock();
@@ -62,6 +68,8 @@ export function createDeterministicRunOrchestrator(): RunOrchestrator {
         defaultEngine: defaultRunEngine,
         execute: engine.execute,
         runtimeCapabilityPolicy: {
+            installIpcRestriction: installNoPolicyRestriction,
+            installProcessExecutionRestriction: installNoPolicyRestriction,
             readEnvironment() {
                 return environment;
             },
@@ -75,9 +83,6 @@ export function createDeterministicRunOrchestrator(): RunOrchestrator {
             version: '26.1.1'
         },
         reporterDispatcher,
-        readStartedAt() {
-            return '2026-07-15T12:30:00.000Z';
-        },
         wallClock
     });
 }

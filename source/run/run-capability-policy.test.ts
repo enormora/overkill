@@ -119,6 +119,12 @@ function createStorage(values: ReadonlyMap<string, string>): WebStorageLike {
     };
 }
 
+function installNoPolicyRestriction(): () => void {
+    return function restoreNoPolicyRestriction(): void {
+        return undefined;
+    };
+}
+
 function createSparseStorage(): WebStorageLike {
     return {
         length: 2,
@@ -230,6 +236,8 @@ export const testSuite = createOverkillSuite({
                 const localStorageValues = new Map([ [ 'before', 'yes' ] ]);
                 const policy = createRuntimeCapabilityPolicy({
                     dependencies: {
+                        installIpcRestriction: installNoPolicyRestriction,
+                        installProcessExecutionRestriction: installNoPolicyRestriction,
                         readEnvironment() {
                             return environment;
                         },
@@ -277,6 +285,8 @@ export const testSuite = createOverkillSuite({
                 const sparseStorage = createSparseStorage();
                 const policy = createRuntimeCapabilityPolicy({
                     dependencies: {
+                        installIpcRestriction: installNoPolicyRestriction,
+                        installProcessExecutionRestriction: installNoPolicyRestriction,
                         readEnvironment() {
                             return environment;
                         },
@@ -301,12 +311,45 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'runtime capability policy reports process.env identity drift',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                let environment: RuntimeCapabilityPolicyEnvironment = {};
+                const policy = createRuntimeCapabilityPolicy({
+                    dependencies: {
+                        installIpcRestriction: installNoPolicyRestriction,
+                        installProcessExecutionRestriction: installNoPolicyRestriction,
+                        readEnvironment() {
+                            return environment;
+                        },
+                        readStorage() {
+                            return null;
+                        }
+                    },
+                    observedStderr: false,
+                    observedStdout: false
+                });
+
+                await policy.runCase(policyTestCase, async function replaceEnvironmentObject() {
+                    environment = {};
+                });
+                const caseErrors = policy.takeCaseErrors(policyTestCase);
+                policy.takeRunErrors();
+
+                scope.assert.deepEqual(caseErrors.map(errorCapability), [ 'process-env' ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'runtime capability policy records diagnostic channel strictness and raw output',
             metadata: {},
             async body(scope: OverkillScope) {
                 const environment: RuntimeCapabilityPolicyEnvironment = {};
                 const policy = createRuntimeCapabilityPolicy({
                     dependencies: {
+                        installIpcRestriction: installNoPolicyRestriction,
+                        installProcessExecutionRestriction: installNoPolicyRestriction,
                         readEnvironment() {
                             return environment;
                         },

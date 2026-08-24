@@ -141,21 +141,24 @@ permission model. Overkill treats in-process restrictions as best-effort
 diagnostics only. It can observe builtin diagnostics, permission-audit channels
 when the process was started with `--permission-audit`, `async_hooks` resource
 creation, final `process.env` identity/value drift, and global storage drift.
-It cannot prevent the effect and cannot guarantee a structured result after
-fatal calls such as `process.abort()`.
+It cannot prevent effects that depend on Node's permission model, but the shared
+runtime policy blocks process execution calls and user IPC listener
+registration while the policy is active.
 
 Strict microtest diagnostics use three classifications:
 
 - **Blocked.** Node denied the effect, for example fs write, network, child
   process, worker, addon, WASI, FFI, OpenSSL STORE, or inspector use in a
-  supervised child.
+  supervised child. The shared runtime policy also blocks `process.exit()`,
+  `process.abort()`, `process.kill()`, `process.execve()`, user
+  `process.on('message', ...)` registration, and user `process.send()`.
 - **Observed.** Node exposed a signal but the effect may already have happened.
   Examples include `console.*`, process env mutation, timers, Web Locks,
   process execve, permission-audit events in in-process mode, and async fs
   resource creation during load.
 - **Native gap.** Node exposes no stable non-mutating signal. Current examples
   include sync bootstrap reads inside the cwd grant, `Date`, `Math.random()`,
-  sync crypto randomness, arbitrary `process.kill()`, and SQLite execution.
+  sync crypto randomness, and SQLite execution.
 
 Imports are not violations by themselves. Executing imported code may perform a
 restricted effect, and body-time dynamic import in supervised strict mode is

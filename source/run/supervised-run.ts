@@ -24,6 +24,12 @@ import {
 
 type ResourceBudgetMetric = keyof RunResourceBudgets;
 
+function runStartTimeFromMilliseconds(milliseconds: number): string {
+    const startedAt = new Date(milliseconds);
+
+    return startedAt.toISOString();
+}
+
 type ResourceBudgetBreach = {
     readonly budget: number;
     readonly metric: ResourceBudgetMetric;
@@ -466,7 +472,7 @@ export async function executeSupervisedRun(
             facts: resolvedRun.facts,
             kind: 'run-start',
             root: resolvedRun.testPlan.root,
-            startedAt: dependencies.readStartedAt()
+            startedAt: runStartTimeFromMilliseconds(startedAtMs)
         },
         runtime.state,
         runtime.reporterContext,

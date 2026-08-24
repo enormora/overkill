@@ -6,5 +6,12 @@
     "format": ["typescript"],
     "absolute": false,
     "gitignore": true,
-    "ignore": ["**/target/**", "**/node_modules/**", "**/*.test.ts", "**/*.type-test.ts", "**/tsconfig*.json"]
+    "ignore": [
+        "**/target/**",
+        "**/node_modules/**",
+        "**/*.test.ts",
+        "**/source/integration-tests/run/fixtures/**/*.test.ts",
+        "**/*.type-test.ts",
+        "**/tsconfig*.json"
+    ]
 }

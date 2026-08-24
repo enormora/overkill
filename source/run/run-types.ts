@@ -187,7 +187,6 @@ export type RunOrchestratorDependencies = {
         readonly version: string;
     };
     readonly reporterDispatcher: ReporterDispatcher;
-    readonly readStartedAt: () => string;
     readonly wallClock: WallClock;
 };
 

@@ -2,6 +2,7 @@
     "$schema": "https://unpkg.com/knip@5/schema.json",
     "entry": [
         "source/**/*.test.ts",
+        "!source/integration-tests/run/fixtures/**/*.test.ts",
         "source/**/*.type-test.ts",
         "source/packages/**/*.ts",
         "source/reporters/null-reporter.ts",
@@ -15,5 +16,6 @@
         "!source/**/*.test.ts!",
         "!source/**/*.type-test.ts!"
     ],
+    "ignore": ["source/integration-tests/run/fixtures/**/*.test.ts"],
     "ignoreDependencies": ["@ls-lint/ls-lint", "c8", "jscpd"]
 }
