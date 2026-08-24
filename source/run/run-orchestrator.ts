@@ -5,7 +5,7 @@ import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import { createNodeResourceUsageTracker } from './resource-usage.ts';
 import { createRunOrchestrator } from './run.ts';
-import type { RunOrchestrator } from './run-types.ts';
+import type { RunOrchestrator, RunOrchestratorDependencies } from './run-types.ts';
 
 const seedByteLength = 8;
 
@@ -13,41 +13,44 @@ function createDefaultSeed(): bigint {
     return randomBytes(seedByteLength).readBigUInt64BE();
 }
 
-function writeStdoutLine(line: string): void {
-    process.stdout.write(`${line}\n`);
+type NodeRunOrchestratorInput = {
+    readonly node: RunOrchestratorDependencies['node'];
+    readonly readEnvironment: RunOrchestratorDependencies['runtimeCapabilityPolicy']['readEnvironment'];
+    readonly readStartedAt: RunOrchestratorDependencies['readStartedAt'];
+    readonly readStorage: RunOrchestratorDependencies['runtimeCapabilityPolicy']['readStorage'];
+    readonly stderr: {
+        readonly writeLine: (line: string) => void;
+    };
+    readonly stdout: {
+        readonly writeLine: (line: string) => void;
+    };
+};
+
+export function createNodeRunOrchestrator(input: NodeRunOrchestratorInput): RunOrchestrator {
+    const wallClock = createWallClock();
+    const reporterDispatcher = createReporterDispatcher({
+        stderr: input.stderr,
+        stdout: input.stdout,
+        wallClock
+    });
+
+    return createRunOrchestrator({
+        createSeed: createDefaultSeed,
+        createResourceUsageTracker(options) {
+            return createNodeResourceUsageTracker(wallClock, options);
+        },
+        defaultEngine: defaultRunEngine,
+        execute: createExecute({
+            reporterDispatcher,
+            wallClock
+        }),
+        node: input.node,
+        reporterDispatcher,
+        readStartedAt: input.readStartedAt,
+        runtimeCapabilityPolicy: {
+            readEnvironment: input.readEnvironment,
+            readStorage: input.readStorage
+        },
+        wallClock
+    });
 }
-
-function writeStderrLine(line: string): void {
-    process.stderr.write(`${line}\n`);
-}
-
-const defaultWallClock = createWallClock();
-const defaultReporterDispatcher = createReporterDispatcher({
-    stderr: { writeLine: writeStderrLine },
-    stdout: { writeLine: writeStdoutLine },
-    wallClock: defaultWallClock
-});
-
-export const orchestrator: RunOrchestrator = createRunOrchestrator({
-    createSeed: createDefaultSeed,
-    createResourceUsageTracker(options) {
-        return createNodeResourceUsageTracker(defaultWallClock, options);
-    },
-    defaultEngine: defaultRunEngine,
-    execute: createExecute({
-        reporterDispatcher: defaultReporterDispatcher,
-        wallClock: defaultWallClock
-    }),
-    node: {
-        arch: process.arch,
-        platform: process.platform,
-        version: process.versions.node
-    },
-    reporterDispatcher: defaultReporterDispatcher,
-    readStartedAt() {
-        const startedAt = new Date(defaultWallClock.currentTimestampInMilliseconds);
-
-        return startedAt.toISOString();
-    },
-    wallClock: defaultWallClock
-});

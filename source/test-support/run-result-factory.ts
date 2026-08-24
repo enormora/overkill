@@ -121,6 +121,7 @@ const defaultSummary: RunSummary = {
     passed: 0,
     planned: 0,
     resourceExhausted: 0,
+    runtimePolicy: 0,
     skipped: 0
 };
 

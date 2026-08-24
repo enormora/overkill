@@ -5,6 +5,7 @@ import type { Engine } from '../engine/engine.ts';
 import type { ReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type { RunResourceUsageTracker, RunResult } from '../engine/run-result.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
+import type { RuntimeCapabilityPolicyDependencies } from './capability-policy.ts';
 import type { ResourceUsageTrackerOptions } from './resource-usage.ts';
 
 export type SerializedValue = SerializedValueShape;
@@ -23,6 +24,10 @@ export type RunShard = {
 
 export type RunExecutionRequest = {
     readonly mode: 'profile-default';
+};
+
+export type RunCapabilityRestrictionsRequest = {
+    readonly mode: 'disabled' | 'enabled';
 };
 
 export type RunSeed = {
@@ -97,6 +102,7 @@ export type RunConfig = {
 
 export type RunRequest = {
     readonly baselineUpdateMode: 'none';
+    readonly capabilityRestrictions: RunCapabilityRestrictionsRequest;
     readonly capture: 'buffered' | 'live';
     readonly debug: RunDebugRequest;
     readonly execution: RunExecutionRequest;
@@ -174,6 +180,7 @@ export type RunOrchestratorDependencies = {
     readonly createResourceUsageTracker: (options: ResourceUsageTrackerOptions) => RunResourceUsageTracker;
     readonly defaultEngine: Engine;
     readonly execute: Execute;
+    readonly runtimeCapabilityPolicy: RuntimeCapabilityPolicyDependencies;
     readonly node: {
         readonly arch: string;
         readonly platform: string;

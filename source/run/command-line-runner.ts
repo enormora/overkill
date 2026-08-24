@@ -1,7 +1,7 @@
 import type { Reporter, SinkDeclaration } from '../engine/reporter.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import type { RunCommand, RunConfig, RunOrchestrator } from './run-types.ts';
-import { orchestrator } from './run-orchestrator.ts';
+import { orchestrator } from './run-orchestrator.entry-point.ts';
 import {
     loadRunConfig,
     type LoadedRunConfig,
@@ -96,7 +96,10 @@ async function createCommandFromRequest(
         config: await createCommandLineConfig(loadedConfig, request, dependencies),
         cwd: request.cwd,
         engine: null,
-        request: request.request
+        request: {
+            ...request.request,
+            capabilityRestrictions: { mode: 'enabled' }
+        }
     };
 }
 

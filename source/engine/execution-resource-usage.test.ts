@@ -228,6 +228,7 @@ export const testSuite = createOverkillSuite({
                     passed: 0,
                     planned: 1,
                     resourceExhausted: 1,
+                    runtimePolicy: 0,
                     skipped: 0
                 });
                 scope.assert.deepEqual(

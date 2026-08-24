@@ -71,6 +71,37 @@ Microtest profile execution is modeled with two independent fields:
 profile uses supervised concurrent execution. The selected values are recorded
 in `RunFacts.execution` and drive the current explicit-file runner path.
 
+`RunRequest.capabilityRestrictions.mode` controls the current microtest
+restriction policy. The programmatic default is `enabled`; the command-line
+runner also sets `enabled` explicitly. `supervised-process` microtests are
+enforced in child processes started with Node's permission model. The parent
+process remains unrestricted and owns reporters, output files, scheduling, and
+supervision. Supervised children receive bootstrap read permission for the
+project cwd and runner runtime files, receive no reporter write permission, and
+drop `fs.read` before test bodies run.
+
+`in-process` means no child process is spawned. Capability restrictions in this
+mode are best-effort diagnostics only: Overkill observes native diagnostics,
+`async_hooks` resources, and final global-state snapshots where possible, but it
+cannot add `--permission` after the caller process has started. Calls such as
+`process.abort()` may terminate the caller before a structured result can be
+reported. The CLI bin skeleton starts with `--permission-audit`, so CLI
+in-process microtests can observe extra permission-model diagnostics. Programmatic
+in-process callers get those audit diagnostics only if their own Node process was
+started with `--permission-audit`.
+
+Capability results are classified as blocked, observed, or native-gap. Blocked
+effects are denied by Node permissions. Observed effects are reported as
+`runtime-policy` runner errors and fail the owning case, all active cases when
+concurrent attribution is ambiguous, or the out-of-test boundary when no case is
+active. Native gaps are documented runtime limitations; current examples include
+sync bootstrap reads inside the cwd grant, `Date`, `Math.random()`, sync crypto
+randomness, arbitrary `process.kill()`, and SQLite execution.
+
+`RunCommand.engine` is supported for `in-process` runs. It is rejected for
+`supervised-process` runs because a live custom engine object cannot cross the
+process boundary reliably yet.
+
 Config loading is common runner infrastructure, not plugin discovery.
 The command-line runner loads native Node config files, selects the default
 line reporter when project config omits reporters, defaults managed reporter

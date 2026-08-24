@@ -13,12 +13,12 @@ import {
     defaultMicrotestProfile,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import { orchestrator } from './run-orchestrator.ts';
+import { orchestrator } from './run-orchestrator.entry-point.ts';
 import type { RunCommand, RunConfig, RunMicrotestProfileConfig, RunRequest } from './run-types.ts';
 
 const delayedPassFixturePath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
 const endlessLoopFixturePath = 'source/integration-tests/run/fixtures/endless-loop.test.ts';
-const childEntryPoint = fileURLToPath(new URL('./supervised-child.ts', import.meta.url));
+const childEntryPoint = fileURLToPath(new URL('./supervised-child.entry-point.ts', import.meta.url));
 const failureExitCode = 1;
 const generousResourceBudget = Number.MAX_SAFE_INTEGER;
 const hardTimeoutMilliseconds = 50;
@@ -82,6 +82,7 @@ function createRunConfigWithReporters(
 
 function createRunRequest(path: string): RunRequest {
     return defaultRunRequest({
+        capabilityRestrictions: { mode: 'disabled' },
         paths: [ path ],
         profile: 'microtest'
     });
@@ -306,6 +307,7 @@ export const testSuite = createOverkillSuite({
                 const messages = collectChildMessages(child);
                 child.send({
                     assignedCaseKeys: [ 'missing-case' ],
+                    capabilityRestrictions: { mode: 'disabled' },
                     cwd: process.cwd(),
                     hardTimeoutMilliseconds,
                     kind: 'run',

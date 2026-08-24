@@ -1,5 +1,10 @@
 import type { WallClock } from '@enormora/wall-clock';
-import { invalidTimeoutMetadataFailure, runTestCase, timeoutFailure } from './case-execution.ts';
+import {
+    invalidTimeoutMetadataFailure,
+    runTestCase,
+    timeoutFailure,
+    type TestRuntimePolicy
+} from './case-execution.ts';
 import { caseIdentityKey } from './identity.ts';
 import {
     verdictFromOutcome,
@@ -28,6 +33,7 @@ export type ConcurrentCase = {
 };
 
 export type ExecutionSupervisionDependencies = {
+    readonly runtimePolicy: TestRuntimePolicy | null;
     readonly wallClock: WallClock;
 };
 
@@ -234,6 +240,39 @@ function clearTimer(wallClock: WallClock, timer: ReturnType<WallClock['setTimeou
     }
 }
 
+function policyCheckedCase(
+    testCase: TestPlanCase,
+    executedCase: ConcurrentCase,
+    supervision: ExecutionSupervision,
+    dependencies: ExecutionSupervisionDependencies
+): ConcurrentCase {
+    const errors = dependencies.runtimePolicy?.takeCaseErrors(testCase) ?? [];
+
+    if (errors.length === 0) {
+        return executedCase;
+    }
+
+    for (const error of errors) {
+        supervision.recordRunnerError(error);
+    }
+
+    return createTerminalCase(testCase, 'runtime-policy', executedCase.wallTimeMs);
+}
+
+async function runTestCaseWithPolicy(
+    testCase: TestPlanCase,
+    controller: AbortController,
+    supervision: ExecutionSupervision,
+    dependencies: ExecutionSupervisionDependencies
+): Promise<ConcurrentCase> {
+    const executedCase = await runTestCase(testCase, dependencies.wallClock, {
+        runtimePolicy: dependencies.runtimePolicy,
+        signal: controller.signal
+    });
+
+    return policyCheckedCase(testCase, executedCase, supervision, dependencies);
+}
+
 function activeCaseIds(activeCases: ReadonlyMap<string, ActiveCase>): readonly TestPlanCase['id'][] {
     return Array.from(activeCases.values(), function toCaseId(activeCase) {
         return activeCase.testCase.id;
@@ -321,10 +360,11 @@ async function runCaseWithSoftTimeout(
     testCase: TestPlanCase,
     controller: AbortController,
     timeoutMilliseconds: number | null,
+    supervision: ExecutionSupervision,
     dependencies: ExecutionSupervisionDependencies
 ): Promise<ConcurrentCase> {
     if (timeoutMilliseconds === null) {
-        return await runTestCase(testCase, dependencies.wallClock, { signal: controller.signal });
+        return await runTestCaseWithPolicy(testCase, controller, supervision, dependencies);
     }
 
     const timing = { timedOut: false };
@@ -332,7 +372,7 @@ async function runCaseWithSoftTimeout(
         timing.timedOut = true;
         controller.abort();
     }, timeoutMilliseconds);
-    const executedCase = await runTestCase(testCase, dependencies.wallClock, { signal: controller.signal });
+    const executedCase = await runTestCaseWithPolicy(testCase, controller, supervision, dependencies);
 
     clearTimer(dependencies.wallClock, softTimeout);
 
@@ -412,6 +452,7 @@ async function runCaseBodyUnderSupervision(input: CaseBodyInput): Promise<Concur
                 input.testCase,
                 input.controller,
                 input.timeoutMilliseconds,
+                input.supervision,
                 input.dependencies
             ),
             input.completion.promise

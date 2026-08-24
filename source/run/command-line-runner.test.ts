@@ -52,6 +52,7 @@ const terminalReporter: Reporter = {
 
 const defaultRequest: RunRequest = {
     baselineUpdateMode: 'none',
+    capabilityRestrictions: { mode: 'enabled' },
     capture: 'buffered',
     debug: {
         mode: 'off',

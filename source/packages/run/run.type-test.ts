@@ -36,6 +36,7 @@ import {
 
 type RunRequestKeys = readonly [
     'baselineUpdateMode',
+    'capabilityRestrictions',
     'capture',
     'debug',
     'execution',
@@ -67,6 +68,7 @@ describe('@overkill-dev/run', function () {
 
     test('keeps request fields explicit for the implemented runner slice', function () {
         expect<keyof RunRequest>().type.toBe<ExpectedRunRequestKey>();
+        expect<RunRequest['capabilityRestrictions']['mode']>().type.toBe<'disabled' | 'enabled'>();
         expect<RunRequest['execution']['mode']>().type.toBe<'profile-default'>();
         expect<RunRequest['measureResourceUsage']>().type.toBe<boolean | null>();
         expect<RunRequest['profile']>().type.toBe<string>();

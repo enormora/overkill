@@ -10,6 +10,7 @@ const deterministicSeed = 99n;
 export function createDeterministicRunOrchestrator(): RunOrchestrator {
     const engine = createTestEngine();
     const wallClock = createWallClock();
+    const environment: NodeJS.ProcessEnv = {};
     const reporterDispatcher = {
         async disposeReporters() {
             return [];
@@ -59,6 +60,14 @@ export function createDeterministicRunOrchestrator(): RunOrchestrator {
         },
         defaultEngine: defaultRunEngine,
         execute: engine.execute,
+        runtimeCapabilityPolicy: {
+            readEnvironment() {
+                return environment;
+            },
+            readStorage() {
+                return null;
+            }
+        },
         node: {
             arch: 'x64',
             platform: 'linux',

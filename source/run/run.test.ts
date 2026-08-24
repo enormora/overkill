@@ -13,7 +13,8 @@ import {
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
 import { RunResolutionError } from './run-errors.ts';
-import { orchestrator } from './run-orchestrator.ts';
+import { defaultRunEngine } from './default-run-engine.ts';
+import { orchestrator } from './run-orchestrator.entry-point.ts';
 import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
 
 type RunCommandParts = {
@@ -363,6 +364,7 @@ export const testSuite = createOverkillSuite({
                     passed: 1,
                     planned: 1,
                     resourceExhausted: 0,
+                    runtimePolicy: 0,
                     skipped: 0
                 });
 
@@ -391,6 +393,7 @@ export const testSuite = createOverkillSuite({
                     passed: 1,
                     planned: 1,
                     resourceExhausted: 0,
+                    runtimePolicy: 0,
                     skipped: 0
                 });
 
@@ -430,6 +433,7 @@ export const testSuite = createOverkillSuite({
                     passed: 0,
                     planned: 0,
                     resourceExhausted: 0,
+                    runtimePolicy: 0,
                     skipped: 0
                 });
                 scope.assert.deepEqual(
@@ -475,6 +479,27 @@ export const testSuite = createOverkillSuite({
                         }
                     }));
                 }, { message: 'Run seed must be a nonnegative bigint.' });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'orchestrator.run() rejects custom engines for supervised execution',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const runOrchestrator = createDeterministicRunOrchestrator();
+
+                await scope.assert.rejects(async function runWithCustomSupervisedEngine() {
+                    await runOrchestrator.run(createRunCommand({
+                        config: defaultConfig,
+                        cwd: process.cwd(),
+                        engine: defaultRunEngine,
+                        request: defaultRequest
+                    }));
+                }, {
+                    message: 'Custom engines are not supported with supervised-process execution yet. ' +
+                        'Use in-process execution or the default engine.'
+                });
 
                 return scope.assert.collect();
             }

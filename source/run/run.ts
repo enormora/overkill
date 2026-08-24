@@ -1,5 +1,6 @@
 import { serializeValue } from '../compare/serialized-value.ts';
 import type { RunResourceUsageTracker, RunResult } from '../engine/run-result.ts';
+import type { TestRuntimePolicy } from '../engine/case-execution.ts';
 import type { Engine } from '../engine/engine.ts';
 import type { Metadata } from '../engine/test-node.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
@@ -10,6 +11,7 @@ import {
     unsupportedRequest
 } from './run-errors.ts';
 import { loadRunTestModules } from './run-test-modules.ts';
+import { createRuntimeCapabilityPolicy } from './capability-policy.ts';
 import { executeSupervisedRun } from './supervised-run.ts';
 import {
     invalidRunProfileNameMessage,
@@ -106,9 +108,16 @@ function assertValidRunProfileName(profileName: string): void {
 
 function validateRunRequest(request: RunRequest): void {
     assertValidRunProfileName(request.profile);
+    if (capabilityRestrictionMode(request) !== 'enabled' && capabilityRestrictionMode(request) !== 'disabled') {
+        invalidRequest('Capability restriction mode must be "enabled" or "disabled".');
+    }
     validateRunShard(request);
     validateRunSeed(request);
     validateRunResourceUsageRequest(request);
+}
+
+function capabilityRestrictionMode(request: RunRequest): RunRequest['capabilityRestrictions']['mode'] {
+    return request.capabilityRestrictions?.mode ?? 'enabled';
 }
 
 function validateRunResourceUsagePolicy(policy: RunResourceUsagePolicy): void {
@@ -232,6 +241,7 @@ function copyRunProfilesConfig(profiles: RunProfilesConfig): RunProfilesConfig {
 function copyRunRequest(request: RunRequest): RunRequest {
     return {
         baselineUpdateMode: request.baselineUpdateMode,
+        capabilityRestrictions: { mode: capabilityRestrictionMode(request) },
         capture: request.capture,
         debug: {
             mode: request.debug.mode,
@@ -323,6 +333,15 @@ function selectedProfile(request: RunRequest, config: RunConfig): RunMicrotestPr
     }
 
     return profile;
+}
+
+function assertSupportedProcessEngine(command: RunCommand, profile: RunMicrotestProfileConfig): void {
+    if (profile.execution.processModel === 'supervised-process' && command.engine !== null) {
+        invalidRequest(
+            'Custom engines are not supported with supervised-process execution yet. ' +
+            'Use in-process execution or the default engine.'
+        );
+    }
 }
 
 function resolveEngineExecutionMode(execution: RunMicrotestExecution): 'concurrent-in-process' | 'serial-in-process' {
@@ -422,15 +441,19 @@ async function createTestPlan(command: RunCommand, dependencies: RunOrchestrator
     }
 }
 
-async function createResolvedRun(command: RunCommand, dependencies: RunOrchestratorDependencies): Promise<ResolvedRun> {
+async function createResolvedRun(
+    command: RunCommand,
+    dependencies: RunOrchestratorDependencies
+): Promise<ResolvedRun> {
     validateRunRequest(command.request);
     validateRunConfig(command.config);
 
     const request = freezeValue(copyRunRequest(command.request));
     const config = freezeValue(copyRunConfig(command.config));
+    const profile = selectedProfile(request, config);
+    assertSupportedProcessEngine(command, profile);
     const testPlan = await createTestPlan(command, dependencies);
     const facts = freezeValue(createRunFacts(testPlan, request, config, dependencies));
-    const profile = selectedProfile(request, config);
 
     return freezeValue({
         config,
@@ -446,6 +469,10 @@ function assertRunnableResourceUsagePolicy(policy: RunResourceUsagePolicy): void
     validateRunResourceUsagePolicy(policy);
 }
 
+function capabilityRestrictionsEnabled(request: RunRequest): boolean {
+    return capabilityRestrictionMode(request) === 'enabled';
+}
+
 function createExecutionResourceUsageTracker(
     policy: RunResourceUsagePolicy,
     dependencies: RunOrchestratorDependencies
@@ -459,14 +486,17 @@ function createExecutionResourceUsageTracker(
     });
 }
 
-function createCollectionErrorRunResult(error: RunCollectionError): RunResult {
+function createCollectionErrorRunResult(
+    error: RunCollectionError,
+    runtimePolicyErrors: readonly RunResult['runnerErrors'][number][]
+): RunResult {
     return {
         artifacts: [],
         bySuite: {},
         orphans: [],
         perTest: [],
         resourceUsage: null,
-        runnerErrors: [ error.runnerError() ],
+        runnerErrors: [ ...runtimePolicyErrors, error.runnerError() ],
         summary: {
             crashed: 0,
             defined: 0,
@@ -476,6 +506,7 @@ function createCollectionErrorRunResult(error: RunCollectionError): RunResult {
             passed: 0,
             planned: 0,
             resourceExhausted: 0,
+            runtimePolicy: 0,
             skipped: 0
         },
         wallTimeMs: 0
@@ -488,17 +519,46 @@ function isRunResult(value: ResolvedRun | RunResult): value is RunResult {
 
 async function createResolvedRunOrCollectionErrorResult(
     command: RunCommand,
-    dependencies: RunOrchestratorDependencies
+    dependencies: RunOrchestratorDependencies,
+    runtimePolicy: TestRuntimePolicy | null
 ): Promise<ResolvedRun | RunResult> {
     try {
-        return await createResolvedRun(command, dependencies);
+        return runtimePolicy === null
+            ? await createResolvedRun(command, dependencies)
+            : await runtimePolicy.runLoad(function resolveRunInsidePolicy() {
+                return createResolvedRun(command, dependencies);
+            });
     } catch (error: unknown) {
         if (error instanceof RunCollectionError) {
-            return createCollectionErrorRunResult(error);
+            return createCollectionErrorRunResult(error, runtimePolicy?.takeRunErrors() ?? []);
         }
 
         throw error;
     }
+}
+
+function createRuntimePolicy(
+    request: RunRequest,
+    dependencies: RunOrchestratorDependencies
+): TestRuntimePolicy | null {
+    return capabilityRestrictionsEnabled(request)
+        ? createRuntimeCapabilityPolicy({
+            dependencies: dependencies.runtimeCapabilityPolicy,
+            observedStderr: false,
+            observedStdout: false
+        })
+        : null;
+}
+
+function addRunnerErrors(result: RunResult, runnerErrors: readonly RunResult['runnerErrors'][number][]): RunResult {
+    if (runnerErrors.length === 0) {
+        return result;
+    }
+
+    return {
+        ...result,
+        runnerErrors: [ ...runnerErrors, ...result.runnerErrors ]
+    };
 }
 
 export function createRunOrchestrator(dependencies: RunOrchestratorDependencies): RunOrchestrator {
@@ -508,7 +568,15 @@ export function createRunOrchestrator(dependencies: RunOrchestratorDependencies)
         },
 
         async run(command) {
-            const resolvedRun = await createResolvedRunOrCollectionErrorResult(command, dependencies);
+            const runtimePolicy = createRuntimePolicy(command.request, dependencies);
+            let resolvedRun: ResolvedRun | RunResult;
+
+            try {
+                resolvedRun = await createResolvedRunOrCollectionErrorResult(command, dependencies, runtimePolicy);
+            } catch (error: unknown) {
+                runtimePolicy?.takeRunErrors();
+                throw error;
+            }
 
             if (isRunResult(resolvedRun)) {
                 return resolvedRun;
@@ -519,7 +587,7 @@ export function createRunOrchestrator(dependencies: RunOrchestratorDependencies)
             assertRunnableResourceUsagePolicy(resourceUsagePolicy);
 
             if (resolvedRun.facts.execution.processModel === 'supervised-process') {
-                return await executeSupervisedRun(resolvedRun, dependencies);
+                return addRunnerErrors(await executeSupervisedRun(resolvedRun, dependencies), runtimePolicy?.takeRunErrors() ?? []);
             }
 
             return await dependencies.execute(resolvedRun.testPlan, {
@@ -528,6 +596,7 @@ export function createRunOrchestrator(dependencies: RunOrchestratorDependencies)
                 reporters: resolvedRun.reporters,
                 resourceBudgets: resourceUsagePolicy.budgets,
                 resourceUsageTracker: createExecutionResourceUsageTracker(resourceUsagePolicy, dependencies),
+                runtimePolicy,
                 runFacts: resolvedRun.facts,
                 startedAt: dependencies.readStartedAt(),
                 timeoutPolicy: {

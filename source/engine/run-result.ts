@@ -10,6 +10,7 @@ type RunnerErrorSubtypeByName = {
     readonly permission: 'permission';
     readonly reporter: 'reporter';
     readonly resourceExhaustion: 'resource-exhaustion';
+    readonly runtimePolicy: 'runtime-policy';
     readonly unhandledRejection: 'unhandled-rejection';
 };
 
@@ -96,7 +97,7 @@ export type InconclusiveOutcome = {
 };
 
 export type TestOutcome = FailOutcome | InconclusiveOutcome | PassOutcome | SkipOutcome;
-export type TestVerdict = TestOutcome['kind'] | 'crashed' | 'resource-exhausted';
+export type TestVerdict = TestOutcome['kind'] | 'crashed' | 'resource-exhausted' | 'runtime-policy';
 
 export type RunnerError = {
     readonly attributedTo: CaseId | null;
@@ -114,6 +115,7 @@ export type RunSummary = {
     readonly passed: number;
     readonly planned: number;
     readonly resourceExhausted: number;
+    readonly runtimePolicy: number;
     readonly skipped: number;
 };
 

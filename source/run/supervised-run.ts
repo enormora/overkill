@@ -1,4 +1,6 @@
 import { fork, type ChildProcess } from 'node:child_process';
+import { dirname } from 'node:path';
+import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { OutputRenderer } from '../engine/reporter-output.ts';
 import type { Reporter, ReporterEvent } from '../engine/reporter.ts';
@@ -35,6 +37,7 @@ type SupervisedRunState = {
     readonly recordPerTestResult: (key: string, result: PerTestResult) => void;
     readonly recordRunnerError: (error: RunnerError) => void;
     readonly recordRunnerErrors: (errors: readonly RunnerError[]) => void;
+    readonly recordRuntimePolicyViolation: (capability: string, message: string) => void;
     readonly recordTerminalActiveCases: (verdict: PerTestResult['verdict']) => void;
     readonly removeActiveCase: (key: string) => void;
     readonly runnerErrors: () => readonly RunnerError[];
@@ -77,7 +80,8 @@ type SupervisedRunRuntime = SupervisedRunRuntimeSeed & {
     readonly timeout: SupervisedHardTimeout;
 };
 
-const childEntryPoint = fileURLToPath(new URL('./supervised-child.ts', import.meta.url));
+const childEntryPoint = fileURLToPath(new URL('./supervised-child.entry-point.ts', import.meta.url));
+const childRuntimeRoot = dirname(childEntryPoint);
 const millisecondsPerSecond = 1000;
 const resourceBudgetMetrics: readonly ResourceBudgetMetric[] = [
     'activeResourceCount',
@@ -128,6 +132,10 @@ function createSupervisedRunState(): SupervisedRunState {
         },
         recordRunnerErrors(errors) {
             runnerErrors.push(...errors);
+        },
+        recordRuntimePolicyViolation(capability, message) {
+            runnerErrors.push(runtimePolicyError(this, capability, message));
+            this.recordTerminalActiveCases('runtime-policy');
         },
         recordTerminalActiveCases(verdict) {
             for (const [ key, testCase ] of activeCases) {
@@ -253,6 +261,23 @@ function crashError(state: SupervisedRunState, reason: string): RunnerError {
     };
 }
 
+function runtimePolicyError(state: SupervisedRunState, capability: string, message: string): RunnerError {
+    const activeCases = activeCaseIds(state);
+    const [ activeCase = null ] = activeCases;
+
+    return {
+        attributedTo: activeCases.length === 1 ? activeCase : null,
+        cause: {
+            activeCases,
+            capability,
+            phase: activeCases.length === 0 ? 'out-of-test' : 'body',
+            strictness: 'observed'
+        },
+        message,
+        subtype: 'runtime-policy'
+    };
+}
+
 async function recordReporterEventErrors(
     event: ReporterEvent,
     state: SupervisedRunState,
@@ -327,10 +352,49 @@ function createReporterContext(resolvedRun: ResolvedRun): ReporterContext {
     };
 }
 
-function startSupervisedChild(resolvedRun: ResolvedRun): ChildProcess {
+function sanitizedChildEnvironment(environmentVariables: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+    const environment = { ...environmentVariables };
+
+    delete environment.NODE_OPTIONS;
+    delete environment.NODE_V8_COVERAGE;
+    delete environment.NODE_CONFIG;
+    delete environment.NODE_CHANNEL_FD;
+    delete environment.NODE_UNIQUE_ID;
+
+    return environment;
+}
+
+function readPermissionRoots(resolvedRun: ResolvedRun): readonly string[] {
+    return Array.from(new Set([
+        realpathSync(resolvedRun.cwd),
+        realpathSync(childRuntimeRoot)
+    ]));
+}
+
+function supervisedChildExecArgv(resolvedRun: ResolvedRun): readonly string[] {
+    if (resolvedRun.request.capabilityRestrictions.mode === 'disabled') {
+        return [];
+    }
+
+    return [
+        '--permission',
+        '--trace-env',
+        '--trace-env-js-stack',
+        ...readPermissionRoots(resolvedRun).map(function allowRead(root) {
+            return `--allow-fs-read=${root}`;
+        })
+    ];
+}
+
+function startSupervisedChild(
+    resolvedRun: ResolvedRun,
+    dependencies: RunOrchestratorDependencies
+): ChildProcess {
     return fork(childEntryPoint, [], {
         cwd: resolvedRun.cwd,
-        stdio: [ 'inherit', 'inherit', 'inherit', 'ipc' ]
+        env: sanitizedChildEnvironment(dependencies.runtimeCapabilityPolicy.readEnvironment()),
+        execArgv: supervisedChildExecArgv(resolvedRun),
+        stdio: [ 'ignore', 'pipe', 'pipe', 'ipc' ]
     });
 }
 
@@ -364,6 +428,7 @@ function createRunCommand(resolvedRun: ResolvedRun): SupervisedRunCommand {
         assignedCaseKeys: resolvedRun.testPlan.cases.map(function toCaseKey(testCase) {
             return formatCaseId(testCase.id);
         }),
+        capabilityRestrictions: resolvedRun.request.capabilityRestrictions,
         cwd: resolvedRun.cwd,
         hardTimeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds,
         kind: 'run',
@@ -452,7 +517,89 @@ function handleChildMessage(message: SupervisedChildMessage, runtime: Supervised
     }
 }
 
+function observeChildStdout(runtime: SupervisedRunRuntime): void {
+    runtime.child.stdout?.on('data', function recordStdoutOutput(chunk: Buffer) {
+        if (chunk.length === 0) {
+            return;
+        }
+
+        runtime.terminalFailure.write(true);
+        runtime.state.recordRuntimePolicyViolation(
+            'raw-stdout',
+            'Runtime policy violation: supervised child wrote to stdout.'
+        );
+    });
+}
+
+const ignoredTraceEnvMutationVariables = new Set([
+    'NODE_CHANNEL_FD',
+    'NODE_CHANNEL_SERIALIZATION_MODE',
+    'NODE_UNIQUE_ID'
+]);
+
+function traceEnvMutationVariable(line: string): string | null {
+    const match = /^\[--trace-env\] (?:delete|set) "([^"]+)"/u.exec(line);
+
+    return match?.[1] ?? null;
+}
+
+function traceEnvMutation(line: string): string | null {
+    const variable = traceEnvMutationVariable(line);
+
+    if (variable !== null && ignoredTraceEnvMutationVariables.has(variable)) {
+        return null;
+    }
+
+    if (variable !== null && line.startsWith('[--trace-env] set ')) {
+        return `Runtime policy violation: process.env value was set: ${variable}.`;
+    }
+
+    if (variable !== null && line.startsWith('[--trace-env] delete ')) {
+        return `Runtime policy violation: process.env value was deleted: ${variable}.`;
+    }
+
+    return null;
+}
+
+function observeChildStderr(runtime: SupervisedRunRuntime): void {
+    let pending = '';
+    let readingTraceEnvStack = false;
+
+    runtime.child.stderr?.on('data', function recordStderrOutput(chunk: Buffer) {
+        pending += chunk.toString('utf8');
+        const lines = pending.split('\n');
+        pending = lines.pop() ?? '';
+
+        for (const line of lines) {
+            const mutation = traceEnvMutation(line);
+
+            if (mutation !== null) {
+                readingTraceEnvStack = true;
+                runtime.terminalFailure.write(true);
+                runtime.state.recordRuntimePolicyViolation('process-env', mutation);
+            } else if (line.startsWith('[--trace-env]')) {
+                readingTraceEnvStack = true;
+            } else if (
+                readingTraceEnvStack &&
+                (line.trim() === '' || line === '----- JavaScript stack trace -----' || /^\d+:/u.test(line))
+            ) {
+                continue;
+            } else if (line.trim() !== '') {
+                readingTraceEnvStack = false;
+                runtime.terminalFailure.write(true);
+                runtime.state.recordRuntimePolicyViolation(
+                    'raw-stderr',
+                    'Runtime policy violation: supervised child wrote to stderr.'
+                );
+            }
+        }
+    });
+}
+
 async function observeChild(runtime: SupervisedRunRuntime): Promise<void> {
+    observeChildStdout(runtime);
+    observeChildStderr(runtime);
+
     return new Promise(function waitForChild(resolve) {
         runtime.child.on('message', function receiveMessage(message: SupervisedChildMessage) {
             handleChildMessage(message, runtime);
@@ -511,7 +658,7 @@ function createRuntime(
 ): SupervisedRunRuntime {
     const runtimeWithoutTimeout = {
         cases: caseByKey(resolvedRun.testPlan),
-        child: startSupervisedChild(resolvedRun),
+        child: startSupervisedChild(resolvedRun, dependencies),
         completedResult: createStoredRunValue<RunResult | null>(null),
         dependencies,
         previousSample: createStoredRunValue<ResourceUsageSnapshot | null>(null),

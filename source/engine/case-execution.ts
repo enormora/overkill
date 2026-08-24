@@ -17,6 +17,7 @@ import { createRecordingAssertFacade } from './assertion-facade.ts';
 import { createRecordingRequireFacade } from './require-assertion-facade.ts';
 import {
     type PerTestResult,
+    type RunnerError,
     type TestContractFailure,
     type TestFailure,
     type TestOutcome,
@@ -41,7 +42,15 @@ type ExecutedCase = {
 };
 
 export type RunTestCaseOptions = {
+    readonly runtimePolicy: TestRuntimePolicy | null;
     readonly signal: AbortSignal;
+};
+
+export type TestRuntimePolicy = {
+    readonly runCase: <Value>(testCase: TestPlanCase, run: () => Promise<Value>) => Promise<Value>;
+    readonly runLoad: <Value>(run: () => Promise<Value>) => Promise<Value>;
+    readonly takeCaseErrors: (testCase: TestPlanCase) => readonly RunnerError[];
+    readonly takeRunErrors: () => readonly RunnerError[];
 };
 
 function evaluatedAssertionFailure(assertions: readonly AssertionNode[]): TestFailure | null {
@@ -182,7 +191,14 @@ async function runCaseBody(
     options: RunTestCaseOptions
 ): Promise<ExecutedBody> {
     try {
-        return completedBody(recorder, await testCase.body(createTestScope(recorder, options.signal)));
+        const runBody = async function runUserBody() {
+            return await testCase.body(createTestScope(recorder, options.signal));
+        };
+        const assertionResult = options.runtimePolicy === null
+            ? await runBody()
+            : await options.runtimePolicy.runCase(testCase, runBody);
+
+        return completedBody(recorder, assertionResult);
     } catch (error: unknown) {
         return failedBody(recorder, error);
     }
@@ -237,6 +253,7 @@ function defaultRunTestCaseOptions(): RunTestCaseOptions {
     const controller = new AbortController();
 
     return {
+        runtimePolicy: null,
         signal: controller.signal
     };
 }

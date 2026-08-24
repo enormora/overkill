@@ -38,6 +38,10 @@ function crashed(testResult: PerTestResult): boolean {
     return testResult.verdict === 'crashed';
 }
 
+function runtimePolicy(testResult: PerTestResult): boolean {
+    return testResult.verdict === 'runtime-policy';
+}
+
 function countOutcomes(testPlan: TestPlan, perTest: readonly PerTestResult[]): RunResult['summary'] {
     return {
         crashed: perTest.filter(crashed).length,
@@ -48,6 +52,7 @@ function countOutcomes(testPlan: TestPlan, perTest: readonly PerTestResult[]): R
         passed: perTest.filter(hasPassed).length,
         planned: testPlan.cases.length,
         resourceExhausted: perTest.filter(resourceExhausted).length,
+        runtimePolicy: perTest.filter(runtimePolicy).length,
         skipped: perTest.filter(wasSkipped).length
     };
 }
