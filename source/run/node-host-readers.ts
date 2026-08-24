@@ -5,14 +5,23 @@ import {
     type WebStorageLike
 } from './capability-policy.ts';
 
-export function readProcessEnvironment(processObject: Readonly<typeof process>): RuntimeCapabilityPolicyEnvironment {
+type ProcessEnvironmentHost = {
+    readonly env?: unknown;
+};
+
+type WebStorageHost = {
+    readonly localStorage?: unknown;
+    readonly sessionStorage?: unknown;
+};
+
+export function readProcessEnvironment(processObject: ProcessEnvironmentHost): RuntimeCapabilityPolicyEnvironment {
     const environment: unknown = Reflect.get(processObject, 'env');
 
     return isRuntimeCapabilityPolicyEnvironment(environment) ? environment : {};
 }
 
 export function readWebStorage(
-    host: Readonly<typeof globalThis>,
+    host: WebStorageHost,
     name: 'localStorage' | 'sessionStorage'
 ): WebStorageLike | null {
     if (name === 'localStorage') {

@@ -95,6 +95,7 @@ function observeChildStdout(runtime: SupervisedChildOutputRuntime): void {
 const ignoredTraceEnvMutationVariables = new Set([
     'NODE_CHANNEL_FD',
     'NODE_CHANNEL_SERIALIZATION_MODE',
+    'NODE_V8_COVERAGE',
     'NODE_UNIQUE_ID'
 ]);
 
