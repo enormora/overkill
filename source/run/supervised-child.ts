@@ -6,8 +6,11 @@ import { defaultRunEngine } from './default-run-engine.ts';
 import { createNodeResourceUsageTracker } from './resource-usage.ts';
 import { discoverRunFiles } from './run-discovery.ts';
 import { loadRunTestModules } from './run-test-modules.ts';
-import { createRuntimeCapabilityPolicy } from './capability-policy.ts';
-import type { RuntimeCapabilityPolicyDependencies } from './capability-policy.ts';
+import {
+    createRuntimeCapabilityPolicy,
+    type RuntimeCapabilityPolicy,
+    type RuntimeCapabilityPolicyDependencies
+} from './capability-policy.ts';
 import type { SupervisedChildMessage, SupervisedRunCommand } from './supervised-protocol.ts';
 
 type ChildExecutionMode = 'concurrent-in-process' | 'serial-in-process';
@@ -101,10 +104,11 @@ function executionMode(command: SupervisedRunCommand): ChildExecutionMode {
     return command.scheduling === 'concurrent' ? 'concurrent-in-process' : 'serial-in-process';
 }
 
-async function run(command: SupervisedRunCommand, host: SupervisedChildHost): Promise<void> {
-    host.validatePermissionHost(command);
-    const wallClock = createWallClock();
-    const runtimePolicy = command.capabilityRestrictions.mode === 'enabled'
+function createRuntimePolicy(
+    command: SupervisedRunCommand,
+    host: SupervisedChildHost
+): RuntimeCapabilityPolicy | null {
+    return command.capabilityRestrictions.mode === 'enabled'
         ? createRuntimeCapabilityPolicy({
             dependencies: {
                 readEnvironment: host.readEnvironment,
@@ -114,6 +118,53 @@ async function run(command: SupervisedRunCommand, host: SupervisedChildHost): Pr
             observedStdout: false
         })
         : null;
+}
+
+async function createPolicyCheckedTestPlan(
+    command: SupervisedRunCommand,
+    runtimePolicy: RuntimeCapabilityPolicy | null
+): Promise<TestPlan> {
+    const createPlan = async function createTestPlanInsidePolicy(): Promise<TestPlan> {
+        return await createTestPlan(command);
+    };
+
+    return runtimePolicy === null ? await createPlan() : await runtimePolicy.runLoad(createPlan);
+}
+
+function sendRuntimePolicyErrors(
+    host: SupervisedChildHost,
+    runtimePolicy: RuntimeCapabilityPolicy | null
+): void {
+    const errors = runtimePolicy?.takeRunErrors() ?? [];
+
+    for (const runtimePolicyError of errors) {
+        host.send({
+            event: {
+                error: runtimePolicyError,
+                kind: 'runner-error'
+            },
+            kind: 'event'
+        });
+    }
+}
+
+async function createCollectedTestPlan(
+    command: SupervisedRunCommand,
+    host: SupervisedChildHost,
+    runtimePolicy: RuntimeCapabilityPolicy | null
+): Promise<TestPlan> {
+    try {
+        return await createPolicyCheckedTestPlan(command, runtimePolicy);
+    } catch (error: unknown) {
+        sendRuntimePolicyErrors(host, runtimePolicy);
+        throw error;
+    }
+}
+
+async function run(command: SupervisedRunCommand, host: SupervisedChildHost): Promise<void> {
+    host.validatePermissionHost(command);
+    const wallClock = createWallClock();
+    const runtimePolicy = createRuntimePolicy(command, host);
     const execute = createExecute({
         reporterDispatcher: createReporterDispatcher({
             stderr: { writeLine: ignoreLine },
@@ -122,28 +173,7 @@ async function run(command: SupervisedRunCommand, host: SupervisedChildHost): Pr
         }),
         wallClock
     });
-    let collectedTestPlan: TestPlan;
-
-    try {
-        collectedTestPlan = runtimePolicy === null
-            ? await createTestPlan(command)
-            : await runtimePolicy.runLoad(function createTestPlanInsidePolicy() {
-                return createTestPlan(command);
-            });
-    } catch (error: unknown) {
-        for (const runtimePolicyError of runtimePolicy?.takeRunErrors() ?? []) {
-            host.send({
-                event: {
-                    error: runtimePolicyError,
-                    kind: 'runner-error'
-                },
-                kind: 'event'
-            });
-        }
-
-        throw error;
-    }
-
+    const collectedTestPlan = await createCollectedTestPlan(command, host, runtimePolicy);
     host.dropBodyReadPermission(command);
     const testPlan = selectAssignedCases(collectedTestPlan, command.assignedCaseKeys);
     const result = await execute(testPlan, {

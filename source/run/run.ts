@@ -1,8 +1,6 @@
 import { serializeValue } from '../compare/serialized-value.ts';
 import type { RunResourceUsageTracker, RunResult } from '../engine/run-result.ts';
-import type { TestRuntimePolicy } from '../engine/case-execution.ts';
 import type { Engine } from '../engine/engine.ts';
-import type { Metadata } from '../engine/test-node.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { discoverRunFiles } from './run-discovery.ts';
 import {
@@ -11,7 +9,13 @@ import {
     unsupportedRequest
 } from './run-errors.ts';
 import { loadRunTestModules } from './run-test-modules.ts';
-import { createRuntimeCapabilityPolicy } from './capability-policy.ts';
+import {
+    copyResourceBudgets,
+    copyRunConfig,
+    copyRunRequest,
+    createRunRuntimePolicy,
+    type RunRuntimePolicy
+} from './run-support.ts';
 import { executeSupervisedRun } from './supervised-run.ts';
 import {
     invalidRunProfileNameMessage,
@@ -20,17 +24,14 @@ import {
     type RunConfig,
     type RunCaseFacts,
     type RunFacts,
-    type RunLoaderConfig,
     type RunMicrotestExecution,
     type RunMicrotestProfileConfig,
     type RunOrchestrator,
     type RunOrchestratorDependencies,
     type RunProfileConfig,
-    type RunProfilesConfig,
     type RunRequest,
     type RunResourceBudgets,
     type RunResourceUsagePolicy,
-    type RunShard,
     type RunTestFamily,
     type RunTimeoutPolicy
 } from './run-types.ts';
@@ -108,16 +109,9 @@ function assertValidRunProfileName(profileName: string): void {
 
 function validateRunRequest(request: RunRequest): void {
     assertValidRunProfileName(request.profile);
-    if (capabilityRestrictionMode(request) !== 'enabled' && capabilityRestrictionMode(request) !== 'disabled') {
-        invalidRequest('Capability restriction mode must be "enabled" or "disabled".');
-    }
     validateRunShard(request);
     validateRunSeed(request);
     validateRunResourceUsageRequest(request);
-}
-
-function capabilityRestrictionMode(request: RunRequest): RunRequest['capabilityRestrictions']['mode'] {
-    return request.capabilityRestrictions?.mode ?? 'enabled';
 }
 
 function validateRunResourceUsagePolicy(policy: RunResourceUsagePolicy): void {
@@ -167,111 +161,10 @@ function resolvedSeed(request: RunRequest, dependencies: RunOrchestratorDependen
     return request.seed.value ?? dependencies.createSeed();
 }
 
-function copyLoaderConfig(loader: RunLoaderConfig): RunLoaderConfig {
-    return {
-        sourceMaps: loader.sourceMaps,
-        stripMode: loader.stripMode
-    };
-}
-
-function copyRunShard(shard: RunShard): RunShard {
-    return {
-        index: shard.index,
-        total: shard.total
-    };
-}
-
-function copyResourceBudgets(resourceBudgets: RunResourceBudgets): RunResourceBudgets {
-    return {
-        activeResourceCount: resourceBudgets.activeResourceCount,
-        javaScriptEngineHeapBytes: resourceBudgets.javaScriptEngineHeapBytes,
-        residentSetBytes: resourceBudgets.residentSetBytes,
-        residentSetGrowthBytesPerSecond: resourceBudgets.residentSetGrowthBytesPerSecond
-    };
-}
-
-function copyResourceBudgetOverrides(overrides: RunResourceBudgets | null): RunResourceBudgets | null {
-    if (overrides === null) {
-        return null;
-    }
-
-    return copyResourceBudgets(overrides);
-}
-
-function copyResourceUsagePolicy(policy: RunResourceUsagePolicy): RunResourceUsagePolicy {
-    return {
-        budgets: copyResourceBudgets(policy.budgets),
-        measure: policy.measure,
-        samplingIntervalMilliseconds: policy.samplingIntervalMilliseconds
-    };
-}
-
-function copyTimeoutPolicy(policy: RunTimeoutPolicy): RunTimeoutPolicy {
-    return {
-        hardMilliseconds: policy.hardMilliseconds,
-        softMilliseconds: policy.softMilliseconds
-    };
-}
-
-function copyExecution(execution: RunMicrotestExecution): RunMicrotestExecution {
-    return {
-        processModel: execution.processModel,
-        scheduling: execution.scheduling
-    };
-}
-
-function copyProfileConfig(profile: RunMicrotestProfileConfig): RunMicrotestProfileConfig {
-    return {
-        execution: copyExecution(profile.execution),
-        reporters: profile.reporters === null ? null : Array.from(profile.reporters),
-        resourceUsage: copyResourceUsagePolicy(profile.resourceUsage),
-        testFamily: profile.testFamily,
-        timeouts: copyTimeoutPolicy(profile.timeouts)
-    };
-}
-
-function copyRunProfilesConfig(profiles: RunProfilesConfig): RunProfilesConfig {
-    return Object.fromEntries(
-        Object.entries(profiles).map(function copyProfileEntry([ name, profile ]) {
-            return [ name, copyProfileConfig(profile) ];
-        })
-    );
-}
-
-function copyRunRequest(request: RunRequest): RunRequest {
-    return {
-        baselineUpdateMode: request.baselineUpdateMode,
-        capabilityRestrictions: { mode: capabilityRestrictionMode(request) },
-        capture: request.capture,
-        debug: {
-            mode: request.debug.mode,
-            selectors: []
-        },
-        execution: { mode: request.execution.mode },
-        measureResourceUsage: request.measureResourceUsage,
-        order: request.order,
-        paths: Array.from(request.paths),
-        profile: request.profile,
-        resourceBudgetOverrides: copyResourceBudgetOverrides(request.resourceBudgetOverrides),
-        resourceUsageSamplingIntervalMilliseconds: request.resourceUsageSamplingIntervalMilliseconds,
-        seed: { value: request.seed.value },
-        selection: { kind: request.selection.kind },
-        shard: copyRunShard(request.shard),
-        verbose: request.verbose
-    };
-}
-
-function copyRunConfig(config: RunConfig): RunConfig {
-    return {
-        loader: copyLoaderConfig(config.loader),
-        outputRenderer: config.outputRenderer,
-        profiles: copyRunProfilesConfig(config.profiles),
-        reporters: Array.from(config.reporters),
-        runtimeStateDir: config.runtimeStateDir
-    };
-}
-
-function runCaseFacts(metadata: Metadata, id: TestPlan['cases'][number]['id']): RunCaseFacts {
+function runCaseFacts(
+    metadata: TestPlan['cases'][number]['metadata'],
+    id: TestPlan['cases'][number]['id']
+): RunCaseFacts {
     return {
         id,
         metadata: serializeValue(metadata)
@@ -337,10 +230,11 @@ function selectedProfile(request: RunRequest, config: RunConfig): RunMicrotestPr
 
 function assertSupportedProcessEngine(command: RunCommand, profile: RunMicrotestProfileConfig): void {
     if (profile.execution.processModel === 'supervised-process' && command.engine !== null) {
-        invalidRequest(
-            'Custom engines are not supported with supervised-process execution yet. ' +
+        invalidRequest([
+            'Custom engines are not supported with supervised-process execution yet.',
             'Use in-process execution or the default engine.'
-        );
+        ]
+            .join(' '));
     }
 }
 
@@ -469,10 +363,6 @@ function assertRunnableResourceUsagePolicy(policy: RunResourceUsagePolicy): void
     validateRunResourceUsagePolicy(policy);
 }
 
-function capabilityRestrictionsEnabled(request: RunRequest): boolean {
-    return capabilityRestrictionMode(request) === 'enabled';
-}
-
 function createExecutionResourceUsageTracker(
     policy: RunResourceUsagePolicy,
     dependencies: RunOrchestratorDependencies
@@ -517,37 +407,38 @@ function isRunResult(value: ResolvedRun | RunResult): value is RunResult {
     return Object.hasOwn(value, 'summary');
 }
 
+function createResultFromResolutionError(
+    error: unknown,
+    runtimePolicy: RunRuntimePolicy | null
+): RunResult {
+    if (error instanceof RunCollectionError) {
+        return createCollectionErrorRunResult(error, runtimePolicy?.takeRunErrors() ?? []);
+    }
+
+    throw error;
+}
+
+async function resolveRunWithRuntimePolicy(
+    resolveRun: () => Promise<ResolvedRun>,
+    runtimePolicy: RunRuntimePolicy | null
+): Promise<ResolvedRun> {
+    return runtimePolicy === null ? await resolveRun() : await runtimePolicy.runLoad(resolveRun);
+}
+
 async function createResolvedRunOrCollectionErrorResult(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
-    runtimePolicy: TestRuntimePolicy | null
+    runtimePolicy: RunRuntimePolicy | null
 ): Promise<ResolvedRun | RunResult> {
+    const resolveRun = async function resolveRunInsidePolicy(): Promise<ResolvedRun> {
+        return await createResolvedRun(command, dependencies);
+    };
+
     try {
-        return runtimePolicy === null
-            ? await createResolvedRun(command, dependencies)
-            : await runtimePolicy.runLoad(function resolveRunInsidePolicy() {
-                return createResolvedRun(command, dependencies);
-            });
+        return await resolveRunWithRuntimePolicy(resolveRun, runtimePolicy);
     } catch (error: unknown) {
-        if (error instanceof RunCollectionError) {
-            return createCollectionErrorRunResult(error, runtimePolicy?.takeRunErrors() ?? []);
-        }
-
-        throw error;
+        return createResultFromResolutionError(error, runtimePolicy);
     }
-}
-
-function createRuntimePolicy(
-    request: RunRequest,
-    dependencies: RunOrchestratorDependencies
-): TestRuntimePolicy | null {
-    return capabilityRestrictionsEnabled(request)
-        ? createRuntimeCapabilityPolicy({
-            dependencies: dependencies.runtimeCapabilityPolicy,
-            observedStderr: false,
-            observedStdout: false
-        })
-        : null;
 }
 
 function addRunnerErrors(result: RunResult, runnerErrors: readonly RunResult['runnerErrors'][number][]): RunResult {
@@ -561,6 +452,50 @@ function addRunnerErrors(result: RunResult, runnerErrors: readonly RunResult['ru
     };
 }
 
+async function createResolvedRunResult(
+    command: RunCommand,
+    dependencies: RunOrchestratorDependencies,
+    runtimePolicy: RunRuntimePolicy | null
+): Promise<ResolvedRun | RunResult> {
+    try {
+        return await createResolvedRunOrCollectionErrorResult(command, dependencies, runtimePolicy);
+    } catch (error: unknown) {
+        runtimePolicy?.takeRunErrors();
+        throw error;
+    }
+}
+
+async function executeResolvedRun(
+    resolvedRun: ResolvedRun,
+    dependencies: RunOrchestratorDependencies,
+    runtimePolicy: RunRuntimePolicy | null
+): Promise<RunResult> {
+    const { resourceUsagePolicy } = resolvedRun.facts.execution;
+
+    assertRunnableResourceUsagePolicy(resourceUsagePolicy);
+
+    if (resolvedRun.facts.execution.processModel === 'supervised-process') {
+        const result = await executeSupervisedRun(resolvedRun, dependencies);
+
+        return addRunnerErrors(result, runtimePolicy?.takeRunErrors() ?? []);
+    }
+
+    return await dependencies.execute(resolvedRun.testPlan, {
+        execution: { mode: resolveEngineExecutionMode(resolvedRun.facts.execution) },
+        outputRenderer: resolvedRun.config.outputRenderer,
+        reporters: resolvedRun.reporters,
+        resourceBudgets: resourceUsagePolicy.budgets,
+        resourceUsageTracker: createExecutionResourceUsageTracker(resourceUsagePolicy, dependencies),
+        runtimePolicy,
+        runFacts: resolvedRun.facts,
+        startedAt: dependencies.readStartedAt(),
+        timeoutPolicy: {
+            hardTimeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds,
+            timeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.softMilliseconds
+        }
+    });
+}
+
 export function createRunOrchestrator(dependencies: RunOrchestratorDependencies): RunOrchestrator {
     return {
         async resolve(command) {
@@ -568,42 +503,14 @@ export function createRunOrchestrator(dependencies: RunOrchestratorDependencies)
         },
 
         async run(command) {
-            const runtimePolicy = createRuntimePolicy(command.request, dependencies);
-            let resolvedRun: ResolvedRun | RunResult;
-
-            try {
-                resolvedRun = await createResolvedRunOrCollectionErrorResult(command, dependencies, runtimePolicy);
-            } catch (error: unknown) {
-                runtimePolicy?.takeRunErrors();
-                throw error;
-            }
+            const runtimePolicy = createRunRuntimePolicy(command.request, dependencies);
+            const resolvedRun = await createResolvedRunResult(command, dependencies, runtimePolicy);
 
             if (isRunResult(resolvedRun)) {
                 return resolvedRun;
             }
 
-            const { resourceUsagePolicy } = resolvedRun.facts.execution;
-
-            assertRunnableResourceUsagePolicy(resourceUsagePolicy);
-
-            if (resolvedRun.facts.execution.processModel === 'supervised-process') {
-                return addRunnerErrors(await executeSupervisedRun(resolvedRun, dependencies), runtimePolicy?.takeRunErrors() ?? []);
-            }
-
-            return await dependencies.execute(resolvedRun.testPlan, {
-                execution: { mode: resolveEngineExecutionMode(resolvedRun.facts.execution) },
-                outputRenderer: resolvedRun.config.outputRenderer,
-                reporters: resolvedRun.reporters,
-                resourceBudgets: resourceUsagePolicy.budgets,
-                resourceUsageTracker: createExecutionResourceUsageTracker(resourceUsagePolicy, dependencies),
-                runtimePolicy,
-                runFacts: resolvedRun.facts,
-                startedAt: dependencies.readStartedAt(),
-                timeoutPolicy: {
-                    hardTimeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds,
-                    timeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.softMilliseconds
-                }
-            });
+            return await executeResolvedRun(resolvedRun, dependencies, runtimePolicy);
         }
     };
 }

@@ -19,6 +19,7 @@ type ExpectedRunnerErrorSubtypeByName = {
     readonly permission: 'permission';
     readonly reporter: 'reporter';
     readonly resourceExhaustion: 'resource-exhaustion';
+    readonly runtimePolicy: 'runtime-policy';
     readonly unhandledRejection: 'unhandled-rejection';
 };
 type ExpectedRunnerErrorSubtype = ExpectedRunnerErrorSubtypeByName[keyof ExpectedRunnerErrorSubtypeByName];
@@ -42,6 +43,7 @@ type RunSummaryKeys = readonly [
     'passed',
     'planned',
     'resourceExhausted',
+    'runtimePolicy',
     'skipped'
 ];
 type ExpectedRunSummaryKey = RunSummaryKeys[number];
@@ -49,8 +51,12 @@ type TestEndReporterEvent = Extract<ReporterEvent, { readonly kind: 'test-end'; 
 
 describe('run result verdicts', function () {
     test('per-test and reporter verdicts accept outcomes and terminal runner verdicts', function () {
-        expect<PerTestResult['verdict']>().type.toBe<OutcomeKind | 'crashed' | 'resource-exhausted'>();
-        expect<TestEndReporterEvent['verdict']>().type.toBe<OutcomeKind | 'crashed' | 'resource-exhausted'>();
+        expect<PerTestResult['verdict']>().type.toBe<
+            OutcomeKind | 'crashed' | 'resource-exhausted' | 'runtime-policy'
+        >();
+        expect<TestEndReporterEvent['verdict']>().type.toBe<
+            OutcomeKind | 'crashed' | 'resource-exhausted' | 'runtime-policy'
+        >();
     });
 });
 

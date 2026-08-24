@@ -32,6 +32,7 @@ test-unit:
 
 test-runner-integration:
     node source/integration-tests/run/runner-explicit-files.test.ts
+    node source/integration-tests/run/runner-capability-policy.test.ts
 
 test-unit-with-coverage:
     c8 --config .c8rc.json node source/overkill.test.ts

@@ -1,5 +1,6 @@
 import { createWallClock } from '@enormora/wall-clock';
 import type { RunResourceUsageTracker } from '../engine/run-result.ts';
+import type { RuntimeCapabilityPolicyEnvironment } from '../run/capability-policy.ts';
 import { defaultRunEngine } from '../run/default-run-engine.ts';
 import { createRunOrchestrator } from '../run/run.ts';
 import type { RunOrchestrator } from '../run/run-types.ts';
@@ -10,7 +11,7 @@ const deterministicSeed = 99n;
 export function createDeterministicRunOrchestrator(): RunOrchestrator {
     const engine = createTestEngine();
     const wallClock = createWallClock();
-    const environment: NodeJS.ProcessEnv = {};
+    const environment: RuntimeCapabilityPolicyEnvironment = {};
     const reporterDispatcher = {
         async disposeReporters() {
             return [];

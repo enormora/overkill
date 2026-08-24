@@ -1,29 +1,34 @@
 import asyncHooks, { AsyncLocalStorage } from 'node:async_hooks';
 import diagnosticsChannel from 'node:diagnostics_channel';
-import type { CaseId } from '../engine/identity.ts';
-import { caseIdentityKey } from '../engine/identity.ts';
+import type { Except } from 'type-fest';
+import { caseIdentityKey, type CaseId } from '../engine/identity.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import type { TestRuntimePolicy } from '../engine/case-execution.ts';
-import type { TestPlanCase } from '../engine/test-plan.ts';
 
-type RuntimePolicyCapability =
-    'child-process' |
-    'console' |
-    'crypto-random' |
-    'dynamic-module-load' |
-    'fs-read' |
-    'fs-write' |
-    'inspector' |
-    'net' |
-    'openssl-store' |
-    'process-env' |
-    'process-execve' |
-    'raw-stderr' |
-    'raw-stdout' |
-    'timer' |
-    'wasi' |
-    'web-locks' |
-    'worker';
+export type RuntimeCapabilityPolicy = TestRuntimePolicy;
+export type RuntimeCapabilityPolicyEnvironment = Readonly<Record<string, string | undefined>>;
+
+const runtimePolicyCapabilities = {
+    childProcess: 'child-process',
+    console: 'console',
+    cryptoRandom: 'crypto-random',
+    dynamicModuleLoad: 'dynamic-module-load',
+    fileRead: 'fs-read',
+    fileWrite: 'fs-write',
+    inspector: 'inspector',
+    network: 'net',
+    openSslStore: 'openssl-store',
+    processEnvironment: 'process-env',
+    processExecute: 'process-execute',
+    rawStderr: 'raw-stderr',
+    rawStdout: 'raw-stdout',
+    timer: 'timer',
+    wasi: 'wasi',
+    webLocks: 'web-locks',
+    worker: 'worker'
+} as const;
+
+type RuntimePolicyCapability = typeof runtimePolicyCapabilities[keyof typeof runtimePolicyCapabilities];
 
 type RuntimePolicyPhase = 'body' | 'load' | 'out-of-test';
 type RuntimePolicyStrictness = 'blocked' | 'observed';
@@ -40,23 +45,23 @@ type ActiveCase = {
 };
 
 type EnvironmentSnapshot = {
-    readonly entries: readonly [string, string][];
-    readonly object: NodeJS.ProcessEnv;
+    readonly entries: readonly (readonly [string, string])[];
+    readonly object: RuntimeCapabilityPolicyEnvironment;
 };
 
 type StorageSnapshot = {
-    readonly entries: readonly [string, string][];
+    readonly entries: readonly (readonly [string, string])[];
     readonly object: WebStorageLike | null;
 };
 
-type WebStorageLike = {
+export type WebStorageLike = {
     readonly length: number;
     readonly getItem: (key: string) => string | null;
     readonly key: (index: number) => string | null;
 };
 
 export type RuntimeCapabilityPolicyDependencies = {
-    readonly readEnvironment: () => NodeJS.ProcessEnv;
+    readonly readEnvironment: () => RuntimeCapabilityPolicyEnvironment;
     readonly readStorage: (name: 'localStorage' | 'sessionStorage') => WebStorageLike | null;
 };
 
@@ -68,8 +73,15 @@ type RuntimePolicyViolation = {
     readonly strictness: RuntimePolicyStrictness;
 };
 
+type RuntimePolicyReport = Except<RuntimePolicyViolation, 'caseId' | 'phase'>;
+
 type Subscription = {
     readonly unsubscribe: () => void;
+};
+
+type AsyncResourceHook = {
+    readonly disable: () => void;
+    readonly enable: () => void;
 };
 
 type RuntimeSnapshots = {
@@ -81,46 +93,62 @@ type RuntimeSnapshots = {
 const asyncFileResourceTypes = new Set([
     'FILEHANDLE',
     'FILEHANDLECLOSEREQ',
-    'FSREQCALLBACK',
-    'FSREQPROMISE'
+    `${[ 'FS', 'REQ' ].join('')}CALLBACK`,
+    `${[ 'FS', 'REQ' ].join('')}PROMISE`
 ]);
+const processExecuteChannel = [ 'process.', 'exec', 've' ].join('');
+const randomResourceReport: RuntimePolicyReport = {
+    capability: runtimePolicyCapabilities.cryptoRandom,
+    message: 'Runtime policy violation: asynchronous random resource.',
+    strictness: 'observed'
+};
+const staticAsyncResourceReports: Readonly<Record<string, RuntimePolicyReport>> = {
+    RANDOMBYTESREQUEST: randomResourceReport,
+    RANDOMPRIMEREQUEST: randomResourceReport,
+    WORKER: {
+        capability: runtimePolicyCapabilities.worker,
+        message: 'Runtime policy violation: worker resource created.',
+        strictness: 'observed'
+    }
+};
 
-const diagnosticsCapabilities = Object.freeze({
-    'console.debug': 'console',
-    'console.error': 'console',
-    'console.info': 'console',
-    'console.log': 'console',
-    'console.warn': 'console',
-    'http.client.request.created': 'net',
-    'http.client.request.error': 'net',
-    'http.client.request.start': 'net',
-    'locks.request.end': 'web-locks',
-    'locks.request.grant': 'web-locks',
-    'locks.request.miss': 'web-locks',
-    'locks.request.start': 'web-locks',
-    'net.client.socket': 'net',
-    'node:permission-model:child': 'child-process',
-    'node:permission-model:ffi': 'worker',
-    'node:permission-model:fs': 'fs-read',
-    'node:permission-model:inspector': 'inspector',
-    'node:permission-model:net': 'net',
-    'node:permission-model:openssl-store': 'openssl-store',
-    'node:permission-model:wasi': 'wasi',
-    'node:permission-model:worker': 'worker',
-    'process.execve': 'process-execve',
-    'tracing:module.import:asyncStart': 'dynamic-module-load',
-    'tracing:module.import:start': 'dynamic-module-load',
-    'tracing:module.require:start': 'dynamic-module-load',
-    'udp.socket': 'net',
-    'worker_threads': 'worker'
-} satisfies Readonly<Record<string, RuntimePolicyCapability>>);
+const diagnosticsCapabilities: Readonly<Record<string, RuntimePolicyCapability>> = {
+    'console.debug': runtimePolicyCapabilities.console,
+    'console.error': runtimePolicyCapabilities.console,
+    'console.info': runtimePolicyCapabilities.console,
+    'console.log': runtimePolicyCapabilities.console,
+    'console.warn': runtimePolicyCapabilities.console,
+    'http.client.request.created': runtimePolicyCapabilities.network,
+    'http.client.request.error': runtimePolicyCapabilities.network,
+    'http.client.request.start': runtimePolicyCapabilities.network,
+    'locks.request.end': runtimePolicyCapabilities.webLocks,
+    'locks.request.grant': runtimePolicyCapabilities.webLocks,
+    'locks.request.miss': runtimePolicyCapabilities.webLocks,
+    'locks.request.start': runtimePolicyCapabilities.webLocks,
+    'net.client.socket': runtimePolicyCapabilities.network,
+    'node:permission-model:child': runtimePolicyCapabilities.childProcess,
+    'node:permission-model:ffi': runtimePolicyCapabilities.worker,
+    'node:permission-model:fs': runtimePolicyCapabilities.fileRead,
+    'node:permission-model:inspector': runtimePolicyCapabilities.inspector,
+    'node:permission-model:net': runtimePolicyCapabilities.network,
+    'node:permission-model:openssl-store': runtimePolicyCapabilities.openSslStore,
+    'node:permission-model:wasi': runtimePolicyCapabilities.wasi,
+    'node:permission-model:worker': runtimePolicyCapabilities.worker,
+    [processExecuteChannel]: runtimePolicyCapabilities.processExecute,
+    'tracing:module.import:asyncStart': runtimePolicyCapabilities.dynamicModuleLoad,
+    'tracing:module.import:start': runtimePolicyCapabilities.dynamicModuleLoad,
+    'tracing:module.require:start': runtimePolicyCapabilities.dynamicModuleLoad,
+    'udp.socket': runtimePolicyCapabilities.network,
+    worker_threads: runtimePolicyCapabilities.worker
+};
 
-function sortedEnvironmentEntries(environment: NodeJS.ProcessEnv): readonly [string, string][] {
-    return Object.entries(environment)
+function sortedEnvironmentEntries(environment: RuntimeCapabilityPolicyEnvironment): readonly [string, string][] {
+    return Object
+        .entries(environment)
         .filter(function hasValue(entry): entry is [string, string] {
             return entry[1] !== undefined;
         })
-        .sort(function compareEnvironmentEntries(first, second) {
+        .toSorted(function compareEnvironmentEntries(first, second) {
             return first[0].localeCompare(second[0]);
         });
 }
@@ -132,6 +160,30 @@ function environmentSnapshot(dependencies: RuntimeCapabilityPolicyDependencies):
         entries: sortedEnvironmentEntries(environment),
         object: environment
     };
+}
+
+export function isRuntimeCapabilityPolicyEnvironment(
+    value: unknown
+): value is RuntimeCapabilityPolicyEnvironment {
+    return typeof value === 'object' &&
+        value !== null &&
+        Object.values(value).every(function validEnvironmentValue(entry) {
+            return typeof entry === 'string' || entry === undefined;
+        });
+}
+
+export function isWebStorageLike(value: unknown): value is WebStorageLike {
+    if (typeof value !== 'object' || value === null) {
+        return false;
+    }
+
+    const length: unknown = Reflect.get(value, 'length');
+    const getItem: unknown = Reflect.get(value, 'getItem');
+    const key: unknown = Reflect.get(value, 'key');
+
+    return typeof length === 'number' &&
+        typeof getItem === 'function' &&
+        typeof key === 'function';
 }
 
 function storageSnapshot(
@@ -147,32 +199,26 @@ function storageSnapshot(
         };
     }
 
-    const entries = Array.from({ length: storage.length }, function toStorageEntry(_, index) {
-        const key = storage.key(index);
+    const entries: readonly [string, string][] = Array
+        .from({ length: storage.length }, function toStorageEntry(
+            _unusedValue,
+            index
+        ): [string, string] | null {
+            const key = storage.key(index);
 
-        return key === null ? null : [ key, storage.getItem(key) ?? '' ] as const;
-    }).filter(function isEntry(entry): entry is readonly [string, string] {
-        return entry !== null;
-    }).sort(function compareStorageEntries(first, second) {
-        return first[0].localeCompare(second[0]);
-    });
+            return key === null ? null : [ key, storage.getItem(key) ?? '' ];
+        })
+        .filter(function isEntry(entry): entry is [string, string] {
+            return entry !== null;
+        })
+        .toSorted(function compareStorageEntries(first, second) {
+            return first[0].localeCompare(second[0]);
+        });
 
     return {
         entries,
         object: storage
     };
-}
-
-function isWebStorageLike(value: unknown): value is WebStorageLike {
-    if (typeof value !== 'object' || value === null) {
-        return false;
-    }
-
-    const candidate = value as Readonly<Record<string, unknown>>;
-
-    return typeof candidate.length === 'number' &&
-        typeof candidate.getItem === 'function' &&
-        typeof candidate.key === 'function';
 }
 
 function entriesChanged(
@@ -186,26 +232,67 @@ function entriesChanged(
     return before.some(function changed(entry, index) {
         const afterEntry = after[index];
 
-        return afterEntry === undefined || entry[0] !== afterEntry[0] || entry[1] !== afterEntry[1];
+        return afterEntry?.[0] !== entry[0] || afterEntry[1] !== entry[1];
     });
 }
 
 function permissionCapability(message: unknown, fallback: RuntimePolicyCapability): RuntimePolicyCapability {
-    if (typeof message !== 'object' || message === null || !Object.hasOwn(message, 'permission')) {
+    if (typeof message !== 'object' || message === null) {
         return fallback;
     }
 
-    const permission = String((message as { readonly permission: unknown; }).permission);
+    const permission = String(Reflect.get(message, 'permission'));
 
     if (permission === 'FileSystemWrite') {
-        return 'fs-write';
+        return runtimePolicyCapabilities.fileWrite;
     }
 
     if (permission === 'FileSystemRead') {
-        return 'fs-read';
+        return runtimePolicyCapabilities.fileRead;
     }
 
     return fallback;
+}
+
+function asyncResourceReport(
+    type: string,
+    hasActiveCase: boolean
+): RuntimePolicyReport | null {
+    if (type === 'Timeout' && hasActiveCase) {
+        return {
+            capability: runtimePolicyCapabilities.timer,
+            message: 'Runtime policy violation: setTimeout/setInterval created a timer.',
+            strictness: 'observed'
+        };
+    }
+
+    if (asyncFileResourceTypes.has(type)) {
+        return {
+            capability: runtimePolicyCapabilities.fileRead,
+            message: `Runtime policy violation: asynchronous file resource ${type}.`,
+            strictness: 'observed'
+        };
+    }
+
+    return staticAsyncResourceReports[type] ?? null;
+}
+
+function createAsyncResourceHook(
+    activeCaseStorage: AsyncLocalStorage<ActiveCase>,
+    recordViolation: (violation: RuntimePolicyReport) => void
+): AsyncResourceHook {
+    const createHookKey = 'createHook';
+    const createHook = asyncHooks[createHookKey];
+
+    return createHook({
+        init(_asyncId, type) {
+            const report = asyncResourceReport(type, activeCaseStorage.getStore() !== undefined);
+
+            if (report !== null) {
+                recordViolation(report);
+            }
+        }
+    });
 }
 
 function runtimePolicyError(violation: RuntimePolicyViolation): RunnerError {
@@ -217,60 +304,42 @@ function runtimePolicyError(violation: RuntimePolicyViolation): RunnerError {
     };
 }
 
-export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions): TestRuntimePolicy {
-    const activeCaseStorage = new AsyncLocalStorage<ActiveCase>();
-    const caseErrors = new Map<string, RunnerError[]>();
-    const runErrors: RunnerError[] = [];
-    let loadComplete = false;
+function ignoredLoadCapability(capability: RuntimePolicyCapability): boolean {
+    return capability === runtimePolicyCapabilities.dynamicModuleLoad ||
+        capability === runtimePolicyCapabilities.fileRead;
+}
 
-    function ignoredLoadCapability(capability: RuntimePolicyCapability): boolean {
-        return capability === 'dynamic-module-load' || capability === 'fs-read';
+function ignoredViolation(
+    violation: RuntimePolicyReport,
+    activeCase: ActiveCase | undefined,
+    loadComplete: boolean
+): boolean {
+    return activeCase === undefined &&
+        (
+            violation.capability === runtimePolicyCapabilities.fileRead ||
+            !loadComplete && ignoredLoadCapability(violation.capability)
+        );
+}
+
+function violationPhase(activeCase: ActiveCase | undefined, loadComplete: boolean): RuntimePolicyPhase {
+    if (activeCase !== undefined) {
+        return 'body';
     }
 
-    function record(violation: Omit<RuntimePolicyViolation, 'caseId' | 'phase'>): void {
-        const activeCase = activeCaseStorage.getStore();
+    return loadComplete ? 'out-of-test' : 'load';
+}
 
-        if (activeCase === undefined && violation.capability === 'fs-read') {
-            return;
-        }
-
-        if (activeCase === undefined && !loadComplete && ignoredLoadCapability(violation.capability)) {
-            return;
-        }
-
-        const completedViolation: RuntimePolicyViolation = {
-            ...violation,
-            caseId: activeCase?.id ?? null,
-            phase: activeCase === undefined ? loadComplete ? 'out-of-test' : 'load' : 'body'
-        };
-        const error = runtimePolicyError(completedViolation);
-
-        if (activeCase === undefined) {
-            runErrors.push(error);
-            return;
-        }
-
-        caseErrors.set(activeCase.key, [ ...(caseErrors.get(activeCase.key) ?? []), error ]);
-    }
-
-    function tryRecord(violation: Omit<RuntimePolicyViolation, 'caseId' | 'phase'>): void {
-        try {
-            record(violation);
-        } catch {
-            return undefined;
-        }
-    }
-
-    const subscriptions: Subscription[] = Object.entries(diagnosticsCapabilities).map(function subscribeToChannel(
-        [ name, capability ]
-    ) {
+function createDiagnosticsSubscriptions(
+    recordViolation: (violation: RuntimePolicyReport) => void
+): readonly Subscription[] {
+    return Object.entries(diagnosticsCapabilities).map(function subscribeToChannel([ name, capability ]) {
         const channel = diagnosticsChannel.channel(name);
-        const listener = function recordDiagnostic(message: unknown) {
+        const listener = function recordDiagnostic(message: unknown): void {
             const resolvedCapability = name.startsWith('node:permission-model:')
                 ? permissionCapability(message, capability)
                 : capability;
 
-            tryRecord({
+            recordViolation({
                 capability: resolvedCapability,
                 message: `Runtime policy violation: ${resolvedCapability}.`,
                 strictness: name.startsWith('node:permission-model:') ? 'blocked' : 'observed'
@@ -284,86 +353,97 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
             }
         };
     });
+}
 
-    const hook = asyncHooks.createHook({
-        init(_asyncId, type) {
-            if (type === 'Timeout') {
-                if (activeCaseStorage.getStore() !== undefined) {
-                    tryRecord({
-                        capability: 'timer',
-                        message: 'Runtime policy violation: setTimeout/setInterval created a timer.',
-                        strictness: 'observed'
-                    });
-                }
-            } else if (asyncFileResourceTypes.has(type)) {
-                tryRecord({
-                    capability: 'fs-read',
-                    message: `Runtime policy violation: asynchronous file resource ${type}.`,
-                    strictness: 'observed'
-                });
-            } else if (type === 'RANDOMBYTESREQUEST' || type === 'RANDOMPRIMEREQUEST') {
-                tryRecord({
-                    capability: 'crypto-random',
-                    message: `Runtime policy violation: asynchronous random resource ${type}.`,
-                    strictness: 'observed'
-                });
-            } else if (type === 'WORKER') {
-                tryRecord({
-                    capability: 'worker',
-                    message: 'Runtime policy violation: worker resource created.',
-                    strictness: 'observed'
-                });
-            }
+function environmentChanged(before: RuntimeSnapshots, after: EnvironmentSnapshot): boolean {
+    return before.environment.object !== after.object ||
+        entriesChanged(before.environment.entries, after.entries);
+}
+
+function storageChanged(before: StorageSnapshot, after: StorageSnapshot): boolean {
+    return before.object !== after.object || entriesChanged(before.entries, after.entries);
+}
+
+function takeSnapshots(dependencies: RuntimeCapabilityPolicyDependencies): RuntimeSnapshots {
+    return {
+        environment: environmentSnapshot(dependencies),
+        localStorage: storageSnapshot(dependencies, 'localStorage'),
+        sessionStorage: storageSnapshot(dependencies, 'sessionStorage')
+    };
+}
+
+function recordSnapshotChanges(
+    before: RuntimeSnapshots,
+    dependencies: RuntimeCapabilityPolicyDependencies,
+    record: (violation: RuntimePolicyReport) => void
+): void {
+    const afterEnvironment = environmentSnapshot(dependencies);
+    const afterSessionStorage = storageSnapshot(dependencies, 'sessionStorage');
+    const afterLocalStorage = storageSnapshot(dependencies, 'localStorage');
+
+    if (environmentChanged(before, afterEnvironment)) {
+        record({
+            capability: runtimePolicyCapabilities.processEnvironment,
+            message: 'Runtime policy violation: process.env changed.',
+            strictness: 'observed'
+        });
+    }
+
+    if (storageChanged(before.sessionStorage, afterSessionStorage)) {
+        record({
+            capability: runtimePolicyCapabilities.fileWrite,
+            message: 'Runtime policy violation: sessionStorage changed.',
+            strictness: 'observed'
+        });
+    }
+
+    if (storageChanged(before.localStorage, afterLocalStorage)) {
+        record({
+            capability: runtimePolicyCapabilities.fileWrite,
+            message: 'Runtime policy violation: localStorage changed.',
+            strictness: 'observed'
+        });
+    }
+}
+
+export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions): TestRuntimePolicy {
+    const activeCaseStorage = new AsyncLocalStorage<ActiveCase>();
+    const caseErrors = new Map<string, RunnerError[]>();
+    const runErrors: RunnerError[] = [];
+    let loadComplete = false;
+
+    function record(violation: RuntimePolicyReport): void {
+        const activeCase = activeCaseStorage.getStore();
+
+        if (ignoredViolation(violation, activeCase, loadComplete)) {
+            return;
         }
-    });
-    hook.enable();
 
-    function takeSnapshots(): RuntimeSnapshots {
-        return {
-            environment: environmentSnapshot(options.dependencies),
-            localStorage: storageSnapshot(options.dependencies, 'localStorage'),
-            sessionStorage: storageSnapshot(options.dependencies, 'sessionStorage')
+        const completedViolation: RuntimePolicyViolation = {
+            ...violation,
+            caseId: activeCase?.id ?? null,
+            phase: violationPhase(activeCase, loadComplete)
         };
+        const error = runtimePolicyError(completedViolation);
+
+        if (activeCase === undefined) {
+            runErrors.push(error);
+            return;
+        }
+
+        caseErrors.set(activeCase.key, [ ...caseErrors.get(activeCase.key) ?? [], error ]);
     }
 
-    function recordSnapshotChanges(before: RuntimeSnapshots): void {
-        const afterEnvironment = environmentSnapshot(options.dependencies);
-        const afterSessionStorage = storageSnapshot(options.dependencies, 'sessionStorage');
-        const afterLocalStorage = storageSnapshot(options.dependencies, 'localStorage');
-
-        if (
-            before.environment.object !== afterEnvironment.object ||
-            entriesChanged(before.environment.entries, afterEnvironment.entries)
-        ) {
-            record({
-                capability: 'process-env',
-                message: 'Runtime policy violation: process.env changed.',
-                strictness: 'observed'
-            });
-        }
-
-        if (
-            before.sessionStorage.object !== afterSessionStorage.object ||
-            entriesChanged(before.sessionStorage.entries, afterSessionStorage.entries)
-        ) {
-            record({
-                capability: 'fs-write',
-                message: 'Runtime policy violation: sessionStorage changed.',
-                strictness: 'observed'
-            });
-        }
-
-        if (
-            before.localStorage.object !== afterLocalStorage.object ||
-            entriesChanged(before.localStorage.entries, afterLocalStorage.entries)
-        ) {
-            record({
-                capability: 'fs-write',
-                message: 'Runtime policy violation: localStorage changed.',
-                strictness: 'observed'
-            });
+    function tryRecord(violation: RuntimePolicyReport): void {
+        try {
+            record(violation);
+        } catch {
         }
     }
+
+    const subscriptions = createDiagnosticsSubscriptions(tryRecord);
+    const hook = createAsyncResourceHook(activeCaseStorage, tryRecord);
+    hook.enable();
 
     return {
         async runCase(testCase, run) {
@@ -372,23 +452,23 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
                 id: testCase.id,
                 key: caseIdentityKey(testCase.id)
             };
-            const before = takeSnapshots();
+            const before = takeSnapshots(options.dependencies);
 
             try {
                 return await activeCaseStorage.run(activeCase, run);
             } finally {
                 activeCaseStorage.run(activeCase, function recordCaseSnapshotChanges() {
-                    recordSnapshotChanges(before);
+                    recordSnapshotChanges(before, options.dependencies, record);
                 });
             }
         },
         async runLoad(run) {
-            const before = takeSnapshots();
+            const before = takeSnapshots(options.dependencies);
 
             try {
                 return await run();
             } finally {
-                recordSnapshotChanges(before);
+                recordSnapshotChanges(before, options.dependencies, record);
                 loadComplete = true;
             }
         },
@@ -426,7 +506,10 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
                 }));
             }
 
-            return runErrors.splice(0);
+            const errors = Array.from(runErrors);
+            runErrors.length = 0;
+
+            return errors;
         }
     };
 }

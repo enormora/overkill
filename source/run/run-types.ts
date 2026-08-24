@@ -26,7 +26,7 @@ export type RunExecutionRequest = {
     readonly mode: 'profile-default';
 };
 
-export type RunCapabilityRestrictionsRequest = {
+type RunCapabilityRestrictionsRequest = {
     readonly mode: 'disabled' | 'enabled';
 };
 

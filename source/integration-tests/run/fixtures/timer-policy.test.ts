@@ -1,10 +1,11 @@
+import { setTimeout as setNodeTimeout } from 'node:timers';
 import { createSuite, createTestCase } from '../../../packages/engine/engine.entry-point.ts';
 
 export const testNode = createSuite({
     children: [
         createTestCase({
             body(scope) {
-                setTimeout(function ignoredTimer() {
+                setNodeTimeout(function ignoredTimer() {
                     return undefined;
                 }, 1);
 

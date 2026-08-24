@@ -7,7 +7,7 @@ const configFiles = [
 const entryPointFiles = [
     '^source/packages/.+/.+\\.entry-point\\.ts$',
     '^source/reporters/',
-    '^source/run/supervised-child\\.ts$'
+    '^source/run/supervised-child\\.entry-point\\.ts$'
 ];
 const testSupportFiles = [ '^source/test-support/' ];
 const testFiles = [ '\\.(test|type-test)\\.ts$' ];

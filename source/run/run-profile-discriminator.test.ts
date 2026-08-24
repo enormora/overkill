@@ -10,7 +10,7 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import { orchestrator } from './run-orchestrator.ts';
+import { orchestrator } from './run-orchestrator.entry-point.ts';
 import type { RunCommand, RunConfig } from './run-types.ts';
 
 function createRunCommand(config: RunConfig, profileName: string): RunCommand {

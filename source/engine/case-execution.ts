@@ -190,15 +190,17 @@ async function runCaseBody(
     recorder: AssertionRecorder,
     options: RunTestCaseOptions
 ): Promise<ExecutedBody> {
-    try {
-        const runBody = async function runUserBody() {
-            return await testCase.body(createTestScope(recorder, options.signal));
-        };
-        const assertionResult = options.runtimePolicy === null
+    const runBody = async function runUserBody(): Promise<AssertionResult> {
+        return await testCase.body(createTestScope(recorder, options.signal));
+    };
+    const runPolicyCheckedBody = async function runPolicyCheckedUserBody(): Promise<AssertionResult> {
+        return options.runtimePolicy === null
             ? await runBody()
             : await options.runtimePolicy.runCase(testCase, runBody);
+    };
 
-        return completedBody(recorder, assertionResult);
+    try {
+        return completedBody(recorder, await runPolicyCheckedBody());
     } catch (error: unknown) {
         return failedBody(recorder, error);
     }

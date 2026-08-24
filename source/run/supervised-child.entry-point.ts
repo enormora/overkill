@@ -1,3 +1,4 @@
+import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
 import { runSupervisedChild, type SupervisedChildHost } from './supervised-child.ts';
 import type { SupervisedRunCommand } from './supervised-protocol.ts';
 
@@ -23,7 +24,7 @@ function isChildRunCommand(message: unknown): message is SupervisedRunCommand {
         message.kind === 'run';
 }
 
-function receiveRunCommand(): Promise<SupervisedRunCommand> {
+async function receiveRunCommand(): Promise<SupervisedRunCommand> {
     return new Promise(function waitForRunCommand(resolve) {
         process.once('message', function receiveCommand(message: unknown) {
             if (isChildRunCommand(message)) {
@@ -31,34 +32,6 @@ function receiveRunCommand(): Promise<SupervisedRunCommand> {
             }
         });
     });
-}
-
-function readWebStorage(name: 'localStorage' | 'sessionStorage') {
-    if (name === 'localStorage') {
-        return null;
-    }
-
-    const storage = (globalThis as Readonly<Record<string, unknown>>)[name];
-
-    if (typeof storage !== 'object' || storage === null) {
-        return null;
-    }
-
-    const candidate = storage as Readonly<Record<string, unknown>>;
-
-    if (
-        typeof candidate.length !== 'number' ||
-        typeof candidate.getItem !== 'function' ||
-        typeof candidate.key !== 'function'
-    ) {
-        return null;
-    }
-
-    return candidate as {
-        readonly getItem: (key: string) => string | null;
-        readonly key: (index: number) => string | null;
-        readonly length: number;
-    };
 }
 
 function validatePermissionHost(command: SupervisedRunCommand): void {
@@ -77,7 +50,11 @@ function validatePermissionHost(command: SupervisedRunCommand): void {
 
 function dropBodyReadPermission(command: SupervisedRunCommand): void {
     if (command.capabilityRestrictions.mode === 'enabled') {
-        process.permission.drop('fs.read');
+        const drop: unknown = Reflect.get(process.permission, 'drop');
+
+        if (typeof drop === 'function') {
+            Reflect.apply(drop, process.permission, [ 'fs.read' ]);
+        }
     }
 }
 
@@ -85,12 +62,16 @@ await runSupervisedChild({
     disconnect,
     dropBodyReadPermission,
     readEnvironment() {
-        return process.env;
+        return readProcessEnvironment(process);
     },
     readStartedAt() {
-        return new Date().toISOString();
+        const startedAt = new Date();
+
+        return startedAt.toISOString();
     },
-    readStorage: readWebStorage,
+    readStorage(name) {
+        return readWebStorage(globalThis, name);
+    },
     receiveRunCommand,
     send,
     setExitCode(code) {

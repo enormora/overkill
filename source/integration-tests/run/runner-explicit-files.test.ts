@@ -23,12 +23,9 @@ const duplicateFixtureAPath = 'source/integration-tests/run/fixtures/duplicate-a
 const duplicateFixtureBPath = 'source/integration-tests/run/fixtures/duplicate-b.test.ts';
 const endlessLoopFixturePath = 'source/integration-tests/run/fixtures/endless-loop.test.ts';
 const emptySuiteFixturePath = 'source/integration-tests/run/fixtures/empty-suite.test.ts';
-const fsWritePolicyFixturePath = 'source/integration-tests/run/fixtures/fs-write-policy.test.ts';
-const loadEnvPolicyFixturePath = 'source/integration-tests/run/fixtures/load-env-policy.test.ts';
 const missingTestNodeFixturePath = 'source/integration-tests/run/fixtures/missing-test-node.test.ts';
 const plainTestNodeFixturePath = 'source/integration-tests/run/fixtures/plain-test-node.test.ts';
 const schedulingFixturePath = 'source/integration-tests/run/fixtures/scheduling.test.ts';
-const timerPolicyFixturePath = 'source/integration-tests/run/fixtures/timer-policy.test.ts';
 const throwsOnImportFixturePath = 'source/integration-tests/run/fixtures/throws-on-import.test.ts';
 
 type SchedulingEvent = `end:${string}` | `start:${string}`;
@@ -462,64 +459,6 @@ export const testSuite = createSuite({
                     }, { message: `Run path must stay inside cwd: ${outsideFile}` });
                 } finally {
                     await rm(outsideDirectory, { force: true, recursive: true });
-                }
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            name: 'supervised microtest capability restrictions block filesystem writes',
-            metadata: {},
-            async body(scope: TestScope) {
-                const result = await orchestrator.run(createRunCommand([ fsWritePolicyFixturePath ]));
-                const [ testResult ] = result.perTest;
-                const [ runnerError ] = result.runnerErrors;
-
-                scope.assert.equal(testResult?.verdict, 'runtime-policy');
-                scope.assert.equal(result.summary.runtimePolicy, 1);
-                scope.assert.equal(runnerError?.subtype, 'runtime-policy');
-                scope.assert.equal(String(runnerError?.message).includes('fs-write'), true);
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            name: 'in-process microtest capability restrictions fail timer creation',
-            metadata: {},
-            async body(scope: TestScope) {
-                const result = await orchestrator.run(createSupervisedRunCommand(
-                    [ timerPolicyFixturePath ],
-                    createSchedulingRunConfig('in-process', 'serial', memoryReporter)
-                ));
-                const [ testResult ] = result.perTest;
-                const [ runnerError ] = result.runnerErrors;
-
-                scope.assert.equal(testResult?.verdict, 'runtime-policy');
-                scope.assert.equal(result.summary.runtimePolicy, 1);
-                scope.assert.equal(runnerError?.subtype, 'runtime-policy');
-                scope.assert.equal(String(runnerError?.message).includes('timer'), true);
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            name: 'in-process microtest capability restrictions report load-time environment changes',
-            metadata: {},
-            async body(scope: TestScope) {
-                try {
-                    const result = await orchestrator.run(createSupervisedRunCommand(
-                        [ loadEnvPolicyFixturePath ],
-                        createSchedulingRunConfig('in-process', 'serial', memoryReporter)
-                    ));
-                    const [ runnerError ] = result.runnerErrors;
-
-                    scope.assert.equal(result.perTest[0]?.verdict, 'pass');
-                    scope.assert.equal(runnerError?.subtype, 'runtime-policy');
-                    scope.assert.equal(runnerError?.attributedTo, null);
-                    scope.assert.equal((runnerError?.cause as { readonly phase: unknown; } | undefined)?.phase, 'load');
-                    scope.assert.equal(String(runnerError?.message).includes('process.env'), true);
-                } finally {
-                    delete process.env.OVERKILL_LOAD_POLICY_FIXTURE;
                 }
 
                 return scope.assert.collect();

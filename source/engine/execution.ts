@@ -7,9 +7,9 @@ import {
     type ConcurrentCase,
     type ExecuteResourceBudgets,
     type ExecuteTimeoutPolicy,
-    type ExecutionSupervision
+    type ExecutionSupervision,
+    type ExecutionSupervisionDependencies
 } from './execution-supervision.ts';
-import type { TestRuntimePolicy } from './case-execution.ts';
 import { createPlainOutputRenderer, type OutputRenderer } from './reporter-output.ts';
 import type { ReporterDispatcher } from './reporter-dispatcher.ts';
 import { type Reporter, type RunFacts, validateReporterSinks } from './reporter.ts';
@@ -32,7 +32,7 @@ export type ExecuteOptions = {
     readonly reporters: readonly Reporter[];
     readonly resourceBudgets?: ExecuteResourceBudgets | null;
     readonly resourceUsageTracker?: RunResourceUsageTracker | null;
-    readonly runtimePolicy?: TestRuntimePolicy | null;
+    readonly runtimePolicy?: RuntimePolicy | null;
     readonly runFacts: RunFacts;
     readonly startedAt: string;
     readonly timeoutPolicy?: ExecuteTimeoutPolicy | null;
@@ -40,7 +40,10 @@ export type ExecuteOptions = {
 
 type NormalizedExecuteOptions = ExecuteOptions & {
     readonly outputRenderer: OutputRenderer;
+    readonly runtimePolicy: RuntimePolicy | null;
 };
+
+type RuntimePolicy = NonNullable<ExecutionSupervisionDependencies['runtimePolicy']>;
 
 export type ExecuteDependencies = {
     readonly reporterDispatcher: ReporterDispatcher;
@@ -94,7 +97,7 @@ type ExecuteConcurrentCasesInput = {
 };
 
 type ExecutionDependencies = {
-    readonly runtimePolicy: TestRuntimePolicy | null;
+    readonly runtimePolicy: RuntimePolicy | null;
     readonly reporterDispatcher: ReporterDispatcher;
     readonly wallClock: WallClock;
 };
@@ -235,7 +238,7 @@ async function executeTestPlanCases(
         reporterErrors: [
             ...reporterErrors,
             ...supervision.runnerErrors,
-            ...(options.runtimePolicy?.takeRunErrors() ?? []),
+            ...options.runtimePolicy?.takeRunErrors() ?? [],
             ...await reportSuiteTransition(
                 { dependencies, outputRenderer: options.outputRenderer, reporters: options.reporters },
                 currentSuitePath,
@@ -340,7 +343,7 @@ async function executeConcurrentTestPlanCases(
         reporterErrors: [
             ...reporterErrors,
             ...concurrentCaseExecution.runnerErrors,
-            ...(options.runtimePolicy?.takeRunErrors() ?? []),
+            ...options.runtimePolicy?.takeRunErrors() ?? [],
             ...concurrentCaseExecution.endReporterErrors
         ]
     };
