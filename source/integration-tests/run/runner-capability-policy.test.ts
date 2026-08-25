@@ -138,6 +138,25 @@ function runnerErrorCapabilities(result: Awaited<ReturnType<typeof orchestrator.
     });
 }
 
+function capabilityCount(capabilities: readonly string[], capability: string): number {
+    return capabilities
+        .filter(function isCapability(candidate) {
+            return candidate === capability;
+        })
+        .length;
+}
+
+function assertConsolidatedProcessEnvironmentErrors(
+    scope: TestScope,
+    fixture: PolicyFixture,
+    capabilities: readonly string[],
+    model: RunProcessModel
+): void {
+    if (fixture.path === envPolicyFixturePath) {
+        scope.assert.equal(capabilityCount(capabilities, fixture.expectedCapability[model]), 1);
+    }
+}
+
 const policyFixtures: readonly PolicyFixture[] = [
     {
         expectedCapability: {
@@ -223,6 +242,12 @@ export const testSuite = createSuite({
                     scope.assert.equal(testResult?.verdict, 'runtime-policy');
                     scope.assert.equal(result.summary.runtimePolicy, 1);
                     scope.assert.equal(capabilities.includes(fixture.expectedCapability[model.processModel]), true);
+                    assertConsolidatedProcessEnvironmentErrors(
+                        scope,
+                        fixture,
+                        capabilities,
+                        model.processModel
+                    );
 
                     return scope.assert.collect();
                 }

@@ -366,10 +366,53 @@ function handleChildSample(sample: ResourceUsageSnapshot, runtime: SupervisedRun
     }
 }
 
+function runtimePolicyCapability(error: RunnerError): string | null {
+    const { cause } = error;
+
+    if (typeof cause !== 'object' || cause === null || !Object.hasOwn(cause, 'capability')) {
+        return null;
+    }
+
+    const capability: unknown = Reflect.get(cause, 'capability');
+
+    return typeof capability === 'string' ? capability : null;
+}
+
+function attributedCaseKey(error: RunnerError): string {
+    return error.attributedTo === null ? 'out-of-test' : caseIdentityKey(error.attributedTo);
+}
+
+function supervisedPolicyErrorKey(error: RunnerError): string | null {
+    const capability = runtimePolicyCapability(error);
+
+    return error.subtype === 'runtime-policy' && capability === 'process-env'
+        ? `${capability}:${attributedCaseKey(error)}`
+        : null;
+}
+
+function childRuntimePolicyErrors(
+    childErrors: readonly RunnerError[],
+    supervisorErrors: readonly RunnerError[]
+): readonly RunnerError[] {
+    const supervisorKeys = new Set(supervisorErrors.flatMap(function toPolicyKey(error) {
+        const key = supervisedPolicyErrorKey(error);
+
+        return key === null ? [] : [ key ];
+    }));
+
+    return childErrors.filter(function notDuplicatedBySupervisor(error) {
+        const key = supervisedPolicyErrorKey(error);
+
+        return key === null || !supervisorKeys.has(key);
+    });
+}
+
 function handleCompletedResult(result: RunResult, runtime: SupervisedRunRuntime): void {
+    const supervisorErrors = runtime.state.runnerErrors();
+
     runtime.completedResult.write({
         ...result,
-        runnerErrors: [ ...runtime.state.runnerErrors(), ...result.runnerErrors ]
+        runnerErrors: [ ...supervisorErrors, ...childRuntimePolicyErrors(result.runnerErrors, supervisorErrors) ]
     });
 }
 
