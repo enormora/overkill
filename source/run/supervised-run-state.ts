@@ -1,3 +1,4 @@
+import { caseIdentityKey } from '../engine/identity.ts';
 import type { PerTestResult, RunnerError } from '../engine/run-result.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
 
@@ -48,6 +49,52 @@ function createRuntimePolicyError(
         message,
         subtype: 'runtime-policy'
     };
+}
+
+function processEnvironmentPolicyError(error: RunnerError): boolean {
+    const { cause } = error;
+
+    return error.subtype === 'runtime-policy' &&
+        typeof cause === 'object' &&
+        cause !== null &&
+        Reflect.get(cause, 'capability') === 'process-env';
+}
+
+function processEnvironmentBoundary(error: RunnerError): string {
+    if (error.attributedTo === null) {
+        return 'out-of-test';
+    }
+
+    return caseIdentityKey(error.attributedTo);
+}
+
+function processEnvironmentPolicyKey(error: RunnerError): string | null {
+    if (!processEnvironmentPolicyError(error)) {
+        return null;
+    }
+
+    return `process-env:${processEnvironmentBoundary(error)}`;
+}
+
+function processEnvironmentPolicyKeys(errors: readonly RunnerError[]): ReadonlySet<string> {
+    return new Set(errors.flatMap(function toPolicyKey(error) {
+        const key = processEnvironmentPolicyKey(error);
+
+        return key === null ? [] : [ key ];
+    }));
+}
+
+export function deduplicatedChildRuntimePolicyErrors(
+    childErrors: readonly RunnerError[],
+    supervisorErrors: readonly RunnerError[]
+): readonly RunnerError[] {
+    const supervisorKeys = processEnvironmentPolicyKeys(supervisorErrors);
+
+    return childErrors.filter(function notDuplicatedBySupervisor(error) {
+        const key = processEnvironmentPolicyKey(error);
+
+        return key === null || !supervisorKeys.has(key);
+    });
 }
 
 export function createStoredRunValue<Value>(initialValue: Value): StoredRunValue<Value> {

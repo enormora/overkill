@@ -13,11 +13,13 @@ import {
     defaultMicrotestProfile,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
+import type { RunnerError } from '../engine/run-result.ts';
 import { orchestrator } from './run-orchestrator.entry-point.ts';
 import type { RunCommand, RunConfig, RunMicrotestProfileConfig, RunRequest } from './run-types.ts';
 
 const delayedPassFixturePath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
 const endlessLoopFixturePath = 'source/integration-tests/run/fixtures/endless-loop.test.ts';
+const envPolicyFixturePath = 'source/integration-tests/run/fixtures/env-policy.test.ts';
 const childEntryPoint = fileURLToPath(new URL('./supervised-child.entry-point.ts', import.meta.url));
 const failureExitCode = 1;
 const generousResourceBudget = Number.MAX_SAFE_INTEGER;
@@ -155,6 +157,33 @@ function firstRunnerErrorMessage(messages: readonly unknown[]): string | null {
     return null;
 }
 
+function deleteEnvironmentValue(name: string): void {
+    const environment: unknown = Reflect.get(process, 'env');
+
+    if (typeof environment === 'object' && environment !== null) {
+        Reflect.deleteProperty(environment, name);
+    }
+}
+
+function runnerErrorCapability(error: RunnerError): string | null {
+    const { cause } = error;
+
+    if (!isRecord(cause) || typeof cause.capability !== 'string') {
+        return null;
+    }
+
+    return cause.capability;
+}
+
+function runnerErrorCapabilityCount(result: Awaited<ReturnType<typeof orchestrator.run>>, capability: string): number {
+    return result
+        .runnerErrors
+        .filter(function hasCapability(error) {
+            return runnerErrorCapability(error) === capability;
+        })
+        .length;
+}
+
 export const testSuite = createOverkillSuite({
     name: 'source/run/supervised-run.test.ts',
     metadata: {},
@@ -274,6 +303,22 @@ export const testSuite = createOverkillSuite({
 
                 scope.require.defined(error);
                 scope.assert.equal(error.subtype, 'reporter');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'orchestrator.run() consolidates supervised process.env policy errors',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const result = await orchestrator.run(createRunCommand(envPolicyFixturePath, microtestProfile, {
+                    ...createRunRequest(envPolicyFixturePath),
+                    capabilityRestrictions: { mode: 'enabled' }
+                }));
+
+                deleteEnvironmentValue('OVERKILL_CASE_POLICY_FIXTURE');
+                scope.assert.equal(result.summary.runtimePolicy, 1);
+                scope.assert.equal(runnerErrorCapabilityCount(result, 'process-env'), 1);
 
                 return scope.assert.collect();
             }
