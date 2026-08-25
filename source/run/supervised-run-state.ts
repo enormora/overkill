@@ -1,6 +1,9 @@
-import { caseIdentityKey } from '../engine/identity.ts';
+import { caseIdentityKey, type CaseId } from '../engine/identity.ts';
 import type { PerTestResult, RunnerError } from '../engine/run-result.ts';
-import type { TestPlanCase } from '../engine/test-plan.ts';
+
+export type SupervisedCase = {
+    readonly id: CaseId;
+};
 
 export type StoredRunValue<Value> = {
     readonly read: () => Value;
@@ -8,8 +11,8 @@ export type StoredRunValue<Value> = {
 };
 
 export type SupervisedRunState = {
-    readonly activeCases: ReadonlyMap<string, TestPlanCase>;
-    readonly addActiveCase: (key: string, testCase: TestPlanCase) => void;
+    readonly activeCases: ReadonlyMap<string, SupervisedCase>;
+    readonly addActiveCase: (key: string, testCase: SupervisedCase) => void;
     readonly perTestResults: () => readonly PerTestResult[];
     readonly recordPerTestResult: (key: string, result: PerTestResult) => void;
     readonly recordRunnerError: (error: RunnerError) => void;
@@ -20,7 +23,7 @@ export type SupervisedRunState = {
     readonly runnerErrors: () => readonly RunnerError[];
 };
 
-function terminalResult(testCase: TestPlanCase, verdict: PerTestResult['verdict']): PerTestResult {
+function terminalResult(testCase: SupervisedCase, verdict: PerTestResult['verdict']): PerTestResult {
     return {
         id: testCase.id,
         outcome: null,
@@ -29,7 +32,7 @@ function terminalResult(testCase: TestPlanCase, verdict: PerTestResult['verdict'
 }
 
 function createRuntimePolicyError(
-    activeCases: ReadonlyMap<string, TestPlanCase>,
+    activeCases: ReadonlyMap<string, SupervisedCase>,
     capability: string,
     message: string
 ): RunnerError {
@@ -111,7 +114,7 @@ export function createStoredRunValue<Value>(initialValue: Value): StoredRunValue
 }
 
 export function createSupervisedRunState(): SupervisedRunState {
-    const activeCases = new Map<string, TestPlanCase>();
+    const activeCases = new Map<string, SupervisedCase>();
     const perTest = new Map<string, PerTestResult>();
     const runnerErrors: RunnerError[] = [];
     const recordTerminalActiveCases = function recordTerminalActiveCases(verdict: PerTestResult['verdict']): void {

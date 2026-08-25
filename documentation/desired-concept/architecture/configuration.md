@@ -134,7 +134,7 @@ const config = await loadRunConfig({
     cwd: process.cwd()
 });
 
-await run({ config, cwd: process.cwd(), engine: null, request });
+await run({ config, cwd: process.cwd(), engine: { kind: 'default' }, request });
 ```
 
 Callers that already have policy in memory pass it directly:
@@ -175,7 +175,7 @@ const config = defineConfig({
     }
 });
 
-await run({ config, cwd: process.cwd(), engine: null, request });
+await run({ config, cwd: process.cwd(), engine: { kind: 'default' }, request });
 ```
 
 `resourceUsage.measure: true` enables run-level diagnostic measurement for the

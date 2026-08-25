@@ -79,6 +79,7 @@ function createRunConfig(processModel: RunProcessModel, scheduling: RunSchedulin
                 },
                 testFamily: 'microtest',
                 timeouts: {
+                    collectionMilliseconds: 5000,
                     hardMilliseconds: 1000,
                     softMilliseconds: 500
                 }
@@ -93,7 +94,7 @@ function createRunCommand(paths: readonly string[], config: RunConfig): RunComma
     return {
         config,
         cwd: process.cwd(),
-        engine: null,
+        engine: { kind: 'default' },
         request: createRunRequest(paths)
     };
 }

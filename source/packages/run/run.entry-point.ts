@@ -21,11 +21,17 @@ export type {
 } from '../../run/run-config.ts';
 export type { RunResolutionErrorCode } from '../../run/run-errors.ts';
 export type {
+    CollectedRunCase,
+    CollectedRunFile,
+    CollectedRunPlan,
     ResolvedRun,
+    ResolvedRunPlan,
     RunCaseFacts,
     RunCommand,
     RunConfig,
     RunDebugRequest,
+    RunEngineFacts,
+    RunEngineSelection,
     RunEnvironmentFacts,
     RunExecutionRequest,
     RunFacts,

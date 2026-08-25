@@ -86,7 +86,9 @@ Conceptually:
 - `resolveRun(command)` returns a frozen `ResolvedRun`
 - `run(command)` is shorthand for planning plus execution
 - `RunCommand` carries explicit run inputs plus configuration and the engine
-  selection used to validate imported test nodes
+  selection used to validate imported test nodes. Module engine selections are
+  loaded inside the process that imports user modules; supervised runs do not
+  import custom engine modules in the parent process
 - `execute(testPlan)` is the lower-level engine entrypoint once planning is
   already done, and it returns a `RunResult`
 - `runIfMain(import.meta, testNode, options?)` is the lower-level self-running
@@ -337,8 +339,7 @@ await run({
         selection: { kind: 'filter', expression: 'tag=fast' },
         shard: { index: 1, total: 4 },
         verbose: false
-    },
-    testPlan
+    }
 });
 ```
 
@@ -382,10 +383,11 @@ Execution strategy should be modeled as resolved planning, not a fixed trait of 
 - runtime sharing boundaries
 - serialization requirements for measurement reliability
 
-In all of these modes, discovery stays centralized. The orchestrator
-collects tests once, freezes `RunFacts`, and then assigns already-known
-plan items to local workers, subprocesses, or remote executors.
-Execution boundaries may change; discovery authority does not.
+In all of these modes, discovery authority stays centralized. The
+orchestrator freezes `RunFacts` and then assigns already-known plan items to
+local workers, subprocesses, or remote executors. When an execution boundary
+must own user-module imports, it sends the orchestrator a minimal collected
+plan instead of executable test bodies.
 
 Supervision and termination policy should also be execution-strategy-dependent:
 

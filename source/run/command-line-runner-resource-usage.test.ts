@@ -120,6 +120,7 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
                         baselineUpdateMode: command.request.baselineUpdateMode,
                         capture: command.request.capture,
                         debug: command.request.debug,
+                        engine: { kind: 'default' },
                         order: command.request.order,
                         processModel: profile.execution.processModel,
                         profile: command.request.profile,
@@ -135,9 +136,14 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
                         shard: command.request.shard
                     }
                 },
+                collectionRunnerErrors: [],
+                engine: command.engine,
+                plan: {
+                    kind: 'local',
+                    testPlan: createPassingPlan()
+                },
                 reporters: command.config.reporters,
-                request: command.request,
-                testPlan: createPassingPlan()
+                request: command.request
             };
         },
         async run(command) {
@@ -203,6 +209,7 @@ function assertResourceUsageCommand(scope: OverkillScope, command: RunCommand): 
         },
         testFamily: 'microtest',
         timeouts: {
+            collectionMilliseconds: 1000,
             hardMilliseconds: 1000,
             softMilliseconds: 500
         }

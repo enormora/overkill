@@ -128,7 +128,7 @@ function createRunCommand(config: RunConfig, request: RunRequest): RunCommand {
     return {
         config,
         cwd: process.cwd(),
-        engine: null,
+        engine: { kind: 'default' },
         request
     };
 }

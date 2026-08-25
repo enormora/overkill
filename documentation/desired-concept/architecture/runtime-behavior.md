@@ -525,22 +525,27 @@ JSON/HTML report.
 
 ## Multi-Process Execution
 
-Multi-process execution does **not** change how tests are discovered.
-Collection still happens once in the orchestrator:
+Multi-process execution does **not** decentralize discovery authority.
+The coordinator owns the resolved case set, metadata resolution,
+filtering, sharding, ordering, and `RunFacts` freeze before any assigned
+test body runs.
 
-- test files are imported in the planning process
-- the full `TestNode` tree is collected
-- metadata resolution, filtering, sharding, and ordering happen there
-- the resulting `RunFacts` and executable `TestPlan` are frozen before
-  any worker executes a test
+The process that imports user modules depends on the boundary:
 
-Only after that does the runner hand work to workers or subprocesses.
+- local and compatible worker strategies may import files in the
+  coordinator during collection
+- supervised strategies that must avoid parent-side user-module execution
+  collect inside a supervised child and send the coordinator a minimal
+  bodyless collected plan
+- the coordinator maps that collected plan into assignments by stable
+  `CaseId`, then the child reuses executable references inside its own
+  process
 
 This has two important consequences:
 
 - workers never "register more tests later"
-- sharding is over the collected logical case set, not over whatever a
-  worker happens to discover locally
+- sharding is over the coordinator's collected logical case set, not over
+  whatever a worker happens to discover locally
 
 Assignment depends on execution strategy:
 
@@ -575,7 +580,7 @@ its shape.
 
 The core rule is the same as for local multi-process runs:
 
-- collection happens once in the coordinator
+- collection authority belongs to the coordinator
 - the coordinator freezes `RunFacts`
 - remote workers execute assigned plan items; they do not recollect or
   mutate the plan

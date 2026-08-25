@@ -3,10 +3,17 @@ import { realpath } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy.ts';
-import type { ResolvedRun, RunOrchestratorDependencies } from './run-types.ts';
+import type { RunOrchestratorDependencies } from './run-types.ts';
 import type { StoredRunValue, SupervisedRunState } from './supervised-run-state.ts';
 
 export type SupervisedChildProcess = ChildProcess;
+
+export type SupervisedChildStartOptions = {
+    readonly capabilityRestrictions: {
+        readonly mode: 'disabled' | 'enabled';
+    };
+    readonly cwd: string;
+};
 
 type TraceEnvMutation = {
     readonly capability: string;
@@ -40,21 +47,21 @@ function sanitizedChildEnvironment(environmentVariables: RuntimeCapabilityPolicy
     return environment;
 }
 
-async function readPermissionRoots(resolvedRun: ResolvedRun): Promise<readonly string[]> {
+async function readPermissionRoots(options: SupervisedChildStartOptions): Promise<readonly string[]> {
     return Array.from(
         new Set([
-            await realpath(resolvedRun.cwd),
+            await realpath(options.cwd),
             await realpath(childRuntimeRoot)
         ])
     );
 }
 
-async function supervisedChildExecArgv(resolvedRun: ResolvedRun): Promise<string[]> {
-    if (resolvedRun.request.capabilityRestrictions.mode === 'disabled') {
+async function supervisedChildExecArgv(options: SupervisedChildStartOptions): Promise<string[]> {
+    if (options.capabilityRestrictions.mode === 'disabled') {
         return [];
     }
 
-    const permissionRoots = await readPermissionRoots(resolvedRun);
+    const permissionRoots = await readPermissionRoots(options);
 
     return [
         '--permission',
@@ -67,13 +74,13 @@ async function supervisedChildExecArgv(resolvedRun: ResolvedRun): Promise<string
 }
 
 export async function startSupervisedChild(
-    resolvedRun: ResolvedRun,
+    options: SupervisedChildStartOptions,
     dependencies: RunOrchestratorDependencies
 ): Promise<SupervisedChildProcess> {
     return fork(childEntryPoint, [], {
-        cwd: resolvedRun.cwd,
+        cwd: options.cwd,
         env: sanitizedChildEnvironment(dependencies.runtimeCapabilityPolicy.readEnvironment()),
-        execArgv: await supervisedChildExecArgv(resolvedRun),
+        execArgv: await supervisedChildExecArgv(options),
         stdio: [ 'ignore', 'pipe', 'pipe', 'ipc' ]
     });
 }

@@ -17,7 +17,7 @@ function createRunCommand(config: RunConfig, profileName: string): RunCommand {
     return {
         config,
         cwd: process.cwd(),
-        engine: null,
+        engine: { kind: 'default' },
         request: defaultRunRequest({
             paths: [ 'source/integration-tests/run/fixtures/passing.test.ts' ],
             profile: profileName

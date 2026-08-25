@@ -46,8 +46,11 @@ layer resolves the run in this order:
    profile + resource constraints) decides workers, processes,
    isolation grain. See [Runtime Behavior § Process Model And Scheduling](./runtime-behavior.md#process-model-and-scheduling) and [Package Architecture § Orchestration](./package-architecture.md#orchestration).
 7. **Resolution freeze.** The resulting `ResolvedRun` contains
-   serializable `RunFacts` for records and replay plus an executable
-   `TestPlan` for `execute(testPlan)`.
+   serializable `RunFacts` for records and replay. Local in-process
+   resolution also contains an executable `TestPlan` for
+   `execute(testPlan)`. Supervised and other process-boundary
+   resolution contains a bodyless collected plan that the coordinator
+   can map into assignments without importing user modules itself.
 
 After step 7, the resolved run does not change. New tests discovered during
 execution are an error.
@@ -118,8 +121,7 @@ The split buys several capabilities:
   discovered at collection (see § Why The Order Matters), which is
   only enforceable if the `TestPlan` is complete before execution starts
 
-The cost is that in parallel modes each test file is imported
-**twice**:
+The cost is that most parallel modes import each test file **twice**:
 
 1. once in the main thread during collection, to build the `TestNode`
    tree
@@ -129,6 +131,10 @@ The cost is that in parallel modes each test file is imported
 The runner cannot fold these into one: test bodies are functions, and
 Node's `worker_threads` / `child_process` boundaries do not transmit
 closures. Workers re-import the file to get executable references.
+Supervised profiles that must avoid parent-side user-module execution use
+the same rule at a different boundary: a supervised child imports the files
+for collection, sends a minimal bodyless collected plan to the coordinator,
+then executes only the assigned case identities.
 
 In practice the cost stays small because:
 

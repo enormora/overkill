@@ -3,7 +3,7 @@ import type { SerializedValue as SerializedValueShape } from '../compare/seriali
 import type { Execute } from '../engine/execution.ts';
 import type { Engine } from '../engine/engine.ts';
 import type { ReporterDispatcher } from '../engine/reporter-dispatcher.ts';
-import type { RunResourceUsageTracker, RunResult } from '../engine/run-result.ts';
+import type { OrphanedNode, RunResourceUsageTracker, RunResult } from '../engine/run-result.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import type { RuntimeCapabilityPolicyDependencies } from './capability-policy.ts';
 import type { ResourceUsageTrackerOptions } from './resource-usage.ts';
@@ -12,6 +12,18 @@ export type SerializedValue = SerializedValueShape;
 type RunExecuteOptions = NonNullable<Parameters<Execute>[1]>;
 type RunOutputRenderer = NonNullable<RunExecuteOptions['outputRenderer']>;
 type RunReporters = RunExecuteOptions['reporters'];
+
+export type RunEngineSelection = {
+    readonly engine: Engine;
+    readonly kind: 'instance';
+} | {
+    readonly exportKind: 'getter' | 'value';
+    readonly exportName: string;
+    readonly kind: 'module';
+    readonly moduleUrl: string;
+} | {
+    readonly kind: 'default';
+};
 
 export type RunSelection = {
     readonly kind: 'all';
@@ -72,6 +84,7 @@ export type RunResourceUsagePolicy = {
 };
 
 export type RunTimeoutPolicy = {
+    readonly collectionMilliseconds: number;
     readonly hardMilliseconds: number;
     readonly softMilliseconds: number;
 };
@@ -121,7 +134,7 @@ export type RunRequest = {
 export type RunCommand = {
     readonly config: RunConfig;
     readonly cwd: string;
-    readonly engine: Engine | null;
+    readonly engine: RunEngineSelection;
     readonly request: RunRequest;
 };
 
@@ -151,6 +164,7 @@ export type RunExecutionFacts = {
     readonly baselineUpdateMode: 'none';
     readonly capture: 'buffered' | 'live';
     readonly debug: RunDebugRequest;
+    readonly engine: RunEngineFacts;
     readonly order: 'plan';
     readonly processModel: RunProcessModel;
     readonly profile: string;
@@ -166,13 +180,56 @@ export type RunReproducibilityFacts = {
     readonly shard: RunShard;
 };
 
+export type RunEngineFacts = {
+    readonly exportKind: 'getter' | 'value';
+    readonly exportName: string;
+    readonly kind: 'module';
+    readonly moduleUrl: string;
+} | {
+    readonly kind: 'default';
+} | {
+    readonly kind: 'instance';
+};
+
+export type CollectedRunCase = {
+    readonly metadata: SerializedValue;
+    readonly name: string;
+    readonly params: string | null;
+    readonly suite: readonly string[];
+};
+
+export type CollectedRunFile = {
+    readonly cases: readonly CollectedRunCase[];
+    readonly file: string;
+};
+
+export type CollectedRunPlan = {
+    readonly defined: number;
+    readonly files: readonly CollectedRunFile[];
+    readonly orphans: readonly OrphanedNode[];
+    readonly root: {
+        readonly metadata: SerializedValue;
+        readonly name: string;
+    };
+};
+
+export type ResolvedRunPlan = {
+    readonly collectedPlan: CollectedRunPlan;
+    readonly kind: 'supervised';
+} | {
+    readonly kind: 'local';
+    readonly testPlan: TestPlan;
+};
+
 export type ResolvedRun = {
+    readonly collectionRunnerErrors: readonly RunResult['runnerErrors'][number][];
     readonly config: RunConfig;
     readonly cwd: string;
+    readonly engine: RunEngineSelection;
     readonly facts: RunFacts;
+    readonly plan: ResolvedRunPlan;
     readonly reporters: RunReporters;
     readonly request: RunRequest;
-    readonly testPlan: TestPlan;
 };
 
 export type RunOrchestratorDependencies = {

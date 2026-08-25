@@ -65,6 +65,7 @@ function createDefaultMicrotestProfile(): RunConfig['profiles'][string] {
         },
         testFamily: 'microtest',
         timeouts: {
+            collectionMilliseconds: 5000,
             hardMilliseconds: 1000,
             softMilliseconds: 500
         }
@@ -157,7 +158,7 @@ function createRunCommand(paths: readonly string[]): RunCommand {
     return {
         config: createRunConfig(),
         cwd: process.cwd(),
-        engine: null,
+        engine: { kind: 'default' },
         request: createRunRequest(paths)
     };
 }
@@ -166,7 +167,7 @@ function createSupervisedRunCommand(paths: readonly string[], config: RunConfig)
     return {
         config,
         cwd: process.cwd(),
-        engine: null,
+        engine: { kind: 'default' },
         request: {
             ...createRunRequest(paths),
             profile: 'microtest'
@@ -224,8 +225,8 @@ async function runCommandLine(paths: readonly string[]): Promise<CommandLineRunn
     });
 }
 
-function selectedEngineDiagnostic(path: string): string {
-    return `Overkill argument error: Test module testNode must be created by the selected engine: ${path}`;
+function selectedEngineRunnerDiagnostic(path: string): string {
+    return `Overkill runner error: Test module testNode must be created by the selected engine: ${path}`;
 }
 
 function plainData(value: unknown): unknown {
@@ -242,8 +243,10 @@ export const testSuite = createSuite({
             async body(scope: TestScope) {
                 const resolvedRun = await orchestrator.resolve(createRunCommand([ passingFixturePath ]));
                 const result = await orchestrator.run(createRunCommand([ passingFixturePath ]));
+                const firstCase = resolvedRun.facts.cases[0];
 
-                scope.assert.deepEqual(resolvedRun.testPlan.cases[0].id, {
+                scope.require.defined(firstCase);
+                scope.assert.deepEqual(firstCase.id, {
                     file: passingFixturePath,
                     name: 'passes',
                     params: null,
@@ -366,6 +369,7 @@ export const testSuite = createSuite({
                             microtest: {
                                 ...createDefaultMicrotestProfile(),
                                 timeouts: {
+                                    collectionMilliseconds: 5000,
                                     hardMilliseconds: 50,
                                     softMilliseconds: 10
                                 }
@@ -409,7 +413,7 @@ export const testSuite = createSuite({
                 ]));
 
                 scope.assert.deepEqual(
-                    resolvedRun.testPlan.cases.map(function toCaseId(testCase) {
+                    resolvedRun.facts.cases.map(function toCaseId(testCase) {
                         return testCase.id;
                     }),
                     [
@@ -465,19 +469,19 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'command-line runner maps invalid module exports to argument errors',
+            name: 'command-line runner maps invalid module exports to runner errors',
             metadata: {},
             async body(scope: TestScope) {
                 const missingExportResult = await runCommandLine([ missingTestNodeFixturePath ]);
                 const plainExportResult = await runCommandLine([ plainTestNodeFixturePath ]);
 
-                scope.assert.equal(missingExportResult.exitCode, 3);
-                scope.assert.equal(plainExportResult.exitCode, 3);
+                scope.assert.equal(missingExportResult.exitCode, 2);
+                scope.assert.equal(plainExportResult.exitCode, 2);
                 scope.assert.deepEqual(missingExportResult.fallbackDiagnostics, [
-                    `Overkill argument error: Test module must export testNode: ${missingTestNodeFixturePath}`
+                    `Overkill runner error: Test module must export testNode: ${missingTestNodeFixturePath}`
                 ]);
                 scope.assert.deepEqual(plainExportResult.fallbackDiagnostics, [
-                    selectedEngineDiagnostic(plainTestNodeFixturePath)
+                    selectedEngineRunnerDiagnostic(plainTestNodeFixturePath)
                 ]);
 
                 return scope.assert.collect();

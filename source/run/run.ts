@@ -1,24 +1,36 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { serializeValue } from '../compare/serialized-value.ts';
 import type { RunResourceUsageTracker, RunResult } from '../engine/run-result.ts';
-import type { Engine } from '../engine/engine.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
+import {
+    collectedRunCaseFacts
+} from './collected-run-plan.ts';
 import { discoverRunFiles } from './run-discovery.ts';
 import {
     invalidRequest,
+    noTestsCollected,
     RunCollectionError,
     unsupportedRequest
 } from './run-errors.ts';
 import { loadRunTestModules } from './run-test-modules.ts';
 import {
     copyResourceBudgets,
+    copyRunEngineSelection,
     copyRunConfig,
     copyRunRequest,
     createRunRuntimePolicy,
+    runEngineFacts,
     type RunRuntimePolicy
 } from './run-support.ts';
-import { executeSupervisedRun } from './supervised-run.ts';
+import {
+    collectSupervisedRun,
+    executeSupervisedRun,
+    runSupervisedCommand
+} from './supervised-run.ts';
 import {
     invalidRunProfileNameMessage,
+    type CollectedRunPlan,
     type ResolvedRun,
     type RunCommand,
     type RunConfig,
@@ -35,6 +47,10 @@ import {
     type RunTestFamily,
     type RunTimeoutPolicy
 } from './run-types.ts';
+import {
+    resolveRunEngine,
+    validateRunEngineSelection
+} from './run-engine-selection.ts';
 
 const minimumSeedValue = 0n;
 
@@ -74,6 +90,7 @@ function validateSamplingInterval(value: number | null): void {
 }
 
 function validateTimeoutPolicy(policy: RunTimeoutPolicy): void {
+    validatePositiveSafeInteger(policy.collectionMilliseconds, 'Collection timeout');
     validatePositiveSafeInteger(policy.softMilliseconds, 'Soft timeout');
     validatePositiveSafeInteger(policy.hardMilliseconds, 'Hard timeout');
 
@@ -115,9 +132,25 @@ function assertValidRunProfileName(profileName: string): void {
 
 function validateRunRequest(request: RunRequest): void {
     assertValidRunProfileName(request.profile);
+
+    if (request.paths.length === 0) {
+        noTestsCollected('No explicit run paths were provided.');
+    }
+
     validateRunShard(request);
     validateRunSeed(request);
     validateRunResourceUsageRequest(request);
+}
+
+async function validateRunPaths(command: RunCommand): Promise<void> {
+    await discoverRunFiles({
+        cwd: command.cwd,
+        paths: command.request.paths
+    });
+}
+
+function validateRunCommand(command: RunCommand): void {
+    validateRunEngineSelection(command.engine);
 }
 
 function validateRunResourceUsagePolicy(policy: RunResourceUsagePolicy): void {
@@ -168,12 +201,12 @@ function resolvedSeed(request: RunRequest, dependencies: RunOrchestratorDependen
 }
 
 function runCaseFacts(
-    metadata: TestPlan['cases'][number]['metadata'],
-    id: TestPlan['cases'][number]['id']
+    metadata: RunCaseFacts['metadata'],
+    id: RunCaseFacts['id']
 ): RunCaseFacts {
     return {
         id,
-        metadata: serializeValue(metadata)
+        metadata
     };
 }
 
@@ -235,12 +268,24 @@ function selectedProfile(request: RunRequest, config: RunConfig): RunMicrotestPr
 }
 
 function assertSupportedProcessEngine(command: RunCommand, profile: RunMicrotestProfileConfig): void {
-    if (profile.execution.processModel === 'supervised-process' && command.engine !== null) {
-        invalidRequest([
-            'Custom engines are not supported with supervised-process execution yet.',
-            'Use in-process execution or the default engine.'
-        ]
-            .join(' '));
+    if (profile.execution.processModel === 'supervised-process' && command.engine.kind === 'instance') {
+        invalidRequest('Instance engines are not supported with supervised-process execution. Use a module engine.');
+    }
+
+    if (profile.execution.processModel === 'supervised-process' && command.engine.kind === 'module') {
+        let modulePath: string;
+
+        try {
+            modulePath = fileURLToPath(command.engine.moduleUrl);
+        } catch {
+            invalidRequest('Supervised custom engine moduleUrl must be a file URL under cwd.');
+        }
+
+        const relativeModulePath = path.relative(command.cwd, modulePath);
+
+        if (relativeModulePath.startsWith('..') || path.isAbsolute(relativeModulePath)) {
+            invalidRequest('Supervised custom engine moduleUrl must be under cwd.');
+        }
     }
 }
 
@@ -267,7 +312,8 @@ function resolveResourceUsagePolicy(request: RunRequest, profile: RunMicrotestPr
 }
 
 function createRunFacts(
-    testPlan: TestPlan,
+    cases: readonly RunCaseFacts[],
+    engine: RunCommand['engine'],
     request: RunRequest,
     config: RunConfig,
     dependencies: RunOrchestratorDependencies
@@ -275,9 +321,7 @@ function createRunFacts(
     const profile = selectedProfile(request, config);
 
     return {
-        cases: testPlan.cases.map(function toRunCaseFacts(testCase) {
-            return runCaseFacts(testCase.metadata, testCase.id);
-        }),
+        cases,
         environment: {
             node: {
                 arch: dependencies.node.arch,
@@ -290,6 +334,7 @@ function createRunFacts(
             baselineUpdateMode: request.baselineUpdateMode,
             capture: request.capture,
             debug: request.debug,
+            engine: runEngineFacts(engine),
             order: request.order,
             processModel: profile.execution.processModel,
             profile: request.profile,
@@ -307,6 +352,12 @@ function createRunFacts(
     };
 }
 
+function runCaseFactsFromTestPlan(testPlan: TestPlan): readonly RunCaseFacts[] {
+    return testPlan.cases.map(function toRunCaseFacts(testCase) {
+        return runCaseFacts(serializeValue(testCase.metadata), testCase.id);
+    });
+}
+
 function freezeValue<Value>(value: Value): Value {
     if (value !== null && typeof value === 'object') {
         for (const propertyValue of Object.values(value)) {
@@ -319,12 +370,8 @@ function freezeValue<Value>(value: Value): Value {
     return value;
 }
 
-function resolveRunEngine(command: RunCommand, dependencies: RunOrchestratorDependencies): Engine {
-    return command.engine ?? dependencies.defaultEngine;
-}
-
 async function createTestPlan(command: RunCommand, dependencies: RunOrchestratorDependencies): Promise<TestPlan> {
-    const engine = resolveRunEngine(command, dependencies);
+    const engine = await resolveRunEngine(command.engine, dependencies);
     const files = await discoverRunFiles({ cwd: command.cwd, paths: command.request.paths });
     const testFiles = await loadRunTestModules(files, engine);
 
@@ -341,27 +388,155 @@ async function createTestPlan(command: RunCommand, dependencies: RunOrchestrator
     }
 }
 
+async function createLocalTestPlan(
+    command: RunCommand,
+    profile: RunMicrotestProfileConfig,
+    dependencies: RunOrchestratorDependencies
+): Promise<TestPlan> {
+    let timeout: ReturnType<RunOrchestratorDependencies['wallClock']['setTimeout']> | null = null;
+    const collectionTimeout = new Promise<never>(function rejectOnCollectionTimeout(_resolve, reject) {
+        timeout = dependencies.wallClock.setTimeout(function failTimedOutCollection() {
+            reject(
+                new RunCollectionError(
+                    'Collection exceeded collection timeout.',
+                    { cause: null },
+                    'loader'
+                )
+            );
+        }, profile.timeouts.collectionMilliseconds);
+    });
+
+    try {
+        return await Promise.race([ createTestPlan(command, dependencies), collectionTimeout ]);
+    } finally {
+        if (timeout !== null) {
+            dependencies.wallClock.clearTimeout(timeout);
+        }
+    }
+}
+
+function supervisedEngine(command: RunCommand): Exclude<RunCommand['engine'], { readonly kind: 'instance'; }> {
+    if (command.engine.kind === 'instance') {
+        invalidRequest('Instance engines are not supported with supervised-process execution. Use a module engine.');
+    }
+
+    return command.engine;
+}
+
+function createSupervisedCommandBase(command: RunCommand, profile: RunMicrotestProfileConfig) {
+    const resourceUsagePolicy = resolveResourceUsagePolicy(command.request, profile);
+
+    return {
+        capabilityRestrictions: command.request.capabilityRestrictions,
+        collectionTimeoutMilliseconds: profile.timeouts.collectionMilliseconds,
+        cwd: command.cwd,
+        engine: supervisedEngine(command),
+        hardTimeoutMilliseconds: profile.timeouts.hardMilliseconds,
+        paths: command.request.paths,
+        resourceBudgets: resourceUsagePolicy.budgets,
+        resourceUsageSamplingIntervalMilliseconds: resourceUsagePolicy.samplingIntervalMilliseconds,
+        scheduling: profile.execution.scheduling,
+        timeoutMilliseconds: profile.timeouts.softMilliseconds
+    };
+}
+
+function createSupervisedCollectCommand(command: RunCommand, profile: RunMicrotestProfileConfig) {
+    return {
+        ...createSupervisedCommandBase(command, profile),
+        kind: 'collect' as const
+    };
+}
+
+function createSupervisedRunCommand(command: RunCommand, profile: RunMicrotestProfileConfig) {
+    return {
+        ...createSupervisedCommandBase(command, profile),
+        kind: 'run' as const
+    };
+}
+
+function createResolvedRunFromCollectedPlan(
+    command: RunCommand,
+    request: RunRequest,
+    config: RunConfig,
+    profile: RunMicrotestProfileConfig,
+    collectedPlan: CollectedRunPlan,
+    collectionRunnerErrors: readonly RunResult['runnerErrors'][number][],
+    dependencies: RunOrchestratorDependencies
+): ResolvedRun {
+    const engine = freezeValue(copyRunEngineSelection(command.engine));
+    const facts = freezeValue(createRunFacts(
+        collectedRunCaseFacts(collectedPlan),
+        engine,
+        request,
+        config,
+        dependencies
+    ));
+
+    return freezeValue({
+        collectionRunnerErrors,
+        config,
+        cwd: command.cwd,
+        engine,
+        facts,
+        plan: {
+            collectedPlan,
+            kind: 'supervised' as const
+        },
+        reporters: profile.reporters ?? config.reporters,
+        request
+    });
+}
+
 async function createResolvedRun(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies
 ): Promise<ResolvedRun> {
+    validateRunCommand(command);
     validateRunRequest(command.request);
     validateRunConfig(command.config);
+    await validateRunPaths(command);
 
     const request = freezeValue(copyRunRequest(command.request));
     const config = freezeValue(copyRunConfig(command.config));
     const profile = selectedProfile(request, config);
     assertSupportedProcessEngine(command, profile);
-    const testPlan = await createTestPlan(command, dependencies);
-    const facts = freezeValue(createRunFacts(testPlan, request, config, dependencies));
+    const engine = freezeValue(copyRunEngineSelection(command.engine));
+
+    if (profile.execution.processModel === 'supervised-process') {
+        const collection = await collectSupervisedRun(createSupervisedCollectCommand(command, profile), dependencies);
+
+        return createResolvedRunFromCollectedPlan(
+            command,
+            request,
+            config,
+            profile,
+            freezeValue(collection.collectedPlan),
+            freezeValue(Array.from(collection.runnerErrors)),
+            dependencies
+        );
+    }
+
+    const testPlan = await createLocalTestPlan(command, profile, dependencies);
+    const facts = freezeValue(createRunFacts(
+        runCaseFactsFromTestPlan(testPlan),
+        engine,
+        request,
+        config,
+        dependencies
+    ));
 
     return freezeValue({
+        collectionRunnerErrors: [],
         config,
         cwd: command.cwd,
+        engine,
         facts,
+        plan: {
+            kind: 'local',
+            testPlan
+        },
         reporters: profile.reporters ?? config.reporters,
-        request,
-        testPlan
+        request
     });
 }
 
@@ -471,6 +646,48 @@ async function createResolvedRunResult(
     }
 }
 
+async function createSupervisedRunResult(
+    command: RunCommand,
+    dependencies: RunOrchestratorDependencies,
+    runtimePolicy: RunRuntimePolicy | null
+): Promise<RunResult> {
+    validateRunCommand(command);
+    validateRunRequest(command.request);
+    validateRunConfig(command.config);
+    await validateRunPaths(command);
+
+    const request = freezeValue(copyRunRequest(command.request));
+    const config = freezeValue(copyRunConfig(command.config));
+    const profile = selectedProfile(request, config);
+    assertSupportedProcessEngine(command, profile);
+
+    if (profile.execution.processModel !== 'supervised-process') {
+        throw new Error('Expected supervised-process profile.');
+    }
+
+    try {
+        const result = await runSupervisedCommand(
+            createSupervisedRunCommand(command, profile),
+            dependencies,
+            function createResolvedRunAfterCollection(collection): ResolvedRun {
+                return createResolvedRunFromCollectedPlan(
+                    command,
+                    request,
+                    config,
+                    profile,
+                    freezeValue(collection.collectedPlan),
+                    freezeValue(Array.from(collection.runnerErrors)),
+                    dependencies
+                );
+            }
+        );
+
+        return addRunnerErrors(result, runtimePolicy?.takeRunErrors() ?? []);
+    } catch (error: unknown) {
+        return createResultFromResolutionError(error, runtimePolicy);
+    }
+}
+
 async function executeResolvedRun(
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies,
@@ -486,7 +703,11 @@ async function executeResolvedRun(
         return addRunnerErrors(result, runtimePolicy?.takeRunErrors() ?? []);
     }
 
-    return await dependencies.execute(resolvedRun.testPlan, {
+    if (resolvedRun.plan.kind !== 'local') {
+        throw new Error('In-process execution requires a local test plan.');
+    }
+
+    return await dependencies.execute(resolvedRun.plan.testPlan, {
         execution: { mode: resolveEngineExecutionMode(resolvedRun.facts.execution) },
         outputRenderer: resolvedRun.config.outputRenderer,
         reporters: resolvedRun.reporters,
@@ -510,6 +731,12 @@ export function createRunOrchestrator(dependencies: RunOrchestratorDependencies)
 
         async run(command) {
             const runtimePolicy = createRunRuntimePolicy(command.request, dependencies);
+            const profile = command.config.profiles[command.request.profile];
+
+            if (profile?.execution.processModel === 'supervised-process') {
+                return await createSupervisedRunResult(command, dependencies, runtimePolicy);
+            }
+
             const resolvedRun = await createResolvedRunResult(command, dependencies, runtimePolicy);
 
             if (isRunResult(resolvedRun)) {

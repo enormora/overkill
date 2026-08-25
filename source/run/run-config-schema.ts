@@ -47,6 +47,7 @@ export const resourceUsageSchema = z.union([ measuredResourceUsageSchema, unmeas
 
 export const timeoutSchema = z
     .strictObject({
+        collectionMilliseconds: z.optional(positiveSafeIntegerSchema),
         hardMilliseconds: z.optional(positiveSafeIntegerSchema),
         softMilliseconds: z.optional(positiveSafeIntegerSchema)
     })

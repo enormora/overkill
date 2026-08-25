@@ -43,6 +43,7 @@ export type RunProjectUnmeasuredResourceUsage = ParsedRunProjectUnmeasuredResour
 
 const defaultConfigFileNames = [ 'overkill.config.ts', 'overkill.config.js' ];
 const defaultResourceUsageSamplingIntervalMilliseconds = 100;
+const defaultMicrotestCollectionTimeoutMilliseconds = 1000;
 const defaultMicrotestHardTimeoutMilliseconds = 1000;
 const defaultMicrotestTimeoutMilliseconds = 500;
 
@@ -84,6 +85,7 @@ const defaultResourceUsagePolicy: RunResourceUsagePolicy = {
 };
 
 const defaultTimeoutPolicy: RunTimeoutPolicy = {
+    collectionMilliseconds: defaultMicrotestCollectionTimeoutMilliseconds,
     hardMilliseconds: defaultMicrotestHardTimeoutMilliseconds,
     softMilliseconds: defaultMicrotestTimeoutMilliseconds
 };
@@ -249,10 +251,15 @@ function normalizeResourceUsage(
     return normalizeMeasuredResourceUsage(profile);
 }
 
+function timeoutValue(value: number | undefined, fallback: number): number {
+    return value ?? fallback;
+}
+
 function normalizeTimeouts(timeouts: RunProjectTimeoutConfig | undefined): RunTimeoutPolicy {
     return {
-        hardMilliseconds: timeouts?.hardMilliseconds ?? defaultTimeoutPolicy.hardMilliseconds,
-        softMilliseconds: timeouts?.softMilliseconds ?? defaultTimeoutPolicy.softMilliseconds
+        collectionMilliseconds: timeoutValue(timeouts?.collectionMilliseconds, defaultTimeoutPolicy.collectionMilliseconds),
+        hardMilliseconds: timeoutValue(timeouts?.hardMilliseconds, defaultTimeoutPolicy.hardMilliseconds),
+        softMilliseconds: timeoutValue(timeouts?.softMilliseconds, defaultTimeoutPolicy.softMilliseconds)
     };
 }
 

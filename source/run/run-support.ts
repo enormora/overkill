@@ -4,6 +4,8 @@ import {
 } from './capability-policy.ts';
 import type {
     RunConfig,
+    RunEngineFacts,
+    RunEngineSelection,
     RunLoaderConfig,
     RunMicrotestExecution,
     RunMicrotestProfileConfig,
@@ -59,6 +61,7 @@ function copyResourceUsagePolicy(policy: RunResourceUsagePolicy): RunResourceUsa
 
 function copyTimeoutPolicy(policy: RunTimeoutPolicy): RunTimeoutPolicy {
     return {
+        collectionMilliseconds: policy.collectionMilliseconds,
         hardMilliseconds: policy.hardMilliseconds,
         softMilliseconds: policy.softMilliseconds
     };
@@ -120,6 +123,43 @@ export function copyRunConfig(config: RunConfig): RunConfig {
         reporters: Array.from(config.reporters),
         runtimeStateDir: config.runtimeStateDir
     };
+}
+
+export function copyRunEngineSelection(engine: RunEngineSelection): RunEngineSelection {
+    if (engine.kind === 'instance') {
+        return {
+            engine: engine.engine,
+            kind: 'instance'
+        };
+    }
+
+    if (engine.kind === 'module') {
+        return {
+            exportKind: engine.exportKind,
+            exportName: engine.exportName,
+            kind: 'module',
+            moduleUrl: engine.moduleUrl
+        };
+    }
+
+    return { kind: 'default' };
+}
+
+export function runEngineFacts(engine: RunEngineSelection): RunEngineFacts {
+    if (engine.kind === 'instance') {
+        return { kind: 'instance' };
+    }
+
+    if (engine.kind === 'module') {
+        return {
+            exportKind: engine.exportKind,
+            exportName: engine.exportName,
+            kind: 'module',
+            moduleUrl: engine.moduleUrl
+        };
+    }
+
+    return { kind: 'default' };
 }
 
 export function createRunRuntimePolicy(
