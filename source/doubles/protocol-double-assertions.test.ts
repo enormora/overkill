@@ -10,6 +10,7 @@ import type { RunResult } from '../engine/run-result.ts';
 import type { TestBody, TestScope } from '../engine/test-node.ts';
 import { doubleUsage } from './double-usage.ts';
 import { rule } from './double-rule.ts';
+import { createTestDoubleScope } from './test-double.ts';
 import {
     testAsyncIterable,
     testAsyncIterator,
@@ -17,6 +18,7 @@ import {
     testIterable
 } from './protocol-double.ts';
 import {
+    installProtocolMetadata,
     protocolDisposeMethod,
     protocolIteratorEvents
 } from './protocol-double-metadata.ts';
@@ -39,6 +41,26 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
             })
         )
     );
+}
+
+type MetadataDisposable = {
+    readonly dispose: () => void;
+};
+
+function metadataDisposable(dispose: () => void): MetadataDisposable {
+    const disposable = { dispose };
+
+    installProtocolMetadata(disposable, {
+        disposeMethod() {
+            return dispose;
+        },
+        iteratorEvents() {
+            return [];
+        },
+        kind: 'disposable'
+    });
+
+    return disposable;
 }
 
 export const testSuite = createOverkillSuite({
@@ -141,6 +163,8 @@ export const testSuite = createOverkillSuite({
                         scope.assert.deepEqual([ firstResource, secondResource ], [ first, second ]);
                     }
 
+                    testScope.assert(doubleUsage.disposed, first);
+                    testScope.assert(doubleUsage.disposeCount, first, 1);
                     testScope.assert(doubleUsage.disposedOnce, first);
                     testScope.assert(doubleUsage.disposeOrder, [ second, first ]);
                     testScope.assert(doubleUsage.notDisposed, testDisposable());
@@ -159,6 +183,47 @@ export const testSuite = createOverkillSuite({
             body: async function body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
                     testScope.assert(doubleUsage.disposed, {});
+                    testScope.assert(doubleUsage.notDisposed, {});
+                    testScope.assert(doubleUsage.disposedOnce, {});
+                    testScope.assert(doubleUsage.disposeCount, {}, 0);
+                    return testScope.assert.collect();
+                });
+
+                scope.assert.equal(result.summary.failed, 1);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'disposal assertions reject protocol inputs without double methods',
+            metadata: {},
+            body: async function body(scope: OverkillScope) {
+                const disposable = metadataDisposable(function dispose() {
+                    return undefined;
+                });
+                const result = await executeSingleBody(function testBody(testScope: TestScope) {
+                    testScope.assert(doubleUsage.disposed, disposable);
+                    return testScope.assert.collect();
+                });
+
+                scope.assert.equal(result.summary.failed, 1);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'disposal order rejects mixed double scopes',
+            metadata: {},
+            body: async function body(scope: OverkillScope) {
+                const firstScope = createTestDoubleScope();
+                const secondScope = createTestDoubleScope();
+                const first = metadataDisposable(firstScope.testDouble.returns<() => void>());
+                const second = metadataDisposable(secondScope.testDouble.returns<() => void>());
+                const result = await executeSingleBody(function testBody(testScope: TestScope) {
+                    first.dispose();
+                    second.dispose();
+
+                    testScope.assert(doubleUsage.disposeOrder, [ first, second ]);
                     return testScope.assert.collect();
                 });
 

@@ -4,7 +4,11 @@ import {
     installProcessExecutionRestriction as installNodeProcessExecutionRestriction
 } from './node-process-capability-restrictions.ts';
 import { runSupervisedChild, type SupervisedChildHost } from './supervised-child.ts';
-import type { SupervisedRunCommand } from './supervised-protocol.ts';
+import type {
+    SupervisedAssignmentCommand,
+    SupervisedChildCommand,
+    SupervisedRunCommand
+} from './supervised-protocol.ts';
 
 const sendMessage = process.send?.bind(process);
 const disconnectProcess = process.disconnect?.bind(process);
@@ -21,23 +25,39 @@ function isRecord(value: unknown): value is Readonly<Record<PropertyKey, unknown
     return typeof value === 'object' && value !== null;
 }
 
-function isChildRunCommand(message: unknown): message is SupervisedRunCommand {
+function isChildCommand(message: unknown): message is SupervisedChildCommand {
     return isRecord(message) &&
         Object.hasOwn(message, 'kind') &&
-        message.kind === 'run';
+        (message.kind === 'collect' || message.kind === 'run');
 }
 
-async function receiveRunCommand(): Promise<SupervisedRunCommand> {
-    return new Promise(function waitForRunCommand(resolve) {
-        process.once('message', function receiveCommand(message: unknown) {
-            if (isChildRunCommand(message)) {
+function isAssignmentCommand(message: unknown): message is SupervisedAssignmentCommand {
+    return isRecord(message) &&
+        Object.hasOwn(message, 'kind') &&
+        message.kind === 'assign';
+}
+
+async function receiveCommand(): Promise<SupervisedChildCommand> {
+    return new Promise(function waitForCommand(resolve) {
+        process.once('message', function receiveChildCommand(message: unknown) {
+            if (isChildCommand(message)) {
                 resolve(message);
             }
         });
     });
 }
 
-function validatePermissionHost(command: SupervisedRunCommand): void {
+async function receiveAssignment(): Promise<SupervisedAssignmentCommand> {
+    return new Promise(function waitForAssignment(resolve) {
+        process.once('message', function receiveAssignmentCommand(message: unknown) {
+            if (isAssignmentCommand(message)) {
+                resolve(message);
+            }
+        });
+    });
+}
+
+function validatePermissionHost(command: SupervisedChildCommand): void {
     if (command.capabilityRestrictions.mode === 'disabled') {
         return;
     }
@@ -76,7 +96,8 @@ await runSupervisedChild({
     readStorage(name) {
         return readWebStorage(globalThis, name);
     },
-    receiveRunCommand,
+    receiveAssignment,
+    receiveCommand,
     send,
     setExitCode(code) {
         process.exitCode = code;

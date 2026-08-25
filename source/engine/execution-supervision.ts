@@ -13,6 +13,7 @@ import {
     type RunnerError,
     type TestFailure
 } from './run-result.ts';
+import { observedGrowthBytesPerSecond } from './resource-usage-growth.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
 export type ExecuteTimeoutPolicy = {
@@ -107,7 +108,6 @@ type ResourceUsageSampleInput = {
     readonly supervision: ExecutionSupervision;
 };
 
-const millisecondsPerSecond = 1000;
 const resourceBudgetMetrics: readonly ResourceBudgetMetric[] = [
     'activeResourceCount',
     'javaScriptEngineHeapBytes',
@@ -498,26 +498,6 @@ function createActiveCaseInput(
         testCase,
         timeoutPolicy
     };
-}
-
-function observedGrowthBytesPerSecond(
-    sample: ResourceUsageSnapshot,
-    previousSample: ResourceUsageSnapshot | null
-): number {
-    if (previousSample === null) {
-        return 0;
-    }
-
-    const elapsedMilliseconds = sample.capturedAtMilliseconds - previousSample.capturedAtMilliseconds;
-
-    if (elapsedMilliseconds <= 0) {
-        return 0;
-    }
-
-    return Math.max(
-        0,
-        (sample.residentSetBytes - previousSample.residentSetBytes) * millisecondsPerSecond / elapsedMilliseconds
-    );
 }
 
 function observedBudgetValue(

@@ -678,10 +678,20 @@ type RunRequest = {
     };
 };
 
+type RunEngineSelection =
+    | { readonly kind: 'default'; }
+    | { readonly kind: 'instance'; readonly engine: Engine; }
+    | {
+        readonly kind: 'module';
+        readonly moduleUrl: string;
+        readonly exportName: string;
+        readonly exportKind: 'value' | 'getter';
+    };
+
 type RunCommand = {
     readonly config: RunConfig;
     readonly cwd: string;
-    readonly engine: Engine | null;
+    readonly engine: RunEngineSelection;
     readonly request: RunRequest;
 };
 
@@ -734,11 +744,37 @@ type RunCaseFacts = {
     readonly metadata: SerializedValue;
 };
 
+type CollectedRunCase = {
+    readonly metadata: SerializedValue;
+    readonly name: string;
+    readonly params: string | null;
+    readonly suite: ReadonlyArray<string>;
+};
+
+type CollectedRunFile = {
+    readonly file: string;
+    readonly cases: ReadonlyArray<CollectedRunCase>;
+};
+
+type CollectedRunPlan = {
+    readonly root: { readonly name: string; readonly metadata: SerializedValue; };
+    readonly defined: number;
+    readonly files: ReadonlyArray<CollectedRunFile>;
+    readonly orphans: ReadonlyArray<OrphanedNode>;
+};
+
+type ResolvedRunPlan =
+    | { readonly kind: 'local'; readonly testPlan: TestPlan; }
+    | { readonly kind: 'supervised'; readonly collectedPlan: CollectedRunPlan; };
+
 type ResolvedRun = {
     readonly request: RunRequest;
     readonly config: RunConfig;
+    readonly cwd: string;
+    readonly engine: RunEngineSelection;
     readonly facts: RunFacts;
-    readonly testPlan: TestPlan;
+    readonly plan: ResolvedRunPlan;
+    readonly collectionRunnerErrors: ReadonlyArray<RunnerError>;
     readonly reporters: ReadonlyArray<Reporter>;
 };
 

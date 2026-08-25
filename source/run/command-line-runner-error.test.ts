@@ -111,6 +111,7 @@ async function resolvePassingRun(command: RunCommand): Promise<Awaited<ReturnTyp
                 baselineUpdateMode: command.request.baselineUpdateMode,
                 capture: command.request.capture,
                 debug: command.request.debug,
+                engine: { kind: 'default' },
                 order: command.request.order,
                 processModel: profile.execution.processModel,
                 profile: command.request.profile,
@@ -126,9 +127,14 @@ async function resolvePassingRun(command: RunCommand): Promise<Awaited<ReturnTyp
                 shard: command.request.shard
             }
         },
+        collectionRunnerErrors: [],
+        engine: command.engine,
+        plan: {
+            kind: 'local',
+            testPlan: createPassingPlan()
+        },
         reporters: command.config.reporters,
-        request: command.request,
-        testPlan: createPassingPlan()
+        request: command.request
     };
 }
 

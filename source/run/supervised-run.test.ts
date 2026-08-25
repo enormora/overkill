@@ -29,6 +29,9 @@ const samplingIntervalMilliseconds = 1;
 const softTimeoutMilliseconds = 10;
 
 const microtestProfile = defaultMicrotestProfile();
+const restrictedMicrotestProfile = defaultMicrotestProfile({
+    timeouts: { collectionMilliseconds: 5000 }
+});
 const generousMeasuredProfile = defaultMicrotestProfile({
     resourceUsage: {
         budgets: {
@@ -98,7 +101,7 @@ function createRunCommand(
     return {
         config: createRunConfig(profile),
         cwd: process.cwd(),
-        engine: null,
+        engine: { kind: 'default' },
         request
     };
 }
@@ -115,6 +118,16 @@ function collectChildMessages(child: ChildProcess): readonly unknown[] {
     });
 
     return messages;
+}
+
+async function waitForCollectedMessage(child: ChildProcess): Promise<void> {
+    await new Promise<void>(function resolveCollected(resolve) {
+        child.on('message', function receiveMessage(message: unknown) {
+            if (isRecord(message) && message.kind === 'collected') {
+                resolve();
+            }
+        });
+    });
 }
 
 async function waitForExit(child: ChildProcess): Promise<number | null> {
@@ -196,6 +209,7 @@ export const testSuite = createOverkillSuite({
                 const result = await runOrchestrator.run(createRunCommand(endlessLoopFixturePath, {
                     ...microtestProfile,
                     timeouts: {
+                        collectionMilliseconds: 1000,
                         hardMilliseconds: hardTimeoutMilliseconds,
                         softMilliseconds: softTimeoutMilliseconds
                     }
@@ -295,7 +309,7 @@ export const testSuite = createOverkillSuite({
                 const result = await orchestrator.run({
                     config: createRunConfigWithReporters(generousMeasuredProfile, [ failingEventReporter ]),
                     cwd: process.cwd(),
-                    engine: null,
+                    engine: { kind: 'default' },
                     request: createRunRequest(delayedPassFixturePath)
                 });
 
@@ -311,10 +325,12 @@ export const testSuite = createOverkillSuite({
             name: 'orchestrator.run() consolidates supervised process.env policy errors',
             metadata: {},
             async body(scope: OverkillScope) {
-                const result = await orchestrator.run(createRunCommand(envPolicyFixturePath, microtestProfile, {
-                    ...createRunRequest(envPolicyFixturePath),
-                    capabilityRestrictions: { mode: 'enabled' }
-                }));
+                const result = await orchestrator.run(
+                    createRunCommand(envPolicyFixturePath, restrictedMicrotestProfile, {
+                        ...createRunRequest(envPolicyFixturePath),
+                        capabilityRestrictions: { mode: 'enabled' }
+                    })
+                );
 
                 deleteEnvironmentValue('OVERKILL_CASE_POLICY_FIXTURE');
                 scope.assert.equal(result.summary.runtimePolicy, 1);
@@ -351,9 +367,10 @@ export const testSuite = createOverkillSuite({
                 });
                 const messages = collectChildMessages(child);
                 child.send({
-                    assignedCaseKeys: [ 'missing-case' ],
                     capabilityRestrictions: { mode: 'disabled' },
+                    collectionTimeoutMilliseconds: 1000,
                     cwd: process.cwd(),
+                    engine: { kind: 'default' },
                     hardTimeoutMilliseconds,
                     kind: 'run',
                     paths: [ delayedPassFixturePath ],
@@ -361,6 +378,18 @@ export const testSuite = createOverkillSuite({
                     resourceUsageSamplingIntervalMilliseconds: samplingIntervalMilliseconds,
                     scheduling: 'concurrent',
                     timeoutMilliseconds: softTimeoutMilliseconds
+                });
+                await waitForCollectedMessage(child);
+                child.send({
+                    assignedCases: [
+                        {
+                            file: delayedPassFixturePath,
+                            name: 'missing-case',
+                            params: null,
+                            suite: []
+                        }
+                    ],
+                    kind: 'assign'
                 });
                 const exitCode = await waitForExit(child);
 

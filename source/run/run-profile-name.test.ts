@@ -26,7 +26,7 @@ function runCommand(profile: string, config = defaultRunConfig()): RunCommand {
     return {
         config,
         cwd: process.cwd(),
-        engine: null,
+        engine: { kind: 'default' },
         request: defaultRunRequest({
             paths: [ passingFixturePath ],
             profile
@@ -82,6 +82,7 @@ export const testSuite = createOverkillSuite({
                 scope.assert.equal(resolvedRun.facts.execution.processModel, 'in-process');
                 scope.assert.equal(resolvedRun.facts.execution.scheduling, 'serial');
                 scope.assert.deepEqual(resolvedRun.facts.execution.timeoutPolicy, {
+                    collectionMilliseconds: 1000,
                     hardMilliseconds: 2000,
                     softMilliseconds: 750
                 });

@@ -27,6 +27,7 @@ type MicrotestProfileOverrides = {
 };
 
 const defaultResourceUsageSamplingIntervalMilliseconds = 100;
+const defaultCollectionTimeoutMilliseconds = 1000;
 const defaultHardTimeoutMilliseconds = 1000;
 const defaultSoftTimeoutMilliseconds = 500;
 
@@ -57,6 +58,7 @@ function defaultRunResourceUsagePolicy(
 
 function defaultRunTimeoutPolicy(overrides: Partial<RunTimeoutPolicy> = {}): RunTimeoutPolicy {
     return {
+        collectionMilliseconds: overrides.collectionMilliseconds ?? defaultCollectionTimeoutMilliseconds,
         hardMilliseconds: overrides.hardMilliseconds ?? defaultHardTimeoutMilliseconds,
         softMilliseconds: overrides.softMilliseconds ?? defaultSoftTimeoutMilliseconds
     };

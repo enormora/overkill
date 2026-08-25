@@ -39,8 +39,11 @@ Command-line business logic is exposed through `@overkill-dev/run/command-line`:
 The current runner accepts explicit file paths through `RunRequest.paths`.
 Each file is imported as a native Node ESM module and must export a named
 `testNode` value created by the selected engine. `RunCommand.engine` may be
-`null` to use the shared public engine, or a custom `Engine` for programmatic
-callers that also create their test nodes with that engine.
+`{ kind: 'default' }` to use the shared public engine, `{ kind: 'instance',
+engine }` for in-process programmatic callers that also create their test
+nodes with that engine, or `{ kind: 'module', moduleUrl, exportName,
+exportKind }` for supervised programmatic callers that need the child process
+to load the engine without parent-side user-module execution.
 
 General file discovery, filtering, sharding, seeded ordering, records, replay,
 and argv parsing are separate runner milestones. Direct prebuilt `TestPlan`
@@ -99,9 +102,11 @@ out-of-test boundary when no case is active. Native gaps are documented runtime
 limitations; current examples include sync bootstrap reads inside the cwd grant,
 `Date`, `Math.random()`, sync crypto randomness, and SQLite execution.
 
-`RunCommand.engine` is supported for `in-process` runs. It is rejected for
-`supervised-process` runs because a live custom engine object cannot cross the
-process boundary reliably yet.
+Live instance engines are supported for `in-process` runs. They are rejected
+for `supervised-process` runs because an object with executable functions
+cannot cross the process boundary. Supervised custom engines must use a module
+selection whose file URL is inside the run cwd and whose export is either an
+engine value or a synchronous getter returning an engine.
 
 Config loading is common runner infrastructure, not plugin discovery.
 The command-line runner loads native Node config files, selects the default

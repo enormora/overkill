@@ -1,23 +1,43 @@
+import type { CaseId } from '../engine/identity.ts';
 import type { ReporterEvent } from '../engine/reporter.ts';
 import type { ResourceUsageSnapshot, RunResult } from '../engine/run-result.ts';
-import type { RunResourceBudgets, RunScheduling } from './run-types.ts';
+import type { CollectedRunPlan, RunEngineSelection, RunResourceBudgets, RunScheduling } from './run-types.ts';
 
-export type SupervisedRunCommand = {
-    readonly assignedCaseKeys: readonly string[];
+type SupervisedCommandBase = {
     readonly capabilityRestrictions: {
         readonly mode: 'disabled' | 'enabled';
     };
+    readonly collectionTimeoutMilliseconds: number;
     readonly cwd: string;
-    readonly hardTimeoutMilliseconds: number;
-    readonly kind: 'run';
+    readonly engine: Exclude<RunEngineSelection, { readonly kind: 'instance'; }>;
     readonly paths: readonly string[];
+    readonly hardTimeoutMilliseconds: number;
     readonly resourceBudgets: RunResourceBudgets;
     readonly resourceUsageSamplingIntervalMilliseconds: number;
     readonly scheduling: RunScheduling;
     readonly timeoutMilliseconds: number;
 };
 
+export type SupervisedCollectCommand = SupervisedCommandBase & {
+    readonly kind: 'collect';
+};
+
+export type SupervisedRunCommand = SupervisedCommandBase & {
+    readonly kind: 'run';
+};
+
+export type SupervisedChildCommand = SupervisedCollectCommand | SupervisedRunCommand;
+
+export type SupervisedAssignmentCommand = {
+    readonly assignedCases: readonly CaseId[];
+    readonly kind: 'assign';
+};
+
 export type SupervisedChildMessage = {
+    readonly collectedPlan: CollectedRunPlan;
+    readonly kind: 'collected';
+    readonly runnerErrors: readonly RunResult['runnerErrors'][number][];
+} | {
     readonly event: ReporterEvent;
     readonly kind: 'event';
 } | {

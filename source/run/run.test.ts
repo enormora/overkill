@@ -13,7 +13,6 @@ import {
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
 import { RunResolutionError } from './run-errors.ts';
-import { defaultRunEngine } from './default-run-engine.ts';
 import { orchestrator } from './run-orchestrator.entry-point.ts';
 import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
 
@@ -29,6 +28,13 @@ const emptySuiteFixturePath = 'source/integration-tests/run/fixtures/empty-suite
 const throwsOnImportFixturePath = 'source/integration-tests/run/fixtures/throws-on-import.test.ts';
 
 const defaultConfig: RunConfig = defaultRunConfig();
+const supervisedCollectionConfig: RunConfig = defaultRunConfig({
+    profiles: {
+        microtest: defaultMicrotestProfile({
+            timeouts: { collectionMilliseconds: 5000 }
+        })
+    }
+});
 
 const defaultRequest: RunRequest = defaultRunRequest({ paths: [ passingFixturePath ] });
 
@@ -57,7 +63,7 @@ export const testSuite = createOverkillSuite({
                 const resolvedRun = await runOrchestrator.resolve(createRunCommand({
                     config: defaultConfig,
                     cwd: process.cwd(),
-                    engine: null,
+                    engine: { kind: 'default' },
                     request: defaultRequest
                 }));
 
@@ -102,6 +108,7 @@ export const testSuite = createOverkillSuite({
                         baselineUpdateMode: 'none',
                         capture: 'buffered',
                         debug: { mode: 'off', selectors: [] },
+                        engine: { kind: 'default' },
                         order: 'plan',
                         processModel: 'supervised-process',
                         profile: 'microtest',
@@ -118,6 +125,7 @@ export const testSuite = createOverkillSuite({
                         scheduling: 'concurrent',
                         testFamily: 'microtest',
                         timeoutPolicy: {
+                            collectionMilliseconds: 1000,
                             hardMilliseconds: 1000,
                             softMilliseconds: 500
                         },
@@ -139,9 +147,9 @@ export const testSuite = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const resolvedRun = await runOrchestrator.resolve(createRunCommand({
-                    config: defaultConfig,
+                    config: supervisedCollectionConfig,
                     cwd: process.cwd(),
-                    engine: null,
+                    engine: { kind: 'default' },
                     request: {
                         ...defaultRequest,
                         seed: { value: null }
@@ -161,7 +169,7 @@ export const testSuite = createOverkillSuite({
                     await orchestrator.resolve(createRunCommand({
                         config: defaultConfig,
                         cwd: process.cwd(),
-                        engine: null,
+                        engine: { kind: 'default' },
                         request: {
                             ...defaultRequest,
                             paths: []
@@ -182,7 +190,7 @@ export const testSuite = createOverkillSuite({
                     await orchestrator.resolve(createRunCommand({
                         config: defaultConfig,
                         cwd: process.cwd(),
-                        engine: null,
+                        engine: { kind: 'default' },
                         request: {
                             ...defaultRequest,
                             seed: { value: -1n }
@@ -203,7 +211,7 @@ export const testSuite = createOverkillSuite({
                     await orchestrator.resolve(createRunCommand({
                         config: defaultConfig,
                         cwd: process.cwd(),
-                        engine: null,
+                        engine: { kind: 'default' },
                         request: {
                             ...defaultRequest,
                             shard: { index: 1, total: 2 }
@@ -224,7 +232,7 @@ export const testSuite = createOverkillSuite({
                     await orchestrator.resolve(createRunCommand({
                         config: defaultConfig,
                         cwd: process.cwd(),
-                        engine: null,
+                        engine: { kind: 'default' },
                         request: {
                             ...defaultRequest,
                             profile: 'missing'
@@ -245,7 +253,7 @@ export const testSuite = createOverkillSuite({
                     await orchestrator.resolve(createRunCommand({
                         config: defaultConfig,
                         cwd: process.cwd(),
-                        engine: null,
+                        engine: { kind: 'default' },
                         request: {
                             ...defaultRequest,
                             measureResourceUsage: false,
@@ -283,7 +291,7 @@ export const testSuite = createOverkillSuite({
                         reporters: [ reporter ]
                     },
                     cwd: process.cwd(),
-                    engine: null,
+                    engine: { kind: 'default' },
                     request: defaultRequest
                 }));
                 const runStartEvent = reporter.getRecordedEntries()[0]?.event;
@@ -328,6 +336,7 @@ export const testSuite = createOverkillSuite({
                         baselineUpdateMode: 'none',
                         capture: 'buffered',
                         debug: { mode: 'off', selectors: [] },
+                        engine: { kind: 'default' },
                         order: 'plan',
                         processModel: 'in-process',
                         profile: 'microtest',
@@ -344,6 +353,7 @@ export const testSuite = createOverkillSuite({
                         scheduling: 'concurrent',
                         testFamily: 'microtest',
                         timeoutPolicy: {
+                            collectionMilliseconds: 1000,
                             hardMilliseconds: 1000,
                             softMilliseconds: 500
                         },
@@ -377,9 +387,15 @@ export const testSuite = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand({
-                    config: defaultConfig,
+                    config: defaultRunConfig({
+                        profiles: {
+                            microtest: defaultMicrotestProfile({
+                                timeouts: { collectionMilliseconds: 5000 }
+                            })
+                        }
+                    }),
                     cwd: process.cwd(),
-                    engine: null,
+                    engine: { kind: 'default' },
                     request: defaultRequest
                 }));
 
@@ -406,18 +422,18 @@ export const testSuite = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const importFailureResult = await runOrchestrator.run(createRunCommand({
-                    config: defaultConfig,
+                    config: supervisedCollectionConfig,
                     cwd: process.cwd(),
-                    engine: null,
+                    engine: { kind: 'default' },
                     request: {
                         ...defaultRequest,
                         paths: [ throwsOnImportFixturePath ]
                     }
                 }));
                 const collectionFailureResult = await runOrchestrator.run(createRunCommand({
-                    config: defaultConfig,
+                    config: supervisedCollectionConfig,
                     cwd: process.cwd(),
-                    engine: null,
+                    engine: { kind: 'default' },
                     request: {
                         ...defaultRequest,
                         paths: [ emptySuiteFixturePath ]
@@ -472,34 +488,13 @@ export const testSuite = createOverkillSuite({
                     await runOrchestrator.run(createRunCommand({
                         config: defaultConfig,
                         cwd: process.cwd(),
-                        engine: null,
+                        engine: { kind: 'default' },
                         request: {
                             ...defaultRequest,
                             seed: { value: -1n }
                         }
                     }));
                 }, { message: 'Run seed must be a nonnegative bigint.' });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            name: 'orchestrator.run() rejects custom engines for supervised execution',
-            metadata: {},
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
-
-                await scope.assert.rejects(async function runWithCustomSupervisedEngine() {
-                    await runOrchestrator.run(createRunCommand({
-                        config: defaultConfig,
-                        cwd: process.cwd(),
-                        engine: defaultRunEngine,
-                        request: defaultRequest
-                    }));
-                }, {
-                    message: 'Custom engines are not supported with supervised-process execution yet. ' +
-                        'Use in-process execution or the default engine.'
-                });
 
                 return scope.assert.collect();
             }

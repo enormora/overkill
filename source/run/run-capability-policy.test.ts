@@ -165,7 +165,7 @@ export const testSuite = createOverkillSuite({
                         }
                     }),
                     cwd: process.cwd(),
-                    engine: null,
+                    engine: { kind: 'default' },
                     request: defaultRunRequest({ paths: [ loadEnvPolicyFixturePath ] })
                 }));
                 const [ runnerError ] = result.runnerErrors;
@@ -213,12 +213,13 @@ export const testSuite = createOverkillSuite({
                     config: defaultRunConfig({
                         profiles: {
                             microtest: defaultMicrotestProfile({
+                                timeouts: { collectionMilliseconds: 5000 },
                                 reporters: [ profileReporter ]
                             })
                         }
                     }),
                     cwd: process.cwd(),
-                    engine: null,
+                    engine: { kind: 'default' },
                     request: defaultRunRequest({ paths: [ passingFixturePath ] })
                 }));
 

@@ -95,7 +95,7 @@ async function createCommandFromRequest(
     return {
         config: await createCommandLineConfig(loadedConfig, request, dependencies),
         cwd: request.cwd,
-        engine: null,
+        engine: { kind: 'default' },
         request: {
             ...request.request,
             capabilityRestrictions: { mode: 'enabled' }

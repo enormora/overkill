@@ -2,7 +2,6 @@ import { describe, expect, test } from 'tstyche';
 import type {
     DefinedOutputRenderer,
     DefinedReporter,
-    Engine,
     OutputRenderer,
     Reporter,
     RunResult
@@ -18,6 +17,7 @@ import {
     type RunCommand,
     type RunConfig,
     type RunConfigLoadRequest,
+    type RunEngineSelection,
     type RunExecutionFacts,
     type RunFacts,
     type RunMicrotestProfileConfig,
@@ -59,7 +59,7 @@ describe('@overkill-dev/run', function () {
         expect<keyof RunCommand>().type.toBe<'config' | 'cwd' | 'engine' | 'request'>();
         expect<RunCommand['config']>().type.toBe<RunConfig>();
         expect<RunCommand['cwd']>().type.toBe<string>();
-        expect<RunCommand['engine']>().type.toBe<Engine | null>();
+        expect<RunCommand['engine']>().type.toBe<RunEngineSelection>();
         expect<RunCommand['request']>().type.toBe<RunRequest>();
         expect<typeof orchestrator>().type.toBe<RunOrchestrator>();
         expect<typeof orchestrator.resolve>().type.toBe<(command: RunCommand) => Promise<ResolvedRun>>();
@@ -78,14 +78,20 @@ describe('@overkill-dev/run', function () {
 
     test('exposes serializable run facts with case metadata', function () {
         expect<keyof RunFacts>().type.toBe<'cases' | 'environment' | 'execution' | 'loader' | 'reproducibility'>();
+        expect<RunExecutionFacts['engine']['kind']>().type.toBe<'default' | 'instance' | 'module'>();
         expect<RunExecutionFacts['processModel']>().type.toBe<RunProcessModel>();
         expect<RunExecutionFacts['profile']>().type.toBe<string>();
         expect<RunExecutionFacts['resourceUsagePolicy']>().type.toBe<RunResourceUsagePolicy>();
         expect<RunExecutionFacts['scheduling']>().type.toBe<RunScheduling>();
         expect<RunExecutionFacts['testFamily']>().type.toBe<'microtest'>();
-        expect<RunExecutionFacts['timeoutPolicy']['hardMilliseconds']>().type.toBe<number>();
         expect<RunFacts['cases'][number]['metadata']>().type.toBe<SerializedValue>();
         expect<RunFacts>().type.toBeAssignableTo<Readonly<Record<string, unknown>>>();
+    });
+
+    test('exposes collection, soft, and hard timeout facts', function () {
+        expect<RunExecutionFacts['timeoutPolicy']['collectionMilliseconds']>().type.toBe<number>();
+        expect<RunExecutionFacts['timeoutPolicy']['hardMilliseconds']>().type.toBe<number>();
+        expect<RunExecutionFacts['timeoutPolicy']['softMilliseconds']>().type.toBe<number>();
     });
 
     test('exposes config and resolution errors', function () {

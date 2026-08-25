@@ -90,6 +90,7 @@ function defaultMicrotestProfile(): RunMicrotestProfileConfig {
         },
         testFamily: 'microtest',
         timeouts: {
+            collectionMilliseconds: 1000,
             hardMilliseconds: 1000,
             softMilliseconds: 500
         }
@@ -160,6 +161,7 @@ function createRunnerDependencies(
                         baselineUpdateMode: command.request.baselineUpdateMode,
                         capture: command.request.capture,
                         debug: command.request.debug,
+                        engine: { kind: 'default' },
                         order: command.request.order,
                         processModel: profile.execution.processModel,
                         profile: command.request.profile,
@@ -175,9 +177,14 @@ function createRunnerDependencies(
                         shard: command.request.shard
                     }
                 },
+                collectionRunnerErrors: [],
                 reporters: command.config.reporters,
-                request: command.request,
-                testPlan: createPassingPlan()
+                engine: command.engine,
+                plan: {
+                    kind: 'local',
+                    testPlan: createPassingPlan()
+                },
+                request: command.request
             };
         },
         async run() {
