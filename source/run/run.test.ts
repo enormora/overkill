@@ -13,7 +13,6 @@ import {
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
 import { RunResolutionError } from './run-errors.ts';
-import { defaultRunEngine } from './default-run-engine.ts';
 import { orchestrator } from './run-orchestrator.entry-point.ts';
 import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
 
@@ -496,27 +495,6 @@ export const testSuite = createOverkillSuite({
                         }
                     }));
                 }, { message: 'Run seed must be a nonnegative bigint.' });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            name: 'orchestrator.run() rejects instance engines for supervised execution',
-            metadata: {},
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
-
-                await scope.assert.rejects(async function runWithCustomSupervisedEngine() {
-                    await runOrchestrator.run(createRunCommand({
-                        config: defaultConfig,
-                        cwd: process.cwd(),
-                        engine: { engine: defaultRunEngine, kind: 'instance' },
-                        request: defaultRequest
-                    }));
-                }, {
-                    message:
-                        'Instance engines are not supported with supervised-process execution. Use a module engine.'
-                });
 
                 return scope.assert.collect();
             }

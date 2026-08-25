@@ -3,6 +3,7 @@
     "entry": [
         "source/**/*.test.ts",
         "!source/integration-tests/run/fixtures/**/*.test.ts",
+        "source/integration-tests/run/fixtures/custom-engine.ts",
         "source/**/*.type-test.ts",
         "source/packages/**/*.ts",
         "source/reporters/null-reporter.ts",

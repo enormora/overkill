@@ -257,7 +257,10 @@ function timeoutValue(value: number | undefined, fallback: number): number {
 
 function normalizeTimeouts(timeouts: RunProjectTimeoutConfig | undefined): RunTimeoutPolicy {
     return {
-        collectionMilliseconds: timeoutValue(timeouts?.collectionMilliseconds, defaultTimeoutPolicy.collectionMilliseconds),
+        collectionMilliseconds: timeoutValue(
+            timeouts?.collectionMilliseconds,
+            defaultTimeoutPolicy.collectionMilliseconds
+        ),
         hardMilliseconds: timeoutValue(timeouts?.hardMilliseconds, defaultTimeoutPolicy.hardMilliseconds),
         softMilliseconds: timeoutValue(timeouts?.softMilliseconds, defaultTimeoutPolicy.softMilliseconds)
     };

@@ -5,6 +5,13 @@ import {
     runIfMain,
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
+import {
+    answerFromBehavior,
+    fallbackForInvocation,
+    ruleMatches,
+    type BehaviorRuntime,
+    type Invocation
+} from './double-behavior.ts';
 import { rule } from './double-rule.ts';
 import { testDouble } from './test-double.ts';
 
@@ -29,6 +36,37 @@ type ClientOptions = {
 type ClientAuth = {
     readonly token: string;
 };
+
+async function collectAsyncValues(values: AsyncIterable<unknown>): Promise<readonly unknown[]> {
+    return await Array.fromAsync(values);
+}
+
+function callInvocation(parameters: readonly unknown[], index: number): Invocation {
+    return { arguments: parameters, index, kind: 'call' };
+}
+
+function constructionInvocation(parameters: readonly unknown[], index: number): Invocation {
+    return { arguments: parameters, index, kind: 'construction' };
+}
+
+function behaviorRuntime(entries: readonly unknown[]): BehaviorRuntime {
+    let index = 0;
+
+    return {
+        nextSequenceEntry() {
+            const entry = entries[index];
+            index += 1;
+
+            return entry;
+        },
+        trackAsyncIterator() {
+            throw new TypeError('Unexpected async iterator tracking.');
+        },
+        trackSyncIterator() {
+            throw new TypeError('Unexpected iterator tracking.');
+        }
+    };
+}
 
 export const testSuite = createOverkillSuite({
     name: 'source/doubles/test-double.test.ts',
@@ -107,6 +145,124 @@ export const testSuite = createOverkillSuite({
                 const Client = testDouble.constructs(client);
 
                 scope.assert.equal(new Client('ignored'), client);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'answerFromBehavior() handles modes and sequence fallthrough',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const call = callInvocation([ 'match' ], 0);
+                const construction = constructionInvocation([], 0);
+                const callBehavior = rule.returns('value');
+
+                scope.assert.deepEqual(answerFromBehavior(callBehavior, construction, behaviorRuntime([])), {
+                    answered: false
+                });
+                scope.assert.deepEqual(
+                    answerFromBehavior(rule.sequence([ 'value', 'unused' ]), call, behaviorRuntime([])),
+                    {
+                        answered: false
+                    }
+                );
+                scope.assert.deepEqual(
+                    answerFromBehavior(rule.sequence([ 'value', 'unused' ]), call, behaviorRuntime([ 'value' ])),
+                    {
+                        answered: true,
+                        value: 'value'
+                    }
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'ruleMatches() handles invocation kind, argument, and index criteria',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const argumentRule = rule.when({ id: 'expected' }).returns('value');
+                const indexRule = rule.onCall(1).returns('value');
+
+                scope.assert.equal(ruleMatches(argumentRule, constructionInvocation([ { id: 'expected' } ], 0)), false);
+                scope.assert.equal(ruleMatches(argumentRule, callInvocation([], 0)), false);
+                scope.assert.equal(
+                    ruleMatches(argumentRule, callInvocation([ { id: 'expected', extra: true } ], 0)),
+                    true
+                );
+                scope.assert.equal(ruleMatches(indexRule, callInvocation([ 'ignored' ], 0)), false);
+                scope.assert.equal(ruleMatches(indexRule, callInvocation([ 'ignored' ], 1)), true);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'fallbackForInvocation() selects direct and invocation-specific fallbacks',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const directFallback = rule.returns('direct');
+                const callFallback = rule.returns('call');
+
+                scope.assert.equal(fallbackForInvocation(directFallback, callInvocation([], 0)), directFallback);
+                scope.assert.equal(fallbackForInvocation({ call: callFallback }, callInvocation([], 0)), callFallback);
+                scope.assert.equal(fallbackForInvocation({ call: callFallback }, constructionInvocation([], 0)), null);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'rule fixed behavior markers expose direct results',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const error = new Error('expected');
+                const client = { id: 'client' };
+
+                scope.assert.equal(rule.returns('value').result(), 'value');
+                scope.assert.equal(await rule.resolves('value').result(), 'value');
+                scope.assert.equal(rule.constructs(client).result(), client);
+                await scope.assert.rejects(async function rejectRuleResult() {
+                    await rule.rejects(error).result();
+                }, { exact: error });
+                scope.assert.throws(function throwRuleResult() {
+                    rule.throws(error).result();
+                }, { exact: error });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'rule generator markers expose result iterators and guarded markers',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const values = rule.yields([ 'a', 'b' ], 'done').result();
+                const asyncValues = rule.yieldsAsync([ 'c', 'd' ], 'done').result();
+
+                scope.assert.deepEqual(Array.from(values), [ 'a', 'b' ]);
+                scope.assert.deepEqual(await collectAsyncValues(asyncValues), [ 'c', 'd' ]);
+                scope.assert.throws(function callRuleMarker() {
+                    rule
+                        .calls(function answer() {
+                            return 'value';
+                        })
+                        .result();
+                }, { message: 'calls result marker should not be called.' });
+                scope.assert.throws(function sequenceRuleMarker() {
+                    rule.sequence([ 'a', 'b' ]).result();
+                }, { message: 'sequence result marker should not be called.' });
+                scope.assert.throws(function yieldsFromRuleMarker() {
+                    rule
+                        .yieldsFrom(function* yieldValues() {
+                            yield 'value';
+                        })
+                        .result();
+                }, { message: 'yieldsFrom result marker should not be called.' });
+                scope.assert.throws(function yieldsAsyncFromRuleMarker() {
+                    rule
+                        .yieldsAsyncFrom(async function* yieldAsyncValues() {
+                            yield 'value';
+                        })
+                        .result();
+                }, { message: 'yieldsAsyncFrom result marker should not be called.' });
 
                 return scope.assert.collect();
             }

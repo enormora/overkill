@@ -1,21 +1,21 @@
 import { createWallClock } from '@enormora/wall-clock';
 import { caseIdentityKey, type CaseId } from '../engine/identity.ts';
-import type { Reporter, RunResourceUsageTracker, TestPlan } from '../packages/engine/engine.entry-point.ts';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
-import type { RunnerError } from '../engine/run-result.ts';
-import { defaultRunEngine } from './default-run-engine.ts';
+import type {
+    Reporter,
+    RunnerError,
+    RunResourceUsageTracker,
+    TestPlan
+} from '../packages/engine/engine.entry-point.ts';
 import { createNodeResourceUsageTracker } from './resource-usage.ts';
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
-import { discoverRunFiles } from './run-discovery.ts';
-import { loadRunTestModules } from './run-test-modules.ts';
-import { loadRunEngineModule } from './run-engine-selection.ts';
-import { RunCollectionError } from './run-errors.ts';
 import {
     createRuntimeCapabilityPolicy,
     type RuntimeCapabilityPolicy,
     type RuntimeCapabilityPolicyDependencies
 } from './capability-policy.ts';
+import { createSupervisedChildTestPlan } from './supervised-child-test-plan.ts';
 import type {
     SupervisedAssignmentCommand,
     SupervisedChildCommand,
@@ -67,28 +67,6 @@ function createIpcReporter(host: SupervisedChildHost): Reporter {
         onFinish: null,
         sinks: [ { kind: 'memory' } ]
     };
-}
-
-async function selectedEngine(command: SupervisedChildCommand) {
-    return command.engine.kind === 'module' ? await loadRunEngineModule(command.engine) : defaultRunEngine;
-}
-
-async function createTestPlan(command: SupervisedChildCommand): Promise<TestPlan> {
-    const engine = await selectedEngine(command);
-    const files = await discoverRunFiles({ cwd: command.cwd, paths: command.paths });
-    const testFiles = await loadRunTestModules(files, engine);
-
-    try {
-        return engine.createTestPlanFromTestFiles({
-            files: testFiles,
-            root: {
-                metadata: {},
-                name: command.cwd
-            }
-        });
-    } catch (error: unknown) {
-        throw new RunCollectionError('Failed to collect tests from explicit run inputs.', { cause: error }, 'loader');
-    }
 }
 
 function selectAssignedCases(
@@ -157,7 +135,7 @@ async function createPolicyCheckedTestPlan(
     runtimePolicy: RuntimeCapabilityPolicy | null
 ): Promise<TestPlan> {
     const createPlan = async function createTestPlanInsidePolicy(): Promise<TestPlan> {
-        return await createTestPlan(command);
+        return await createSupervisedChildTestPlan(command);
     };
 
     return runtimePolicy === null ? await createPlan() : await runtimePolicy.runLoad(createPlan);
@@ -180,16 +158,23 @@ function sendRuntimePolicyErrors(
     }
 }
 
+async function readCollectedTestPlan(
+    command: SupervisedChildCommand,
+    runtimePolicy: RuntimeCapabilityPolicy | null
+): Promise<CollectedTestPlan> {
+    const testPlan = await createPolicyCheckedTestPlan(command, runtimePolicy);
+    const runnerErrors = runtimePolicy?.takeRunErrors() ?? [];
+
+    return { runnerErrors, testPlan };
+}
+
 async function createCollectedTestPlan(
     command: SupervisedChildCommand,
     host: SupervisedChildHost,
     runtimePolicy: RuntimeCapabilityPolicy | null
 ): Promise<CollectedTestPlan> {
     try {
-        const testPlan = await createPolicyCheckedTestPlan(command, runtimePolicy);
-        const runnerErrors = runtimePolicy?.takeRunErrors() ?? [];
-
-        return { runnerErrors, testPlan };
+        return await readCollectedTestPlan(command, runtimePolicy);
     } catch (error: unknown) {
         sendRuntimePolicyErrors(host, runtimePolicy);
         throw error;
@@ -261,15 +246,19 @@ function sendFailure(error: unknown, host: SupervisedChildHost): void {
     });
 }
 
+async function completeReceivedCommand(command: SupervisedChildCommand, host: SupervisedChildHost): Promise<void> {
+    if (command.kind === 'collect') {
+        await collect(command, host);
+    } else {
+        await run(command, host);
+    }
+
+    host.setExitCode(0);
+}
+
 async function runReceivedCommand(command: SupervisedChildCommand, host: SupervisedChildHost): Promise<void> {
     try {
-        if (command.kind === 'collect') {
-            await collect(command, host);
-        } else {
-            await run(command, host);
-        }
-
-        host.setExitCode(0);
+        await completeReceivedCommand(command, host);
     } catch (error: unknown) {
         sendFailure(error, host);
         host.setExitCode(1);

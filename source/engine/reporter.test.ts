@@ -119,6 +119,13 @@ const stdoutSupplementalIntent: OutputLineIntent = {
     text: 'supplemental line'
 };
 
+const stderrSupplementalIntent: OutputLineIntent = {
+    annotation: null,
+    kind: 'stderr-line',
+    role: 'supplemental',
+    text: 'stderr supplemental line'
+};
+
 export const testSuite = createOverkillSuite({
     name: 'source/engine/reporter.test.ts',
     metadata: {},
@@ -314,6 +321,41 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'reporter dispatcher reports non-error failures',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const { dispatcher } = createRecordingDispatcher();
+                const failingReporter: RealTimeReporter = {
+                    dispose: null,
+                    kind: 'real-time',
+                    name: 'broken-non-error',
+                    async onEvent() {
+                        const failure = Promise.withResolvers<never>();
+
+                        failure.reject({
+                            toString() {
+                                return 'string failure';
+                            }
+                        });
+
+                        return await failure.promise;
+                    },
+                    onFinish: null,
+                    sinks: []
+                };
+
+                const errors = await dispatcher.reportEvent(
+                    [ failingReporter ],
+                    { kind: 'suite-start', suitePath: [ 'suite' ] },
+                    createPlainOutputRenderer()
+                );
+
+                scope.assert.equal(errors[0]?.message, 'broken-non-error: string failure');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'reporter dispatcher writes managed output in reporter registration order',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -336,6 +378,30 @@ export const testSuite = createOverkillSuite({
                 scope.assert.deepEqual(errors, []);
                 scope.assert.deepEqual(stdoutLines, [ 'primary line', 'supplemental line' ]);
                 scope.assert.deepEqual(stderrLines, []);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'reporter dispatcher writes managed stderr output',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const { dispatcher, stderrLines, stdoutLines } = createRecordingDispatcher();
+                const errors = await dispatcher.reportEvent(
+                    [
+                        createRealTimeReporter(
+                            'stderr',
+                            [ { kind: 'stderr-managed-supplemental' } ],
+                            [ stderrSupplementalIntent ]
+                        )
+                    ],
+                    { kind: 'suite-start', suitePath: [ 'suite' ] },
+                    createPlainOutputRenderer()
+                );
+
+                scope.assert.deepEqual(errors, []);
+                scope.assert.deepEqual(stdoutLines, []);
+                scope.assert.deepEqual(stderrLines, [ 'stderr supplemental line' ]);
 
                 return scope.assert.collect();
             }

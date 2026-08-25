@@ -6,7 +6,7 @@ import {
     runIfMain,
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
-import type { AssertionTestFailure, FailOutcome, TestFailure, TestOutcome } from '../engine/run-result.ts';
+import type { AssertionTestFailure, FailOutcome, RunResult, TestFailure, TestOutcome } from '../engine/run-result.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import { runResultFactory } from './run-result-factory.ts';
 
@@ -48,6 +48,24 @@ const assertionTestFailure = defineNarrowingCompositeAssertion<TestFailure, Asse
         return actual.kind === 'assertion';
     }
 });
+
+function assertExplicitFailureFields(scope: OverkillScope, runResult: RunResult): void {
+    const failedOutcome = runResult.perTest[0]?.outcome;
+    scope.require.defined(failedOutcome);
+    scope.require(failOutcome, failedOutcome);
+    const failure = failedOutcome.failures[0];
+    scope.require(assertionTestFailure, failure);
+    scope.assert.deepEqual(failure.checks[0], {
+        ...(defaultFailure() as Record<string, unknown>),
+        actual: serializeValue(1),
+        expected: serializeValue(2),
+        location: {
+            column: null,
+            file: 'source/example.test.ts',
+            line: 10
+        }
+    });
+}
 
 export const testSuite = createOverkillSuite({
     name: 'source/test-support/run-result-factory.test.ts',
@@ -172,6 +190,31 @@ export const testSuite = createOverkillSuite({
 
                 scope.assert.equal(runResult.perTest[0]?.outcome?.kind, 'fail');
                 scope.assert.equal(runResult.perTest[1]?.outcome?.kind, 'fail');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'runResultFactory preserves explicit failure and verdict fields',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const runResult = runResultFactory.build({
+                    perTest: [
+                        {
+                            outcome: {
+                                checks: [ { actual: 1, expected: 2, location: { line: 10 } } ],
+                                kind: 'fail'
+                            }
+                        },
+                        { outcome: { kind: 'skip', reason: 'Not now' }, verdict: 'inconclusive' },
+                        { outcome: null }
+                    ]
+                });
+
+                assertExplicitFailureFields(scope, runResult);
+                scope.assert.equal(runResult.perTest[1]?.verdict, 'inconclusive');
+                scope.assert.equal(runResult.perTest[1]?.outcome?.kind, 'skip');
+                scope.assert.equal(runResult.perTest[2]?.verdict, 'crashed');
 
                 return scope.assert.collect();
             }

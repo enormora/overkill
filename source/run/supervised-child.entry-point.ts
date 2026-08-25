@@ -39,7 +39,7 @@ function isAssignmentCommand(message: unknown): message is SupervisedAssignmentC
 
 async function receiveCommand(): Promise<SupervisedChildCommand> {
     return new Promise(function waitForCommand(resolve) {
-        process.once('message', function receiveCommand(message: unknown) {
+        process.once('message', function receiveChildCommand(message: unknown) {
             if (isChildCommand(message)) {
                 resolve(message);
             }
