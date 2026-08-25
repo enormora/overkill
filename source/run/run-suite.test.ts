@@ -4,9 +4,9 @@ import { testSuite as commandLineRunnerTestSuite } from './command-line-runner-s
 import { testSuite as resourceUsageTestSuite } from './resource-usage-suite.test.ts';
 import { testSuite as runConfigurationTestSuite } from './run-configuration-suite.test.ts';
 import { testSuite as runDiscoveryTestSuite } from './run-discovery.test.ts';
+import { testSuite as runOrchestratorTestSuite } from './run-orchestrator-suite.test.ts';
 import { testSuite as runProfileDiscriminatorTestSuite } from './run-profile-discriminator.test.ts';
 import { testSuite as runTestModulesTestSuite } from './run-test-modules.test.ts';
-import { testSuite as runTestSuite } from './run.test.ts';
 import { testSuite as supervisedRunTestSuite } from './supervised-run.test.ts';
 
 export const testSuite = createOverkillSuite({
@@ -17,9 +17,9 @@ export const testSuite = createOverkillSuite({
         resourceUsageTestSuite,
         runConfigurationTestSuite,
         runDiscoveryTestSuite,
+        runOrchestratorTestSuite,
         runProfileDiscriminatorTestSuite,
         runTestModulesTestSuite,
-        runTestSuite,
         supervisedRunTestSuite
     ]
 });

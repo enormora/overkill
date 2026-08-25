@@ -1,5 +1,10 @@
 import type { WallClock } from '@enormora/wall-clock';
-import { invalidTimeoutMetadataFailure, runTestCase, timeoutFailure } from './case-execution.ts';
+import {
+    invalidTimeoutMetadataFailure,
+    runTestCase,
+    timeoutFailure,
+    type TestRuntimePolicy
+} from './case-execution.ts';
 import { caseIdentityKey } from './identity.ts';
 import {
     verdictFromOutcome,
@@ -28,6 +33,7 @@ export type ConcurrentCase = {
 };
 
 export type ExecutionSupervisionDependencies = {
+    readonly runtimePolicy?: TestRuntimePolicy | null;
     readonly wallClock: WallClock;
 };
 
@@ -234,6 +240,39 @@ function clearTimer(wallClock: WallClock, timer: ReturnType<WallClock['setTimeou
     }
 }
 
+function policyCheckedCase(
+    testCase: TestPlanCase,
+    executedCase: ConcurrentCase,
+    supervision: ExecutionSupervision,
+    dependencies: ExecutionSupervisionDependencies
+): ConcurrentCase {
+    const errors = dependencies.runtimePolicy?.takeCaseErrors(testCase) ?? [];
+
+    if (errors.length === 0) {
+        return executedCase;
+    }
+
+    for (const error of errors) {
+        supervision.recordRunnerError(error);
+    }
+
+    return createTerminalCase(testCase, 'runtime-policy', executedCase.wallTimeMs);
+}
+
+async function runTestCaseWithPolicy(
+    testCase: TestPlanCase,
+    controller: AbortController,
+    supervision: ExecutionSupervision,
+    dependencies: ExecutionSupervisionDependencies
+): Promise<ConcurrentCase> {
+    const executedCase = await runTestCase(testCase, dependencies.wallClock, {
+        runtimePolicy: dependencies.runtimePolicy ?? null,
+        signal: controller.signal
+    });
+
+    return policyCheckedCase(testCase, executedCase, supervision, dependencies);
+}
+
 function activeCaseIds(activeCases: ReadonlyMap<string, ActiveCase>): readonly TestPlanCase['id'][] {
     return Array.from(activeCases.values(), function toCaseId(activeCase) {
         return activeCase.testCase.id;
@@ -318,26 +357,28 @@ function completeActiveCasesWithResourceExhaustion(
 }
 
 async function runCaseWithSoftTimeout(
-    testCase: TestPlanCase,
-    controller: AbortController,
-    timeoutMilliseconds: number | null,
-    dependencies: ExecutionSupervisionDependencies
+    input: CaseBodyInput
 ): Promise<ConcurrentCase> {
-    if (timeoutMilliseconds === null) {
-        return await runTestCase(testCase, dependencies.wallClock, { signal: controller.signal });
+    if (input.timeoutMilliseconds === null) {
+        return await runTestCaseWithPolicy(input.testCase, input.controller, input.supervision, input.dependencies);
     }
 
     const timing = { timedOut: false };
-    const softTimeout = dependencies.wallClock.setTimeout(function abortTimedOutCase() {
+    const softTimeout = input.dependencies.wallClock.setTimeout(function abortTimedOutCase() {
         timing.timedOut = true;
-        controller.abort();
-    }, timeoutMilliseconds);
-    const executedCase = await runTestCase(testCase, dependencies.wallClock, { signal: controller.signal });
+        input.controller.abort();
+    }, input.timeoutMilliseconds);
+    const executedCase = await runTestCaseWithPolicy(
+        input.testCase,
+        input.controller,
+        input.supervision,
+        input.dependencies
+    );
 
-    clearTimer(dependencies.wallClock, softTimeout);
+    clearTimer(input.dependencies.wallClock, softTimeout);
 
     if (timing.timedOut) {
-        return resultWithTimeoutFailure(executedCase, timeoutMilliseconds, executedCase.wallTimeMs);
+        return resultWithTimeoutFailure(executedCase, input.timeoutMilliseconds, executedCase.wallTimeMs);
     }
 
     return executedCase;
@@ -408,12 +449,7 @@ function completeUnexpectedBodyError(input: CaseBodyInput, error: unknown): void
 async function runCaseBodyUnderSupervision(input: CaseBodyInput): Promise<ConcurrentCase> {
     try {
         const executedCase = await Promise.race([
-            runCaseWithSoftTimeout(
-                input.testCase,
-                input.controller,
-                input.timeoutMilliseconds,
-                input.dependencies
-            ),
+            runCaseWithSoftTimeout(input),
             input.completion.promise
         ]);
         completeFinishedActiveCase(input, executedCase);

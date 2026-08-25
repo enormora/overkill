@@ -28,6 +28,7 @@ type ExecuteOptionKeyByName = {
     readonly reporters: true;
     readonly resourceBudgets: true;
     readonly resourceUsageTracker: true;
+    readonly runtimePolicy: true;
     readonly runFacts: true;
     readonly startedAt: true;
     readonly timeoutPolicy: true;

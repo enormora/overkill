@@ -14,7 +14,7 @@ import {
     type CommandLineRunnerDependencies,
     type CommandLineRunnerResult
 } from '../../run/command-line-runner.ts';
-import { orchestrator } from '../../run/run-orchestrator.ts';
+import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import type { RunCommand, RunConfig, RunProcessModel, RunRequest, RunScheduling } from '../../run/run-types.ts';
 import type { LoadedRunConfig } from '../../run/run-config.ts';
 
@@ -88,6 +88,7 @@ const defaultConfig: RunConfig = {
 function createRunRequest(paths: readonly string[]): RunRequest {
     return {
         baselineUpdateMode: 'none',
+        capabilityRestrictions: { mode: 'enabled' },
         capture: 'buffered',
         debug: { mode: 'off', selectors: [] },
         execution: { mode: 'profile-default' },
@@ -257,6 +258,7 @@ export const testSuite = createSuite({
                     passed: 1,
                     planned: 1,
                     resourceExhausted: 0,
+                    runtimePolicy: 0,
                     skipped: 0
                 });
 
@@ -280,6 +282,7 @@ export const testSuite = createSuite({
                     passed: 1,
                     planned: 1,
                     resourceExhausted: 0,
+                    runtimePolicy: 0,
                     skipped: 0
                 });
                 scope.assert.equal(result.runnerErrors.length, 0);
@@ -389,6 +392,7 @@ export const testSuite = createSuite({
                     passed: 0,
                     planned: 1,
                     resourceExhausted: 0,
+                    runtimePolicy: 0,
                     skipped: 0
                 });
 

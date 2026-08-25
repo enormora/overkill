@@ -108,6 +108,7 @@ export function defaultRunConfig(overrides: Partial<RunConfig> = {}): RunConfig 
 export function defaultRunRequest(overrides: Partial<RunRequest> = {}): RunRequest {
     const defaultRequest: RunRequest = {
         baselineUpdateMode: 'none',
+        capabilityRestrictions: { mode: 'enabled' },
         capture: 'buffered',
         debug: {
             mode: 'off',

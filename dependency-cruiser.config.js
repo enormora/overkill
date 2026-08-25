@@ -7,12 +7,13 @@ const configFiles = [
 const entryPointFiles = [
     '^source/packages/.+/.+\\.entry-point\\.ts$',
     '^source/reporters/',
-    '^source/run/supervised-child\\.ts$'
+    '^source/run/supervised-child\\.entry-point\\.ts$'
 ];
 const testSupportFiles = [ '^source/test-support/' ];
 const testFiles = [ '\\.(test|type-test)\\.ts$' ];
 const testAggregatorFiles = [ '^source/test-support/unit-suite-groups/' ];
-const excludedFiles = [ '^(\\./)?target/' ];
+const testFixtureFiles = [ '^source/integration-tests/run/fixtures/' ];
+const excludedFiles = [ '^(\\./)?target/', ...testFixtureFiles ];
 const commandLineLazyModuleBoundaries = [
     '^source/packages/reporter-(dot|line)/',
     '^source/reporters/',

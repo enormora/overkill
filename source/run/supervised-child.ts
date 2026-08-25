@@ -6,15 +6,29 @@ import { defaultRunEngine } from './default-run-engine.ts';
 import { createNodeResourceUsageTracker } from './resource-usage.ts';
 import { discoverRunFiles } from './run-discovery.ts';
 import { loadRunTestModules } from './run-test-modules.ts';
+import {
+    createRuntimeCapabilityPolicy,
+    type RuntimeCapabilityPolicy,
+    type RuntimeCapabilityPolicyDependencies
+} from './capability-policy.ts';
 import type { SupervisedChildMessage, SupervisedRunCommand } from './supervised-protocol.ts';
 
 type ChildExecutionMode = 'concurrent-in-process' | 'serial-in-process';
 
-function send(message: SupervisedChildMessage): void {
-    if (process.send !== undefined) {
-        process.send(message);
-    }
+function currentRunStartTime(wallClock: ReturnType<typeof createWallClock>): string {
+    const startedAt = new Date(wallClock.currentTimestampInMilliseconds);
+
+    return startedAt.toISOString();
 }
+
+export type SupervisedChildHost = RuntimeCapabilityPolicyDependencies & {
+    readonly disconnect: () => void;
+    readonly dropBodyReadPermission: (command: SupervisedRunCommand) => void;
+    readonly receiveRunCommand: () => Promise<SupervisedRunCommand>;
+    readonly send: (message: SupervisedChildMessage) => void;
+    readonly setExitCode: (code: number) => void;
+    readonly validatePermissionHost: (command: SupervisedRunCommand) => void;
+};
 
 function ignoreLine(): void {
     return undefined;
@@ -24,14 +38,14 @@ function renderNothing(): string {
     return '';
 }
 
-function createIpcReporter(): Reporter {
+function createIpcReporter(host: SupervisedChildHost): Reporter {
     return {
         dispose: null,
         kind: 'real-time',
         name: 'supervised-child-ipc',
         onEvent(event) {
             if (event.kind !== 'run-start' && event.kind !== 'run-end') {
-                send({ event, kind: 'event' });
+                host.send({ event, kind: 'event' });
             }
         },
         onFinish: null,
@@ -72,7 +86,10 @@ function selectAssignedCases(
     };
 }
 
-function createResourceUsageTracker(command: SupervisedRunCommand): RunResourceUsageTracker {
+function createResourceUsageTracker(
+    command: SupervisedRunCommand,
+    host: SupervisedChildHost
+): RunResourceUsageTracker {
     const tracker = createNodeResourceUsageTracker(createWallClock(), {
         samplingIntervalMilliseconds: command.resourceUsageSamplingIntervalMilliseconds
     });
@@ -81,7 +98,7 @@ function createResourceUsageTracker(command: SupervisedRunCommand): RunResourceU
         finish: tracker.finish,
         start(onSample) {
             tracker.start(function forwardSample(sample) {
-                send({ kind: 'sample', sample });
+                host.send({ kind: 'sample', sample });
                 onSample?.(sample);
             });
         }
@@ -92,9 +109,69 @@ function executionMode(command: SupervisedRunCommand): ChildExecutionMode {
     return command.scheduling === 'concurrent' ? 'concurrent-in-process' : 'serial-in-process';
 }
 
-async function run(command: SupervisedRunCommand): Promise<void> {
+function createRuntimePolicy(
+    command: SupervisedRunCommand,
+    host: SupervisedChildHost
+): RuntimeCapabilityPolicy | null {
+    return command.capabilityRestrictions.mode === 'enabled'
+        ? createRuntimeCapabilityPolicy({
+            dependencies: {
+                installIpcRestriction: host.installIpcRestriction,
+                installProcessExecutionRestriction: host.installProcessExecutionRestriction,
+                readEnvironment: host.readEnvironment,
+                readStorage: host.readStorage
+            },
+            observedStderr: false,
+            observedStdout: false
+        })
+        : null;
+}
+
+async function createPolicyCheckedTestPlan(
+    command: SupervisedRunCommand,
+    runtimePolicy: RuntimeCapabilityPolicy | null
+): Promise<TestPlan> {
+    const createPlan = async function createTestPlanInsidePolicy(): Promise<TestPlan> {
+        return await createTestPlan(command);
+    };
+
+    return runtimePolicy === null ? await createPlan() : await runtimePolicy.runLoad(createPlan);
+}
+
+function sendRuntimePolicyErrors(
+    host: SupervisedChildHost,
+    runtimePolicy: RuntimeCapabilityPolicy | null
+): void {
+    const errors = runtimePolicy?.takeRunErrors() ?? [];
+
+    for (const runtimePolicyError of errors) {
+        host.send({
+            event: {
+                error: runtimePolicyError,
+                kind: 'runner-error'
+            },
+            kind: 'event'
+        });
+    }
+}
+
+async function createCollectedTestPlan(
+    command: SupervisedRunCommand,
+    host: SupervisedChildHost,
+    runtimePolicy: RuntimeCapabilityPolicy | null
+): Promise<TestPlan> {
+    try {
+        return await createPolicyCheckedTestPlan(command, runtimePolicy);
+    } catch (error: unknown) {
+        sendRuntimePolicyErrors(host, runtimePolicy);
+        throw error;
+    }
+}
+
+async function run(command: SupervisedRunCommand, host: SupervisedChildHost): Promise<void> {
+    host.validatePermissionHost(command);
     const wallClock = createWallClock();
-    const startedAt = new Date(wallClock.currentTimestampInMilliseconds);
+    const runtimePolicy = createRuntimePolicy(command, host);
     const execute = createExecute({
         reporterDispatcher: createReporterDispatcher({
             stderr: { writeLine: ignoreLine },
@@ -103,36 +180,29 @@ async function run(command: SupervisedRunCommand): Promise<void> {
         }),
         wallClock
     });
-    const testPlan = selectAssignedCases(await createTestPlan(command), command.assignedCaseKeys);
+    const collectedTestPlan = await createCollectedTestPlan(command, host, runtimePolicy);
+    host.dropBodyReadPermission(command);
+    const testPlan = selectAssignedCases(collectedTestPlan, command.assignedCaseKeys);
     const result = await execute(testPlan, {
         execution: { mode: executionMode(command) },
         outputRenderer: { render: renderNothing },
-        reporters: [ createIpcReporter() ],
+        reporters: [ createIpcReporter(host) ],
         resourceBudgets: command.resourceBudgets,
-        resourceUsageTracker: createResourceUsageTracker(command),
+        resourceUsageTracker: createResourceUsageTracker(command, host),
+        runtimePolicy,
         runFacts: {},
-        startedAt: startedAt.toISOString(),
+        startedAt: currentRunStartTime(wallClock),
         timeoutPolicy: {
             hardTimeoutMilliseconds: command.hardTimeoutMilliseconds,
             timeoutMilliseconds: command.timeoutMilliseconds
         }
     });
 
-    send({ kind: 'result', result });
+    host.send({ kind: 'result', result });
 }
 
-function isRecord(value: unknown): value is Readonly<Record<PropertyKey, unknown>> {
-    return typeof value === 'object' && value !== null;
-}
-
-function isChildRunCommand(message: unknown): message is SupervisedRunCommand {
-    return isRecord(message) &&
-        Object.hasOwn(message, 'kind') &&
-        message.kind === 'run';
-}
-
-function sendFailure(error: unknown): void {
-    send({
+function sendFailure(error: unknown, host: SupervisedChildHost): void {
+    host.send({
         event: {
             error: {
                 attributedTo: null,
@@ -146,28 +216,18 @@ function sendFailure(error: unknown): void {
     });
 }
 
-async function runReceivedCommand(command: SupervisedRunCommand): Promise<void> {
+async function runReceivedCommand(command: SupervisedRunCommand, host: SupervisedChildHost): Promise<void> {
     try {
-        await run(command);
-        process.exitCode = 0;
+        await run(command, host);
+        host.setExitCode(0);
     } catch (error: unknown) {
-        sendFailure(error);
-        process.exitCode = 1;
+        sendFailure(error, host);
+        host.setExitCode(1);
     } finally {
-        if (process.disconnect !== undefined) {
-            process.disconnect();
-        }
+        host.disconnect();
     }
 }
 
-async function receiveRunCommand(): Promise<SupervisedRunCommand> {
-    return new Promise(function waitForRunCommand(resolve) {
-        process.once('message', function receiveCommand(message: unknown) {
-            if (isChildRunCommand(message)) {
-                resolve(message);
-            }
-        });
-    });
+export async function runSupervisedChild(host: SupervisedChildHost): Promise<void> {
+    await runReceivedCommand(await host.receiveRunCommand(), host);
 }
-
-await runReceivedCommand(await receiveRunCommand());

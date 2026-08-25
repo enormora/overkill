@@ -73,9 +73,16 @@ function createFinishedResourceUsageTracker(): RunResourceUsageTracker {
     };
 }
 
+function installNoPolicyRestriction(): () => void {
+    return function restoreNoPolicyRestriction(): void {
+        return undefined;
+    };
+}
+
 function createDeterministicRunOrchestrator(): RunOrchestrator {
     const engine = createTestEngine();
     const wallClock = createWallClock();
+    const environment = {};
     const reporterDispatcher = createReporterDispatcher({
         stderr: {
             writeLine() {
@@ -97,15 +104,22 @@ function createDeterministicRunOrchestrator(): RunOrchestrator {
         },
         defaultEngine: defaultRunEngine,
         execute: engine.execute,
+        runtimeCapabilityPolicy: {
+            installIpcRestriction: installNoPolicyRestriction,
+            installProcessExecutionRestriction: installNoPolicyRestriction,
+            readEnvironment() {
+                return environment;
+            },
+            readStorage() {
+                return null;
+            }
+        },
         node: {
             arch: 'x64',
             platform: 'linux',
             version: '26.1.1'
         },
         reporterDispatcher,
-        readStartedAt() {
-            return '2026-07-15T12:30:00.000Z';
-        },
         wallClock
     });
 }

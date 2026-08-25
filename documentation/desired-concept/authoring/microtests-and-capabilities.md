@@ -103,32 +103,74 @@ The first enforcement mechanism is Node's permission model (Node 20+):
 - `--allow-net`
 - `--allow-child-process`
 - `--allow-worker`
+- `--allow-addons`
+- `--allow-wasi`
+- `--allow-ffi`
+- `--allow-openssl-store`
+- `--allow-inspector`
 
 Source: <https://nodejs.org/docs/latest-v20.x/api/permissions.html#file-system-permissions>
 
-How Overkill applies these flags:
+How Overkill applies these flags in supervised microtest profiles:
 
-- **Path-scoped grants.** `--allow-fs-write=<path>` allows writes
-  only to the listed paths (repeated flags or comma-separated;
-  glob wildcards supported). The runner uses absolute paths.
-- **Non-existent directories require an explicit wildcard.** If a
-  granted directory doesn't exist at spawn time (e.g. a fresh
-  coverage or run-record directory), the path must end in `/*`
-  or Node will only allow writing the directory entry itself,
-  not files inside it.
-- **Permissions do not inherit.** Per Node's documentation, "the model does
-  not inherit to a child node process or a worker thread." Each
-  Overkill worker is spawned as a fresh Node process with its own
-  `--permission` flags; the parent overkill process does not need
-  to run under the permission model itself.
+- **Parent is unrestricted.** The parent owns reporters, output files,
+  scheduling, IPC, and child supervision. Reporter writes do not require
+  child write permissions.
+- **Child flags are generated.** Each supervised child is spawned with a
+  closed `execArgv` allowlist. Caller `NODE_OPTIONS`, env files, Node config
+  files, local storage files, OpenSSL config, permission files, and inherited
+  permission flags are not honored.
+- **Bootstrap read is broad enough to load.** The child receives read access
+  for the project cwd and runner runtime files. After collection, the child
+  drops `fs.read` before any case body runs.
+- **No ordinary write grants.** Microtest children receive no filesystem write
+  grants for reports, snapshots, baselines, or user artifacts. Runner-owned
+  exceptions such as future coverage output must be explicit.
 - **Capability isolation requires `child_process`.** Worker threads
   share the parent's permission set; subprocesses can each have
   their own. Microtest workers are therefore separate Node
   processes (see [Composition Order § Execution-Time Wrapping](../architecture/composition-order.md#execution-time-wrapping)).
 - **Launch path is irrelevant.** `npx overkill ...`, direct
-  invocation, and any other launcher all work identically — the
+  invocation, and any other launcher all work identically: the
   runner spawns workers explicitly with the right flags;
   inheritance is not assumed.
+
+`in-process` microtest execution keeps its literal meaning: no new process is
+spawned. Therefore it cannot be fully enforced by Node's process-scoped
+permission model. Overkill treats in-process restrictions as best-effort
+diagnostics only. It can observe builtin diagnostics, permission-audit channels
+when the process was started with `--permission-audit`, `async_hooks` resource
+creation, final `process.env` identity/value drift, and global storage drift.
+It cannot prevent effects that depend on Node's permission model, but the shared
+runtime policy blocks process execution calls and user IPC listener
+registration while the policy is active.
+
+Strict microtest diagnostics use three classifications:
+
+- **Blocked.** Node denied the effect, for example fs write, network, child
+  process, worker, addon, WASI, FFI, OpenSSL STORE, or inspector use in a
+  supervised child. The shared runtime policy also blocks `process.exit()`,
+  `process.abort()`, `process.kill()`, `process.execve()`, user
+  `process.on('message', ...)` registration, and user `process.send()`.
+- **Observed.** Node exposed a signal but the effect may already have happened.
+  Examples include `console.*`, process env mutation, timers, Web Locks,
+  process execve, permission-audit events in in-process mode, and async fs
+  resource creation during load.
+- **Native gap.** Node exposes no stable non-mutating signal. Current examples
+  include sync bootstrap reads inside the cwd grant, `Date`, `Math.random()`,
+  sync crypto randomness, and SQLite execution.
+
+Imports are not violations by themselves. Executing imported code may perform a
+restricted effect, and body-time dynamic import in supervised strict mode is
+blocked once `fs.read` has been dropped.
+
+Timers are intentionally narrow in microtests. `setTimeout` and `setInterval`
+create `Timeout` resources and are reported as violations. `setImmediate`,
+`queueMicrotask`, and `process.nextTick` remain allowed.
+
+SQLite is a native gap in current Node versions. Importing `node:sqlite` is
+allowed, and Node's permission model does not currently block or diagnose all
+SQLite execution effects, including file-backed database writes.
 
 Caveats `console.*` and symbolic links:
 
@@ -186,7 +228,7 @@ This means:
 ### Capability Propagation
 
 Capabilities are _intersected_ down the suite tree: a child can only
-narrow the parent's permissions, never widen them — strictly more
+narrow the parent's permissions, never widen them. This is strictly more
 restrictive than metadata propagation, where fields like `tags` merge
 by union. See [Composition Order](../architecture/composition-order.md).
 
@@ -199,8 +241,8 @@ perform effects whose handles it did not receive.
 
 Two layers of defense, complementary:
 
-- Node permission model — denies the _low-level_ OS access
-- Handle composition — denies the _typed_ effect surface
+- Node permission model: denies the _low-level_ OS access
+- Handle composition: denies the _typed_ effect surface
 
 A microtest written against a narrow injected runtime such as
 `{ clock, random }` literally cannot perform other effects through that
@@ -321,16 +363,16 @@ mechanism instead.
 
 ## Cross-References
 
-- [Capability Handles](./capability-handles.md) — language-level capability boundary
+- [Capability Handles](./capability-handles.md): language-level capability boundary
   complementing the OS-level one
-- [Runtime Behavior](../architecture/runtime-behavior.md) — process-wide consequences of the capability
+- [Runtime Behavior](../architecture/runtime-behavior.md): process-wide consequences of the capability
   profile
-- [Fast Feedback Loops](../architecture/fast-feedback-loops.md) — fast microtest feedback loops are the
+- [Fast Feedback Loops](../architecture/fast-feedback-loops.md): fast microtest feedback loops are the
   motivation for the strict profile
-- [Tests As Values](./tests-as-values.md) — microtests as data; macros instead of hooks
-- [Assertions And Results § Protocol Layer](./assertions-and-results.md#protocol-layer-structured-outcomes) — returned outcomes mean less stack-walk
+- [Tests As Values](./tests-as-values.md): microtests as data; macros instead of hooks
+- [Assertions And Results § Protocol Layer](./assertions-and-results.md#protocol-layer-structured-outcomes): returned outcomes mean less stack-walk
   overhead in the success path
-- [Glossary](../reference/glossary.md) — canonical definitions of capability profile, runner
+- [Glossary](../reference/glossary.md): canonical definitions of capability profile, runner
   profile, microtest
 
 ## Sources

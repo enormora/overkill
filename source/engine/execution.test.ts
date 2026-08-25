@@ -97,6 +97,7 @@ export const testSuite = createOverkillSuite({
                             passed: 1,
                             planned: 2,
                             resourceExhausted: 0,
+                            runtimePolicy: 0,
                             skipped: 0
                         },
                         verdicts: [ 'pass', 'fail' ]

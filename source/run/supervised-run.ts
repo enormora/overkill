@@ -1,9 +1,6 @@
-import { fork, type ChildProcess } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import type { OutputRenderer } from '../engine/reporter-output.ts';
 import type { Reporter, ReporterEvent } from '../engine/reporter.ts';
 import type {
-    PerTestResult,
     ResourceUsageSnapshot,
     RunResult,
     RunnerError
@@ -13,8 +10,26 @@ import { caseIdentityKey, formatCaseId } from '../engine/identity.ts';
 import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
 import type { ResolvedRun, RunOrchestratorDependencies, RunResourceBudgets } from './run-types.ts';
 import type { SupervisedChildMessage, SupervisedRunCommand } from './supervised-protocol.ts';
+import {
+    observeSupervisedChildOutput,
+    startSupervisedChild,
+    type SupervisedChildProcess
+} from './supervised-child-process.ts';
+import {
+    createStoredRunValue,
+    createSupervisedRunState,
+    deduplicatedChildRuntimePolicyErrors,
+    type StoredRunValue,
+    type SupervisedRunState
+} from './supervised-run-state.ts';
 
 type ResourceBudgetMetric = keyof RunResourceBudgets;
+
+function runStartTimeFromMilliseconds(milliseconds: number): string {
+    const startedAt = new Date(milliseconds);
+
+    return startedAt.toISOString();
+}
 
 type ResourceBudgetBreach = {
     readonly budget: number;
@@ -28,18 +43,6 @@ type BudgetValueReader = (
     previousSample: ResourceUsageSnapshot | null
 ) => number;
 
-type SupervisedRunState = {
-    readonly activeCases: ReadonlyMap<string, TestPlanCase>;
-    readonly addActiveCase: (key: string, testCase: TestPlanCase) => void;
-    readonly perTestResults: () => readonly PerTestResult[];
-    readonly recordPerTestResult: (key: string, result: PerTestResult) => void;
-    readonly recordRunnerError: (error: RunnerError) => void;
-    readonly recordRunnerErrors: (errors: readonly RunnerError[]) => void;
-    readonly recordTerminalActiveCases: (verdict: PerTestResult['verdict']) => void;
-    readonly removeActiveCase: (key: string) => void;
-    readonly runnerErrors: () => readonly RunnerError[];
-};
-
 type ReporterContext = {
     readonly outputRenderer: OutputRenderer;
     readonly reporters: readonly Reporter[];
@@ -50,11 +53,6 @@ type ReporterEventQueue = {
     readonly wait: () => Promise<void>;
 };
 
-type StoredRunValue<Value> = {
-    readonly read: () => Value;
-    readonly write: (value: Value) => void;
-};
-
 type SupervisedHardTimeout = {
     readonly clear: () => void;
     readonly start: () => void;
@@ -62,7 +60,7 @@ type SupervisedHardTimeout = {
 
 type SupervisedRunRuntimeSeed = {
     readonly cases: ReadonlyMap<string, TestPlanCase>;
-    readonly child: ChildProcess;
+    readonly child: SupervisedChildProcess;
     readonly completedResult: StoredRunValue<RunResult | null>;
     readonly dependencies: RunOrchestratorDependencies;
     readonly previousSample: StoredRunValue<ResourceUsageSnapshot | null>;
@@ -77,7 +75,6 @@ type SupervisedRunRuntime = SupervisedRunRuntimeSeed & {
     readonly timeout: SupervisedHardTimeout;
 };
 
-const childEntryPoint = fileURLToPath(new URL('./supervised-child.ts', import.meta.url));
 const millisecondsPerSecond = 1000;
 const resourceBudgetMetrics: readonly ResourceBudgetMetric[] = [
     'activeResourceCount',
@@ -85,65 +82,6 @@ const resourceBudgetMetrics: readonly ResourceBudgetMetric[] = [
     'residentSetBytes',
     'residentSetGrowthBytesPerSecond'
 ];
-
-function terminalResult(testCase: TestPlanCase, verdict: PerTestResult['verdict']): PerTestResult {
-    return {
-        id: testCase.id,
-        outcome: null,
-        verdict
-    };
-}
-
-function createStoredRunValue<Value>(initialValue: Value): StoredRunValue<Value> {
-    let currentValue = initialValue;
-
-    return {
-        read() {
-            return currentValue;
-        },
-        write(value) {
-            currentValue = value;
-        }
-    };
-}
-
-function createSupervisedRunState(): SupervisedRunState {
-    const activeCases = new Map<string, TestPlanCase>();
-    const perTest = new Map<string, PerTestResult>();
-    const runnerErrors: RunnerError[] = [];
-
-    return {
-        activeCases,
-        addActiveCase(key, testCase) {
-            activeCases.set(key, testCase);
-        },
-        perTestResults() {
-            return Array.from(perTest.values());
-        },
-        recordPerTestResult(key, result) {
-            perTest.set(key, result);
-        },
-        recordRunnerError(error) {
-            runnerErrors.push(error);
-        },
-        recordRunnerErrors(errors) {
-            runnerErrors.push(...errors);
-        },
-        recordTerminalActiveCases(verdict) {
-            for (const [ key, testCase ] of activeCases) {
-                perTest.set(key, terminalResult(testCase, verdict));
-            }
-
-            activeCases.clear();
-        },
-        removeActiveCase(key) {
-            activeCases.delete(key);
-        },
-        runnerErrors() {
-            return runnerErrors;
-        }
-    };
-}
 
 function createReporterEventQueue(): ReporterEventQueue {
     const eventReports: Promise<void>[] = [];
@@ -314,7 +252,7 @@ function createPartialRunResult(
     );
 }
 
-function kill(child: ChildProcess): void {
+function kill(child: SupervisedChildProcess): void {
     if (child.pid !== undefined && child.exitCode === null && child.signalCode === null) {
         child.kill('SIGKILL');
     }
@@ -325,13 +263,6 @@ function createReporterContext(resolvedRun: ResolvedRun): ReporterContext {
         outputRenderer: resolvedRun.config.outputRenderer,
         reporters: resolvedRun.reporters
     };
-}
-
-function startSupervisedChild(resolvedRun: ResolvedRun): ChildProcess {
-    return fork(childEntryPoint, [], {
-        cwd: resolvedRun.cwd,
-        stdio: [ 'inherit', 'inherit', 'inherit', 'ipc' ]
-    });
 }
 
 function createHardTimeout(runtime: SupervisedRunRuntimeSeed): SupervisedHardTimeout {
@@ -364,6 +295,7 @@ function createRunCommand(resolvedRun: ResolvedRun): SupervisedRunCommand {
         assignedCaseKeys: resolvedRun.testPlan.cases.map(function toCaseKey(testCase) {
             return formatCaseId(testCase.id);
         }),
+        capabilityRestrictions: resolvedRun.request.capabilityRestrictions,
         cwd: resolvedRun.cwd,
         hardTimeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds,
         kind: 'run',
@@ -436,9 +368,14 @@ function handleChildSample(sample: ResourceUsageSnapshot, runtime: SupervisedRun
 }
 
 function handleCompletedResult(result: RunResult, runtime: SupervisedRunRuntime): void {
+    const supervisorErrors = runtime.state.runnerErrors();
+
     runtime.completedResult.write({
         ...result,
-        runnerErrors: [ ...runtime.state.runnerErrors(), ...result.runnerErrors ]
+        runnerErrors: [
+            ...supervisorErrors,
+            ...deduplicatedChildRuntimePolicyErrors(result.runnerErrors, supervisorErrors)
+        ]
     });
 }
 
@@ -453,6 +390,8 @@ function handleChildMessage(message: SupervisedChildMessage, runtime: Supervised
 }
 
 async function observeChild(runtime: SupervisedRunRuntime): Promise<void> {
+    observeSupervisedChildOutput(runtime);
+
     return new Promise(function waitForChild(resolve) {
         runtime.child.on('message', function receiveMessage(message: SupervisedChildMessage) {
             handleChildMessage(message, runtime);
@@ -505,13 +444,13 @@ async function reportFinalResult(result: RunResult, runtime: SupervisedRunRuntim
     };
 }
 
-function createRuntime(
+async function createRuntime(
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies
-): SupervisedRunRuntime {
+): Promise<SupervisedRunRuntime> {
     const runtimeWithoutTimeout = {
         cases: caseByKey(resolvedRun.testPlan),
-        child: startSupervisedChild(resolvedRun),
+        child: await startSupervisedChild(resolvedRun, dependencies),
         completedResult: createStoredRunValue<RunResult | null>(null),
         dependencies,
         previousSample: createStoredRunValue<ResourceUsageSnapshot | null>(null),
@@ -532,14 +471,14 @@ export async function executeSupervisedRun(
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies
 ): Promise<RunResult> {
-    const runtime = createRuntime(resolvedRun, dependencies);
+    const runtime = await createRuntime(resolvedRun, dependencies);
     const startedAtMs = dependencies.wallClock.currentTimestampInMilliseconds;
     await recordReporterEventErrors(
         {
             facts: resolvedRun.facts,
             kind: 'run-start',
             root: resolvedRun.testPlan.root,
-            startedAt: dependencies.readStartedAt()
+            startedAt: runStartTimeFromMilliseconds(startedAtMs)
         },
         runtime.state,
         runtime.reporterContext,

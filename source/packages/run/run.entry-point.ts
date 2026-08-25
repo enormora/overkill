@@ -1,4 +1,4 @@
-export { orchestrator } from '../../run/run-orchestrator.ts';
+export { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 export {
     defineConfig,
     loadRunConfig,

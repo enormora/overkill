@@ -4,6 +4,9 @@ import type { RunResourceBudgets, RunScheduling } from './run-types.ts';
 
 export type SupervisedRunCommand = {
     readonly assignedCaseKeys: readonly string[];
+    readonly capabilityRestrictions: {
+        readonly mode: 'disabled' | 'enabled';
+    };
     readonly cwd: string;
     readonly hardTimeoutMilliseconds: number;
     readonly kind: 'run';
