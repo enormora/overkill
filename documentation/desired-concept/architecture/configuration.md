@@ -182,6 +182,11 @@ await run({ config, cwd: process.cwd(), engine: { kind: 'default' }, request });
 profile. `resourceUsage.budgets` are thresholds and therefore require measurement.
 Omitting `resourceUsage.budgets` records usage without requesting enforcement.
 
+Top-level `reporters` are the project fallback for runner profiles. When the
+selected profile defines `reporters`, that list replaces the top-level list for
+the run instead of merging with it. If neither the selected profile nor the
+top-level config defines reporters, the CLI supplies its default line reporter.
+
 Important ownership split:
 
 - configuration defines persistent project policy

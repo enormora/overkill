@@ -26,6 +26,11 @@ import {
     loadUnimplementedBaselineCommands,
     loadUnimplementedBenchmarkCommands
 } from './command-line-unimplemented-commands.ts';
+import {
+    resolveCommandReporters,
+    selectCommandLineReporterFallback,
+    type CommandLineReporterFallback
+} from './run-reporter-resolution.ts';
 
 export type CommandLineRunner = {
     readonly baseline: CommandLineBaselineCommands;
@@ -58,15 +63,19 @@ function readFallbackDiagnostics(result: RunResult, reporters: readonly Reporter
     return formatFallbackDiagnostics(result, hasTerminalReporter(reporters));
 }
 
-async function loadCommandLineReporters(
-    loadedConfig: LoadedRunConfig,
+async function loadCommandLineReporterFallback(
+    fallback: CommandLineReporterFallback,
     dependencies: CommandLineRunnerDependencies
 ): Promise<readonly Reporter[]> {
-    if (loadedConfig.reporters !== null) {
-        return loadedConfig.reporters;
+    if (fallback.kind === 'configured') {
+        return fallback.reporters;
     }
 
-    return [ await dependencies.createDefaultReporter() ];
+    if (fallback.kind === 'default') {
+        return [ await dependencies.createDefaultReporter() ];
+    }
+
+    return [];
 }
 
 async function createCommandLineConfig(
@@ -74,15 +83,13 @@ async function createCommandLineConfig(
     request: CommandLineRunTestsRequest,
     dependencies: CommandLineRunnerDependencies
 ): Promise<RunConfig> {
-    const selectedProfile = loadedConfig.profiles[request.request.profile];
+    const reporterFallback = selectCommandLineReporterFallback(loadedConfig, request.request.profile);
 
     return {
         loader: loadedConfig.loader,
         outputRenderer: loadedConfig.outputRenderer,
         profiles: loadedConfig.profiles,
-        reporters: selectedProfile?.reporters === null || selectedProfile === undefined
-            ? await loadCommandLineReporters(loadedConfig, dependencies)
-            : loadedConfig.reporters ?? [],
+        reporters: await loadCommandLineReporterFallback(reporterFallback, dependencies),
         runtimeStateDir: loadedConfig.runtimeStateDir
     };
 }
@@ -113,7 +120,7 @@ async function runTestsWithLoadedConfig(
 
     return {
         exitCode: readExitCodeFromRunResult(runResult),
-        fallbackDiagnostics: readFallbackDiagnostics(runResult, command.config.reporters),
+        fallbackDiagnostics: readFallbackDiagnostics(runResult, resolveCommandReporters(command)),
         runResult
     };
 }

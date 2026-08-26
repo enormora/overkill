@@ -20,6 +20,13 @@ import type {
 
 export type RunRuntimePolicy = RuntimeCapabilityPolicy;
 
+export function resolveRunReporters(
+    profile: RunMicrotestProfileConfig,
+    fallbackReporters: RunConfig['reporters']
+): RunConfig['reporters'] {
+    return profile.reporters ?? fallbackReporters;
+}
+
 function copyLoaderConfig(loader: RunLoaderConfig): RunLoaderConfig {
     return {
         sourceMaps: loader.sourceMaps,

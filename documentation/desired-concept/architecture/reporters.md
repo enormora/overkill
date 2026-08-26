@@ -215,6 +215,10 @@ Two attachment surfaces:
 Both forms produce the same `Reporter[]` array; the registration
 mechanism is presentation.
 
+Top-level config reporters are profile fallbacks. Profile-specific reporters
+replace the top-level list for that selected run. They are not merged, and
+reporter sink conflict validation only considers the effective reporter list.
+
 Config should prefer explicit imported values, for example:
 
 ```ts
