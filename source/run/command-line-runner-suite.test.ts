@@ -1,5 +1,6 @@
 import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
 import { createSuite as createOverkillSuite, runIfMain } from '@overkill-dev/engine';
+import { testSuite as commandLineFallbackDiagnosticsTestSuite } from './command-line-fallback-diagnostics.test.ts';
 import { testSuite as commandLineCommandTestSuite } from './command-line-command.test.ts';
 import { testSuite as commandLineCommandNamespaceTestSuite } from './command-line-command-namespace.test.ts';
 import { testSuite as commandLineRunnerErrorTestSuite } from './command-line-runner-error.test.ts';
@@ -14,6 +15,7 @@ export const testSuite = createOverkillSuite({
     children: [
         commandLineCommandTestSuite,
         commandLineCommandNamespaceTestSuite,
+        commandLineFallbackDiagnosticsTestSuite,
         commandLineRunnerErrorTestSuite,
         commandLineRunnerReporterResolutionTestSuite,
         commandLineRunnerResourceUsageTestSuite,

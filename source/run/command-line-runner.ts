@@ -1,5 +1,4 @@
-import type { Reporter, SinkDeclaration } from '../engine/reporter.ts';
-import type { RunResult } from '../engine/run-result.ts';
+import type { Reporter } from '../engine/reporter.ts';
 import type { RunCommand, RunConfig, RunOrchestrator } from './run-types.ts';
 import { orchestrator } from './run-orchestrator.entry-point.ts';
 import {
@@ -27,7 +26,6 @@ import {
     loadUnimplementedBenchmarkCommands
 } from './command-line-unimplemented-commands.ts';
 import {
-    resolveCommandReporters,
     selectCommandLineReporterFallback,
     type CommandLineReporterFallback
 } from './run-reporter-resolution.ts';
@@ -48,20 +46,6 @@ export type CommandLineRunnerDependencies = CommandLineCommandLoaders & {
     readonly loadRunConfig: (request: RunConfigLoadRequest) => Promise<LoadedRunConfig>;
     readonly orchestrator: RunOrchestrator;
 };
-
-function hasTerminalSink(sink: SinkDeclaration): boolean {
-    return sink.kind.startsWith('stdout') || sink.kind.startsWith('stderr');
-}
-
-function hasTerminalReporter(reporters: readonly Reporter[]): boolean {
-    return reporters.some(function reporterClaimsTerminal(reporter) {
-        return reporter.sinks.some(hasTerminalSink);
-    });
-}
-
-function readFallbackDiagnostics(result: RunResult, reporters: readonly Reporter[]): readonly string[] {
-    return formatFallbackDiagnostics(result, hasTerminalReporter(reporters));
-}
 
 async function loadCommandLineReporterFallback(
     fallback: CommandLineReporterFallback,
@@ -116,12 +100,15 @@ async function runTestsWithLoadedConfig(
     loadedConfig: LoadedRunConfig
 ): Promise<CommandLineRunnerResult> {
     const command = await createCommandFromRequest(request, loadedConfig, dependencies);
-    const runResult = await dependencies.orchestrator.run(command);
+    const runResult = await dependencies.orchestrator.runWithReporterDelivery(command);
 
     return {
-        exitCode: readExitCodeFromRunResult(runResult),
-        fallbackDiagnostics: readFallbackDiagnostics(runResult, resolveCommandReporters(command)),
-        runResult
+        exitCode: readExitCodeFromRunResult(runResult.result),
+        fallbackDiagnostics: formatFallbackDiagnostics(
+            runResult.result,
+            new Set(runResult.deliveredRunnerErrors)
+        ),
+        runResult: runResult.result
     };
 }
 

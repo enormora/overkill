@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import type { WallClock } from '@enormora/wall-clock';
 import type {
     OutputLineIntent,
@@ -24,6 +25,12 @@ export type ReporterDispatcher = {
         result: RunResult,
         outputRenderer: OutputRenderer
     ) => Promise<readonly RunnerError[]>;
+    readonly trackRunnerErrorDelivery: <Result>(
+        work: () => Promise<Result>
+    ) => Promise<{
+        readonly deliveredRunnerErrors: readonly RunnerError[];
+        readonly result: Result;
+    }>;
 };
 
 export type ReporterDispatcherDependencies = {
@@ -58,8 +65,57 @@ type ReporterTimeout = {
 };
 
 type ReporterCallback = () => unknown;
+type RunnerErrorDeliveryStore = {
+    readonly deliveredRunnerErrors: () => readonly RunnerError[];
+    readonly recordDeliveredRunnerError: (error: RunnerError) => void;
+};
 
 const callbackTimeoutMs = 100;
+const runnerErrorDeliveryStorage = new AsyncLocalStorage<RunnerErrorDeliveryStore>();
+
+function hasTerminalSink(sink: Reporter['sinks'][number]): boolean {
+    return sink.kind.startsWith('stdout') || sink.kind.startsWith('stderr');
+}
+
+function hasTerminalReporter(reporter: Reporter): boolean {
+    return reporter.sinks.some(hasTerminalSink);
+}
+
+function recordRunnerErrorDelivery(error: RunnerError): void {
+    runnerErrorDeliveryStorage.getStore()?.recordDeliveredRunnerError(error);
+}
+
+function recordDeliveredRunnerErrorEvent(
+    event: ReporterEvent,
+    successes: readonly ReporterCallbackSuccess[]
+): void {
+    if (event.kind !== 'runner-error') {
+        return;
+    }
+
+    for (const success of successes) {
+        if (hasTerminalReporter(success.reporter)) {
+            recordRunnerErrorDelivery(event.error);
+        }
+    }
+}
+
+function recordDeliveredRunnerErrorResult(
+    result: RunResult,
+    successes: readonly ReporterCallbackSuccess[]
+): void {
+    if (result.runnerErrors.length === 0) {
+        return;
+    }
+
+    for (const success of successes) {
+        if (hasTerminalReporter(success.reporter)) {
+            for (const error of result.runnerErrors) {
+                recordRunnerErrorDelivery(error);
+            }
+        }
+    }
+}
 
 function formatReporterError(reporter: Reporter, cause: unknown): RunnerError {
     const reason = cause instanceof Error ? cause.message : String(cause);
@@ -276,9 +332,11 @@ async function reportRunnerErrorToOtherReporters(
     const results = failures.flatMap(function collectResult(result) {
         return result === null ? [] : [ result ];
     });
+    const successes = reporterSuccesses(results);
+    recordDeliveredRunnerErrorEvent(event, successes);
     const outputFailures = writeReporterOutputs(
         context.dependencies,
-        reporterSuccesses(results),
+        successes,
         context.outputRenderer
     );
 
@@ -327,9 +385,11 @@ async function reportEvent(
     const callbackResults = results.flatMap(function collectResult(result) {
         return result === null ? [] : [ result ];
     });
+    const successes = reporterSuccesses(callbackResults);
+    recordDeliveredRunnerErrorEvent(event, successes);
     const outputErrors = writeReporterOutputs(
         context.dependencies,
-        reporterSuccesses(callbackResults),
+        successes,
         context.outputRenderer
     );
     const reporterErrors = [ ...reporterFailures(callbackResults), ...outputErrors ];
@@ -377,9 +437,11 @@ async function reportResult(
     const callbackResults = results.flatMap(function collectResult(callbackResult) {
         return callbackResult === null ? [] : [ callbackResult ];
     });
+    const successes = reporterSuccesses(callbackResults);
+    recordDeliveredRunnerErrorResult(result, successes);
     const outputErrors = writeReporterOutputs(
         context.dependencies,
-        reporterSuccesses(callbackResults),
+        successes,
         context.outputRenderer
     );
     const reporterErrors = [ ...reporterFailures(callbackResults), ...outputErrors ];
@@ -428,6 +490,23 @@ export function createReporterDispatcher(dependencies: ReporterDispatcherDepende
         },
         async reportResult(reporters, result, outputRenderer) {
             return await reportResult(createReporterDispatchContext(dependencies, reporters, outputRenderer), result);
+        },
+        async trackRunnerErrorDelivery(work) {
+            const deliveredRunnerErrors = new Set<RunnerError>();
+            const deliveryStore: RunnerErrorDeliveryStore = {
+                deliveredRunnerErrors() {
+                    return Array.from(deliveredRunnerErrors);
+                },
+                recordDeliveredRunnerError(error) {
+                    deliveredRunnerErrors.add(error);
+                }
+            };
+            const result = await runnerErrorDeliveryStorage.run(deliveryStore, work);
+
+            return {
+                deliveredRunnerErrors: deliveryStore.deliveredRunnerErrors(),
+                result
+            };
         }
     };
 }

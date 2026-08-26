@@ -3,15 +3,16 @@ import {
     collectedRunCaseFacts
 } from './collected-run-plan.ts';
 import {
+    createResultFromResolutionError,
+    reportCollectionErrorResult
+} from './run-collection-error-result.ts';
+import {
     createRunFacts,
     resolveResourceUsagePolicy,
     runCaseFactsFromTestPlan,
     selectedProfile
 } from './run-facts.ts';
 import { createLocalTestPlan } from './run-local-test-plan.ts';
-import {
-    RunCollectionError
-} from './run-errors.ts';
 import {
     copyRunEngineSelection,
     copyRunConfig,
@@ -270,46 +271,8 @@ function createExecutionResourceUsageTracker(
     });
 }
 
-function createCollectionErrorRunResult(
-    error: RunCollectionError,
-    runtimePolicyErrors: readonly RunResult['runnerErrors'][number][]
-): RunResult {
-    return {
-        artifacts: [],
-        bySuite: {},
-        orphans: [],
-        perTest: [],
-        resourceUsage: null,
-        runnerErrors: [ ...runtimePolicyErrors, error.runnerError() ],
-        summary: {
-            crashed: 0,
-            defined: 0,
-            discovered: 0,
-            failed: 0,
-            inconclusive: 0,
-            passed: 0,
-            planned: 0,
-            resourceExhausted: 0,
-            runtimePolicy: 0,
-            skipped: 0
-        },
-        wallTimeMs: 0
-    };
-}
-
 function isRunResult(value: ResolvedRun | RunResult): value is RunResult {
     return Object.hasOwn(value, 'summary');
-}
-
-function createResultFromResolutionError(
-    error: unknown,
-    runtimePolicy: RunRuntimePolicy | null
-): RunResult {
-    if (error instanceof RunCollectionError) {
-        return createCollectionErrorRunResult(error, runtimePolicy?.takeRunErrors() ?? []);
-    }
-
-    throw error;
 }
 
 async function resolveRunWithRuntimePolicy(
@@ -390,7 +353,11 @@ async function createSupervisedRunResult(
     try {
         return await runSupervisedAndAttachPolicyErrors(command, dependencies, runtimePolicy, input);
     } catch (error: unknown) {
-        return createResultFromResolutionError(error, runtimePolicy);
+        return await reportCollectionErrorResult(
+            command,
+            dependencies,
+            createResultFromResolutionError(error, runtimePolicy)
+        );
     }
 }
 
@@ -429,6 +396,23 @@ async function executeResolvedRun(
     });
 }
 
+async function runCommand(command: RunCommand, dependencies: RunOrchestratorDependencies): Promise<RunResult> {
+    const runtimePolicy = createRunRuntimePolicy(command.request, dependencies);
+    const profile = command.config.profiles[command.request.profile];
+
+    if (profile?.execution.processModel === 'supervised-process') {
+        return await createSupervisedRunResult(command, dependencies, runtimePolicy);
+    }
+
+    const resolvedRun = await createResolvedRunResult(command, dependencies, runtimePolicy);
+
+    if (isRunResult(resolvedRun)) {
+        return await reportCollectionErrorResult(command, dependencies, resolvedRun);
+    }
+
+    return await executeResolvedRun(resolvedRun, dependencies, runtimePolicy);
+}
+
 export function createRunOrchestrator(dependencies: RunOrchestratorDependencies): RunOrchestrator {
     return {
         async resolve(command) {
@@ -436,20 +420,20 @@ export function createRunOrchestrator(dependencies: RunOrchestratorDependencies)
         },
 
         async run(command) {
-            const runtimePolicy = createRunRuntimePolicy(command.request, dependencies);
-            const profile = command.config.profiles[command.request.profile];
+            return await runCommand(command, dependencies);
+        },
 
-            if (profile?.execution.processModel === 'supervised-process') {
-                return await createSupervisedRunResult(command, dependencies, runtimePolicy);
-            }
+        async runWithReporterDelivery(command) {
+            const delivery = await dependencies.reporterDispatcher.trackRunnerErrorDelivery(
+                async function runAndTrackReporterDelivery() {
+                    return await runCommand(command, dependencies);
+                }
+            );
 
-            const resolvedRun = await createResolvedRunResult(command, dependencies, runtimePolicy);
-
-            if (isRunResult(resolvedRun)) {
-                return resolvedRun;
-            }
-
-            return await executeResolvedRun(resolvedRun, dependencies, runtimePolicy);
+            return {
+                deliveredRunnerErrors: delivery.deliveredRunnerErrors,
+                result: delivery.result
+            };
         }
     };
 }

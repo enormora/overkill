@@ -89,10 +89,20 @@ Default exit codes for the `overkill` CLI:
 | At least one resource exhaustion     | 5         |
 | Runner crashed (internal bug)        | 70        |
 
-Before exiting, the CLI prints runner errors that configured reporters could
-not surface themselves to `stderr`. Those fallback diagnostics do not create a
-separate outcome category; they use the same non-zero exit code the underlying
-error would already require.
+When multiple completed-run outcomes apply, the most specific non-zero code
+wins in this order: resource exhaustion, runner error, no tests collected,
+test failure. Resource exhaustion is checked before generic runner errors
+because `resource-exhaustion` is also a runner error subtype.
+
+Before exiting, the binary writes command-line fallback diagnostics to
+`stderr`. `@overkill-dev/run` returns diagnostics for runner errors that were
+not delivered to any configured terminal-capable reporter callback during the
+tracked CLI run. A terminal-capable reporter is one whose effective sink
+declarations include `stdout-*` or `stderr-*`. Raw terminal reporters are
+counted as delivered when their callback succeeds because their writes are
+opaque to the dispatcher. Fallback diagnostics do not create a separate outcome
+category; they use the same non-zero exit code the underlying error would
+already require.
 
 Test code calling `process.exit(code)` is treated as a runner-level error
 and attributed to the currently-running test. The default policy is to

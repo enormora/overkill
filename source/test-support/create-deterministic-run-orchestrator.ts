@@ -1,4 +1,5 @@
 import { createWallClock } from '@enormora/wall-clock';
+import type { ReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type { RunResourceUsageTracker } from '../engine/run-result.ts';
 import type { RuntimeCapabilityPolicyEnvironment } from '../run/capability-policy.ts';
 import { defaultRunEngine } from '../run/default-run-engine.ts';
@@ -18,7 +19,7 @@ export function createDeterministicRunOrchestrator(): RunOrchestrator {
     const engine = createTestEngine();
     const wallClock = createWallClock();
     const environment: RuntimeCapabilityPolicyEnvironment = {};
-    const reporterDispatcher = {
+    const reporterDispatcher: ReporterDispatcher = {
         async disposeReporters() {
             return [];
         },
@@ -27,6 +28,12 @@ export function createDeterministicRunOrchestrator(): RunOrchestrator {
         },
         async reportResult() {
             return [];
+        },
+        async trackRunnerErrorDelivery(work) {
+            return {
+                deliveredRunnerErrors: [],
+                result: await work()
+            };
         }
     };
 

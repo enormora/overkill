@@ -116,17 +116,24 @@ function formatErrorDiagnostics(label: string, error: unknown): readonly string[
 
 export function formatFallbackDiagnostics(
     result: RunResult,
-    reportersClaimTerminal: boolean
+    deliveredRunnerErrors: ReadonlySet<RunnerError>
 ): readonly string[] {
-    const reporterErrors = result.runnerErrors.filter(function isReporterError(error) {
-        return error.subtype === 'reporter';
+    const unreportedErrors = result.runnerErrors.filter(function wasNotDelivered(error) {
+        return !deliveredRunnerErrors.has(error);
     });
-    const unreportedErrors = reportersClaimTerminal ? reporterErrors : result.runnerErrors;
 
     return unreportedErrors.map(formatRunnerError);
 }
 
 export function readExitCodeFromRunResult(result: RunResult): CommandLineExitCode {
+    const hasResourceExhaustion = result.runnerErrors.some(function isResourceExhaustion(error) {
+        return error.subtype === 'resource-exhaustion';
+    });
+
+    if (hasResourceExhaustion || result.summary.resourceExhausted > 0) {
+        return commandLineExitCodes.resourceExhaustion;
+    }
+
     if (result.runnerErrors.length > 0) {
         return commandLineExitCodes.runnerError;
     }

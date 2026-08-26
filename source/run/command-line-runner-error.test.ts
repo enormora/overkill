@@ -138,6 +138,19 @@ async function resolvePassingRun(command: RunCommand): Promise<Awaited<ReturnTyp
     };
 }
 
+function createRunOnlyOrchestrator(run: RunOrchestrator['run']): RunOrchestrator {
+    return {
+        resolve: resolvePassingRun,
+        run,
+        async runWithReporterDelivery(command) {
+            return {
+                deliveredRunnerErrors: [],
+                result: await run(command)
+            };
+        }
+    };
+}
+
 export const testSuite = createOverkillSuite({
     name: 'source/run/command-line-runner-error.test.ts',
     metadata: {},
@@ -147,10 +160,7 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             async body(scope: OverkillScope) {
                 const run = testDouble.rejects<RunOrchestrator['run']>('unexpected string failure');
-                const runner = createCommandLineRunner(createRunnerDependencies({
-                    resolve: resolvePassingRun,
-                    run
-                }));
+                const runner = createCommandLineRunner(createRunnerDependencies(createRunOnlyOrchestrator(run)));
                 const result = await runner.runTests({
                     configPath: null,
                     cwd: process.cwd(),
@@ -169,10 +179,7 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             async body(scope: OverkillScope) {
                 const run = testDouble.rejects<RunOrchestrator['run']>(new Error('Unexpected failure.'));
-                const runner = createCommandLineRunner(createRunnerDependencies({
-                    resolve: resolvePassingRun,
-                    run
-                }));
+                const runner = createCommandLineRunner(createRunnerDependencies(createRunOnlyOrchestrator(run)));
                 const result = await runner.runTests({
                     configPath: null,
                     cwd: process.cwd(),

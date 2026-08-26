@@ -14,6 +14,7 @@ Top-level API:
 - `loadRunConfig({ cwd, configPath })`
 - `orchestrator.resolve(command)`
 - `orchestrator.run(command)`
+- `orchestrator.runWithReporterDelivery(command)`
 
 Command-line business logic is exposed through `@overkill-dev/run/command-line`:
 
@@ -113,8 +114,14 @@ The command-line runner loads native Node config files, selects the default
 line reporter when the selected profile and project config both omit reporters,
 defaults managed reporter output to the plain renderer, returns fallback
 diagnostics for the binary wrapper to write, and maps run outcomes to stable
-exit codes. Profile reporters replace top-level project reporters for the
-selected run; otherwise top-level reporters are the fallback.
+exit codes. Fallback diagnostics contain runner errors that were not delivered
+to any terminal-capable reporter callback during `orchestrator.runWithReporterDelivery(command)`.
+Raw terminal reporters are counted as delivered when their callback succeeds
+because their writes are intentionally opaque to the dispatcher. Resource
+exhaustion maps to exit code 5 before generic runner errors because
+`resource-exhaustion` is also a runner error subtype. Profile reporters replace
+top-level project reporters for the selected run; otherwise top-level reporters
+are the fallback.
 Installing a package does not add commands, and there is no installed-package
 scan, dynamic command registry, or command plugin lifecycle.
 
