@@ -250,6 +250,10 @@ export type RunOrchestratorDependencies = {
 export type RunOrchestrator = {
     readonly resolve: (command: RunCommand) => Promise<ResolvedRun>;
     readonly run: (command: RunCommand) => Promise<RunResult>;
+    readonly runWithReporterDelivery: (command: RunCommand) => Promise<{
+        readonly deliveredRunnerErrors: readonly RunResult['runnerErrors'][number][];
+        readonly result: RunResult;
+    }>;
 };
 
 export function invalidRunProfileNameMessage(profileName: string): string | null {

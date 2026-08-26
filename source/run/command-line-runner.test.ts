@@ -141,59 +141,76 @@ function createPassingPlan(): TestPlan {
     );
 }
 
+async function resolveRunCommand(command: RunCommand): ReturnType<RunOrchestrator['resolve']> {
+    const profile = selectedProfile(command);
+
+    return {
+        config: command.config,
+        cwd: command.cwd,
+        facts: {
+            cases: [],
+            environment: {
+                node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
+                runtimeStateDir: command.config.runtimeStateDir
+            },
+            execution: {
+                baselineUpdateMode: command.request.baselineUpdateMode,
+                capture: command.request.capture,
+                debug: command.request.debug,
+                engine: { kind: 'default' },
+                order: command.request.order,
+                processModel: profile.execution.processModel,
+                profile: command.request.profile,
+                resourceUsagePolicy: profile.resourceUsage,
+                scheduling: profile.execution.scheduling,
+                testFamily: profile.testFamily,
+                timeoutPolicy: profile.timeouts,
+                verbose: command.request.verbose
+            },
+            loader: command.config.loader,
+            reproducibility: {
+                seed: '42',
+                shard: command.request.shard
+            }
+        },
+        collectionRunnerErrors: [],
+        reporters: command.config.reporters,
+        engine: command.engine,
+        plan: {
+            kind: 'local',
+            testPlan: createPassingPlan()
+        },
+        request: command.request
+    };
+}
+
+function createRunOnlyOrchestrator(run: RunOrchestrator['run']): RunOrchestrator {
+    return {
+        async resolve(command) {
+            return await resolveRunCommand(command);
+        },
+        run,
+        async runWithReporterDelivery(command) {
+            return {
+                deliveredRunnerErrors: [],
+                result: await run(command)
+            };
+        }
+    };
+}
+
 function createRunnerDependencies(
     overrides: Partial<CommandLineRunnerDependencies>
 ): CommandLineRunnerDependencies {
-    const orchestrator: RunOrchestrator = {
-        async resolve(command) {
-            const profile = selectedProfile(command);
-
-            return {
-                config: command.config,
-                cwd: command.cwd,
-                facts: {
-                    cases: [],
-                    environment: {
-                        node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
-                        runtimeStateDir: command.config.runtimeStateDir
-                    },
-                    execution: {
-                        baselineUpdateMode: command.request.baselineUpdateMode,
-                        capture: command.request.capture,
-                        debug: command.request.debug,
-                        engine: { kind: 'default' },
-                        order: command.request.order,
-                        processModel: profile.execution.processModel,
-                        profile: command.request.profile,
-                        resourceUsagePolicy: profile.resourceUsage,
-                        scheduling: profile.execution.scheduling,
-                        testFamily: profile.testFamily,
-                        timeoutPolicy: profile.timeouts,
-                        verbose: command.request.verbose
-                    },
-                    loader: command.config.loader,
-                    reproducibility: {
-                        seed: '42',
-                        shard: command.request.shard
-                    }
-                },
-                collectionRunnerErrors: [],
-                reporters: command.config.reporters,
-                engine: command.engine,
-                plan: {
-                    kind: 'local',
-                    testPlan: createPassingPlan()
-                },
-                request: command.request
-            };
-        },
-        async run() {
-            return runResultFactory.build({
-                perTest: [ { outcome: { kind: 'pass' } } ],
-                summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }
-            });
-        }
+    const runPassing = async function runPassingTests(): ReturnType<RunOrchestrator['run']> {
+        return runResultFactory.build({
+            perTest: [ { outcome: { kind: 'pass' } } ],
+            summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }
+        });
     };
+    const orchestrator = createRunOnlyOrchestrator(async function runDefaultCommand() {
+        return await runPassing();
+    });
 
     return {
         async createDefaultReporter() {
@@ -233,18 +250,15 @@ export const testSuite = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const receivedCommands: RunCommand[] = [];
                 const dependencies = createRunnerDependencies({
-                    orchestrator: {
-                        async resolve(command) {
-                            return await createRunnerDependencies({}).orchestrator.resolve(command);
-                        },
-                        async run(command) {
+                    orchestrator: createRunOnlyOrchestrator(
+                        async function runCommand(command) {
                             receivedCommands.push(command);
                             return runResultFactory.build({
                                 perTest: [ { outcome: { kind: 'pass' } } ],
                                 summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }
                             });
                         }
-                    }
+                    )
                 });
                 const result = await runTests(dependencies);
 
@@ -269,25 +283,22 @@ export const testSuite = createOverkillSuite({
                     async loadRunConfig() {
                         return defaultLoadedConfig([ terminalReporter ]);
                     },
-                    orchestrator: {
-                        async resolve(command) {
-                            return await createRunnerDependencies({}).orchestrator.resolve(command);
-                        },
-                        async run(command) {
+                    orchestrator: createRunOnlyOrchestrator(
+                        async function runCommand(command) {
                             receivedCommands.push(command);
                             return runResultFactory.build({
                                 perTest: [ { outcome: { kind: 'pass' } } ],
                                 summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }
                             });
                         }
-                    }
+                    )
                 });
                 const result = await runTests(dependencies);
 
                 scope.assert.equal(result.exitCode, 0);
                 scope.assert.equal(defaultReporterLoadCount, 0);
                 scope.require.defined(receivedCommands[0]);
-                scope.assert.equal(receivedCommands[0].config.reporters[0], terminalReporter);
+                scope.assert.equal(receivedCommands[0].config.reporters[0]?.name, terminalReporter.name);
 
                 return scope.assert.collect();
             }
@@ -297,17 +308,14 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({
-                    orchestrator: {
-                        async resolve(command) {
-                            return await createRunnerDependencies({}).orchestrator.resolve(command);
-                        },
-                        async run() {
+                    orchestrator: createRunOnlyOrchestrator(
+                        async function runCommand() {
                             return runResultFactory.build({
                                 perTest: [ { outcome: { kind: 'fail' } } ],
                                 summary: { defined: 1, discovered: 1, failed: 1, planned: 1 }
                             });
                         }
-                    }
+                    )
                 }));
 
                 scope.assert.equal(result.exitCode, 1);
@@ -320,16 +328,13 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({
-                    orchestrator: {
-                        async resolve(command) {
-                            return await createRunnerDependencies({}).orchestrator.resolve(command);
-                        },
-                        async run() {
+                    orchestrator: createRunOnlyOrchestrator(
+                        async function runCommand() {
                             return runResultFactory.build({
                                 summary: { defined: 0, discovered: 0, planned: 0 }
                             });
                         }
-                    }
+                    )
                 }));
 
                 scope.assert.equal(result.exitCode, 4);
@@ -342,51 +347,18 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({
-                    orchestrator: {
-                        async resolve(command) {
-                            return await createRunnerDependencies({}).orchestrator.resolve(command);
-                        },
-                        async run() {
+                    orchestrator: createRunOnlyOrchestrator(
+                        async function runCommand() {
                             return runResultFactory.build({
                                 runnerErrors: [ { message: 'Loader failed.', subtype: 'loader' } ],
                                 summary: { defined: 1, discovered: 1, planned: 1 }
                             });
                         }
-                    }
+                    )
                 }));
 
                 scope.assert.equal(result.exitCode, 2);
                 scope.assert.deepEqual(result.fallbackDiagnostics, [ 'Overkill runner error: Loader failed.' ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            name: 'commandLineRunner.runTests() only falls back to reporter errors when a terminal reporter exists',
-            metadata: {},
-            async body(scope: OverkillScope) {
-                const result = await runTests(createRunnerDependencies({
-                    async loadRunConfig() {
-                        return defaultLoadedConfig([ terminalReporter ]);
-                    },
-                    orchestrator: {
-                        async resolve(command) {
-                            return await createRunnerDependencies({}).orchestrator.resolve(command);
-                        },
-                        async run() {
-                            return runResultFactory.build({
-                                runnerErrors: [
-                                    { message: 'Loader failed.', subtype: 'loader' },
-                                    { message: 'Dispose failed.', subtype: 'reporter' }
-                                ],
-                                summary: { defined: 1, discovered: 1, planned: 1 }
-                            });
-                        }
-                    }
-                }));
-
-                scope.assert.equal(result.exitCode, 2);
-                scope.assert.deepEqual(result.fallbackDiagnostics, [ 'Overkill runner error: Dispose failed.' ]);
 
                 return scope.assert.collect();
             }
@@ -414,16 +386,13 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({
-                    orchestrator: {
-                        async resolve(command) {
-                            return await createRunnerDependencies({}).orchestrator.resolve(command);
-                        },
-                        async run() {
+                    orchestrator: createRunOnlyOrchestrator(
+                        async function runCommand() {
                             throw new ReporterSinkConflictError(
                                 'Reporter sink conflict: stdout is claimed by incompatible reporters.'
                             );
                         }
-                    }
+                    )
                 }));
 
                 scope.assert.equal(result.exitCode, 3);
@@ -443,11 +412,8 @@ export const testSuite = createOverkillSuite({
                     'Reporter sink conflict: stdout is claimed by incompatible reporters.'
                 );
                 const result = await runTests(createRunnerDependencies({
-                    orchestrator: {
-                        async resolve(command) {
-                            return await createRunnerDependencies({}).orchestrator.resolve(command);
-                        },
-                        async run() {
+                    orchestrator: createRunOnlyOrchestrator(
+                        async function runCommand() {
                             throw new AggregateError(
                                 [
                                     conflict,
@@ -462,7 +428,7 @@ export const testSuite = createOverkillSuite({
                                 { cause: conflict }
                             );
                         }
-                    }
+                    )
                 }));
 
                 scope.assert.equal(result.exitCode, 3);
@@ -480,18 +446,15 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({
-                    orchestrator: {
-                        async resolve(command) {
-                            return await createRunnerDependencies({}).orchestrator.resolve(command);
-                        },
-                        async run() {
+                    orchestrator: createRunOnlyOrchestrator(
+                        async function runCommand() {
                             throw new RunResolutionError(
                                 'Path discovery is not implemented yet.',
                                 undefined,
                                 'unsupported-request'
                             );
                         }
-                    }
+                    )
                 }));
 
                 scope.assert.equal(result.exitCode, 3);

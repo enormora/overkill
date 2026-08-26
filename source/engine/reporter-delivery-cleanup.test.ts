@@ -372,6 +372,12 @@ export const testSuite = createOverkillSuite({
                     },
                     async reportResult() {
                         return [];
+                    },
+                    async trackRunnerErrorDelivery(work) {
+                        return {
+                            deliveredRunnerErrors: [],
+                            result: await work()
+                        };
                     }
                 };
                 const execute = createExecute({ reporterDispatcher, wallClock });

@@ -138,7 +138,13 @@ function createRunnerDependencies(
             async resolve() {
                 throw new Error('Resolve is not used by the command-line runner.');
             },
-            run
+            run,
+            async runWithReporterDelivery(command) {
+                return {
+                    deliveredRunnerErrors: [],
+                    result: await run(command)
+                };
+            }
         }
     };
 }
@@ -209,7 +215,7 @@ export const testSuite = createOverkillSuite({
 
                 scope.assert.equal(scenario.result.exitCode, 0);
                 scope.assert.equal(defaultReporter.loadCount(), 0);
-                scope.assert.equal(scenario.command.config.reporters[0], terminalReporter);
+                scope.assert.equal(scenario.command.config.reporters[0]?.name, terminalReporter.name);
                 scope.assert.equal(selectedProfileReporters(scenario.command)[0], memoryReporter);
 
                 return scope.assert.collect();
@@ -275,7 +281,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'commandLineRunner.runTests() uses profile terminal reporters for fallback diagnostics',
+            name: 'commandLineRunner.runTests() falls back when profile terminal reporters did not receive errors',
             metadata: {},
             async body(scope: OverkillScope) {
                 const defaultReporter = createDefaultReporterLoader(memoryReporter);
@@ -289,6 +295,7 @@ export const testSuite = createOverkillSuite({
                 scope.assert.equal(scenario.result.exitCode, 2);
                 scope.assert.equal(defaultReporter.loadCount(), 0);
                 scope.assert.deepEqual(scenario.result.fallbackDiagnostics, [
+                    'Overkill runner error: Loader failed.',
                     'Overkill runner error: Dispose failed.'
                 ]);
 

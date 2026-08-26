@@ -34,6 +34,12 @@ function createRejectingDispatcher(): RejectingDispatcher {
             },
             async reportResult() {
                 return [];
+            },
+            async trackRunnerErrorDelivery(work) {
+                return {
+                    deliveredRunnerErrors: [],
+                    result: await work()
+                };
             }
         },
         events() {

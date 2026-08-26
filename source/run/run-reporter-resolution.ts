@@ -1,6 +1,4 @@
 import type { LoadedRunConfig } from './run-config.ts';
-import { resolveRunReporters } from './run-support.ts';
-import type { RunCommand } from './run-types.ts';
 
 export type CommandLineReporterFallback = {
     readonly kind: 'configured';
@@ -26,14 +24,4 @@ export function selectCommandLineReporterFallback(
     }
 
     return { kind: 'default' };
-}
-
-export function resolveCommandReporters(command: RunCommand): RunCommand['config']['reporters'] {
-    const profile = command.config.profiles[command.request.profile];
-
-    if (profile === undefined) {
-        return command.config.reporters;
-    }
-
-    return resolveRunReporters(profile, command.config.reporters);
 }
