@@ -17,6 +17,7 @@ import {
     copyRunConfig,
     copyRunRequest,
     createRunRuntimePolicy,
+    resolveRunReporters,
     type RunRuntimePolicy
 } from './run-support.ts';
 import {
@@ -165,7 +166,7 @@ function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): R
             collectedPlan: input.collectedPlan,
             kind: 'supervised' as const
         },
-        reporters: input.profile.reporters ?? input.config.reporters,
+        reporters: resolveRunReporters(input.profile, input.config.reporters),
         request: input.request
     });
 }
@@ -234,7 +235,7 @@ async function createLocalResolvedRun(
             kind: 'local',
             testPlan
         },
-        reporters: input.profile.reporters ?? input.config.reporters,
+        reporters: resolveRunReporters(input.profile, input.config.reporters),
         request: input.request
     });
 }

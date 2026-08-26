@@ -884,6 +884,10 @@ Canonical: [Reproducibility](../architecture/reproducibility.md) for `RunFacts` 
 [Package Architecture](../architecture/package-architecture.md) for `RunRequest`, `ResolvedRun`, and `TestPlan`,
 [Failure Artifacts](../authoring/failure-artifacts.md) for `RunnerError`.
 
+`RunConfig.reporters` is the global fallback list. A selected profile's
+`reporters` list replaces it for that run when present. `ResolvedRun.reporters`
+contains the effective list after that resolution.
+
 ## Illustrative Capability-Handle Types
 
 ```ts

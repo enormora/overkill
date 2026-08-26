@@ -110,9 +110,11 @@ engine value or a synchronous getter returning an engine.
 
 Config loading is common runner infrastructure, not plugin discovery.
 The command-line runner loads native Node config files, selects the default
-line reporter when project config omits reporters, defaults managed reporter
-output to the plain renderer, returns fallback diagnostics for the binary
-wrapper to write, and maps run outcomes to stable exit codes.
+line reporter when the selected profile and project config both omit reporters,
+defaults managed reporter output to the plain renderer, returns fallback
+diagnostics for the binary wrapper to write, and maps run outcomes to stable
+exit codes. Profile reporters replace top-level project reporters for the
+selected run; otherwise top-level reporters are the fallback.
 Installing a package does not add commands, and there is no installed-package
 scan, dynamic command registry, or command plugin lifecycle.
 
