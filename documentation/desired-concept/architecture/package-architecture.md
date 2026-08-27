@@ -658,7 +658,7 @@ or extend the contract but do not redefine it.
 | Test facade creation                                              | project code + `@overkill-dev/test`                                    | `@overkill-dev/test` owns facade creation for authoring ergonomics only.                                                                                       |
 | Root test authoring import                                        | `@overkill-dev/test`                                                   | `test`, `suite`, `table`, `defineMacro`, `createTestFacade`, `runIfMain`, and lightweight doubles only.                                                        |
 | Assertion reference execution                                     | `@overkill-dev/engine`                                                 | Engine owns callable assertion references, counting, `require` behavior, and result normalization.                                                             |
-| CLI command semantics, terminal capability detection              | `@overkill-dev/run`                                                    | Parses and dispatches command intent behind the `@overkill-dev/test` binary wrapper.                                                                           |
+| CLI command semantics, terminal capability detection              | `@overkill-dev/run`                                                    | Owns typed command behavior behind the `@overkill-dev/test` argv parser and binary wrapper.                                                                    |
 | Test debug mode artifact                                          | `@overkill-dev/run`                                                    | Activation, storage, retention; see [Test Debug Mode](../authoring/debug-mode.md).                                                                             |
 | Reporter packages (`@overkill-dev/reporter-line`, …)              | `@overkill-dev/reporter-*`                                             | Stable contract from `@overkill-dev/engine`; presentation owned per-package.                                                                                   |
 
@@ -722,8 +722,8 @@ construction code, and lightweight doubles. It must not load
 resources, baselines, benchmark measurement code, coverage tooling, browser
 support, or optional adapters.
 
-The `overkill` binary should use command-selected modules: a tiny fixed argv
-parser resolves the command name and `--config`, then delegates to the matching
+The `overkill` binary should use command-selected modules: its argv parser
+resolves the command name and shared `--config`, then delegates to the matching
 method on the fixed `commandLineRunner` namespace exposed by
 `@overkill-dev/run/command-line`. Config loading and ordinary run orchestration
 are common command-line infrastructure; benchmark, baseline, coverage, and

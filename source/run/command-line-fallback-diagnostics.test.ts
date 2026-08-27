@@ -156,7 +156,7 @@ async function runTests(
     return await runner.runTests({
         configPath: null,
         cwd: process.cwd(),
-        request: defaultRequest
+        runRequest: defaultRequest
     });
 }
 

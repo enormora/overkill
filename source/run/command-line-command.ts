@@ -17,7 +17,7 @@ export const commandLineExitCodes = Object.freeze({
 export type CommandLineExitCode = (typeof commandLineExitCodes)[keyof typeof commandLineExitCodes];
 
 export type CommandLineRunTestsRequest = RunConfigLoadRequest & {
-    readonly request: RunRequest;
+    readonly runRequest: RunRequest;
 };
 
 export type CommandLineCommandContext = RunConfigLoadRequest & {

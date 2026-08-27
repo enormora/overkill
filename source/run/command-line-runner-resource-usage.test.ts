@@ -249,7 +249,7 @@ export const testSuite = createOverkillSuite({
                 const result = await runner.runTests({
                     configPath: null,
                     cwd: process.cwd(),
-                    request: {
+                    runRequest: {
                         ...defaultRequest,
                         resourceBudgetOverrides: {
                             activeResourceCount: null,

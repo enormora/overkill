@@ -24,6 +24,7 @@
         "@overkill-dev/reporter-line": "0.0.18",
         "@schema-hub/zod-error-formatter": "0.0.16",
         "ansi-escapes": "7.3.0",
+        "cmd-ts": "0.15.0",
         "diff": "9.0.0",
         "figures": "6.1.0",
         "is-interactive": "2.0.0",
