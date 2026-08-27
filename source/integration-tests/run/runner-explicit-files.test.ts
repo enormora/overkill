@@ -221,7 +221,7 @@ async function runCommandLine(paths: readonly string[]): Promise<CommandLineRunn
     return await runner.runTests({
         configPath: null,
         cwd: process.cwd(),
-        request: createRunRequest(paths)
+        runRequest: createRunRequest(paths)
     });
 }
 

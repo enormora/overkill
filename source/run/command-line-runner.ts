@@ -67,7 +67,7 @@ async function createCommandLineConfig(
     request: CommandLineRunTestsRequest,
     dependencies: CommandLineRunnerDependencies
 ): Promise<RunConfig> {
-    const reporterFallback = selectCommandLineReporterFallback(loadedConfig, request.request.profile);
+    const reporterFallback = selectCommandLineReporterFallback(loadedConfig, request.runRequest.profile);
 
     return {
         loader: loadedConfig.loader,
@@ -88,7 +88,7 @@ async function createCommandFromRequest(
         cwd: request.cwd,
         engine: { kind: 'default' },
         request: {
-            ...request.request,
+            ...request.runRequest,
             capabilityRestrictions: { mode: 'enabled' }
         }
     };

@@ -1,5 +1,5 @@
 export PATH := './node_modules/.bin:' + env_var('PATH')
-package-smoke-packages := '@overkill-dev/engine,@overkill-dev/assert,@overkill-dev/doubles,@overkill-dev/reporter-line'
+package-smoke-packages := '@overkill-dev/engine,@overkill-dev/assert,@overkill-dev/doubles,@overkill-dev/run,@overkill-dev/test,@overkill-dev/reporter-line'
 
 default:
     @just --list
@@ -46,9 +46,10 @@ test-package-smoke: compile
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
     rm -rf target/package-smoke
     mkdir -p target/package-smoke/node_modules
-    PACKTORY_INCLUDED_PACKAGES={{package-smoke-packages}} packtory pack --all --format folder --version 0.0.0 --out target/package-smoke/node_modules
+    PACKTORY_INCLUDED_PACKAGES={{package-smoke-packages}} packtory pack --all --format folder --version 0.0.0 --vendor-dependencies --out target/package-smoke/node_modules
     ln -s ../../../../package-smoke/node_modules target/build/source/integration-tests/package-smoke/node_modules
     node target/build/source/integration-tests/package-smoke/engine-direct-execution.test.js
+    node target/build/source/integration-tests/package-smoke/test-binary.test.js
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
 
 publish-dry-run: compile

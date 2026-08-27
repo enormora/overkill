@@ -18,7 +18,7 @@ Top-level API:
 
 Command-line business logic is exposed through `@overkill-dev/run/command-line`:
 
-- `commandLineRunner.runTests(request)`
+- `commandLineRunner.runTests({ cwd, configPath, runRequest })`
 - `commandLineRunner.listTests(context)`
 - `commandLineRunner.replayRun(context)`
 - `commandLineRunner.replayWitness(context)`
@@ -46,19 +46,19 @@ nodes with that engine, or `{ kind: 'module', moduleUrl, exportName,
 exportKind }` for supervised programmatic callers that need the child process
 to load the engine without parent-side user-module execution.
 
-General file discovery, filtering, sharding, seeded ordering, records, replay,
-and argv parsing are separate runner milestones. Direct prebuilt `TestPlan`
-execution belongs to `@overkill-dev/engine` through `execute(testPlan)`. The
-non-`runTests` command methods are fixed first-party entrypoints and currently
+General file discovery, filtering, sharding, seeded ordering, records, and
+replay are separate runner milestones. Direct prebuilt `TestPlan` execution
+belongs to `@overkill-dev/engine` through `execute(testPlan)`. The non-
+`runTests` command methods are fixed first-party entrypoints and currently
 return argument errors until their command implementations land.
 
 Resource usage measurement is explicit. Project config can enable it under
 `profiles.<name>.resourceUsage.measure`; `RunRequest.measureResourceUsage`
 can override that policy for one run. `resourceUsage.budgets` are thresholds
 and require measurement, while `RunRequest.resourceBudgetOverrides` changes
-individual thresholds for one run. Textual parsing for
-`--measure-resource-usage` and `--resource-budget <name=value>` belongs to the
-later command-line implementation milestone.
+individual thresholds for one run. The `@overkill-dev/test` binary parses
+`--measure-resource-usage` and `--resource-budget <name=value>` into those
+typed request fields.
 
 Runner profile names are project-owned. Names such as `microtest`,
 `backend-http`, `ui-browser`, `ui.browser`, and `unit_fast` select profile

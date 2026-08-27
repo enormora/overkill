@@ -164,7 +164,7 @@ export const testSuite = createOverkillSuite({
                 const result = await runner.runTests({
                     configPath: null,
                     cwd: process.cwd(),
-                    request: defaultRequest
+                    runRequest: defaultRequest
                 });
 
                 scope.assert.equal(result.exitCode, 70);
@@ -183,7 +183,7 @@ export const testSuite = createOverkillSuite({
                 const result = await runner.runTests({
                     configPath: null,
                     cwd: process.cwd(),
-                    request: defaultRequest
+                    runRequest: defaultRequest
                 });
 
                 scope.assert.equal(result.exitCode, 70);

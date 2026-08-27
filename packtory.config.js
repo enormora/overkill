@@ -149,7 +149,18 @@ export const config = {
                     declarationFile: 'packages/run/run.entry-point.d.ts'
                 }
             },
-            defaultModuleRoot: 'main',
+            packageInterface: {
+                modules: [
+                    {
+                        export: '.',
+                        root: 'main'
+                    },
+                    {
+                        export: './command-line',
+                        root: 'commandLine'
+                    }
+                ]
+            },
             additionalFiles: [
                 {
                     sourceFilePath: path.join(projectFolder, 'source/packages/run/readme.md'),
@@ -159,6 +170,33 @@ export const config = {
             additionalPackageJsonAttributes: {
                 ...packageMetadata,
                 description: 'Overkill run resolution and orchestration.'
+            }
+        },
+        {
+            name: '@overkill-dev/test',
+            bundleDependencies: [ '@overkill-dev/run' ],
+            roots: {
+                overkill: {
+                    js: 'packages/test/overkill.entry-point.js'
+                }
+            },
+            packageInterface: {
+                bins: [
+                    {
+                        name: 'overkill',
+                        root: 'overkill'
+                    }
+                ]
+            },
+            additionalFiles: [
+                {
+                    sourceFilePath: path.join(projectFolder, 'source/packages/test/readme.md'),
+                    targetFilePath: 'readme.md'
+                }
+            ],
+            additionalPackageJsonAttributes: {
+                ...packageMetadata,
+                description: 'Standard Overkill distribution and command-line binary.'
             }
         },
         {

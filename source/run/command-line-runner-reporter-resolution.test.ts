@@ -165,7 +165,7 @@ async function runScenario(
             return await run(command);
         }
     ));
-    const result = await runner.runTests({ configPath: null, cwd: process.cwd(), request });
+    const result = await runner.runTests({ configPath: null, cwd: process.cwd(), runRequest: request });
     const command = receivedCommands[0];
 
     if (command === undefined) {

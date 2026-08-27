@@ -44,10 +44,10 @@ describe('@overkill-dev/run/command-line', function () {
     });
 
     test('keeps command-line run input explicit', function () {
-        expect<keyof CommandLineRunTestsRequest>().type.toBe<'configPath' | 'cwd' | 'request'>();
+        expect<keyof CommandLineRunTestsRequest>().type.toBe<'configPath' | 'cwd' | 'runRequest'>();
         expect<CommandLineRunTestsRequest['configPath']>().type.toBe<string | null>();
         expect<CommandLineRunTestsRequest['cwd']>().type.toBe<string>();
-        expect<CommandLineRunTestsRequest['request']>().type.toBe<RunRequest>();
+        expect<CommandLineRunTestsRequest['runRequest']>().type.toBe<RunRequest>();
         expect<keyof CommandLineCommandContext>().type.toBe<'arguments' | 'configPath' | 'cwd'>();
         expect<CommandLineCommandContext['arguments']>().type.toBe<readonly string[]>();
         expect<CommandLineCommandContext['configPath']>().type.toBe<string | null>();

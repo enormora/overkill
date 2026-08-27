@@ -236,7 +236,7 @@ async function runTests(dependencies: CommandLineRunnerDependencies): Promise<Co
     return await runner.runTests({
         configPath: null,
         cwd: process.cwd(),
-        request: defaultRequest
+        runRequest: defaultRequest
     });
 }
 
