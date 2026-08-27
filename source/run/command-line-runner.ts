@@ -9,6 +9,9 @@ import {
 import {
     createCommandLineErrorResultFromUnknown,
     formatFallbackDiagnostics,
+    formatRunnerErrorDiagnostics,
+    commandLineExitCodes,
+    type CommandLineListTestsRequest,
     readExitCodeFromRunResult,
     type CommandLineBaselineCommands,
     type CommandLineBenchmarkCommands,
@@ -29,11 +32,12 @@ import {
     selectCommandLineReporterFallback,
     type CommandLineReporterFallback
 } from './run-reporter-resolution.ts';
+import { renderResolvedRunList } from './run-list-renderer.ts';
 
 export type CommandLineRunner = {
     readonly baseline: CommandLineBaselineCommands;
     readonly bench: CommandLineBenchmarkCommands;
-    readonly listTests: CommandLineCommand;
+    readonly listTests: (request: CommandLineListTestsRequest) => Promise<CommandLineRunnerResult>;
     readonly replayRun: CommandLineCommand;
     readonly replayWitness: CommandLineCommand;
     readonly runTests: (request: CommandLineRunTestsRequest) => Promise<CommandLineRunnerResult>;
@@ -78,6 +82,16 @@ async function createCommandLineConfig(
     };
 }
 
+function createCommandLineListConfig(loadedConfig: LoadedRunConfig): RunConfig {
+    return {
+        loader: loadedConfig.loader,
+        outputRenderer: loadedConfig.outputRenderer,
+        profiles: loadedConfig.profiles,
+        reporters: [],
+        runtimeStateDir: loadedConfig.runtimeStateDir
+    };
+}
+
 async function createCommandFromRequest(
     request: CommandLineRunTestsRequest,
     loadedConfig: LoadedRunConfig,
@@ -90,6 +104,37 @@ async function createCommandFromRequest(
         request: {
             ...request.runRequest,
             capabilityRestrictions: { mode: 'enabled' }
+        }
+    };
+}
+
+function createCommandFromListRequest(
+    request: CommandLineListTestsRequest,
+    loadedConfig: LoadedRunConfig
+): RunCommand {
+    return {
+        config: createCommandLineListConfig(loadedConfig),
+        cwd: request.cwd,
+        engine: { kind: 'default' },
+        request: {
+            baselineUpdateMode: 'none',
+            capabilityRestrictions: { mode: 'enabled' },
+            capture: 'buffered',
+            debug: {
+                mode: 'off',
+                selectors: []
+            },
+            execution: { mode: 'profile-default' },
+            measureResourceUsage: null,
+            order: 'plan',
+            paths: request.listRequest.paths,
+            profile: request.listRequest.profile,
+            resourceBudgetOverrides: null,
+            resourceUsageSamplingIntervalMilliseconds: null,
+            seed: { value: null },
+            selection: { kind: 'all' },
+            shard: { index: 0, total: 1 },
+            verbose: false
         }
     };
 }
@@ -108,7 +153,35 @@ async function runTestsWithLoadedConfig(
             runResult.result,
             new Set(runResult.deliveredRunnerErrors)
         ),
-        runResult: runResult.result
+        runResult: runResult.result,
+        stdoutLines: []
+    };
+}
+
+async function listTestsWithLoadedConfig(
+    request: CommandLineListTestsRequest,
+    dependencies: CommandLineRunnerDependencies,
+    loadedConfig: LoadedRunConfig
+): Promise<CommandLineRunnerResult> {
+    const command = createCommandFromListRequest(request, loadedConfig);
+    const resolvedRun = await dependencies.orchestrator.resolve(command);
+
+    if (resolvedRun.collectionRunnerErrors.length > 0) {
+        return {
+            exitCode: commandLineExitCodes.runnerError,
+            fallbackDiagnostics: formatRunnerErrorDiagnostics(resolvedRun.collectionRunnerErrors),
+            runResult: null,
+            stdoutLines: []
+        };
+    }
+
+    return {
+        exitCode: commandLineExitCodes.pass,
+        fallbackDiagnostics: [],
+        runResult: null,
+        stdoutLines: renderResolvedRunList(resolvedRun, {
+            withOrphans: request.listRequest.withOrphans
+        })
     };
 }
 
@@ -118,7 +191,14 @@ export function createCommandLineRunner(dependencies: CommandLineRunnerDependenc
     return {
         baseline: commandNamespace.baseline,
         bench: commandNamespace.bench,
-        listTests: createUnimplementedCommand('list'),
+        async listTests(request) {
+            try {
+                const loadedConfig = await dependencies.loadRunConfig(request);
+                return await listTestsWithLoadedConfig(request, dependencies, loadedConfig);
+            } catch (error: unknown) {
+                return createCommandLineErrorResultFromUnknown(error);
+            }
+        },
         replayRun: createUnimplementedCommand('replay'),
         replayWitness: createUnimplementedCommand('replay-witness'),
         async runTests(request) {

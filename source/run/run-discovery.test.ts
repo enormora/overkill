@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -67,6 +67,7 @@ export const testSuite = createOverkillSuite({
 
                     await mkdir(nestedDirectory);
                     await writeFile(filePath, 'export const testNode = null;\n');
+                    const realFilePath = await realpath(filePath);
 
                     const files = await discoverRunFiles({
                         cwd: directory,
@@ -76,8 +77,8 @@ export const testSuite = createOverkillSuite({
                     scope.assert.deepEqual(files, [
                         {
                             file: 'nested/example.test.ts',
-                            href: pathToFileURL(filePath).href,
-                            path: filePath
+                            href: pathToFileURL(realFilePath).href,
+                            path: realFilePath
                         }
                     ]);
                 });

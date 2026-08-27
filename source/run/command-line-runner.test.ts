@@ -122,23 +122,28 @@ function selectedProfile(command: RunCommand): RunMicrotestProfileConfig {
 
 function createPassingPlan(): TestPlan {
     const engine = createTestEngine();
+    const testNode = engine.createSuite({
+        children: [
+            engine.createTestCase({
+                body(scope) {
+                    scope.assert.true(true);
+                    return scope.assert.collect();
+                },
+                metadata: {},
+                name: 'passes'
+            })
+        ],
+        metadata: {},
+        name: 'suite'
+    });
 
-    return engine.createTestPlan(
-        engine.createRoot({
-            children: [
-                engine.createTestCase({
-                    body(scope) {
-                        scope.assert.true(true);
-                        return scope.assert.collect();
-                    },
-                    metadata: {},
-                    name: 'passes'
-                })
-            ],
+    return engine.createTestPlanFromTestFiles({
+        files: [ { file: 'source/a.test.ts', testNode } ],
+        root: {
             metadata: {},
             name: 'root'
-        })
-    );
+        }
+    });
 }
 
 async function resolveRunCommand(command: RunCommand): ReturnType<RunOrchestrator['resolve']> {

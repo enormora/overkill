@@ -10,6 +10,7 @@ export type {
     CommandLineCommand,
     CommandLineCommandContext,
     CommandLineExitCode,
+    CommandLineListTestsRequest,
     CommandLineRunnerResult,
     CommandLineRunTestsRequest
 } from '../../run/command-line-command.ts';

@@ -54,6 +54,15 @@ current concept.
 | `overkill replay <run-id>`       | Replay a recorded run from `.overkill/runs/<id>.json`.      | [Reproducibility § Replay](../architecture/reproducibility.md#replay)                                                  |
 | `overkill replay-witness <path>` | Replay a single property/simulation failure from a witness. | [Failure Artifacts § Witnesses And Replay Artifacts](../authoring/failure-artifacts.md#witnesses-and-replay-artifacts) |
 
+`overkill list` prints a plain plan tree: file, suite path, and case name,
+with parameterized cases rendered as `case name [params]`. By default it lists
+only executable planned cases. `--with-orphans` appends orphaned constructed
+nodes under an `Orphans` section, or `(none)` when there are none.
+
+Before profile file discovery is configured, path operands are explicit test
+modules. Profile-owned `files.include` and `files.exclude` policies are the
+discovery surface for pathless runs and directory-like discovery.
+
 ### Baseline
 
 The `baseline` namespace groups operations on the on-disk baseline
