@@ -59,9 +59,11 @@ with parameterized cases rendered as `case name [params]`. By default it lists
 only executable planned cases. `--with-orphans` appends orphaned constructed
 nodes under an `Orphans` section, or `(none)` when there are none.
 
-Before profile file discovery is configured, path operands are explicit test
-modules. Profile-owned `files.include` and `files.exclude` policies are the
-discovery surface for pathless runs and directory-like discovery.
+With no path operands, `overkill run` and `overkill list` use the selected
+profile's `files.include` and `files.exclude` policy. Explicit file operands
+bypass that policy and run the named modules directly. Directory operands
+require a selected profile file policy, filter the profile-discovered file
+set, and cannot be mixed with file operands.
 
 ### Baseline
 

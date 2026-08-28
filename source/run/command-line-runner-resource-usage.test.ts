@@ -207,6 +207,7 @@ function assertResourceUsageCommand(scope: OverkillScope, command: RunCommand): 
             processModel: 'supervised-process',
             scheduling: 'concurrent'
         },
+        files: null,
         reporters: null,
         resourceUsage: {
             budgets: {

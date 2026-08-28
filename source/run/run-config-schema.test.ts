@@ -49,12 +49,6 @@ function assertValidationFailure(scope: OverkillScope, testCase: SchemaValidatio
 
 const invalidMicrotestProfileFields: readonly SchemaValidationFailure[] = [
     {
-        data: { testFamily: 'microtest', files: { exclude: [], include: [ 'source/**/*.test.ts' ] } },
-        expectedIssues: [ 'unexpected additional property: "files"' ],
-        name: 'files',
-        schema: microtestProfileSchema
-    },
-    {
         data: { testFamily: 'microtest', coverage: { formats: [ 'text' ] } },
         expectedIssues: [ 'unexpected additional property: "coverage"' ],
         name: 'coverage',
@@ -148,6 +142,10 @@ export const testSuite = createOverkillSuite({
                     execution: {
                         processModel: 'in-process',
                         scheduling: 'serial'
+                    },
+                    files: {
+                        exclude: [ 'source/**/*.slow.test.ts' ],
+                        include: [ 'source/**/*.test.ts' ]
                     },
                     reporters: [ reporter ],
                     resourceUsage: {

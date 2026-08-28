@@ -3,6 +3,7 @@ import type {
     RunConfig,
     RunMicrotestExecution,
     RunMicrotestProfileConfig,
+    RunProfileFiles,
     RunRequest,
     RunResourceBudgets,
     RunResourceUsagePolicy,
@@ -21,6 +22,7 @@ type ResourceUsageOverrides = {
 
 type MicrotestProfileOverrides = {
     readonly execution?: Partial<RunMicrotestExecution>;
+    readonly files?: RunProfileFiles | null;
     readonly reporters?: readonly Reporter[] | null;
     readonly resourceUsage?: ResourceUsageOverrides;
     readonly timeouts?: Partial<RunTimeoutPolicy>;
@@ -76,6 +78,7 @@ export function defaultMicrotestProfile(
 ): RunMicrotestProfileConfig {
     return {
         execution: defaultMicrotestExecution(overrides.execution),
+        files: overrides.files ?? null,
         reporters: overrides.reporters ?? null,
         resourceUsage: defaultRunResourceUsagePolicy(overrides.resourceUsage),
         testFamily: 'microtest',

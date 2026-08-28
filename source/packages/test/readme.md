@@ -9,6 +9,7 @@ parses the minimal `run` command surface and delegates execution to
 Supported command-line surface:
 
 - `overkill run [paths...]`
+- `overkill list [paths...]`
 - `--config <path>`
 - `--profile <name>`
 - `--measure-resource-usage`
@@ -18,5 +19,10 @@ Supported command-line surface:
 `javaScriptEngineHeapBytes`, `residentSetBytes`, and
 `residentSetGrowthBytesPerSecond`. Supplying a resource budget enables
 resource usage measurement for that run.
+
+When no paths are supplied, `run` and `list` discover files from the selected
+profile's `files.include` and `files.exclude` policy. Explicit file paths run
+directly. Directory paths filter the selected profile's discovered files and
+require that profile policy.
 
 The root authoring facade and standard subpaths are later milestones.

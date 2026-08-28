@@ -9,6 +9,7 @@ import type {
     RunLoaderConfig,
     RunMicrotestExecution,
     RunMicrotestProfileConfig,
+    RunProfileFiles,
     RunOrchestratorDependencies,
     RunProfilesConfig,
     RunRequest,
@@ -17,8 +18,21 @@ import type {
     RunShard,
     RunTimeoutPolicy
 } from './run-types.ts';
+import { validateRunResourceUsagePolicy } from './run-validation.ts';
 
 export type RunRuntimePolicy = RuntimeCapabilityPolicy;
+
+export function freezeValue<Value>(value: Value): Value {
+    if (value !== null && typeof value === 'object') {
+        for (const propertyValue of Object.values(value)) {
+            freezeValue(propertyValue);
+        }
+
+        Object.freeze(value);
+    }
+
+    return value;
+}
 
 export function resolveRunReporters(
     profile: RunMicrotestProfileConfig,
@@ -81,9 +95,21 @@ function copyExecution(execution: RunMicrotestExecution): RunMicrotestExecution 
     };
 }
 
+function copyProfileFiles(files: RunProfileFiles | null): RunProfileFiles | null {
+    if (files === null) {
+        return null;
+    }
+
+    return {
+        exclude: Array.from(files.exclude),
+        include: [ files.include[0], ...files.include.slice(1) ]
+    };
+}
+
 function copyProfileConfig(profile: RunMicrotestProfileConfig): RunMicrotestProfileConfig {
     return {
         execution: copyExecution(profile.execution),
+        files: copyProfileFiles(profile.files),
         reporters: profile.reporters === null ? null : Array.from(profile.reporters),
         resourceUsage: copyResourceUsagePolicy(profile.resourceUsage),
         testFamily: profile.testFamily,
@@ -180,4 +206,8 @@ export function createRunRuntimePolicy(
             observedStdout: false
         })
         : null;
+}
+
+export function assertRunnableResourceUsagePolicy(policy: RunResourceUsagePolicy): void {
+    validateRunResourceUsagePolicy(policy);
 }

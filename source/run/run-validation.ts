@@ -1,8 +1,6 @@
-import { discoverRunFiles } from './run-discovery.ts';
 import { assertSupportedProcessEngine as assertSupportedProcessEngineSelection } from './run-process-engine.ts';
 import {
     invalidRequest,
-    noTestsCollected,
     unsupportedRequest
 } from './run-errors.ts';
 import { validateRunEngineSelection } from './run-engine-selection.ts';
@@ -94,20 +92,9 @@ function assertValidRunProfileName(profileName: string): void {
 function validateRunRequest(request: RunRequest): void {
     assertValidRunProfileName(request.profile);
 
-    if (request.paths.length === 0) {
-        noTestsCollected('No explicit run paths were provided.');
-    }
-
     validateRunShard(request);
     validateRunSeed(request);
     validateRunResourceUsageRequest(request);
-}
-
-async function validateRunPaths(command: RunCommand): Promise<void> {
-    await discoverRunFiles({
-        cwd: command.cwd,
-        paths: command.request.paths
-    });
 }
 
 function validateRunCommand(command: RunCommand): void {
@@ -157,11 +144,10 @@ function validateRunConfig(config: RunConfig): void {
     }
 }
 
-export async function validateRunInput(command: RunCommand): Promise<void> {
+export function validateRunInput(command: RunCommand): void {
     validateRunCommand(command);
     validateRunRequest(command.request);
     validateRunConfig(command.config);
-    await validateRunPaths(command);
 }
 
 export function assertSupportedProcessEngine(command: RunCommand, profile: RunMicrotestProfileConfig): void {

@@ -1,4 +1,5 @@
 import type { WallClock } from '@enormora/wall-clock';
+import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import type { SerializedValue as SerializedValueShape } from '../compare/serialized-value.ts';
 import type { Execute } from '../engine/execution.ts';
 import type { Engine } from '../engine/engine.ts';
@@ -89,8 +90,14 @@ export type RunTimeoutPolicy = {
     readonly softMilliseconds: number;
 };
 
+export type RunProfileFiles = {
+    readonly exclude: readonly string[];
+    readonly include: NonEmptyReadonlyArray<string>;
+};
+
 export type RunMicrotestProfileConfig = {
     readonly execution: RunMicrotestExecution;
+    readonly files: RunProfileFiles | null;
     readonly reporters: RunReporters | null;
     readonly resourceUsage: RunResourceUsagePolicy;
     readonly testFamily: 'microtest';

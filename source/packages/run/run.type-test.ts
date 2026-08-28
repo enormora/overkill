@@ -24,7 +24,9 @@ import {
     type RunOrchestrator,
     type RunProcessModel,
     type RunProfileConfig,
+    type RunProfileFiles,
     type RunProjectConfig,
+    type RunProjectProfileFiles,
     type RunProjectMicrotestProfileConfig,
     type RunProjectProfileConfig,
     type RunResourceBudgets,
@@ -109,6 +111,14 @@ describe('@overkill-dev/run', function () {
         expect(new RunResolutionError('Unsupported.', undefined, 'unsupported-request')).type.toBe<
             RunResolutionError
         >();
+    });
+
+    test('exposes profile file discovery types', function () {
+        expect<RunMicrotestProfileConfig['files']>().type.toBe<RunProfileFiles | null>();
+        expect<RunProfileFiles['include']>().type.toBe<readonly [string, ...string[]]>();
+        expect<RunProjectMicrotestProfileConfig['files']>().type.toBe<RunProjectProfileFiles | undefined>();
+        expect<RunProjectProfileFiles['include']>().type.toBe<readonly [string, ...string[]]>();
+        expect<RunProjectProfileFiles['exclude']>().type.toBe<readonly string[] | undefined>();
     });
 
     test('exposes config loading helpers from the main package surface', function () {

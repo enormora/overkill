@@ -161,7 +161,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.resolve() rejects empty explicit input',
+            name: 'orchestrator.resolve() rejects empty input without profile file discovery',
             metadata: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function resolveEmptyPaths() {
@@ -175,7 +175,7 @@ export const testSuite = createOverkillSuite({
                         }
                     }));
                 }, {
-                    message: 'No explicit run paths were provided.'
+                    message: 'No run paths were provided and the selected profile has no file discovery policy.'
                 });
 
                 return scope.assert.collect();

@@ -38,21 +38,22 @@ Command-line business logic is exposed through `@overkill-dev/run/command-line`:
 - `loadRunConfig({ cwd, configPath })`
 
 The current runner accepts explicit file paths through `RunRequest.paths` and
-`commandLineRunner.listTests(...)`. Each file is imported as a native Node ESM
-module and must export a named `testNode` value created by the selected engine.
-`commandLineRunner.listTests(...)` resolves those explicit modules and prints a
-plain plan tree without executing tests or loading fallback reporters.
+profile file discovery through `profiles.<name>.files`. Each discovered or
+explicit file is imported as a native Node ESM module and must export a named
+`testNode` value created by the selected engine.
+`commandLineRunner.listTests(...)` resolves those modules and prints a plain
+plan tree without executing tests or loading fallback reporters.
 `RunCommand.engine` may be `{ kind: 'default' }` to use the shared public engine,
 `{ kind: 'instance', engine }` for in-process programmatic callers that also
 create their test nodes with that engine, or `{ kind: 'module', moduleUrl,
 exportName, exportKind }` for supervised programmatic callers that need the
 child process to load the engine without parent-side user-module execution.
 
-Profile file discovery, filtering, sharding, seeded ordering, records, and
-replay are separate runner milestones. Direct prebuilt `TestPlan` execution
-belongs to `@overkill-dev/engine` through `execute(testPlan)`. The command
-methods other than `runTests` and `listTests` are fixed first-party entrypoints
-and currently return argument errors until their command implementations land.
+Filtering, sharding, seeded ordering, records, and replay are separate runner
+milestones. Direct prebuilt `TestPlan` execution belongs to
+`@overkill-dev/engine` through `execute(testPlan)`. The command methods other
+than `runTests` and `listTests` are fixed first-party entrypoints and currently
+return argument errors until their command implementations land.
 
 Resource usage measurement is explicit. Project config can enable it under
 `profiles.<name>.resourceUsage.measure`; `RunRequest.measureResourceUsage`
@@ -71,11 +72,18 @@ benchmark commands. Every configured runner profile must declare
 `testFamily: 'microtest'`; the selected profile's test family is recorded in
 `RunFacts.execution.testFamily`.
 
+Configured microtest profiles may set `files.include` and `files.exclude`.
+`include` is required when `files` is present; `exclude` defaults to `[]`.
+With no run paths, the selected profile's files policy discovers test modules.
+Explicit file paths bypass the files policy. Directory paths require a files
+policy, filter the profile-discovered file set, and cannot be mixed with file
+paths.
+
 Microtest profile execution is modeled with two independent fields:
 `execution.processModel` is `in-process` or `supervised-process`, and
 `execution.scheduling` is `concurrent` or `serial`. The default `microtest`
 profile uses supervised concurrent execution. The selected values are recorded
-in `RunFacts.execution` and drive the current explicit-file runner path.
+in `RunFacts.execution` and drive runner planning.
 
 `RunRequest.capabilityRestrictions.mode` controls the current microtest
 restriction policy. The programmatic default is `enabled`; the command-line
