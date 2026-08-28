@@ -15,6 +15,7 @@ import {
     type CommandLineRunnerResult
 } from './command-line-runner.ts';
 import type { LoadedRunConfig } from './run-config.ts';
+import { RunCollectionError } from './run-errors.ts';
 import type { ResolvedRun, RunCommand, RunMicrotestProfileConfig, RunOrchestrator } from './run-types.ts';
 
 type PlainOutputIntent = {
@@ -282,6 +283,67 @@ export const testSuite = createOverkillSuite({
                 scope.assert.deepEqual(result.fallbackDiagnostics, [
                     'Overkill runner error: Collection failed.'
                 ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'commandLineRunner.listTests() maps config load errors',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const runner = createCommandLineRunner({
+                    ...createDependencies(
+                        createListOnlyOrchestrator(async function resolveCommand(command) {
+                            return createResolvedRun(command, []);
+                        }),
+                        async function createDefaultReporter() {
+                            return memoryReporter;
+                        }
+                    ),
+                    async loadRunConfig() {
+                        throw new Error('Config failed.');
+                    }
+                });
+                const result = await runner.listTests({
+                    configPath: null,
+                    cwd: process.cwd(),
+                    listRequest: {
+                        paths: [ 'source/a.test.ts' ],
+                        profile: 'microtest',
+                        withOrphans: false
+                    }
+                });
+
+                scope.assert.equal(result.exitCode, 70);
+                scope.assert.deepEqual(result.fallbackDiagnostics, [
+                    'Overkill internal error: Config failed.'
+                ]);
+                scope.assert.deepEqual(result.stdoutLines, []);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'commandLineRunner.listTests() maps thrown collection errors',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const result = await listTests(
+                    createDependencies(
+                        createListOnlyOrchestrator(async function resolveCommand() {
+                            throw new RunCollectionError('Collection failed.', { cause: null }, 'loader');
+                        }),
+                        async function createDefaultReporter() {
+                            return memoryReporter;
+                        }
+                    ),
+                    false
+                );
+
+                scope.assert.equal(result.exitCode, 2);
+                scope.assert.deepEqual(result.fallbackDiagnostics, [
+                    'Overkill runner error: Collection failed.'
+                ]);
+                scope.assert.deepEqual(result.stdoutLines, []);
 
                 return scope.assert.collect();
             }

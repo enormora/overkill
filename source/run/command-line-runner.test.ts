@@ -387,6 +387,25 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'commandLineRunner.runTests() maps internal config load errors',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const result = await runTests(createRunnerDependencies({
+                    async loadRunConfig() {
+                        throw new Error('Config failed.');
+                    }
+                }));
+
+                scope.assert.equal(result.exitCode, 70);
+                scope.assert.deepEqual(result.fallbackDiagnostics, [
+                    'Overkill internal error: Config failed.'
+                ]);
+                scope.assert.deepEqual(result.stdoutLines, []);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'commandLineRunner.runTests() maps reporter sink conflicts to exit code 3',
             metadata: {},
             async body(scope: OverkillScope) {
