@@ -7,7 +7,7 @@ function globSegments(pattern: string): readonly string[] {
 }
 
 function configMessage(message: string): string {
-    return `Invalid ${message[0]?.toLowerCase() ?? ''}${message.slice(1)}`;
+    return `Invalid ${message.charAt(0).toLowerCase()}${message.slice(1)}`;
 }
 
 export function invalidProfileFileGlobMessage(field: ProfileFileGlobField, pattern: string): string | null {

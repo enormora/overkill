@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -150,22 +150,58 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'discoverRunFiles() ignores profile glob matches that are not files',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                await withTemporaryDirectory(async function testTemporaryDirectory(directory) {
+                    await mkdir(join(directory, 'source', 'unit'), { recursive: true });
+                    const filePath = join(directory, 'source', 'unit', 'a.test.ts');
+                    await writeFile(filePath, 'export const testNode = null;\n');
+                    const realFilePath = await realpath(filePath);
+
+                    const files = await discoverRunFiles({
+                        cwd: directory,
+                        paths: [],
+                        profileFiles: profileFiles({
+                            exclude: [],
+                            include: [ 'source/**' ]
+                        })
+                    });
+
+                    scope.assert.deepEqual(files, [
+                        {
+                            file: 'source/unit/a.test.ts',
+                            href: pathToFileURL(realFilePath).href,
+                            path: realFilePath
+                        }
+                    ]);
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'discoverRunFiles() filters profile discovery by directory operands',
             metadata: {},
             async body(scope: OverkillScope) {
                 await withTemporaryDirectory(async function testTemporaryDirectory(directory) {
                     await mkdir(join(directory, 'source', 'integration'), { recursive: true });
-                    await mkdir(join(directory, 'source', 'unit'), { recursive: true });
+                    await mkdir(join(directory, 'source', 'unit', 'nested'), { recursive: true });
                     await writeFile(join(directory, 'source', 'unit', 'a.test.ts'), 'export const testNode = null;\n');
                     await writeFile(
-                        join(directory, 'source', 'integration', 'b.test.ts'),
+                        join(directory, 'source', 'unit', 'nested', 'b.test.ts'),
                         'export const testNode = null;\n'
                     );
-                    const realFilePath = await realpath(join(directory, 'source', 'unit', 'a.test.ts'));
+                    await writeFile(
+                        join(directory, 'source', 'integration', 'c.test.ts'),
+                        'export const testNode = null;\n'
+                    );
+                    const firstFilePath = await realpath(join(directory, 'source', 'unit', 'a.test.ts'));
+                    const secondFilePath = await realpath(join(directory, 'source', 'unit', 'nested', 'b.test.ts'));
 
                     const files = await discoverRunFiles({
                         cwd: directory,
-                        paths: [ 'source/unit' ],
+                        paths: [ 'source/unit', 'source/unit/nested' ],
                         profileFiles: profileFiles({
                             exclude: [],
                             include: [ 'source/**/*.test.ts' ]
@@ -175,8 +211,13 @@ export const testSuite = createOverkillSuite({
                     scope.assert.deepEqual(files, [
                         {
                             file: 'source/unit/a.test.ts',
-                            href: pathToFileURL(realFilePath).href,
-                            path: realFilePath
+                            href: pathToFileURL(firstFilePath).href,
+                            path: firstFilePath
+                        },
+                        {
+                            file: 'source/unit/nested/b.test.ts',
+                            href: pathToFileURL(secondFilePath).href,
+                            path: secondFilePath
                         }
                     ]);
                 });
@@ -218,6 +259,41 @@ export const testSuite = createOverkillSuite({
                             profileFiles: files
                         });
                     }, { message: 'Directory run path matched no profile-discovered test files: source/empty' });
+                    await scope.assert.rejects(async function discoverDuplicateDirectory() {
+                        await discoverRunFiles({
+                            cwd: directory,
+                            paths: [ 'source/unit', 'source/unit' ],
+                            profileFiles: files
+                        });
+                    }, { message: 'Run path must not be duplicated: source/unit' });
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'discoverRunFiles() rejects directory symlinks outside cwd',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                await withTemporaryDirectory(async function testTemporaryDirectory(directory) {
+                    const outsideDirectory = await mkdtemp(join(tmpdir(), 'overkill-outside-'));
+
+                    try {
+                        await symlink(outsideDirectory, join(directory, 'outside-link'), 'dir');
+
+                        await scope.assert.rejects(async function discoverOutsideDirectoryLink() {
+                            await discoverRunFiles({
+                                cwd: directory,
+                                paths: [ 'outside-link' ],
+                                profileFiles: profileFiles({
+                                    exclude: [],
+                                    include: [ '**/*.test.ts' ]
+                                })
+                            });
+                        }, { message: 'Run path must stay inside cwd: outside-link' });
+                    } finally {
+                        await rm(outsideDirectory, { force: true, recursive: true });
+                    }
                 });
 
                 return scope.assert.collect();
@@ -228,6 +304,16 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             async body(scope: OverkillScope) {
                 await withTemporaryDirectory(async function testTemporaryDirectory(directory) {
+                    await scope.assert.rejects(async function discoverBlankInclude() {
+                        await discoverRunFiles({
+                            cwd: directory,
+                            paths: [],
+                            profileFiles: profileFiles({
+                                exclude: [],
+                                include: [ ' ' ]
+                            })
+                        });
+                    }, { message: 'Profile files.include glob pattern must not be blank.' });
                     await scope.assert.rejects(async function discoverNegatedInclude() {
                         await discoverRunFiles({
                             cwd: directory,
@@ -248,6 +334,26 @@ export const testSuite = createOverkillSuite({
                             })
                         });
                     }, { message: 'Profile files.exclude negated glob patterns are not supported.' });
+                    await scope.assert.rejects(async function discoverAbsoluteInclude() {
+                        await discoverRunFiles({
+                            cwd: directory,
+                            paths: [],
+                            profileFiles: profileFiles({
+                                exclude: [],
+                                include: [ join(directory, 'source/**/*.test.ts') ]
+                            })
+                        });
+                    }, { message: 'Profile files.include glob pattern must be relative to cwd.' });
+                    await scope.assert.rejects(async function discoverParentExclude() {
+                        await discoverRunFiles({
+                            cwd: directory,
+                            paths: [],
+                            profileFiles: profileFiles({
+                                exclude: [ '../outside/**/*.test.ts' ],
+                                include: [ 'source/**/*.test.ts' ]
+                            })
+                        });
+                    }, { message: 'Profile files.exclude glob pattern must not contain parent segments.' });
                 });
 
                 return scope.assert.collect();
