@@ -9,24 +9,14 @@ import {
     type TestScope
 } from '@overkill-dev/engine';
 import type { Reporter } from '../../engine/reporter.ts';
-import {
-    createCommandLineRunner,
-    type CommandLineRunnerDependencies,
-    type CommandLineRunnerResult
-} from '../../run/command-line-runner.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import type { RunCommand, RunConfig, RunProcessModel, RunRequest, RunScheduling } from '../../run/run-types.ts';
-import type { LoadedRunConfig } from '../../run/run-config.ts';
 
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const duplicateFixtureAPath = 'source/integration-tests/run/fixtures/duplicate-a.test.ts';
 const duplicateFixtureBPath = 'source/integration-tests/run/fixtures/duplicate-b.test.ts';
 const endlessLoopFixturePath = 'source/integration-tests/run/fixtures/endless-loop.test.ts';
-const emptySuiteFixturePath = 'source/integration-tests/run/fixtures/empty-suite.test.ts';
-const missingTestNodeFixturePath = 'source/integration-tests/run/fixtures/missing-test-node.test.ts';
-const plainTestNodeFixturePath = 'source/integration-tests/run/fixtures/plain-test-node.test.ts';
 const schedulingFixturePath = 'source/integration-tests/run/fixtures/scheduling.test.ts';
-const throwsOnImportFixturePath = 'source/integration-tests/run/fixtures/throws-on-import.test.ts';
 
 type SchedulingEvent = `end:${string}` | `start:${string}`;
 
@@ -186,47 +176,6 @@ async function runSchedulingScenario(
     ));
 
     return recorder.events();
-}
-
-async function loadConfiguredRunConfig(): Promise<LoadedRunConfig> {
-    return {
-        configPath: null,
-        loader: defaultConfig.loader,
-        outputRenderer: defaultConfig.outputRenderer,
-        profiles: defaultConfig.profiles,
-        reporters: [ memoryReporter ],
-        runtimeStateDir: defaultConfig.runtimeStateDir
-    };
-}
-
-function createRunnerDependencies(): CommandLineRunnerDependencies {
-    return {
-        async createDefaultReporter() {
-            return memoryReporter;
-        },
-        async loadBaselineCommands() {
-            throw new Error('Baseline commands are not configured.');
-        },
-        async loadBenchmarkCommands() {
-            throw new Error('Benchmark commands are not configured.');
-        },
-        loadRunConfig: loadConfiguredRunConfig,
-        orchestrator
-    };
-}
-
-async function runCommandLine(paths: readonly string[]): Promise<CommandLineRunnerResult> {
-    const runner = createCommandLineRunner(createRunnerDependencies());
-
-    return await runner.runTests({
-        configPath: null,
-        cwd: process.cwd(),
-        runRequest: createRunRequest(paths)
-    });
-}
-
-function selectedEngineRunnerDiagnostic(path: string): string {
-    return `Overkill runner error: Test module testNode must be created by the selected engine: ${path}`;
 }
 
 function plainData(value: unknown): unknown {
@@ -464,58 +413,6 @@ export const testSuite = createSuite({
                 } finally {
                     await rm(outsideDirectory, { force: true, recursive: true });
                 }
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            name: 'command-line runner maps invalid module exports to runner errors',
-            metadata: {},
-            async body(scope: TestScope) {
-                const missingExportResult = await runCommandLine([ missingTestNodeFixturePath ]);
-                const plainExportResult = await runCommandLine([ plainTestNodeFixturePath ]);
-
-                scope.assert.equal(missingExportResult.exitCode, 2);
-                scope.assert.equal(plainExportResult.exitCode, 2);
-                scope.assert.deepEqual(missingExportResult.fallbackDiagnostics, [
-                    `Overkill runner error: Test module must export testNode: ${missingTestNodeFixturePath}`
-                ]);
-                scope.assert.deepEqual(plainExportResult.fallbackDiagnostics, [
-                    selectedEngineRunnerDiagnostic(plainTestNodeFixturePath)
-                ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            name: 'command-line runner maps collection failures to runner errors',
-            metadata: {},
-            async body(scope: TestScope) {
-                const importFailureResult = await runCommandLine([ throwsOnImportFixturePath ]);
-                const emptySuiteResult = await runCommandLine([ emptySuiteFixturePath ]);
-
-                scope.assert.equal(importFailureResult.exitCode, 2);
-                scope.assert.equal(emptySuiteResult.exitCode, 2);
-                scope.assert.deepEqual(importFailureResult.fallbackDiagnostics, [
-                    `Overkill runner error: Failed to load test module: ${throwsOnImportFixturePath}`
-                ]);
-                scope.assert.deepEqual(emptySuiteResult.fallbackDiagnostics, [
-                    'Overkill runner error: Failed to collect tests from explicit run inputs.'
-                ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            name: 'command-line runner maps empty explicit input to no tests collected',
-            metadata: {},
-            async body(scope: TestScope) {
-                const result = await runCommandLine([]);
-
-                scope.assert.equal(result.exitCode, 4);
-                scope.assert.deepEqual(result.fallbackDiagnostics, [
-                    'Overkill no tests collected: No explicit run paths were provided.'
-                ]);
 
                 return scope.assert.collect();
             }

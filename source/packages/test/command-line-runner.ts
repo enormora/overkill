@@ -11,6 +11,7 @@ import {
 } from 'cmd-ts';
 import type {
     CommandLineExitCode,
+    CommandLineListTestsRequest,
     CommandLineRunTestsRequest,
     CommandLineRunner,
     CommandLineRunnerResult
@@ -44,6 +45,13 @@ type RunCommandArguments = {
     readonly paths: readonly string[];
     readonly profile: string;
     readonly resourceBudgetOverrides: ResourceBudgetOverrides | null;
+};
+
+type ListCommandArguments = {
+    readonly configPath: string | null;
+    readonly paths: readonly string[];
+    readonly profile: string;
+    readonly withOrphans: boolean;
 };
 
 type CmdTsExitConfig = {
@@ -242,6 +250,18 @@ function createRunTestsRequest(args: RunCommandArguments, cwd: string): CommandL
     };
 }
 
+function createListTestsRequest(args: ListCommandArguments, cwd: string): CommandLineListTestsRequest {
+    return {
+        configPath: args.configPath,
+        cwd,
+        listRequest: {
+            paths: args.paths,
+            profile: args.profile,
+            withOrphans: args.withOrphans
+        }
+    };
+}
+
 function createOverkillCommand(
     loadRunner: () => Promise<CommandLineRunner>,
     cwd: string
@@ -279,11 +299,43 @@ function createOverkillCommand(
             return await runner.runTests(createRunTestsRequest(args, cwd));
         }
     });
+    const listCommand = command({
+        name: 'list',
+        args: {
+            configPath: option({
+                long: 'config',
+                type: configPathType,
+                defaultValue() {
+                    return null;
+                }
+            }),
+            profile: option({
+                long: 'profile',
+                type: string,
+                defaultValue() {
+                    return 'microtest';
+                }
+            }),
+            withOrphans: flag({ long: 'with-orphans' }),
+            paths: restPositionals({ displayName: 'path' })
+        },
+        async handler(args: ListCommandArguments) {
+            const runner = await loadRunner();
+
+            return await runner.listTests(createListTestsRequest(args, cwd));
+        }
+    });
 
     return subcommands({
         name: 'overkill',
-        cmds: { run: runCommand }
+        cmds: { list: listCommand, run: runCommand }
     });
+}
+
+function writeStdoutLines(stdout: WritableOutput, result: CommandLineRunnerResult): void {
+    for (const line of result.stdoutLines) {
+        writeLine(stdout, line);
+    }
 }
 
 function writeFallbackDiagnostics(stderr: WritableOutput, result: CommandLineRunnerResult): void {
@@ -325,6 +377,7 @@ function applyRunResultExit(
     request: OverkillCommandLineRunRequest,
     result: CommandLineRunnerResult
 ): CommandLineExitCode {
+    writeStdoutLines(request.stdout, result);
     writeFallbackDiagnostics(request.stderr, result);
     request.applyExitCode(result.exitCode);
 

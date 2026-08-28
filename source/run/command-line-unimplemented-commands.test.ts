@@ -13,6 +13,7 @@ import {
     loadUnimplementedBaselineCommands,
     loadUnimplementedBenchmarkCommands
 } from './command-line-unimplemented-commands.ts';
+import type { RunRequest } from './run-types.ts';
 
 const commandLineCommandContextFactory = createFactory<CommandLineCommandContext>(
     function createCommandLineCommandContext() {
@@ -23,6 +24,27 @@ const commandLineCommandContextFactory = createFactory<CommandLineCommandContext
         };
     }
 );
+
+const singletonRunRequest: RunRequest = {
+    baselineUpdateMode: 'none',
+    capabilityRestrictions: { mode: 'disabled' },
+    capture: 'buffered',
+    debug: {
+        mode: 'off',
+        selectors: []
+    },
+    execution: { mode: 'profile-default' },
+    measureResourceUsage: null,
+    order: 'plan',
+    paths: [ 'source/integration-tests/run/fixtures/passing.test.ts' ],
+    profile: 'microtest',
+    resourceBudgetOverrides: null,
+    resourceUsageSamplingIntervalMilliseconds: null,
+    seed: { value: 42n },
+    selection: { kind: 'all' },
+    shard: { index: 0, total: 1 },
+    verbose: false
+};
 
 export const testSuite = createOverkillSuite({
     name: 'source/run/command-line-unimplemented-commands.test.ts',
@@ -74,6 +96,28 @@ export const testSuite = createOverkillSuite({
                 scope.assert.deepEqual(result.fallbackDiagnostics, [
                     'Overkill argument error: Command "bench list" is not implemented yet.'
                 ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'commandLineRunner singleton runs tests with the default reporter',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const result = await commandLineRunner.runTests({
+                    configPath: null,
+                    cwd: process.cwd(),
+                    runRequest: singletonRunRequest
+                });
+
+                scope.assert.equal(result.exitCode, 2);
+                scope.assert.deepEqual(result.fallbackDiagnostics, [
+                    'Overkill runner error: Runtime policy violation: console.',
+                    'Overkill runner error: Runtime policy violation: console.',
+                    'Overkill runner error: Runtime policy violation: console.',
+                    'Overkill runner error: Runtime policy violation: console.'
+                ]);
+                scope.assert.deepEqual(result.stdoutLines, []);
 
                 return scope.assert.collect();
             }

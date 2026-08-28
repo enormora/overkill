@@ -122,23 +122,28 @@ function selectedProfile(command: RunCommand): RunMicrotestProfileConfig {
 
 function createPassingPlan(): TestPlan {
     const engine = createTestEngine();
+    const testNode = engine.createSuite({
+        children: [
+            engine.createTestCase({
+                body(scope) {
+                    scope.assert.true(true);
+                    return scope.assert.collect();
+                },
+                metadata: {},
+                name: 'passes'
+            })
+        ],
+        metadata: {},
+        name: 'suite'
+    });
 
-    return engine.createTestPlan(
-        engine.createRoot({
-            children: [
-                engine.createTestCase({
-                    body(scope) {
-                        scope.assert.true(true);
-                        return scope.assert.collect();
-                    },
-                    metadata: {},
-                    name: 'passes'
-                })
-            ],
+    return engine.createTestPlanFromTestFiles({
+        files: [ { file: 'source/a.test.ts', testNode } ],
+        root: {
             metadata: {},
             name: 'root'
-        })
-    );
+        }
+    });
 }
 
 async function resolveRunCommand(command: RunCommand): ReturnType<RunOrchestrator['resolve']> {
@@ -377,6 +382,25 @@ export const testSuite = createOverkillSuite({
                 scope.assert.deepEqual(result.fallbackDiagnostics, [
                     'Overkill configuration error: Invalid project policy.'
                 ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'commandLineRunner.runTests() maps internal config load errors',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const result = await runTests(createRunnerDependencies({
+                    async loadRunConfig() {
+                        throw new Error('Config failed.');
+                    }
+                }));
+
+                scope.assert.equal(result.exitCode, 70);
+                scope.assert.deepEqual(result.fallbackDiagnostics, [
+                    'Overkill internal error: Config failed.'
+                ]);
+                scope.assert.deepEqual(result.stdoutLines, []);
 
                 return scope.assert.collect();
             }

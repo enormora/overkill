@@ -37,20 +37,22 @@ Command-line business logic is exposed through `@overkill-dev/run/command-line`:
 - `defineConfig(config)`
 - `loadRunConfig({ cwd, configPath })`
 
-The current runner accepts explicit file paths through `RunRequest.paths`.
-Each file is imported as a native Node ESM module and must export a named
-`testNode` value created by the selected engine. `RunCommand.engine` may be
-`{ kind: 'default' }` to use the shared public engine, `{ kind: 'instance',
-engine }` for in-process programmatic callers that also create their test
-nodes with that engine, or `{ kind: 'module', moduleUrl, exportName,
-exportKind }` for supervised programmatic callers that need the child process
-to load the engine without parent-side user-module execution.
+The current runner accepts explicit file paths through `RunRequest.paths` and
+`commandLineRunner.listTests(...)`. Each file is imported as a native Node ESM
+module and must export a named `testNode` value created by the selected engine.
+`commandLineRunner.listTests(...)` resolves those explicit modules and prints a
+plain plan tree without executing tests or loading fallback reporters.
+`RunCommand.engine` may be `{ kind: 'default' }` to use the shared public engine,
+`{ kind: 'instance', engine }` for in-process programmatic callers that also
+create their test nodes with that engine, or `{ kind: 'module', moduleUrl,
+exportName, exportKind }` for supervised programmatic callers that need the
+child process to load the engine without parent-side user-module execution.
 
-General file discovery, filtering, sharding, seeded ordering, records, and
+Profile file discovery, filtering, sharding, seeded ordering, records, and
 replay are separate runner milestones. Direct prebuilt `TestPlan` execution
-belongs to `@overkill-dev/engine` through `execute(testPlan)`. The non-
-`runTests` command methods are fixed first-party entrypoints and currently
-return argument errors until their command implementations land.
+belongs to `@overkill-dev/engine` through `execute(testPlan)`. The command
+methods other than `runTests` and `listTests` are fixed first-party entrypoints
+and currently return argument errors until their command implementations land.
 
 Resource usage measurement is explicit. Project config can enable it under
 `profiles.<name>.resourceUsage.measure`; `RunRequest.measureResourceUsage`

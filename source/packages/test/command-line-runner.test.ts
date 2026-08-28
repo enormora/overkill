@@ -3,6 +3,7 @@ import { createLineReporter } from '@overkill-dev/reporter-line';
 import type {
     CommandLineCommand,
     CommandLineExitCode,
+    CommandLineListTestsRequest,
     CommandLineRunTestsRequest,
     CommandLineRunner,
     CommandLineRunnerResult
@@ -22,7 +23,8 @@ type RecordedExitCodes = {
 };
 
 type RequestRecorder = {
-    readonly record: (commandLineRequest: CommandLineRunTestsRequest) => void;
+    readonly recordList: (commandLineRequest: CommandLineListTestsRequest) => void;
+    readonly recordRun: (commandLineRequest: CommandLineRunTestsRequest) => void;
 };
 
 const unexpectedCommand: CommandLineCommand = async function runUnexpectedCommand() {
@@ -41,7 +43,8 @@ function passingResult(): CommandLineRunnerResult {
     return {
         exitCode: testExitCodes.pass,
         fallbackDiagnostics: [],
-        runResult: null
+        runResult: null,
+        stdoutLines: []
     };
 }
 
@@ -92,11 +95,15 @@ function createRunner(
             listBenchmarks: unexpectedCommand,
             runBenchmarks: unexpectedCommand
         },
-        listTests: unexpectedCommand,
+        async listTests(request) {
+            requestRecorder.recordList(request);
+
+            return result;
+        },
         replayRun: unexpectedCommand,
         replayWitness: unexpectedCommand,
         async runTests(request) {
-            requestRecorder.record(request);
+            requestRecorder.recordRun(request);
 
             return result;
         }
@@ -108,14 +115,16 @@ async function runCommandLine(
     runnerResult: CommandLineRunnerResult
 ): Promise<{
     readonly exitCodes: readonly number[];
-    readonly requests: readonly CommandLineRunTestsRequest[];
+    readonly listRequests: readonly CommandLineListTestsRequest[];
+    readonly runRequests: readonly CommandLineRunTestsRequest[];
     readonly stderr: string;
     readonly stdout: string;
 }> {
     const stdout = createCapturedOutput();
     const stderr = createCapturedOutput();
     const exitCodes = createRecordedExitCodes();
-    const requests: CommandLineRunTestsRequest[] = [];
+    const listRequests: CommandLineListTestsRequest[] = [];
+    const runRequests: CommandLineRunTestsRequest[] = [];
 
     await runOverkillCommandLine({
         arguments: args,
@@ -123,8 +132,11 @@ async function runCommandLine(
         cwd: '/project',
         async loadRunner() {
             return createRunner({
-                record(request) {
-                    requests.push(request);
+                recordList(request) {
+                    listRequests.push(request);
+                },
+                recordRun(request) {
+                    runRequests.push(request);
                 }
             }, runnerResult);
         },
@@ -134,7 +146,8 @@ async function runCommandLine(
 
     return {
         exitCodes: exitCodes.values,
-        requests,
+        listRequests,
+        runRequests,
         stderr: stderr.chunks.join(''),
         stdout: stdout.chunks.join('')
     };
@@ -156,7 +169,7 @@ export const testSuite = createSuite({
                 scope.assert.deepEqual(result.exitCodes, [ 0 ]);
                 scope.assert.equal(result.stderr, '');
                 scope.assert.equal(result.stdout, '');
-                scope.assert.deepEqual(result.requests, [
+                scope.assert.deepEqual(result.runRequests, [
                     {
                         configPath: null,
                         cwd: '/project',
@@ -187,6 +200,76 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            name: 'overkill wrapper parses explicit list paths',
+            metadata: {},
+            async body(scope: TestScope) {
+                const result = await runCommandLine(
+                    [
+                        '--config',
+                        'overkill.config.ts',
+                        'list',
+                        '--profile=backend-http',
+                        '--with-orphans',
+                        'source/a.test.ts',
+                        'source/b.test.ts'
+                    ],
+                    passingResult()
+                );
+
+                scope.assert.deepEqual(result.exitCodes, [ 0 ]);
+                scope.assert.deepEqual(result.runRequests, []);
+                scope.assert.deepEqual(result.listRequests, [
+                    {
+                        configPath: 'overkill.config.ts',
+                        cwd: '/project',
+                        listRequest: {
+                            paths: [ 'source/a.test.ts', 'source/b.test.ts' ],
+                            profile: 'backend-http',
+                            withOrphans: true
+                        }
+                    }
+                ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            name: 'overkill wrapper writes list stdout lines',
+            metadata: {},
+            async body(scope: TestScope) {
+                const result = await runCommandLine([ 'list', 'source/a.test.ts' ], {
+                    exitCode: 0,
+                    fallbackDiagnostics: [],
+                    runResult: null,
+                    stdoutLines: [ 'source/a.test.ts', '  suite', '    passes' ]
+                });
+
+                scope.assert.deepEqual(result.exitCodes, [ 0 ]);
+                scope.assert.equal(result.stdout, 'source/a.test.ts\n  suite\n    passes\n');
+                scope.assert.equal(result.stderr, '');
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            name: 'overkill wrapper maps unsupported list flags to argument errors',
+            metadata: {},
+            async body(scope: TestScope) {
+                const result = await runCommandLine(
+                    [ 'list', '--resource-budget', 'activeResourceCount=8', 'source/a.test.ts' ],
+                    passingResult()
+                );
+
+                scope.assert.deepEqual(result.exitCodes, [ 3 ]);
+                scope.assert.equal(result.listRequests.length, 0);
+                scope.assert.equal(result.stdout, '');
+                scope.assert.true(result.stderr.includes('Unknown arguments'));
+                scope.assert.true(result.stderr.includes('--resource-budget'));
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
             name: 'overkill wrapper parses config and profile flags',
             metadata: {},
             async body(scope: TestScope) {
@@ -194,7 +277,7 @@ export const testSuite = createSuite({
                     [ '--config', 'overkill.config.ts', 'run', '--profile=backend-http', 'source/a.test.ts' ],
                     passingResult()
                 );
-                const [ commandLineRequest ] = result.requests;
+                const [ commandLineRequest ] = result.runRequests;
 
                 scope.require.defined(commandLineRequest);
                 scope.assert.equal(commandLineRequest.configPath, 'overkill.config.ts');
@@ -219,7 +302,7 @@ export const testSuite = createSuite({
                     ],
                     passingResult()
                 );
-                const [ commandLineRequest ] = result.requests;
+                const [ commandLineRequest ] = result.runRequests;
 
                 scope.require.defined(commandLineRequest);
                 scope.assert.equal(commandLineRequest.runRequest.measureResourceUsage, true);
@@ -244,7 +327,7 @@ export const testSuite = createSuite({
                     [ 'run', '--resource-budget', 'residentSetBytes=200', 'source/a.test.ts' ],
                     passingResult()
                 );
-                const [ commandLineRequest ] = result.requests;
+                const [ commandLineRequest ] = result.runRequests;
 
                 scope.require.defined(commandLineRequest);
                 scope.assert.equal(commandLineRequest.runRequest.measureResourceUsage, true);
@@ -266,7 +349,7 @@ export const testSuite = createSuite({
             metadata: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine([ 'run', '--', '--seed' ], passingResult());
-                const [ commandLineRequest ] = result.requests;
+                const [ commandLineRequest ] = result.runRequests;
 
                 scope.require.defined(commandLineRequest);
                 scope.assert.deepEqual(commandLineRequest.runRequest.paths, [ '--seed' ]);
@@ -281,7 +364,8 @@ export const testSuite = createSuite({
                 const result = await runCommandLine([ 'run', 'source/a.test.ts' ], {
                     exitCode: testExitCodes.runnerError,
                     fallbackDiagnostics: [ 'Overkill runner error: A', 'Overkill runner error: B' ],
-                    runResult: null
+                    runResult: null,
+                    stdoutLines: []
                 });
 
                 scope.assert.deepEqual(result.exitCodes, [ 2 ]);
@@ -303,7 +387,7 @@ export const testSuite = createSuite({
                 );
 
                 scope.assert.deepEqual(result.exitCodes, [ 3 ]);
-                scope.assert.equal(result.requests.length, 0);
+                scope.assert.equal(result.runRequests.length, 0);
                 scope.assert.equal(result.stdout, '');
                 scope.assert.true(result.stderr.includes('Unknown arguments'));
                 scope.assert.true(result.stderr.includes('--filter'));
@@ -327,7 +411,7 @@ export const testSuite = createSuite({
                 );
 
                 scope.assert.deepEqual(result.exitCodes, [ 3 ]);
-                scope.assert.equal(result.requests.length, 0);
+                scope.assert.equal(result.runRequests.length, 0);
                 scope.assert.true(result.stderr.includes('Duplicate resource budget name: activeResourceCount'));
 
                 return scope.assert.collect();
@@ -343,7 +427,7 @@ export const testSuite = createSuite({
                 );
 
                 scope.assert.deepEqual(result.exitCodes, [ 3 ]);
-                scope.assert.equal(result.requests.length, 0);
+                scope.assert.equal(result.runRequests.length, 0);
                 scope.assert.true(result.stderr.includes('Unknown resource budget name: heap'));
 
                 return scope.assert.collect();
@@ -356,7 +440,7 @@ export const testSuite = createSuite({
                 const result = await runCommandLine([ '--help' ], passingResult());
 
                 scope.assert.deepEqual(result.exitCodes, [ 0 ]);
-                scope.assert.equal(result.requests.length, 0);
+                scope.assert.equal(result.runRequests.length, 0);
                 scope.assert.equal(result.stderr, '');
                 scope.assert.true(result.stdout.includes('overkill <subcommand>'));
 

@@ -217,6 +217,30 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'evaluateAssertion() reports unsupported collection operands',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const failedChecks = [
+                    evaluateAssertion(check.empty(42), 1),
+                    evaluateAssertion(check.length(42, 0), 2),
+                    evaluateAssertion(check.notEmpty(42), 3)
+                ];
+
+                scope.assert.deepEqual(
+                    failedChecks.map(function toActual(failedCheck) {
+                        return failedCheck?.actual;
+                    }),
+                    [
+                        serializeValue(42),
+                        serializeValue(42),
+                        serializeValue(42)
+                    ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'evaluateAssertion() passes thrown matcher composites',
             metadata: {},
             async body(scope: OverkillScope) {

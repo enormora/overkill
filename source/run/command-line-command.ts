@@ -1,7 +1,7 @@
 import type { RunResult, RunnerError } from '../engine/run-result.ts';
 import { ReporterSinkConflictError } from '../engine/reporter.ts';
 import type { RunRequest } from './run-types.ts';
-import { RunResolutionError } from './run-errors.ts';
+import { RunCollectionError, RunResolutionError } from './run-errors.ts';
 import { RunConfigError, type RunConfigLoadRequest } from './run-config.ts';
 
 export const commandLineExitCodes = Object.freeze({
@@ -20,6 +20,14 @@ export type CommandLineRunTestsRequest = RunConfigLoadRequest & {
     readonly runRequest: RunRequest;
 };
 
+export type CommandLineListTestsRequest = RunConfigLoadRequest & {
+    readonly listRequest: {
+        readonly paths: readonly string[];
+        readonly profile: string;
+        readonly withOrphans: boolean;
+    };
+};
+
 export type CommandLineCommandContext = RunConfigLoadRequest & {
     readonly arguments: readonly string[];
 };
@@ -28,6 +36,7 @@ export type CommandLineRunnerResult = {
     readonly exitCode: CommandLineExitCode;
     readonly fallbackDiagnostics: readonly string[];
     readonly runResult: RunResult | null;
+    readonly stdoutLines: readonly string[];
 };
 
 export type CommandLineCommand = (context: CommandLineCommandContext) => Promise<CommandLineRunnerResult>;
@@ -48,6 +57,10 @@ export type CommandLineBenchmarkCommands = {
 
 function formatRunnerError(error: RunnerError): string {
     return `Overkill runner error: ${error.message}`;
+}
+
+export function formatRunnerErrorDiagnostics(errors: readonly RunnerError[]): readonly string[] {
+    return errors.map(formatRunnerError);
 }
 
 function formatError(error: unknown): string {
@@ -122,7 +135,7 @@ export function formatFallbackDiagnostics(
         return !deliveredRunnerErrors.has(error);
     });
 
-    return unreportedErrors.map(formatRunnerError);
+    return formatRunnerErrorDiagnostics(unreportedErrors);
 }
 
 export function readExitCodeFromRunResult(result: RunResult): CommandLineExitCode {
@@ -157,7 +170,28 @@ function createCommandLineErrorResult(
     return {
         exitCode,
         fallbackDiagnostics: formatErrorDiagnostics(label, error),
-        runResult: null
+        runResult: null,
+        stdoutLines: []
+    };
+}
+
+function createCommandLineResolutionErrorResult(
+    classifiedError: RunResolutionError,
+    error: unknown
+): CommandLineRunnerResult {
+    if (classifiedError.code() === 'no-tests-collected') {
+        return createCommandLineErrorResult(commandLineExitCodes.noTestsCollected, 'no tests collected', error);
+    }
+
+    return createCommandLineErrorResult(commandLineExitCodes.argumentOrConfig, 'argument error', error);
+}
+
+function createCommandLineCollectionErrorResult(error: RunCollectionError): CommandLineRunnerResult {
+    return {
+        exitCode: commandLineExitCodes.runnerError,
+        fallbackDiagnostics: formatRunnerErrorDiagnostics([ error.runnerError() ]),
+        runResult: null,
+        stdoutLines: []
     };
 }
 
@@ -173,11 +207,11 @@ export function createCommandLineErrorResultFromUnknown(error: unknown): Command
     }
 
     if (classifiedError instanceof RunResolutionError) {
-        if (classifiedError.code() === 'no-tests-collected') {
-            return createCommandLineErrorResult(commandLineExitCodes.noTestsCollected, 'no tests collected', error);
-        }
+        return createCommandLineResolutionErrorResult(classifiedError, error);
+    }
 
-        return createCommandLineErrorResult(commandLineExitCodes.argumentOrConfig, 'argument error', error);
+    if (classifiedError instanceof RunCollectionError) {
+        return createCommandLineCollectionErrorResult(classifiedError);
     }
 
     return createCommandLineErrorResult(commandLineExitCodes.internalCrash, 'internal error', error);

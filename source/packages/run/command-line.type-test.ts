@@ -15,6 +15,7 @@ import {
     type CommandLineCommand,
     type CommandLineCommandContext,
     type CommandLineExitCode,
+    type CommandLineListTestsRequest,
     type CommandLineRunner,
     type CommandLineRunnerResult,
     type CommandLineRunTestsRequest,
@@ -36,7 +37,9 @@ describe('@overkill-dev/run/command-line', function () {
         expect<typeof commandLineRunner.runTests>().type.toBe<
             (request: CommandLineRunTestsRequest) => Promise<CommandLineRunnerResult>
         >();
-        expect<typeof commandLineRunner.listTests>().type.toBe<CommandLineCommand>();
+        expect<typeof commandLineRunner.listTests>().type.toBe<
+            (request: CommandLineListTestsRequest) => Promise<CommandLineRunnerResult>
+        >();
         expect<typeof commandLineRunner.replayRun>().type.toBe<CommandLineCommand>();
         expect<typeof commandLineRunner.replayWitness>().type.toBe<CommandLineCommand>();
         expect<typeof commandLineRunner.baseline>().type.toBe<CommandLineBaselineCommands>();
@@ -52,12 +55,21 @@ describe('@overkill-dev/run/command-line', function () {
         expect<CommandLineCommandContext['arguments']>().type.toBe<readonly string[]>();
         expect<CommandLineCommandContext['configPath']>().type.toBe<string | null>();
         expect<CommandLineCommandContext['cwd']>().type.toBe<string>();
+        expect<keyof CommandLineListTestsRequest>().type.toBe<'configPath' | 'cwd' | 'listRequest'>();
+        expect<CommandLineListTestsRequest['listRequest']>().type.toBe<{
+            readonly paths: readonly string[];
+            readonly profile: string;
+            readonly withOrphans: boolean;
+        }>();
     });
 
     test('exposes stable command-line results and exit codes', function () {
-        expect<CommandLineRunnerResultKeys>().type.toBe<'exitCode' | 'fallbackDiagnostics' | 'runResult'>();
+        expect<CommandLineRunnerResultKeys>().type.toBe<
+            'exitCode' | 'fallbackDiagnostics' | 'runResult' | 'stdoutLines'
+        >();
         expect<CommandLineExitCode>().type.toBe<ExpectedCommandLineExitCode>();
         expect<CommandLineRunnerResult['fallbackDiagnostics']>().type.toBe<readonly string[]>();
+        expect<CommandLineRunnerResult['stdoutLines']>().type.toBe<readonly string[]>();
     });
 
     test('exposes typed config helpers', function () {

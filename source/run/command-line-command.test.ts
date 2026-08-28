@@ -6,7 +6,7 @@ import {
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
 import { createCommandLineErrorResultFromUnknown } from './command-line-command.ts';
-import { RunResolutionError } from './run-errors.ts';
+import { RunCollectionError, RunResolutionError } from './run-errors.ts';
 
 export const testSuite = createOverkillSuite({
     name: 'source/run/command-line-command.test.ts',
@@ -29,6 +29,23 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'createCommandLineErrorResultFromUnknown() maps collection errors',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const result = createCommandLineErrorResultFromUnknown(
+                    new RunCollectionError('Collection failed.', { cause: null }, 'loader')
+                );
+
+                scope.assert.equal(result.exitCode, 2);
+                scope.assert.deepEqual(result.fallbackDiagnostics, [
+                    'Overkill runner error: Collection failed.'
+                ]);
+                scope.assert.deepEqual(result.stdoutLines, []);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'createCommandLineErrorResultFromUnknown() formats supplemental aggregate errors',
             metadata: {},
             body(scope: OverkillScope) {
@@ -41,6 +58,63 @@ export const testSuite = createOverkillSuite({
                 scope.assert.deepEqual(result.fallbackDiagnostics, [
                     'Overkill internal error: primary failure',
                     'Overkill internal error: supplemental failure'
+                ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'createCommandLineErrorResultFromUnknown() formats supplemental runner errors',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const primaryError = new Error('primary failure');
+                const result = createCommandLineErrorResultFromUnknown(
+                    new AggregateError([
+                        primaryError,
+                        {
+                            attributedTo: null,
+                            cause: null,
+                            message: 'collection failure',
+                            subtype: 'loader'
+                        }
+                    ], 'aggregate failure')
+                );
+
+                scope.assert.equal(result.exitCode, 70);
+                scope.assert.deepEqual(result.fallbackDiagnostics, [
+                    'Overkill internal error: primary failure',
+                    'Overkill runner error: collection failure'
+                ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'createCommandLineErrorResultFromUnknown() keeps malformed supplemental errors internal',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const primaryError = new Error('primary failure');
+                const result = createCommandLineErrorResultFromUnknown(
+                    new AggregateError([
+                        primaryError,
+                        null,
+                        {
+                            message: 404,
+                            subtype: 'loader'
+                        },
+                        {
+                            message: 'collection failure',
+                            subtype: 404
+                        }
+                    ], 'aggregate failure')
+                );
+
+                scope.assert.equal(result.exitCode, 70);
+                scope.assert.deepEqual(result.fallbackDiagnostics, [
+                    'Overkill internal error: primary failure',
+                    'Overkill internal error: null',
+                    'Overkill internal error: [object Object]',
+                    'Overkill internal error: [object Object]'
                 ]);
 
                 return scope.assert.collect();

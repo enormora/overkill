@@ -35,6 +35,7 @@ type CommandLineRunnerResultData = {
     readonly exitCode: CommandLineRunnerResult['exitCode'];
     readonly fallbackDiagnostics: readonly string[];
     readonly runResult: null;
+    readonly stdoutLines: readonly string[];
 };
 
 const commandLineRunnerResultFactory = createFactory<CommandLineRunnerResultData>(
@@ -42,7 +43,8 @@ const commandLineRunnerResultFactory = createFactory<CommandLineRunnerResultData
         return {
             exitCode: 3,
             fallbackDiagnostics: [ 'command ran' ],
-            runResult: null
+            runResult: null,
+            stdoutLines: []
         };
     }
 );
