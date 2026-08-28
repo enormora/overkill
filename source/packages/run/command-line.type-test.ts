@@ -22,6 +22,7 @@ import {
     type LoadedRunConfig,
     type RunProjectConfig,
     type RunProjectMicrotestProfileConfig,
+    type RunProjectProfileFiles,
     type RunProjectProfileConfig,
     type RunProjectProfilesConfig,
     type RunProjectResourceBudgets
@@ -92,6 +93,9 @@ describe('@overkill-dev/run/command-line', function () {
             readonly execution: RunProjectMicrotestProfileConfig['execution'];
         }>();
         expect<RunProjectProfilesConfig['backend-http']>().type.toBe<RunProjectMicrotestProfileConfig>();
+        expect<RunProjectMicrotestProfileConfig['files']>().type.toBe<RunProjectProfileFiles | undefined>();
+        expect<RunProjectProfileFiles['include']>().type.toBe<readonly [string, ...string[]]>();
         expect<LoadedRunConfig['profiles']['backend-http']['resourceUsage']['measure']>().type.toBe<boolean>();
+        expect<LoadedRunConfig['profiles']['backend-http']['files']>().type.not.toBe<undefined>();
     });
 });

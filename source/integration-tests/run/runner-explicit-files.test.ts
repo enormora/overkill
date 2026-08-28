@@ -17,6 +17,8 @@ const duplicateFixtureAPath = 'source/integration-tests/run/fixtures/duplicate-a
 const duplicateFixtureBPath = 'source/integration-tests/run/fixtures/duplicate-b.test.ts';
 const endlessLoopFixturePath = 'source/integration-tests/run/fixtures/endless-loop.test.ts';
 const schedulingFixturePath = 'source/integration-tests/run/fixtures/scheduling.test.ts';
+const discoveryFixtureGlob = 'source/integration-tests/run/fixtures/discovery/*.test.ts';
+const discoverySlowFixturePath = 'source/integration-tests/run/fixtures/discovery/slow.test.ts';
 
 type SchedulingEvent = `end:${string}` | `start:${string}`;
 
@@ -42,6 +44,7 @@ function createDefaultMicrotestProfile(): RunConfig['profiles'][string] {
             processModel: 'supervised-process',
             scheduling: 'concurrent'
         },
+        files: null,
         reporters: null,
         resourceUsage: {
             budgets: {
@@ -99,6 +102,22 @@ function createRunRequest(paths: readonly string[]): RunRequest {
 function createRunConfig(): RunConfig {
     return {
         ...defaultConfig,
+        reporters: [ memoryReporter ]
+    };
+}
+
+function createDiscoveryRunConfig(): RunConfig {
+    return {
+        ...defaultConfig,
+        profiles: {
+            microtest: {
+                ...createDefaultMicrotestProfile(),
+                files: {
+                    exclude: [ discoverySlowFixturePath ],
+                    include: [ discoveryFixtureGlob ]
+                }
+            }
+        },
         reporters: [ memoryReporter ]
     };
 }
@@ -238,6 +257,49 @@ export const testSuite = createSuite({
                     skipped: 0
                 });
                 scope.assert.equal(result.runnerErrors.length, 0);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            name: 'runner resolves and executes profile-discovered files',
+            metadata: {},
+            async body(scope: TestScope) {
+                const command = createSupervisedRunCommand([], createDiscoveryRunConfig());
+                const resolvedRun = await orchestrator.resolve(command);
+                const result = await orchestrator.run(command);
+
+                scope.assert.deepEqual(
+                    resolvedRun.facts.cases.map(function toCaseId(testCase) {
+                        return testCase.id;
+                    }),
+                    [
+                        {
+                            file: 'source/integration-tests/run/fixtures/discovery/integration.test.ts',
+                            name: 'integration passes',
+                            params: null,
+                            suite: [ 'discovery' ]
+                        },
+                        {
+                            file: 'source/integration-tests/run/fixtures/discovery/unit.test.ts',
+                            name: 'unit passes',
+                            params: null,
+                            suite: [ 'discovery' ]
+                        }
+                    ]
+                );
+                scope.assert.deepEqual(result.summary, {
+                    crashed: 0,
+                    defined: 4,
+                    discovered: 2,
+                    failed: 0,
+                    inconclusive: 0,
+                    passed: 2,
+                    planned: 2,
+                    resourceExhausted: 0,
+                    runtimePolicy: 0,
+                    skipped: 0
+                });
 
                 return scope.assert.collect();
             }
@@ -403,7 +465,7 @@ export const testSuite = createSuite({
                     });
                     await scope.assert.rejects(async function resolveDirectoryPath() {
                         await orchestrator.resolve(createRunCommand([ 'source/integration-tests/run/fixtures' ]));
-                    }, { message: 'Run path must be a file: source/integration-tests/run/fixtures' });
+                    }, { message: 'Directory run paths require selected profile file discovery.' });
                     await scope.assert.rejects(async function resolveDuplicatePath() {
                         await orchestrator.resolve(createRunCommand([ passingFixturePath, passingFixturePath ]));
                     }, { message: `Run path must not be duplicated: ${passingFixturePath}` });

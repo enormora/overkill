@@ -11,6 +11,7 @@ import {
     type RunProjectMeasuredResourceUsage as ParsedRunProjectMeasuredResourceUsage,
     type RunProjectMicrotestExecution as ParsedRunProjectMicrotestExecution,
     type RunProjectMicrotestProfileConfig as ParsedRunProjectMicrotestProfileConfig,
+    type RunProjectProfileFiles as ParsedRunProjectProfileFiles,
     type RunProjectProfileConfig as ParsedRunProjectProfileConfig,
     type RunProjectProfilesConfig as ParsedRunProjectProfilesConfig,
     type RunProjectResourceBudgets as ParsedRunProjectResourceBudgets,
@@ -23,17 +24,23 @@ import {
     type RunLoaderConfig,
     type RunMicrotestExecution,
     type RunMicrotestProfileConfig,
+    type RunProfileFiles,
     type RunProfileConfig,
     type RunProfilesConfig,
     type RunResourceBudgets,
     type RunResourceUsagePolicy,
     type RunTimeoutPolicy
 } from './run-types.ts';
+import {
+    invalidProfileFileGlobConfigMessage,
+    type ProfileFileGlobField
+} from './profile-file-glob.ts';
 
 export type RunProjectConfig = ParsedRunProjectConfig;
 export type RunProjectMeasuredResourceUsage = ParsedRunProjectMeasuredResourceUsage;
 export type RunProjectMicrotestExecution = ParsedRunProjectMicrotestExecution;
 export type RunProjectMicrotestProfileConfig = ParsedRunProjectMicrotestProfileConfig;
+export type RunProjectProfileFiles = ParsedRunProjectProfileFiles;
 export type RunProjectProfileConfig = ParsedRunProjectProfileConfig;
 export type RunProjectProfilesConfig = ParsedRunProjectProfilesConfig;
 export type RunProjectResourceBudgets = ParsedRunProjectResourceBudgets;
@@ -274,6 +281,35 @@ function assertValidTimeouts(timeouts: RunTimeoutPolicy): void {
     }
 }
 
+function assertValidProfileGlob(field: ProfileFileGlobField, pattern: string): void {
+    const message = invalidProfileFileGlobConfigMessage(field, pattern);
+
+    if (message !== null) {
+        throw new RunConfigError(message);
+    }
+}
+
+function normalizeProfileFiles(files: RunProjectProfileFiles | undefined): RunProfileFiles | null {
+    if (files === undefined) {
+        return null;
+    }
+
+    const excludePatterns = files.exclude ?? [];
+
+    for (const pattern of files.include) {
+        assertValidProfileGlob('include', pattern);
+    }
+
+    for (const pattern of excludePatterns) {
+        assertValidProfileGlob('exclude', pattern);
+    }
+
+    return {
+        exclude: Array.from(excludePatterns),
+        include: [ files.include[0], ...files.include.slice(1) ]
+    };
+}
+
 function normalizeExecution(execution: RunProjectMicrotestExecution | undefined): RunMicrotestExecution {
     return {
         processModel: execution?.processModel ?? defaultMicrotestExecution.processModel,
@@ -288,6 +324,7 @@ function normalizeMicrotestProfile(profile: RunProjectMicrotestProfileConfig): R
 
     return {
         execution: normalizeExecution(profile.execution),
+        files: normalizeProfileFiles(profile.files),
         reporters: normalizeReporters(profile.reporters),
         resourceUsage: normalizeResourceUsage(profile.resourceUsage),
         testFamily: 'microtest',

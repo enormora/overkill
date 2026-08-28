@@ -567,7 +567,7 @@ type RunProfileConfig =
 
 type MicrotestProfileConfig = {
     readonly testFamily: 'microtest';
-    readonly files: ProfileFiles;
+    readonly files: ProfileFiles | null;
     readonly reporters?: ReadonlyArray<Reporter>;
     readonly execution?: MicrotestExecutionConfig;
     readonly resourceUsage?: ResourceUsagePolicy;
@@ -605,7 +605,7 @@ type BenchmarkProfileConfig = {
 };
 
 type ProfileFiles = {
-    readonly include: ReadonlyArray<string>;
+    readonly include: NonEmptyReadonlyArray<string>;
     readonly exclude: ReadonlyArray<string>;
 };
 

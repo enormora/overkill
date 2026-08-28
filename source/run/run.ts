@@ -9,15 +9,14 @@ import {
 import {
     createRunFacts,
     resolveResourceUsagePolicy,
-    runCaseFactsFromTestPlan,
-    selectedProfile
+    runCaseFactsFromTestPlan
 } from './run-facts.ts';
+import { readResolvedRunInput, type ResolvedRunInput } from './run-input-resolution.ts';
 import { createLocalTestPlan } from './run-local-test-plan.ts';
 import {
-    copyRunEngineSelection,
-    copyRunConfig,
-    copyRunRequest,
+    assertRunnableResourceUsagePolicy,
     createRunRuntimePolicy,
+    freezeValue,
     resolveRunReporters,
     type RunRuntimePolicy
 } from './run-support.ts';
@@ -42,11 +41,6 @@ import type {
     RunRequest,
     RunResourceUsagePolicy
 } from './run-types.ts';
-import {
-    assertSupportedProcessEngine,
-    validateRunInput,
-    validateRunResourceUsagePolicy
-} from './run-validation.ts';
 
 type SupervisedCommandBase = {
     readonly capabilityRestrictions: SupervisedRunCommand['capabilityRestrictions'];
@@ -67,6 +61,7 @@ type CollectedResolvedRunInput = {
     readonly command: RunCommand;
     readonly config: RunConfig;
     readonly dependencies: RunOrchestratorDependencies;
+    readonly engine: RunCommand['engine'];
     readonly profile: RunMicrotestProfileConfig;
     readonly request: RunRequest;
 };
@@ -74,13 +69,6 @@ type CollectedResolvedRunInput = {
 type SupervisedCollection = {
     readonly collectedPlan: CollectedRunPlan;
     readonly runnerErrors: readonly RunResult['runnerErrors'][number][];
-};
-
-type ResolvedRunInput = {
-    readonly config: RunConfig;
-    readonly engine: RunCommand['engine'];
-    readonly profile: RunMicrotestProfileConfig;
-    readonly request: RunRequest;
 };
 
 function currentRunStartTime(dependencies: RunOrchestratorDependencies): string {
@@ -93,18 +81,6 @@ function resolveEngineExecutionMode(execution: RunMicrotestExecution): 'concurre
     return execution.scheduling === 'concurrent' ? 'concurrent-in-process' : 'serial-in-process';
 }
 
-function freezeValue<Value>(value: Value): Value {
-    if (value !== null && typeof value === 'object') {
-        for (const propertyValue of Object.values(value)) {
-            freezeValue(propertyValue);
-        }
-
-        Object.freeze(value);
-    }
-
-    return value;
-}
-
 function supervisedEngine(command: RunCommand): Exclude<RunCommand['engine'], { readonly kind: 'instance'; }> {
     if (command.engine.kind === 'instance') {
         throw new Error('Instance engines cannot run in supervised children.');
@@ -113,7 +89,11 @@ function supervisedEngine(command: RunCommand): Exclude<RunCommand['engine'], { 
     return command.engine;
 }
 
-function createSupervisedCommandBase(command: RunCommand, profile: RunMicrotestProfileConfig): SupervisedCommandBase {
+function createSupervisedCommandBase(
+    command: RunCommand,
+    profile: RunMicrotestProfileConfig,
+    files: ResolvedRunInput['files']
+): SupervisedCommandBase {
     const resourceUsagePolicy = resolveResourceUsagePolicy(command.request, profile);
 
     return {
@@ -122,7 +102,9 @@ function createSupervisedCommandBase(command: RunCommand, profile: RunMicrotestP
         cwd: command.cwd,
         engine: supervisedEngine(command),
         hardTimeoutMilliseconds: profile.timeouts.hardMilliseconds,
-        paths: command.request.paths,
+        paths: files.map(function toFilePath(file) {
+            return file.file;
+        }),
         resourceBudgets: resourceUsagePolicy.budgets,
         resourceUsageSamplingIntervalMilliseconds: resourceUsagePolicy.samplingIntervalMilliseconds,
         scheduling: profile.execution.scheduling,
@@ -132,28 +114,32 @@ function createSupervisedCommandBase(command: RunCommand, profile: RunMicrotestP
 
 function createSupervisedCollectCommand(
     command: RunCommand,
-    profile: RunMicrotestProfileConfig
+    profile: RunMicrotestProfileConfig,
+    files: ResolvedRunInput['files']
 ): SupervisedCollectCommand {
     return {
-        ...createSupervisedCommandBase(command, profile),
+        ...createSupervisedCommandBase(command, profile, files),
         kind: 'collect' as const
     };
 }
 
-function createSupervisedRunCommand(command: RunCommand, profile: RunMicrotestProfileConfig): SupervisedRunCommand {
+function createSupervisedRunCommand(
+    command: RunCommand,
+    profile: RunMicrotestProfileConfig,
+    files: ResolvedRunInput['files']
+): SupervisedRunCommand {
     return {
-        ...createSupervisedCommandBase(command, profile),
+        ...createSupervisedCommandBase(command, profile, files),
         kind: 'run' as const
     };
 }
 
 function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): ResolvedRun {
-    const engine = freezeValue(copyRunEngineSelection(input.command.engine));
     const facts = freezeValue(createRunFacts({
         cases: collectedRunCaseFacts(input.collectedPlan),
         config: input.config,
         dependencies: input.dependencies,
-        engine,
+        engine: input.engine,
         request: input.request
     }));
 
@@ -161,7 +147,7 @@ function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): R
         collectionRunnerErrors: input.collectionRunnerErrors,
         config: input.config,
         cwd: input.command.cwd,
-        engine,
+        engine: input.engine,
         facts,
         plan: {
             collectedPlan: input.collectedPlan,
@@ -184,22 +170,10 @@ function createResolvedRunFromSupervisedCollection(
         command,
         config: input.config,
         dependencies,
+        engine: input.engine,
         profile: input.profile,
         request: input.request
     });
-}
-
-async function readResolvedRunInput(
-    command: RunCommand
-): Promise<ResolvedRunInput> {
-    await validateRunInput(command);
-    const request = freezeValue(copyRunRequest(command.request));
-    const config = freezeValue(copyRunConfig(command.config));
-    const profile = selectedProfile(request, config);
-    assertSupportedProcessEngine(command, profile);
-    const engine = freezeValue(copyRunEngineSelection(command.engine));
-
-    return { config, engine, profile, request };
 }
 
 async function createSupervisedResolvedRun(
@@ -207,7 +181,10 @@ async function createSupervisedResolvedRun(
     dependencies: RunOrchestratorDependencies,
     input: ResolvedRunInput
 ): Promise<ResolvedRun> {
-    const collection = await collectSupervisedRun(createSupervisedCollectCommand(command, input.profile), dependencies);
+    const collection = await collectSupervisedRun(
+        createSupervisedCollectCommand(command, input.profile, input.files),
+        dependencies
+    );
 
     return createResolvedRunFromSupervisedCollection(command, dependencies, input, collection);
 }
@@ -217,7 +194,7 @@ async function createLocalResolvedRun(
     dependencies: RunOrchestratorDependencies,
     input: ResolvedRunInput
 ): Promise<ResolvedRun> {
-    const testPlan = await createLocalTestPlan(command, input.profile, dependencies);
+    const testPlan = await createLocalTestPlan(command, input.profile, input.files, dependencies);
     const facts = freezeValue(createRunFacts({
         cases: runCaseFactsFromTestPlan(testPlan),
         config: input.config,
@@ -252,10 +229,6 @@ async function createResolvedRun(
     }
 
     return await createLocalResolvedRun(command, dependencies, input);
-}
-
-function assertRunnableResourceUsagePolicy(policy: RunResourceUsagePolicy): void {
-    validateRunResourceUsagePolicy(policy);
 }
 
 function createExecutionResourceUsageTracker(
@@ -329,7 +302,7 @@ async function runSupervisedAndAttachPolicyErrors(
     input: ResolvedRunInput
 ): Promise<RunResult> {
     const result = await runSupervisedCommand(
-        createSupervisedRunCommand(command, input.profile),
+        createSupervisedRunCommand(command, input.profile, input.files),
         dependencies,
         function createResolvedRunAfterCollection(collection): ResolvedRun {
             return createResolvedRunFromSupervisedCollection(command, dependencies, input, collection);

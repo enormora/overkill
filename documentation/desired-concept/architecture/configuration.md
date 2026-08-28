@@ -300,9 +300,15 @@ files: {
 ```
 
 `include` is required for configured discovery and `exclude` defaults to
-`[]`. Negated glob patterns are not a second exclusion mechanism. Overkill
+`[]`. Patterns are interpreted relative to the run cwd. Absolute patterns,
+parent segments, blank patterns, and negated patterns are rejected. Overkill
 uses Node's glob support with the separate `exclude` option, so negated
 patterns are not part of the public config language.
+
+When a run has no path operands, the selected profile's `files` policy
+discovers candidate test modules. Explicit file operands bypass profile file
+discovery. Directory operands do not define new globs; they filter the
+selected profile's discovered file set and cannot be mixed with file operands.
 
 Important distinction:
 
@@ -312,7 +318,7 @@ Important distinction:
   second configuration channel; they are one run request against that
   policy
 
-Configuration files are TS modules exporting a default configuration value. CLI
+Configuration files are TS modules exporting a named `config` value. CLI
 discovery and explicit `loadRunConfig(...)` calls import them via the same
 loader pipeline as test files (Node type stripping). No JSON or YAML schema;
 types over schema.

@@ -20,6 +20,15 @@ const positiveSafeIntegerSchema = z.number().refine(function isPositiveSafeInteg
     return Number.isSafeInteger(value) && value > 0;
 }, 'must be a positive safe integer');
 
+const fileGlobSchema = z.string();
+
+const profileFilesSchema = z
+    .strictObject({
+        exclude: z.optional(z.array(fileGlobSchema).readonly()),
+        include: z.tuple([ fileGlobSchema ]).rest(fileGlobSchema).readonly()
+    })
+    .readonly();
+
 export const resourceBudgetsSchema = z
     .strictObject({
         activeResourceCount: z.optional(z.nullable(positiveSafeIntegerSchema)),
@@ -71,6 +80,7 @@ export const microtestExecutionSchema = z.discriminatedUnion('processModel', [
 export const microtestProfileSchema = z
     .strictObject({
         execution: z.optional(microtestExecutionSchema),
+        files: z.optional(profileFilesSchema),
         reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
         resourceUsage: z.optional(resourceUsageSchema),
         testFamily: z.literal('microtest'),
@@ -95,6 +105,7 @@ export const projectConfigSchema = z
     .readonly();
 
 export type RunProjectResourceBudgets = z.infer<typeof resourceBudgetsSchema>;
+export type RunProjectProfileFiles = z.infer<typeof profileFilesSchema>;
 export type RunProjectMeasuredResourceUsage = z.infer<typeof measuredResourceUsageSchema>;
 export type RunProjectUnmeasuredResourceUsage = z.infer<typeof unmeasuredResourceUsageSchema>;
 export type RunProjectResourceUsageConfig = z.infer<typeof resourceUsageSchema>;

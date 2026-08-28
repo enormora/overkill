@@ -146,7 +146,7 @@ export const testSuite = createOverkillSuite({
                     collectionFailureResult.runnerErrors.map(function toMessage(error) {
                         return error.message;
                     }),
-                    [ 'Failed to collect tests from explicit run inputs.' ]
+                    [ 'Failed to collect tests from run inputs.' ]
                 );
 
                 return scope.assert.collect();

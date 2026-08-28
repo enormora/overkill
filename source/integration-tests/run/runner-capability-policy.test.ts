@@ -66,6 +66,7 @@ function createRunConfig(processModel: RunProcessModel, scheduling: RunSchedulin
         profiles: {
             microtest: {
                 execution: { processModel, scheduling },
+                files: null,
                 reporters: null,
                 resourceUsage: {
                     budgets: {

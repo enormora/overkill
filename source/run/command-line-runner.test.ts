@@ -77,6 +77,7 @@ function defaultMicrotestProfile(): RunMicrotestProfileConfig {
             processModel: 'supervised-process',
             scheduling: 'concurrent'
         },
+        files: null,
         reporters: null,
         resourceUsage: {
             budgets: {
