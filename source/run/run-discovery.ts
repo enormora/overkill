@@ -113,14 +113,6 @@ function createDiscoveredRunFile(realCwd: string, realPath: string, requestedPat
     };
 }
 
-async function assertRealFile(realPath: string, requestedPath: string): Promise<void> {
-    const fileStat = await stat(realPath);
-
-    if (!fileStat.isFile()) {
-        invalidRequest(`Run path must be a file: ${requestedPath}`);
-    }
-}
-
 async function discoverRunPath(
     realCwd: string,
     requestedPath: string
@@ -152,17 +144,6 @@ function assertNonEmptyArray<Item>(
     if (values.length === 0) {
         noTestsCollected(message);
     }
-}
-
-async function discoverRunFile(
-    realCwd: string,
-    requestedPath: string
-): Promise<DiscoveredRunFile> {
-    const realPath = await readRealFilePath(realCwd, requestedPath);
-
-    await assertRealFile(realPath, requestedPath);
-
-    return createDiscoveredRunFile(realCwd, realPath, requestedPath);
 }
 
 function assertUniqueRunFile(file: DiscoveredRunFile, seenPaths: ReadonlySet<string>): void {
@@ -228,21 +209,15 @@ async function discoverProfileRunFiles(
     return sortedRunFiles(uniqueRunFiles(files));
 }
 
-async function discoverExplicitRunFiles(
-    realCwd: string,
-    requestedPaths: readonly string[]
-): Promise<NonEmptyReadonlyArray<DiscoveredRunFile>> {
-    const files = await Promise.all(requestedPaths.map(async function discoverPath(requestedPath) {
-        return await discoverRunFile(realCwd, requestedPath);
-    }));
+function discoverExplicitRunFiles(
+    files: NonEmptyReadonlyArray<DiscoveredRunFile>
+): NonEmptyReadonlyArray<DiscoveredRunFile> {
     const seenPaths = new Set<string>();
 
     for (const file of files) {
         assertUniqueRunFile(file, seenPaths);
         seenPaths.add(file.path);
     }
-
-    assertNonEmptyArray('No explicit run paths were provided.', files);
 
     return files;
 }
@@ -372,9 +347,10 @@ async function discoverRequestedRunFiles(
     assertConsistentRunPathKinds(paths);
 
     const files = discoveredFiles(paths);
+    const firstFile = files[0];
 
-    if (files.length > 0) {
-        return await discoverExplicitRunFiles(realCwd, request.paths);
+    if (firstFile !== undefined) {
+        return discoverExplicitRunFiles([ firstFile, ...files.slice(1) ]);
     }
 
     const directories = discoveredDirectories(paths);

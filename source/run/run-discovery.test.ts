@@ -181,6 +181,26 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'discoverRunFiles() reports empty profile discovery',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                await withTemporaryDirectory(async function testTemporaryDirectory(directory) {
+                    await scope.assert.rejects(async function discoverEmptyProfileFiles() {
+                        await discoverRunFiles({
+                            cwd: directory,
+                            paths: [],
+                            profileFiles: profileFiles({
+                                exclude: [],
+                                include: [ 'source/**/*.test.ts' ]
+                            })
+                        });
+                    }, { message: 'Profile file discovery matched no test files.' });
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'discoverRunFiles() filters profile discovery by directory operands',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -375,6 +395,9 @@ export const testSuite = createOverkillSuite({
 
                         await rejectMissingInputs(scope, directory, filePath);
                         await rejectInvalidFileShapes(scope, directory, filePath, outsideFilePath);
+                        await scope.assert.rejects(async function discoverSpecialFile() {
+                            await discoverRunFiles({ cwd: directory, paths: [ '/dev/null' ], profileFiles: null });
+                        }, { message: 'Run path must be a file or directory: /dev/null' });
                     } finally {
                         await rm(outsideDirectory, { force: true, recursive: true });
                     }
