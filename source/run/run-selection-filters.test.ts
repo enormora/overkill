@@ -12,6 +12,8 @@ import {
     any,
     caseId,
     contains,
+    copyRunSelection,
+    equals,
     file,
     glob,
     invalidRunSelectionMessage,
@@ -35,6 +37,11 @@ const candidate = {
         stability: 'stable',
         tags: [ 'Fast' ]
     })
+};
+
+const anonymousCandidate = {
+    id: createCaseId(null, [], 'Anonymous Case', null),
+    metadata: resolveRootMetadata({})
 };
 
 export const testSuite = createOverkillSuite({
@@ -102,6 +109,56 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'matchesRunFilter() treats absent identity dimensions as non-matches',
+            metadata: {},
+            body(scope: OverkillScope) {
+                scope.assert.equal(matchesRunFilter(file('source/**/*.test.ts'), anonymousCandidate), false);
+                scope.assert.equal(matchesRunFilter(params('currency'), anonymousCandidate), false);
+                scope.assert.equal(matchesRunFilter(suite('payments'), anonymousCandidate), false);
+                scope.assert.equal(matchesRunFilter(name('anonymous'), anonymousCandidate), true);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'copyRunSelection() deep-copies serializable filter trees',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const selection = {
+                    filter: all([
+                        not(caseId(candidate.id)),
+                        glob('file', 'source/**'),
+                        any([ tag('fast'), equals('runtime', 'node') ])
+                    ]),
+                    kind: 'filter' as const
+                };
+                const copy = copyRunSelection(selection);
+
+                scope.assert.deepEqual(copy, selection);
+                scope.assert.notEqual(copy, selection);
+                if (copy.kind === 'filter') {
+                    scope.assert.notEqual(copy.filter, selection.filter);
+                }
+                scope.assert.deepEqual(copyRunSelection({ kind: 'all' }), { kind: 'all' });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'run filter helpers reject empty text operands',
+            metadata: {},
+            body(scope: OverkillScope) {
+                scope.assert.throws(function createEmptyContainsFilter() {
+                    contains('name', ' ');
+                }, { message: 'Run filter value must not be empty.' });
+                scope.assert.throws(function createEmptyGlobFilter() {
+                    glob('file', ' ');
+                }, { message: 'Run filter glob pattern must not be empty.' });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'run filter validation rejects malformed filter trees',
             metadata: {},
             body(scope: OverkillScope) {
@@ -119,6 +176,66 @@ export const testSuite = createOverkillSuite({
                     invalidRunSelectionMessage({ filter: { field: 'tag', kind: 'equals', value: '' }, kind: 'filter' }),
                     'Run filter value must be a non-empty string.'
                 );
+                const validCaseId = {
+                    file: 'source/example.test.ts',
+                    name: 'valid case',
+                    params: null,
+                    suite: [ 'suite' ]
+                };
+                const malformedSelections: readonly (readonly [unknown, string | null])[] = [
+                    [ null, 'Run selection must be an object.' ],
+                    [ { kind: 'selected' }, 'Run selection kind is unknown.' ],
+                    [ { kind: 'all' }, null ],
+                    [ { filter: null, kind: 'filter' }, 'Run filter must be an object.' ],
+                    [ { filter: { kind: 'selected' }, kind: 'filter' }, 'Run filter kind is unknown.' ],
+                    [
+                        { filter: { filters: [], kind: 'any' }, kind: 'filter' },
+                        'Composite run filters must contain at least one child filter.'
+                    ],
+                    [ { filter: { filter: null, kind: 'not' }, kind: 'filter' }, 'Run filter must be an object.' ],
+                    [
+                        {
+                            filter: {
+                                filters: [ { field: 'tag', kind: 'equals', value: 'fast' }, null ],
+                                kind: 'all'
+                            },
+                            kind: 'filter'
+                        },
+                        'Run filter must be an object.'
+                    ],
+                    [
+                        { filter: { id: null, kind: 'case-id' }, kind: 'filter' },
+                        'Run filter case id must be an object.'
+                    ],
+                    [
+                        { filter: { id: { ...validCaseId, file: 1 }, kind: 'case-id' }, kind: 'filter' },
+                        'Run filter case id file must be a string or null.'
+                    ],
+                    [
+                        { filter: { id: { ...validCaseId, name: ' ' }, kind: 'case-id' }, kind: 'filter' },
+                        'Run filter case id name must be a non-empty string.'
+                    ],
+                    [
+                        { filter: { id: { ...validCaseId, params: 1 }, kind: 'case-id' }, kind: 'filter' },
+                        'Run filter case id params must be a string or null.'
+                    ],
+                    [
+                        { filter: { id: { ...validCaseId, suite: [ '' ] }, kind: 'case-id' }, kind: 'filter' },
+                        'Run filter case id suite must contain non-empty strings.'
+                    ],
+                    [
+                        { filter: { field: 'file', kind: 'glob', pattern: '' }, kind: 'filter' },
+                        'Run filter pattern must be a non-empty string.'
+                    ],
+                    [
+                        { filter: { field: 1, kind: 'equals', value: 'fast' }, kind: 'filter' },
+                        'Run filter field is unknown.'
+                    ]
+                ];
+
+                for (const [ selection, message ] of malformedSelections) {
+                    scope.assert.equal(invalidRunSelectionMessage(selection), message);
+                }
 
                 return scope.assert.collect();
             }
