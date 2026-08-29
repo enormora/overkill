@@ -311,26 +311,33 @@ function assertCapabilitiesDoNotWiden(parent: readonly Capability[], child: read
     }
 }
 
-function hasMetadataField(metadata: Metadata, field: keyof Metadata): boolean {
+type MetadataWithField<Field extends keyof Metadata> = Metadata & Required<Pick<Metadata, Field>>;
+
+function hasMetadataField<Field extends keyof Metadata>(
+    metadata: Metadata,
+    field: Field
+): metadata is MetadataWithField<Field> {
     return Object.hasOwn(metadata, field);
 }
 
 function resolvedBaselines(parent: ResolvedMetadata, child: Metadata): readonly BaselineSubtype[] {
     return hasMetadataField(child, 'baselines')
-        ? mergeEnumSetValues(parent.baselines, child.baselines ?? [])
+        ? mergeEnumSetValues(parent.baselines, child.baselines)
         : parent.baselines;
 }
 
 function resolvedCapabilities(parent: ResolvedMetadata, child: Metadata): readonly Capability[] {
-    const childCapabilities = hasMetadataField(child, 'capabilities') ? child.capabilities ?? [] : parent.capabilities;
+    if (!hasMetadataField(child, 'capabilities')) {
+        return parent.capabilities;
+    }
 
-    assertCapabilitiesDoNotWiden(parent.capabilities, childCapabilities);
+    assertCapabilitiesDoNotWiden(parent.capabilities, child.capabilities);
 
-    return childCapabilities;
+    return child.capabilities;
 }
 
 function resolvedRuntimes(parent: ResolvedMetadata, child: Metadata): readonly string[] {
-    if (!hasMetadataField(child, 'runtimes') || child.runtimes === undefined) {
+    if (!hasMetadataField(child, 'runtimes')) {
         return parent.runtimes;
     }
 
@@ -342,7 +349,7 @@ function resolvedCapture(parent: ResolvedMetadata, child: Metadata): CaptureMode
         return parent.capture;
     }
 
-    return child.capture ?? null;
+    return child.capture;
 }
 
 function resolvedDebug(parent: ResolvedMetadata, child: Metadata): boolean {
@@ -350,7 +357,7 @@ function resolvedDebug(parent: ResolvedMetadata, child: Metadata): boolean {
         return parent.debug;
     }
 
-    return child.debug ?? false;
+    return child.debug;
 }
 
 function resolvedExtra(parent: ResolvedMetadata, child: Metadata): Readonly<Record<string, unknown>> {
@@ -366,7 +373,7 @@ function resolvedKind(parent: ResolvedMetadata, child: Metadata): TestFamily | n
         return parent.kind;
     }
 
-    return child.kind ?? null;
+    return child.kind;
 }
 
 function resolvedOwnership(parent: ResolvedMetadata, child: Metadata): readonly string[] {
@@ -374,7 +381,7 @@ function resolvedOwnership(parent: ResolvedMetadata, child: Metadata): readonly 
         return parent.ownership;
     }
 
-    return mergeSetValues(parent.ownership, child.ownership ?? []);
+    return mergeSetValues(parent.ownership, child.ownership);
 }
 
 function resolvedPriority(parent: ResolvedMetadata, child: Metadata): Priority {
@@ -382,7 +389,7 @@ function resolvedPriority(parent: ResolvedMetadata, child: Metadata): Priority {
         return parent.priority;
     }
 
-    return child.priority ?? 'standard';
+    return child.priority;
 }
 
 function resolvedStability(parent: ResolvedMetadata, child: Metadata): Stability {
@@ -390,7 +397,7 @@ function resolvedStability(parent: ResolvedMetadata, child: Metadata): Stability
         return parent.stability;
     }
 
-    return child.stability ?? 'stable';
+    return child.stability;
 }
 
 function resolvedTags(parent: ResolvedMetadata, child: Metadata): readonly string[] {
@@ -398,7 +405,7 @@ function resolvedTags(parent: ResolvedMetadata, child: Metadata): readonly strin
         return parent.tags;
     }
 
-    return mergeSetValues(parent.tags, child.tags ?? []);
+    return mergeSetValues(parent.tags, child.tags);
 }
 
 function resolvedTimeoutMilliseconds(parent: ResolvedMetadata, child: Metadata): number | null {
@@ -406,7 +413,7 @@ function resolvedTimeoutMilliseconds(parent: ResolvedMetadata, child: Metadata):
         return parent.timeoutMilliseconds;
     }
 
-    return child.timeoutMilliseconds ?? null;
+    return child.timeoutMilliseconds;
 }
 
 export function resolveMetadata(parent: ResolvedMetadata, child: Metadata): ResolvedMetadata {

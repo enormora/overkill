@@ -197,7 +197,7 @@ export const testSuite = createOverkillSuite({
                                 extra: { file: true, root: false },
                                 ownership: [ 'file-team' ],
                                 priority: 'optional',
-                                runtimes: [ 'browser' ],
+                                runtimes: { mode: 'append', values: [ 'browser' ] },
                                 stability: 'experimental',
                                 tags: [ 'file' ],
                                 timeoutMilliseconds: 10
@@ -278,6 +278,51 @@ export const testSuite = createOverkillSuite({
                 scope.assert.throws(function createPlanWithWidenedCapabilities() {
                     engine.createTestPlan(root);
                 }, { message: 'Metadata capabilities cannot widen parent capability: net.' });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'createTestCase() rejects invalid metadata field values',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const engine = createEngine();
+                const invalidMetadataCases = [
+                    { field: 'tags', message: 'Metadata field "tags" must be an array.', value: 'fast' },
+                    { field: 'tags', message: 'Metadata field "tags" must contain non-empty strings.', value: [ '' ] },
+                    { field: 'kind', message: 'Metadata field "kind" contains an unknown value.', value: 'unit' },
+                    { field: 'capabilities', message: 'Metadata field "capabilities" must be an array.', value: 'net' },
+                    { field: 'extra', message: 'Metadata field "extra" must be an object.', value: [] },
+                    { field: 'debug', message: 'Metadata field "debug" must be a boolean.', value: 'true' },
+                    {
+                        field: 'timeoutMilliseconds',
+                        message: 'Metadata field "timeoutMilliseconds" must be a finite number.',
+                        value: Number.POSITIVE_INFINITY
+                    },
+                    {
+                        field: 'runtimes',
+                        message: 'Metadata field "runtimes" must be an array or runtime metadata object.',
+                        value: 'node'
+                    },
+                    {
+                        field: 'runtimes',
+                        message: 'Unknown runtime metadata field: source.',
+                        value: { mode: 'append', source: 'local', values: [] }
+                    }
+                ];
+
+                for (const invalidMetadata of invalidMetadataCases) {
+                    scope.assert.throws(function createCaseWithInvalidMetadata() {
+                        engine.createTestCase({
+                            body(testScope) {
+                                testScope.assert.true(true);
+                                return testScope.assert.collect();
+                            },
+                            metadata: Object.fromEntries([ [ invalidMetadata.field, invalidMetadata.value ] ]),
+                            name: 'invalid'
+                        });
+                    }, { message: invalidMetadata.message });
+                }
 
                 return scope.assert.collect();
             }
