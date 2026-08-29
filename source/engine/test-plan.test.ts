@@ -5,6 +5,7 @@ import {
     runIfMain,
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
+import { serializeValue } from '../compare/serialized-value.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { TestCaseOptions } from './test-node.ts';
 
@@ -31,6 +32,10 @@ function metadataShape(fields: Readonly<Record<string, unknown>>): unknown {
         timeoutMilliseconds: null,
         ...fields
     };
+}
+
+function parameterIdentity(parameters: Readonly<Record<string, unknown>>): string {
+    return JSON.stringify(serializeValue(parameters));
 }
 
 export const testSuite = createOverkillSuite({
@@ -92,7 +97,12 @@ export const testSuite = createOverkillSuite({
                             suitePath: []
                         },
                         {
-                            id: { file: null, name: 'row 1', params: null, suite: [ 'rows' ] },
+                            id: {
+                                file: null,
+                                name: 'row 1',
+                                params: parameterIdentity({ value: 1 }),
+                                suite: [ 'rows' ]
+                            },
                             metadata: metadataShape({ extra: { row: 1 }, tags: [ 'inherited', 'table' ] }),
                             suitePath: [ 'rows' ]
                         }

@@ -336,7 +336,7 @@ await run({
         resourceBudgetOverrides: null,
         resourceUsageSamplingIntervalMilliseconds: null,
         seed: { value: 42n },
-        selection: { kind: 'filter', expression: 'tag=fast' },
+        selection: { filter: { field: 'tag', kind: 'equals', value: 'fast' }, kind: 'filter' },
         shard: { index: 1, total: 4 },
         verbose: false
     }

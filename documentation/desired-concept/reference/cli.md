@@ -148,15 +148,15 @@ configuration domain and benchmark execution uses `overkill bench`.
 
 ## Selection And Iteration
 
-| Flag                | Behavior                                                               | Reference                                                                                                                 |
-| ------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `--filter '<expr>'` | Filter tests by metadata expression (tags, kind, runtime, owner, …).   | [Metadata And Selection § Filter Expression Grammar](../architecture/metadata-and-selection.md#filter-expression-grammar) |
-| `--name '<text>'`   | Name substring or quoted exact match.                                  | [Metadata And Selection § Local Iteration Workflow](../architecture/metadata-and-selection.md#local-iteration-workflow)   |
-| `--file <path>`     | Restrict the run to a single file.                                     | same                                                                                                                      |
-| `--id <stable-id>`  | Restrict the run to a single case identity (IDE integration).          | same                                                                                                                      |
-| `--last-failed`     | Run only tests that failed in the previous run.                        | same                                                                                                                      |
-| `--watch`           | Rerun the selected suite on file change. Uses Node's built-in watcher. | [Runtime Behavior § Watch-Mode Targeting](../architecture/runtime-behavior.md#watch-mode-targeting)                       |
-| `--shard <i>/<n>`   | Select shard `i` of `n` from the filtered set.                         | [Runtime Behavior § Sharding](../architecture/runtime-behavior.md#sharding)                                               |
+| Flag                | Behavior                                               | Reference                                                                                                                 |
+| ------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `--filter '<expr>'` | Filter by tags, runtime, owner, and related metadata.  | [Metadata And Selection § Filter Expression Grammar](../architecture/metadata-and-selection.md#filter-expression-grammar) |
+| `--name '<text>'`   | Name substring or quoted exact match.                  | [Metadata And Selection § Local Iteration Workflow](../architecture/metadata-and-selection.md#local-iteration-workflow)   |
+| `--file <path>`     | Restrict the run to a single file.                     | same                                                                                                                      |
+| `--id <stable-id>`  | Restrict the run to one case identity.                 | same                                                                                                                      |
+| `--last-failed`     | Run only tests that failed in the previous run.        | same                                                                                                                      |
+| `--watch`           | Rerun the selected suite with Node's built-in watcher. | [Runtime Behavior § Watch-Mode Targeting](../architecture/runtime-behavior.md#watch-mode-targeting)                       |
+| `--shard <i>/<n>`   | Select shard `i` of `n` from the filtered set.         | [Runtime Behavior § Sharding](../architecture/runtime-behavior.md#sharding)                                               |
 
 ## Capability And Execution
 

@@ -20,6 +20,7 @@ import {
     type RunEngineSelection,
     type RunExecutionFacts,
     type RunFacts,
+    type RunSelection,
     type RunMicrotestProfileConfig,
     type RunOrchestrator,
     type RunProcessModel,
@@ -76,6 +77,7 @@ describe('@overkill-dev/run', function () {
         expect<RunRequest['profile']>().type.toBe<string>();
         expect<RunRequest['resourceBudgetOverrides']>().type.toBe<RunResourceBudgets | null>();
         expect<RunRequest['order']>().type.toBe<'plan'>();
+        expect<RunRequest['selection']>().type.toBe<RunSelection>();
     });
 
     test('exposes serializable run facts with case metadata', function () {
@@ -87,6 +89,7 @@ describe('@overkill-dev/run', function () {
         expect<RunExecutionFacts['scheduling']>().type.toBe<RunScheduling>();
         expect<RunExecutionFacts['testFamily']>().type.toBe<'microtest'>();
         expect<RunFacts['cases'][number]['metadata']>().type.toBe<SerializedValue>();
+        expect<RunFacts['reproducibility']['selection']>().type.toBe<RunSelection>();
         expect<RunFacts>().type.toBeAssignableTo<Readonly<Record<string, unknown>>>();
     });
 

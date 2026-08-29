@@ -672,15 +672,32 @@ type LoadRunConfigRequest = {
 declare function defineConfig(config: RunConfig): RunConfig;
 declare function loadRunConfig(request: LoadRunConfigRequest): Promise<RunConfig>;
 
+type RunStringFilterField =
+    | 'file'
+    | 'name'
+    | 'owner'
+    | 'params'
+    | 'runtime'
+    | 'stability'
+    | 'suite'
+    | 'tag';
+
+type RunFilter =
+    | { readonly filters: NonEmptyReadonlyArray<RunFilter>; readonly kind: 'all'; }
+    | { readonly filters: NonEmptyReadonlyArray<RunFilter>; readonly kind: 'any'; }
+    | { readonly filter: RunFilter; readonly kind: 'not'; }
+    | { readonly id: CaseId; readonly kind: 'case-id'; }
+    | { readonly field: RunStringFilterField; readonly kind: 'equals'; readonly value: string; }
+    | { readonly field: RunStringFilterField; readonly kind: 'contains'; readonly value: string; }
+    | { readonly field: RunStringFilterField; readonly kind: 'glob'; readonly pattern: string; };
+
+type RunSelection =
+    | { readonly kind: 'all'; }
+    | { readonly filter: RunFilter; readonly kind: 'filter'; };
+
 type RunRequest = {
     readonly paths: ReadonlyArray<string>;
-    readonly selection:
-        | { readonly kind: 'all'; }
-        | { readonly expression: string; readonly kind: 'filter'; }
-        | { readonly id: CaseId; readonly kind: 'case-id'; }
-        | { readonly kind: 'file'; readonly path: string; }
-        | { readonly kind: 'last-failed'; }
-        | { readonly kind: 'name'; readonly pattern: string; };
+    readonly selection: RunSelection;
     readonly shard: { readonly index: number; readonly total: number; };
     readonly profile: ProfileName;
     readonly execution: { readonly mode: 'profile-default'; };

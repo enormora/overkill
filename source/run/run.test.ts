@@ -136,6 +136,7 @@ export const testSuite = createOverkillSuite({
                     },
                     loader: { sourceMaps: false, stripMode: 'strip-only' },
                     reproducibility: {
+                        selection: { kind: 'all' },
                         seed: '42',
                         shard: { index: 0, total: 1 }
                     }
@@ -350,6 +351,7 @@ export const testSuite = createOverkillSuite({
                     },
                     loader: { sourceMaps: false, stripMode: 'strip-only' },
                     reproducibility: {
+                        selection: { kind: 'all' },
                         seed: '42',
                         shard: { index: 0, total: 1 }
                     }

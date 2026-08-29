@@ -324,7 +324,7 @@ Source: [Baselines And Snapshots](../authoring/baselines-and-snapshots.md).
 ## Selection
 
 The orchestration-level operation of filtering a `TestNode` tree to a
-subset based on metadata, identity, file path, or kind.
+subset based on metadata, identity, or file path.
 
 Source: [Metadata And Selection](../architecture/metadata-and-selection.md).
 

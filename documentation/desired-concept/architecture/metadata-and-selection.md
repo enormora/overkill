@@ -124,12 +124,15 @@ Filterable dimensions:
 - test id (file, suite path, name, params)
 - file path (glob)
 - tag set (`--tag fast`, `--tag '!flaky'`)
-- metadata fields (`--kind microtest`, `--owner '@auth-team'`)
+- metadata fields (`--owner '@auth-team'`)
 - runtime (`--runtime 'browser-*'`)
 - workload (`--workload large`)
 - stability (`--stability stable`)
 
 This is the conceptual replacement for relying on `.only`.
+Test family `kind` is not a selection dimension for one run. The selected
+runner profile already binds the run to one test family, so matching it again
+inside a filter adds no useful narrowing.
 
 ### Selection In Multi-Process Runs
 
@@ -140,18 +143,19 @@ filtering or sharding.
 
 ## Filter Expression Grammar
 
-CLI filters use a small expression language:
+CLI filters use a small expression language. The programmatic filter tree is
+canonical; the CLI grammar is syntax sugar that lowers to the same tree.
 
 ```text
 expr     := term ( ' ' term )*           # space-separated → AND
 term     := dimension '=' value          # equality
-         |  dimension '~' regex          # regex match
+         |  dimension '~' text           # case-insensitive contains
          |  dimension ':' glob           # glob match
          |  '!' term                     # negation
          |  '(' expr ')'
          |  expr '|' expr                # OR (lower precedence than space-AND)
 value    := identifier | quoted-string
-dimension := 'tag' | 'kind' | 'runtime' | 'owner' | 'stability'
+dimension := 'tag' | 'runtime' | 'owner' | 'stability'
           |  'file' | 'name' | 'suite' | 'params'
 ```
 
@@ -159,9 +163,8 @@ Examples:
 
 ```text
 --filter 'tag=fast !tag=flaky'                        # fast AND not flaky
---filter 'kind=microtest | kind=property'             # microtests OR property tests
 --filter 'file:source/auth/* tag=critical'            # auth files, critical only
---filter 'name~"^should "'                            # name matches regex
+--filter 'name~"should "'                             # name contains text
 ```
 
 Rules:
@@ -171,13 +174,20 @@ Rules:
 - `!` negates a single term
 - parentheses group
 - glob (`:`) supports `*`, `**`, and `?`
-- regex (`~`) is anchored at both ends only when the pattern starts
-  with `^` and ends with `$`
+- contains (`~`) is case-insensitive
 
 A programmatic API mirrors the grammar:
 
 ```ts
-runner.run({ filter: { all: [ tag('fast'), not(tag('flaky')) ] } });
+await orchestrator.run({
+    config,
+    cwd,
+    engine: { kind: 'default' },
+    request: {
+        ...request,
+        selection: { filter: all([ tag('fast'), not(tag('flaky')) ]), kind: 'filter' }
+    }
+});
 ```
 
 Both forms produce the same internal predicate tree.
@@ -251,11 +261,23 @@ operates on the result. See [Composition Order](./composition-order.md) and
 Embedders (IDEs, MCP servers, CI tools) construct filters programmatically:
 
 ```ts
-import { tag, not, kind, file, all, any } from '@overkill-dev/run/filters';
+import { all, any, file, name, not, tag } from '@overkill-dev/run/filters';
 
-const filter = all([ tag('fast'), not(tag('flaky')), any([ file('source/auth/**'), file('source/users/**') ]) ]);
+const filter = all([
+    tag('fast'),
+    not(tag('flaky')),
+    any([ file('source/auth/**'), name('login') ])
+]);
 
-await runner.run({ filter });
+await orchestrator.run({
+    config,
+    cwd,
+    engine: { kind: 'default' },
+    request: {
+        ...request,
+        selection: { filter, kind: 'filter' }
+    }
+});
 ```
 
 The CLI grammar is sugar over this API; both produce identical predicates.

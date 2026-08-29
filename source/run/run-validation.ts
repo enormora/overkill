@@ -4,6 +4,7 @@ import {
     unsupportedRequest
 } from './run-errors.ts';
 import { validateRunEngineSelection } from './run-engine-selection.ts';
+import { invalidRunSelectionMessage } from './run-selection-filters.ts';
 import {
     invalidRunProfileNameMessage,
     type RunCommand,
@@ -81,6 +82,14 @@ function validateRunResourceUsageRequest(request: RunRequest): void {
     }
 }
 
+function validateRunSelection(request: RunRequest): void {
+    const message = invalidRunSelectionMessage(request.selection);
+
+    if (message !== null) {
+        invalidRequest(message);
+    }
+}
+
 function assertValidRunProfileName(profileName: string): void {
     const message = invalidRunProfileNameMessage(profileName);
 
@@ -94,6 +103,7 @@ function validateRunRequest(request: RunRequest): void {
 
     validateRunShard(request);
     validateRunSeed(request);
+    validateRunSelection(request);
     validateRunResourceUsageRequest(request);
 }
 

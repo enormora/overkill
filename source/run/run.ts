@@ -1,6 +1,7 @@
-import type { RunResourceUsageTracker, RunResult } from '../engine/run-result.ts';
 import {
-    collectedRunCaseFacts
+    collectedRunCaseFacts,
+    collectedRunPlanFromTestPlanCases,
+    createRunResultFromCollectedPlan
 } from './collected-run-plan.ts';
 import {
     createResultFromResolutionError,
@@ -13,6 +14,12 @@ import {
 } from './run-facts.ts';
 import { readResolvedRunInput, type ResolvedRunInput } from './run-input-resolution.ts';
 import { createLocalTestPlan } from './run-local-test-plan.ts';
+import {
+    assertCollectedRunPlanHasCases,
+    selectedCollectedRunPlan,
+    selectedTestPlan,
+    selectedTestPlanCases
+} from './run-selection.ts';
 import {
     assertRunnableResourceUsagePolicy,
     createRunRuntimePolicy,
@@ -42,6 +49,9 @@ import type {
     RunResourceUsagePolicy
 } from './run-types.ts';
 
+type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
+type RunResourceUsageTracker = ReturnType<RunOrchestratorDependencies['createResourceUsageTracker']>;
+
 type SupervisedCommandBase = {
     readonly capabilityRestrictions: SupervisedRunCommand['capabilityRestrictions'];
     readonly collectionTimeoutMilliseconds: number;
@@ -57,6 +67,7 @@ type SupervisedCommandBase = {
 };
 
 type CollectedResolvedRunInput = {
+    readonly allowEmptySelection: boolean;
     readonly collectionRunnerErrors: readonly RunResult['runnerErrors'][number][];
     readonly collectedPlan: CollectedRunPlan;
     readonly command: RunCommand;
@@ -70,6 +81,14 @@ type CollectedResolvedRunInput = {
 type SupervisedCollection = {
     readonly collectedPlan: CollectedRunPlan;
     readonly runnerErrors: readonly RunResult['runnerErrors'][number][];
+};
+
+type SupervisedResolutionFromCollectionInput = {
+    readonly allowEmptySelection: boolean;
+    readonly collection: SupervisedCollection;
+    readonly command: RunCommand;
+    readonly dependencies: RunOrchestratorDependencies;
+    readonly input: ResolvedRunInput;
 };
 
 function currentRunStartTime(dependencies: RunOrchestratorDependencies): string {
@@ -137,6 +156,10 @@ function createSupervisedRunCommand(
 }
 
 function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): ResolvedRun {
+    if (!input.allowEmptySelection) {
+        assertCollectedRunPlanHasCases(input.collectedPlan);
+    }
+
     const facts = freezeValue(createRunFacts({
         cases: collectedRunCaseFacts(input.collectedPlan),
         config: input.config,
@@ -160,21 +183,22 @@ function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): R
     });
 }
 
-function createResolvedRunFromSupervisedCollection(
-    command: RunCommand,
-    dependencies: RunOrchestratorDependencies,
-    input: ResolvedRunInput,
-    collection: SupervisedCollection
-): ResolvedRun {
+function createResolvedRunFromSupervisedCollection(resolution: SupervisedResolutionFromCollectionInput): ResolvedRun {
+    const collectedPlan = selectedCollectedRunPlan(
+        resolution.collection.collectedPlan,
+        resolution.input.request.selection
+    );
+
     return createResolvedRunFromCollectedPlan({
-        collectionRunnerErrors: freezeValue(Array.from(collection.runnerErrors)),
-        collectedPlan: freezeValue(collection.collectedPlan),
-        command,
-        config: input.config,
-        dependencies,
-        engine: input.engine,
-        profile: input.profile,
-        request: input.request
+        allowEmptySelection: resolution.allowEmptySelection,
+        collectionRunnerErrors: freezeValue(Array.from(resolution.collection.runnerErrors)),
+        collectedPlan: freezeValue(collectedPlan),
+        command: resolution.command,
+        config: resolution.input.config,
+        dependencies: resolution.dependencies,
+        engine: resolution.input.engine,
+        profile: resolution.input.profile,
+        request: resolution.input.request
     });
 }
 
@@ -188,17 +212,23 @@ async function createSupervisedResolvedRun(
         dependencies
     );
 
-    return createResolvedRunFromSupervisedCollection(command, dependencies, input, collection);
+    return createResolvedRunFromSupervisedCollection({
+        allowEmptySelection: false,
+        collection,
+        command,
+        dependencies,
+        input
+    });
 }
 
-async function createLocalResolvedRun(
+function createLocalResolvedRunFromTestPlan(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
-    input: ResolvedRunInput
-): Promise<ResolvedRun> {
-    const testPlan = await createLocalTestPlan(command, input.profile, input.files, dependencies);
+    input: ResolvedRunInput,
+    plannedTestPlan: Awaited<ReturnType<typeof createLocalTestPlan>>
+): ResolvedRun {
     const facts = freezeValue(createRunFacts({
-        cases: runCaseFactsFromTestPlan(testPlan),
+        cases: runCaseFactsFromTestPlan(plannedTestPlan),
         config: input.config,
         dependencies,
         engine: input.engine,
@@ -213,10 +243,68 @@ async function createLocalResolvedRun(
         facts,
         plan: {
             kind: 'local',
-            testPlan
+            testPlan: plannedTestPlan
         },
         reporters: resolveRunReporters(input.profile, input.config.reporters),
         request: input.request
+    });
+}
+
+async function createLocalResolvedRun(
+    command: RunCommand,
+    dependencies: RunOrchestratorDependencies,
+    input: ResolvedRunInput
+): Promise<ResolvedRun> {
+    return createLocalResolvedRunFromTestPlan(
+        command,
+        dependencies,
+        input,
+        selectedTestPlan(
+            await createLocalTestPlan(command, input.profile, input.files, dependencies),
+            input.request.selection
+        )
+    );
+}
+
+function createEmptySelectionResult(
+    testPlan: Awaited<ReturnType<typeof createLocalTestPlan>>,
+    dependencies: RunOrchestratorDependencies
+): RunResult {
+    const startedAtMs = dependencies.wallClock.currentTimestampInMilliseconds;
+
+    return freezeValue(createRunResultFromCollectedPlan(
+        collectedRunPlanFromTestPlanCases(testPlan, []),
+        [],
+        [],
+        {
+            resourceUsage: null,
+            startedAtMs,
+            wallClock: dependencies.wallClock
+        }
+    ));
+}
+
+async function createLocalRunOrEmptySelectionResult(
+    command: RunCommand,
+    dependencies: RunOrchestratorDependencies
+): Promise<ResolvedRun | RunResult> {
+    const input = await readResolvedRunInput(command);
+
+    if (input.profile.execution.processModel !== 'in-process') {
+        throw new Error('Expected in-process profile.');
+    }
+
+    const testPlan = await createLocalTestPlan(command, input.profile, input.files, dependencies);
+    const selectionResult = selectedTestPlanCases(testPlan, input.request.selection);
+    const firstCase = selectionResult.plannedCases[0];
+
+    if (firstCase === undefined) {
+        return createEmptySelectionResult(testPlan, dependencies);
+    }
+
+    return createLocalResolvedRunFromTestPlan(command, dependencies, input, {
+        ...testPlan,
+        cases: [ firstCase, ...selectionResult.plannedCases.slice(1) ]
     });
 }
 
@@ -250,27 +338,11 @@ function isRunResult(value: ResolvedRun | RunResult): value is RunResult {
     return Object.hasOwn(value, 'summary');
 }
 
-async function resolveRunWithRuntimePolicy(
-    resolveRun: () => Promise<ResolvedRun>,
+async function resolveRunWithRuntimePolicy<RunValue>(
+    resolveRun: () => Promise<RunValue>,
     runtimePolicy: RunRuntimePolicy | null
-): Promise<ResolvedRun> {
+): Promise<RunValue> {
     return runtimePolicy === null ? await resolveRun() : await runtimePolicy.runLoad(resolveRun);
-}
-
-async function createResolvedRunOrCollectionErrorResult(
-    command: RunCommand,
-    dependencies: RunOrchestratorDependencies,
-    runtimePolicy: RunRuntimePolicy | null
-): Promise<ResolvedRun | RunResult> {
-    const resolveRun = async function resolveRunInsidePolicy(): Promise<ResolvedRun> {
-        return await createResolvedRun(command, dependencies);
-    };
-
-    try {
-        return await resolveRunWithRuntimePolicy(resolveRun, runtimePolicy);
-    } catch (error: unknown) {
-        return createResultFromResolutionError(error, runtimePolicy);
-    }
 }
 
 function addRunnerErrors(result: RunResult, runnerErrors: readonly RunResult['runnerErrors'][number][]): RunResult {
@@ -284,16 +356,24 @@ function addRunnerErrors(result: RunResult, runnerErrors: readonly RunResult['ru
     };
 }
 
-async function createResolvedRunResult(
+async function createLocalRunResult(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
     runtimePolicy: RunRuntimePolicy | null
 ): Promise<ResolvedRun | RunResult> {
+    const resolveRun = async function resolveLocalRunInsidePolicy(): Promise<ResolvedRun | RunResult> {
+        return await createLocalRunOrEmptySelectionResult(command, dependencies);
+    };
+
     try {
-        return await createResolvedRunOrCollectionErrorResult(command, dependencies, runtimePolicy);
+        return await resolveRunWithRuntimePolicy(resolveRun, runtimePolicy);
     } catch (error: unknown) {
-        runtimePolicy?.takeRunErrors();
-        throw error;
+        try {
+            return createResultFromResolutionError(error, runtimePolicy);
+        } catch {
+            runtimePolicy?.takeRunErrors();
+            throw error;
+        }
     }
 }
 
@@ -307,7 +387,13 @@ async function runSupervisedAndAttachPolicyErrors(
         createSupervisedRunCommand(command, input.profile, input.files),
         dependencies,
         function createResolvedRunAfterCollection(collection): ResolvedRun {
-            return createResolvedRunFromSupervisedCollection(command, dependencies, input, collection);
+            return createResolvedRunFromSupervisedCollection({
+                allowEmptySelection: true,
+                collection,
+                command,
+                dependencies,
+                input
+            });
         }
     );
 
@@ -379,7 +465,7 @@ async function runCommand(command: RunCommand, dependencies: RunOrchestratorDepe
         return await createSupervisedRunResult(command, dependencies, runtimePolicy);
     }
 
-    const resolvedRun = await createResolvedRunResult(command, dependencies, runtimePolicy);
+    const resolvedRun = await createLocalRunResult(command, dependencies, runtimePolicy);
 
     if (isRunResult(resolvedRun)) {
         return await reportCollectionErrorResult(command, dependencies, resolvedRun);

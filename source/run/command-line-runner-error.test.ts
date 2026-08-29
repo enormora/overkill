@@ -123,6 +123,7 @@ async function resolvePassingRun(command: RunCommand): Promise<Awaited<ReturnTyp
             },
             loader: command.config.loader,
             reproducibility: {
+                selection: command.request.selection,
                 seed: '42',
                 shard: command.request.shard
             }
