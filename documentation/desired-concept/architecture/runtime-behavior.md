@@ -29,7 +29,7 @@ Default policy:
 - same-process runs should not promise universal transparent capture of
   every stdout/stderr write path
 - captured output is preserved as a structured failure artifact (see
-  [Failure Artifacts](../authoring/failure-artifacts.md)) — typed as `{ stream: 'stdout' | 'stderr', chunks: ReadonlyArray<{ at: bigint; bytes: Uint8Array }> }`
+  [Failure Artifacts](../authoring/failure-artifacts.md)) - typed as `{ stream: 'stdout' | 'stderr', chunks: ReadonlyArray<{ at: bigint; bytes: Uint8Array }> }`
 - in the default reporter, captured output is **suppressed** for passing
   tests and **printed** for failing tests immediately after the failure
   summary
@@ -38,12 +38,12 @@ Default policy:
 
 Override surfaces:
 
-- `--no-capture` — pass everything through live (useful for debugging,
+- `--no-capture` - pass everything through live (useful for debugging,
   `console.log` driven exploration)
 - instrumented profiles may observe `console.*` through Node diagnostics
   channels even in same-process runs
-- per-test metadata `{ capture: 'live' }` — opt out for one test
-- reporter-level configuration — choose to print captured output for passing
+- per-test metadata `{ capture: 'live' }` - opt out for one test
+- reporter-level configuration - choose to print captured output for passing
   tests as well
 
 When strict console diagnostics are enabled, `console.*` is a runtime policy
@@ -69,8 +69,8 @@ Important distinction:
 
 The full CLI reference (subcommands, flags, and their canonical homes)
 lives in [`cli.md`](../reference/cli.md). Behavior of CLI options that bind
-specifically to runtime concerns — parallelism, watch mode, debug,
-sharding — is documented in this doc; [CLI Reference](../reference/cli.md) cross-links into it.
+specifically to runtime concerns - parallelism, watch mode, debug,
+sharding - is documented in this doc; [CLI Reference](../reference/cli.md) cross-links into it.
 Selection itself is metadata-driven: tags are a first-class metadata
 field, and tag filtering happens through `--filter` expressions such as
 `tag=fast` or `!tag=flaky` (see [Metadata And Selection](./metadata-and-selection.md)).
@@ -360,7 +360,7 @@ the worker.
 
 Override surfaces:
 
-- per-test metadata: `{ timeout: '500ms' }` shortens the soft
+- per-test metadata: `{ timeoutMilliseconds: 500 }` shortens the soft
   timeout for one test (cannot extend past the profile's hard
   timeout)
 - profile configuration overrides set the soft and hard defaults for the
@@ -378,7 +378,7 @@ Soft-timeout mechanics:
   runner error: the outcome is `fail` with a synthetic `FailedCheck`
   summarising `"exceeded soft timeout <deadline>"`. CI gates
   uniformly on test failures (exit code 1). The runner is never the
-  culprit for a slow test — using a slow endpoint or doing extensive
+  culprit for a slow test - using a slow endpoint or doing extensive
   I/O in a profile that should not is a test-author error.
 
 Hard-timeout mechanics:
@@ -390,7 +390,7 @@ Hard-timeout mechanics:
   test is recorded as `crashed`
 - crash-budget rules (`Process Crash Handling`) apply
 
-In-process modes intentionally lack hard termination — see
+In-process modes intentionally lack hard termination - see
 [Microtests And Capabilities § Hang Detection And Forced Termination](../authoring/microtests-and-capabilities.md#hang-detection-and-forced-termination) for the rationale and supervised-profile alternative.
 
 ## Test Debug Mode
@@ -625,7 +625,7 @@ the same frozen-plan protocol," not as a separate discovery model.
 
 ## Terminal Capability Detection
 
-Moved to [CLI Reference § Terminal Capability Detection](../reference/cli.md#terminal-capability-detection) — those rules
+Moved to [CLI Reference § Terminal Capability Detection](../reference/cli.md#terminal-capability-detection) - those rules
 (color, animation, progress UI, terminal width) are CLI- and
 reporter-scoped, not runtime concerns.
 
@@ -687,15 +687,15 @@ debug mode). This is one of the runner-owned escape hatches named in
 
 This document is the runtime counterpart to several others. Cross-links:
 
-- [Microtests And Capabilities](../authoring/microtests-and-capabilities.md) — capability profiles, hang
+- [Microtests And Capabilities](../authoring/microtests-and-capabilities.md) - capability profiles, hang
   detection, supervision
-- [Failure Artifacts](../authoring/failure-artifacts.md) — output capture, runner-error vs test-failure
+- [Failure Artifacts](../authoring/failure-artifacts.md) - output capture, runner-error vs test-failure
   distinction
-- [Metadata And Selection](./metadata-and-selection.md) — selection rules sharding composes with
-- [Fast Feedback Loops](./fast-feedback-loops.md) — watch mode and cache behavior
-- [Platform-First Implementation Notes](./platform-first-implementation-notes.md) — `AbortSignal`, source maps,
+- [Metadata And Selection](./metadata-and-selection.md) - selection rules sharding composes with
+- [Fast Feedback Loops](./fast-feedback-loops.md) - watch mode and cache behavior
+- [Platform-First Implementation Notes](./platform-first-implementation-notes.md) - `AbortSignal`, source maps,
   `AsyncLocalStorage`
-- [Package Architecture](./package-architecture.md) — execution strategy decisions live in
+- [Package Architecture](./package-architecture.md) - execution strategy decisions live in
   `@overkill-dev/run`; this doc names the resulting runtime defaults
 
 ## Resolved Edge Policies

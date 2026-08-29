@@ -34,6 +34,20 @@ type PolicyTestCase = Parameters<RuntimeCapabilityPolicy['runCase']>[0];
 
 const loadEnvPolicyFixturePath = 'source/integration-tests/run/fixtures/load-env-policy.test.ts';
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
+const policyMetadata: PolicyTestCase['metadata'] = {
+    baselines: [],
+    capabilities: [],
+    capture: null,
+    debug: false,
+    extra: {},
+    kind: null,
+    ownership: [],
+    priority: 'standard',
+    runtimes: [],
+    stability: 'stable',
+    tags: [],
+    timeoutMilliseconds: null
+};
 const policyTestCase: PolicyTestCase = {
     body: async function unusedPolicyTestBody() {
         throw new Error('Policy test body should not run.');
@@ -45,7 +59,7 @@ const policyTestCase: PolicyTestCase = {
         suite: [ 'runtime policy' ]
     },
     suitePath: [ 'runtime policy' ],
-    metadata: {}
+    metadata: policyMetadata
 };
 
 function createRunCommand(overrides: RunCommandParts): RunCommand {

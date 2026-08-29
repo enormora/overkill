@@ -9,6 +9,7 @@ import {
 import { serializedValueDiff } from '../compare/comparison.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import type { CaseId } from '../engine/identity.ts';
+import { resolveRootMetadata } from '../engine/metadata.ts';
 import type { FinalResultReporter, RealTimeReporter } from '../engine/reporter.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import {
@@ -42,7 +43,7 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
     await reporter.onEvent({
         facts: {},
         kind: 'run-start',
-        root: { metadata: {}, name: 'root' },
+        root: { metadata: resolveRootMetadata({}), name: 'root' },
         startedAt: '2026-07-15T00:00:00.000Z'
     });
     await reporter.onEvent({

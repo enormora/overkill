@@ -81,7 +81,7 @@ function createPassingPlan(): TestPlan {
     });
 
     return engine.createTestPlanFromTestFiles({
-        files: [ { file: 'source/a.test.ts', testNode } ],
+        files: [ { file: 'source/a.test.ts', metadata: {}, testNode } ],
         root: {
             metadata: {},
             name: 'root'

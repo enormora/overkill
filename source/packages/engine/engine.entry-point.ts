@@ -261,7 +261,6 @@ export type {
 } from '../../assertion-protocol/assertion-node.ts';
 export type {
     TestScopeAssertContext,
-    Metadata,
     RootOptions,
     Suite,
     SuiteOptions,
@@ -276,4 +275,15 @@ export type {
     TestScope,
     TestNode
 } from '../../engine/test-node.ts';
+export type {
+    BaselineSubtype,
+    Capability,
+    CaptureMode,
+    Metadata,
+    Priority,
+    ResolvedMetadata,
+    RuntimeMetadata,
+    Stability,
+    TestFamily
+} from '../../engine/metadata.ts';
 export type { TestPlan, TestPlanCase, TestPlanCaseBody } from '../../engine/test-plan.ts';

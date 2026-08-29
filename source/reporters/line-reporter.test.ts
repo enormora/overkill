@@ -8,7 +8,7 @@ import {
     runIfMain,
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
-import type { CaseId } from '../engine/identity.ts';
+import { resolveRootMetadata } from '../engine/metadata.ts';
 import type { RealTimeReporter } from '../engine/reporter.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -26,10 +26,12 @@ function lineReporterWithLog(log: Log): RealTimeReporter {
 const errorSymbol = colors.red(figures.cross);
 const infoSymbol = colors.cyan(figures.info);
 const successSymbol = colors.green(figures.tick);
-const failingCaseId: CaseId = { file: null, name: 'fails', params: null, suite: [] };
-const passingCaseId: CaseId = { file: null, name: 'passes', params: null, suite: [] };
-const skippedCaseId: CaseId = { file: null, name: 'skips', params: null, suite: [] };
-const inconclusiveCaseId: CaseId = { file: null, name: 'inconclusive', params: null, suite: [] };
+const failingCaseId = { file: null, name: 'fails', params: null, suite: [] };
+const passingCaseId = { file: null, name: 'passes', params: null, suite: [] };
+const skippedCaseId = { file: null, name: 'skips', params: null, suite: [] };
+const inconclusiveCaseId = { file: null, name: 'inconclusive', params: null, suite: [] };
+
+const rootMetadata = resolveRootMetadata({});
 
 async function reportNestedSuiteRun(reporter: RealTimeReporter): Promise<void> {
     await reporter.onEvent({ kind: 'suite-start', suitePath: [ 'rows' ] });
@@ -66,7 +68,10 @@ export const testSuite = createOverkillSuite({
                 await reporter.onEvent({
                     facts: {},
                     kind: 'run-start',
-                    root: { metadata: {}, name: 'file:///source/reporters/line-reporter.test.ts' },
+                    root: {
+                        metadata: rootMetadata,
+                        name: 'file:///source/reporters/line-reporter.test.ts'
+                    },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
 

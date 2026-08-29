@@ -49,6 +49,7 @@ function readTestNode(moduleNamespace: TestModuleNamespace, file: DiscoveredRunF
 
     return {
         file: file.file,
+        metadata: {},
         testNode
     };
 }

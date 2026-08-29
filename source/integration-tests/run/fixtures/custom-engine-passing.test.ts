@@ -6,6 +6,6 @@ export const testNode = createTestCase({
 
         return scope.assert.collect();
     },
-    metadata: { engine: 'custom' },
+    metadata: { extra: { engine: 'custom' } },
     name: 'custom engine passes'
 });

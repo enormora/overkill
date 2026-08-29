@@ -1,7 +1,13 @@
 import type { CaseId } from '../engine/identity.ts';
 import type { ReporterEvent } from '../engine/reporter.ts';
 import type { ResourceUsageSnapshot, RunResult } from '../engine/run-result.ts';
-import type { CollectedRunPlan, RunEngineSelection, RunResourceBudgets, RunScheduling } from './run-types.ts';
+import type {
+    CollectedRunPlan,
+    RunEngineSelection,
+    RunResourceBudgets,
+    RunScheduling,
+    RunTestFamily
+} from './run-types.ts';
 
 type SupervisedCommandBase = {
     readonly capabilityRestrictions: {
@@ -15,6 +21,7 @@ type SupervisedCommandBase = {
     readonly resourceBudgets: RunResourceBudgets;
     readonly resourceUsageSamplingIntervalMilliseconds: number;
     readonly scheduling: RunScheduling;
+    readonly testFamily: RunTestFamily;
     readonly timeoutMilliseconds: number;
 };
 

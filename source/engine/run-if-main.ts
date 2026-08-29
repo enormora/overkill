@@ -1,9 +1,10 @@
 import type { WallClock } from '@enormora/wall-clock';
 import type { Execute, ExecuteOptions } from './execution.ts';
+import type { Metadata } from './metadata.ts';
 import { createPlainOutputRenderer, type OutputRenderer } from './reporter-output.ts';
 import type { Reporter, RunFacts } from './reporter.ts';
 import type { RunResult } from './run-result.ts';
-import type { Metadata, RootOptions, TestNode, TestRoot } from './test-node.ts';
+import type { RootOptions, TestNode, TestRoot } from './test-node.ts';
 import type { TestPlanFactory } from './test-plan.ts';
 
 export type RunIfMainOptions = {

@@ -7,10 +7,10 @@ export const testNode = createSuite({
                 scope.assert.true(true, { message: 'passes' });
                 return scope.assert.collect();
             },
-            metadata: { tag: 'fast' },
+            metadata: { tags: [ 'fast' ] },
             name: 'passes'
         })
     ],
-    metadata: { file: 'passing' },
+    metadata: { extra: { file: 'passing' } },
     name: 'fixture'
 });

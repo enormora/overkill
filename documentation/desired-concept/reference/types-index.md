@@ -102,16 +102,36 @@ type Table = {
 };
 
 type Metadata = {
-    readonly tags?: ReadonlySet<string>;
+    readonly tags?: readonly string[];
     readonly kind?: TestFamily;
-    readonly runtimes?: ReadonlyArray<string>;
+    readonly runtimes?: readonly string[] | {
+        readonly mode: 'append' | 'replace';
+        readonly values: readonly string[];
+    };
     readonly capabilities?: ReadonlyArray<Capability>;
     readonly baselines?: ReadonlyArray<BaselineSubtype>;
     readonly ownership?: ReadonlyArray<string>;
     readonly stability?: 'stable' | 'flaky' | 'experimental';
     readonly priority?: 'critical' | 'standard' | 'optional';
     readonly debug?: boolean;
-    readonly extra?: ReadonlyMap<string, unknown>;
+    readonly capture?: 'buffered' | 'live';
+    readonly timeoutMilliseconds?: number;
+    readonly extra?: Readonly<Record<string, unknown>>;
+};
+
+type ResolvedMetadata = {
+    readonly tags: readonly string[];
+    readonly kind: TestFamily | null;
+    readonly runtimes: readonly string[];
+    readonly capabilities: readonly Capability[];
+    readonly baselines: readonly BaselineSubtype[];
+    readonly ownership: readonly string[];
+    readonly stability: 'stable' | 'flaky' | 'experimental';
+    readonly priority: 'critical' | 'standard' | 'optional';
+    readonly debug: boolean;
+    readonly capture: 'buffered' | 'live' | null;
+    readonly timeoutMilliseconds: number | null;
+    readonly extra: Readonly<Record<string, unknown>>;
 };
 
 type TestFamily = 'microtest' | 'integration' | 'property' | 'benchmark' | 'type-test';
@@ -701,7 +721,7 @@ declare function run(command: RunCommand): Promise<RunResult>;
 type TestPlanCase = {
     readonly id: CaseId;
     readonly suitePath: ReadonlyArray<string>;
-    readonly metadata: Metadata;
+    readonly metadata: ResolvedMetadata;
     readonly body: TestBody;
 };
 
@@ -710,7 +730,7 @@ type TestPlan = {
     readonly discoveredCases: NonEmptyReadonlyArray<TestPlanCase>;
     readonly cases: NonEmptyReadonlyArray<TestPlanCase>;
     readonly orphans: ReadonlyArray<{ file: string | null; name: string; kind: 'test' | 'suite' | 'table'; }>;
-    readonly root: { readonly name: string; readonly metadata: Metadata; };
+    readonly root: { readonly name: string; readonly metadata: ResolvedMetadata; };
 };
 
 type RunFacts = {
@@ -757,7 +777,7 @@ type CollectedRunFile = {
 };
 
 type CollectedRunPlan = {
-    readonly root: { readonly name: string; readonly metadata: SerializedValue; };
+    readonly root: { readonly name: string; readonly metadata: ResolvedMetadata; };
     readonly defined: number;
     readonly files: ReadonlyArray<CollectedRunFile>;
     readonly orphans: ReadonlyArray<OrphanedNode>;

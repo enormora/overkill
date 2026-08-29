@@ -6,6 +6,7 @@ import {
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
 import type { RunResult } from '../engine/run-result.ts';
+import { resolveRootMetadata } from '../engine/metadata.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import {
     createInMemoryFinalResultReporter,
@@ -26,7 +27,7 @@ export const testSuite = createOverkillSuite({
                 const event = {
                     facts: {},
                     kind: 'run-start',
-                    root: { metadata: {}, name: 'root' },
+                    root: { metadata: resolveRootMetadata({}), name: 'root' },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 } as const;
                 const { onFinish } = reporter;
@@ -72,7 +73,7 @@ export const testSuite = createOverkillSuite({
                 const event = {
                     facts: {},
                     kind: 'run-start',
-                    root: { metadata: {}, name: 'root' },
+                    root: { metadata: resolveRootMetadata({}), name: 'root' },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 } as const;
 

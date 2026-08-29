@@ -9,35 +9,57 @@ falling back to inline `.only` culture.
 ## Position
 
 Overkill treats test metadata as explicit structured data rather than
-ad-hoc naming conventions — the metadata-layer expression of
+ad-hoc naming conventions, the metadata-layer expression of
 [Principles § Data Over Side Effects](../decisions/principles.md#data-over-side-effects).
 
 Likely metadata categories:
 
-- **tags** — free-form labels (`'fast'`, `'flaky'`, `'auth'`)
+- **tags** - free-form labels (`'fast'`, `'flaky'`, `'auth'`)
 - **kind** - closed enumeration (see [Glossary § Test Family](../reference/glossary.md#test-family))
-- **runtimes** — declared runtime matrix entries
-- **capabilities** — required capability profile
-- **baselines** — baseline subtypes the test consumes
-- **ownership** — domain or team labels (`'@auth-team'`)
-- **stability** — `'stable' | 'flaky' | 'experimental'`
-- **priority** — `'critical' | 'standard' | 'optional'`
-- **debug** — pin [Test Debug Mode](../authoring/debug-mode.md) on for this test or subtree
+- **runtimes** - declared runtime matrix entries
+- **capabilities** - required capability profile
+- **baselines** - baseline subtypes the test consumes
+- **ownership** - domain or team labels (`'@auth-team'`)
+- **stability** - `'stable' | 'flaky' | 'experimental'`
+- **priority** - `'critical' | 'standard' | 'optional'`
+- **debug** - pin [Test Debug Mode](../authoring/debug-mode.md) on for this test or subtree
+- **capture** - per-test capture preference for future capture behavior
+- **timeoutMilliseconds** - current per-test soft timeout override
 
 ## Concrete Type Sketch
 
 ```ts
 type Metadata = {
-    readonly tags?: ReadonlySet<string>;
-    readonly kind?: TestKind;
-    readonly runtimes?: ReadonlyArray<string>;
+    readonly tags?: readonly string[];
+    readonly kind?: TestFamily;
+    readonly runtimes?: readonly string[] | {
+        readonly mode: 'append' | 'replace';
+        readonly values: readonly string[];
+    };
     readonly capabilities?: ReadonlyArray<Capability>;
     readonly baselines?: ReadonlyArray<BaselineSubtype>;
     readonly ownership?: ReadonlyArray<string>;
     readonly stability?: 'stable' | 'flaky' | 'experimental';
     readonly priority?: 'critical' | 'standard' | 'optional';
-    readonly debug?: boolean; // pins Test Debug Mode on for this test/subtree
-    readonly extra?: ReadonlyMap<string, unknown>; // open-ended
+    readonly debug?: boolean;
+    readonly capture?: 'buffered' | 'live';
+    readonly timeoutMilliseconds?: number;
+    readonly extra?: Readonly<Record<string, unknown>>;
+};
+
+type ResolvedMetadata = {
+    readonly tags: readonly string[];
+    readonly kind: TestFamily | null;
+    readonly runtimes: readonly string[];
+    readonly capabilities: readonly Capability[];
+    readonly baselines: readonly BaselineSubtype[];
+    readonly ownership: readonly string[];
+    readonly stability: 'stable' | 'flaky' | 'experimental';
+    readonly priority: 'critical' | 'standard' | 'optional';
+    readonly debug: boolean;
+    readonly capture: 'buffered' | 'live' | null;
+    readonly timeoutMilliseconds: number | null;
+    readonly extra: Readonly<Record<string, unknown>>;
 };
 ```
 
@@ -55,15 +77,16 @@ with the default behavior.
 
 ## Metadata Propagation
 
-Metadata cascades from suite to test, with override semantics:
+Metadata cascades from root to test, with override semantics:
 
-1. the file's default-export metadata applies to all tests in the file
-2. a parent `Suite`'s metadata applies to all children
-3. a child's metadata overrides the parent on a per-key basis
-4. set-valued fields (`tags`) merge by union with the parent
-5. array-valued fields (`runtimes`) merge unless the child sets
-   `replace: true` (rare)
-6. enum and boolean fields (`kind`, `stability`, `priority`, `debug`) replace
+1. root metadata applies to the whole plan
+2. file-frame metadata applies to all tests in that file
+3. a parent `Suite`'s or `Table`'s metadata applies to all children
+4. a child's metadata overrides the parent on a per-key basis
+5. set-valued fields (`tags`, `ownership`, `baselines`) merge by union with the parent
+6. `runtimes` merges by default and replaces when the child uses
+   `{ mode: 'replace', values }`
+7. enum, boolean, capture, and timeout fields replace
 
 Example:
 
@@ -78,9 +101,15 @@ export const testNode = suite('users', { tags: [ 'auth' ], ownership: [ '@auth' 
 ]);
 ```
 
+The file frame is metadata-only. It participates in propagation but does
+not add a suite segment, does not affect `CaseId`, and does not change
+reporter nesting. The current programmatic engine API exposes it as
+`TestPlanFile.metadata`; public module-level authoring for file metadata
+is deferred to the root authoring and module export design.
+
 Propagation is a tree fold computed at collection time. The resolved
 metadata is part of the test's identity for selection but not for artifact
-identity (which uses only file/suite/name structure — see
+identity (which uses only file/suite/name structure; see
 [Artifact Identity](./artifact-identity.md)).
 
 ## Selection Model
@@ -185,14 +214,18 @@ The metadata is:
 - visible to artifact identity _for selection only_
 - stable enough to participate in identity hashing
 
+`debug`, `capture`, `priority`, and `baselines` are modeled metadata before
+their runtime consumers exist. They are visible to plans, run facts, and
+reporters, but they do not change execution behavior yet.
+
 ## Stability Markers
 
 Overkill distinguishes between:
 
-- `stable` (default) — failures gate
-- `flaky` — the test is suspected to be unstable; this is metadata, not
+- `stable` (default) - failures gate
+- `flaky` - the test is suspected to be unstable; this is metadata, not
   absolution
-- `experimental` — alpha tests still under development
+- `experimental` - alpha tests still under development
 
 Microtests should not normalize retries or flaky markers. If a microtest is
 flaky, that is a design failure, not an expected state. For integration-style
@@ -229,7 +262,7 @@ The CLI grammar is sugar over this API; both produce identical predicates.
 
 ## Sources
 
-- [Pytest — markers](https://docs.pytest.org/en/stable/how-to/mark.html)
-- [JUnit5 — Tags and Filtering](https://junit.org/junit5/docs/current/user-guide/#writing-tests-tagging-and-filtering)
-- [Bazel — `tags` attribute](https://bazel.build/reference/be/common-definitions#common-attributes-tests)
-- [Playwright — projects and grep](https://playwright.dev/docs/test-projects)
+- [Pytest - markers](https://docs.pytest.org/en/stable/how-to/mark.html)
+- [JUnit5 - Tags and Filtering](https://junit.org/junit5/docs/current/user-guide/#writing-tests-tagging-and-filtering)
+- [Bazel - `tags` attribute](https://bazel.build/reference/be/common-definitions#common-attributes-tests)
+- [Playwright - projects and grep](https://playwright.dev/docs/test-projects)

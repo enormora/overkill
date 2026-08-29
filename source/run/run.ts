@@ -52,6 +52,7 @@ type SupervisedCommandBase = {
     readonly resourceBudgets: SupervisedRunCommand['resourceBudgets'];
     readonly resourceUsageSamplingIntervalMilliseconds: number;
     readonly scheduling: SupervisedRunCommand['scheduling'];
+    readonly testFamily: SupervisedRunCommand['testFamily'];
     readonly timeoutMilliseconds: number;
 };
 
@@ -108,6 +109,7 @@ function createSupervisedCommandBase(
         resourceBudgets: resourceUsagePolicy.budgets,
         resourceUsageSamplingIntervalMilliseconds: resourceUsagePolicy.samplingIntervalMilliseconds,
         scheduling: profile.execution.scheduling,
+        testFamily: profile.testFamily,
         timeoutMilliseconds: profile.timeouts.softMilliseconds
     };
 }

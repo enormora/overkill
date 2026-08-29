@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'tstyche';
 import type {
     Engine,
+    Metadata,
+    ResolvedMetadata,
     TestNode,
     TestPlan,
     TestPlanFile,
@@ -13,7 +15,7 @@ describe('TestRoot', function () {
         expect<TestRoot['kind']>().type.toBe<'root'>();
         expect<TestRoot>().type.not.toBeAssignableTo<TestNode>();
         expect<TestPlan['root']>().type.toBe<{
-            readonly metadata: Readonly<Record<string, unknown>>;
+            readonly metadata: ResolvedMetadata;
             readonly name: string;
         }>();
     });
@@ -21,12 +23,13 @@ describe('TestRoot', function () {
     test('exposes file-backed planning for explicit run inputs', function () {
         expect<TestPlanFile>().type.toBe<{
             readonly file: string;
+            readonly metadata: Metadata;
             readonly testNode: TestNode;
         }>();
         expect<TestPlanFromTestFilesOptions>().type.toBe<{
             readonly files: readonly [TestPlanFile, ...(readonly TestPlanFile[])];
             readonly root: {
-                readonly metadata: Readonly<Record<string, unknown>>;
+                readonly metadata: Metadata;
                 readonly name: string;
             };
         }>();
