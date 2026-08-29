@@ -5,6 +5,7 @@ import {
     runIfMain,
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
+import { serializeValue } from '../compare/serialized-value.ts';
 import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import {
@@ -39,6 +40,23 @@ const defaultRequest: RunRequest = defaultRunRequest({ paths: [ passingFixturePa
 
 function plainData(value: unknown): unknown {
     return structuredClone(value);
+}
+
+function expectedPassingFixtureMetadata(): unknown {
+    return {
+        baselines: [],
+        capabilities: [],
+        capture: null,
+        debug: false,
+        extra: { file: 'passing' },
+        kind: 'microtest',
+        ownership: [],
+        priority: 'standard',
+        runtimes: [],
+        stability: 'stable',
+        tags: [ 'fast' ],
+        timeoutMilliseconds: null
+    };
 }
 
 function createRunCommand(overrides: RunCommandParts): RunCommand {
@@ -78,21 +96,7 @@ export const testSuite = createOverkillSuite({
                                 params: null,
                                 suite: [ 'fixture' ]
                             },
-                            metadata: {
-                                constructorName: 'Object',
-                                entries: [
-                                    {
-                                        key: { kind: 'string', value: 'file' },
-                                        value: { kind: 'string', truncation: null, value: 'passing' }
-                                    },
-                                    {
-                                        key: { kind: 'string', value: 'tag' },
-                                        value: { kind: 'string', truncation: null, value: 'fast' }
-                                    }
-                                ],
-                                kind: 'object',
-                                truncation: null
-                            }
+                            metadata: serializeValue(expectedPassingFixtureMetadata())
                         }
                     ],
                     environment: {
@@ -306,21 +310,7 @@ export const testSuite = createOverkillSuite({
                                 params: null,
                                 suite: [ 'fixture' ]
                             },
-                            metadata: {
-                                constructorName: 'Object',
-                                entries: [
-                                    {
-                                        key: { kind: 'string', value: 'file' },
-                                        value: { kind: 'string', truncation: null, value: 'passing' }
-                                    },
-                                    {
-                                        key: { kind: 'string', value: 'tag' },
-                                        value: { kind: 'string', truncation: null, value: 'fast' }
-                                    }
-                                ],
-                                kind: 'object',
-                                truncation: null
-                            }
+                            metadata: serializeValue(expectedPassingFixtureMetadata())
                         }
                     ],
                     environment: {

@@ -189,7 +189,7 @@ function resolveSoftTimeout(
 
     const metadataTimeout = timeoutMetadataValue(testCase);
 
-    if (metadataTimeout === undefined) {
+    if (metadataTimeout === null) {
         return { kind: 'milliseconds', milliseconds: policy.timeoutMilliseconds };
     }
 

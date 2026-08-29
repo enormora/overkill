@@ -168,7 +168,7 @@ function createSmokeCase(engine: Engine, definition: SmokeCaseDefinition): TestC
             testScope.assert.equal(1, 2, { message: definition.assertionSummary });
             return testScope.assert.collect();
         },
-        metadata: { expectedVerdict: definition.expectedVerdict },
+        metadata: { extra: { expectedVerdict: definition.expectedVerdict } },
         name: definition.name
     });
 }

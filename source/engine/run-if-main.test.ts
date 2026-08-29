@@ -120,7 +120,20 @@ export const testSuite = createOverkillSuite({
                 scope.require.defined(firstCase);
                 scope.assert.equal(firstCase.id.name, 'passes');
                 scope.assert.deepEqual(firstExecute.arguments[0].root, {
-                    metadata: {},
+                    metadata: {
+                        baselines: [],
+                        capabilities: [],
+                        capture: null,
+                        debug: false,
+                        extra: {},
+                        kind: null,
+                        ownership: [],
+                        priority: 'standard',
+                        runtimes: [],
+                        stability: 'stable',
+                        tags: [],
+                        timeoutMilliseconds: null
+                    },
                     name: 'file:///test/file.test.ts'
                 });
 
@@ -135,7 +148,7 @@ export const testSuite = createOverkillSuite({
 
                 await fixture.engine.runIfMain(importMeta(true), fixture.testNode, {
                     root: {
-                        metadata: { owner: 'engine' },
+                        metadata: { ownership: [ 'engine' ] },
                         name: 'engine tests'
                     }
                 });
@@ -143,7 +156,20 @@ export const testSuite = createOverkillSuite({
                 const firstExecute = fixture.execute.firstCall;
                 scope.require.notNull(firstExecute);
                 scope.assert.deepEqual(firstExecute.arguments[0].root, {
-                    metadata: { owner: 'engine' },
+                    metadata: {
+                        baselines: [],
+                        capabilities: [],
+                        capture: null,
+                        debug: false,
+                        extra: {},
+                        kind: null,
+                        ownership: [ 'engine' ],
+                        priority: 'standard',
+                        runtimes: [],
+                        stability: 'stable',
+                        tags: [],
+                        timeoutMilliseconds: null
+                    },
                     name: 'engine tests'
                 });
 

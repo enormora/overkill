@@ -12,6 +12,7 @@ import {
     type InMemoryRealTimeReporter
 } from '../reporters/in-memory-reporter.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
+import { resolveRootMetadata } from './metadata.ts';
 import type { RealTimeReporter, ReporterEvent } from './reporter.ts';
 import type {
     BodyErrorTestFailure,
@@ -214,7 +215,7 @@ export const testSuite = createOverkillSuite({
                         {
                             facts: { seed: 42 },
                             kind: 'run-start',
-                            root: { metadata: {}, name: 'root' },
+                            root: { metadata: resolveRootMetadata({}), name: 'root' },
                             startedAt: '2026-07-15T00:00:00.000Z'
                         },
                         {

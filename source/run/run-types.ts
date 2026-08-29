@@ -215,7 +215,7 @@ export type CollectedRunPlan = {
     readonly files: readonly CollectedRunFile[];
     readonly orphans: readonly OrphanedNode[];
     readonly root: {
-        readonly metadata: SerializedValue;
+        readonly metadata: TestPlan['root']['metadata'];
         readonly name: string;
     };
 };

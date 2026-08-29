@@ -8,12 +8,13 @@ import type { RunCommand, RunMicrotestProfileConfig, RunOrchestratorDependencies
 
 async function createTestPlan(
     command: RunCommand,
+    profile: RunMicrotestProfileConfig,
     files: NonEmptyReadonlyArray<DiscoveredRunFile>,
     dependencies: RunOrchestratorDependencies
 ): Promise<TestPlan> {
     const engine = await resolveRunEngine(command.engine, dependencies);
 
-    return await createRunTestPlanFromFiles({ cwd: command.cwd, engine, files });
+    return await createRunTestPlanFromFiles({ cwd: command.cwd, engine, files, testFamily: profile.testFamily });
 }
 
 export async function createLocalTestPlan(
@@ -39,7 +40,7 @@ export async function createLocalTestPlan(
     }, profile.timeouts.collectionMilliseconds);
 
     try {
-        return await Promise.race([ createTestPlan(command, files, dependencies), collectionTimeout ]);
+        return await Promise.race([ createTestPlan(command, profile, files, dependencies), collectionTimeout ]);
     } finally {
         dependencies.wallClock.clearTimeout(timeout);
     }

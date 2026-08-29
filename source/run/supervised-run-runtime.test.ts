@@ -6,6 +6,7 @@ import {
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
 import type { CaseId } from '../engine/identity.ts';
+import { resolveRootMetadata } from '../engine/metadata.ts';
 import type { ResourceUsageSnapshot } from '../engine/run-result.ts';
 import type { CollectedRunPlan, ResolvedRun } from './run-types.ts';
 import type { SupervisedChildProcess } from './supervised-child-process.ts';
@@ -37,7 +38,7 @@ type TimeoutRuntimeRecord = {
     readonly runtime: SupervisedRunRuntimeSeed;
 };
 
-const collectedPlan = { root: { name: 'root' } } as unknown as CollectedRunPlan;
+const collectedPlan = { root: { metadata: resolveRootMetadata({}), name: 'root' } } as unknown as CollectedRunPlan;
 const caseId: CaseId = {
     file: 'source/example.test.ts',
     name: 'case',

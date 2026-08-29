@@ -25,6 +25,8 @@ import type {
     FailedCompositeCheck,
     FailedForeignCheck,
     FailedLeafCheck,
+    Metadata,
+    ResolvedMetadata,
     NonEmptyReadonlyArray,
     PerTestResult,
     ReporterEvent,
@@ -38,6 +40,7 @@ import type {
     SourceLocationProvider,
     TestScope,
     TestFailure,
+    TestFamily,
     TestOutcome,
     ThrownMatcher,
     unknownSourceLocation
@@ -294,6 +297,27 @@ describe('TestOutcome', function () {
             readonly kind: 'test-contract';
             readonly summary: 'Assertion plan count did not match.';
         }>();
+    });
+});
+
+describe('Metadata', function () {
+    test('exposes authored and resolved metadata shapes', function () {
+        expect<Metadata>().type.toBeAssignableFrom<{
+            readonly baselines: readonly ['content-snapshot'];
+            readonly capabilities: readonly ['fs-read'];
+            readonly capture: 'buffered';
+            readonly debug: true;
+            readonly extra: { readonly owner: 'team'; };
+            readonly kind: 'microtest';
+            readonly ownership: readonly ['@team'];
+            readonly priority: 'critical';
+            readonly runtimes: { readonly mode: 'replace'; readonly values: readonly ['node']; };
+            readonly stability: 'flaky';
+            readonly tags: readonly ['fast'];
+            readonly timeoutMilliseconds: number;
+        }>();
+        expect<ResolvedMetadata['kind']>().type.toBe<TestFamily | null>();
+        expect<ResolvedMetadata['stability']>().type.toBe<'experimental' | 'flaky' | 'stable'>();
     });
 });
 

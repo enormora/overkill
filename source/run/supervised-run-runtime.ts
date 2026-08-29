@@ -235,6 +235,7 @@ function createRunCommand(resolvedRun: ResolvedRun): SupervisedRunCommand {
             .resourceUsagePolicy
             .samplingIntervalMilliseconds,
         scheduling: resolvedRun.facts.execution.scheduling,
+        testFamily: resolvedRun.facts.execution.testFamily,
         timeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.softMilliseconds
     };
 }
@@ -385,7 +386,7 @@ export async function reportRunStart(
             facts: runtime.resolvedRun.facts,
             kind: 'run-start',
             root: {
-                metadata: {},
+                metadata: collectedPlan.root.metadata,
                 name: collectedPlan.root.name
             },
             startedAt: runStartTimeFromMilliseconds(startedAtMs)

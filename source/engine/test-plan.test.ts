@@ -6,12 +6,31 @@ import {
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
+import type { TestCaseOptions } from './test-node.ts';
 
 function plainDataShape(value: unknown): unknown {
     const { stringify } = JSON;
     const { parse } = JSON;
 
     return parse(stringify(value));
+}
+
+function metadataShape(fields: Readonly<Record<string, unknown>>): unknown {
+    return {
+        baselines: [],
+        capabilities: [],
+        capture: null,
+        debug: false,
+        extra: {},
+        kind: null,
+        ownership: [],
+        priority: 'standard',
+        runtimes: [],
+        stability: 'stable',
+        tags: [],
+        timeoutMilliseconds: null,
+        ...fields
+    };
 }
 
 export const testSuite = createOverkillSuite({
@@ -30,7 +49,7 @@ export const testSuite = createOverkillSuite({
                                 testScope.assert.true(true, { message: 'passes' });
                                 return testScope.assert.collect();
                             },
-                            metadata: { local: true },
+                            metadata: { tags: [ 'local' ] },
                             name: 'first'
                         }),
                         engine.createTable({
@@ -40,16 +59,16 @@ export const testSuite = createOverkillSuite({
                                         testScope.assert.true(true, { message: 'row passes' });
                                         return testScope.assert.collect();
                                     },
-                                    metadata: { row: 1 },
+                                    metadata: { extra: { row: 1 } },
                                     name: 'row 1',
                                     parameters: { value: 1 }
                                 }
                             ],
-                            metadata: { table: true },
+                            metadata: { tags: [ 'table' ] },
                             name: 'rows'
                         })
                     ],
-                    metadata: { inherited: true },
+                    metadata: { tags: [ 'inherited' ] },
                     name: 'root'
                 });
 
@@ -69,12 +88,12 @@ export const testSuite = createOverkillSuite({
                     [
                         {
                             id: { file: null, name: 'first', params: null, suite: [] },
-                            metadata: { inherited: true, local: true },
+                            metadata: metadataShape({ tags: [ 'inherited', 'local' ] }),
                             suitePath: []
                         },
                         {
                             id: { file: null, name: 'row 1', params: null, suite: [ 'rows' ] },
-                            metadata: { inherited: true, row: 1, table: true },
+                            metadata: metadataShape({ extra: { row: 1 }, tags: [ 'inherited', 'table' ] }),
                             suitePath: [ 'rows' ]
                         }
                     ]
@@ -125,6 +144,161 @@ export const testSuite = createOverkillSuite({
                     { file: null, kind: 'test', name: 'unused test' },
                     { file: null, kind: 'suite', name: 'unused suite' }
                 ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'createTestPlanFromTestFiles() resolves structured metadata without file suite nesting',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const engine = createEngine();
+                const testNode = engine.createSuite({
+                    children: [
+                        engine.createTestCase({
+                            body(testScope) {
+                                testScope.assert.true(true);
+                                return testScope.assert.collect();
+                            },
+                            metadata: {
+                                debug: false,
+                                extra: { case: true },
+                                ownership: [ 'case-team' ],
+                                tags: [ 'case' ],
+                                timeoutMilliseconds: 20
+                            },
+                            name: 'login'
+                        })
+                    ],
+                    metadata: {
+                        baselines: [ 'terminal-snapshot' ],
+                        capabilities: [ 'fs-read' ],
+                        capture: 'live',
+                        debug: true,
+                        extra: { suite: true },
+                        kind: 'integration',
+                        priority: 'standard',
+                        runtimes: { mode: 'replace', values: [ 'node' ] },
+                        stability: 'stable',
+                        tags: [ 'suite' ],
+                        timeoutMilliseconds: 15
+                    },
+                    name: 'users'
+                });
+                const testPlan = engine.createTestPlanFromTestFiles({
+                    files: [
+                        {
+                            file: 'source/users.test.ts',
+                            metadata: {
+                                baselines: [ 'visual-snapshot' ],
+                                capabilities: [ 'fs-read' ],
+                                capture: 'buffered',
+                                debug: false,
+                                extra: { file: true, root: false },
+                                ownership: [ 'file-team' ],
+                                priority: 'optional',
+                                runtimes: [ 'browser' ],
+                                stability: 'experimental',
+                                tags: [ 'file' ],
+                                timeoutMilliseconds: 10
+                            },
+                            testNode
+                        }
+                    ],
+                    root: {
+                        metadata: {
+                            baselines: [ 'content-snapshot' ],
+                            capabilities: [ 'fs-read', 'net' ],
+                            capture: 'live',
+                            debug: true,
+                            extra: { root: true },
+                            kind: 'microtest',
+                            ownership: [ 'root-team' ],
+                            priority: 'critical',
+                            runtimes: [ 'node' ],
+                            stability: 'flaky',
+                            tags: [ 'root' ],
+                            timeoutMilliseconds: 5
+                        },
+                        name: 'root'
+                    }
+                });
+                const [ testCase ] = testPlan.cases;
+                scope.require.defined(testCase);
+
+                scope.assert.deepEqual(
+                    plainDataShape({
+                        id: testCase.id,
+                        metadata: testCase.metadata,
+                        suitePath: testCase.suitePath
+                    }),
+                    {
+                        id: { file: 'source/users.test.ts', name: 'login', params: null, suite: [ 'users' ] },
+                        metadata: {
+                            baselines: [ 'content-snapshot', 'visual-snapshot', 'terminal-snapshot' ],
+                            capabilities: [ 'fs-read' ],
+                            capture: 'live',
+                            debug: false,
+                            extra: { case: true, file: true, root: false, suite: true },
+                            kind: 'integration',
+                            ownership: [ 'root-team', 'file-team', 'case-team' ],
+                            priority: 'standard',
+                            runtimes: [ 'node' ],
+                            stability: 'stable',
+                            tags: [ 'root', 'file', 'suite', 'case' ],
+                            timeoutMilliseconds: 20
+                        },
+                        suitePath: [ 'users' ]
+                    }
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'createTestPlan() rejects metadata that widens parent capabilities',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const engine = createEngine();
+                const root = engine.createRoot({
+                    children: [
+                        engine.createTestCase({
+                            body(testScope) {
+                                testScope.assert.true(true);
+                                return testScope.assert.collect();
+                            },
+                            metadata: { capabilities: [ 'net' ] },
+                            name: 'widens'
+                        })
+                    ],
+                    metadata: { capabilities: [ 'fs-read' ] },
+                    name: 'root'
+                });
+
+                scope.assert.throws(function createPlanWithWidenedCapabilities() {
+                    engine.createTestPlan(root);
+                }, { message: 'Metadata capabilities cannot widen parent capability: net.' });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'createTestCase() rejects unknown metadata fields',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const engine = createEngine();
+                const invalidOptions: TestCaseOptions = {
+                    body(testScope) {
+                        testScope.assert.true(true);
+                        return testScope.assert.collect();
+                    },
+                    metadata: Object.fromEntries([ [ 'tag', 'fast' ] ]),
+                    name: 'invalid'
+                };
+
+                scope.assert.throws(function createTestCaseWithUnknownMetadata() {
+                    engine.createTestCase(invalidOptions);
+                }, { message: 'Unknown metadata field: tag.' });
 
                 return scope.assert.collect();
             }

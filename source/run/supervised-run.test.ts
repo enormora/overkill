@@ -377,6 +377,7 @@ export const testSuite = createOverkillSuite({
                     resourceBudgets: microtestProfile.resourceUsage.budgets,
                     resourceUsageSamplingIntervalMilliseconds: samplingIntervalMilliseconds,
                     scheduling: 'concurrent',
+                    testFamily: 'microtest',
                     timeoutMilliseconds: softTimeoutMilliseconds
                 });
                 await waitForCollectedMessage(child);

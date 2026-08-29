@@ -6,6 +6,7 @@ import {
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
 import type { SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
+import { resolveRootMetadata } from '../engine/metadata.ts';
 import type { OutputLineIntent, ReporterOutput } from '../engine/reporter-output.ts';
 import type { ReporterEvent } from '../engine/reporter.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -144,7 +145,7 @@ export const testSuite = createOverkillSuite({
                 const startOutput = await readOutput(reporter.onEvent({
                     facts: { cases: [ { id: caseId, metadata: {} } ] },
                     kind: 'run-start',
-                    root: { metadata: {}, name: 'source' },
+                    root: { metadata: resolveRootMetadata({}), name: 'source' },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 }));
                 const passOutput = await readOutput(reporter.onEvent(passEvent()));
@@ -169,7 +170,7 @@ export const testSuite = createOverkillSuite({
                 await reporter.onEvent({
                     facts: { cases: Array.from({ length: 250 }) },
                     kind: 'run-start',
-                    root: { metadata: {}, name: 'source' },
+                    root: { metadata: resolveRootMetadata({}), name: 'source' },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
 
@@ -220,7 +221,7 @@ export const testSuite = createOverkillSuite({
                 await reporter.onEvent({
                     facts: { cases: Array.from({ length: 100 }) },
                     kind: 'run-start',
-                    root: { metadata: {}, name: 'source' },
+                    root: { metadata: resolveRootMetadata({}), name: 'source' },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
 

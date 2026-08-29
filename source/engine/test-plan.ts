@@ -1,11 +1,16 @@
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import { caseIdentityKey, createCaseId, formatCaseId, type CaseId } from './identity.ts';
+import {
+    ensureMetadata,
+    resolveMetadata,
+    resolveRootMetadata,
+    type Metadata,
+    type ResolvedMetadata
+} from './metadata.ts';
 import type { OrphanedNode } from './run-result.ts';
 import {
     ensureOwnedTestRoot,
     isOwnedTestNode,
-    mergeMetadata,
-    type Metadata,
     type RootOptions,
     type Table,
     type TestBody,
@@ -20,7 +25,7 @@ export type TestPlanCaseBody = TestBody;
 export type TestPlanCase = {
     readonly id: CaseId;
     readonly suitePath: readonly string[];
-    readonly metadata: Metadata;
+    readonly metadata: ResolvedMetadata;
     readonly body: TestPlanCaseBody;
 };
 
@@ -33,7 +38,7 @@ export type TestPlan = {
 };
 
 type TestPlanRoot = {
-    readonly metadata: Metadata;
+    readonly metadata: ResolvedMetadata;
     readonly name: string;
 };
 
@@ -41,12 +46,18 @@ export type TestPlanFactory = (root: TestRoot) => TestPlan;
 
 export type TestPlanFile = {
     readonly file: string;
+    readonly metadata: Metadata;
     readonly testNode: TestNode;
+};
+
+type TestPlanRootOptions = {
+    readonly metadata: Metadata;
+    readonly name: string;
 };
 
 export type TestPlanFromTestFilesOptions = {
     readonly files: NonEmptyReadonlyArray<TestPlanFile>;
-    readonly root: TestPlanRoot;
+    readonly root: TestPlanRootOptions;
 };
 
 export type TestPlanFromTestFilesFactory = (options: TestPlanFromTestFilesOptions) => TestPlan;
@@ -60,9 +71,9 @@ function collectTestCase(
     testCase: TestCase,
     file: string | null,
     suitePath: readonly string[],
-    metadata: Metadata
+    metadata: ResolvedMetadata
 ): CollectedTestCases {
-    const resolvedMetadata = mergeMetadata(metadata, testCase.metadata);
+    const resolvedMetadata = resolveMetadata(metadata, testCase.metadata);
 
     return {
         cases: [
@@ -81,18 +92,18 @@ function collectTable(
     table: Table,
     file: string | null,
     suitePath: readonly string[],
-    metadata: Metadata
+    metadata: ResolvedMetadata
 ): CollectedTestCases {
     if (table.cases.length === 0) {
         throw new TypeError(`Table must contain at least one case: ${[ ...suitePath, table.name ].join(' > ')}.`);
     }
 
     const tablePath = [ ...suitePath, table.name ];
-    const tableMetadata = mergeMetadata(metadata, table.metadata);
+    const tableMetadata = resolveMetadata(metadata, table.metadata);
 
     return {
         cases: table.cases.map(function collectTableCase(tableCase): TestPlanCase {
-            const resolvedMetadata = mergeMetadata(tableMetadata, tableCase.metadata);
+            const resolvedMetadata = resolveMetadata(tableMetadata, tableCase.metadata);
 
             return {
                 body: tableCase.body,
@@ -120,7 +131,7 @@ function collectNode(
     node: TestNode,
     file: string | null,
     suitePath: readonly string[],
-    metadata: Metadata
+    metadata: ResolvedMetadata
 ): CollectedTestCases {
     if (node.kind === 'test') {
         return collectTestCase(node, file, suitePath, metadata);
@@ -135,7 +146,7 @@ function collectNode(
     }
 
     const childPath = [ ...suitePath, node.name ];
-    const childMetadata = mergeMetadata(metadata, node.metadata);
+    const childMetadata = resolveMetadata(metadata, node.metadata);
     const children = mergeCollectedTestCases(node.children.map(function collectChild(child) {
         return collectNode(child, file, childPath, childMetadata);
     }));
@@ -146,17 +157,21 @@ function collectNode(
     };
 }
 
-function collectRoot(root: TestRoot): CollectedTestCases {
+function collectRoot(root: TestRoot, rootMetadata: ResolvedMetadata): CollectedTestCases {
     if (root.children.length === 0) {
         throw new TypeError(`Root must contain at least one child: ${root.name}.`);
     }
 
     return mergeCollectedTestCases(root.children.map(function collectChild(child) {
-        return collectNode(child, null, [], root.metadata);
+        return collectNode(child, null, [], rootMetadata);
     }));
 }
 
-function collectTestFiles(root: TestRoot, files: NonEmptyReadonlyArray<TestPlanFile>): CollectedTestCases {
+function collectTestFiles(
+    root: TestRoot,
+    files: NonEmptyReadonlyArray<TestPlanFile>,
+    rootMetadata: ResolvedMetadata
+): CollectedTestCases {
     return mergeCollectedTestCases(root.children.map(function collectChild(child, index) {
         const file = files[index];
 
@@ -164,7 +179,7 @@ function collectTestFiles(root: TestRoot, files: NonEmptyReadonlyArray<TestPlanF
             throw new TypeError('Every test file must map to one root child.');
         }
 
-        return collectNode(child, file.file, [], root.metadata);
+        return collectNode(child, file.file, [], resolveMetadata(rootMetadata, file.metadata));
     }));
 }
 
@@ -223,7 +238,8 @@ export function createTestPlanFactory(owner: TestNodeOwner, constructedNodes: Re
             'Test plan root must be created by the same engine instance.'
         );
 
-        const collection = collectRoot(root);
+        const rootMetadata = resolveRootMetadata(root.metadata);
+        const collection = collectRoot(root, rootMetadata);
         const { cases: discoveredCases, reachedNodes } = collection;
         assertNonEmptyCases(discoveredCases);
         assertUniqueCaseIds(discoveredCases);
@@ -234,7 +250,7 @@ export function createTestPlanFactory(owner: TestNodeOwner, constructedNodes: Re
             discoveredCases,
             orphans: collectOrphans(constructedNodes, reachedNodes),
             root: {
-                metadata: root.metadata,
+                metadata: rootMetadata,
                 name: root.name
             }
         };
@@ -245,6 +261,8 @@ function ensureTestPlanFile(file: TestPlanFile, owner: TestNodeOwner): void {
     if (file.file.trim().length === 0) {
         throw new TypeError('Test file identity must not be empty.');
     }
+
+    ensureMetadata(file.metadata);
 
     if (!isOwnedTestNode(file.testNode, owner)) {
         throw new TypeError('Test file must provide a TestNode created by the selected engine.');
@@ -271,7 +289,8 @@ export function createTestPlanFromTestFilesFactory(
             metadata: options.root.metadata,
             name: options.root.name
         });
-        const { cases: discoveredCases, reachedNodes } = collectTestFiles(root, options.files);
+        const rootMetadata = resolveRootMetadata(root.metadata);
+        const { cases: discoveredCases, reachedNodes } = collectTestFiles(root, options.files, rootMetadata);
         assertNonEmptyCases(discoveredCases);
         assertUniqueCaseIds(discoveredCases);
 
@@ -281,7 +300,7 @@ export function createTestPlanFromTestFilesFactory(
             discoveredCases,
             orphans: [],
             root: {
-                metadata: root.metadata,
+                metadata: rootMetadata,
                 name: root.name
             }
         };

@@ -24,6 +24,7 @@ Top-level API:
 - `ThrownMatcher`, `ErrorMatcher`, `ExactThrownMatcher`
 - `RequireAssertionFacade`, `FailedCheck`, `TestFailure`, `RunnerError`
 - `Diff`, `DiffPathSegment`, `SerializedValue`, `SerializationBudget`
+- `Metadata`, `ResolvedMetadata`, `TestFamily`, `Capability`, `BaselineSubtype`
 
 The top-level constructors share one default engine instance. Use
 `createEngine()` when a collection needs isolated construction state for
@@ -73,6 +74,11 @@ await runIfMain(import.meta, testNode, {
 Direct `createTestPlan(...)` calls require an explicit `createRoot(...)`.
 The root carries run-level name and metadata, but it does not contribute to
 case suite paths or `RunResult.bySuite`.
+
+Metadata is closed structured input. Unknown first-party metadata fields
+fail during test construction or collection. `TestPlanCase.metadata` is the
+resolved metadata after root, file, suite, table, and case propagation. Use
+`extra` for package-owned extension data.
 
 Reporter lifecycle:
 

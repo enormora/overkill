@@ -146,7 +146,7 @@ export function collectedRunPlanFromTestPlan(testPlan: TestPlan): CollectedRunPl
         }),
         orphans: testPlan.orphans,
         root: {
-            metadata: serializeValue(testPlan.root.metadata),
+            metadata: testPlan.root.metadata,
             name: testPlan.root.name
         }
     };

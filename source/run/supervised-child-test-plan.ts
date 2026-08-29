@@ -12,5 +12,10 @@ async function selectedEngine(command: SupervisedChildCommand): Promise<Engine> 
 export async function createSupervisedChildTestPlan(command: SupervisedChildCommand): Promise<TestPlan> {
     const engine = await selectedEngine(command);
 
-    return await createRunTestPlan({ cwd: command.cwd, engine, paths: command.paths });
+    return await createRunTestPlan({
+        cwd: command.cwd,
+        engine,
+        paths: command.paths,
+        testFamily: command.testFamily
+    });
 }

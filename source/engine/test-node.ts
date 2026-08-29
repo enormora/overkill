@@ -4,14 +4,13 @@ import type {
 } from '../assertion-protocol/assertion-node.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import type { AssertAssertionFacade } from './assertion-facade.ts';
+import { ensureMetadata, type Metadata } from './metadata.ts';
 import type { RequireAssertionFacade } from './require-assertion-facade.ts';
 
 const testNodeBrand: unique symbol = Symbol('OverkillTestNode');
 const testRootBrand: unique symbol = Symbol('OverkillTestRoot');
 const testNodeOwnerBrand: unique symbol = Symbol('OverkillTestNodeOwner');
 const testNodeOwnerIdentity: unique symbol = Symbol('OverkillTestNodeOwnerIdentity');
-
-export type Metadata = Readonly<Record<string, unknown>>;
 
 export type TestScopeAssertContext = AssertAssertionFacade & {
     readonly collect: () => NonEmptyReadonlyArray<AssertAssertionNode>;
@@ -128,9 +127,9 @@ function ensureName(name: string): void {
     }
 }
 
-function ensureMetadata(metadata: unknown): asserts metadata is Metadata {
-    if (typeof metadata !== 'object' || metadata === null || Array.isArray(metadata)) {
-        throw new TypeError('Test node metadata must be an object.');
+function ensureParameters(parameters: unknown): asserts parameters is Readonly<Record<string, unknown>> {
+    if (typeof parameters !== 'object' || parameters === null || Array.isArray(parameters)) {
+        throw new TypeError('Table case parameters must be an object.');
     }
 }
 
@@ -281,7 +280,7 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
         for (const tableCase of options.cases) {
             ensureName(tableCase.name);
             ensureMetadata(tableCase.metadata);
-            ensureMetadata(tableCase.parameters);
+            ensureParameters(tableCase.parameters);
             ensureTestBody(tableCase.body);
         }
 
@@ -305,8 +304,4 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
         createTable,
         createTestCase
     };
-}
-
-export function mergeMetadata(parent: Metadata, child: Metadata): Metadata {
-    return { ...parent, ...child };
 }
