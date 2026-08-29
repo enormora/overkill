@@ -144,6 +144,10 @@ export const config = {
                     js: 'packages/run/command-line.entry-point.js',
                     declarationFile: 'packages/run/command-line.entry-point.d.ts'
                 },
+                filters: {
+                    js: 'packages/run/filters.entry-point.js',
+                    declarationFile: 'packages/run/filters.entry-point.d.ts'
+                },
                 main: {
                     js: 'packages/run/run.entry-point.js',
                     declarationFile: 'packages/run/run.entry-point.d.ts'
@@ -158,6 +162,10 @@ export const config = {
                     {
                         export: './command-line',
                         root: 'commandLine'
+                    },
+                    {
+                        export: './filters',
+                        root: 'filters'
                     }
                 ]
             },

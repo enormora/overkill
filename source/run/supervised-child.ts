@@ -4,12 +4,17 @@ import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type {
     Reporter,
+    RunResult,
     RunnerError,
     RunResourceUsageTracker,
     TestPlan
 } from '../packages/engine/engine.entry-point.ts';
 import { createNodeResourceUsageTracker } from './resource-usage.ts';
-import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
+import {
+    collectedRunPlanFromTestPlan,
+    collectedRunPlanFromTestPlanCases,
+    createRunResultFromCollectedPlan
+} from './collected-run-plan.ts';
 import {
     createRuntimeCapabilityPolicy,
     type RuntimeCapabilityPolicy,
@@ -30,11 +35,14 @@ type CollectedTestPlan = {
     readonly testPlan: TestPlan;
 };
 
-function currentRunStartTime(wallClock: ReturnType<typeof createWallClock>): string {
-    const startedAt = new Date(wallClock.currentTimestampInMilliseconds);
-
-    return startedAt.toISOString();
-}
+type SupervisedAssignmentExecution = {
+    readonly assignment: SupervisedAssignmentCommand;
+    readonly collectedPlan: CollectedTestPlan;
+    readonly command: SupervisedRunCommand;
+    readonly host: SupervisedChildHost;
+    readonly startedAtMs: number;
+    readonly wallClock: ReturnType<typeof createWallClock>;
+};
 
 export type SupervisedChildHost = RuntimeCapabilityPolicyDependencies & {
     readonly disconnect: () => void;
@@ -110,6 +118,23 @@ function createResourceUsageTracker(
 
 function executionMode(command: SupervisedRunCommand): ChildExecutionMode {
     return command.scheduling === 'concurrent' ? 'concurrent-in-process' : 'serial-in-process';
+}
+
+function createEmptyAssignmentResult(
+    testPlan: TestPlan,
+    wallClock: ReturnType<typeof createWallClock>,
+    startedAtMs: number
+): RunResult {
+    return createRunResultFromCollectedPlan(
+        collectedRunPlanFromTestPlanCases(testPlan, []),
+        [],
+        [],
+        {
+            resourceUsage: null,
+            startedAtMs,
+            wallClock
+        }
+    );
 }
 
 function createRuntimePolicy(
@@ -198,37 +223,70 @@ async function collect(command: SupervisedChildCommand, host: SupervisedChildHos
     return collectedPlan;
 }
 
-async function run(command: SupervisedRunCommand, host: SupervisedChildHost): Promise<void> {
-    const wallClock = createWallClock();
-    const collectedPlan = await collect(command, host);
-    const assignment = await host.receiveAssignment();
-    const runtimePolicy = createRuntimePolicy(command, host);
+function sendRunResult(host: SupervisedChildHost, result: RunResult): void {
+    host.send({
+        kind: 'result',
+        result
+    });
+}
+
+function startedAtIso(startedAtMs: number): string {
+    const startedAt = new Date(startedAtMs);
+
+    return startedAt.toISOString();
+}
+
+async function executeAssignment(input: SupervisedAssignmentExecution): Promise<RunResult> {
+    const runtimePolicy = createRuntimePolicy(input.command, input.host);
     const execute = createExecute({
         reporterDispatcher: createReporterDispatcher({
             stderr: { writeLine: ignoreLine },
             stdout: { writeLine: ignoreLine },
-            wallClock
+            wallClock: input.wallClock
         }),
-        wallClock
+        wallClock: input.wallClock
     });
-    host.dropBodyReadPermission(command);
-    const testPlan = selectAssignedCases(collectedPlan.testPlan, assignment.assignedCases);
-    const result = await execute(testPlan, {
-        execution: { mode: executionMode(command) },
+    input.host.dropBodyReadPermission(input.command);
+    const testPlan = selectAssignedCases(input.collectedPlan.testPlan, input.assignment.assignedCases);
+
+    return await execute(testPlan, {
+        execution: { mode: executionMode(input.command) },
         outputRenderer: { render: renderNothing },
-        reporters: [ createIpcReporter(host) ],
-        resourceBudgets: command.resourceBudgets,
-        resourceUsageTracker: createResourceUsageTracker(command, host),
+        reporters: [ createIpcReporter(input.host) ],
+        resourceBudgets: input.command.resourceBudgets,
+        resourceUsageTracker: createResourceUsageTracker(input.command, input.host),
         runtimePolicy,
         runFacts: {},
-        startedAt: currentRunStartTime(wallClock),
+        startedAt: startedAtIso(input.startedAtMs),
         timeoutPolicy: {
-            hardTimeoutMilliseconds: command.hardTimeoutMilliseconds,
-            timeoutMilliseconds: command.timeoutMilliseconds
+            hardTimeoutMilliseconds: input.command.hardTimeoutMilliseconds,
+            timeoutMilliseconds: input.command.timeoutMilliseconds
         }
     });
+}
 
-    host.send({ kind: 'result', result });
+async function run(command: SupervisedRunCommand, host: SupervisedChildHost): Promise<void> {
+    const wallClock = createWallClock();
+    const startedAtMs = wallClock.currentTimestampInMilliseconds;
+    const collectedPlan = await collect(command, host);
+    const assignment = await host.receiveAssignment();
+
+    if (assignment.assignedCases.length === 0) {
+        sendRunResult(host, createEmptyAssignmentResult(collectedPlan.testPlan, wallClock, startedAtMs));
+        return;
+    }
+
+    sendRunResult(
+        host,
+        await executeAssignment({
+            assignment,
+            collectedPlan,
+            command,
+            host,
+            startedAtMs,
+            wallClock
+        })
+    );
 }
 
 function sendFailure(error: unknown, host: SupervisedChildHost): void {

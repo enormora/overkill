@@ -36,6 +36,7 @@ export type {
     RunEnvironmentFacts,
     RunExecutionRequest,
     RunFacts,
+    RunFilter,
     RunExecutionFacts,
     RunLoaderConfig,
     RunMicrotestExecution,
@@ -53,6 +54,7 @@ export type {
     RunSeed,
     RunSelection,
     RunShard,
+    RunStringFilterField,
     RunTestFamily,
     RunTimeoutPolicy,
     SerializedValue

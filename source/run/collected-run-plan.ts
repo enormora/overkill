@@ -25,11 +25,11 @@ function collectedCaseId(file: string, testCase: CollectedRunCase): CaseId {
     return createCaseId(file, testCase.suite, testCase.name, testCase.params);
 }
 
-function collectedCases(plan: CollectedRunPlan): readonly {
+function collectedCases(files: readonly CollectedRunFile[]): readonly {
     readonly file: string;
     readonly testCase: CollectedRunCase;
 }[] {
-    return plan.files.flatMap(function collectFileCases(file) {
+    return files.flatMap(function collectFileCases(file) {
         return file.cases.map(function collectCase(testCase) {
             return {
                 file: file.file,
@@ -88,8 +88,11 @@ function countSuites(plan: CollectedRunPlan, perTest: readonly PerTestResult[]):
         return caseIdentityKey(testResult.id);
     }));
 
-    for (const collectedCase of collectedCases(plan)) {
+    for (const collectedCase of collectedCases(plan.discoveredFiles)) {
         counts = countSuitePath(counts, collectedCase.testCase.suite, 'discovered');
+    }
+
+    for (const collectedCase of collectedCases(plan.files)) {
         counts = countSuitePath(counts, collectedCase.testCase.suite, 'planned');
 
         if (executedIds.has(caseIdentityKey(collectedCaseId(collectedCase.file, collectedCase.testCase)))) {
@@ -101,12 +104,13 @@ function countSuites(plan: CollectedRunPlan, perTest: readonly PerTestResult[]):
 }
 
 function countOutcomes(plan: CollectedRunPlan, perTest: readonly PerTestResult[]): RunResult['summary'] {
-    const planned = collectedCases(plan).length;
+    const discovered = collectedCases(plan.discoveredFiles).length;
+    const planned = collectedCases(plan.files).length;
 
     return {
         crashed: perTest.filter(hasVerdict('crashed')).length,
         defined: plan.defined,
-        discovered: planned,
+        discovered,
         failed: perTest.filter(hasVerdict('fail')).length,
         inconclusive: perTest.filter(hasVerdict('inconclusive')).length,
         passed: perTest.filter(hasVerdict('pass')).length,
@@ -117,11 +121,11 @@ function countOutcomes(plan: CollectedRunPlan, perTest: readonly PerTestResult[]
     };
 }
 
-function collectRunPlanFile(file: string, cases: TestPlan['cases']): CollectedRunFile {
+function collectRunPlanFile(file: string, cases: readonly TestPlan['cases'][number][]): CollectedRunFile {
     return {
         cases: cases.map(function collectCase(testCase): CollectedRunCase {
             return {
-                metadata: serializeValue(testCase.metadata),
+                metadata: testCase.metadata,
                 name: testCase.id.name,
                 params: testCase.id.params,
                 suite: testCase.id.suite
@@ -131,19 +135,27 @@ function collectRunPlanFile(file: string, cases: TestPlan['cases']): CollectedRu
     };
 }
 
-export function collectedRunPlanFromTestPlan(testPlan: TestPlan): CollectedRunPlan {
-    const files = new Map<string, TestPlan['cases']>();
+function collectedRunFilesFromCases(cases: readonly TestPlan['cases'][number][]): readonly CollectedRunFile[] {
+    const files = new Map<string, TestPlan['cases'][number][]>();
 
-    for (const testCase of testPlan.cases) {
+    for (const testCase of cases) {
         const file = testCase.id.file ?? '';
         files.set(file, [ ...files.get(file) ?? [], testCase ]);
     }
 
+    return Array.from(files, function collectFile([ file, fileCases ]) {
+        return collectRunPlanFile(file, fileCases);
+    });
+}
+
+export function collectedRunPlanFromTestPlanCases(
+    testPlan: TestPlan,
+    cases: readonly TestPlan['cases'][number][]
+): CollectedRunPlan {
     return {
         defined: testPlan.defined,
-        files: Array.from(files, function collectFile([ file, cases ]) {
-            return collectRunPlanFile(file, cases);
-        }),
+        discoveredFiles: collectedRunFilesFromCases(testPlan.discoveredCases),
+        files: collectedRunFilesFromCases(cases),
         orphans: testPlan.orphans,
         root: {
             metadata: testPlan.root.metadata,
@@ -152,17 +164,21 @@ export function collectedRunPlanFromTestPlan(testPlan: TestPlan): CollectedRunPl
     };
 }
 
+export function collectedRunPlanFromTestPlan(testPlan: TestPlan): CollectedRunPlan {
+    return collectedRunPlanFromTestPlanCases(testPlan, testPlan.cases);
+}
+
 export function collectedRunCaseFacts(plan: CollectedRunPlan): readonly RunCaseFacts[] {
-    return collectedCases(plan).map(function toRunCaseFacts(collectedCase): RunCaseFacts {
+    return collectedCases(plan.files).map(function toRunCaseFacts(collectedCase): RunCaseFacts {
         return {
             id: collectedCaseId(collectedCase.file, collectedCase.testCase),
-            metadata: collectedCase.testCase.metadata
+            metadata: serializeValue(collectedCase.testCase.metadata)
         };
     });
 }
 
 export function collectedRunCaseIds(plan: CollectedRunPlan): readonly CaseId[] {
-    return collectedCases(plan).map(function toCaseId(collectedCase) {
+    return collectedCases(plan.files).map(function toCaseId(collectedCase) {
         return collectedCaseId(collectedCase.file, collectedCase.testCase);
     });
 }

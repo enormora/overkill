@@ -521,8 +521,8 @@ and related helpers, not a reason to invent a second macro runtime type.
 
 ## Filters Become Tree Walks
 
-[Metadata And Selection](../architecture/metadata-and-selection.md) describes filtering by tags, file paths, kinds,
-and so on. Tests-as-values makes the implementation trivial:
+[Metadata And Selection](../architecture/metadata-and-selection.md) describes filtering by tags, file paths, identity,
+and metadata. Tests-as-values makes the implementation trivial:
 
 ```ts
 function selected(node: TestNode, filter: Filter): TestNode | null {

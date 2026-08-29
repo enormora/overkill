@@ -150,6 +150,7 @@ export function createRunFacts(input: RunFactsInput): RunFacts {
         },
         loader: input.config.loader,
         reproducibility: {
+            selection: input.request.selection,
             seed: resolvedSeed(input.request, input.dependencies).toString(),
             shard: input.request.shard
         }

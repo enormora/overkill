@@ -3,10 +3,8 @@ import { createSuite as createOverkillSuite, runIfMain } from '@overkill-dev/eng
 import { testSuite as commandLineRunnerTestSuite } from './command-line-runner-suite.test.ts';
 import { testSuite as resourceUsageTestSuite } from './resource-usage-suite.test.ts';
 import { testSuite as runConfigurationTestSuite } from './run-configuration-suite.test.ts';
-import { testSuite as runDiscoveryTestSuite } from './run-discovery.test.ts';
 import { testSuite as runOrchestratorTestSuite } from './run-orchestrator-suite.test.ts';
-import { testSuite as runProfileDiscriminatorTestSuite } from './run-profile-discriminator.test.ts';
-import { testSuite as runTestModulesTestSuite } from './run-test-modules.test.ts';
+import { testSuite as runPlanningTestSuite } from './run-planning-suite.test.ts';
 import { testSuite as supervisedRunTestSuite } from './supervised-run.test.ts';
 
 export const testSuite = createOverkillSuite({
@@ -16,10 +14,8 @@ export const testSuite = createOverkillSuite({
         commandLineRunnerTestSuite,
         resourceUsageTestSuite,
         runConfigurationTestSuite,
-        runDiscoveryTestSuite,
         runOrchestratorTestSuite,
-        runProfileDiscriminatorTestSuite,
-        runTestModulesTestSuite,
+        runPlanningTestSuite,
         supervisedRunTestSuite
     ]
 });

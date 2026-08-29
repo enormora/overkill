@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createSuite, createTestCase, runIfMain, type TestScope } from '@overkill-dev/engine';
 import { createLineReporter } from '@overkill-dev/reporter-line';
 
@@ -14,6 +14,13 @@ type SpawnOutput = {
     readonly code: number | null;
     readonly stderr: string;
     readonly stdout: string;
+};
+
+type FiltersModule = {
+    readonly all: (filters: readonly [unknown, ...(readonly unknown[])]) => unknown;
+    readonly file: (pattern: string) => unknown;
+    readonly not: (filter: unknown) => unknown;
+    readonly tag: (value: string) => unknown;
 };
 
 const packageSmokeFolder = fileURLToPath(new URL('.', import.meta.url));
@@ -62,6 +69,12 @@ async function spawnNode(args: readonly string[]): Promise<SpawnOutput> {
     };
 }
 
+async function importPackagedFilters(): Promise<FiltersModule> {
+    const modulePath = path.join(runPackageFolder, 'packages/run/filters.entry-point.js');
+
+    return await import(pathToFileURL(modulePath).href) as FiltersModule;
+}
+
 export const testSuite = createSuite({
     name: 'source/integration-tests/package-smoke/test-binary.test.ts',
     metadata: {},
@@ -98,6 +111,26 @@ export const testSuite = createSuite({
                 scope.assert.equal(result.code, 0);
                 scope.assert.includes(result.stdout, 'overkill <subcommand>');
                 scope.assert.equal(result.stderr, '');
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            name: 'consumer imports packaged @overkill-dev/run/filters helpers',
+            metadata: {},
+            async body(scope: TestScope) {
+                const { all, file, not, tag } = await importPackagedFilters();
+
+                scope.assert.deepEqual(all([ tag('fast'), not(file('source/**')) ]), {
+                    filters: [
+                        { field: 'tag', kind: 'equals', value: 'fast' },
+                        {
+                            filter: { field: 'file', kind: 'glob', pattern: 'source/**' },
+                            kind: 'not'
+                        }
+                    ],
+                    kind: 'all'
+                });
 
                 return scope.assert.collect();
             }

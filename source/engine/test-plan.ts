@@ -1,4 +1,5 @@
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import { serializeValue } from '../compare/serialized-value.ts';
 import { caseIdentityKey, createCaseId, formatCaseId, type CaseId } from './identity.ts';
 import {
     ensureMetadata,
@@ -13,6 +14,7 @@ import {
     isOwnedTestNode,
     type RootOptions,
     type Table,
+    type TableCase,
     type TestBody,
     type TestCase,
     type TestNode,
@@ -67,6 +69,10 @@ type CollectedTestCases = {
     readonly reachedNodes: readonly TestNode[];
 };
 
+function parameterIdentity(parameters: TableCase['parameters']): string {
+    return JSON.stringify(serializeValue(parameters));
+}
+
 function collectTestCase(
     testCase: TestCase,
     file: string | null,
@@ -107,7 +113,7 @@ function collectTable(
 
             return {
                 body: tableCase.body,
-                id: createCaseId(file, tablePath, tableCase.name, null),
+                id: createCaseId(file, tablePath, tableCase.name, parameterIdentity(tableCase.parameters)),
                 metadata: resolvedMetadata,
                 suitePath: tablePath
             };

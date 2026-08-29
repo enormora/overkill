@@ -37,6 +37,24 @@ Command-line business logic is exposed through `@overkill-dev/run/command-line`:
 - `defineConfig(config)`
 - `loadRunConfig({ cwd, configPath })`
 
+Programmatic selection helpers are exposed through `@overkill-dev/run/filters`:
+
+- `all(filters)`
+- `any(filters)`
+- `not(filter)`
+- `caseId(id)`
+- `equals(field, value)`
+- `contains(field, value)`
+- `glob(field, pattern)`
+- `file(pattern)`
+- `name(value)`
+- `owner(value)`
+- `params(value)`
+- `runtime(value)`
+- `stability(value)`
+- `suite(value)`
+- `tag(value)`
+
 The current runner accepts explicit file paths through `RunRequest.paths` and
 profile file discovery through `profiles.<name>.files`. Each discovered or
 explicit file is imported as a native Node ESM module and must export a named
@@ -49,11 +67,15 @@ create their test nodes with that engine, or `{ kind: 'module', moduleUrl,
 exportName, exportKind }` for supervised programmatic callers that need the
 child process to load the engine without parent-side user-module execution.
 
-Filtering, sharding, seeded ordering, records, and replay are separate runner
-milestones. Direct prebuilt `TestPlan` execution belongs to
-`@overkill-dev/engine` through `execute(testPlan)`. The command methods other
-than `runTests` and `listTests` are fixed first-party entrypoints and currently
-return argument errors until their command implementations land.
+Programmatic selection filters are supported through `RunRequest.selection`.
+The current helpers select by stable case id, file, name, suite, table params,
+tag, runtime, ownership, and stability. Test family matching is intentionally
+absent because one run is already bound to one profile test family. CLI filter
+syntax, sharding, seeded ordering, records, and replay are separate runner
+milestones. Direct prebuilt `TestPlan` execution belongs to `@overkill-dev/engine`
+through `execute(testPlan)`. The command methods other than `runTests` and
+`listTests` are fixed first-party entrypoints and currently return argument
+errors until their command implementations land.
 
 Resource usage measurement is explicit. Project config can enable it under
 `profiles.<name>.resourceUsage.measure`; `RunRequest.measureResourceUsage`

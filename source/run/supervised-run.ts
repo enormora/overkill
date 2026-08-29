@@ -334,6 +334,18 @@ function sendAssignmentForPlan(runtime: SupervisedRunRuntime, collectedPlan: Col
     });
 }
 
+async function reportRunStartForPlannedCases(
+    runtime: SupervisedRunRuntime,
+    collectedPlan: CollectedRunPlan,
+    startedAtMs: number
+): Promise<void> {
+    if (collectedRunCaseIds(collectedPlan).length === 0) {
+        return;
+    }
+
+    await reportRunStart(runtime, collectedPlan, startedAtMs);
+}
+
 async function continueLiveRun(
     liveRun: SupervisedLiveRun,
     collection: SupervisedCollectionResult,
@@ -342,10 +354,11 @@ async function continueLiveRun(
     const resolvedRun = createResolvedRun(collection);
     const startedAtMs = liveRun.dependencies.wallClock.currentTimestampInMilliseconds;
     const runtime = createLiveRunRuntime(liveRun, resolvedRun);
+    const collectedPlan = supervisedCollectedPlan(resolvedRun);
     liveRun.runtime.write(runtime);
     runtime.state.recordRunnerErrors(resolvedRun.collectionRunnerErrors);
-    await reportRunStart(runtime, collection.collectedPlan, startedAtMs);
-    sendAssignmentForPlan(runtime, collection.collectedPlan);
+    await reportRunStartForPlannedCases(runtime, collectedPlan, startedAtMs);
+    sendAssignmentForPlan(runtime, collectedPlan);
     await liveRun.finishedSignal.promise;
 
     return await finishSupervisedRuntime(runtime, startedAtMs);

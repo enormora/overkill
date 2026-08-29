@@ -18,6 +18,7 @@ import type {
     RunShard,
     RunTimeoutPolicy
 } from './run-types.ts';
+import { copyRunSelection } from './run-selection-filters.ts';
 import { validateRunResourceUsagePolicy } from './run-validation.ts';
 
 export type RunRuntimePolicy = RuntimeCapabilityPolicy;
@@ -142,7 +143,7 @@ export function copyRunRequest(request: RunRequest): RunRequest {
         resourceBudgetOverrides: copyResourceBudgetOverrides(request.resourceBudgetOverrides),
         resourceUsageSamplingIntervalMilliseconds: request.resourceUsageSamplingIntervalMilliseconds,
         seed: { value: request.seed.value },
-        selection: { kind: request.selection.kind },
+        selection: copyRunSelection(request.selection),
         shard: copyRunShard(request.shard),
         verbose: request.verbose
     };

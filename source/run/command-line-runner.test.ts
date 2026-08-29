@@ -175,6 +175,7 @@ async function resolveRunCommand(command: RunCommand): ReturnType<RunOrchestrato
             },
             loader: command.config.loader,
             reproducibility: {
+                selection: command.request.selection,
                 seed: '42',
                 shard: command.request.shard
             }

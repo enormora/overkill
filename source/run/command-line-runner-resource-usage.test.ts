@@ -132,6 +132,7 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
                     },
                     loader: command.config.loader,
                     reproducibility: {
+                        selection: command.request.selection,
                         seed: '42',
                         shard: command.request.shard
                     }

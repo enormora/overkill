@@ -11,8 +11,81 @@ import type { ResourceUsageTrackerOptions } from './resource-usage.ts';
 
 export type SerializedValue = SerializedValueShape;
 type RunExecuteOptions = NonNullable<Parameters<Execute>[1]>;
+type RunCaseId = TestPlan['discoveredCases'][number]['id'];
 type RunOutputRenderer = NonNullable<RunExecuteOptions['outputRenderer']>;
 type RunReporters = RunExecuteOptions['reporters'];
+
+export type RunStringFilterField = keyof {
+    readonly file: true;
+    readonly name: true;
+    readonly owner: true;
+    readonly params: true;
+    readonly runtime: true;
+    readonly stability: true;
+    readonly suite: true;
+    readonly tag: true;
+};
+
+type RunAllFilter = {
+    readonly filters: NonEmptyReadonlyArray<RunFilter>;
+    readonly kind: 'all';
+};
+
+type RunAnyFilter = {
+    readonly filters: NonEmptyReadonlyArray<RunFilter>;
+    readonly kind: 'any';
+};
+
+type RunCaseIdFilter = {
+    readonly id: RunCaseId;
+    readonly kind: 'case-id';
+};
+
+type RunContainsFilter = {
+    readonly field: RunStringFilterField;
+    readonly kind: 'contains';
+    readonly value: string;
+};
+
+type RunEqualsFilter = {
+    readonly field: RunStringFilterField;
+    readonly kind: 'equals';
+    readonly value: string;
+};
+
+type RunGlobFilter = {
+    readonly field: RunStringFilterField;
+    readonly kind: 'glob';
+    readonly pattern: string;
+};
+
+type RunNotFilter = {
+    readonly filter: RunFilter;
+    readonly kind: 'not';
+};
+
+type RunFilterByKind = {
+    readonly all: RunAllFilter;
+    readonly any: RunAnyFilter;
+    readonly 'case-id': RunCaseIdFilter;
+    readonly contains: RunContainsFilter;
+    readonly equals: RunEqualsFilter;
+    readonly glob: RunGlobFilter;
+    readonly not: RunNotFilter;
+};
+
+export type RunFilter = RunFilterByKind[keyof RunFilterByKind];
+
+type RunAllSelection = {
+    readonly kind: 'all';
+};
+
+type RunFilterSelection = {
+    readonly filter: RunFilter;
+    readonly kind: 'filter';
+};
+
+export type RunSelection = RunAllSelection | RunFilterSelection;
 
 export type RunEngineSelection = {
     readonly engine: Engine;
@@ -24,10 +97,6 @@ export type RunEngineSelection = {
     readonly moduleUrl: string;
 } | {
     readonly kind: 'default';
-};
-
-export type RunSelection = {
-    readonly kind: 'all';
 };
 
 export type RunShard = {
@@ -183,6 +252,7 @@ export type RunExecutionFacts = {
 };
 
 export type RunReproducibilityFacts = {
+    readonly selection: RunSelection;
     readonly seed: string;
     readonly shard: RunShard;
 };
@@ -199,7 +269,7 @@ export type RunEngineFacts = {
 };
 
 export type CollectedRunCase = {
-    readonly metadata: SerializedValue;
+    readonly metadata: TestPlan['cases'][number]['metadata'];
     readonly name: string;
     readonly params: string | null;
     readonly suite: readonly string[];
@@ -212,6 +282,7 @@ export type CollectedRunFile = {
 
 export type CollectedRunPlan = {
     readonly defined: number;
+    readonly discoveredFiles: readonly CollectedRunFile[];
     readonly files: readonly CollectedRunFile[];
     readonly orphans: readonly OrphanedNode[];
     readonly root: {
