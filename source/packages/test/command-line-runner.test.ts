@@ -209,6 +209,7 @@ export const testSuite = createSuite({
                         'overkill.config.ts',
                         'list',
                         '--profile=backend-http',
+                        '--with-locations',
                         '--with-orphans',
                         'source/a.test.ts',
                         'source/b.test.ts'
@@ -226,6 +227,7 @@ export const testSuite = createSuite({
                             paths: [ 'source/a.test.ts', 'source/b.test.ts' ],
                             profile: 'backend-http',
                             selection: { kind: 'all' },
+                            withLocations: true,
                             withOrphans: true
                         }
                     }

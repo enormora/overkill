@@ -1,8 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import { createWallClock } from '@enormora/wall-clock';
 import { createExecute } from '../engine/execution.ts';
+import type { Engine } from '../engine/engine.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
-import { defaultRunEngine } from './default-run-engine.ts';
 import { createNodeResourceUsageTracker } from './resource-usage.ts';
 import { createRunOrchestrator } from './run.ts';
 import type { RunOrchestrator, RunOrchestratorDependencies } from './run-types.ts';
@@ -16,6 +16,7 @@ function createDefaultSeed(): bigint {
 type RuntimeCapabilityPolicyInput = RunOrchestratorDependencies['runtimeCapabilityPolicy'];
 
 type NodeRunOrchestratorInput = {
+    readonly defaultEngine: Engine;
     readonly installIpcRestriction: RuntimeCapabilityPolicyInput['installIpcRestriction'];
     readonly installProcessExecutionRestriction: RuntimeCapabilityPolicyInput['installProcessExecutionRestriction'];
     readonly node: RunOrchestratorDependencies['node'];
@@ -42,7 +43,7 @@ export function createNodeRunOrchestrator(input: NodeRunOrchestratorInput): RunO
         createResourceUsageTracker(options) {
             return createNodeResourceUsageTracker(wallClock, options);
         },
-        defaultEngine: defaultRunEngine,
+        defaultEngine: input.defaultEngine,
         execute: createExecute({
             reporterDispatcher,
             wallClock

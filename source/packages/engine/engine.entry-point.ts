@@ -1,15 +1,21 @@
 import { createWallClock } from '@enormora/wall-clock';
-import { createEngine as createEngineInstance, type Engine } from '../../engine/engine.ts';
+import {
+    createEngine as createEngineInstance,
+    createEngineWithOwner,
+    type Engine,
+    type EngineDependencies
+} from '../../engine/engine.ts';
 import { createExecute } from '../../engine/execution.ts';
 import { createReporterDispatcher } from '../../engine/reporter-dispatcher.ts';
 import type { RunIfMainOptions } from '../../engine/run-if-main.ts';
-import type {
-    RootOptions,
-    SuiteOptions,
-    TableOptions,
-    TestCaseOptions,
-    TestNode,
-    TestRoot
+import {
+    defaultTestNodeOwner,
+    type RootOptions,
+    type SuiteOptions,
+    type TableOptions,
+    type TestCaseOptions,
+    type TestNode,
+    type TestRoot
 } from '../../engine/test-node.ts';
 
 function readProcessExitCode(): number | string | null | undefined {
@@ -28,10 +34,10 @@ function writeStderrLine(line: string): void {
     process.stderr.write(`${line}\n`);
 }
 
-export function createEngine(): Engine {
+function createEngineDependencies(): EngineDependencies {
     const wallClock = createWallClock();
 
-    return createEngineInstance({
+    return {
         execute: createExecute({
             reporterDispatcher: createReporterDispatcher({
                 stderr: { writeLine: writeStderrLine },
@@ -44,10 +50,14 @@ export function createEngine(): Engine {
         readExitCode: readProcessExitCode,
         wallClock,
         writeExitCode: writeProcessExitCode
-    });
+    };
 }
 
-const defaultEngine = createEngine();
+export function createEngine(): Engine {
+    return createEngineInstance(createEngineDependencies());
+}
+
+const defaultEngine = createEngineWithOwner(createEngineDependencies(), defaultTestNodeOwner());
 
 export function createRoot(options: RootOptions): ReturnType<Engine['createRoot']> {
     return defaultEngine.createRoot(options);

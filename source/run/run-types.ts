@@ -269,10 +269,12 @@ export type RunEngineFacts = {
 };
 
 export type CollectedRunCase = {
+    readonly definitionLocation: TestPlan['cases'][number]['definitionLocation'];
     readonly metadata: TestPlan['cases'][number]['metadata'];
     readonly name: string;
     readonly params: string | null;
     readonly suite: readonly string[];
+    readonly suiteDefinitionLocations: TestPlan['cases'][number]['suiteDefinitionLocations'];
 };
 
 export type CollectedRunFile = {

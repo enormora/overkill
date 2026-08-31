@@ -29,6 +29,29 @@ const packageSmokeFolder = fileURLToPath(new URL('.', import.meta.url));
 const packageSmokeNodeModules = path.join(packageSmokeFolder, 'node_modules');
 const testPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/test');
 const runPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/run');
+const authoringSmokeFile = 'authoring-smoke.test.mjs';
+const authoringSmokeScript = [
+    "import { suite, test } from '@overkill-dev/test';",
+    '',
+    "export const testNode = suite('consumer root', [",
+    '    suite({',
+    "        name: 'nested',",
+    "        metadata: { tags: [ 'smoke' ] },",
+    '        children: [',
+    '            test({',
+    "                name: 'passes',",
+    "                metadata: { tags: [ 'authoring' ] },",
+    '                body(scope) {',
+    '                    scope.assert.equal(1, 1);',
+    '                    return scope.assert.collect();',
+    '                }',
+    '            })',
+    '        ]',
+    '    })',
+    ']);',
+    ''
+]
+    .join('\n');
 const rootImportScript = [
     "const testModule = await import('@overkill-dev/test');",
     'console.log(JSON.stringify(Object.keys(testModule)));',
@@ -36,8 +59,18 @@ const rootImportScript = [
     'console.log(String(testModule.orchestrator));',
     'console.log(String(testModule.createLineReporter));',
     'console.log(String(testModule.testDouble));',
+    'console.log(typeof testModule.test);',
+    'console.log(typeof testModule.suite);',
+    'const testNode = testModule.suite("smoke", [',
+    '    testModule.test("passes", (scope) => {',
+    '        scope.assert.true(true);',
+    '        return scope.assert.collect();',
+    '    })',
+    ']);',
+    'console.log(testNode.kind);',
+    'console.log(testNode.children[0].kind);',
     'try {',
-    '    testModule.test();',
+    '    testModule.table();',
     '} catch (error) {',
     '    console.log(error instanceof Error ? error.message : String(error));',
     '}'
@@ -49,7 +82,11 @@ const expectedRootImportOutput = [
     'undefined',
     'undefined',
     'undefined',
-    'The @overkill-dev/test test() authoring API is not implemented yet.',
+    'function',
+    'function',
+    'suite',
+    'test',
+    'The @overkill-dev/test table() authoring API is not implemented yet.',
     ''
 ]
     .join('\n');
@@ -103,6 +140,10 @@ async function importPackagedFilters(): Promise<FiltersModule> {
     const modulePath = path.join(runPackageFolder, 'packages/run/filters.entry-point.js');
 
     return await import(pathToFileURL(modulePath).href) as FiltersModule;
+}
+
+async function writeAuthoringSmokeFile(): Promise<void> {
+    await fs.writeFile(path.join(packageSmokeFolder, authoringSmokeFile), authoringSmokeScript);
 }
 
 export const testSuite = createSuite({
@@ -168,6 +209,47 @@ export const testSuite = createSuite({
                 scope.assert.equal(result.code, 0);
                 scope.assert.includes(result.stdout, 'overkill <subcommand>');
                 scope.assert.equal(result.stderr, '');
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            name: 'packaged @overkill-dev/test root authoring creates runnable testNode exports',
+            metadata: {},
+            async body(scope: TestScope) {
+                await writeAuthoringSmokeFile();
+
+                const result = await spawnNode([
+                    path.join(testPackageFolder, 'packages/test/overkill.entry-point.js'),
+                    'run',
+                    authoringSmokeFile
+                ]);
+
+                scope.assert.equal(result.code, 0);
+                scope.assert.equal(result.stderr, '');
+                scope.assert.includes(result.stdout, 'passes');
+                scope.assert.includes(result.stdout, '1 discovered, 1 planned, 1 executed');
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            name: 'packaged overkill list renders root authoring definition locations',
+            metadata: {},
+            async body(scope: TestScope) {
+                await writeAuthoringSmokeFile();
+
+                const result = await spawnNode([
+                    path.join(testPackageFolder, 'packages/test/overkill.entry-point.js'),
+                    'list',
+                    '--with-locations',
+                    authoringSmokeFile
+                ]);
+
+                scope.assert.equal(result.code, 0);
+                scope.assert.equal(result.stderr, '');
+                scope.assert.includes(result.stdout, `nested (${authoringSmokeFile}:`);
+                scope.assert.includes(result.stdout, `passes (${authoringSmokeFile}:`);
 
                 return scope.assert.collect();
             }

@@ -1,6 +1,5 @@
-import type { Reporter } from '../engine/reporter.ts';
+import { isReporter, type Reporter } from '../engine/reporter.ts';
 import type { RunCommand, RunConfig, RunOrchestrator } from './run-types.ts';
-import { orchestrator } from './run-orchestrator.entry-point.ts';
 import {
     loadRunConfig,
     type LoadedRunConfig,
@@ -50,6 +49,26 @@ export type CommandLineRunnerDependencies = CommandLineCommandLoaders & {
     readonly loadRunConfig: (request: RunConfigLoadRequest) => Promise<LoadedRunConfig>;
     readonly orchestrator: RunOrchestrator;
 };
+
+type DefaultReporterModule = {
+    readonly createLineReporter: () => unknown;
+};
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+    return typeof value === 'object' && value !== null;
+}
+
+function isDefaultReporterModule(value: unknown): value is DefaultReporterModule {
+    return isRecord(value) && typeof value.createLineReporter === 'function';
+}
+
+function readDefaultReporter(value: unknown): Reporter {
+    if (!isReporter(value)) {
+        throw new TypeError('Default line reporter module returned an invalid reporter.');
+    }
+
+    return value;
+}
 
 async function loadCommandLineReporterFallback(
     fallback: CommandLineReporterFallback,
@@ -180,6 +199,8 @@ async function listTestsWithLoadedConfig(
         fallbackDiagnostics: [],
         runResult: null,
         stdoutLines: renderResolvedRunList(resolvedRun, {
+            cwd: request.cwd,
+            withLocations: request.listRequest.withLocations,
             withOrphans: request.listRequest.withOrphans
         })
     };
@@ -212,16 +233,51 @@ export function createCommandLineRunner(dependencies: CommandLineRunnerDependenc
     };
 }
 
-async function loadDefaultLineReporter(): Promise<Reporter> {
-    const reporterModule = await import('../packages/reporter-line/reporter-line.entry-point.ts');
+export async function loadDefaultLineReporter(): Promise<Reporter> {
+    const reporterModule = await import('@overkill-dev/reporter-line');
 
-    return reporterModule.createLineReporter();
+    if (!isDefaultReporterModule(reporterModule)) {
+        throw new TypeError('Default line reporter module is invalid.');
+    }
+
+    return readDefaultReporter(reporterModule.createLineReporter());
 }
 
-export const commandLineRunner: CommandLineRunner = createCommandLineRunner({
-    createDefaultReporter: loadDefaultLineReporter,
+const commandLoaders = {
     loadBaselineCommands: loadUnimplementedBaselineCommands,
-    loadBenchmarkCommands: loadUnimplementedBenchmarkCommands,
-    loadRunConfig,
-    orchestrator
-});
+    loadBenchmarkCommands: loadUnimplementedBenchmarkCommands
+};
+
+function createRunner(orchestrator: RunOrchestrator): CommandLineRunner {
+    return createCommandLineRunner({
+        createDefaultReporter: loadDefaultLineReporter,
+        ...commandLoaders,
+        loadRunConfig,
+        orchestrator
+    });
+}
+
+async function loadDefaultRunner(): Promise<CommandLineRunner> {
+    const module = await import('./run-orchestrator.entry-point.ts');
+
+    return createRunner(module.orchestrator);
+}
+
+const commandNamespace = createCommandLineCommandNamespace(commandLoaders);
+
+export const commandLineRunner: CommandLineRunner = {
+    baseline: commandNamespace.baseline,
+    bench: commandNamespace.bench,
+    replayRun: createUnimplementedCommand('replay'),
+    replayWitness: createUnimplementedCommand('replay-witness'),
+    async listTests(request) {
+        const runner = await loadDefaultRunner();
+
+        return await runner.listTests(request);
+    },
+    async runTests(request) {
+        const runner = await loadDefaultRunner();
+
+        return await runner.runTests(request);
+    }
+};

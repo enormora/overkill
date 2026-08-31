@@ -8,8 +8,15 @@ import {
 } from '@overkill-dev/engine';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
+import type { Engine } from './engine.ts';
 import type { FailOutcome, RunResult, TestOutcome } from './run-result.ts';
 import type { TestBody, TestScope } from './test-node.ts';
+
+type SourceLocation = {
+    readonly column: number;
+    readonly file: string;
+    readonly line: number;
+};
 
 const failOutcome = defineNarrowingCompositeAssertion<TestOutcome, FailOutcome, readonly []>({
     name: 'fail outcome',
@@ -40,6 +47,37 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
             })
         )
     );
+}
+
+function createPassingCase(engine: Engine, name: string): ReturnType<Engine['createTestCase']> {
+    return engine.createTestCase({
+        body(testScope) {
+            testScope.assert.true(true, { message: 'passes' });
+            return testScope.assert.collect();
+        },
+        metadata: {},
+        name
+    });
+}
+
+function createPlanWithUnusedTable(
+    engine: Engine,
+    unusedTableLocation: SourceLocation
+): ReturnType<Engine['createTestPlan']> {
+    const reached = createPassingCase(engine, 'reached');
+
+    engine.createTable({
+        cases: [],
+        definitionLocation: unusedTableLocation,
+        metadata: {},
+        name: 'unused rows'
+    });
+
+    return engine.createTestPlan(engine.createRoot({
+        children: [ reached ],
+        metadata: {},
+        name: 'root'
+    }));
 }
 
 export const testSuite = createOverkillSuite({
@@ -112,30 +150,13 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
-                const reached = engine.createTestCase({
-                    body(testScope) {
-                        testScope.assert.true(true, { message: 'passes' });
-                        return testScope.assert.collect();
-                    },
-                    metadata: {},
-                    name: 'reached'
-                });
-                engine.createTable({
-                    cases: [],
-                    metadata: {},
-                    name: 'unused rows'
-                });
-                const testPlan = engine.createTestPlan(
-                    engine.createRoot({
-                        children: [ reached ],
-                        metadata: {},
-                        name: 'root'
-                    })
-                );
-
+                const unusedTableLocation = { column: 3, file: 'source/orphaned-table.test.ts', line: 5 };
+                const testPlan = createPlanWithUnusedTable(engine, unusedTableLocation);
                 const result = await engine.execute(testPlan);
 
-                scope.assert.deepEqual(result.orphans, [ { file: null, kind: 'table', name: 'unused rows' } ]);
+                scope.assert.deepEqual(result.orphans, [
+                    { definitionLocation: unusedTableLocation, file: null, kind: 'table', name: 'unused rows' }
+                ]);
                 scope.assert.equal(result.summary.defined, 2);
                 scope.assert.equal(result.summary.discovered, 1);
                 scope.assert.equal(result.summary.planned, 1);

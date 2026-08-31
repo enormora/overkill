@@ -7,7 +7,7 @@ import { testSuite as reporterTestSuite } from '../../engine/reporter.test.ts';
 import { testSuite as runIfMainTestSuite } from '../../engine/run-if-main.test.ts';
 import { testSuite as runResultTestSuite } from '../../engine/run-result.test.ts';
 import { testSuite as testNodeTestSuite } from '../../engine/test-node.test.ts';
-import { testSuite as testPlanTestSuite } from '../../engine/test-plan.test.ts';
+import { testSuite as enginePlanningTestSuite } from './engine-planning.ts';
 
 export const testSuite = createSuite({
     name: 'source/test-support/unit-suite-groups/engine-support.ts',
@@ -21,6 +21,6 @@ export const testSuite = createSuite({
         runIfMainTestSuite,
         runResultTestSuite,
         testNodeTestSuite,
-        testPlanTestSuite
+        enginePlanningTestSuite
     ]
 });

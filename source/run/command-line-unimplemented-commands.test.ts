@@ -110,13 +110,8 @@ export const testSuite = createOverkillSuite({
                     runRequest: singletonRunRequest
                 });
 
-                scope.assert.equal(result.exitCode, 2);
-                scope.assert.deepEqual(result.fallbackDiagnostics, [
-                    'Overkill runner error: Runtime policy violation: console.',
-                    'Overkill runner error: Runtime policy violation: console.',
-                    'Overkill runner error: Runtime policy violation: console.',
-                    'Overkill runner error: Runtime policy violation: console.'
-                ]);
+                scope.assert.equal(result.exitCode, 0);
+                scope.assert.deepEqual(result.fallbackDiagnostics, []);
                 scope.assert.deepEqual(result.stdoutLines, []);
 
                 return scope.assert.collect();

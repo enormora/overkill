@@ -380,7 +380,6 @@ async function createLocalRunResult(
 async function runSupervisedAndAttachPolicyErrors(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
-    runtimePolicy: RunRuntimePolicy | null,
     input: ResolvedRunInput
 ): Promise<RunResult> {
     const result = await runSupervisedCommand(
@@ -397,13 +396,12 @@ async function runSupervisedAndAttachPolicyErrors(
         }
     );
 
-    return addRunnerErrors(result, runtimePolicy?.takeRunErrors() ?? []);
+    return result;
 }
 
 async function createSupervisedRunResult(
     command: RunCommand,
-    dependencies: RunOrchestratorDependencies,
-    runtimePolicy: RunRuntimePolicy | null
+    dependencies: RunOrchestratorDependencies
 ): Promise<RunResult> {
     const input = await readResolvedRunInput(command);
 
@@ -412,12 +410,12 @@ async function createSupervisedRunResult(
     }
 
     try {
-        return await runSupervisedAndAttachPolicyErrors(command, dependencies, runtimePolicy, input);
+        return await runSupervisedAndAttachPolicyErrors(command, dependencies, input);
     } catch (error: unknown) {
         return await reportCollectionErrorResult(
             command,
             dependencies,
-            createResultFromResolutionError(error, runtimePolicy)
+            createResultFromResolutionError(error, null)
         );
     }
 }
@@ -458,13 +456,13 @@ async function executeResolvedRun(
 }
 
 async function runCommand(command: RunCommand, dependencies: RunOrchestratorDependencies): Promise<RunResult> {
-    const runtimePolicy = createRunRuntimePolicy(command.request, dependencies);
     const profile = command.config.profiles[command.request.profile];
 
     if (profile?.execution.processModel === 'supervised-process') {
-        return await createSupervisedRunResult(command, dependencies, runtimePolicy);
+        return await createSupervisedRunResult(command, dependencies);
     }
 
+    const runtimePolicy = createRunRuntimePolicy(command.request, dependencies);
     const resolvedRun = await createLocalRunResult(command, dependencies, runtimePolicy);
 
     if (isRunResult(resolvedRun)) {

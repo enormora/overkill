@@ -11,26 +11,29 @@ import type {
     TestScope,
     TestScopeAssertContext
 } from '../engine/engine.entry-point.ts';
-import type {
-    createTestFacade,
-    defineMacro,
-    Metadata as RootMetadata,
-    runIfMain,
-    RunIfMainOptions as RootRunIfMainOptions,
-    RunIfMainRootOptions as RootRunIfMainRootOptions,
+import {
+    type createTestFacade,
+    type defineMacro,
+    type Metadata as RootMetadata,
+    type runIfMain,
+    type RunIfMainOptions as RootRunIfMainOptions,
+    type RunIfMainRootOptions as RootRunIfMainRootOptions,
+    type Suite as RootSuite,
+    type table,
+    type Table as RootTable,
+    type TestBody as RootTestBody,
+    type TestCase as RootTestCase,
+    type TestNode as RootTestNode,
+    type TestScope as RootTestScope,
+    type TestScopeAssertContext as RootTestScopeAssertContext,
     suite,
-    Suite as RootSuite,
-    table,
-    Table as RootTable,
-    test,
-    TestBody as RootTestBody,
-    TestCase as RootTestCase,
-    TestNode as RootTestNode,
-    TestScope as RootTestScope,
-    TestScopeAssertContext as RootTestScopeAssertContext
+    test
 } from './test.entry-point.ts';
 
 type UnavailableAuthoringApi = (...parameters: readonly unknown[]) => never;
+declare const body: TestBody;
+declare const metadata: Metadata;
+declare const node: TestNode;
 type RootRuntimeExport = keyof {
     readonly createTestFacade: typeof createTestFacade;
     readonly defineMacro: typeof defineMacro;
@@ -41,7 +44,7 @@ type RootRuntimeExport = keyof {
 };
 
 describe('@overkill-dev/test', function () {
-    typeTest('reserves root authoring names with placeholder signatures', function () {
+    typeTest('exposes root authoring names', function () {
         expect<RootRuntimeExport>().type.toBe<
             keyof {
                 readonly createTestFacade: true;
@@ -55,9 +58,22 @@ describe('@overkill-dev/test', function () {
         expect<typeof createTestFacade>().type.toBe<UnavailableAuthoringApi>();
         expect<typeof defineMacro>().type.toBe<UnavailableAuthoringApi>();
         expect<typeof runIfMain>().type.toBe<UnavailableAuthoringApi>();
-        expect<typeof suite>().type.toBe<UnavailableAuthoringApi>();
         expect<typeof table>().type.toBe<UnavailableAuthoringApi>();
-        expect<typeof test>().type.toBe<UnavailableAuthoringApi>();
+    });
+
+    typeTest('creates test and suite nodes from default root authoring forms', function () {
+        expect(test('passes', body)).type.toBe<TestCase>();
+        expect(test({ body, metadata, name: 'passes' })).type.toBe<TestCase>();
+        expect(suite('group', [ node ])).type.toBe<Suite>();
+        expect(suite({ children: [ node ], metadata, name: 'group' })).type.toBe<Suite>();
+    });
+
+    typeTest('rejects unstaged root authoring forms', function () {
+        expect(test).type.not.toBeCallableWith('passes', metadata, body);
+        expect(test).type.not.toBeCallableWith({ body, name: 'passes' });
+        expect(suite).type.not.toBeCallableWith('group', metadata, [ node ]);
+        expect(suite).type.not.toBeCallableWith({ children: [ node ], name: 'group' });
+        expect(suite).type.not.toBeCallableWith('group', [ { kind: 'test', metadata: {}, name: 'plain' } ]);
     });
 
     typeTest('re-exports high-level authoring types from the engine', function () {

@@ -182,7 +182,7 @@ export const config = {
         },
         {
             name: '@overkill-dev/test',
-            bundleDependencies: [ '@overkill-dev/engine', '@overkill-dev/run' ],
+            bundleDependencies: [ '@overkill-dev/engine', '@overkill-dev/reporter-line', '@overkill-dev/run' ],
             roots: {
                 main: {
                     js: 'packages/test/test.entry-point.js',

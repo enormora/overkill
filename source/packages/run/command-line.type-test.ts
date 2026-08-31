@@ -9,6 +9,7 @@ import {
     RunConfigError,
     type commandLineExitCodes,
     type commandLineRunner,
+    type createNodeCommandLineRunner,
     type defineConfig,
     type CommandLineBaselineCommands,
     type CommandLineBenchmarkCommands,
@@ -16,6 +17,7 @@ import {
     type CommandLineCommandContext,
     type CommandLineExitCode,
     type CommandLineListTestsRequest,
+    type NodeCommandLineRunnerOptions,
     type CommandLineRunner,
     type CommandLineRunnerResult,
     type CommandLineRunTestsRequest,
@@ -35,6 +37,9 @@ type ExpectedCommandLineExitCode = (typeof commandLineExitCodes)[keyof typeof co
 describe('@overkill-dev/run/command-line', function () {
     test('exposes an instantiated command-line runner', function () {
         expect<typeof commandLineRunner>().type.toBe<CommandLineRunner>();
+        expect<typeof createNodeCommandLineRunner>().type.toBe<
+            (options: NodeCommandLineRunnerOptions) => CommandLineRunner
+        >();
         expect<typeof commandLineRunner.runTests>().type.toBe<
             (request: CommandLineRunTestsRequest) => Promise<CommandLineRunnerResult>
         >();
@@ -61,6 +66,7 @@ describe('@overkill-dev/run/command-line', function () {
             readonly paths: readonly string[];
             readonly profile: string;
             readonly selection: RunRequest['selection'];
+            readonly withLocations: boolean;
             readonly withOrphans: boolean;
         }>();
     });

@@ -88,17 +88,33 @@ Metadata cascades from root to test, with override semantics:
    `{ mode: 'replace', values }`
 7. enum, boolean, capture, and timeout fields replace
 
+The default `@overkill-dev/test` authoring facade creates ordinary `test(...)`
+and `suite(...)` nodes with `kind: 'microtest'` unless object-form metadata
+supplies another `kind`.
+
 Example:
 
 ```ts
-export const testNode = suite('users', { tags: [ 'auth' ], ownership: [ '@auth' ] }, [
-    test('login', { tags: [ 'critical' ] }, body), // tags = {auth, critical}
-    test('logout', body), // tags = {auth}
-    suite('admin', { tags: [ 'admin' ] }, [
-        // tags = {auth, admin}
-        test('promote', body) // tags = {auth, admin}
-    ])
-]);
+export const testNode = suite({
+    name: 'users',
+    metadata: { tags: [ 'auth' ], ownership: [ '@auth' ] },
+    children: [
+        test({
+            name: 'login',
+            metadata: { tags: [ 'critical' ] },
+            body
+        }), // tags = {auth, critical}
+        test('logout', body), // tags = {auth}
+        suite({
+            name: 'admin',
+            metadata: { tags: [ 'admin' ] },
+            children: [
+                // tags = {auth, admin}
+                test('promote', body) // tags = {auth, admin}
+            ]
+        })
+    ]
+});
 ```
 
 The file frame is metadata-only. It participates in propagation but does

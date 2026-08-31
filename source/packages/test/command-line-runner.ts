@@ -65,6 +65,7 @@ type ListCommandArguments = {
     readonly name: string | null;
     readonly paths: readonly string[];
     readonly profile: string;
+    readonly withLocations: boolean;
     readonly withOrphans: boolean;
 };
 
@@ -334,6 +335,7 @@ function createListTestsRequest(args: ListCommandArguments, cwd: string): Comman
             paths: args.paths,
             profile: args.profile,
             selection: createSelection(args),
+            withLocations: args.withLocations,
             withOrphans: args.withOrphans
         }
     };
@@ -405,6 +407,7 @@ function createOverkillCommand(
         name: 'list',
         args: {
             ...sharedCommandArguments,
+            withLocations: flag({ long: 'with-locations' }),
             withOrphans: flag({ long: 'with-orphans' })
         },
         async handler(args: ListCommandArguments) {

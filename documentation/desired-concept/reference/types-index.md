@@ -84,6 +84,7 @@ type TestCase = {
     readonly kind: 'test';
     readonly name: string;
     readonly metadata?: Metadata;
+    readonly definitionLocation: SourceLocation;
     readonly body: TestBody; // signature varies by DSL
 };
 
@@ -91,6 +92,7 @@ type Suite = {
     readonly kind: 'suite';
     readonly name: string;
     readonly metadata?: Metadata;
+    readonly definitionLocation: SourceLocation;
     readonly children: ReadonlyArray<TestNode>;
 };
 
@@ -98,6 +100,7 @@ type Table = {
     readonly kind: 'table';
     readonly name: string;
     readonly metadata?: Metadata;
+    readonly definitionLocation: SourceLocation;
     readonly cases: ReadonlyArray<{ params: Record<string, unknown>; body: TestBody; }>;
 };
 
@@ -738,7 +741,9 @@ declare function run(command: RunCommand): Promise<RunResult>;
 type TestPlanCase = {
     readonly id: CaseId;
     readonly suitePath: ReadonlyArray<string>;
+    readonly suiteDefinitionLocations: ReadonlyArray<SourceLocation>;
     readonly metadata: ResolvedMetadata;
+    readonly definitionLocation: SourceLocation;
     readonly body: TestBody;
 };
 
@@ -746,7 +751,12 @@ type TestPlan = {
     readonly defined: number;
     readonly discoveredCases: NonEmptyReadonlyArray<TestPlanCase>;
     readonly cases: NonEmptyReadonlyArray<TestPlanCase>;
-    readonly orphans: ReadonlyArray<{ file: string | null; name: string; kind: 'test' | 'suite' | 'table'; }>;
+    readonly orphans: ReadonlyArray<{
+        file: string | null;
+        name: string;
+        kind: 'test' | 'suite' | 'table';
+        definitionLocation: SourceLocation;
+    }>;
     readonly root: { readonly name: string; readonly metadata: ResolvedMetadata; };
 };
 
@@ -782,10 +792,12 @@ type RunCaseFacts = {
 };
 
 type CollectedRunCase = {
+    readonly definitionLocation: SourceLocation;
     readonly metadata: SerializedValue;
     readonly name: string;
     readonly params: string | null;
     readonly suite: ReadonlyArray<string>;
+    readonly suiteDefinitionLocations: ReadonlyArray<SourceLocation>;
 };
 
 type CollectedRunFile = {

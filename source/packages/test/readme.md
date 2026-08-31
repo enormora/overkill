@@ -3,7 +3,7 @@
 Standard user-facing Overkill distribution.
 
 This package ships the public `overkill` binary and the staged root authoring
-facade. The binary parses the minimal `run` command surface and delegates
+facade. The binary parses the minimal command surface and delegates
 execution to `@overkill-dev/run/command-line`.
 
 Current root runtime exports:
@@ -15,9 +15,43 @@ Current root runtime exports:
 - `createTestFacade`
 - `runIfMain`
 
-These root authoring exports currently reserve the public names and throw
-explicit unavailable errors. Their final behavior is implemented by later
-milestones.
+Implemented root authoring forms:
+
+```ts
+import { suite, test } from '@overkill-dev/test';
+
+export const testNode = suite('users', [
+    test('loads user', (scope) => {
+        scope.assert.equal(loadUser('42').name, 'Ada');
+        return scope.assert.collect();
+    })
+]);
+```
+
+Nodes created through this root facade default to `metadata.kind: 'microtest'`
+unless the object form supplies another `kind`.
+
+Use the object form when attaching node metadata:
+
+```ts
+export const testNode = suite({
+    name: 'users',
+    metadata: { tags: [ 'auth' ] },
+    children: [
+        test({
+            name: 'loads user',
+            metadata: { tags: [ 'critical' ] },
+            body(scope) {
+                scope.assert.equal(loadUser('42').name, 'Ada');
+                return scope.assert.collect();
+            }
+        })
+    ]
+});
+```
+
+`table`, `defineMacro`, `createTestFacade`, and `runIfMain` still throw
+explicit unavailable errors.
 
 Supported command-line surface:
 
@@ -30,6 +64,8 @@ Supported command-line surface:
 - `--profile <name>`
 - `--measure-resource-usage`
 - `--resource-budget <name=value>`
+- `--with-locations`
+- `--with-orphans`
 
 `--resource-budget` accepts `activeResourceCount`,
 `javaScriptEngineHeapBytes`, `residentSetBytes`, and
