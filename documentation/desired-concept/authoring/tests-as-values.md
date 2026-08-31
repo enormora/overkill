@@ -5,7 +5,7 @@
 Tests-as-values should be the **preferred first-party high-level authoring
 mode** in Overkill.
 
-Most JS test runners — Jest, Vitest, Mocha, AVA, `node:test` — treat the act
+Most JS test runners, including Jest, Vitest, Mocha, AVA, and `node:test`, treat the act
 of calling `describe(...)` and `test(...)` as a side effect of _loading the
 module_. The runner imports the file; the imported file mutates a hidden
 registry; later the runner walks the registry. The test definitions are not
@@ -79,7 +79,7 @@ That's it. No registry, no hidden cross-file module-load side effects, no
 order dependence on when `test()` happens to be called.
 
 That "no registry" claim is about _discovery_: the runner never runs
-registration code to learn what tests exist — it reads the exported
+registration code to learn what tests exist; it reads the exported
 value. It does not forbid runtime-internal bookkeeping that discovery
 never consults. Run Counts, for instance, has the node constructors
 record each constructed node into a run-scoped collection used only to
@@ -256,7 +256,7 @@ export const testNode = suite('platform', [
 
 The condition is just an array element. Filters and reporters see the same
 structure. Compare with the imperative version where an `if` around `test()`
-silently elides the test from the registry — invisible to listings.
+silently elides the test from the registry, invisible to listings.
 
 ### Ordering is structural
 
@@ -562,7 +562,7 @@ answer is _not_ a `before(...)` hook. It is a fixture scoped to the suite, or
 an explicit constant inside the suite construction:
 
 ```ts
-const fixtures = loadFixtures(); // executes at module load — visible
+const fixtures = loadFixtures(); // executes at module load and is visible
 
 export const testNode = suite('users', [
     test('a', (scope) => {
@@ -639,7 +639,7 @@ the test lifecycle are pure data:
 - the test definition is data (the suite tree)
 - the test result is data (the outcome)
 
-The runner's job is `(SuiteTree, Filter, Profile) -> Promise<RunResult>` —
+The runner's job is `(SuiteTree, Filter, Profile) -> Promise<RunResult>`:
 a function from data to data. No global registry, no thrown exceptions on
 the success path, no hidden cross-file registration state.
 
@@ -676,14 +676,14 @@ free, rather than a reporter-output parser kludge.
 
 ## Influences
 
-- Elm `elm-test` — the cleanest existing realization of tests-as-values in
+- Elm `elm-test`: the cleanest existing realization of tests-as-values in
   a popular runner
-- Haskell `tasty` — `TestTree` is the canonical name for the same idea
+- Haskell `tasty`: `TestTree` is the canonical name for the same idea
 - ZIO Test value-oriented test definitions
-- ScalaCheck — `Prop` values
-- Jane Street's `inline_test` — tests are first-class values registered by
+- ScalaCheck: `Prop` values
+- Jane Street's `inline_test`: tests are first-class values registered by
   a parsetree extension
-- Rust 1.0+ — `#[test]` produces values consumed by a test harness, not
+- Rust 1.0+: `#[test]` produces values consumed by a test harness, not
   registered into a global
 
 ## Recommendation
@@ -691,15 +691,15 @@ free, rather than a reporter-output parser kludge.
 - `@overkill-dev/engine` exposes `TestNode` as a stable branded type
 - `@overkill-dev/test` exports `suite`, `test`, `table`, and the imperative
   sugar layer; both produce the same `TestNode` value
-- files export their root node as `default`
+- files export their root node as named `testNode`
 - the runner walks the value; nothing relies on module-load side effects
 - listing, filtering, IDE introspection, MCP servers, and remote
   execution all consume `TestNode` directly
 
 ## Sources
 
-- [elm-test — `Test` and `Expect`](https://package.elm-lang.org/packages/elm-explorations/test/latest/Test)
-- [Haskell `tasty` — `TestTree`](https://github.com/UnkindPartition/tasty)
+- [elm-test: `Test` and `Expect`](https://package.elm-lang.org/packages/elm-explorations/test/latest/Test)
+- [Haskell `tasty`: `TestTree`](https://github.com/UnkindPartition/tasty)
 - [ZIO Test reference](https://zio.dev/reference/test/why-zio-test/)
 - [TC39 `import defer` proposal](https://github.com/tc39/proposal-defer-import-eval)
 - [Jane Street `inline_test` documentation](https://blog.janestreet.com/automatically-generated-tests-and-property-based-testing/)

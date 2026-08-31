@@ -182,13 +182,23 @@ export const config = {
         },
         {
             name: '@overkill-dev/test',
-            bundleDependencies: [ '@overkill-dev/run' ],
+            bundleDependencies: [ '@overkill-dev/engine', '@overkill-dev/run' ],
             roots: {
+                main: {
+                    js: 'packages/test/test.entry-point.js',
+                    declarationFile: 'packages/test/test.entry-point.d.ts'
+                },
                 overkill: {
                     js: 'packages/test/overkill.entry-point.js'
                 }
             },
             packageInterface: {
+                modules: [
+                    {
+                        export: '.',
+                        root: 'main'
+                    }
+                ],
                 bins: [
                     {
                         name: 'overkill',

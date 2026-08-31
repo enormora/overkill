@@ -8,6 +8,7 @@ import { createLineReporter } from '@overkill-dev/reporter-line';
 
 type PackageJson = {
     readonly bin: unknown;
+    readonly exports: unknown;
 };
 
 type SpawnOutput = {
@@ -28,12 +29,40 @@ const packageSmokeFolder = fileURLToPath(new URL('.', import.meta.url));
 const packageSmokeNodeModules = path.join(packageSmokeFolder, 'node_modules');
 const testPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/test');
 const runPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/run');
+const rootImportScript = [
+    "const testModule = await import('@overkill-dev/test');",
+    'console.log(JSON.stringify(Object.keys(testModule)));',
+    'console.log(String(testModule.defineConfig));',
+    'console.log(String(testModule.orchestrator));',
+    'console.log(String(testModule.createLineReporter));',
+    'console.log(String(testModule.testDouble));',
+    'try {',
+    '    testModule.test();',
+    '} catch (error) {',
+    '    console.log(error instanceof Error ? error.message : String(error));',
+    '}'
+]
+    .join('\n');
+const expectedRootImportOutput = [
+    '["createTestFacade","defineMacro","runIfMain","suite","table","test"]',
+    'undefined',
+    'undefined',
+    'undefined',
+    'undefined',
+    'The @overkill-dev/test test() authoring API is not implemented yet.',
+    ''
+]
+    .join('\n');
 
 async function readPackageJson(packageFolder: string): Promise<PackageJson> {
     return JSON.parse(await fs.readFile(path.join(packageFolder, 'package.json'), 'utf8')) as PackageJson;
 }
 
 function isBinMap(value: unknown): value is Readonly<Record<string, string>> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isPackageExportsMap(value: unknown): value is Readonly<Record<string, unknown>> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
@@ -96,6 +125,33 @@ export const testSuite = createSuite({
                     overkill: './packages/test/overkill.entry-point.js'
                 });
                 scope.assert.equal(runPackageJson.bin, undefined);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            name: 'consumer imports packaged @overkill-dev/test root facade',
+            metadata: {},
+            async body(scope: TestScope) {
+                const testPackageJson = await readPackageJson(testPackageFolder);
+                const packageExports = testPackageJson.exports;
+                const result = await spawnNode([
+                    '--input-type=module',
+                    '--eval',
+                    rootImportScript
+                ]);
+
+                if (!isPackageExportsMap(packageExports)) {
+                    throw new Error('Expected @overkill-dev/test exports map.');
+                }
+
+                scope.assert.deepEqual(packageExports['.'], {
+                    import: './packages/test/test.entry-point.js',
+                    types: './packages/test/test.entry-point.d.ts'
+                });
+                scope.assert.equal(result.code, 0);
+                scope.assert.equal(result.stderr, '');
+                scope.assert.equal(result.stdout, expectedRootImportOutput);
 
                 return scope.assert.collect();
             }

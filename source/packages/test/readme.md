@@ -2,9 +2,22 @@
 
 Standard user-facing Overkill distribution.
 
-This package currently ships the public `overkill` binary only. The binary
-parses the minimal `run` command surface and delegates execution to
-`@overkill-dev/run/command-line`.
+This package ships the public `overkill` binary and the staged root authoring
+facade. The binary parses the minimal `run` command surface and delegates
+execution to `@overkill-dev/run/command-line`.
+
+Current root runtime exports:
+
+- `test`
+- `suite`
+- `table`
+- `defineMacro`
+- `createTestFacade`
+- `runIfMain`
+
+These root authoring exports currently reserve the public names and throw
+explicit unavailable errors. Their final behavior is implemented by later
+milestones.
 
 Supported command-line surface:
 
@@ -32,4 +45,4 @@ profile's `files.include` and `files.exclude` policy. Explicit file paths run
 directly. Directory paths filter the selected profile's discovered files and
 require that profile policy.
 
-The root authoring facade and standard subpaths are later milestones.
+Standard subpaths are later milestones.
