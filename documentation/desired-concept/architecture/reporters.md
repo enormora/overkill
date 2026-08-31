@@ -224,17 +224,13 @@ Config should prefer explicit imported values, for example:
 ```ts
 import { defineConfig } from '@overkill-dev/test/config';
 import {
-    benchmarkHtmlReporter,
-    lineReporter
+    createGithubActionsOutputRenderer,
+    createLineReporter
 } from '@overkill-dev/test/reporters';
 
 export const config = defineConfig({
-    reporters: [
-        lineReporter(),
-        benchmarkHtmlReporter({
-            outputDir: '.overkill/bench-report'
-        })
-    ]
+    outputRenderer: createGithubActionsOutputRenderer(),
+    reporters: [ createLineReporter() ]
 });
 ```
 
@@ -243,7 +239,10 @@ convention and no package-name lookup magic in the settled concept.
 
 `@overkill-dev/test/reporters` may re-export built-in reporter factories so
 standard users do not need to import each built-in reporter from its leaf
-package by default.
+package by default. The current standard distribution exports
+`createLineReporter`, `createBriefReporter`, `createDotReporter`, and
+`createGithubActionsOutputRenderer`; benchmark-specific and artifact reporters
+arrive with their leaf packages.
 
 ## Multi-Reporter Composition
 

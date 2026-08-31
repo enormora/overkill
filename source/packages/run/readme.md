@@ -16,6 +16,10 @@ Top-level API:
 - `orchestrator.run(command)`
 - `orchestrator.runWithReporterDelivery(command)`
 
+Configuration loading and authoring are also exposed through
+`@overkill-dev/run/config` for packages that need the config-owned surface
+without importing orchestration.
+
 Command-line business logic is exposed through `@overkill-dev/run/command-line`:
 
 - `commandLineRunner.runTests({ cwd, configPath, runRequest })`

@@ -699,13 +699,14 @@ Everything outside the authoring hot path uses an explicit subpath:
 
 ```ts
 import { defineConfig } from '@overkill-dev/test/config';
-import { lineReporter } from '@overkill-dev/test/reporters';
-import { benchmark, workload } from '@overkill-dev/test/bench';
+import { createLineReporter } from '@overkill-dev/test/reporters';
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 ```
 
 Subpaths may re-export standard-stack packages for user ergonomics. They do
 not transfer semantic ownership away from those packages.
+Current reserved standard subpaths expose only `unavailable()` until their
+leaf package exists.
 
 ### Load Boundaries
 

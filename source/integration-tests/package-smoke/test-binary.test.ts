@@ -76,6 +76,50 @@ const rootImportScript = [
     '}'
 ]
     .join('\n');
+const standardSubpathImportScript = [
+    "const configModule = await import('@overkill-dev/test/config');",
+    "const reportersModule = await import('@overkill-dev/test/reporters');",
+    "const assertModule = await import('@overkill-dev/test/assert');",
+    "const benchModule = await import('@overkill-dev/test/bench');",
+    "const resourcesModule = await import('@overkill-dev/test/resources');",
+    "const baselinesModule = await import('@overkill-dev/test/baselines');",
+    'console.log(JSON.stringify(Object.keys(configModule)));',
+    'console.log(JSON.stringify(Object.keys(reportersModule)));',
+    'console.log(JSON.stringify(Object.keys(assertModule)));',
+    'console.log(configModule.defineConfig({ profiles: {} }).profiles === undefined);',
+    'console.log(reportersModule.createLineReporter().name);',
+    'console.log(reportersModule.createBriefReporter().name);',
+    'const dotReporter = reportersModule.createDotReporter();',
+    'console.log(dotReporter.name);',
+    'if (dotReporter.dispose !== null) {',
+    '    dotReporter.dispose();',
+    '}',
+    'console.log(reportersModule.createGithubActionsOutputRenderer().render({',
+    "    annotation: null, kind: 'stdout-line', role: 'primary', text: 'hello'",
+    '}));',
+    'console.log(typeof assertModule.defineCompositeAssertion);',
+    'for (const [name, module] of [',
+    "    [ 'bench', benchModule ],",
+    "    [ 'resources', resourcesModule ],",
+    "    [ 'baselines', baselinesModule ]",
+    ']) {',
+    '    console.log(JSON.stringify(Object.keys(module)));',
+    '    try {',
+    '        module.unavailable();',
+    '    } catch (error) {',
+    '        console.log(error instanceof Error ? error.message : String(error));',
+    '    }',
+    '}'
+]
+    .join('\n');
+const runConfigImportScript = [
+    "const configModule = await import('@overkill-dev/run/config');",
+    'console.log(JSON.stringify(Object.keys(configModule)));',
+    'console.log(configModule.defineConfig({ profiles: {} }).profiles === undefined);',
+    'console.log(typeof configModule.loadRunConfig);',
+    "console.log(new configModule.RunConfigError('Invalid config.').name);"
+]
+    .join('\n');
 const expectedRootImportOutput = [
     '["createTestFacade","defineMacro","runIfMain","suite","table","test"]',
     'undefined',
@@ -90,6 +134,33 @@ const expectedRootImportOutput = [
     ''
 ]
     .join('\n');
+const expectedStandardSubpathImportOutput = [
+    '["defineConfig"]',
+    '["createBriefReporter","createDotReporter","createGithubActionsOutputRenderer","createLineReporter"]',
+    '["defineCompositeAssertion","defineNarrowingCompositeAssertion"]',
+    'false',
+    'line',
+    'brief',
+    'dot',
+    'hello',
+    'function',
+    '["unavailable"]',
+    'The @overkill-dev/test/bench subpath is reserved until its leaf package exists.',
+    '["unavailable"]',
+    'The @overkill-dev/test/resources subpath is reserved until its leaf package exists.',
+    '["unavailable"]',
+    'The @overkill-dev/test/baselines subpath is reserved until its leaf package exists.',
+    ''
+]
+    .join('\n');
+const expectedRunConfigImportOutput = [
+    '["RunConfigError","defineConfig","loadRunConfig"]',
+    'false',
+    'function',
+    'RunConfigError',
+    ''
+]
+    .join('\n');
 
 async function readPackageJson(packageFolder: string): Promise<PackageJson> {
     return JSON.parse(await fs.readFile(path.join(packageFolder, 'package.json'), 'utf8')) as PackageJson;
@@ -101,6 +172,20 @@ function isBinMap(value: unknown): value is Readonly<Record<string, string>> {
 
 function isPackageExportsMap(value: unknown): value is Readonly<Record<string, unknown>> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+async function readPackageExports(
+    packageFolder: string,
+    packageName: string
+): Promise<Readonly<Record<string, unknown>>> {
+    const packageJson = await readPackageJson(packageFolder);
+    const packageExports = packageJson.exports;
+
+    if (!isPackageExportsMap(packageExports)) {
+        throw new Error(`Expected ${packageName} exports map.`);
+    }
+
+    return packageExports;
 }
 
 async function collectStream(stream: Readable): Promise<string> {
@@ -140,6 +225,65 @@ async function importPackagedFilters(): Promise<FiltersModule> {
     const modulePath = path.join(runPackageFolder, 'packages/run/filters.entry-point.js');
 
     return await import(pathToFileURL(modulePath).href) as FiltersModule;
+}
+
+function assertTestStandardSubpathExports(scope: TestScope, packageExports: Readonly<Record<string, unknown>>): void {
+    scope.assert.deepEqual(packageExports['./config'], {
+        import: './packages/test/config.entry-point.js',
+        types: './packages/test/config.entry-point.d.ts'
+    });
+    scope.assert.deepEqual(packageExports['./reporters'], {
+        import: './packages/test/reporters.entry-point.js',
+        types: './packages/test/reporters.entry-point.d.ts'
+    });
+    scope.assert.deepEqual(packageExports['./assert'], {
+        import: './packages/test/assert.entry-point.js',
+        types: './packages/test/assert.entry-point.d.ts'
+    });
+    scope.assert.deepEqual(packageExports['./bench'], {
+        import: './packages/test/bench.entry-point.js',
+        types: './packages/test/bench.entry-point.d.ts'
+    });
+    scope.assert.deepEqual(packageExports['./resources'], {
+        import: './packages/test/resources.entry-point.js',
+        types: './packages/test/resources.entry-point.d.ts'
+    });
+    scope.assert.deepEqual(packageExports['./baselines'], {
+        import: './packages/test/baselines.entry-point.js',
+        types: './packages/test/baselines.entry-point.d.ts'
+    });
+}
+
+function assertRunConfigSubpathExport(scope: TestScope, packageExports: Readonly<Record<string, unknown>>): void {
+    scope.assert.deepEqual(packageExports['./config'], {
+        import: './packages/run/config.entry-point.js',
+        types: './packages/run/config.entry-point.d.ts'
+    });
+}
+
+function assertPackagedFilters(scope: TestScope, filters: FiltersModule): void {
+    const { all, file, not, parseRunFilterExpression, tag } = filters;
+
+    scope.assert.deepEqual(all([ tag('fast'), not(file('source/**')) ]), {
+        filters: [
+            { field: 'tag', kind: 'equals', value: 'fast' },
+            {
+                filter: { field: 'file', kind: 'glob', pattern: 'source/**' },
+                kind: 'not'
+            }
+        ],
+        kind: 'all'
+    });
+    scope.assert.deepEqual(parseRunFilterExpression('tag=fast !tag=flaky'), {
+        filters: [
+            { field: 'tag', kind: 'equals', value: 'fast' },
+            {
+                filter: { field: 'tag', kind: 'equals', value: 'flaky' },
+                kind: 'not'
+            }
+        ],
+        kind: 'all'
+    });
 }
 
 async function writeAuthoringSmokeFile(): Promise<void> {
@@ -193,6 +337,30 @@ export const testSuite = createSuite({
                 scope.assert.equal(result.code, 0);
                 scope.assert.equal(result.stderr, '');
                 scope.assert.equal(result.stdout, expectedRootImportOutput);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            name: 'consumer imports packaged @overkill-dev/test standard subpaths',
+            metadata: {},
+            async body(scope: TestScope) {
+                const testPackageJson = await readPackageJson(testPackageFolder);
+                const packageExports = testPackageJson.exports;
+                const result = await spawnNode([
+                    '--input-type=module',
+                    '--eval',
+                    standardSubpathImportScript
+                ]);
+
+                if (!isPackageExportsMap(packageExports)) {
+                    throw new Error('Expected @overkill-dev/test exports map.');
+                }
+
+                assertTestStandardSubpathExports(scope, packageExports);
+                scope.assert.equal(result.code, 0);
+                scope.assert.equal(result.stderr, '');
+                scope.assert.equal(result.stdout, expectedStandardSubpathImportOutput);
 
                 return scope.assert.collect();
             }
@@ -258,28 +426,19 @@ export const testSuite = createSuite({
             name: 'consumer imports packaged @overkill-dev/run/filters helpers',
             metadata: {},
             async body(scope: TestScope) {
-                const { all, file, not, parseRunFilterExpression, tag } = await importPackagedFilters();
+                const packageExports = await readPackageExports(runPackageFolder, '@overkill-dev/run');
+                const result = await spawnNode([
+                    '--input-type=module',
+                    '--eval',
+                    runConfigImportScript
+                ]);
+                const filters = await importPackagedFilters();
 
-                scope.assert.deepEqual(all([ tag('fast'), not(file('source/**')) ]), {
-                    filters: [
-                        { field: 'tag', kind: 'equals', value: 'fast' },
-                        {
-                            filter: { field: 'file', kind: 'glob', pattern: 'source/**' },
-                            kind: 'not'
-                        }
-                    ],
-                    kind: 'all'
-                });
-                scope.assert.deepEqual(parseRunFilterExpression('tag=fast !tag=flaky'), {
-                    filters: [
-                        { field: 'tag', kind: 'equals', value: 'fast' },
-                        {
-                            filter: { field: 'tag', kind: 'equals', value: 'flaky' },
-                            kind: 'not'
-                        }
-                    ],
-                    kind: 'all'
-                });
+                assertRunConfigSubpathExport(scope, packageExports);
+                scope.assert.equal(result.code, 0);
+                scope.assert.equal(result.stderr, '');
+                scope.assert.equal(result.stdout, expectedRunConfigImportOutput);
+                assertPackagedFilters(scope, filters);
 
                 return scope.assert.collect();
             }
