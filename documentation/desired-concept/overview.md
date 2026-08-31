@@ -273,8 +273,9 @@ The standard distribution is a packaging convenience, not the architectural
 source of truth. The root `@overkill-dev/test` import is reserved for the
 authoring hot path and lightweight doubles. Other standard features are
 available through explicit subpaths such as `@overkill-dev/test/config`,
-`@overkill-dev/test/reporters`, `@overkill-dev/test/bench`, and
-`@overkill-dev/test/assert`.
+`@overkill-dev/test/reporters`, `@overkill-dev/test/assert`,
+`@overkill-dev/test/bench`, `@overkill-dev/test/resources`, and
+`@overkill-dev/test/baselines`.
 
 Optional packages stay separate installs when they are domain-specific,
 heavyweight, or aimed at a narrower audience. That includes browser and

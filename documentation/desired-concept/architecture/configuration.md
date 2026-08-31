@@ -98,10 +98,10 @@ The first-party shape is:
 
 ```ts
 import { defineConfig } from '@overkill-dev/test/config';
-import { lineReporter } from '@overkill-dev/test/reporters';
+import { createLineReporter } from '@overkill-dev/test/reporters';
 
 export const config = defineConfig({
-    reporters: [ lineReporter() ],
+    reporters: [ createLineReporter() ],
     profiles: {
         unit: {
             testFamily: 'microtest',
@@ -242,7 +242,7 @@ Use profiles for ordinary and optional runtime families instead:
 
 ```ts
 export const config = defineConfig({
-    reporters: [ lineReporter() ],
+    reporters: [ createLineReporter() ],
     profiles: {
         'unit-fast': {
             testFamily: 'microtest',

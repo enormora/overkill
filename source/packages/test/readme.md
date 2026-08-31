@@ -15,6 +15,19 @@ Current root runtime exports:
 - `createTestFacade`
 - `runIfMain`
 
+Standard subpaths:
+
+- `@overkill-dev/test/config` exports `defineConfig` and run project config
+  types.
+- `@overkill-dev/test/reporters` exports `createLineReporter`,
+  `createBriefReporter`, `createDotReporter`, and
+  `createGithubActionsOutputRenderer`.
+- `@overkill-dev/test/assert` re-exports assertion-extension helpers from
+  `@overkill-dev/assert`.
+- `@overkill-dev/test/bench`, `@overkill-dev/test/resources`, and
+  `@overkill-dev/test/baselines` are reserved. They currently export only
+  `unavailable()`.
+
 Implemented root authoring forms:
 
 ```ts
@@ -80,5 +93,3 @@ When no paths are supplied, `run` and `list` discover files from the selected
 profile's `files.include` and `files.exclude` policy. Explicit file paths run
 directly. Directory paths filter the selected profile's discovered files and
 require that profile policy.
-
-Standard subpaths are later milestones.

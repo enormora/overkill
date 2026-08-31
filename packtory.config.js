@@ -144,6 +144,10 @@ export const config = {
                     js: 'packages/run/command-line.entry-point.js',
                     declarationFile: 'packages/run/command-line.entry-point.d.ts'
                 },
+                config: {
+                    js: 'packages/run/config.entry-point.js',
+                    declarationFile: 'packages/run/config.entry-point.d.ts'
+                },
                 filters: {
                     js: 'packages/run/filters.entry-point.js',
                     declarationFile: 'packages/run/filters.entry-point.d.ts'
@@ -164,6 +168,10 @@ export const config = {
                         root: 'commandLine'
                     },
                     {
+                        export: './config',
+                        root: 'config'
+                    },
+                    {
                         export: './filters',
                         root: 'filters'
                     }
@@ -182,14 +190,46 @@ export const config = {
         },
         {
             name: '@overkill-dev/test',
-            bundleDependencies: [ '@overkill-dev/engine', '@overkill-dev/reporter-line', '@overkill-dev/run' ],
+            bundleDependencies: [
+                '@overkill-dev/assert',
+                '@overkill-dev/engine',
+                '@overkill-dev/output-renderer-github-actions',
+                '@overkill-dev/reporter-brief',
+                '@overkill-dev/reporter-dot',
+                '@overkill-dev/reporter-line',
+                '@overkill-dev/run'
+            ],
             roots: {
+                assert: {
+                    js: 'packages/test/assert.entry-point.js',
+                    declarationFile: 'packages/test/assert.entry-point.d.ts'
+                },
+                baselines: {
+                    js: 'packages/test/baselines.entry-point.js',
+                    declarationFile: 'packages/test/baselines.entry-point.d.ts'
+                },
+                bench: {
+                    js: 'packages/test/bench.entry-point.js',
+                    declarationFile: 'packages/test/bench.entry-point.d.ts'
+                },
+                config: {
+                    js: 'packages/test/config.entry-point.js',
+                    declarationFile: 'packages/test/config.entry-point.d.ts'
+                },
                 main: {
                     js: 'packages/test/test.entry-point.js',
                     declarationFile: 'packages/test/test.entry-point.d.ts'
                 },
                 overkill: {
                     js: 'packages/test/overkill.entry-point.js'
+                },
+                reporters: {
+                    js: 'packages/test/reporters.entry-point.js',
+                    declarationFile: 'packages/test/reporters.entry-point.d.ts'
+                },
+                resources: {
+                    js: 'packages/test/resources.entry-point.js',
+                    declarationFile: 'packages/test/resources.entry-point.d.ts'
                 }
             },
             packageInterface: {
@@ -197,6 +237,30 @@ export const config = {
                     {
                         export: '.',
                         root: 'main'
+                    },
+                    {
+                        export: './assert',
+                        root: 'assert'
+                    },
+                    {
+                        export: './baselines',
+                        root: 'baselines'
+                    },
+                    {
+                        export: './bench',
+                        root: 'bench'
+                    },
+                    {
+                        export: './config',
+                        root: 'config'
+                    },
+                    {
+                        export: './reporters',
+                        root: 'reporters'
+                    },
+                    {
+                        export: './resources',
+                        root: 'resources'
                     }
                 ],
                 bins: [
