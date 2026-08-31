@@ -15,6 +15,7 @@ type FilterPackageValueExport = keyof {
     readonly not: true;
     readonly owner: true;
     readonly params: true;
+    readonly parseRunFilterExpression: true;
     readonly runtime: true;
     readonly stability: true;
     readonly suite: true;
@@ -64,6 +65,7 @@ describe('@overkill-dev/run/filters', function () {
         >();
         expect<typeof filters.not>().type.toBe<(filter: RunFilter) => RunFilter>();
         expect<typeof filters.caseId>().type.toBe<(id: CaseId) => RunFilter>();
+        expect<typeof filters.parseRunFilterExpression>().type.toBe<(expression: string) => RunFilter>();
     });
 
     test('exposes generic string helper signatures', function () {

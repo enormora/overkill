@@ -20,6 +20,7 @@ type FiltersModule = {
     readonly all: (filters: readonly [unknown, ...(readonly unknown[])]) => unknown;
     readonly file: (pattern: string) => unknown;
     readonly not: (filter: unknown) => unknown;
+    readonly parseRunFilterExpression: (expression: string) => unknown;
     readonly tag: (value: string) => unknown;
 };
 
@@ -119,13 +120,23 @@ export const testSuite = createSuite({
             name: 'consumer imports packaged @overkill-dev/run/filters helpers',
             metadata: {},
             async body(scope: TestScope) {
-                const { all, file, not, tag } = await importPackagedFilters();
+                const { all, file, not, parseRunFilterExpression, tag } = await importPackagedFilters();
 
                 scope.assert.deepEqual(all([ tag('fast'), not(file('source/**')) ]), {
                     filters: [
                         { field: 'tag', kind: 'equals', value: 'fast' },
                         {
                             filter: { field: 'file', kind: 'glob', pattern: 'source/**' },
+                            kind: 'not'
+                        }
+                    ],
+                    kind: 'all'
+                });
+                scope.assert.deepEqual(parseRunFilterExpression('tag=fast !tag=flaky'), {
+                    filters: [
+                        { field: 'tag', kind: 'equals', value: 'fast' },
+                        {
+                            filter: { field: 'tag', kind: 'equals', value: 'flaky' },
                             kind: 'not'
                         }
                     ],

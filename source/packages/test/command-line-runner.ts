@@ -16,6 +16,14 @@ import type {
     CommandLineRunner,
     CommandLineRunnerResult
 } from '../run/command-line.entry-point.ts';
+import {
+    all,
+    contains,
+    equals,
+    parseRunFilterExpression,
+    type RunFilter,
+    type RunSelection
+} from '../run/filters.entry-point.ts';
 
 type WritableOutput = {
     readonly write: (chunk: string) => unknown;
@@ -41,7 +49,10 @@ type ResourceBudgetOverride = {
 
 type RunCommandArguments = {
     readonly configPath: string | null;
+    readonly file: string | null;
+    readonly filter: RunFilter | null;
     readonly measureResourceUsage: boolean;
+    readonly name: string | null;
     readonly paths: readonly string[];
     readonly profile: string;
     readonly resourceBudgetOverrides: ResourceBudgetOverrides | null;
@@ -49,6 +60,9 @@ type RunCommandArguments = {
 
 type ListCommandArguments = {
     readonly configPath: string | null;
+    readonly file: string | null;
+    readonly filter: RunFilter | null;
+    readonly name: string | null;
     readonly paths: readonly string[];
     readonly profile: string;
     readonly withOrphans: boolean;
@@ -215,12 +229,74 @@ const resourceBudgetOverridesType: Type<string[], ResourceBudgetOverrides | null
     }
 };
 
+const filterExpressionType: Type<string, RunFilter | null> = {
+    displayName: 'expr',
+    async from(value) {
+        await Promise.resolve();
+
+        return parseRunFilterExpression(value);
+    }
+};
+
+function parseNonEmptySelectorText(label: string, value: string): string {
+    if (value.trim().length === 0) {
+        throw new TypeError(`${label} must not be empty.`);
+    }
+
+    return value;
+}
+
+const fileSelectionType: Type<string, string | null> = {
+    displayName: 'path',
+    async from(value) {
+        return parseNonEmptySelectorText('File selector', value);
+    }
+};
+
+const nameSelectionType: Type<string, string | null> = {
+    displayName: 'text',
+    async from(value) {
+        return parseNonEmptySelectorText('Name selector', value);
+    }
+};
+
 function readMeasureResourceUsage(args: RunCommandArguments): boolean | null {
     if (args.measureResourceUsage || args.resourceBudgetOverrides !== null) {
         return true;
     }
 
     return null;
+}
+
+function selectionFromFilters(filters: readonly RunFilter[]): RunSelection {
+    const [ firstFilter, ...remainingFilters ] = filters;
+
+    if (firstFilter === undefined) {
+        return { kind: 'all' };
+    }
+
+    return {
+        filter: remainingFilters.length === 0 ? firstFilter : all([ firstFilter, ...remainingFilters ]),
+        kind: 'filter'
+    };
+}
+
+function createSelection(args: Pick<RunCommandArguments, 'file' | 'filter' | 'name'>): RunSelection {
+    const filters: RunFilter[] = [];
+
+    if (args.filter !== null) {
+        filters.push(args.filter);
+    }
+
+    if (args.name !== null) {
+        filters.push(contains('name', args.name));
+    }
+
+    if (args.file !== null) {
+        filters.push(equals('file', args.file));
+    }
+
+    return selectionFromFilters(filters);
 }
 
 function createRunTestsRequest(args: RunCommandArguments, cwd: string): CommandLineRunTestsRequest {
@@ -243,7 +319,7 @@ function createRunTestsRequest(args: RunCommandArguments, cwd: string): CommandL
             resourceBudgetOverrides: args.resourceBudgetOverrides,
             resourceUsageSamplingIntervalMilliseconds: null,
             seed: { value: null },
-            selection: { kind: 'all' },
+            selection: createSelection(args),
             shard: { index: 0, total: 1 },
             verbose: false
         }
@@ -257,10 +333,50 @@ function createListTestsRequest(args: ListCommandArguments, cwd: string): Comman
         listRequest: {
             paths: args.paths,
             profile: args.profile,
+            selection: createSelection(args),
             withOrphans: args.withOrphans
         }
     };
 }
+
+const sharedCommandArguments = {
+    configPath: option({
+        long: 'config',
+        type: configPathType,
+        defaultValue() {
+            return null;
+        }
+    }),
+    file: option({
+        long: 'file',
+        type: fileSelectionType,
+        defaultValue() {
+            return null;
+        }
+    }),
+    filter: option({
+        long: 'filter',
+        type: filterExpressionType,
+        defaultValue() {
+            return null;
+        }
+    }),
+    name: option({
+        long: 'name',
+        type: nameSelectionType,
+        defaultValue() {
+            return null;
+        }
+    }),
+    paths: restPositionals({ displayName: 'path' }),
+    profile: option({
+        long: 'profile',
+        type: string,
+        defaultValue() {
+            return 'microtest';
+        }
+    })
+};
 
 function createOverkillCommand(
     loadRunner: () => Promise<CommandLineRunner>,
@@ -269,29 +385,15 @@ function createOverkillCommand(
     const runCommand = command({
         name: 'run',
         args: {
-            configPath: option({
-                long: 'config',
-                type: configPathType,
-                defaultValue() {
-                    return null;
-                }
-            }),
+            ...sharedCommandArguments,
             measureResourceUsage: flag({ long: 'measure-resource-usage' }),
-            profile: option({
-                long: 'profile',
-                type: string,
-                defaultValue() {
-                    return 'microtest';
-                }
-            }),
             resourceBudgetOverrides: multioption({
                 long: 'resource-budget',
                 type: resourceBudgetOverridesType,
                 defaultValue() {
                     return null;
                 }
-            }),
-            paths: restPositionals({ displayName: 'path' })
+            })
         },
         async handler(args: RunCommandArguments) {
             const runner = await loadRunner();
@@ -302,22 +404,8 @@ function createOverkillCommand(
     const listCommand = command({
         name: 'list',
         args: {
-            configPath: option({
-                long: 'config',
-                type: configPathType,
-                defaultValue() {
-                    return null;
-                }
-            }),
-            profile: option({
-                long: 'profile',
-                type: string,
-                defaultValue() {
-                    return 'microtest';
-                }
-            }),
-            withOrphans: flag({ long: 'with-orphans' }),
-            paths: restPositionals({ displayName: 'path' })
+            ...sharedCommandArguments,
+            withOrphans: flag({ long: 'with-orphans' })
         },
         async handler(args: ListCommandArguments) {
             const runner = await loadRunner();

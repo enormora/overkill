@@ -15,6 +15,9 @@ export {
     suite,
     tag
 } from '../../run/run-selection-filters.ts';
+export {
+    parseRunFilterExpression
+} from '../../run/run-filter-grammar.ts';
 export type {
     RunFilter,
     RunSelection,

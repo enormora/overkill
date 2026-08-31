@@ -225,6 +225,7 @@ export const testSuite = createSuite({
                         listRequest: {
                             paths: [ 'source/a.test.ts', 'source/b.test.ts' ],
                             profile: 'backend-http',
+                            selection: { kind: 'all' },
                             withOrphans: true
                         }
                     }
@@ -378,7 +379,83 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'overkill wrapper maps unsupported run flags to argument errors',
+            name: 'overkill wrapper parses run selectors',
+            metadata: {},
+            async body(scope: TestScope) {
+                const result = await runCommandLine(
+                    [
+                        'run',
+                        '--filter',
+                        'tag=fast !tag=flaky',
+                        '--name',
+                        'Login',
+                        '--file',
+                        'source/auth.test.ts'
+                    ],
+                    passingResult()
+                );
+                const [ commandLineRequest ] = result.runRequests;
+
+                scope.assert.deepEqual(result.exitCodes, [ 0 ]);
+                scope.require.defined(commandLineRequest);
+                scope.assert.deepEqual(commandLineRequest.runRequest.selection, {
+                    filter: {
+                        filters: [
+                            {
+                                filters: [
+                                    { field: 'tag', kind: 'equals', value: 'fast' },
+                                    {
+                                        filter: { field: 'tag', kind: 'equals', value: 'flaky' },
+                                        kind: 'not'
+                                    }
+                                ],
+                                kind: 'all'
+                            },
+                            { field: 'name', kind: 'contains', value: 'Login' },
+                            { field: 'file', kind: 'equals', value: 'source/auth.test.ts' }
+                        ],
+                        kind: 'all'
+                    },
+                    kind: 'filter'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            name: 'overkill wrapper parses list selectors',
+            metadata: {},
+            async body(scope: TestScope) {
+                const result = await runCommandLine(
+                    [ 'list', '--filter', 'tag=fast | tag=slow', '--name', 'Login' ],
+                    passingResult()
+                );
+                const [ commandLineRequest ] = result.listRequests;
+
+                scope.assert.deepEqual(result.exitCodes, [ 0 ]);
+                scope.require.defined(commandLineRequest);
+                scope.assert.deepEqual(commandLineRequest.listRequest.selection, {
+                    filter: {
+                        filters: [
+                            {
+                                filters: [
+                                    { field: 'tag', kind: 'equals', value: 'fast' },
+                                    { field: 'tag', kind: 'equals', value: 'slow' }
+                                ],
+                                kind: 'any'
+                            },
+                            { field: 'name', kind: 'contains', value: 'Login' }
+                        ],
+                        kind: 'all'
+                    },
+                    kind: 'filter'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            name: 'overkill wrapper rejects malformed run filters',
             metadata: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine(
@@ -389,8 +466,7 @@ export const testSuite = createSuite({
                 scope.assert.deepEqual(result.exitCodes, [ 3 ]);
                 scope.assert.equal(result.runRequests.length, 0);
                 scope.assert.equal(result.stdout, '');
-                scope.assert.true(result.stderr.includes('Unknown arguments'));
-                scope.assert.true(result.stderr.includes('--filter'));
+                scope.assert.true(result.stderr.includes('Unknown run filter dimension: kind'));
 
                 return scope.assert.collect();
             }

@@ -24,6 +24,7 @@ export type CommandLineListTestsRequest = RunConfigLoadRequest & {
     readonly listRequest: {
         readonly paths: readonly string[];
         readonly profile: string;
+        readonly selection: RunRequest['selection'];
         readonly withOrphans: boolean;
     };
 };
