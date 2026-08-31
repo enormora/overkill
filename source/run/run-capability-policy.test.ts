@@ -52,14 +52,16 @@ const policyTestCase: PolicyTestCase = {
     body: async function unusedPolicyTestBody() {
         throw new Error('Policy test body should not run.');
     },
+    definitionLocation: { column: null, file: '', line: null },
     id: {
         file: 'source/run/run-capability-policy.test.ts',
         name: 'policy case',
         params: null,
         suite: [ 'runtime policy' ]
     },
-    suitePath: [ 'runtime policy' ],
-    metadata: policyMetadata
+    metadata: policyMetadata,
+    suiteDefinitionLocations: [ { column: null, file: '', line: null } ],
+    suitePath: [ 'runtime policy' ]
 };
 
 function createRunCommand(overrides: RunCommandParts): RunCommand {

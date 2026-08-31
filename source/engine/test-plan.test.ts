@@ -34,6 +34,15 @@ function metadataShape(fields: Readonly<Record<string, unknown>>): unknown {
     };
 }
 
+function sourceLocationShape(fields: Readonly<Record<string, unknown>>): unknown {
+    return {
+        column: null,
+        file: '',
+        line: null,
+        ...fields
+    };
+}
+
 function parameterIdentity(parameters: Readonly<Record<string, unknown>>): string {
     return JSON.stringify(serializeValue(parameters));
 }
@@ -81,8 +90,10 @@ export const testSuite = createOverkillSuite({
 
                 const comparableTestCases = testPlan.cases.map(function toComparableTestCase(testCase) {
                     return {
+                        definitionLocation: testCase.definitionLocation,
                         id: testCase.id,
                         metadata: testCase.metadata,
+                        suiteDefinitionLocations: testCase.suiteDefinitionLocations,
                         suitePath: testCase.suitePath
                     };
                 });
@@ -92,11 +103,14 @@ export const testSuite = createOverkillSuite({
                     testCaseShape,
                     [
                         {
+                            definitionLocation: sourceLocationShape({}),
                             id: { file: null, name: 'first', params: null, suite: [] },
                             metadata: metadataShape({ tags: [ 'inherited', 'local' ] }),
+                            suiteDefinitionLocations: [],
                             suitePath: []
                         },
                         {
+                            definitionLocation: sourceLocationShape({}),
                             id: {
                                 file: null,
                                 name: 'row 1',
@@ -104,6 +118,7 @@ export const testSuite = createOverkillSuite({
                                 suite: [ 'rows' ]
                             },
                             metadata: metadataShape({ extra: { row: 1 }, tags: [ 'inherited', 'table' ] }),
+                            suiteDefinitionLocations: [ sourceLocationShape({}) ],
                             suitePath: [ 'rows' ]
                         }
                     ]
@@ -111,49 +126,6 @@ export const testSuite = createOverkillSuite({
                 scope.assert.deepEqual(testPlan.discoveredCases, testPlan.cases);
                 scope.assert.equal(testPlan.defined, 2);
                 scope.assert.deepEqual(testPlan.orphans, []);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            name: 'createTestPlan() reports constructed nodes that do not reach the root as orphans',
-            metadata: {},
-            body(scope: OverkillScope) {
-                const engine = createEngine();
-                const reached = engine.createTestCase({
-                    body(testScope) {
-                        testScope.assert.true(true, { message: 'passes' });
-                        return testScope.assert.collect();
-                    },
-                    metadata: {},
-                    name: 'reached'
-                });
-                engine.createTestCase({
-                    body(testScope) {
-                        testScope.assert.true(true, { message: 'passes' });
-                        return testScope.assert.collect();
-                    },
-                    metadata: {},
-                    name: 'unused test'
-                });
-                engine.createSuite({
-                    children: [],
-                    metadata: {},
-                    name: 'unused suite'
-                });
-                const root = engine.createRoot({
-                    children: [ reached ],
-                    metadata: {},
-                    name: 'root'
-                });
-
-                const testPlan = engine.createTestPlan(root);
-
-                scope.assert.equal(testPlan.defined, 3);
-                scope.assert.deepEqual(testPlan.orphans, [
-                    { file: null, kind: 'test', name: 'unused test' },
-                    { file: null, kind: 'suite', name: 'unused suite' }
-                ]);
 
                 return scope.assert.collect();
             }

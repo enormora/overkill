@@ -1,5 +1,4 @@
 import { fork, type ChildProcess } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
 import {
     createSuite as createOverkillSuite,
@@ -7,20 +6,23 @@ import {
     runIfMain,
     type TestScope as OverkillScope
 } from '@overkill-dev/engine';
-import type { Reporter } from '../engine/reporter.ts';
+import { isReporter, type Reporter } from '../engine/reporter.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import {
     defaultMicrotestProfile,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
 import type { RunnerError } from '../engine/run-result.ts';
+import { supervisedChildProcessEntryPointArgument } from './supervised-child-process.ts';
 import { orchestrator } from './run-orchestrator.entry-point.ts';
 import type { RunCommand, RunConfig, RunMicrotestProfileConfig, RunRequest } from './run-types.ts';
 
 const delayedPassFixturePath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
 const endlessLoopFixturePath = 'source/integration-tests/run/fixtures/endless-loop.test.ts';
 const envPolicyFixturePath = 'source/integration-tests/run/fixtures/env-policy.test.ts';
-const childEntryPoint = fileURLToPath(new URL('./supervised-child.entry-point.ts', import.meta.url));
+const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
+const childEntryPointExtension = import.meta.url.endsWith('.ts') ? 'ts' : 'js';
+const childEntryPoint = new URL(`./supervised-child-process.${childEntryPointExtension}`, import.meta.url);
 const failureExitCode = 1;
 const generousResourceBudget = Number.MAX_SAFE_INTEGER;
 const hardTimeoutMilliseconds = 50;
@@ -55,6 +57,16 @@ const failingEventReporter: Reporter = {
     onFinish: null,
     sinks: [ { kind: 'memory' } ]
 };
+
+function createConsoleReporter(): Reporter {
+    const reporter = createOverkillLineReporter();
+
+    if (!isReporter(reporter)) {
+        throw new TypeError('Expected package line reporter.');
+    }
+
+    return reporter;
+}
 
 function createRunConfig(profile: RunMicrotestProfileConfig): RunConfig {
     return {
@@ -340,6 +352,27 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'orchestrator.run() does not report supervised parent orchestration as runtime policy',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const result = await orchestrator.run({
+                    config: createRunConfigWithReporters(restrictedMicrotestProfile, [ createConsoleReporter() ]),
+                    cwd: process.cwd(),
+                    engine: { kind: 'default' },
+                    request: {
+                        ...createRunRequest(passingFixturePath),
+                        capabilityRestrictions: { mode: 'enabled' },
+                        seed: { value: null }
+                    }
+                });
+
+                scope.assert.equal(result.summary.passed, 1);
+                scope.assert.deepEqual(result.runnerErrors, []);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'orchestrator.run() covers default singleton resource tracking dependencies',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -361,7 +394,7 @@ export const testSuite = createOverkillSuite({
             name: 'supervised child reports assignment mismatches as loader errors',
             metadata: {},
             async body(scope: OverkillScope) {
-                const child = fork(childEntryPoint, [], {
+                const child = fork(childEntryPoint, [ supervisedChildProcessEntryPointArgument ], {
                     cwd: process.cwd(),
                     stdio: [ 'ignore', 'ignore', 'ignore', 'ipc' ]
                 });

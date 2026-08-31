@@ -2,15 +2,17 @@ import type {
     AssertAssertionNode,
     AssertionResult
 } from '../assertion-protocol/assertion-node.ts';
-import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import type { NonEmptyReadonlyArray, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
+import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
 import type { AssertAssertionFacade } from './assertion-facade.ts';
 import { ensureMetadata, type Metadata } from './metadata.ts';
 import type { RequireAssertionFacade } from './require-assertion-facade.ts';
 
-const testNodeBrand: unique symbol = Symbol('OverkillTestNode');
-const testRootBrand: unique symbol = Symbol('OverkillTestRoot');
-const testNodeOwnerBrand: unique symbol = Symbol('OverkillTestNodeOwner');
-const testNodeOwnerIdentity: unique symbol = Symbol('OverkillTestNodeOwnerIdentity');
+const testNodeBrand = Symbol.for('@overkill-dev/engine/TestNode');
+const testRootBrand = Symbol.for('@overkill-dev/engine/TestRoot');
+const testNodeOwnerBrand = Symbol.for('@overkill-dev/engine/TestNodeOwner');
+const testNodeOwnerIdentity = Symbol.for('@overkill-dev/engine/TestNodeOwnerIdentity');
+const defaultTestNodeOwnerKey = Symbol.for('@overkill-dev/engine/defaultTestNodeOwner');
 
 export type TestScopeAssertContext = AssertAssertionFacade & {
     readonly collect: () => NonEmptyReadonlyArray<AssertAssertionNode>;
@@ -29,6 +31,7 @@ export type TestCase = {
     readonly [testNodeBrand]: true;
     readonly [testNodeOwnerBrand]: TestNodeOwner;
     readonly body: TestBody;
+    readonly definitionLocation: SourceLocation;
     readonly kind: 'test';
     readonly metadata: Metadata;
     readonly name: string;
@@ -38,6 +41,7 @@ export type Suite = {
     readonly [testNodeBrand]: true;
     readonly [testNodeOwnerBrand]: TestNodeOwner;
     readonly children: readonly TestNode[];
+    readonly definitionLocation: SourceLocation;
     readonly kind: 'suite';
     readonly metadata: Metadata;
     readonly name: string;
@@ -54,6 +58,7 @@ export type Table = {
     readonly [testNodeBrand]: true;
     readonly [testNodeOwnerBrand]: TestNodeOwner;
     readonly cases: readonly TableCase[];
+    readonly definitionLocation: SourceLocation;
     readonly kind: 'table';
     readonly metadata: Metadata;
     readonly name: string;
@@ -88,6 +93,7 @@ export type TestNodeFactoryOptions = {
 
 export type TestCaseOptions = {
     readonly body: TestBody;
+    readonly definitionLocation?: SourceLocation;
     readonly metadata: Metadata;
     readonly name: string;
 };
@@ -100,6 +106,7 @@ export type RootOptions = {
 
 export type SuiteOptions = {
     readonly children: readonly unknown[];
+    readonly definitionLocation?: SourceLocation;
     readonly metadata: Metadata;
     readonly name: string;
 };
@@ -113,12 +120,31 @@ export type TableCaseOptions = {
 
 export type TableOptions = {
     readonly cases: readonly TableCaseOptions[];
+    readonly definitionLocation?: SourceLocation;
     readonly metadata: Metadata;
     readonly name: string;
 };
 
 export function createTestNodeOwner(): TestNodeOwner {
     return { [testNodeOwnerIdentity]: true };
+}
+
+function isTestNodeOwner(value: unknown): value is TestNodeOwner {
+    return typeof value === 'object' && value !== null && Object.hasOwn(value, testNodeOwnerIdentity);
+}
+
+export function defaultTestNodeOwner(): TestNodeOwner {
+    const ownerStore = globalThis as Record<symbol, unknown> & typeof globalThis;
+    const existingOwner = ownerStore[defaultTestNodeOwnerKey];
+
+    if (isTestNodeOwner(existingOwner)) {
+        return existingOwner;
+    }
+
+    const owner = createTestNodeOwner();
+    ownerStore[defaultTestNodeOwnerKey] = owner;
+
+    return owner;
 }
 
 function ensureName(name: string): void {
@@ -216,6 +242,7 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
             [testNodeBrand]: true,
             [testNodeOwnerBrand]: owner,
             body: options.body,
+            definitionLocation: options.definitionLocation ?? unknownSourceLocation,
             kind: 'test',
             metadata: options.metadata,
             name: options.name
@@ -264,6 +291,7 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
             [testNodeBrand]: true,
             [testNodeOwnerBrand]: owner,
             children,
+            definitionLocation: options.definitionLocation ?? unknownSourceLocation,
             kind: 'suite',
             metadata: options.metadata,
             name: options.name
@@ -288,6 +316,7 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
             [testNodeBrand]: true,
             [testNodeOwnerBrand]: owner,
             cases: options.cases,
+            definitionLocation: options.definitionLocation ?? unknownSourceLocation,
             kind: 'table',
             metadata: options.metadata,
             name: options.name

@@ -58,6 +58,9 @@ current concept.
 with parameterized cases rendered as `case name [params]`. By default it lists
 only executable planned cases. `--with-orphans` appends orphaned constructed
 nodes under an `Orphans` section, or `(none)` when there are none.
+`--with-locations` appends each known suite, case, and orphan definition
+location as `(path:line:column)`, using paths relative to the current working
+directory when possible.
 
 With no path operands, `overkill run` and `overkill list` use the selected
 profile's `files.include` and `files.exclude` policy. Explicit file operands

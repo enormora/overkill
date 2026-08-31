@@ -302,6 +302,10 @@ function buildPerTestResult(overrides: PerTestResultOverrides = {}): RunResult['
 
 function buildOrphanedNode(overrides: OrphanedNodeOverrides = {}): OrphanedNode {
     return {
+        definitionLocation: {
+            ...defaultLocation,
+            ...overrides.definitionLocation
+        },
         file: overrides.file === undefined ? 'source/example.test.ts' : overrides.file,
         kind: overrides.kind ?? 'test',
         name: overrides.name ?? 'orphaned test'

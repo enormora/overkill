@@ -5,6 +5,7 @@ import { createRunIfMain, type RunIfMain } from './run-if-main.ts';
 import {
     createTestNodeOwner,
     createTestNodeFactory,
+    type TestNodeOwner,
     isOwnedTestNode,
     type RootOptions,
     type Suite,
@@ -44,8 +45,7 @@ export type EngineDependencies = {
     readonly writeExitCode: (exitCode: number) => void;
 };
 
-export function createEngine(dependencies: EngineDependencies): Engine {
-    const owner = createTestNodeOwner();
+export function createEngineWithOwner(dependencies: EngineDependencies, owner: TestNodeOwner): Engine {
     const { execute } = dependencies;
     const constructedNodes = new Set<TestNode>();
     const nodeFactory = createTestNodeFactory({
@@ -79,4 +79,8 @@ export function createEngine(dependencies: EngineDependencies): Engine {
             writeExitCode: dependencies.writeExitCode
         })
     };
+}
+
+export function createEngine(dependencies: EngineDependencies): Engine {
+    return createEngineWithOwner(dependencies, createTestNodeOwner());
 }

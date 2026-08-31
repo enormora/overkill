@@ -65,6 +65,8 @@ async function loadDefaultConfig(): Promise<LoadedRunConfig> {
 
 function createPassingPlan(): TestPlan {
     const engine = createTestEngine();
+    const suiteLocation = { column: 5, file: `${process.cwd()}/source/a.test.ts`, line: 3 };
+    const testLocation = { column: 9, file: `${process.cwd()}/source/a.test.ts`, line: 5 };
     const testNode = engine.createSuite({
         children: [
             engine.createTestCase({
@@ -72,10 +74,12 @@ function createPassingPlan(): TestPlan {
                     scope.assert.true(true);
                     return scope.assert.collect();
                 },
+                definitionLocation: testLocation,
                 metadata: {},
                 name: 'passes'
             })
         ],
+        definitionLocation: suiteLocation,
         metadata: {},
         name: 'suite'
     });
@@ -146,6 +150,39 @@ function createResolvedRun(
     };
 }
 
+async function createResolvedRunWithOrphanLocation(command: RunCommand): Promise<ResolvedRun> {
+    const resolvedRun = createResolvedRun(command, []);
+
+    if (resolvedRun.plan.kind !== 'local') {
+        throw new Error('Expected local resolved run.');
+    }
+
+    return {
+        ...resolvedRun,
+        plan: {
+            collectedPlan: {
+                defined: 1,
+                discoveredFiles: [],
+                files: [],
+                orphans: [
+                    {
+                        definitionLocation: {
+                            column: 11,
+                            file: `${process.cwd()}/source/orphan.test.ts`,
+                            line: 7
+                        },
+                        file: null,
+                        kind: 'suite',
+                        name: 'unused'
+                    }
+                ],
+                root: resolvedRun.plan.testPlan.root
+            },
+            kind: 'supervised'
+        }
+    };
+}
+
 function createListOnlyOrchestrator(resolve: RunOrchestrator['resolve']): RunOrchestrator {
     return {
         resolve,
@@ -177,6 +214,7 @@ function createDependencies(
 
 async function listTests(
     dependencies: CommandLineRunnerDependencies,
+    withLocations: boolean,
     withOrphans: boolean
 ): Promise<CommandLineRunnerResult> {
     const runner = createCommandLineRunner(dependencies);
@@ -188,6 +226,7 @@ async function listTests(
             paths: [ 'source/a.test.ts' ],
             profile: 'microtest',
             selection: { kind: 'all' },
+            withLocations,
             withOrphans
         }
     });
@@ -215,7 +254,7 @@ export const testSuite = createOverkillSuite({
                         return terminalReporter;
                     }
                 );
-                const result = await listTests(dependencies, false);
+                const result = await listTests(dependencies, false, false);
 
                 scope.assert.equal(result.exitCode, 0);
                 scope.assert.equal(defaultReporterLoadCount, 0);
@@ -257,12 +296,39 @@ export const testSuite = createOverkillSuite({
                         paths: [ 'source/a.test.ts' ],
                         profile: 'microtest',
                         selection,
+                        withLocations: false,
                         withOrphans: false
                     }
                 });
 
                 scope.require.defined(receivedCommands[0]);
                 scope.assert.deepEqual(receivedCommands[0].request.selection, selection);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'commandLineRunner.listTests() renders definition locations when requested',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const result = await listTests(
+                    createDependencies(
+                        createListOnlyOrchestrator(async function resolveCommand(command) {
+                            return createResolvedRun(command, []);
+                        }),
+                        async function createDefaultReporter() {
+                            return memoryReporter;
+                        }
+                    ),
+                    true,
+                    false
+                );
+
+                scope.assert.deepEqual(result.stdoutLines, [
+                    'source/a.test.ts',
+                    '  suite (source/a.test.ts:3:5)',
+                    '    passes (source/a.test.ts:5:9)'
+                ]);
 
                 return scope.assert.collect();
             }
@@ -280,6 +346,7 @@ export const testSuite = createOverkillSuite({
                             return memoryReporter;
                         }
                     ),
+                    false,
                     true
                 );
 
@@ -289,6 +356,29 @@ export const testSuite = createOverkillSuite({
                     '    passes',
                     'Orphans',
                     '  (none)'
+                ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'commandLineRunner.listTests() renders orphan definition locations when requested',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const result = await listTests(
+                    createDependencies(
+                        createListOnlyOrchestrator(createResolvedRunWithOrphanLocation),
+                        async function createDefaultReporter() {
+                            return memoryReporter;
+                        }
+                    ),
+                    true,
+                    true
+                );
+
+                scope.assert.deepEqual(result.stdoutLines, [
+                    'Orphans',
+                    '  suite: unused (<unknown>) (source/orphan.test.ts:7:11)'
                 ]);
 
                 return scope.assert.collect();
@@ -314,6 +404,7 @@ export const testSuite = createOverkillSuite({
                             return memoryReporter;
                         }
                     ),
+                    false,
                     false
                 );
 
@@ -350,6 +441,7 @@ export const testSuite = createOverkillSuite({
                         paths: [ 'source/a.test.ts' ],
                         profile: 'microtest',
                         selection: { kind: 'all' },
+                        withLocations: false,
                         withOrphans: false
                     }
                 });
@@ -376,6 +468,7 @@ export const testSuite = createOverkillSuite({
                             return memoryReporter;
                         }
                     ),
+                    false,
                     false
                 );
 

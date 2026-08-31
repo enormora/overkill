@@ -1,4 +1,4 @@
-import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import type { NonEmptyReadonlyArray, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import { caseIdentityKey, createCaseId, formatCaseId, type CaseId } from './identity.ts';
 import {
@@ -13,6 +13,7 @@ import {
     ensureOwnedTestRoot,
     isOwnedTestNode,
     type RootOptions,
+    type Suite,
     type Table,
     type TableCase,
     type TestBody,
@@ -25,10 +26,12 @@ import {
 export type TestPlanCaseBody = TestBody;
 
 export type TestPlanCase = {
-    readonly id: CaseId;
-    readonly suitePath: readonly string[];
-    readonly metadata: ResolvedMetadata;
     readonly body: TestPlanCaseBody;
+    readonly definitionLocation: SourceLocation;
+    readonly id: CaseId;
+    readonly metadata: ResolvedMetadata;
+    readonly suiteDefinitionLocations: readonly SourceLocation[];
+    readonly suitePath: readonly string[];
 };
 
 export type TestPlan = {
@@ -69,25 +72,32 @@ type CollectedTestCases = {
     readonly reachedNodes: readonly TestNode[];
 };
 
+type CollectionContext = {
+    readonly file: string | null;
+    readonly metadata: ResolvedMetadata;
+    readonly suiteDefinitionLocations: readonly SourceLocation[];
+    readonly suitePath: readonly string[];
+};
+
 function parameterIdentity(parameters: TableCase['parameters']): string {
     return JSON.stringify(serializeValue(parameters));
 }
 
 function collectTestCase(
     testCase: TestCase,
-    file: string | null,
-    suitePath: readonly string[],
-    metadata: ResolvedMetadata
+    context: CollectionContext
 ): CollectedTestCases {
-    const resolvedMetadata = resolveMetadata(metadata, testCase.metadata);
+    const resolvedMetadata = resolveMetadata(context.metadata, testCase.metadata);
 
     return {
         cases: [
             {
                 body: testCase.body,
-                id: createCaseId(file, suitePath, testCase.name, null),
+                definitionLocation: testCase.definitionLocation,
+                id: createCaseId(context.file, context.suitePath, testCase.name, null),
                 metadata: resolvedMetadata,
-                suitePath
+                suiteDefinitionLocations: context.suiteDefinitionLocations,
+                suitePath: context.suitePath
             }
         ],
         reachedNodes: [ testCase ]
@@ -96,16 +106,17 @@ function collectTestCase(
 
 function collectTable(
     table: Table,
-    file: string | null,
-    suitePath: readonly string[],
-    metadata: ResolvedMetadata
+    context: CollectionContext
 ): CollectedTestCases {
     if (table.cases.length === 0) {
-        throw new TypeError(`Table must contain at least one case: ${[ ...suitePath, table.name ].join(' > ')}.`);
+        throw new TypeError(
+            `Table must contain at least one case: ${[ ...context.suitePath, table.name ].join(' > ')}.`
+        );
     }
 
-    const tablePath = [ ...suitePath, table.name ];
-    const tableMetadata = resolveMetadata(metadata, table.metadata);
+    const tablePath = [ ...context.suitePath, table.name ];
+    const tablePathLocations = [ ...context.suiteDefinitionLocations, table.definitionLocation ];
+    const tableMetadata = resolveMetadata(context.metadata, table.metadata);
 
     return {
         cases: table.cases.map(function collectTableCase(tableCase): TestPlanCase {
@@ -113,12 +124,23 @@ function collectTable(
 
             return {
                 body: tableCase.body,
-                id: createCaseId(file, tablePath, tableCase.name, parameterIdentity(tableCase.parameters)),
+                definitionLocation: table.definitionLocation,
+                id: createCaseId(context.file, tablePath, tableCase.name, parameterIdentity(tableCase.parameters)),
                 metadata: resolvedMetadata,
+                suiteDefinitionLocations: tablePathLocations,
                 suitePath: tablePath
             };
         }),
         reachedNodes: [ table ]
+    };
+}
+
+function childCollectionContext(suite: Suite, context: CollectionContext): CollectionContext {
+    return {
+        file: context.file,
+        metadata: resolveMetadata(context.metadata, suite.metadata),
+        suiteDefinitionLocations: [ ...context.suiteDefinitionLocations, suite.definitionLocation ],
+        suitePath: [ ...context.suitePath, suite.name ]
     };
 }
 
@@ -135,26 +157,25 @@ function mergeCollectedTestCases(collections: readonly CollectedTestCases[]): Co
 
 function collectNode(
     node: TestNode,
-    file: string | null,
-    suitePath: readonly string[],
-    metadata: ResolvedMetadata
+    context: CollectionContext
 ): CollectedTestCases {
     if (node.kind === 'test') {
-        return collectTestCase(node, file, suitePath, metadata);
+        return collectTestCase(node, context);
     }
 
     if (node.kind === 'table') {
-        return collectTable(node, file, suitePath, metadata);
+        return collectTable(node, context);
     }
 
     if (node.children.length === 0) {
-        throw new TypeError(`Suite must contain at least one child: ${[ ...suitePath, node.name ].join(' > ')}.`);
+        throw new TypeError(
+            `Suite must contain at least one child: ${[ ...context.suitePath, node.name ].join(' > ')}.`
+        );
     }
 
-    const childPath = [ ...suitePath, node.name ];
-    const childMetadata = resolveMetadata(metadata, node.metadata);
+    const childContext = childCollectionContext(node, context);
     const children = mergeCollectedTestCases(node.children.map(function collectChild(child) {
-        return collectNode(child, file, childPath, childMetadata);
+        return collectNode(child, childContext);
     }));
 
     return {
@@ -169,7 +190,12 @@ function collectRoot(root: TestRoot, rootMetadata: ResolvedMetadata): CollectedT
     }
 
     return mergeCollectedTestCases(root.children.map(function collectChild(child) {
-        return collectNode(child, null, [], rootMetadata);
+        return collectNode(child, {
+            file: null,
+            metadata: rootMetadata,
+            suiteDefinitionLocations: [],
+            suitePath: []
+        });
     }));
 }
 
@@ -185,7 +211,12 @@ function collectTestFiles(
             throw new TypeError('Every test file must map to one root child.');
         }
 
-        return collectNode(child, file.file, [], resolveMetadata(rootMetadata, file.metadata));
+        return collectNode(child, {
+            file: file.file,
+            metadata: resolveMetadata(rootMetadata, file.metadata),
+            suiteDefinitionLocations: [],
+            suitePath: []
+        });
     }));
 }
 
@@ -195,6 +226,7 @@ function toReachedNodeSet(reachedNodes: readonly TestNode[]): ReadonlySet<TestNo
 
 function createOrphanedNode(node: TestNode): OrphanedNode {
     return {
+        definitionLocation: node.definitionLocation,
         file: null,
         kind: node.kind,
         name: node.name

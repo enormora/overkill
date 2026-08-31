@@ -125,10 +125,12 @@ function collectRunPlanFile(file: string, cases: readonly TestPlan['cases'][numb
     return {
         cases: cases.map(function collectCase(testCase): CollectedRunCase {
             return {
+                definitionLocation: testCase.definitionLocation,
                 metadata: testCase.metadata,
                 name: testCase.id.name,
                 params: testCase.id.params,
-                suite: testCase.id.suite
+                suite: testCase.id.suite,
+                suiteDefinitionLocations: testCase.suiteDefinitionLocations
             };
         }),
         file

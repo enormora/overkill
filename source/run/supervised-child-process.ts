@@ -1,6 +1,6 @@
 import { fork, type ChildProcess } from 'node:child_process';
 import { realpath } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy.ts';
 import type { RunOrchestratorDependencies } from './run-types.ts';
@@ -26,8 +26,10 @@ export type SupervisedChildOutputRuntime = {
     readonly terminalFailure: StoredRunValue<boolean>;
 };
 
-const childEntryPoint = fileURLToPath(new URL('./supervised-child.entry-point.ts', import.meta.url));
-const childRuntimeRoot = dirname(childEntryPoint);
+const childProcessEntryPoint = fileURLToPath(import.meta.url);
+export const supervisedChildProcessEntryPointArgument = '--overkill-supervised-child';
+const childRuntimeRoot = dirname(childProcessEntryPoint);
+const childPackageRoot = dirname(childRuntimeRoot);
 
 function sanitizedChildEnvironment(environmentVariables: RuntimeCapabilityPolicyEnvironment): Record<string, string> {
     const environment = Object.fromEntries(
@@ -47,11 +49,47 @@ function sanitizedChildEnvironment(environmentVariables: RuntimeCapabilityPolicy
     return environment;
 }
 
+function nodeModulesCandidates(startPath: string): readonly string[] {
+    const candidates: string[] = [];
+    let currentPath = startPath;
+    let parentPath = dirname(currentPath);
+
+    while (parentPath !== currentPath) {
+        candidates.push(join(currentPath, 'node_modules'));
+        currentPath = parentPath;
+        parentPath = dirname(currentPath);
+    }
+
+    return [ ...candidates, join(currentPath, 'node_modules') ];
+}
+
+async function existingRealPath(path: string): Promise<string | null> {
+    try {
+        return await realpath(path);
+    } catch {
+        return null;
+    }
+}
+
+async function existingRealPaths(paths: readonly string[]): Promise<readonly string[]> {
+    const realPaths = await Promise.all(paths.map(existingRealPath));
+
+    return realPaths.filter(function existingPath(path) {
+        return path !== null;
+    });
+}
+
 async function readPermissionRoots(options: SupervisedChildStartOptions): Promise<readonly string[]> {
+    const nodeModulesPaths = await existingRealPaths([
+        ...nodeModulesCandidates(options.cwd),
+        ...nodeModulesCandidates(childPackageRoot)
+    ]);
+
     return Array.from(
         new Set([
             await realpath(options.cwd),
-            await realpath(childRuntimeRoot)
+            await realpath(childPackageRoot),
+            ...nodeModulesPaths
         ])
     );
 }
@@ -77,12 +115,16 @@ export async function startSupervisedChild(
     options: SupervisedChildStartOptions,
     dependencies: RunOrchestratorDependencies
 ): Promise<SupervisedChildProcess> {
-    return fork(childEntryPoint, [], {
+    return fork(childProcessEntryPoint, [ supervisedChildProcessEntryPointArgument ], {
         cwd: options.cwd,
         env: sanitizedChildEnvironment(dependencies.runtimeCapabilityPolicy.readEnvironment()),
         execArgv: await supervisedChildExecArgv(options),
         stdio: [ 'ignore', 'pipe', 'pipe', 'ipc' ]
     });
+}
+
+if (process.argv.includes(supervisedChildProcessEntryPointArgument)) {
+    await import('./supervised-child.entry-point.ts');
 }
 
 function observeChildStdout(runtime: SupervisedChildOutputRuntime): void {

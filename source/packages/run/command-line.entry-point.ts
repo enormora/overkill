@@ -4,6 +4,9 @@ export {
 export {
     commandLineRunner
 } from '../../run/command-line-runner.ts';
+export {
+    createNodeCommandLineRunner
+} from '../../run/node-command-line-runner.ts';
 export type {
     CommandLineBaselineCommands,
     CommandLineBenchmarkCommands,
@@ -17,6 +20,9 @@ export type {
 export type {
     CommandLineRunner
 } from '../../run/command-line-runner.ts';
+export type {
+    NodeCommandLineRunnerOptions
+} from '../../run/node-command-line-runner.ts';
 export {
     defineConfig,
     loadRunConfig,
