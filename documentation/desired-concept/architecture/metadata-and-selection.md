@@ -121,7 +121,7 @@ freeze lives in [Composition Order](./composition-order.md).
 
 Filterable dimensions:
 
-- test id (file, suite path, name, params)
+- test id through the programmatic API (file, suite path, name, params)
 - file path (glob)
 - tag set (`--tag fast`, `--tag '!flaky'`)
 - metadata fields (`--owner '@auth-team'`)
@@ -147,7 +147,7 @@ CLI filters use a small expression language. The programmatic filter tree is
 canonical; the CLI grammar is syntax sugar that lowers to the same tree.
 
 ```text
-expr     := term ( ' ' term )*           # space-separated → AND
+expr     := term ( ' ' term )*           # space-separated AND
 term     := dimension '=' value          # equality
          |  dimension '~' text           # case-insensitive contains
          |  dimension ':' glob           # glob match
@@ -175,6 +175,8 @@ Rules:
 - parentheses group
 - glob (`:`) supports `*`, `**`, and `?`
 - contains (`~`) is case-insensitive
+- quoted values may use single or double quotes after shell parsing
+- `kind`, `workload`, and exact case id matching are not CLI filter dimensions
 
 A programmatic API mirrors the grammar:
 
@@ -196,16 +198,16 @@ Both forms produce the same internal predicate tree.
 
 The replacement for `.only`:
 
-- `--name 'login'` runs tests whose name matches (substring or quoted
-  exact)
+- `--name 'login'` runs tests whose name contains the text
 - `--file source/auth/login.test.ts` runs only that file
-- `--id <stable-id>` runs the exact case (IDE integration emits this)
 - `--last-failed` runs tests that failed in the previous run
 - `--watch` reruns the selected suite on file change (uses Node's
   built-in watcher; see [Runtime Behavior § Watch-Mode Targeting](./runtime-behavior.md#watch-mode-targeting))
 
 These are CLI conveniences over the same selection grammar. None modify
 the test source.
+Exact `CaseId` selection stays API-only because `CaseId` is structured
+runner data, not a user-facing CLI string.
 
 `--last-failed` is resolved from a previously persisted `RunRecord`
 (see [Reproducibility](./reproducibility.md)); it does not require a separate

@@ -190,6 +190,7 @@ async function listCommandLine(
         listRequest: {
             paths,
             profile: 'microtest',
+            selection: { kind: 'all' },
             withOrphans
         }
     });
@@ -204,6 +205,7 @@ async function listDiscoveryCommandLine(processModel: RunProcessModel): Promise<
         listRequest: {
             paths: [],
             profile: 'microtest',
+            selection: { kind: 'all' },
             withOrphans: false
         }
     });

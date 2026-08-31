@@ -60,6 +60,7 @@ describe('@overkill-dev/run/command-line', function () {
         expect<CommandLineListTestsRequest['listRequest']>().type.toBe<{
             readonly paths: readonly string[];
             readonly profile: string;
+            readonly selection: RunRequest['selection'];
             readonly withOrphans: boolean;
         }>();
     });

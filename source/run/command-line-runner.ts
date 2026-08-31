@@ -132,7 +132,7 @@ function createCommandFromListRequest(
             resourceBudgetOverrides: null,
             resourceUsageSamplingIntervalMilliseconds: null,
             seed: { value: null },
-            selection: { kind: 'all' },
+            selection: request.listRequest.selection,
             shard: { index: 0, total: 1 },
             verbose: false
         }

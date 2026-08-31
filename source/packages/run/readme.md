@@ -50,6 +50,7 @@ Programmatic selection helpers are exposed through `@overkill-dev/run/filters`:
 - `name(value)`
 - `owner(value)`
 - `params(value)`
+- `parseRunFilterExpression(expression)`
 - `runtime(value)`
 - `stability(value)`
 - `suite(value)`
@@ -70,12 +71,14 @@ child process to load the engine without parent-side user-module execution.
 Programmatic selection filters are supported through `RunRequest.selection`.
 The current helpers select by stable case id, file, name, suite, table params,
 tag, runtime, ownership, and stability. Test family matching is intentionally
-absent because one run is already bound to one profile test family. CLI filter
-syntax, sharding, seeded ordering, records, and replay are separate runner
-milestones. Direct prebuilt `TestPlan` execution belongs to `@overkill-dev/engine`
-through `execute(testPlan)`. The command methods other than `runTests` and
-`listTests` are fixed first-party entrypoints and currently return argument
-errors until their command implementations land.
+absent because one run is already bound to one profile test family.
+`parseRunFilterExpression(expression)` parses the CLI filter grammar into the
+same `RunFilter` tree. Sharding, seeded ordering, records, replay, and
+`--last-failed` are separate runner milestones. Direct prebuilt `TestPlan`
+execution belongs to `@overkill-dev/engine` through `execute(testPlan)`.
+The command methods other than `runTests` and `listTests` are fixed first-party
+entrypoints and currently return argument errors until their command
+implementations land.
 
 Resource usage measurement is explicit. Project config can enable it under
 `profiles.<name>.resourceUsage.measure`; `RunRequest.measureResourceUsage`

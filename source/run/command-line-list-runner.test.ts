@@ -16,7 +16,7 @@ import {
 } from './command-line-runner.ts';
 import type { LoadedRunConfig } from './run-config.ts';
 import { RunCollectionError } from './run-errors.ts';
-import type { ResolvedRun, RunCommand, RunMicrotestProfileConfig, RunOrchestrator } from './run-types.ts';
+import type { ResolvedRun, RunCommand, RunMicrotestProfileConfig, RunOrchestrator, RunSelection } from './run-types.ts';
 
 type PlainOutputIntent = {
     readonly text: string;
@@ -187,6 +187,7 @@ async function listTests(
         listRequest: {
             paths: [ 'source/a.test.ts' ],
             profile: 'microtest',
+            selection: { kind: 'all' },
             withOrphans
         }
     });
@@ -225,6 +226,43 @@ export const testSuite = createOverkillSuite({
                 ]);
                 scope.require.defined(receivedCommands[0]);
                 scope.assert.deepEqual(receivedCommands[0].config.reporters, []);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            name: 'commandLineRunner.listTests() preserves list selection',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const receivedCommands: RunCommand[] = [];
+                const selection: RunSelection = {
+                    filter: { field: 'tag', kind: 'equals', value: 'fast' },
+                    kind: 'filter'
+                };
+                const runner = createCommandLineRunner(createDependencies(
+                    createListOnlyOrchestrator(async function resolveCommand(command) {
+                        receivedCommands.push(command);
+
+                        return createResolvedRun(command, []);
+                    }),
+                    async function createDefaultReporter() {
+                        return terminalReporter;
+                    }
+                ));
+
+                await runner.listTests({
+                    configPath: null,
+                    cwd: process.cwd(),
+                    listRequest: {
+                        paths: [ 'source/a.test.ts' ],
+                        profile: 'microtest',
+                        selection,
+                        withOrphans: false
+                    }
+                });
+
+                scope.require.defined(receivedCommands[0]);
+                scope.assert.deepEqual(receivedCommands[0].request.selection, selection);
 
                 return scope.assert.collect();
             }
@@ -311,6 +349,7 @@ export const testSuite = createOverkillSuite({
                     listRequest: {
                         paths: [ 'source/a.test.ts' ],
                         profile: 'microtest',
+                        selection: { kind: 'all' },
                         withOrphans: false
                     }
                 });
