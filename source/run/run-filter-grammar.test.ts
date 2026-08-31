@@ -110,17 +110,48 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            name: 'parseRunFilterExpression() accepts supported string dimensions',
+            metadata: {},
+            body(scope: OverkillScope) {
+                scope.assert.deepEqual(
+                    parseRunFilterExpression(
+                        'file:source/**/*.test.ts name~smoke owner=@payments params~EUR runtime=node stability=stable suite~checkout tag:critical-*'
+                    ),
+                    {
+                        filters: [
+                            { field: 'file', kind: 'glob', pattern: 'source/**/*.test.ts' },
+                            { field: 'name', kind: 'contains', value: 'smoke' },
+                            { field: 'owner', kind: 'equals', value: '@payments' },
+                            { field: 'params', kind: 'contains', value: 'EUR' },
+                            { field: 'runtime', kind: 'equals', value: 'node' },
+                            { field: 'stability', kind: 'equals', value: 'stable' },
+                            { field: 'suite', kind: 'contains', value: 'checkout' },
+                            { field: 'tag', kind: 'glob', pattern: 'critical-*' }
+                        ],
+                        kind: 'all'
+                    }
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             name: 'parseRunFilterExpression() rejects malformed expressions',
             metadata: {},
             body(scope: OverkillScope) {
                 const malformedExpressions: readonly (readonly [string, string])[] = [
                     [ ' ', 'Run filter expression must not be empty.' ],
+                    [ '=fast', 'Expected a run filter dimension.' ],
                     [ 'kind=microtest', 'Unknown run filter dimension: kind' ],
+                    [ 'tag=fast)', 'Unexpected token: )' ],
                     [ 'tag=fast |', 'Expected a filter term.' ],
                     [ '(tag=fast', 'Expected closing parenthesis.' ],
                     [ 'tag=', 'Run filter value must not be empty.' ],
+                    [ 'name~""', 'Run filter value must not be empty.' ],
                     [ 'tag fast', 'Expected one of =, ~, or : after run filter dimension.' ],
-                    [ 'name~"unterminated', 'Unterminated double quote string.' ]
+                    [ 'name~"unterminated', 'Unterminated double quote string.' ],
+                    [ 'name~"unterminated\\', 'Unterminated double quote string.' ],
+                    [ "suite~'unterminated", 'Unterminated single quote string.' ]
                 ];
 
                 for (const [ expression, expectedMessage ] of malformedExpressions) {
