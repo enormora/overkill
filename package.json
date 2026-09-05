@@ -22,7 +22,7 @@
     "dependencies": {
         "@enormora/wall-clock": "0.0.3",
         "@overkill-dev/reporter-line": "0.0.24",
-        "@schema-hub/zod-error-formatter": "0.0.16",
+        "@schema-hub/zod-error-formatter": "0.0.18",
         "ansi-escapes": "7.3.0",
         "cmd-ts": "0.15.0",
         "diff": "9.0.0",
