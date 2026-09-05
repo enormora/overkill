@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { rule } from './double-rule.ts';
 import {
     testAsyncDisposable,
@@ -20,11 +20,11 @@ async function asyncIterableValues(source: AsyncIterable<string>): Promise<reado
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/doubles/protocol-double.test.ts',
+    title: 'source/doubles/protocol-double.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'testIterator.yields() creates a well-formed consumable iterator',
+            title: 'testIterator.yields() creates a well-formed consumable iterator',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 const values = testIterator.yields([ 'a', 'b' ], 'done');
@@ -39,7 +39,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testIterator.yields() preserves tracked return values',
+            title: 'testIterator.yields() preserves tracked return values',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 const values = testIterator.yields([ 'a', 'b' ], 'done');
@@ -52,7 +52,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testIterable.yields() creates fresh well-formed iterators',
+            title: 'testIterable.yields() creates fresh well-formed iterators',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 const source = testIterable.yields([ 'a', 'b' ]);
@@ -65,7 +65,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testIterator() exposes programmable protocol methods',
+            title: 'testIterator() exposes programmable protocol methods',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 const expected = new Error('expected');
@@ -88,7 +88,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testIterator() creates default completed protocol methods',
+            title: 'testIterator() creates default completed protocol methods',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 const values = testIterator();
@@ -103,7 +103,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testAsyncIterator.yields() creates an async iterable iterator',
+            title: 'testAsyncIterator.yields() creates an async iterable iterator',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const values = testAsyncIterator.yields([ 'a', 'b' ], 'done');
@@ -122,7 +122,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testAsyncIterator() creates default completed protocol methods',
+            title: 'testAsyncIterator() creates default completed protocol methods',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const values = testAsyncIterator();
@@ -137,7 +137,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testAsyncIterable.yields() creates fresh async iterators',
+            title: 'testAsyncIterable.yields() creates fresh async iterators',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const source = testAsyncIterable.yields([ 'a', 'b' ]);
@@ -152,7 +152,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testIterable() creates default fresh iterators',
+            title: 'testIterable() creates default fresh iterators',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 const source = testIterable();
@@ -165,7 +165,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testAsyncIterable() creates default fresh async iterators',
+            title: 'testAsyncIterable() creates default fresh async iterators',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const source = testAsyncIterable();
@@ -178,7 +178,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testIterable() exposes configured iterator factory',
+            title: 'testIterable() exposes configured iterator factory',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 const iterator = testIterator.yields([ 'configured' ]);
@@ -193,7 +193,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testAsyncIterable() exposes configured async iterator factory',
+            title: 'testAsyncIterable() exposes configured async iterator factory',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const iterator = testAsyncIterator.yields([ 'configured' ]);
@@ -209,7 +209,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testIterable.yieldsFrom() creates fresh delegated iterators',
+            title: 'testIterable.yieldsFrom() creates fresh delegated iterators',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 const source = testIterable.yieldsFrom(function values() {
@@ -223,7 +223,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testAsyncIterable.yieldsFrom() creates fresh delegated async iterators',
+            title: 'testAsyncIterable.yieldsFrom() creates fresh delegated async iterators',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const source = testAsyncIterable.yieldsFrom(async function* values() {
@@ -237,7 +237,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testDisposable() records using disposal',
+            title: 'testDisposable() records using disposal',
             metadata: {},
             body(scope: OverkillScope) {
                 const resource = testDisposable();
@@ -254,7 +254,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testAsyncDisposable() records await using disposal',
+            title: 'testAsyncDisposable() records await using disposal',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const resource = testAsyncDisposable();
@@ -271,7 +271,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testDisposable() exposes programmable disposal',
+            title: 'testDisposable() exposes programmable disposal',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 const expected = new Error('expected');
@@ -288,7 +288,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testAsyncDisposable() exposes programmable async disposal',
+            title: 'testAsyncDisposable() exposes programmable async disposal',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const expected = new Error('expected');
@@ -305,7 +305,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testIterator.yieldsFrom() delegates return and throw fallbacks',
+            title: 'testIterator.yieldsFrom() delegates return and throw fallbacks',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 const values = testIterator.yieldsFrom(function source() {
@@ -322,7 +322,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testIterator.yieldsFrom() delegates generator return and throw methods',
+            title: 'testIterator.yieldsFrom() delegates generator return and throw methods',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 const expected = new Error('expected');
@@ -341,7 +341,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testAsyncIterator.yieldsFrom() delegates sync sources',
+            title: 'testAsyncIterator.yieldsFrom() delegates sync sources',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const values = testAsyncIterator.yieldsFrom(function source() {
@@ -358,7 +358,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testAsyncIterator.yieldsFrom() delegates async return fallback',
+            title: 'testAsyncIterator.yieldsFrom() delegates async return fallback',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const values = testAsyncIterator.yieldsFrom(function source() {
@@ -375,7 +375,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testAsyncIterator.yieldsFrom() delegates async generator return and throw methods',
+            title: 'testAsyncIterator.yieldsFrom() delegates async generator return and throw methods',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const expected = new Error('expected');

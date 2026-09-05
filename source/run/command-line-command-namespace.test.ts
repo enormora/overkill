@@ -1,12 +1,12 @@
 import { createFactory } from '@enormora/objectory';
-import { doubleUsage, testDouble } from '@overkill-dev/doubles';
+import { doubleUsage, testDouble } from '../packages/doubles/doubles.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+} from '../packages/engine/engine.entry-point.ts';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import type {
     CommandLineBaselineCommands,
     CommandLineBenchmarkCommands,
@@ -84,11 +84,11 @@ const benchmarkCommandsFactory = createFactory<CommandLineBenchmarkCommands>(fun
 });
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/command-line-command-namespace.test.ts',
+    title: 'source/run/command-line-command-namespace.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'command namespace loads only selected command families',
+            title: 'command namespace loads only selected command families',
             metadata: {},
             async body(scope: OverkillScope) {
                 const loaders = {
@@ -108,7 +108,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'command namespace routes every lazy command method',
+            title: 'command namespace routes every lazy command method',
             metadata: {},
             async body(scope: OverkillScope) {
                 const loaders = {

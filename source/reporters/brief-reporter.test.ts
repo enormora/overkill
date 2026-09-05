@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { resolveRootMetadata } from '../engine/metadata.ts';
 import type { OutputLineIntent, ReporterOutput } from '../engine/reporter-output.ts';
@@ -14,7 +14,7 @@ import { createBriefReporter } from './brief-reporter.ts';
 
 const caseId = {
     file: 'source/users.test.ts',
-    name: 'creates profile',
+    title: 'creates profile',
     params: null,
     suite: [ 'users' ]
 } as const;
@@ -123,11 +123,11 @@ function assertRunnerErrorOutput(scope: OverkillScope, errorOutput: readonly Out
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/reporters/brief-reporter.test.ts',
+    title: 'source/reporters/brief-reporter.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'brief reporter declares managed primary stdout',
+            title: 'brief reporter declares managed primary stdout',
             metadata: {},
             body(scope: OverkillScope) {
                 const reporter = createBriefReporter();
@@ -138,14 +138,14 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'brief reporter prints run start and omits passing test lines',
+            title: 'brief reporter prints run start and omits passing test lines',
             metadata: {},
             async body(scope: OverkillScope) {
                 const reporter = createBriefReporter();
                 const startOutput = await readOutput(reporter.onEvent({
                     facts: { cases: [ { id: caseId, metadata: {} } ] },
                     kind: 'run-start',
-                    root: { metadata: resolveRootMetadata({}), name: 'source' },
+                    root: { metadata: resolveRootMetadata({}), title: 'source' },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 }));
                 const passOutput = await readOutput(reporter.onEvent(passEvent()));
@@ -162,7 +162,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'brief reporter prints progress every one hundred completed tests',
+            title: 'brief reporter prints progress every one hundred completed tests',
             metadata: {},
             async body(scope: OverkillScope) {
                 const reporter = createBriefReporter();
@@ -170,7 +170,7 @@ export const testSuite = createOverkillSuite({
                 await reporter.onEvent({
                     facts: { cases: Array.from({ length: 250 }) },
                     kind: 'run-start',
-                    root: { metadata: resolveRootMetadata({}), name: 'source' },
+                    root: { metadata: resolveRootMetadata({}), title: 'source' },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
 
@@ -191,7 +191,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'brief reporter uses an unknown progress denominator without run facts',
+            title: 'brief reporter uses an unknown progress denominator without run facts',
             metadata: {},
             async body(scope: OverkillScope) {
                 const reporter = createBriefReporter();
@@ -213,7 +213,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'brief reporter suppresses final progress at the planned count',
+            title: 'brief reporter suppresses final progress at the planned count',
             metadata: {},
             async body(scope: OverkillScope) {
                 const reporter = createBriefReporter();
@@ -221,7 +221,7 @@ export const testSuite = createOverkillSuite({
                 await reporter.onEvent({
                     facts: { cases: Array.from({ length: 100 }) },
                     kind: 'run-start',
-                    root: { metadata: resolveRootMetadata({}), name: 'source' },
+                    root: { metadata: resolveRootMetadata({}), title: 'source' },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
 
@@ -237,7 +237,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'brief reporter prints one diagnostic line per failure cause',
+            title: 'brief reporter prints one diagnostic line per failure cause',
             metadata: {},
             async body(scope: OverkillScope) {
                 const reporter = createBriefReporter();
@@ -258,7 +258,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'brief reporter prints runner errors and ignores suite events',
+            title: 'brief reporter prints runner errors and ignores suite events',
             metadata: {},
             async body(scope: OverkillScope) {
                 const reporter = createBriefReporter();
@@ -275,7 +275,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'brief reporter prints final counts',
+            title: 'brief reporter prints final counts',
             metadata: {},
             async body(scope: OverkillScope) {
                 const reporter = createBriefReporter();

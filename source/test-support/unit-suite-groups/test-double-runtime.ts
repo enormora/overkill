@@ -1,4 +1,4 @@
-import { createSuite } from '@overkill-dev/engine';
+import { createSuite } from '../../packages/engine/engine.entry-point.ts';
 import { testSuite as doubleHistoryEmptyTestSuite } from '../../doubles/double-history-empty.test.ts';
 import { testSuite as testDoubleCallbackTestSuite } from '../../doubles/test-double-callback.test.ts';
 import { testSuite as testDoubleConfigurationTestSuite } from '../../doubles/test-double-configuration.test.ts';
@@ -9,7 +9,7 @@ import { testSuite as testDoubleHistoryRuntimeTestSuite } from '../../doubles/te
 import { testSuite as testDoubleTestSuite } from '../../doubles/test-double.test.ts';
 
 export const testSuite = createSuite({
-    name: 'source/test-support/unit-suite-groups/test-double-runtime.ts',
+    title: 'source/test-support/unit-suite-groups/test-double-runtime.ts',
     metadata: {},
     children: [
         doubleHistoryEmptyTestSuite,

@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import {
     defaultMicrotestProfile,
@@ -15,13 +15,13 @@ import type { ResolvedRun, RunCommand, RunConfig, RunFilter, RunRequest } from '
 import {
     caseId,
     file,
-    name,
     owner,
     params,
     runtime,
     stability,
     suite,
-    tag
+    tag,
+    title
 } from './run-selection-filters.ts';
 
 type RunCommandParts = {
@@ -33,7 +33,7 @@ type RunCommandParts = {
 
 type SelectionScenario = {
     readonly filter: RunFilter;
-    readonly names: readonly string[];
+    readonly titles: readonly string[];
 };
 
 const selectionFixturePath = 'source/integration-tests/run/fixtures/selection.test.ts';
@@ -70,18 +70,18 @@ function selectionRequest(filter: RunFilter): RunRequest {
     });
 }
 
-function selectedCaseNames(resolvedRun: ResolvedRun): readonly string[] {
-    return resolvedRun.facts.cases.map(function toCaseName(testCase) {
-        return testCase.id.name;
+function selectedCaseTitles(resolvedRun: ResolvedRun): readonly string[] {
+    return resolvedRun.facts.cases.map(function toCaseTitle(testCase) {
+        return testCase.id.title;
     });
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/run-selection.test.ts',
+    title: 'source/run/run-selection.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'orchestrator.resolve() selects local test cases by stable filter dimensions',
+            title: 'orchestrator.resolve() selects local test cases by stable filter dimensions',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -92,23 +92,23 @@ export const testSuite = createOverkillSuite({
                     request: defaultRunRequest({ paths: [ selectionFixturePath ] })
                 }));
                 const queryCase = allCases.facts.cases.find(function findQueryCase(testCase) {
-                    return testCase.id.name === 'query row';
+                    return testCase.id.title === 'query row';
                 });
                 scope.require.defined(queryCase);
 
                 const scenarios: readonly SelectionScenario[] = [
                     {
                         filter: file('source/integration-tests/run/fixtures/*.test.ts'),
-                        names: [ 'charges card', 'refunds card', 'query row' ]
+                        titles: [ 'charges card', 'refunds card', 'query row', 'other query row' ]
                     },
-                    { filter: name('CHARGES'), names: [ 'charges card' ] },
-                    { filter: suite('PAYMENTS'), names: [ 'charges card', 'refunds card' ] },
-                    { filter: params('alpha'), names: [ 'query row' ] },
-                    { filter: tag('fast'), names: [ 'charges card' ] },
-                    { filter: runtime('browser'), names: [ 'refunds card' ] },
-                    { filter: owner('@search'), names: [ 'query row' ] },
-                    { filter: stability('flaky'), names: [ 'refunds card' ] },
-                    { filter: caseId(queryCase.id), names: [ 'query row' ] }
+                    { filter: title('CHARGES'), titles: [ 'charges card' ] },
+                    { filter: suite('PAYMENTS'), titles: [ 'charges card', 'refunds card' ] },
+                    { filter: params('alpha'), titles: [ 'query row' ] },
+                    { filter: tag('fast'), titles: [ 'charges card' ] },
+                    { filter: runtime('browser'), titles: [ 'refunds card' ] },
+                    { filter: owner('@search'), titles: [ 'query row' ] },
+                    { filter: stability('flaky'), titles: [ 'refunds card' ] },
+                    { filter: caseId(queryCase.id), titles: [ 'query row' ] }
                 ];
 
                 for (const scenario of scenarios) {
@@ -119,7 +119,7 @@ export const testSuite = createOverkillSuite({
                         request: selectionRequest(scenario.filter)
                     }));
 
-                    scope.assert.deepEqual(selectedCaseNames(resolvedRun), scenario.names);
+                    scope.assert.deepEqual(selectedCaseTitles(resolvedRun), scenario.titles);
                     scope.assert.deepEqual(resolvedRun.facts.reproducibility.selection, {
                         filter: scenario.filter,
                         kind: 'filter'
@@ -130,7 +130,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.resolve() rejects local filters that match no cases',
+            title: 'orchestrator.resolve() rejects local filters that match no cases',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -140,7 +140,7 @@ export const testSuite = createOverkillSuite({
                         config: localSelectionConfig,
                         cwd: process.cwd(),
                         engine: { kind: 'default' },
-                        request: selectionRequest(name('missing'))
+                        request: selectionRequest(title('missing'))
                     }));
                 }, { message: 'Run selection matched no test cases.' });
 
@@ -148,7 +148,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() returns a zero-plan result when local selection matches no cases',
+            title: 'orchestrator.run() returns a zero-plan result when local selection matches no cases',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -156,14 +156,14 @@ export const testSuite = createOverkillSuite({
                     config: localSelectionConfig,
                     cwd: process.cwd(),
                     engine: { kind: 'default' },
-                    request: selectionRequest(name('missing'))
+                    request: selectionRequest(title('missing'))
                 }));
 
                 scope.assert.deepEqual(result.perTest, []);
                 scope.assert.deepEqual(result.summary, {
                     crashed: 0,
                     defined: 5,
-                    discovered: 3,
+                    discovered: 4,
                     failed: 0,
                     inconclusive: 0,
                     passed: 0,
@@ -173,16 +173,16 @@ export const testSuite = createOverkillSuite({
                     skipped: 0
                 });
                 scope.assert.deepEqual(result.bySuite, {
-                    'selection fixture': { discovered: 3, executed: 0, planned: 0 },
+                    'selection fixture': { discovered: 4, executed: 0, planned: 0 },
                     'selection fixture > payments': { discovered: 2, executed: 0, planned: 0 },
-                    'selection fixture > search rows': { discovered: 1, executed: 0, planned: 0 }
+                    'selection fixture > search rows': { discovered: 2, executed: 0, planned: 0 }
                 });
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() executes selected supervised cases and preserves discovered counts',
+            title: 'orchestrator.run() executes selected supervised cases and preserves discovered counts',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -195,15 +195,15 @@ export const testSuite = createOverkillSuite({
 
                 scope.assert.deepEqual(result.runnerErrors, []);
                 scope.assert.deepEqual(
-                    result.perTest.map(function toCaseName(testCase) {
-                        return testCase.id.name;
+                    result.perTest.map(function toCaseTitle(testCase) {
+                        return testCase.id.title;
                     }),
                     [ 'charges card' ]
                 );
                 scope.assert.deepEqual(result.summary, {
                     crashed: 0,
                     defined: 5,
-                    discovered: 3,
+                    discovered: 4,
                     failed: 0,
                     inconclusive: 0,
                     passed: 1,
@@ -213,16 +213,16 @@ export const testSuite = createOverkillSuite({
                     skipped: 0
                 });
                 scope.assert.deepEqual(result.bySuite, {
-                    'selection fixture': { discovered: 3, executed: 1, planned: 1 },
+                    'selection fixture': { discovered: 4, executed: 1, planned: 1 },
                     'selection fixture > payments': { discovered: 2, executed: 1, planned: 1 },
-                    'selection fixture > search rows': { discovered: 1, executed: 0, planned: 0 }
+                    'selection fixture > search rows': { discovered: 2, executed: 0, planned: 0 }
                 });
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() returns a zero-plan result when supervised selection matches no cases',
+            title: 'orchestrator.run() returns a zero-plan result when supervised selection matches no cases',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -230,7 +230,7 @@ export const testSuite = createOverkillSuite({
                     config: supervisedSelectionConfig,
                     cwd: process.cwd(),
                     engine: { kind: 'default' },
-                    request: selectionRequest(name('missing'))
+                    request: selectionRequest(title('missing'))
                 }));
 
                 scope.assert.deepEqual(result.runnerErrors, []);
@@ -238,7 +238,7 @@ export const testSuite = createOverkillSuite({
                 scope.assert.deepEqual(result.summary, {
                     crashed: 0,
                     defined: 5,
-                    discovered: 3,
+                    discovered: 4,
                     failed: 0,
                     inconclusive: 0,
                     passed: 0,

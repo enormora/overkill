@@ -11,7 +11,6 @@ type FilterPackageValueExport = keyof {
     readonly equals: true;
     readonly file: true;
     readonly glob: true;
-    readonly name: true;
     readonly not: true;
     readonly owner: true;
     readonly params: true;
@@ -20,27 +19,28 @@ type FilterPackageValueExport = keyof {
     readonly stability: true;
     readonly suite: true;
     readonly tag: true;
+    readonly title: true;
 };
 
 describe('@overkill-dev/run/filters', function () {
     test('exposes the typed filter helper surface without test-family matching', function () {
         expect<keyof typeof filters>().type.toBe<FilterPackageValueExport>();
         expect<RunStringFilterField>().type.toBe<
-            'file' | 'name' | 'owner' | 'params' | 'runtime' | 'stability' | 'suite' | 'tag'
+            'file' | 'owner' | 'params' | 'runtime' | 'stability' | 'suite' | 'tag' | 'title'
         >();
     });
 
     test('creates typed filter trees for run selections', function () {
         const id: CaseId = {
             file: 'source/users.test.ts',
-            name: 'creates a user',
             params: null,
-            suite: [ 'users' ]
+            suite: [ 'users' ],
+            title: 'creates a user'
         };
         const filter = filters.all([
             filters.tag('fast'),
             filters.not(filters.tag('flaky')),
-            filters.any([ filters.file('source/**'), filters.name('user') ]),
+            filters.any([ filters.file('source/**'), filters.title('user') ]),
             filters.owner('@users'),
             filters.runtime('node'),
             filters.stability('stable'),
@@ -76,13 +76,13 @@ describe('@overkill-dev/run/filters', function () {
 
     test('exposes field helper signatures', function () {
         expect<typeof filters.file>().type.toBe<(pattern: string) => RunFilter>();
-        expect<typeof filters.name>().type.toBe<(value: string) => RunFilter>();
         expect<typeof filters.owner>().type.toBe<(value: string) => RunFilter>();
         expect<typeof filters.params>().type.toBe<(value: string) => RunFilter>();
         expect<typeof filters.runtime>().type.toBe<(value: string) => RunFilter>();
         expect<typeof filters.stability>().type.toBe<(value: 'experimental' | 'flaky' | 'stable') => RunFilter>();
         expect<typeof filters.suite>().type.toBe<(value: string) => RunFilter>();
         expect<typeof filters.tag>().type.toBe<(value: string) => RunFilter>();
+        expect<typeof filters.title>().type.toBe<(value: string) => RunFilter>();
     });
 
     test('keeps invalid fields and stability markers out of helper calls', function () {

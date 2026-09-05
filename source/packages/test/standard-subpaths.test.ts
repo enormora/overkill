@@ -1,5 +1,5 @@
-import { createSuite, createTestCase, runIfMain, type TestScope } from '@overkill-dev/engine';
-import { createLineReporter } from '@overkill-dev/reporter-line';
+import { createSuite, createTestCase, runIfMain, type TestScope } from '../engine/engine.entry-point.ts';
+import { createLineReporter } from '../reporter-line/reporter-line.entry-point.ts';
 import { defineCompositeAssertion } from './assert.entry-point.ts';
 import * as assertSubpath from './assert.entry-point.ts';
 import * as baselinesSubpath from './baselines.entry-point.ts';
@@ -93,11 +93,11 @@ function assertReservedSubpath(scope: TestScope, subpath: ReservedSubpathModule)
 }
 
 export const testSuite = createSuite({
-    name: 'source/packages/test/standard-subpaths.test.ts',
+    title: 'source/packages/test/standard-subpaths.test.ts',
     metadata: {},
     children: [
         createTestCase({
-            name: '@overkill-dev/test/config exposes config authoring only',
+            title: '@overkill-dev/test/config exposes config authoring only',
             metadata: {},
             body(scope: TestScope) {
                 assertConfigSubpath(scope);
@@ -106,7 +106,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: '@overkill-dev/test/reporters exposes current built-in factories',
+            title: '@overkill-dev/test/reporters exposes current built-in factories',
             metadata: {},
             async body(scope: TestScope) {
                 await assertReporterSubpath(scope);
@@ -115,7 +115,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: '@overkill-dev/test/assert re-exports assertion extension ownership',
+            title: '@overkill-dev/test/assert re-exports assertion extension ownership',
             metadata: {},
             body(scope: TestScope) {
                 assertAssertSubpath(scope);
@@ -124,7 +124,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: '@overkill-dev/test reserved subpaths expose sentinel only',
+            title: '@overkill-dev/test reserved subpaths expose sentinel only',
             metadata: {},
             body(scope: TestScope) {
                 for (const subpath of reservedSubpathModules) {

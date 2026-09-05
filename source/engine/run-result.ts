@@ -159,7 +159,7 @@ export type OrphanedNode = {
     readonly definitionLocation: SourceLocation;
     readonly file: string | null;
     readonly kind: 'suite' | 'table' | 'test';
-    readonly name: string;
+    readonly title: string;
 };
 
 export type RunResult = {

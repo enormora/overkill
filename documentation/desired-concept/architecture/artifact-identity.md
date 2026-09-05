@@ -43,8 +43,8 @@ That means engine identity must stay generic. A higher-level package such as
 `@overkill-dev/test` may then derive richer identities from:
 
 - file/module origin
-- explicit suite names
-- test names
+- explicit suite titles
+- test titles
 - parameterization keys
 - runtime metadata
 - workload metadata
@@ -58,8 +58,8 @@ not as a hard requirement baked into `@overkill-dev/engine`.
 ```ts
 type TestId = {
     readonly file: string | null; // canonical source file path, repository-relative; null when unknown to engine
-    readonly suite: ReadonlyArray<string>; // ordered visible suite names, top-level suite to leaf
-    readonly name: string; // test name within its parent
+    readonly suite: ReadonlyArray<string>; // ordered visible suite titles, top-level suite to leaf
+    readonly title: string; // test title within its parent
 };
 
 type CaseId = TestId & {

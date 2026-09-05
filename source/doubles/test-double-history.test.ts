@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { DoubleCall } from './double-history-record.ts';
 import { rule } from './double-rule.ts';
 import { testDouble, type TestDouble } from './test-double.ts';
@@ -36,11 +36,11 @@ function createRecordedSnapshotLoader(): RecordedSnapshotLoader {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/doubles/test-double-history.test.ts',
+    title: 'source/doubles/test-double-history.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'history array snapshots are shallow copies',
+            title: 'history array snapshots are shallow copies',
             metadata: {},
             body(scope: OverkillScope) {
                 const { actual, input, loadValue, output } = createRecordedSnapshotLoader();
@@ -58,7 +58,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'history record snapshots are shallow copies',
+            title: 'history record snapshots are shallow copies',
             metadata: {},
             body(scope: OverkillScope) {
                 const { actual, input, loadValue, output } = createRecordedSnapshotLoader();
@@ -86,7 +86,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'history result snapshots keep value references',
+            title: 'history result snapshots keep value references',
             metadata: {},
             body(scope: OverkillScope) {
                 const { actual, loadValue, output } = createRecordedSnapshotLoader();
@@ -102,7 +102,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'history properties are non-enumerable',
+            title: 'history properties are non-enumerable',
             metadata: {},
             body(scope: OverkillScope) {
                 const loadValue = testDouble.returns('value');
@@ -117,7 +117,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'reset clears history and restarts indexes',
+            title: 'reset clears history and restarts indexes',
             metadata: {},
             body(scope: OverkillScope) {
                 type LoadValue = (id: string) => string;
@@ -144,7 +144,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'reset rewinds ordered rules and sequence behaviors',
+            title: 'reset rewinds ordered rules and sequence behaviors',
             metadata: {},
             body(scope: OverkillScope) {
                 type LoadValue = () => string;
@@ -164,7 +164,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'sequence behavior state is independent per double',
+            title: 'sequence behavior state is independent per double',
             metadata: {},
             body(scope: OverkillScope) {
                 type LoadValue = () => string;

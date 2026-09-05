@@ -17,13 +17,13 @@ type RunReporters = RunExecuteOptions['reporters'];
 
 export type RunStringFilterField = keyof {
     readonly file: true;
-    readonly name: true;
     readonly owner: true;
     readonly params: true;
     readonly runtime: true;
     readonly stability: true;
     readonly suite: true;
     readonly tag: true;
+    readonly title: true;
 };
 
 type RunAllFilter = {
@@ -271,10 +271,10 @@ export type RunEngineFacts = {
 export type CollectedRunCase = {
     readonly definitionLocation: TestPlan['cases'][number]['definitionLocation'];
     readonly metadata: TestPlan['cases'][number]['metadata'];
-    readonly name: string;
     readonly params: string | null;
     readonly suite: readonly string[];
     readonly suiteDefinitionLocations: TestPlan['cases'][number]['suiteDefinitionLocations'];
+    readonly title: string;
 };
 
 export type CollectedRunFile = {
@@ -289,7 +289,7 @@ export type CollectedRunPlan = {
     readonly orphans: readonly OrphanedNode[];
     readonly root: {
         readonly metadata: TestPlan['root']['metadata'];
-        readonly name: string;
+        readonly title: string;
     };
 };
 

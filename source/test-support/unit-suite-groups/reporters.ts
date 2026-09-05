@@ -1,4 +1,4 @@
-import { createSuite } from '@overkill-dev/engine';
+import { createSuite } from '../../packages/engine/engine.entry-point.ts';
 import { testSuite as briefReporterTestSuite } from '../../reporters/brief-reporter.test.ts';
 import { testSuite as dotReporterTestSuite } from '../../reporters/dot-reporter.test.ts';
 import { testSuite as inMemoryReporterTestSuite } from '../../reporters/in-memory-reporter.test.ts';
@@ -10,7 +10,7 @@ import { testSuite as tapConsoleReporterTestSuite } from '../../reporters/tap-co
 import { testSuite as terminalTestSuite } from '../../reporters/terminal.test.ts';
 
 export const testSuite = createSuite({
-    name: 'source/test-support/unit-suite-groups/reporters.ts',
+    title: 'source/test-support/unit-suite-groups/reporters.ts',
     metadata: {},
     children: [
         briefReporterTestSuite,

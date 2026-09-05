@@ -1,12 +1,12 @@
 import { setTimeout as scheduleTimeout } from 'node:timers';
 import { createDeterministicWallClock } from '@enormora/wall-clock';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { createInMemoryFinalResultReporter } from '../reporters/in-memory-reporter.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import {
@@ -108,11 +108,11 @@ function createBreachingResourceUsageTracker(): RunResourceUsageTracker {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/engine/execution-resource-usage.test.ts',
+    title: 'source/engine/execution-resource-usage.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'execute() includes resource usage in the returned result and final reporter result',
+            title: 'execute() includes resource usage in the returned result and final reporter result',
             metadata: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -126,11 +126,11 @@ export const testSuite = createOverkillSuite({
                                     return testScope.assert.collect();
                                 },
                                 metadata: {},
-                                name: 'passes'
+                                title: 'passes'
                             })
                         ],
                         metadata: {},
-                        name: 'root'
+                        title: 'root'
                     })
                 );
                 const result = await engine.execute(testPlan, {
@@ -173,7 +173,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() records sampled resource exhaustion against the active case',
+            title: 'execute() records sampled resource exhaustion against the active case',
             metadata: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -189,11 +189,11 @@ export const testSuite = createOverkillSuite({
                                     return testScope.assert.collect();
                                 },
                                 metadata: {},
-                                name: 'waits'
+                                title: 'waits'
                             })
                         ],
                         metadata: {},
-                        name: 'root'
+                        title: 'root'
                     })
                 );
                 const result = await engine.execute(testPlan, {
@@ -215,7 +215,7 @@ export const testSuite = createOverkillSuite({
                 scope.assert.equal(error.subtype, 'resource-exhaustion');
                 scope.assert.deepEqual(plainDataShape(error.attributedTo), {
                     file: null,
-                    name: 'waits',
+                    title: 'waits',
                     params: null,
                     suite: []
                 });
@@ -242,7 +242,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() applies valid timeout metadata before the default timeout',
+            title: 'execute() applies valid timeout metadata before the default timeout',
             metadata: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -255,11 +255,11 @@ export const testSuite = createOverkillSuite({
                                     return testScope.assert.collect();
                                 },
                                 metadata: { timeoutMilliseconds: 5 },
-                                name: 'uses metadata timeout'
+                                title: 'uses metadata timeout'
                             })
                         ],
                         metadata: {},
-                        name: 'root'
+                        title: 'root'
                     })
                 );
                 const result = await engine.execute(testPlan, {
@@ -279,7 +279,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() rejects timeout metadata beyond the hard timeout',
+            title: 'execute() rejects timeout metadata beyond the hard timeout',
             metadata: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -292,11 +292,11 @@ export const testSuite = createOverkillSuite({
                                     return testScope.assert.collect();
                                 },
                                 metadata: { timeoutMilliseconds: 100 },
-                                name: 'invalid timeout metadata'
+                                title: 'invalid timeout metadata'
                             })
                         ],
                         metadata: {},
-                        name: 'root'
+                        title: 'root'
                     })
                 );
                 const result = await engine.execute(testPlan, {
@@ -317,7 +317,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'recordResourceUsageSample() reports post-test resource diagnostics',
+            title: 'recordResourceUsageSample() reports post-test resource diagnostics',
             metadata: {},
             body(scope: OverkillScope) {
                 const supervision = createExecutionSupervision();
@@ -352,7 +352,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'recordResourceUsageSample() ignores omitted budgets',
+            title: 'recordResourceUsageSample() ignores omitted budgets',
             metadata: {},
             body(scope: OverkillScope) {
                 const supervision = createExecutionSupervision();

@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { createPlainOutputRenderer } from './reporter-output.ts';
 import type { ReporterDispatcher } from './reporter-dispatcher.ts';
 import type { ReporterEvent } from './reporter.ts';
@@ -49,11 +49,11 @@ function createRejectingDispatcher(): RejectingDispatcher {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/engine/reporter-event-queue.test.ts',
+    title: 'source/engine/reporter-event-queue.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'reporter event queue continues after a previous report rejects',
+            title: 'reporter event queue continues after a previous report rejects',
             metadata: {},
             async body(scope: OverkillScope) {
                 const rejectingDispatcher = createRejectingDispatcher();

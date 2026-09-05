@@ -16,7 +16,7 @@ describe('TestRoot', function () {
         expect<TestRoot>().type.not.toBeAssignableTo<TestNode>();
         expect<TestPlan['root']>().type.toBe<{
             readonly metadata: ResolvedMetadata;
-            readonly name: string;
+            readonly title: string;
         }>();
     });
 
@@ -30,7 +30,7 @@ describe('TestRoot', function () {
             readonly files: readonly [TestPlanFile, ...(readonly TestPlanFile[])];
             readonly root: {
                 readonly metadata: Metadata;
-                readonly name: string;
+                readonly title: string;
             };
         }>();
         expect<Engine['createTestPlanFromTestFiles']>().type.toBe<

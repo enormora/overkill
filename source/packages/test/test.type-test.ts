@@ -15,12 +15,15 @@ import {
     type createTestFacade,
     type defineMacro,
     type Metadata as RootMetadata,
+    type ParameterizedTestScope,
     type runIfMain,
     type RunIfMainOptions as RootRunIfMainOptions,
     type RunIfMainRootOptions as RootRunIfMainRootOptions,
     type Suite as RootSuite,
-    type table,
+    table,
     type Table as RootTable,
+    type TableDefinition,
+    type TableTestBody,
     type TestBody as RootTestBody,
     type TestCase as RootTestCase,
     type TestNode as RootTestNode,
@@ -34,6 +37,7 @@ type UnavailableAuthoringApi = (...parameters: readonly unknown[]) => never;
 declare const body: TestBody;
 declare const metadata: Metadata;
 declare const node: TestNode;
+declare const tableBody: TableTestBody<{ readonly value: number; }>;
 type RootRuntimeExport = keyof {
     readonly createTestFacade: typeof createTestFacade;
     readonly defineMacro: typeof defineMacro;
@@ -58,14 +62,33 @@ describe('@overkill-dev/test', function () {
         expect<typeof createTestFacade>().type.toBe<UnavailableAuthoringApi>();
         expect<typeof defineMacro>().type.toBe<UnavailableAuthoringApi>();
         expect<typeof runIfMain>().type.toBe<UnavailableAuthoringApi>();
-        expect<typeof table>().type.toBe<UnavailableAuthoringApi>();
     });
 
-    typeTest('creates test and suite nodes from default root authoring forms', function () {
+    typeTest('creates test, suite, and table nodes from default root authoring forms', function () {
         expect(test('passes', body)).type.toBe<TestCase>();
-        expect(test({ body, metadata, name: 'passes' })).type.toBe<TestCase>();
+        expect(test({ body, metadata, title: 'passes' })).type.toBe<TestCase>();
         expect(suite('group', [ node ])).type.toBe<Suite>();
-        expect(suite({ children: [ node ], metadata, name: 'group' })).type.toBe<Suite>();
+        expect(suite({ children: [ node ], metadata, title: 'group' })).type.toBe<Suite>();
+        expect(table({
+            cases: [ { value: 1 } ],
+            caseTitle(parameters, index) {
+                expect(parameters.value).type.toBe<number>();
+                expect(index).type.toBe<number>();
+
+                return String(parameters.value);
+            },
+            metadata,
+            test: tableBody,
+            title: 'rows'
+        }))
+            .type
+            .toBe<Table>();
+        expect<TableDefinition<{ readonly value: number; }>>().type.toBeAssignableFrom<{
+            readonly cases: readonly [{ readonly value: number; }, { readonly value: number; }];
+            readonly test: TableTestBody<{ readonly value: number; }>;
+            readonly title: string;
+        }>();
+        expect<ParameterizedTestScope<{ readonly value: number; }>>().type.toBeAssignableTo<TestScope>();
     });
 
     typeTest('rejects unstaged root authoring forms', function () {
@@ -73,7 +96,8 @@ describe('@overkill-dev/test', function () {
         expect(test).type.not.toBeCallableWith({ body, name: 'passes' });
         expect(suite).type.not.toBeCallableWith('group', metadata, [ node ]);
         expect(suite).type.not.toBeCallableWith({ children: [ node ], name: 'group' });
-        expect(suite).type.not.toBeCallableWith('group', [ { kind: 'test', metadata: {}, name: 'plain' } ]);
+        expect(suite).type.not.toBeCallableWith('group', [ { kind: 'test', metadata: {}, title: 'plain' } ]);
+        expect(table).type.not.toBeCallableWith({ cases: [ { value: 1 } ], name: 'rows', test: tableBody });
     });
 
     typeTest('re-exports high-level authoring types from the engine', function () {

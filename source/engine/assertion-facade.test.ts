@@ -1,11 +1,11 @@
-import { defineNarrowingCompositeAssertion } from '@overkill-dev/assert';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { defineNarrowingCompositeAssertion } from '../packages/assert/assert.entry-point.ts';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { AssertAssertionNode } from '../assertion-protocol/assertion-node.ts';
 import type { AssertionSource, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import {
@@ -233,11 +233,11 @@ function recordAssertNodes(facade: AssertAssertionFacade): void {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/engine/assertion-facade.test.ts',
+    title: 'source/engine/assertion-facade.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'createRecordingAssertFacade() records every built-in assertion node',
+            title: 'createRecordingAssertFacade() records every built-in assertion node',
             metadata: {},
             body(scope: OverkillScope) {
                 const recording = createAssertRecording();
@@ -338,7 +338,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'createRecordingAssertFacade() records async rejects assertions through pending sink',
+            title: 'createRecordingAssertFacade() records async rejects assertions through pending sink',
             metadata: {},
             async body(scope: OverkillScope) {
                 const recording = createAssertRecording();
@@ -358,7 +358,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'createRecordingAssertFacade() applies annotated messages without requiring the builder API',
+            title: 'createRecordingAssertFacade() applies annotated messages without requiring the builder API',
             metadata: {},
             body(scope: OverkillScope) {
                 const recording = createAssertRecording();

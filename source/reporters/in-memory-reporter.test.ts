@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import { resolveRootMetadata } from '../engine/metadata.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -15,11 +15,11 @@ import {
 } from './in-memory-reporter.ts';
 
 export const testSuite = createOverkillSuite({
-    name: 'source/reporters/in-memory-reporter.test.ts',
+    title: 'source/reporters/in-memory-reporter.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'in-memory real-time reporter records events and final result notification',
+            title: 'in-memory real-time reporter records events and final result notification',
             metadata: {},
             async body(scope: OverkillScope) {
                 const reporter = createInMemoryRealTimeReporter();
@@ -27,7 +27,7 @@ export const testSuite = createOverkillSuite({
                 const event = {
                     facts: {},
                     kind: 'run-start',
-                    root: { metadata: resolveRootMetadata({}), name: 'root' },
+                    root: { metadata: resolveRootMetadata({}), title: 'root' },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 } as const;
                 const { onFinish } = reporter;
@@ -48,7 +48,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'in-memory final-result reporter records final results',
+            title: 'in-memory final-result reporter records final results',
             metadata: {},
             async body(scope: OverkillScope) {
                 const reporter = createInMemoryFinalResultReporter();
@@ -66,14 +66,14 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'in-memory configurable reporter creates a real-time reporter',
+            title: 'in-memory configurable reporter creates a real-time reporter',
             metadata: {},
             async body(scope: OverkillScope) {
                 const reporter = createInMemoryReporter({ mode: 'real-time' });
                 const event = {
                     facts: {},
                     kind: 'run-start',
-                    root: { metadata: resolveRootMetadata({}), name: 'root' },
+                    root: { metadata: resolveRootMetadata({}), title: 'root' },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 } as const;
 
@@ -86,7 +86,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'in-memory configurable reporter creates a final-result reporter',
+            title: 'in-memory configurable reporter creates a final-result reporter',
             metadata: {},
             async body(scope: OverkillScope) {
                 const reporter = createInMemoryReporter({ mode: 'final-result' });

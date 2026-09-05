@@ -51,7 +51,6 @@ Programmatic selection helpers are exposed through `@overkill-dev/run/filters`:
 - `contains(field, value)`
 - `glob(field, pattern)`
 - `file(pattern)`
-- `name(value)`
 - `owner(value)`
 - `params(value)`
 - `parseRunFilterExpression(expression)`
@@ -59,6 +58,7 @@ Programmatic selection helpers are exposed through `@overkill-dev/run/filters`:
 - `stability(value)`
 - `suite(value)`
 - `tag(value)`
+- `title(value)`
 
 The current runner accepts explicit file paths through `RunRequest.paths` and
 profile file discovery through `profiles.<name>.files`. Each discovered or
@@ -73,7 +73,7 @@ exportName, exportKind }` for supervised programmatic callers that need the
 child process to load the engine without parent-side user-module execution.
 
 Programmatic selection filters are supported through `RunRequest.selection`.
-The current helpers select by stable case id, file, name, suite, table params,
+The current helpers select by stable case id, file, title, suite, table params,
 tag, runtime, ownership, and stability. Test family matching is intentionally
 absent because one run is already bound to one profile test family.
 `parseRunFilterExpression(expression)` parses the CLI filter grammar into the

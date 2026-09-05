@@ -1,11 +1,11 @@
 import { createDeterministicWallClock } from '@enormora/wall-clock';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { RunResourceUsageTracker } from '../engine/run-result.ts';
 import { createResourceUsageTracker } from './resource-usage.ts';
 
@@ -38,11 +38,11 @@ function createEmptyResourceUsageTracker(): RunResourceUsageTracker {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/resource-usage.test.ts',
+    title: 'source/run/resource-usage.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'resource usage tracker summarizes sampled memory and start/end active resources',
+            title: 'resource usage tracker summarizes sampled memory and start/end active resources',
             metadata: {},
             body(scope: OverkillScope) {
                 const wallClock = createDeterministicWallClock();
@@ -96,7 +96,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'resource usage tracker rejects invalid lifecycle calls',
+            title: 'resource usage tracker rejects invalid lifecycle calls',
             metadata: {},
             body(scope: OverkillScope) {
                 const unfinishedTracker = createEmptyResourceUsageTracker();

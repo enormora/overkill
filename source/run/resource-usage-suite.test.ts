@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
-import { createSuite as createOverkillSuite, runIfMain } from '@overkill-dev/engine';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
+import { createSuite as createOverkillSuite, runIfMain } from '../packages/engine/engine.entry-point.ts';
 import { testSuite as resourceUsageTestSuite } from './resource-usage.test.ts';
 import { testSuite as runResourceUsagePolicyTestSuite } from './run-resource-usage-policy.test.ts';
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/resource-usage-suite.test.ts',
+    title: 'source/run/resource-usage-suite.test.ts',
     metadata: {},
     children: [
         resourceUsageTestSuite,

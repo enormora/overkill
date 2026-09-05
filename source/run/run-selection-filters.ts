@@ -19,13 +19,13 @@ type FilterNodeValidator = (filter: Readonly<Record<string, unknown>>) => string
 
 const filterFields: ReadonlySet<string> = new Set([
     'file',
-    'name',
     'owner',
     'params',
     'runtime',
     'stability',
     'suite',
-    'tag'
+    'tag',
+    'title'
 ]);
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
@@ -55,9 +55,9 @@ function assertNonEmptyFilters(filters: readonly RunFilter[]): NonEmptyReadonlyA
 function copyCaseId(id: CaseId): CaseId {
     return {
         file: id.file,
-        name: id.name,
         params: id.params,
-        suite: Array.from(id.suite)
+        suite: Array.from(id.suite),
+        title: id.title
     };
 }
 
@@ -108,10 +108,6 @@ export function file(pattern: string): RunFilter {
     return glob('file', pattern);
 }
 
-export function name(value: string): RunFilter {
-    return contains('name', value);
-}
-
 export function owner(value: string): RunFilter {
     return equals('owner', value);
 }
@@ -136,6 +132,10 @@ export function tag(value: string): RunFilter {
     return equals('tag', value);
 }
 
+export function title(value: string): RunFilter {
+    return contains('title', value);
+}
+
 function hasInvalidSuiteItem(value: unknown): boolean {
     return !Array.isArray(value) || value.some(function emptySuiteItem(item) {
         return typeof item !== 'string' || item.trim().length === 0;
@@ -150,9 +150,9 @@ const caseIdFieldValidators: readonly CaseIdFieldValidator[] = [
 
         return null;
     },
-    function invalidCaseName(id) {
-        if (typeof id.name !== 'string' || id.name.trim().length === 0) {
-            return 'Run filter case id name must be a non-empty string.';
+    function invalidCaseTitle(id) {
+        if (typeof id.title !== 'string' || id.title.trim().length === 0) {
+            return 'Run filter case id title must be a non-empty string.';
         }
 
         return null;
@@ -365,9 +365,6 @@ const candidateFieldReaders: CandidateFieldReaders = {
     file(candidate) {
         return candidate.id.file === null ? [] : [ candidate.id.file ];
     },
-    name(candidate) {
-        return [ candidate.id.name ];
-    },
     owner(candidate) {
         return candidate.metadata.ownership;
     },
@@ -385,6 +382,9 @@ const candidateFieldReaders: CandidateFieldReaders = {
     },
     tag(candidate) {
         return candidate.metadata.tags;
+    },
+    title(candidate) {
+        return [ candidate.id.title ];
     }
 };
 

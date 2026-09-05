@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import {
     defaultMicrotestProfile,
@@ -32,11 +32,11 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/run-runtime-policy.test.ts',
+    title: 'source/run/run-runtime-policy.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'orchestrator.run() supports disabled capability restrictions for in-process runs',
+            title: 'orchestrator.run() supports disabled capability restrictions for in-process runs',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();

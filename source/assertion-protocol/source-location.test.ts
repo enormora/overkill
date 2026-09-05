@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import {
     captureSourceLocation,
     resolveSourceLocation,
@@ -13,11 +13,11 @@ import {
 } from './source-location.ts';
 
 export const testSuite = createOverkillSuite({
-    name: 'source/assertion-protocol/source-location.test.ts',
+    title: 'source/assertion-protocol/source-location.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'sourceLocationFromStack() parses file URL stack frames',
+            title: 'sourceLocationFromStack() parses file URL stack frames',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(
@@ -40,7 +40,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'sourceLocationFromStack() parses plain path stack frames',
+            title: 'sourceLocationFromStack() parses plain path stack frames',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(
@@ -63,7 +63,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'sourceLocationFromStack() returns the unknown location for unusable stacks',
+            title: 'sourceLocationFromStack() returns the unknown location for unusable stacks',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(
@@ -82,7 +82,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'sourceLocationFromStack() preserves invalid file URL stack frames',
+            title: 'sourceLocationFromStack() preserves invalid file URL stack frames',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(
@@ -98,7 +98,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'captureSourceLocation() returns a memoized provider for the capture callsite',
+            title: 'captureSourceLocation() returns a memoized provider for the capture callsite',
             metadata: {},
             body(scope: OverkillScope) {
                 const location = captureSourceLocation();
@@ -114,7 +114,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'resolveSourceLocation() protects failures from provider errors',
+            title: 'resolveSourceLocation() protects failures from provider errors',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(

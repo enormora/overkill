@@ -1,23 +1,23 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { formatCaseId, type CaseId } from './identity.ts';
 
 export const testSuite = createOverkillSuite({
-    name: 'source/engine/identity.test.ts',
+    title: 'source/engine/identity.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'formatCaseId() renders direct engine identities for display',
+            title: 'formatCaseId() renders direct engine identities for display',
             metadata: {},
             body(scope: OverkillScope) {
                 const caseId: CaseId = {
                     file: null,
-                    name: 'row 1',
+                    title: 'row 1',
                     params: null,
                     suite: [ 'root', 'rows' ]
                 };
@@ -28,12 +28,12 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'formatCaseId() renders origin and parameter slots when present',
+            title: 'formatCaseId() renders origin and parameter slots when present',
             metadata: {},
             body(scope: OverkillScope) {
                 const caseId: CaseId = {
                     file: 'source/users.test.ts',
-                    name: 'round-trip',
+                    title: 'round-trip',
                     params: 'seed=42',
                     suite: [ 'users' ]
                 };

@@ -22,7 +22,7 @@ type RunResultTiming = {
 };
 
 function collectedCaseId(file: string, testCase: CollectedRunCase): CaseId {
-    return createCaseId(file, testCase.suite, testCase.name, testCase.params);
+    return createCaseId(file, testCase.suite, testCase.title, testCase.params);
 }
 
 function collectedCases(files: readonly CollectedRunFile[]): readonly {
@@ -127,10 +127,10 @@ function collectRunPlanFile(file: string, cases: readonly TestPlan['cases'][numb
             return {
                 definitionLocation: testCase.definitionLocation,
                 metadata: testCase.metadata,
-                name: testCase.id.name,
                 params: testCase.id.params,
                 suite: testCase.id.suite,
-                suiteDefinitionLocations: testCase.suiteDefinitionLocations
+                suiteDefinitionLocations: testCase.suiteDefinitionLocations,
+                title: testCase.id.title
             };
         }),
         file
@@ -161,7 +161,7 @@ export function collectedRunPlanFromTestPlanCases(
         orphans: testPlan.orphans,
         root: {
             metadata: testPlan.root.metadata,
-            name: testPlan.root.name
+            title: testPlan.root.title
         }
     };
 }

@@ -387,7 +387,7 @@ export async function reportRunStart(
             kind: 'run-start',
             root: {
                 metadata: collectedPlan.root.metadata,
-                name: collectedPlan.root.name
+                title: collectedPlan.root.title
             },
             startedAt: runStartTimeFromMilliseconds(startedAtMs)
         },

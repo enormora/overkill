@@ -1,7 +1,7 @@
 export type TestId = {
     readonly file: string | null;
-    readonly name: string;
     readonly suite: readonly string[];
+    readonly title: string;
 };
 
 export type CaseId = TestId & {
@@ -11,24 +11,24 @@ export type CaseId = TestId & {
 export function createCaseId(
     file: string | null,
     suite: readonly string[],
-    name: string,
+    title: string,
     params: string | null
 ): CaseId {
     return {
         file,
-        name,
         params,
-        suite
+        suite,
+        title
     };
 }
 
 export function caseIdentityKey(caseId: CaseId): string {
-    return JSON.stringify([ caseId.file, caseId.suite, caseId.name, caseId.params ]);
+    return JSON.stringify([ caseId.file, caseId.suite, caseId.title, caseId.params ]);
 }
 
 export function formatCaseId(caseId: CaseId): string {
-    const namePath = [ ...caseId.suite, caseId.name ].join(' > ');
-    const originPath = caseId.file === null ? namePath : `${caseId.file}: ${namePath}`;
+    const titlePath = [ ...caseId.suite, caseId.title ].join(' > ');
+    const originPath = caseId.file === null ? titlePath : `${caseId.file}: ${titlePath}`;
 
     if (caseId.params === null) {
         return originPath;

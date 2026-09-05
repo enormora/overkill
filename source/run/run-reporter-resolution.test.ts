@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { Reporter } from '../engine/reporter.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import {
@@ -62,11 +62,11 @@ function runConfigWithReporters(
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/run-reporter-resolution.test.ts',
+    title: 'source/run/run-reporter-resolution.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'orchestrator.resolve() uses profile reporters over global fallback',
+            title: 'orchestrator.resolve() uses profile reporters over global fallback',
             metadata: {},
             async body(scope: OverkillScope) {
                 const globalReporter = createTerminalReporter('global');
@@ -85,7 +85,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.resolve() uses global reporters when profile reporters are absent',
+            title: 'orchestrator.resolve() uses global reporters when profile reporters are absent',
             metadata: {},
             async body(scope: OverkillScope) {
                 const globalReporter = createTerminalReporter('global');
@@ -103,7 +103,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() ignores inactive global reporter sink conflicts',
+            title: 'orchestrator.run() ignores inactive global reporter sink conflicts',
             metadata: {},
             async body(scope: OverkillScope) {
                 const globalReporter = createTerminalReporter('global');

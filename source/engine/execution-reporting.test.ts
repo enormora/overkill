@@ -1,11 +1,11 @@
-import { defineNarrowingCompositeAssertion } from '@overkill-dev/assert';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { defineNarrowingCompositeAssertion } from '../packages/assert/assert.entry-point.ts';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import {
     createInMemoryFinalResultReporter,
     createInMemoryRealTimeReporter,
@@ -54,11 +54,11 @@ function firstOutcome(result: RunResult): TestOutcome | undefined {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/engine/execution-reporting.test.ts',
+    title: 'source/engine/execution-reporting.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'execute() records thrown test body errors',
+            title: 'execute() records thrown test body errors',
             metadata: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -70,11 +70,11 @@ export const testSuite = createOverkillSuite({
                                     throw new Error('boom');
                                 },
                                 metadata: {},
-                                name: 'throws error'
+                                title: 'throws error'
                             })
                         ],
                         metadata: {},
-                        name: 'root'
+                        title: 'root'
                     })
                 );
 
@@ -106,7 +106,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() preserves assertions recorded before a thrown body error',
+            title: 'execute() preserves assertions recorded before a thrown body error',
             metadata: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -119,11 +119,11 @@ export const testSuite = createOverkillSuite({
                                     throw new Error('boom');
                                 },
                                 metadata: {},
-                                name: 'asserts then throws'
+                                title: 'asserts then throws'
                             })
                         ],
                         metadata: {},
-                        name: 'root'
+                        title: 'root'
                     })
                 );
 
@@ -143,7 +143,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() records rejected test body promises as body errors',
+            title: 'execute() records rejected test body promises as body errors',
             metadata: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -156,11 +156,11 @@ export const testSuite = createOverkillSuite({
                                     throw new Error('rejects');
                                 },
                                 metadata: {},
-                                name: 'rejects'
+                                title: 'rejects'
                             })
                         ],
                         metadata: {},
-                        name: 'root'
+                        title: 'root'
                     })
                 );
 
@@ -177,7 +177,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() delivers events and final results to reporters',
+            title: 'execute() delivers events and final results to reporters',
             metadata: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -192,11 +192,11 @@ export const testSuite = createOverkillSuite({
                                     return testScope.assert.collect();
                                 },
                                 metadata: {},
-                                name: 'passes'
+                                title: 'passes'
                             })
                         ],
                         metadata: {},
-                        name: 'root'
+                        title: 'root'
                     })
                 );
 
@@ -215,17 +215,17 @@ export const testSuite = createOverkillSuite({
                         {
                             facts: { seed: 42 },
                             kind: 'run-start',
-                            root: { metadata: resolveRootMetadata({}), name: 'root' },
+                            root: { metadata: resolveRootMetadata({}), title: 'root' },
                             startedAt: '2026-07-15T00:00:00.000Z'
                         },
                         {
                             attempt: 0,
-                            case: { file: null, name: 'passes', params: null, suite: [] },
+                            case: { file: null, title: 'passes', params: null, suite: [] },
                             kind: 'test-start'
                         },
                         {
                             attempt: 0,
-                            case: { file: null, name: 'passes', params: null, suite: [] },
+                            case: { file: null, title: 'passes', params: null, suite: [] },
                             kind: 'test-end',
                             outcome: { kind: 'pass' },
                             verdict: 'pass',
@@ -243,7 +243,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() emits suite events for table path segments',
+            title: 'execute() emits suite events for table path segments',
             metadata: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -257,7 +257,7 @@ export const testSuite = createOverkillSuite({
                                     return testScope.assert.collect();
                                 },
                                 metadata: {},
-                                name: 'first'
+                                title: 'first'
                             }),
                             engine.createTable({
                                 cases: [
@@ -267,16 +267,25 @@ export const testSuite = createOverkillSuite({
                                             return testScope.assert.collect();
                                         },
                                         metadata: {},
-                                        name: 'row 1',
+                                        title: 'row 1',
+                                        parameters: {}
+                                    },
+                                    {
+                                        body(testScope) {
+                                            testScope.assert.true(true, { message: 'row passes' });
+                                            return testScope.assert.collect();
+                                        },
+                                        metadata: {},
+                                        title: 'row 2',
                                         parameters: {}
                                     }
                                 ],
                                 metadata: {},
-                                name: 'rows'
+                                title: 'rows'
                             })
                         ],
                         metadata: {},
-                        name: 'root'
+                        title: 'root'
                     })
                 );
 
@@ -304,7 +313,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() rejects reporter sink conflicts before starting the run',
+            title: 'execute() rejects reporter sink conflicts before starting the run',
             metadata: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -330,11 +339,11 @@ export const testSuite = createOverkillSuite({
                                     return testScope.assert.collect();
                                 },
                                 metadata: {},
-                                name: 'passes'
+                                title: 'passes'
                             })
                         ],
                         metadata: {},
-                        name: 'root'
+                        title: 'root'
                     })
                 );
 

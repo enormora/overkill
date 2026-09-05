@@ -138,7 +138,7 @@ attribution. If a violation is detected but the originating test is uncertain,
 the runner reports attribution drift rather than assigning the violation to a
 sibling test.
 
-Human reporters should name the test file and test name for attributed
+Human reporters should name the test file and test title for attributed
 violations. Machine-readable reporters receive the `CaseId` and structured
 violation payload so a message like `fs.writeFile was denied` is never detached
 from the test that triggered it.

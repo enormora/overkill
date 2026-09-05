@@ -1,19 +1,19 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { collectionCount } from './collection-count.ts';
 import { isPlainObject, ownKeys, partialDeepEqual } from './partial-matching.ts';
 
 export const testSuite = createOverkillSuite({
-    name: 'source/assertion-protocol/partial-matching.test.ts',
+    title: 'source/assertion-protocol/partial-matching.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'partialDeepEqual() matches nested partial arrays, maps, sets, and objects',
+            title: 'partialDeepEqual() matches nested partial arrays, maps, sets, and objects',
             metadata: {},
             body(scope: OverkillScope) {
                 const symbolKey = Symbol('id');
@@ -33,7 +33,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'partialDeepEqual() rejects mismatched partial collection shapes',
+            title: 'partialDeepEqual() rejects mismatched partial collection shapes',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.equal(partialDeepEqual({ 0: 'value' }, [ 'value' ]), false);
@@ -45,7 +45,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'collectionCount() reports known, iterable, and unsupported collection counts',
+            title: 'collectionCount() reports known, iterable, and unsupported collection counts',
             metadata: {},
             body(scope: OverkillScope) {
                 function* values(): Generator<number> {
@@ -75,7 +75,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'isPlainObject() and ownKeys() expose plain-object identity and keys',
+            title: 'isPlainObject() and ownKeys() expose plain-object identity and keys',
             metadata: {},
             body(scope: OverkillScope) {
                 const symbolKey = Symbol('id');

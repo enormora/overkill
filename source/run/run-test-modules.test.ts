@@ -1,12 +1,12 @@
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import type { DiscoveredRunFile } from './run-discovery.ts';
@@ -30,11 +30,11 @@ function discoveredFile(file: string): DiscoveredRunFile {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/run-test-modules.test.ts',
+    title: 'source/run/run-test-modules.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'loadRunTestModules() imports named testNode exports for the selected engine',
+            title: 'loadRunTestModules() imports named testNode exports for the selected engine',
             metadata: {},
             async body(scope: OverkillScope) {
                 const testFiles = await loadRunTestModules([
@@ -59,7 +59,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunTestModules() rejects missing and foreign testNode exports',
+            title: 'loadRunTestModules() rejects missing and foreign testNode exports',
             metadata: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function loadMissingExport() {
@@ -78,7 +78,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunTestModules() reports module import failures as collection errors',
+            title: 'loadRunTestModules() reports module import failures as collection errors',
             metadata: {},
             async body(scope: OverkillScope) {
                 try {

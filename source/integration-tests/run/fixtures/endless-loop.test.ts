@@ -11,5 +11,5 @@ export const testNode = createTestCase({
         return scope.assert.collect();
     },
     metadata: {},
-    name: 'loops'
+    title: 'loops'
 });
