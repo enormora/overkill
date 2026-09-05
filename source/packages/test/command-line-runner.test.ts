@@ -1,5 +1,5 @@
-import { createSuite, createTestCase, runIfMain, type TestScope } from '@overkill-dev/engine';
-import { createLineReporter } from '@overkill-dev/reporter-line';
+import { createSuite, createTestCase, runIfMain, type TestScope } from '../engine/engine.entry-point.ts';
+import { createLineReporter } from '../reporter-line/reporter-line.entry-point.ts';
 import type {
     CommandLineCommand,
     CommandLineExitCode,
@@ -154,11 +154,11 @@ async function runCommandLine(
 }
 
 export const testSuite = createSuite({
-    name: 'source/packages/test/command-line-runner.test.ts',
+    title: 'source/packages/test/command-line-runner.test.ts',
     metadata: {},
     children: [
         createTestCase({
-            name: 'overkill wrapper parses explicit run paths',
+            title: 'overkill wrapper parses explicit run paths',
             metadata: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine(
@@ -200,7 +200,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'overkill wrapper parses explicit list paths',
+            title: 'overkill wrapper parses explicit list paths',
             metadata: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine(
@@ -237,7 +237,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'overkill wrapper writes list stdout lines',
+            title: 'overkill wrapper writes list stdout lines',
             metadata: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine([ 'list', 'source/a.test.ts' ], {
@@ -255,7 +255,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'overkill wrapper maps unsupported list flags to argument errors',
+            title: 'overkill wrapper maps unsupported list flags to argument errors',
             metadata: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine(
@@ -273,7 +273,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'overkill wrapper parses config and profile flags',
+            title: 'overkill wrapper parses config and profile flags',
             metadata: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine(
@@ -291,7 +291,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'overkill wrapper parses resource usage flags',
+            title: 'overkill wrapper parses resource usage flags',
             metadata: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine(
@@ -323,7 +323,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'overkill wrapper resource budget enables measurement',
+            title: 'overkill wrapper resource budget enables measurement',
             metadata: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine(
@@ -348,7 +348,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'overkill wrapper preserves path operands after delimiter',
+            title: 'overkill wrapper preserves path operands after delimiter',
             metadata: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine([ 'run', '--', '--seed' ], passingResult());
@@ -361,7 +361,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'overkill wrapper writes fallback diagnostics and applies run exit code',
+            title: 'overkill wrapper writes fallback diagnostics and applies run exit code',
             metadata: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine([ 'run', 'source/a.test.ts' ], {
@@ -381,7 +381,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'overkill wrapper parses run selectors',
+            title: 'overkill wrapper parses run selectors',
             metadata: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine(
@@ -389,7 +389,7 @@ export const testSuite = createSuite({
                         'run',
                         '--filter',
                         'tag=fast !tag=flaky',
-                        '--name',
+                        '--title',
                         'Login',
                         '--file',
                         'source/auth.test.ts'
@@ -413,7 +413,7 @@ export const testSuite = createSuite({
                                 ],
                                 kind: 'all'
                             },
-                            { field: 'name', kind: 'contains', value: 'Login' },
+                            { field: 'title', kind: 'contains', value: 'Login' },
                             { field: 'file', kind: 'equals', value: 'source/auth.test.ts' }
                         ],
                         kind: 'all'
@@ -425,11 +425,11 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'overkill wrapper parses list selectors',
+            title: 'overkill wrapper parses list selectors',
             metadata: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine(
-                    [ 'list', '--filter', 'tag=fast | tag=slow', '--name', 'Login' ],
+                    [ 'list', '--filter', 'tag=fast | tag=slow', '--title', 'Login' ],
                     passingResult()
                 );
                 const [ commandLineRequest ] = result.listRequests;
@@ -446,7 +446,7 @@ export const testSuite = createSuite({
                                 ],
                                 kind: 'any'
                             },
-                            { field: 'name', kind: 'contains', value: 'Login' }
+                            { field: 'title', kind: 'contains', value: 'Login' }
                         ],
                         kind: 'all'
                     },
@@ -457,7 +457,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'overkill wrapper rejects malformed run filters',
+            title: 'overkill wrapper rejects malformed run filters',
             metadata: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine(
@@ -474,7 +474,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'overkill wrapper rejects duplicate resource budget names',
+            title: 'overkill wrapper rejects duplicate resource budget names',
             metadata: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine(
@@ -496,7 +496,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'overkill wrapper rejects unknown resource budget names',
+            title: 'overkill wrapper rejects unknown resource budget names',
             metadata: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine(
@@ -512,7 +512,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'overkill wrapper prints help without running tests',
+            title: 'overkill wrapper prints help without running tests',
             metadata: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine([ '--help' ], passingResult());

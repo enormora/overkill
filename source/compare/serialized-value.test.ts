@@ -1,18 +1,18 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { serializeValue, serializeValueWithBudget } from './serialized-value.ts';
 
 export const testSuite = createOverkillSuite({
-    name: 'source/compare/serialized-value.test.ts',
+    title: 'source/compare/serialized-value.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'serializeValue() preserves primitive edge cases explicitly',
+            title: 'serializeValue() preserves primitive edge cases explicitly',
             metadata: {},
             body(scope: OverkillScope) {
                 const symbol = Symbol.for('id');
@@ -52,7 +52,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'serializeValue() handles functions, arrays, holes, objects, symbols, and accessors',
+            title: 'serializeValue() handles functions, arrays, holes, objects, symbols, and accessors',
             metadata: {},
             body(scope: OverkillScope) {
                 const symbolKey = Symbol('id');
@@ -113,7 +113,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'serializeValue() handles maps and sets',
+            title: 'serializeValue() handles maps and sets',
             metadata: {},
             body(scope: OverkillScope) {
                 const mapValue = serializeValue(new Map<unknown, unknown>([ [ { id: 1 }, { name: 'Ada' } ] ]));
@@ -126,7 +126,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'serializeValue() handles errors, dates, and regexps',
+            title: 'serializeValue() handles errors, dates, and regexps',
             metadata: {},
             body(scope: OverkillScope) {
                 const errorValue = serializeValue(new TypeError('bad value'));
@@ -147,7 +147,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'serializeValue() handles opaque references',
+            title: 'serializeValue() handles opaque references',
             metadata: {},
             body(scope: OverkillScope) {
                 const promiseValue = serializeValue(Promise.resolve());
@@ -168,7 +168,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'serializeValue() handles binary value kinds',
+            title: 'serializeValue() handles binary value kinds',
             metadata: {},
             body(scope: OverkillScope) {
                 const buffer = Buffer.from([ 1, 2, 3 ]);
@@ -209,7 +209,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'serializeValue() represents cycles and repeated references',
+            title: 'serializeValue() represents cycles and repeated references',
             metadata: {},
             body(scope: OverkillScope) {
                 const node = {};
@@ -231,7 +231,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'serializeValueWithBudget() enforces every configured budget boundary',
+            title: 'serializeValueWithBudget() enforces every configured budget boundary',
             metadata: {},
             body(scope: OverkillScope) {
                 const budget = {
@@ -308,7 +308,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'serializeValue() catches unavailable proxy introspection',
+            title: 'serializeValue() catches unavailable proxy introspection',
             metadata: {},
             body(scope: OverkillScope) {
                 const proxy = new Proxy({}, {

@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { CaseId } from '../engine/identity.ts';
 import type { ResourceUsageSnapshot } from '../engine/run-result.ts';
 import {
@@ -18,13 +18,13 @@ import type { RunResourceBudgets } from './run-types.ts';
 
 const firstCaseId: CaseId = {
     file: 'source/example.test.ts',
-    name: 'first',
+    title: 'first',
     params: null,
     suite: []
 };
 const secondCaseId: CaseId = {
     file: 'source/example.test.ts',
-    name: 'second',
+    title: 'second',
     params: null,
     suite: []
 };
@@ -84,11 +84,11 @@ function assertCaseId(scope: OverkillScope, actual: CaseId | null, expected: Cas
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/supervised-run-resource-policy.test.ts',
+    title: 'source/run/supervised-run-resource-policy.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'findResourceBudgetBreach() selects the first exceeded resource budget',
+            title: 'findResourceBudgetBreach() selects the first exceeded resource budget',
             metadata: {},
             body(scope: OverkillScope) {
                 assertBreach(
@@ -122,7 +122,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'resource policy errors attribute active case boundaries',
+            title: 'resource policy errors attribute active case boundaries',
             metadata: {},
             body(scope: OverkillScope) {
                 const [ emptyState, singleState, multiState ] = activeCaseStates();

@@ -1,12 +1,12 @@
 import figures from 'figures';
 import colors from 'yoctocolors';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { CaseId } from '../engine/identity.ts';
 import type { RealTimeReporter } from '../engine/reporter.ts';
 import type { RunResult } from '../engine/run-result.ts';
@@ -20,10 +20,10 @@ type FakeTerminal = {
     readonly text: () => string;
 };
 
-const failingCaseId: CaseId = { file: null, name: 'fails', params: null, suite: [ 'root' ] };
-const inconclusiveCaseId: CaseId = { file: null, name: 'maybe', params: null, suite: [ 'root' ] };
-const passingCaseId: CaseId = { file: null, name: 'passes', params: null, suite: [ 'root' ] };
-const skippedCaseId: CaseId = { file: null, name: 'skips', params: null, suite: [ 'root' ] };
+const failingCaseId: CaseId = { file: null, title: 'fails', params: null, suite: [ 'root' ] };
+const inconclusiveCaseId: CaseId = { file: null, title: 'maybe', params: null, suite: [ 'root' ] };
+const passingCaseId: CaseId = { file: null, title: 'passes', params: null, suite: [ 'root' ] };
+const skippedCaseId: CaseId = { file: null, title: 'skips', params: null, suite: [ 'root' ] };
 
 function createFakeTerminal(columns: number): FakeTerminal {
     let text = '';
@@ -69,15 +69,15 @@ async function reportTestEnd(
 }
 
 function createFailureDetailResult(): RunResult {
-    const contractCaseId: CaseId = { file: null, name: 'empty', params: null, suite: [ 'root' ] };
-    const bodyErrorCaseId: CaseId = { file: null, name: 'throws', params: null, suite: [ 'root' ] };
+    const contractCaseId: CaseId = { file: null, title: 'empty', params: null, suite: [ 'root' ] };
+    const bodyErrorCaseId: CaseId = { file: null, title: 'throws', params: null, suite: [ 'root' ] };
 
     return runResultFactory.build({
         orphans: [
             {
                 file: null,
                 kind: 'test',
-                name: 'unused'
+                title: 'unused'
             }
         ],
         perTest: [
@@ -121,11 +121,11 @@ function createFailureDetailResult(): RunResult {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/reporters/dot-reporter.test.ts',
+    title: 'source/reporters/dot-reporter.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'dot reporter declares raw stdout',
+            title: 'dot reporter declares raw stdout',
             metadata: {},
             body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
@@ -140,7 +140,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'dot reporter maps outcomes and runner errors to compact marks',
+            title: 'dot reporter maps outcomes and runner errors to compact marks',
             metadata: {},
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
@@ -203,7 +203,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'dot reporter wraps progress marks by terminal width',
+            title: 'dot reporter wraps progress marks by terminal width',
             metadata: {},
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(2);
@@ -225,7 +225,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'dot reporter prints summary and short details on finish',
+            title: 'dot reporter prints summary and short details on finish',
             metadata: {},
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
@@ -290,7 +290,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'dot reporter prints body-error and contract failure details',
+            title: 'dot reporter prints body-error and contract failure details',
             metadata: {},
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
@@ -326,7 +326,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'dot reporter prints post-finish runner errors below the summary',
+            title: 'dot reporter prints post-finish runner errors below the summary',
             metadata: {},
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
@@ -365,7 +365,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'dot reporter disposes its resize listener',
+            title: 'dot reporter disposes its resize listener',
             metadata: {},
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);

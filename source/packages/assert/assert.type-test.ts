@@ -39,7 +39,7 @@ declare const assertFacade: AssertAssertionFacade;
 declare const requireFacade: RequireAssertionFacade;
 declare const check: CompositeCheckBuilder<'assert'>;
 
-describe('@overkill-dev/assert', function () {
+describe('./assert.entry-point.ts', function () {
     test('exports typed composite assertion references', function () {
         expect(syncAssertion).type.toBe<CompositeAssertionReference<[value: boolean], TrueCompositeChild>>();
         expect(asyncAssertion).type.toBe<CompositeAssertionReference<[value: boolean], Promise<TrueCompositeChild>>>();

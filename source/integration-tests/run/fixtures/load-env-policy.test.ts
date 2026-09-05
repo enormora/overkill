@@ -13,5 +13,5 @@ export const testNode = createTestCase({
         return scope.assert.collect();
     },
     metadata: {},
-    name: 'mutates env while loading'
+    title: 'mutates env while loading'
 });

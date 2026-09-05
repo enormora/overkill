@@ -11,9 +11,9 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             },
             metadata: {},
-            name: 'registers ipc listener'
+            title: 'registers ipc listener'
         })
     ],
     metadata: {},
-    name: 'fixture'
+    title: 'fixture'
 });

@@ -34,7 +34,7 @@ export type TestCase = {
     readonly definitionLocation: SourceLocation;
     readonly kind: 'test';
     readonly metadata: Metadata;
-    readonly name: string;
+    readonly title: string;
 };
 
 export type Suite = {
@@ -44,14 +44,14 @@ export type Suite = {
     readonly definitionLocation: SourceLocation;
     readonly kind: 'suite';
     readonly metadata: Metadata;
-    readonly name: string;
+    readonly title: string;
 };
 
 export type TableCase = {
     readonly body: TestBody;
     readonly metadata: Metadata;
-    readonly name: string;
-    readonly parameters: Readonly<Record<string, unknown>>;
+    readonly parameters: unknown;
+    readonly title: string;
 };
 
 export type Table = {
@@ -61,7 +61,7 @@ export type Table = {
     readonly definitionLocation: SourceLocation;
     readonly kind: 'table';
     readonly metadata: Metadata;
-    readonly name: string;
+    readonly title: string;
 };
 
 export type TestNode = Suite | Table | TestCase;
@@ -72,7 +72,7 @@ export type TestRoot = {
     readonly children: readonly TestNode[];
     readonly kind: 'root';
     readonly metadata: Metadata;
-    readonly name: string;
+    readonly title: string;
 };
 
 export type TestNodeOwner = {
@@ -95,34 +95,34 @@ export type TestCaseOptions = {
     readonly body: TestBody;
     readonly definitionLocation?: SourceLocation;
     readonly metadata: Metadata;
-    readonly name: string;
+    readonly title: string;
 };
 
 export type RootOptions = {
     readonly children: readonly unknown[];
     readonly metadata: Metadata;
-    readonly name: string;
+    readonly title: string;
 };
 
 export type SuiteOptions = {
     readonly children: readonly unknown[];
     readonly definitionLocation?: SourceLocation;
     readonly metadata: Metadata;
-    readonly name: string;
+    readonly title: string;
 };
 
 export type TableCaseOptions = {
     readonly body: TestBody;
     readonly metadata: Metadata;
-    readonly name: string;
-    readonly parameters: Readonly<Record<string, unknown>>;
+    readonly parameters: unknown;
+    readonly title: string;
 };
 
 export type TableOptions = {
     readonly cases: readonly TableCaseOptions[];
     readonly definitionLocation?: SourceLocation;
     readonly metadata: Metadata;
-    readonly name: string;
+    readonly title: string;
 };
 
 export function createTestNodeOwner(): TestNodeOwner {
@@ -147,15 +147,15 @@ export function defaultTestNodeOwner(): TestNodeOwner {
     return owner;
 }
 
-function ensureName(name: string): void {
-    if (name.trim().length === 0) {
-        throw new TypeError('Test node name must not be empty.');
+function ensureTitle(title: string): void {
+    if (title.trim().length === 0) {
+        throw new TypeError('Test node title must not be empty.');
     }
 }
 
-function ensureParameters(parameters: unknown): asserts parameters is Readonly<Record<string, unknown>> {
-    if (typeof parameters !== 'object' || parameters === null || Array.isArray(parameters)) {
-        throw new TypeError('Table case parameters must be an object.');
+function ensureTitleValue(title: unknown): asserts title is string {
+    if (typeof title !== 'string') {
+        throw new TypeError('Test node title must be a string.');
     }
 }
 
@@ -234,7 +234,7 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
     const { owner, recordConstructedNode } = factoryOptions;
 
     function createTestCase(options: TestCaseOptions): TestCase {
-        ensureName(options.name);
+        ensureTitle(options.title);
         ensureMetadata(options.metadata);
         ensureTestBody(options.body);
 
@@ -245,7 +245,7 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
             definitionLocation: options.definitionLocation ?? unknownSourceLocation,
             kind: 'test',
             metadata: options.metadata,
-            name: options.name
+            title: options.title
         };
 
         recordConstructedNode(testCase);
@@ -254,7 +254,7 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
     }
 
     function createRoot(options: RootOptions): TestRoot {
-        ensureName(options.name);
+        ensureTitle(options.title);
         ensureMetadata(options.metadata);
         const children = options.children.map(function validateChild(child) {
             return toTestNode(
@@ -271,12 +271,12 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
             children,
             kind: 'root',
             metadata: options.metadata,
-            name: options.name
+            title: options.title
         };
     }
 
     function createSuite(options: SuiteOptions): Suite {
-        ensureName(options.name);
+        ensureTitle(options.title);
         ensureMetadata(options.metadata);
         const children = options.children.map(function validateChild(child) {
             return toTestNode(
@@ -294,7 +294,7 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
             definitionLocation: options.definitionLocation ?? unknownSourceLocation,
             kind: 'suite',
             metadata: options.metadata,
-            name: options.name
+            title: options.title
         };
 
         recordConstructedNode(suite);
@@ -303,12 +303,12 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
     }
 
     function createTable(options: TableOptions): Table {
-        ensureName(options.name);
+        ensureTitle(options.title);
         ensureMetadata(options.metadata);
         for (const tableCase of options.cases) {
-            ensureName(tableCase.name);
+            ensureTitleValue(tableCase.title);
+            ensureTitle(tableCase.title);
             ensureMetadata(tableCase.metadata);
-            ensureParameters(tableCase.parameters);
             ensureTestBody(tableCase.body);
         }
 
@@ -319,7 +319,7 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
             definitionLocation: options.definitionLocation ?? unknownSourceLocation,
             kind: 'table',
             metadata: options.metadata,
-            name: options.name
+            title: options.title
         };
 
         recordConstructedNode(table);

@@ -1,11 +1,11 @@
-import { defineNarrowingCompositeAssertion } from '@overkill-dev/assert';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { defineNarrowingCompositeAssertion } from '../packages/assert/assert.entry-point.ts';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { AssertionTestFailure, FailOutcome, RunResult, TestFailure, TestOutcome } from '../engine/run-result.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import { runResultFactory } from './run-result-factory.ts';
@@ -68,11 +68,11 @@ function assertExplicitFailureFields(scope: OverkillScope, runResult: RunResult)
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/test-support/run-result-factory.test.ts',
+    title: 'source/test-support/run-result-factory.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'runResultFactory builds nested result data',
+            title: 'runResultFactory builds nested result data',
             metadata: {},
             body(scope: OverkillScope) {
                 const runResult = runResultFactory.build({
@@ -89,7 +89,7 @@ export const testSuite = createOverkillSuite({
                     runnerErrors: [ { message: 'custom runner error' } ]
                 });
 
-                scope.assert.equal(runResult.orphans[0]?.name, 'orphaned test');
+                scope.assert.equal(runResult.orphans[0]?.title, 'orphaned test');
                 const outcome = runResult.perTest[0]?.outcome;
                 scope.require.defined(outcome);
                 scope.require(failOutcome, outcome);
@@ -99,13 +99,13 @@ export const testSuite = createOverkillSuite({
                     {
                         failureKind: failure.kind,
                         failureSummary: failure.checks[0].summary,
-                        orphanName: runResult.orphans[0]?.name,
+                        orphanTitle: runResult.orphans[0]?.title,
                         runnerErrorMessage: runResult.runnerErrors[0]?.message
                     },
                     {
                         failureKind: 'assertion',
                         failureSummary: 'custom failure',
-                        orphanName: 'orphaned test',
+                        orphanTitle: 'orphaned test',
                         runnerErrorMessage: 'custom runner error'
                     }
                 );
@@ -114,7 +114,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'runResultFactory builds non-failing outcome variants',
+            title: 'runResultFactory builds non-failing outcome variants',
             metadata: {},
             body(scope: OverkillScope) {
                 const runResult = runResultFactory.build({
@@ -140,7 +140,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'runResultFactory builds default and empty failure fallbacks',
+            title: 'runResultFactory builds default and empty failure fallbacks',
             metadata: {},
             body(scope: OverkillScope) {
                 const runResult = runResultFactory.build({
@@ -178,7 +178,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'runResultFactory builds body-error and default contract failures',
+            title: 'runResultFactory builds body-error and default contract failures',
             metadata: {},
             body(scope: OverkillScope) {
                 const runResult = runResultFactory.build({
@@ -195,7 +195,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'runResultFactory preserves explicit failure and verdict fields',
+            title: 'runResultFactory preserves explicit failure and verdict fields',
             metadata: {},
             body(scope: OverkillScope) {
                 const runResult = runResultFactory.build({

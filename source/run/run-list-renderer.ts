@@ -25,7 +25,7 @@ function sharedPrefixLength(left: readonly string[], right: readonly string[]): 
 }
 
 function formatCaseName(testCase: CollectedRunCase): string {
-    return testCase.params === null ? testCase.name : `${testCase.name} [${testCase.params}]`;
+    return testCase.params === null ? testCase.title : `${testCase.title} [${testCase.params}]`;
 }
 
 function formatLocationPath(file: string, cwd: string): string {
@@ -110,7 +110,7 @@ function renderFile(file: CollectedRunFile, options: RenderOptions): readonly st
 function renderOrphan(orphan: OrphanedNode, options: RenderOptions): string {
     const file = orphan.file ?? '<unknown>';
 
-    return `${indent(1)}${orphan.kind}: ${orphan.name} (${file})${locationSuffix(orphan.definitionLocation, options)}`;
+    return `${indent(1)}${orphan.kind}: ${orphan.title} (${file})${locationSuffix(orphan.definitionLocation, options)}`;
 }
 
 function renderOrphans(orphans: readonly OrphanedNode[], options: RenderOptions): readonly string[] {

@@ -5,7 +5,7 @@ import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { loadRunConfig } from './run-config.ts';
 import type { RunProfileFiles } from './run-types.ts';
 
@@ -40,11 +40,11 @@ function assertProfileFiles(
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/run-config-profile-files.test.ts',
+    title: 'source/run/run-config-profile-files.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'loadRunConfig() normalizes profile file discovery',
+            title: 'loadRunConfig() normalizes profile file discovery',
             metadata: {},
             async body(scope: OverkillScope) {
                 const config = await loadConfigFromSource(`export const config = {
@@ -82,7 +82,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() rejects invalid profile file globs',
+            title: 'loadRunConfig() rejects invalid profile file globs',
             metadata: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function loadInvalidConfig() {

@@ -103,7 +103,7 @@ The split buys several capabilities:
 - `overkill list` prints the resolved facts without executing
   anything — possible only because collection has produced a
   complete resolved run before any worker runs
-- `--filter`, `--name`, `--last-failed`, and explicit file/id
+- `--filter`, `--title`, `--last-failed`, and explicit file/id
   selection apply before
   any test runs; workers receive only the cases that survived
   selection, instead of importing-then-discarding

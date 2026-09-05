@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { Reporter } from '../engine/reporter.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { testDouble } from '../doubles/test-double.ts';
@@ -86,11 +86,11 @@ function createPassingPlan(): TestPlan {
                         return scope.assert.collect();
                     },
                     metadata: {},
-                    name: 'passes'
+                    title: 'passes'
                 })
             ],
             metadata: {},
-            name: 'root'
+            title: 'root'
         })
     );
 }
@@ -153,11 +153,11 @@ function createRunOnlyOrchestrator(run: RunOrchestrator['run']): RunOrchestrator
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/command-line-runner-error.test.ts',
+    title: 'source/run/command-line-runner-error.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'commandLineRunner.runTests() formats non-error internal crashes',
+            title: 'commandLineRunner.runTests() formats non-error internal crashes',
             metadata: {},
             async body(scope: OverkillScope) {
                 const run = testDouble.rejects<RunOrchestrator['run']>('unexpected string failure');
@@ -176,7 +176,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'commandLineRunner.runTests() formats Error internal crashes',
+            title: 'commandLineRunner.runTests() formats Error internal crashes',
             metadata: {},
             async body(scope: OverkillScope) {
                 const run = testDouble.rejects<RunOrchestrator['run']>(new Error('Unexpected failure.'));

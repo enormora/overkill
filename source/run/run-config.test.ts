@@ -1,13 +1,13 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
 import { defineConfig, loadRunConfig, RunConfigError } from './run-config.ts';
 
@@ -33,11 +33,11 @@ function assertDefaultMicrotestResourceUsage(scope: OverkillScope, config: Loade
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/run-config.test.ts',
+    title: 'source/run/run-config.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'defineConfig() returns the project config unchanged',
+            title: 'defineConfig() returns the project config unchanged',
             metadata: {},
             body(scope: OverkillScope) {
                 const projectConfig = { runtimeStateDir: 'target/overkill-state' };
@@ -48,7 +48,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() returns defaults when no config exists',
+            title: 'loadRunConfig() returns defaults when no config exists',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -67,7 +67,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() discovers a native TypeScript named config export',
+            title: 'loadRunConfig() discovers a native TypeScript named config export',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -91,7 +91,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() discovers a JavaScript named config export',
+            title: 'loadRunConfig() discovers a JavaScript named config export',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -111,7 +111,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() loads microtest resource usage policy',
+            title: 'loadRunConfig() loads microtest resource usage policy',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -160,7 +160,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() normalizes named profile overrides',
+            title: 'loadRunConfig() normalizes named profile overrides',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -222,7 +222,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() normalizes unmeasured named profile overrides',
+            title: 'loadRunConfig() normalizes unmeasured named profile overrides',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -259,7 +259,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() inherits unmeasured named profile defaults',
+            title: 'loadRunConfig() inherits unmeasured named profile defaults',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -287,7 +287,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() rejects unknown config keys',
+            title: 'loadRunConfig() rejects unknown config keys',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -303,7 +303,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() rejects profiles without a test family',
+            title: 'loadRunConfig() rejects profiles without a test family',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -327,7 +327,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() rejects unsupported profile test families',
+            title: 'loadRunConfig() rejects unsupported profile test families',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -353,7 +353,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() rejects resource budgets without measurement',
+            title: 'loadRunConfig() rejects resource budgets without measurement',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -382,7 +382,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() rejects invalid resource usage numbers',
+            title: 'loadRunConfig() rejects invalid resource usage numbers',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -412,7 +412,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() rejects unknown microtest profile keys',
+            title: 'loadRunConfig() rejects unknown microtest profile keys',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -443,7 +443,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() rejects invalid profile names',
+            title: 'loadRunConfig() rejects invalid profile names',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -469,7 +469,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() rejects an explicit empty reporter list',
+            title: 'loadRunConfig() rejects an explicit empty reporter list',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -485,7 +485,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() rejects profile soft timeouts greater than hard timeouts',
+            title: 'loadRunConfig() rejects profile soft timeouts greater than hard timeouts',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -515,7 +515,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() reports explicit config import failures',
+            title: 'loadRunConfig() reports explicit config import failures',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();

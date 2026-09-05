@@ -1,11 +1,11 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
-import { defineCompositeAssertion as definePublishedCompositeAssertion } from '@overkill-dev/assert';
+} from '../packages/engine/engine.entry-point.ts';
+import { defineCompositeAssertion as definePublishedCompositeAssertion } from '../packages/assert/assert.entry-point.ts';
 import type { AssertAssertionNode } from '../assertion-protocol/assertion-node.ts';
 import type {
     FailedCheck,
@@ -37,11 +37,11 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
                     engine.createTestCase({
                         body,
                         metadata: {},
-                        name: 'case'
+                        title: 'case'
                     })
                 ],
                 metadata: {},
-                name: 'root'
+                title: 'root'
             })
         )
     );
@@ -73,11 +73,11 @@ function firstFailedCheck(outcome: FailOutcome): FailedCheck | null {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/engine/assertion-execution.test.ts',
+    title: 'source/engine/assertion-execution.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'execute() counts successful requirements once a returned assertion result exists',
+            title: 'execute() counts successful requirements once a returned assertion result exists',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
@@ -93,7 +93,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() rejects successful require-only builder collection',
+            title: 'execute() rejects successful require-only builder collection',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
@@ -117,7 +117,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() skips plan mismatch when a requirement fails',
+            title: 'execute() skips plan mismatch when a requirement fails',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
@@ -155,7 +155,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() treats caught failed requirements as fatal and ignores later assertions',
+            title: 'execute() treats caught failed requirements as fatal and ignores later assertions',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
@@ -197,7 +197,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() rejects returned results that drop recorded builder assertions',
+            title: 'execute() rejects returned results that drop recorded builder assertions',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope) {
@@ -230,7 +230,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() accepts appended direct assertions around builder assertions',
+            title: 'execute() accepts appended direct assertions around builder assertions',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope) {
@@ -261,7 +261,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() merges successful requirements by timeline for counts and check ids',
+            title: 'execute() merges successful requirements by timeline for counts and check ids',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {

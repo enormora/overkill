@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import {
     isAssertionReference,
     isCompositeAssertionGroup,
@@ -86,11 +86,11 @@ function foreignLocations(
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/assert/assertion-extension.test.ts',
+    title: 'source/assert/assertion-extension.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'createCompositeCheckBuilder() creates every built-in composite child node',
+            title: 'createCompositeCheckBuilder() creates every built-in composite child node',
             metadata: {},
             body(scope: OverkillScope) {
                 const check = createCompositeCheckBuilder('assert', 'child', unknownSourceLocation);
@@ -158,7 +158,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'createCompositeCheckBuilder() flattens composite assertion groups',
+            title: 'createCompositeCheckBuilder() flattens composite assertion groups',
             metadata: {},
             body(scope: OverkillScope) {
                 const check = createCompositeCheckBuilder('assert', 'child', unknownSourceLocation);
@@ -175,7 +175,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'createCompositeCheckBuilder() creates async rejects groups',
+            title: 'createCompositeCheckBuilder() creates async rejects groups',
             metadata: {},
             async body(scope: OverkillScope) {
                 const check = createCompositeCheckBuilder('assert', 'child', unknownSourceLocation);
@@ -189,7 +189,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'composite foreign bridges normalize passing and failing callbacks',
+            title: 'composite foreign bridges normalize passing and failing callbacks',
             metadata: {},
             async body(scope: OverkillScope) {
                 const location = { column: 5, file: '/test/composite.test.ts', line: 10 };
@@ -219,7 +219,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'assertion references expose brand and empty-name validation',
+            title: 'assertion references expose brand and empty-name validation',
             metadata: {},
             body(scope: OverkillScope) {
                 const reference = defineCompositeAssertion({

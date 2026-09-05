@@ -28,7 +28,7 @@ async function createRunTestPlanFromDiscoveredFiles(input: RunTestPlanFromFilesI
             files: testFiles,
             root: {
                 metadata: { kind: input.testFamily },
-                name: input.cwd
+                title: input.cwd
             }
         });
     } catch (error: unknown) {

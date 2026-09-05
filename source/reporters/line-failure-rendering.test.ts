@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { FailedCompositeCheck, FailedLeafCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import { compareDeepValues, compareStringEquality, serializedValueDiff } from '../compare/comparison.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
@@ -32,11 +32,11 @@ function assertionFailure(checks: readonly [FailedLeafCheck, ...FailedLeafCheck[
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/reporters/line-failure-rendering.test.ts',
+    title: 'source/reporters/line-failure-rendering.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'line failure formatter renders serialized scalar values and locations',
+            title: 'line failure formatter renders serialized scalar values and locations',
             metadata: {},
             body(scope: OverkillScope) {
                 const lines = formatFailure(assertionFailure([
@@ -79,7 +79,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'line failure formatter renders structured string hunks',
+            title: 'line failure formatter renders structured string hunks',
             metadata: {},
             body(scope: OverkillScope) {
                 const comparison = compareStringEquality('Ada', 'Grace');
@@ -103,7 +103,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'line failure formatter renders object, array, map, and set diffs',
+            title: 'line failure formatter renders object, array, map, and set diffs',
             metadata: {},
             body(scope: OverkillScope) {
                 const objectComparison = compareDeepValues({ id: 1, name: 'Grace' }, { id: 1, name: 'Ada' });
@@ -148,7 +148,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'line failure formatter renders binary diff summaries',
+            title: 'line failure formatter renders binary diff summaries',
             metadata: {},
             body(scope: OverkillScope) {
                 const actualBytes = new Uint8Array(101);
@@ -174,7 +174,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'line failure formatter renders composite children',
+            title: 'line failure formatter renders composite children',
             metadata: {},
             body(scope: OverkillScope) {
                 const child = failedCheck({
@@ -210,7 +210,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'line failure formatter renders body errors and test-contract failures',
+            title: 'line failure formatter renders body errors and test-contract failures',
             metadata: {},
             body(scope: OverkillScope) {
                 const failure: TestFailure = {
@@ -241,7 +241,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'line failure formatter truncates oversized rendered values',
+            title: 'line failure formatter truncates oversized rendered values',
             metadata: {},
             body(scope: OverkillScope) {
                 const diff: Diff = {

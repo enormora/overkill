@@ -1,11 +1,11 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
 import { createWallClock } from '@enormora/wall-clock';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type { RunResourceUsageTracker } from '../engine/run-result.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
@@ -134,11 +134,11 @@ function createRunCommand(config: RunConfig, request: RunRequest): RunCommand {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/run-resource-usage-policy.test.ts',
+    title: 'source/run/run-resource-usage-policy.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'orchestrator.resolve() records resource usage policy from config and request overrides',
+            title: 'orchestrator.resolve() records resource usage policy from config and request overrides',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -190,7 +190,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() records run-level resource usage when measurement is enabled',
+            title: 'orchestrator.run() records run-level resource usage when measurement is enabled',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -229,7 +229,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() accepts budgeted execution when measurement is enabled',
+            title: 'orchestrator.run() accepts budgeted execution when measurement is enabled',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -260,7 +260,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() reports final resource budget breaches for in-process microtests',
+            title: 'orchestrator.run() reports final resource budget breaches for in-process microtests',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -308,7 +308,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.resolve() rejects resource budget overrides without measurement',
+            title: 'orchestrator.resolve() rejects resource budget overrides without measurement',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -334,7 +334,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.resolve() accepts disabled measurement with empty resource budget overrides',
+            title: 'orchestrator.resolve() accepts disabled measurement with empty resource budget overrides',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -367,7 +367,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.resolve() rejects invalid resource usage request values',
+            title: 'orchestrator.resolve() rejects invalid resource usage request values',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -405,7 +405,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.resolve() rejects timeout policies where soft exceeds hard timeout',
+            title: 'orchestrator.resolve() rejects timeout policies where soft exceeds hard timeout',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -437,7 +437,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.resolve() rejects config budgets without measurement',
+            title: 'orchestrator.resolve() rejects config budgets without measurement',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();

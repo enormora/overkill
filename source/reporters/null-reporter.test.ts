@@ -1,19 +1,19 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createNullReporter } from './null-reporter.ts';
 
 export const testSuite = createOverkillSuite({
-    name: 'source/reporters/null-reporter.test.ts',
+    title: 'source/reporters/null-reporter.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'null reporter accepts a final result without producing output',
+            title: 'null reporter accepts a final result without producing output',
             metadata: {},
             async body(scope: OverkillScope) {
                 const reporter = createNullReporter();

@@ -127,7 +127,7 @@ const defaultSummary: RunSummary = {
 
 const defaultCaseId: CaseId = {
     file: null,
-    name: 'passes',
+    title: 'passes',
     params: null,
     suite: [ 'root' ]
 };
@@ -308,7 +308,7 @@ function buildOrphanedNode(overrides: OrphanedNodeOverrides = {}): OrphanedNode 
         },
         file: overrides.file === undefined ? 'source/example.test.ts' : overrides.file,
         kind: overrides.kind ?? 'test',
-        name: overrides.name ?? 'orphaned test'
+        title: overrides.title ?? 'orphaned test'
     };
 }
 

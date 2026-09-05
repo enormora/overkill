@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { rule } from './double-rule.ts';
 import { testDouble } from './test-double.ts';
 
@@ -17,11 +17,11 @@ type ClientFactory = {
 };
 
 export const testSuite = createOverkillSuite({
-    name: 'source/doubles/test-double-configuration.test.ts',
+    title: 'source/doubles/test-double-configuration.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'testDouble() rejects invalid configuration arguments',
+            title: 'testDouble() rejects invalid configuration arguments',
             metadata: {},
             body(scope: OverkillScope) {
                 const createDoubleFromUnknowns = testDouble as unknown as (
@@ -39,7 +39,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testDouble() ignores invalid configuration entries',
+            title: 'testDouble() ignores invalid configuration entries',
             metadata: {},
             body(scope: OverkillScope) {
                 type LoadValue = () => string;
@@ -60,7 +60,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'fallback can configure call defaults without construction defaults',
+            title: 'fallback can configure call defaults without construction defaults',
             metadata: {},
             body(scope: OverkillScope) {
                 const calledClient = { id: 'called' };
@@ -81,7 +81,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'fallback can configure construction defaults without call defaults',
+            title: 'fallback can configure construction defaults without call defaults',
             metadata: {},
             body(scope: OverkillScope) {
                 const constructedClient = { id: 'constructed' };
@@ -102,7 +102,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'fallback behaviors that cannot answer an invocation fall through',
+            title: 'fallback behaviors that cannot answer an invocation fall through',
             metadata: {},
             body(scope: OverkillScope) {
                 const constructedClient = { id: 'constructed' };
@@ -120,7 +120,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'sequence entries that cannot answer an invocation fall through',
+            title: 'sequence entries that cannot answer an invocation fall through',
             metadata: {},
             body(scope: OverkillScope) {
                 type ClientConstructor = new () => ClientWithId;

@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { rule } from './double-rule.ts';
 import { testDouble } from './test-double.ts';
 
@@ -12,11 +12,11 @@ type LoadNumbers = (prefix: string) => Generator<string, string, number>;
 type LoadAsyncNumbers = (prefix: string) => AsyncGenerator<string, string, number>;
 
 export const testSuite = createOverkillSuite({
-    name: 'source/doubles/test-double-generator.test.ts',
+    title: 'source/doubles/test-double-generator.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'testDouble.yields() returns fresh tracked iterators',
+            title: 'testDouble.yields() returns fresh tracked iterators',
             metadata: {},
             body(scope: OverkillScope) {
                 const loadNumbers = testDouble.yields<LoadNumbers>([ 'a', 'b' ], 'done');
@@ -62,7 +62,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'rule.yieldsFrom() delegates lazily with invocation arguments',
+            title: 'rule.yieldsFrom() delegates lazily with invocation arguments',
             metadata: {},
             body(scope: OverkillScope) {
                 type LoadValues = (prefix: string) => Generator<string, string, unknown>;
@@ -88,7 +88,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'tracked iterators record return protocol events',
+            title: 'tracked iterators record return protocol events',
             metadata: {},
             body(scope: OverkillScope) {
                 const returned = testDouble.yields<() => Generator<string, string, unknown>>([ 'a', 'b' ], 'done');
@@ -105,7 +105,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'tracked iterators record throw protocol events',
+            title: 'tracked iterators record throw protocol events',
             metadata: {},
             body(scope: OverkillScope) {
                 const expected = new Error('expected');
@@ -129,7 +129,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'tracked iterators record calls after completion',
+            title: 'tracked iterators record calls after completion',
             metadata: {},
             body(scope: OverkillScope) {
                 const loadValue = testDouble.yields([ 'a' ]);
@@ -150,7 +150,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'reset detaches existing tracked iterators from history',
+            title: 'reset detaches existing tracked iterators from history',
             metadata: {},
             body(scope: OverkillScope) {
                 const loadValue = testDouble.yields([ 'a', 'b' ]);
@@ -167,7 +167,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'testDouble.yieldsAsync() records async iterator events after settlement',
+            title: 'testDouble.yieldsAsync() records async iterator events after settlement',
             metadata: {},
             async body(scope: OverkillScope) {
                 const loadValues = testDouble.yieldsAsync<LoadAsyncNumbers>([ 'a', 'b' ], 'done');
@@ -199,7 +199,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'rule.yieldsAsyncFrom() delegates to sync and async sources',
+            title: 'rule.yieldsAsyncFrom() delegates to sync and async sources',
             metadata: {},
             async body(scope: OverkillScope) {
                 type LoadValues = (label: string) => AsyncGenerator<string, string, unknown>;

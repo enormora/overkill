@@ -44,7 +44,7 @@ export type TestPlan = {
 
 type TestPlanRoot = {
     readonly metadata: ResolvedMetadata;
-    readonly name: string;
+    readonly title: string;
 };
 
 export type TestPlanFactory = (root: TestRoot) => TestPlan;
@@ -57,7 +57,7 @@ export type TestPlanFile = {
 
 type TestPlanRootOptions = {
     readonly metadata: Metadata;
-    readonly name: string;
+    readonly title: string;
 };
 
 export type TestPlanFromTestFilesOptions = {
@@ -79,8 +79,32 @@ type CollectionContext = {
     readonly suitePath: readonly string[];
 };
 
+type TitledNode = {
+    readonly title: string;
+};
+
+const minimumTableCaseCount = 2;
+
 function parameterIdentity(parameters: TableCase['parameters']): string {
     return JSON.stringify(serializeValue(parameters));
+}
+
+function duplicateTitleMessage(title: string, path: readonly string[]): string {
+    const location = path.length === 0 ? '<root>' : path.join(' > ');
+
+    return `Duplicate test node title under ${location}: ${title}.`;
+}
+
+function assertUniqueSiblingTitles(nodes: readonly TitledNode[], path: readonly string[]): void {
+    const seenTitles = new Set<string>();
+
+    for (const node of nodes) {
+        if (seenTitles.has(node.title)) {
+            throw new TypeError(duplicateTitleMessage(node.title, path));
+        }
+
+        seenTitles.add(node.title);
+    }
 }
 
 function collectTestCase(
@@ -94,7 +118,7 @@ function collectTestCase(
             {
                 body: testCase.body,
                 definitionLocation: testCase.definitionLocation,
-                id: createCaseId(context.file, context.suitePath, testCase.name, null),
+                id: createCaseId(context.file, context.suitePath, testCase.title, null),
                 metadata: resolvedMetadata,
                 suiteDefinitionLocations: context.suiteDefinitionLocations,
                 suitePath: context.suitePath
@@ -108,13 +132,15 @@ function collectTable(
     table: Table,
     context: CollectionContext
 ): CollectedTestCases {
-    if (table.cases.length === 0) {
+    if (table.cases.length < minimumTableCaseCount) {
         throw new TypeError(
-            `Table must contain at least one case: ${[ ...context.suitePath, table.name ].join(' > ')}.`
+            `Table must contain at least two cases: ${[ ...context.suitePath, table.title ].join(' > ')}.`
         );
     }
 
-    const tablePath = [ ...context.suitePath, table.name ];
+    assertUniqueSiblingTitles(table.cases, [ ...context.suitePath, table.title ]);
+
+    const tablePath = [ ...context.suitePath, table.title ];
     const tablePathLocations = [ ...context.suiteDefinitionLocations, table.definitionLocation ];
     const tableMetadata = resolveMetadata(context.metadata, table.metadata);
 
@@ -125,7 +151,7 @@ function collectTable(
             return {
                 body: tableCase.body,
                 definitionLocation: table.definitionLocation,
-                id: createCaseId(context.file, tablePath, tableCase.name, parameterIdentity(tableCase.parameters)),
+                id: createCaseId(context.file, tablePath, tableCase.title, parameterIdentity(tableCase.parameters)),
                 metadata: resolvedMetadata,
                 suiteDefinitionLocations: tablePathLocations,
                 suitePath: tablePath
@@ -140,7 +166,7 @@ function childCollectionContext(suite: Suite, context: CollectionContext): Colle
         file: context.file,
         metadata: resolveMetadata(context.metadata, suite.metadata),
         suiteDefinitionLocations: [ ...context.suiteDefinitionLocations, suite.definitionLocation ],
-        suitePath: [ ...context.suitePath, suite.name ]
+        suitePath: [ ...context.suitePath, suite.title ]
     };
 }
 
@@ -169,9 +195,11 @@ function collectNode(
 
     if (node.children.length === 0) {
         throw new TypeError(
-            `Suite must contain at least one child: ${[ ...context.suitePath, node.name ].join(' > ')}.`
+            `Suite must contain at least one child: ${[ ...context.suitePath, node.title ].join(' > ')}.`
         );
     }
+
+    assertUniqueSiblingTitles(node.children, [ ...context.suitePath, node.title ]);
 
     const childContext = childCollectionContext(node, context);
     const children = mergeCollectedTestCases(node.children.map(function collectChild(child) {
@@ -186,8 +214,10 @@ function collectNode(
 
 function collectRoot(root: TestRoot, rootMetadata: ResolvedMetadata): CollectedTestCases {
     if (root.children.length === 0) {
-        throw new TypeError(`Root must contain at least one child: ${root.name}.`);
+        throw new TypeError(`Root must contain at least one child: ${root.title}.`);
     }
+
+    assertUniqueSiblingTitles(root.children, [ root.title ]);
 
     return mergeCollectedTestCases(root.children.map(function collectChild(child) {
         return collectNode(child, {
@@ -229,7 +259,7 @@ function createOrphanedNode(node: TestNode): OrphanedNode {
         definitionLocation: node.definitionLocation,
         file: null,
         kind: node.kind,
-        name: node.name
+        title: node.title
     };
 }
 
@@ -289,7 +319,7 @@ export function createTestPlanFactory(owner: TestNodeOwner, constructedNodes: Re
             orphans: collectOrphans(constructedNodes, reachedNodes),
             root: {
                 metadata: rootMetadata,
-                name: root.name
+                title: root.title
             }
         };
     };
@@ -325,7 +355,7 @@ export function createTestPlanFromTestFilesFactory(
                 return file.testNode;
             }),
             metadata: options.root.metadata,
-            name: options.root.name
+            title: options.root.title
         });
         const rootMetadata = resolveRootMetadata(root.metadata);
         const { cases: discoveredCases, reachedNodes } = collectTestFiles(root, options.files, rootMetadata);
@@ -339,7 +369,7 @@ export function createTestPlanFromTestFilesFactory(
             orphans: [],
             root: {
                 metadata: rootMetadata,
-                name: root.name
+                title: root.title
             }
         };
     };

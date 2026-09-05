@@ -1,11 +1,11 @@
-import { defineNarrowingCompositeAssertion } from '@overkill-dev/assert';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { defineNarrowingCompositeAssertion } from '../packages/assert/assert.entry-point.ts';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { Diff } from '../diff/diff-shape.ts';
 import {
     compareDeepValues,
@@ -22,11 +22,11 @@ const mapDiff = defineNarrowingCompositeAssertion<Diff, Extract<Diff, { readonly
 });
 
 export const testSuite = createOverkillSuite({
-    name: 'source/compare/comparison.test.ts',
+    title: 'source/compare/comparison.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'compareEqualValues() uses Object.is primitive semantics',
+            title: 'compareEqualValues() uses Object.is primitive semantics',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.equal(compareEqualValues(Number.NaN, Number.NaN).passed, true);
@@ -55,7 +55,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'compareStringEquality() emits bounded string hunks for string equality failures only',
+            title: 'compareStringEquality() emits bounded string hunks for string equality failures only',
             metadata: {},
             body(scope: OverkillScope) {
                 const result = compareStringEquality('first\nactual\nlast', 'first\nexpected\nlast');
@@ -83,7 +83,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'failedResult() uses an empty path for structured diffs without operations',
+            title: 'failedResult() uses an empty path for structured diffs without operations',
             metadata: {},
             body(scope: OverkillScope) {
                 const result = failedResult([ 1 ], [ 2 ], { kind: 'array', operations: [] });
@@ -94,7 +94,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'compareDeepValues() distinguishes numeric and primitive edge cases',
+            title: 'compareDeepValues() distinguishes numeric and primitive edge cases',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.equal(compareDeepValues(Number.NaN, Number.NaN).passed, true);
@@ -112,7 +112,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'compareDeepValues() compares arrays including holes, undefined, length, and paths',
+            title: 'compareDeepValues() compares arrays including holes, undefined, length, and paths',
             metadata: {},
             body(scope: OverkillScope) {
                 const hole: unknown[] = [];
@@ -150,7 +150,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'compareDeepValues() compares enumerable string and symbol data without invoking accessors',
+            title: 'compareDeepValues() compares enumerable string and symbol data without invoking accessors',
             metadata: {},
             body(scope: OverkillScope) {
                 const symbolKey = Symbol('id');
@@ -199,7 +199,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'compareDeepValues() ignores non-enumerable properties',
+            title: 'compareDeepValues() ignores non-enumerable properties',
             metadata: {},
             body(scope: OverkillScope) {
                 const actual = {};
@@ -213,7 +213,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'compareDeepValues() requires matching class prototypes before enumerable data comparison',
+            title: 'compareDeepValues() requires matching class prototypes before enumerable data comparison',
             metadata: {},
             body(scope: OverkillScope) {
                 const actual = { id: 1 };
@@ -232,7 +232,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'compareDeepValues() compares Map entries order independently with deep keys and values',
+            title: 'compareDeepValues() compares Map entries order independently with deep keys and values',
             metadata: {},
             body(scope: OverkillScope) {
                 const actual = new Map<unknown, unknown>([
@@ -267,7 +267,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'compareDeepValues() reports missing Map entries by key',
+            title: 'compareDeepValues() reports missing Map entries by key',
             metadata: {},
             body(scope: OverkillScope) {
                 const actual = new Map<unknown, unknown>([

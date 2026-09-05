@@ -1,11 +1,11 @@
-import { doubleUsage, testDouble as publishedTestDouble } from '@overkill-dev/doubles';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { doubleUsage, testDouble as publishedTestDouble } from '../packages/doubles/doubles.entry-point.ts';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { BehaviorRuntime, Invocation } from './double-behavior.ts';
 import { rule } from './double-rule.ts';
 import { testDouble } from './test-double.ts';
@@ -28,11 +28,11 @@ const unusedBehaviorRuntime: BehaviorRuntime = {
 };
 
 export const testSuite = createOverkillSuite({
-    name: 'source/doubles/test-double-callback.test.ts',
+    title: 'source/doubles/test-double-callback.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'rule.callsCallback() invokes a callback argument synchronously',
+            title: 'rule.callsCallback() invokes a callback argument synchronously',
             metadata: {},
             body(scope: OverkillScope) {
                 const seen: unknown[] = [];
@@ -50,7 +50,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'rule.callsCallbackAsync() invokes a callback argument in a microtask',
+            title: 'rule.callsCallbackAsync() invokes a callback argument in a microtask',
             metadata: {},
             async body(scope: OverkillScope) {
                 const seen: string[] = [];
@@ -73,7 +73,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'callback rule factories expose their configured return values',
+            title: 'callback rule factories expose their configured return values',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.equal(rule.callsCallback(0, [], 'sync').result(), 'sync');
@@ -83,7 +83,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'rule.callsCallback() binds a callback receiver',
+            title: 'rule.callsCallback() binds a callback receiver',
             metadata: {},
             body(scope: OverkillScope) {
                 const receiver = { scope: 'test' };
@@ -104,7 +104,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'rule.callsCallbackAsync() supports argument rules and receiver binding',
+            title: 'rule.callsCallbackAsync() supports argument rules and receiver binding',
             metadata: {},
             async body(scope: OverkillScope) {
                 const receiver = { scope: 'async' };
@@ -135,7 +135,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'rule.callsCallback() supports argument rules and ordered rules',
+            title: 'rule.callsCallback() supports argument rules and ordered rules',
             metadata: {},
             body(scope: OverkillScope) {
                 const seen: string[] = [];
@@ -161,7 +161,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'rule.callsCallback() validates callback behavior at runtime',
+            title: 'rule.callsCallback() validates callback behavior at runtime',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.throws(function createNegativeCallbackRule() {
@@ -180,7 +180,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'rule.callsCallback() rejects construction invocations',
+            title: 'rule.callsCallback() rejects construction invocations',
             metadata: {},
             body(scope: OverkillScope) {
                 const constructionInvocation: Invocation = {
@@ -198,7 +198,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'rule.callsCallback() snapshots callback arguments',
+            title: 'rule.callsCallback() snapshots callback arguments',
             metadata: {},
             body(scope: OverkillScope) {
                 const values: [string] = [ 'first' ];
@@ -218,7 +218,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'rule.sequence() supports callback behavior entries',
+            title: 'rule.sequence() supports callback behavior entries',
             metadata: {},
             async body(scope: OverkillScope) {
                 const seen: string[] = [];

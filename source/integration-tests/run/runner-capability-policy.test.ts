@@ -1,11 +1,11 @@
 import { rm } from 'node:fs/promises';
-import { createLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite,
     createTestCase,
     runIfMain,
     type TestScope
-} from '@overkill-dev/engine';
+} from '../../packages/engine/engine.entry-point.ts';
 import type { Reporter } from '../../engine/reporter.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import type { RunCommand, RunConfig, RunProcessModel, RunRequest, RunScheduling } from '../../run/run-types.ts';
@@ -225,12 +225,12 @@ const policyProcessModels: readonly {
 ];
 
 export const testSuite = createSuite({
-    name: 'source/integration-tests/run/runner-capability-policy.test.ts',
+    title: 'source/integration-tests/run/runner-capability-policy.test.ts',
     metadata: {},
     children: policyFixtures.flatMap(function createPolicyFixtureTests(fixture) {
         return policyProcessModels.map(function createPolicyFixtureProcessTest(model) {
             return createTestCase({
-                name: `${model.processModel} microtest capability restrictions fail ${fixture.name}`,
+                title: `${model.processModel} microtest capability restrictions fail ${fixture.name}`,
                 metadata: {},
                 async body(scope: TestScope) {
                     const result = await orchestrator.run(createRunCommand(

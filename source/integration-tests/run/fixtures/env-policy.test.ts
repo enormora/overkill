@@ -9,9 +9,9 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             },
             metadata: {},
-            name: 'mutates env'
+            title: 'mutates env'
         })
     ],
     metadata: {},
-    name: 'fixture'
+    title: 'fixture'
 });

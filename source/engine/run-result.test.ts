@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { FailedCheck, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import { verdictFromOutcome, type TestOutcome } from './run-result.ts';
@@ -36,11 +36,11 @@ function createFailedCheck(): FailedCheckFixture {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/engine/run-result.test.ts',
+    title: 'source/engine/run-result.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'verdictFromOutcome() returns the outcome kind as the verdict',
+            title: 'verdictFromOutcome() returns the outcome kind as the verdict',
             metadata: {},
             body(scope: OverkillScope) {
                 const outcome: TestOutcome = {

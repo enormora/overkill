@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { Reporter } from '../engine/reporter.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
@@ -80,11 +80,11 @@ function createPassingPlan(): TestPlan {
                         return scope.assert.collect();
                     },
                     metadata: {},
-                    name: 'passes'
+                    title: 'passes'
                 })
             ],
             metadata: {},
-            name: 'root'
+            title: 'root'
         })
     );
 }
@@ -239,11 +239,11 @@ function assertResourceUsageCommand(scope: OverkillScope, command: RunCommand): 
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/command-line-runner-resource-usage.test.ts',
+    title: 'source/run/command-line-runner-resource-usage.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'commandLineRunner.runTests() carries resource usage config and request values',
+            title: 'commandLineRunner.runTests() carries resource usage config and request values',
             metadata: {},
             async body(scope: OverkillScope) {
                 const recordedCommands = createRecordedRunCommands();

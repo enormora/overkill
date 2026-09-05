@@ -1,19 +1,19 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { createCommandLineErrorResultFromUnknown } from './command-line-command.ts';
 import { RunCollectionError, RunResolutionError } from './run-errors.ts';
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/command-line-command.test.ts',
+    title: 'source/run/command-line-command.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'createCommandLineErrorResultFromUnknown() maps no tests collected errors',
+            title: 'createCommandLineErrorResultFromUnknown() maps no tests collected errors',
             metadata: {},
             body(scope: OverkillScope) {
                 const result = createCommandLineErrorResultFromUnknown(
@@ -29,7 +29,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'createCommandLineErrorResultFromUnknown() maps collection errors',
+            title: 'createCommandLineErrorResultFromUnknown() maps collection errors',
             metadata: {},
             body(scope: OverkillScope) {
                 const result = createCommandLineErrorResultFromUnknown(
@@ -46,7 +46,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'createCommandLineErrorResultFromUnknown() formats supplemental aggregate errors',
+            title: 'createCommandLineErrorResultFromUnknown() formats supplemental aggregate errors',
             metadata: {},
             body(scope: OverkillScope) {
                 const primaryError = new Error('primary failure');
@@ -64,7 +64,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'createCommandLineErrorResultFromUnknown() formats supplemental runner errors',
+            title: 'createCommandLineErrorResultFromUnknown() formats supplemental runner errors',
             metadata: {},
             body(scope: OverkillScope) {
                 const primaryError = new Error('primary failure');
@@ -90,7 +90,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'createCommandLineErrorResultFromUnknown() keeps malformed supplemental errors internal',
+            title: 'createCommandLineErrorResultFromUnknown() keeps malformed supplemental errors internal',
             metadata: {},
             body(scope: OverkillScope) {
                 const primaryError = new Error('primary failure');
@@ -121,7 +121,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'createCommandLineErrorResultFromUnknown() falls back to the aggregate message',
+            title: 'createCommandLineErrorResultFromUnknown() falls back to the aggregate message',
             metadata: {},
             body(scope: OverkillScope) {
                 const aggregateError = new AggregateError([], 'aggregate failure');

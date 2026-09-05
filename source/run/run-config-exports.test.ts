@@ -1,13 +1,13 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { loadRunConfig, RunConfigError } from './run-config.ts';
 
 async function createTempFolder(): Promise<string> {
@@ -23,11 +23,11 @@ async function writeConfig(folder: string, fileName: string, source: string): Pr
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/run-config-exports.test.ts',
+    title: 'source/run/run-config-exports.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'loadRunConfig() accepts branded reporter and output renderer values',
+            title: 'loadRunConfig() accepts branded reporter and output renderer values',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -75,7 +75,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() rejects unbranded reporter values',
+            title: 'loadRunConfig() rejects unbranded reporter values',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -106,7 +106,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() rejects unbranded output renderer values',
+            title: 'loadRunConfig() rejects unbranded output renderer values',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -132,7 +132,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() rejects config files without a named config export',
+            title: 'loadRunConfig() rejects config files without a named config export',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -149,7 +149,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() rejects config files with a default export',
+            title: 'loadRunConfig() rejects config files with a default export',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -166,7 +166,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() rejects config files with named config and default exports',
+            title: 'loadRunConfig() rejects config files with named config and default exports',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
@@ -183,7 +183,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunConfig() rejects config files with extra runtime exports',
+            title: 'loadRunConfig() rejects config files with extra runtime exports',
             metadata: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();

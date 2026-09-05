@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { ReporterSinkConflictError, type Reporter } from '../engine/reporter.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
@@ -131,18 +131,18 @@ function createPassingPlan(): TestPlan {
                     return scope.assert.collect();
                 },
                 metadata: {},
-                name: 'passes'
+                title: 'passes'
             })
         ],
         metadata: {},
-        name: 'suite'
+        title: 'suite'
     });
 
     return engine.createTestPlanFromTestFiles({
         files: [ { file: 'source/a.test.ts', metadata: {}, testNode } ],
         root: {
             metadata: {},
-            name: 'root'
+            title: 'root'
         }
     });
 }
@@ -248,11 +248,11 @@ async function runTests(dependencies: CommandLineRunnerDependencies): Promise<Co
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/command-line-runner.test.ts',
+    title: 'source/run/command-line-runner.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'commandLineRunner.runTests() injects the default reporter when config omits reporters',
+            title: 'commandLineRunner.runTests() injects the default reporter when config omits reporters',
             metadata: {},
             async body(scope: OverkillScope) {
                 const receivedCommands: RunCommand[] = [];
@@ -277,7 +277,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'commandLineRunner.runTests() preserves configured reporters',
+            title: 'commandLineRunner.runTests() preserves configured reporters',
             metadata: {},
             async body(scope: OverkillScope) {
                 const receivedCommands: RunCommand[] = [];
@@ -311,7 +311,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'commandLineRunner.runTests() maps test failures to exit code 1',
+            title: 'commandLineRunner.runTests() maps test failures to exit code 1',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({
@@ -331,7 +331,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'commandLineRunner.runTests() maps no planned tests to exit code 4',
+            title: 'commandLineRunner.runTests() maps no planned tests to exit code 4',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({
@@ -350,7 +350,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'commandLineRunner.runTests() maps runner errors to exit code 2 with fallback diagnostics',
+            title: 'commandLineRunner.runTests() maps runner errors to exit code 2 with fallback diagnostics',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({
@@ -371,7 +371,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'commandLineRunner.runTests() maps config errors to exit code 3',
+            title: 'commandLineRunner.runTests() maps config errors to exit code 3',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({
@@ -389,7 +389,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'commandLineRunner.runTests() maps internal config load errors',
+            title: 'commandLineRunner.runTests() maps internal config load errors',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({
@@ -408,7 +408,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'commandLineRunner.runTests() maps reporter sink conflicts to exit code 3',
+            title: 'commandLineRunner.runTests() maps reporter sink conflicts to exit code 3',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({
@@ -431,7 +431,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'commandLineRunner.runTests() maps aggregate sink conflicts to exit code 3',
+            title: 'commandLineRunner.runTests() maps aggregate sink conflicts to exit code 3',
             metadata: {},
             async body(scope: OverkillScope) {
                 const conflict = new ReporterSinkConflictError(
@@ -468,7 +468,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'commandLineRunner.runTests() maps request errors to exit code 3',
+            title: 'commandLineRunner.runTests() maps request errors to exit code 3',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({

@@ -1,13 +1,13 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite,
     createTestCase,
     runIfMain,
     type TestScope
-} from '@overkill-dev/engine';
+} from '../../packages/engine/engine.entry-point.ts';
 import type { Reporter } from '../../engine/reporter.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import type { RunCommand, RunConfig, RunProcessModel, RunRequest, RunScheduling } from '../../run/run-types.ts';
@@ -135,9 +135,9 @@ function createSchedulingEventRecorder(): SchedulingEventRecorder {
             name: 'scheduling-recorder',
             onEvent(event) {
                 if (event.kind === 'test-start') {
-                    events.push(`start:${event.case.name}`);
+                    events.push(`start:${event.case.title}`);
                 } else if (event.kind === 'test-end') {
-                    events.push(`end:${event.case.name}`);
+                    events.push(`end:${event.case.title}`);
                 }
             },
             onFinish: null,
@@ -202,11 +202,11 @@ function plainData(value: unknown): unknown {
 }
 
 export const testSuite = createSuite({
-    name: 'source/integration-tests/run/runner-explicit-files.test.ts',
+    title: 'source/integration-tests/run/runner-explicit-files.test.ts',
     metadata: {},
     children: [
         createTestCase({
-            name: 'runner resolves and executes one explicit testNode file',
+            title: 'runner resolves and executes one explicit testNode file',
             metadata: {},
             async body(scope: TestScope) {
                 const resolvedRun = await orchestrator.resolve(createRunCommand([ passingFixturePath ]));
@@ -216,7 +216,7 @@ export const testSuite = createSuite({
                 scope.require.defined(firstCase);
                 scope.assert.deepEqual(firstCase.id, {
                     file: passingFixturePath,
-                    name: 'passes',
+                    title: 'passes',
                     params: null,
                     suite: [ 'fixture' ]
                 });
@@ -237,7 +237,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'runner executes a supervised microtest in a child process',
+            title: 'runner executes a supervised microtest in a child process',
             metadata: {},
             async body(scope: TestScope) {
                 const result = await orchestrator.run(
@@ -262,7 +262,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'runner resolves and executes profile-discovered files',
+            title: 'runner resolves and executes profile-discovered files',
             metadata: {},
             async body(scope: TestScope) {
                 const command = createSupervisedRunCommand([], createDiscoveryRunConfig());
@@ -276,13 +276,13 @@ export const testSuite = createSuite({
                     [
                         {
                             file: 'source/integration-tests/run/fixtures/discovery/integration.test.ts',
-                            name: 'integration passes',
+                            title: 'integration passes',
                             params: null,
                             suite: [ 'discovery' ]
                         },
                         {
                             file: 'source/integration-tests/run/fixtures/discovery/unit.test.ts',
-                            name: 'unit passes',
+                            title: 'unit passes',
                             params: null,
                             suite: [ 'discovery' ]
                         }
@@ -305,7 +305,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'runner runs in-process microtests concurrently from profile scheduling',
+            title: 'runner runs in-process microtests concurrently from profile scheduling',
             metadata: {},
             async body(scope: TestScope) {
                 const events = await runSchedulingScenario('in-process', 'concurrent');
@@ -321,7 +321,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'runner runs in-process microtests serially from profile scheduling',
+            title: 'runner runs in-process microtests serially from profile scheduling',
             metadata: {},
             async body(scope: TestScope) {
                 const events = await runSchedulingScenario('in-process', 'serial');
@@ -337,7 +337,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'runner runs supervised microtests concurrently from profile scheduling',
+            title: 'runner runs supervised microtests concurrently from profile scheduling',
             metadata: {},
             async body(scope: TestScope) {
                 const events = await runSchedulingScenario('supervised-process', 'concurrent');
@@ -353,7 +353,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'runner runs supervised microtests serially from profile scheduling',
+            title: 'runner runs supervised microtests serially from profile scheduling',
             metadata: {},
             async body(scope: TestScope) {
                 const events = await runSchedulingScenario('supervised-process', 'serial');
@@ -369,7 +369,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'runner kills a supervised microtest that blocks past hard timeout',
+            title: 'runner kills a supervised microtest that blocks past hard timeout',
             metadata: {},
             async body(scope: TestScope) {
                 const result = await orchestrator.run(createSupervisedRunCommand(
@@ -394,7 +394,7 @@ export const testSuite = createSuite({
                 scope.assert.equal(error.subtype, 'crash');
                 scope.assert.deepEqual(plainData(error.attributedTo), {
                     file: endlessLoopFixturePath,
-                    name: 'loops',
+                    title: 'loops',
                     params: null,
                     suite: []
                 });
@@ -415,7 +415,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'runner uses file identity to distinguish duplicate case names across files',
+            title: 'runner uses file identity to distinguish duplicate case names across files',
             metadata: {},
             async body(scope: TestScope) {
                 const resolvedRun = await orchestrator.resolve(createRunCommand([
@@ -430,13 +430,13 @@ export const testSuite = createSuite({
                     [
                         {
                             file: duplicateFixtureAPath,
-                            name: 'same case',
+                            title: 'same case',
                             params: null,
                             suite: [ 'same suite' ]
                         },
                         {
                             file: duplicateFixtureBPath,
-                            name: 'same case',
+                            title: 'same case',
                             params: null,
                             suite: [ 'same suite' ]
                         }
@@ -447,7 +447,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'runner rejects invalid explicit paths before module import',
+            title: 'runner rejects invalid explicit paths before module import',
             metadata: {},
             async body(scope: TestScope) {
                 const outsideDirectory = await mkdtemp(join(tmpdir(), 'overkill-runner-'));

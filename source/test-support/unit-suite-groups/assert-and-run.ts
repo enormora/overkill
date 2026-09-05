@@ -1,4 +1,4 @@
-import { createSuite } from '@overkill-dev/engine';
+import { createSuite } from '../../packages/engine/engine.entry-point.ts';
 import { testSuite as assertionExtensionTestSuite } from '../../assert/assertion-extension.test.ts';
 import { testSuite as assertionNodeShapeTestSuite } from '../../assertion-protocol/assertion-node-shape.test.ts';
 import { testSuite as evaluationTestSuite } from '../../assertion-protocol/evaluation.test.ts';
@@ -10,7 +10,7 @@ import { testSuite as runTestSuite } from '../../run/run-suite.test.ts';
 import { testSuite as runResultFactoryTestSuite } from '../run-result-factory.test.ts';
 
 export const testSuite = createSuite({
-    name: 'assertion protocol, assert, run, and test support',
+    title: 'assertion protocol, assert, run, and test support',
     metadata: {},
     children: [
         assertionExtensionTestSuite,

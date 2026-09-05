@@ -18,12 +18,12 @@ function indent(depth: number): string {
     return '  '.repeat(depth);
 }
 
-function formatCaseName(id: CaseId): string {
+function formatCaseTitle(id: CaseId): string {
     if (id.params === null) {
-        return id.name;
+        return id.title;
     }
 
-    return `${id.name} [${id.params}]`;
+    return `${id.title} [${id.params}]`;
 }
 
 function outcomeReason(outcome: TestOutcome): string | null {
@@ -41,7 +41,7 @@ function formatDuration(wallTimeMs: number): string {
 function formatTestResult(id: CaseId, outcome: TestOutcome, wallTimeMs: number): readonly [string, string] {
     const reason = outcomeReason(outcome);
     const detail = reason === null ? '' : `: ${reason}`;
-    const message = `${formatCaseName(id)}${detail} (${formatDuration(wallTimeMs)})`;
+    const message = `${formatCaseTitle(id)}${detail} (${formatDuration(wallTimeMs)})`;
 
     if (outcome.kind === 'fail') {
         return [ errorSymbol, message ];
@@ -55,7 +55,7 @@ function formatTestResult(id: CaseId, outcome: TestOutcome, wallTimeMs: number):
 }
 
 function formatTerminalTestResult(id: CaseId, verdict: TestVerdict, wallTimeMs: number): readonly [string, string] {
-    const message = `${formatCaseName(id)} (${formatDuration(wallTimeMs)})`;
+    const message = `${formatCaseTitle(id)} (${formatDuration(wallTimeMs)})`;
 
     if (verdict === 'resource-exhausted') {
         return [ errorSymbol, `${message}: resource exhausted` ];
@@ -71,7 +71,7 @@ function formatSuiteName(event: Extract<ReporterEvent, { readonly kind: 'suite-s
 }
 
 function formatOrphan(orphan: OrphanedNode): string {
-    return `${orphan.kind}: ${orphan.name} (${orphan.file ?? '<unknown>'})`;
+    return `${orphan.kind}: ${orphan.title} (${orphan.file ?? '<unknown>'})`;
 }
 
 function logFailures(
@@ -147,7 +147,7 @@ export function createLineReporter(dependencies: LineReporterDependencies): Defi
 
         async onEvent(event) {
             if (event.kind === 'run-start') {
-                terminal.line(infoSymbol, `Test run started: ${event.root.name}`);
+                terminal.line(infoSymbol, `Test run started: ${event.root.title}`);
             } else if (event.kind === 'suite-start') {
                 logSuiteStart(event);
             } else if (event.kind === 'suite-end') {

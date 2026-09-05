@@ -312,7 +312,7 @@ reported as:
 - a `ResourceExhaustion` artifact containing the metric, budget, observed
   value, enforcement mode, sampling interval, worker id, and active case
 
-The default human message names the test file, test name, metric, budget,
+The default human message names the test file, test title, metric, budget,
 observed peak, and enforcement mode. Verbose mode may report peak resource
 usage even when no budget was exceeded, so growth is visible before it becomes
 a ceiling.

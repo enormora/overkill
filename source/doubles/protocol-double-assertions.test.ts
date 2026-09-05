@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import type { TestBody, TestScope } from '../engine/test-node.ts';
@@ -33,11 +33,11 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
                     engine.createTestCase({
                         body,
                         metadata: {},
-                        name: 'case'
+                        title: 'case'
                     })
                 ],
                 metadata: {},
-                name: 'root'
+                title: 'root'
             })
         )
     );
@@ -64,11 +64,11 @@ function metadataDisposable(dispose: () => void): MetadataDisposable {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/doubles/protocol-double-assertions.test.ts',
+    title: 'source/doubles/protocol-double-assertions.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'testAsyncIterator() tracks rejected protocol methods',
+            title: 'testAsyncIterator() tracks rejected protocol methods',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const expected = new Error('expected');
@@ -89,7 +89,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'protocol metadata rejects non-protocol values',
+            title: 'protocol metadata rejects non-protocol values',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 scope.assert.equal(protocolDisposeMethod({}), null);
@@ -99,7 +99,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'protocol metadata reports null disposal for iterator protocols',
+            title: 'protocol metadata reports null disposal for iterator protocols',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 scope.assert.equal(protocolDisposeMethod(testAsyncIterator()), null);
@@ -110,7 +110,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'protocol iterable metadata ignores thrown iterator factory calls',
+            title: 'protocol iterable metadata ignores thrown iterator factory calls',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 const source = testIterable({
@@ -129,7 +129,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'protocol iterator assertions accept protocol objects',
+            title: 'protocol iterator assertions accept protocol objects',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const source = testIterable.yields([ 'created', 'updated' ]);
@@ -150,7 +150,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'disposal assertions accept disposable protocol objects',
+            title: 'disposal assertions accept disposable protocol objects',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const first = testDisposable();
@@ -178,7 +178,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'disposal assertions reject invalid protocol inputs',
+            title: 'disposal assertions reject invalid protocol inputs',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
@@ -195,7 +195,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'disposal assertions reject protocol inputs without double methods',
+            title: 'disposal assertions reject protocol inputs without double methods',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const disposable = metadataDisposable(function dispose() {
@@ -212,7 +212,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'disposal order rejects mixed double scopes',
+            title: 'disposal order rejects mixed double scopes',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const firstScope = createTestDoubleScope();
@@ -233,7 +233,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'disposal assertions validate counts and order inputs',
+            title: 'disposal assertions validate counts and order inputs',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
@@ -247,7 +247,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'disposal order rejects invalid protocol entries',
+            title: 'disposal order rejects invalid protocol entries',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
@@ -261,7 +261,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'disposal order reports missing disposal events',
+            title: 'disposal order reports missing disposal events',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
@@ -275,7 +275,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'disposal order rejects too few runtime entries',
+            title: 'disposal order rejects too few runtime entries',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const disposables: [unknown, unknown] = [ testDisposable(), testDisposable() ];
@@ -291,7 +291,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'iterator assertions reject invalid protocol inputs',
+            title: 'iterator assertions reject invalid protocol inputs',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
@@ -308,7 +308,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'iterator assertions validate expected event counts',
+            title: 'iterator assertions validate expected event counts',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {

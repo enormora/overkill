@@ -103,7 +103,7 @@ type RunStartReporterEvent = {
     readonly kind: 'run-start';
     readonly root: {
         readonly metadata: ResolvedMetadata;
-        readonly name: string;
+        readonly title: string;
     };
     readonly startedAt: string;
 };

@@ -1,12 +1,12 @@
 import diagnosticsChannel from 'node:diagnostics_channel';
 import { clearTimeout as clearNodeTimeout, setTimeout as setNodeTimeout } from 'node:timers';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import {
     defaultMicrotestProfile,
@@ -55,7 +55,7 @@ const policyTestCase: PolicyTestCase = {
     definitionLocation: { column: null, file: '', line: null },
     id: {
         file: 'source/run/run-capability-policy.test.ts',
-        name: 'policy case',
+        title: 'policy case',
         params: null,
         suite: [ 'runtime policy' ]
     },
@@ -162,11 +162,11 @@ function publishPolicyDiagnostics(): void {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/run-capability-policy.test.ts',
+    title: 'source/run/run-capability-policy.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'orchestrator.run() reports load-time capability restrictions outside a test case',
+            title: 'orchestrator.run() reports load-time capability restrictions outside a test case',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await orchestrator.run(createRunCommand({
@@ -197,7 +197,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'runtime capability policy host readers reject invalid host values',
+            title: 'runtime capability policy host readers reject invalid host values',
             metadata: {},
             body(scope: OverkillScope) {
                 const invalidProcess = { env: { NUMBER: 1 } };
@@ -212,7 +212,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.resolve() preserves profile-level reporter lists',
+            title: 'orchestrator.resolve() preserves profile-level reporter lists',
             metadata: {},
             async body(scope: OverkillScope) {
                 const profileReporter: RunConfig['reporters'][number] = {
@@ -245,7 +245,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'runtime capability policy attributes observed case side effects',
+            title: 'runtime capability policy attributes observed case side effects',
             metadata: {},
             async body(scope: OverkillScope) {
                 const environment: Record<string, string | undefined> = { BEFORE: 'yes' };
@@ -295,7 +295,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'runtime capability policy accepts sparse unchanged storage snapshots',
+            title: 'runtime capability policy accepts sparse unchanged storage snapshots',
             metadata: {},
             async body(scope: OverkillScope) {
                 const environment: RuntimeCapabilityPolicyEnvironment = {};
@@ -328,7 +328,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'runtime capability policy reports process.env identity drift',
+            title: 'runtime capability policy reports process.env identity drift',
             metadata: {},
             async body(scope: OverkillScope) {
                 let environment: RuntimeCapabilityPolicyEnvironment = {};
@@ -359,7 +359,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'runtime capability policy records diagnostic channel strictness and raw output',
+            title: 'runtime capability policy records diagnostic channel strictness and raw output',
             metadata: {},
             async body(scope: OverkillScope) {
                 const environment: RuntimeCapabilityPolicyEnvironment = {};
