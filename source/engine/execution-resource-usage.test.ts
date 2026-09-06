@@ -1,10 +1,8 @@
 import { setTimeout as scheduleTimeout } from 'node:timers';
 import { createDeterministicWallClock } from '@enormora/wall-clock';
-import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
-    runIfMain,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { createInMemoryFinalResultReporter } from '../reporters/in-memory-reporter.ts';
@@ -382,4 +380,6 @@ export const testSuite = createOverkillSuite({
     ]
 });
 
-await runIfMain(import.meta, testSuite, { reporters: [ createOverkillLineReporter() ] });
+const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
+
+await runTestFileIfMain(import.meta, testSuite);

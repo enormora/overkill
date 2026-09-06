@@ -1,13 +1,13 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite,
     createTestCase,
-    runIfMain,
     type TestScope
 } from '../../packages/engine/engine.entry-point.ts';
+import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
+import { runIfMain } from '../direct-launcher.test.ts';
 import type { Reporter } from '../../engine/reporter.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import type { RunCommand, RunConfig, RunProcessModel, RunRequest, RunScheduling } from '../../run/run-types.ts';
@@ -482,4 +482,4 @@ export const testSuite = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testSuite, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testSuite, [ createLineReporter() ]);

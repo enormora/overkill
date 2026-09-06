@@ -1,8 +1,8 @@
 import { describe, expect, test as typeTest } from 'tstyche';
 import type {
     Metadata,
-    RunIfMainOptions,
-    RunIfMainRootOptions,
+    OutputRenderer,
+    Reporter,
     Suite,
     Table,
     TestBody,
@@ -16,7 +16,8 @@ import {
     type defineMacro,
     type Metadata as RootMetadata,
     type ParameterizedTestScope,
-    type runIfMain,
+    runIfMain,
+    type RunIfMain,
     type RunIfMainOptions as RootRunIfMainOptions,
     type RunIfMainRootOptions as RootRunIfMainRootOptions,
     type Suite as RootSuite,
@@ -38,6 +39,8 @@ declare const body: TestBody;
 declare const metadata: Metadata;
 declare const node: TestNode;
 declare const tableBody: TableTestBody<{ readonly value: number; }>;
+declare const outputRenderer: OutputRenderer;
+declare const reporter: Reporter;
 type RootRuntimeExport = keyof {
     readonly createTestFacade: typeof createTestFacade;
     readonly defineMacro: typeof defineMacro;
@@ -61,7 +64,7 @@ describe('@overkill-dev/test', function () {
         >();
         expect<typeof createTestFacade>().type.toBe<UnavailableAuthoringApi>();
         expect<typeof defineMacro>().type.toBe<UnavailableAuthoringApi>();
-        expect<typeof runIfMain>().type.toBe<UnavailableAuthoringApi>();
+        expect<typeof runIfMain>().type.toBe<RunIfMain>();
     });
 
     typeTest('creates test, suite, and table nodes from default root authoring forms', function () {
@@ -102,8 +105,15 @@ describe('@overkill-dev/test', function () {
 
     typeTest('re-exports high-level authoring types from the engine', function () {
         expect<RootMetadata>().type.toBe<Metadata>();
-        expect<RootRunIfMainOptions>().type.toBe<RunIfMainOptions>();
-        expect<RootRunIfMainRootOptions>().type.toBe<RunIfMainRootOptions>();
+        expect<RootRunIfMainOptions>().type.toBe<{
+            readonly outputRenderer?: OutputRenderer;
+            readonly reporters?: readonly Reporter[];
+            readonly root?: RootRunIfMainRootOptions;
+        }>();
+        expect<RootRunIfMainRootOptions>().type.toBe<{
+            readonly metadata: Metadata;
+            readonly title: string;
+        }>();
         expect<RootSuite>().type.toBe<Suite>();
         expect<RootTable>().type.toBe<Table>();
         expect<RootTestBody>().type.toBe<TestBody>();
@@ -111,5 +121,20 @@ describe('@overkill-dev/test', function () {
         expect<RootTestNode>().type.toBe<TestNode>();
         expect<RootTestScope>().type.toBe<TestScope>();
         expect<RootTestScopeAssertContext>().type.toBe<TestScopeAssertContext>();
+    });
+
+    typeTest('runs direct entrypoints with runner-owned options', function () {
+        expect(runIfMain).type.toBeCallableWith(import.meta, node);
+        expect(runIfMain).type.toBeCallableWith(import.meta, node, {
+            outputRenderer,
+            reporters: [ reporter ],
+            root: {
+                metadata,
+                title: 'root'
+            }
+        });
+        expect(runIfMain).type.not.toBeCallableWith(import.meta, node, { runFacts: {} });
+        expect(runIfMain).type.not.toBeCallableWith(import.meta, node, { profile: 'microtest' });
+        expect(runIfMain).type.not.toBeCallableWith(import.meta, node, { cwd: 'project' });
     });
 });

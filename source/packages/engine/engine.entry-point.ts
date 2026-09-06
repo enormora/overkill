@@ -7,7 +7,6 @@ import {
 } from '../../engine/engine.ts';
 import { createExecute } from '../../engine/execution.ts';
 import { createReporterDispatcher } from '../../engine/reporter-dispatcher.ts';
-import type { RunIfMainOptions } from '../../engine/run-if-main.ts';
 import {
     defaultTestNodeOwner,
     type RootOptions,
@@ -17,14 +16,6 @@ import {
     type TestNode,
     type TestRoot
 } from '../../engine/test-node.ts';
-
-function readProcessExitCode(): number | string | null | undefined {
-    return process.exitCode;
-}
-
-function writeProcessExitCode(exitCode: number): void {
-    process.exitCode = exitCode;
-}
 
 function writeStdoutLine(line: string): void {
     process.stdout.write(`${line}\n`);
@@ -46,10 +37,7 @@ function createEngineDependencies(): EngineDependencies {
             }),
             wallClock
         }),
-        nodeVersion: process.versions.node,
-        readExitCode: readProcessExitCode,
-        wallClock,
-        writeExitCode: writeProcessExitCode
+        wallClock
     };
 }
 
@@ -92,21 +80,12 @@ export async function execute(
     return await defaultEngine.execute(testPlan, options);
 }
 
-export async function runIfMain(
-    meta: Readonly<ImportMeta>,
-    testNode: TestNode,
-    options?: RunIfMainOptions
-): Promise<void> {
-    await defaultEngine.runIfMain(meta, testNode, options);
-}
-
 export function ownsTestNode(value: unknown): value is TestNode {
     return defaultEngine.ownsTestNode(value);
 }
 
 export type { Engine } from '../../engine/engine.ts';
 export type { Execute, ExecuteExecution, ExecuteOptions } from '../../engine/execution.ts';
-export type { RunIfMain, RunIfMainOptions, RunIfMainRootOptions } from '../../engine/run-if-main.ts';
 export type {
     TestPlanFile,
     TestPlanFromTestFilesFactory,

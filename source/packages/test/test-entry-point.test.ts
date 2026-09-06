@@ -6,7 +6,6 @@ import {
     execute,
     ownsTestNode,
     serializeValue,
-    runIfMain,
     type Suite,
     type Table,
     type TestBody,
@@ -15,11 +14,9 @@ import {
     type TestScope,
     type TestScope as OverkillScope
 } from '../engine/engine.entry-point.ts';
-import { createLineReporter } from '../reporter-line/reporter-line.entry-point.ts';
 import {
     createTestFacade,
     defineMacro,
-    runIfMain as rootRunIfMain,
     suite,
     table,
     test
@@ -51,8 +48,7 @@ type TableAuthoringExecution = {
 
 const placeholderExports: readonly PlaceholderExport[] = [
     { invoke: createTestFacade, name: 'createTestFacade' },
-    { invoke: defineMacro, name: 'defineMacro' },
-    { invoke: rootRunIfMain, name: 'runIfMain' }
+    { invoke: defineMacro, name: 'defineMacro' }
 ];
 
 const invokeTest = test as (...parameters: readonly unknown[]) => unknown;
@@ -290,4 +286,6 @@ export const testSuite = createOverkillSuite({
     ]
 });
 
-await runIfMain(import.meta, testSuite, { reporters: [ createLineReporter() ] });
+const { runIfMain: runTestFileIfMain } = await import('../../test-support/run-if-main.ts');
+
+await runTestFileIfMain(import.meta, testSuite);

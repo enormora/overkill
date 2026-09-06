@@ -1,5 +1,4 @@
-import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
-import { createSuite as createOverkillSuite, runIfMain } from '../packages/engine/engine.entry-point.ts';
+import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
 import { testSuite as runCapabilityPolicyTestSuite } from './run-capability-policy.test.ts';
 import { testSuite as runCustomEngineTestSuite } from './run-custom-engine.test.ts';
 import { testSuite as runOrchestratorCoreTestSuite } from './run-orchestrator-core-suite.test.ts';
@@ -24,4 +23,6 @@ export const testSuite = createOverkillSuite({
     ]
 });
 
-await runIfMain(import.meta, testSuite, { reporters: [ createOverkillLineReporter() ] });
+const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
+
+await runTestFileIfMain(import.meta, testSuite);

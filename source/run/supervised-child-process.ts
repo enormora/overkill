@@ -71,26 +71,30 @@ async function existingRealPath(path: string): Promise<string | null> {
     }
 }
 
-async function existingRealPaths(paths: readonly string[]): Promise<readonly string[]> {
-    const realPaths = await Promise.all(paths.map(existingRealPath));
+async function existingPermissionRoots(paths: readonly string[]): Promise<readonly string[]> {
+    const roots: string[] = [];
 
-    return realPaths.filter(function existingPath(path) {
-        return path !== null;
-    });
+    for (const candidatePath of paths) {
+        const realPath = await existingRealPath(candidatePath);
+
+        if (realPath !== null) {
+            roots.push(candidatePath, realPath);
+        }
+    }
+
+    return roots;
 }
 
 async function readPermissionRoots(options: SupervisedChildStartOptions): Promise<readonly string[]> {
-    const nodeModulesPaths = await existingRealPaths([
-        ...nodeModulesCandidates(options.cwd),
-        ...nodeModulesCandidates(childPackageRoot)
-    ]);
-
     return Array.from(
-        new Set([
-            await realpath(options.cwd),
-            await realpath(childPackageRoot),
-            ...nodeModulesPaths
-        ])
+        new Set(
+            await existingPermissionRoots([
+                options.cwd,
+                childPackageRoot,
+                ...nodeModulesCandidates(options.cwd),
+                ...nodeModulesCandidates(childPackageRoot)
+            ])
+        )
     );
 }
 

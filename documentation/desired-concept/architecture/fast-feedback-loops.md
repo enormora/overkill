@@ -202,8 +202,10 @@ node ./foo.test.ts
 That's it. No flag, no `--experimental-*`, no loader. Caveats:
 
 - A self-running Overkill file calls `runIfMain(import.meta, testNode, options?)`.
-  Reporter output is explicit; pass a reporter such as
-  `createDotReporter()` when the direct Node entrypoint should print.
+  `@overkill-dev/test` exposes this as a lazy re-export so imported modules
+  return before loading runner config or reporters. Entrypoint modules delegate
+  to `@overkill-dev/run`, match the current file to a profile, and use default
+  reporters when none are configured.
 - Files must use erasable syntax. Otherwise: `node --experimental-transform-types ./foo.test.ts`.
 - ESM extensions: `.ts` is treated as ESM by default if the nearest
   `package.json` has `"type": "module"`, otherwise as CJS. This mirrors `.js`

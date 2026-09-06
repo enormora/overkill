@@ -15,7 +15,9 @@ import {
 import { readResolvedRunInput, type ResolvedRunInput } from './run-input-resolution.ts';
 import { createLocalTestPlan } from './run-local-test-plan.ts';
 import {
+    assertCollectedRunPlanMatchesTestFamily,
     assertCollectedRunPlanHasCases,
+    assertTestPlanMatchesTestFamily,
     selectedCollectedRunPlan,
     selectedTestPlan,
     selectedTestPlanCases
@@ -156,6 +158,8 @@ function createSupervisedRunCommand(
 }
 
 function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): ResolvedRun {
+    assertCollectedRunPlanMatchesTestFamily(input.collectedPlan, input.profile.testFamily);
+
     if (!input.allowEmptySelection) {
         assertCollectedRunPlanHasCases(input.collectedPlan);
     }
@@ -227,6 +231,8 @@ function createLocalResolvedRunFromTestPlan(
     input: ResolvedRunInput,
     plannedTestPlan: Awaited<ReturnType<typeof createLocalTestPlan>>
 ): ResolvedRun {
+    assertTestPlanMatchesTestFamily(plannedTestPlan, input.profile.testFamily);
+
     const facts = freezeValue(createRunFacts({
         cases: runCaseFactsFromTestPlan(plannedTestPlan),
         config: input.config,

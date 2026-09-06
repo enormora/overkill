@@ -485,7 +485,10 @@ type TestBody = BuilderTestBody | ThrowingTestBody;
 type RunIfMainOptions = {
     readonly outputRenderer?: OutputRenderer;
     readonly reporters?: ReadonlyArray<Reporter>;
-    readonly runFacts?: RunFacts;
+    readonly root?: {
+        readonly metadata: Metadata;
+        readonly name: string;
+    };
 };
 
 type TestFacade = {

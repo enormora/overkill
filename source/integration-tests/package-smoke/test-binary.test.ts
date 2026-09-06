@@ -3,8 +3,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { createSuite, createTestCase, runIfMain, type TestScope } from '@overkill-dev/engine';
+import { createSuite, createTestCase, type TestScope } from '@overkill-dev/engine';
 import { createLineReporter } from '@overkill-dev/reporter-line';
+import { runIfMain } from './direct-launcher.test.ts';
 
 type PackageJson = {
     readonly bin: unknown;
@@ -454,4 +455,4 @@ export const testSuite = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testSuite, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testSuite, [ createLineReporter() ]);

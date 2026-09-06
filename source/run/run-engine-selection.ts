@@ -14,8 +14,7 @@ const engineMethodNames = [
     'createTestPlanFromTestFiles',
     'execute',
     'formatCaseId',
-    'ownsTestNode',
-    'runIfMain'
+    'ownsTestNode'
 ] as const;
 
 function isModuleNamespace(value: unknown): value is ModuleNamespace {

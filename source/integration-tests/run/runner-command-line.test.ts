@@ -1,11 +1,11 @@
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite,
     createTestCase,
-    runIfMain,
     type TestScope
 } from '../../packages/engine/engine.entry-point.ts';
+import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import type { Reporter } from '../../engine/reporter.ts';
+import { runIfMain } from '../direct-launcher.test.ts';
 import {
     createCommandLineRunner,
     type CommandLineRunnerDependencies,
@@ -331,4 +331,4 @@ export const testSuite = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testSuite, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testSuite, [ createLineReporter() ]);

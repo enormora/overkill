@@ -1,12 +1,10 @@
 import { fork, type ChildProcess } from 'node:child_process';
-import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
-    runIfMain,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { isReporter, type Reporter } from '../engine/reporter.ts';
+import type { Reporter } from '../engine/reporter.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import {
     defaultMicrotestProfile,
@@ -59,13 +57,16 @@ const failingEventReporter: Reporter = {
 };
 
 function createConsoleReporter(): Reporter {
-    const reporter = createOverkillLineReporter();
-
-    if (!isReporter(reporter)) {
-        throw new TypeError('Expected package line reporter.');
-    }
-
-    return reporter;
+    return {
+        dispose: null,
+        kind: 'real-time',
+        name: 'terminal',
+        onEvent() {
+            return undefined;
+        },
+        onFinish: null,
+        sinks: [ { kind: 'stdout-raw' } ]
+    };
 }
 
 function createRunConfig(profile: RunMicrotestProfileConfig): RunConfig {
@@ -439,4 +440,6 @@ export const testSuite = createOverkillSuite({
     ]
 });
 
-await runIfMain(import.meta, testSuite, { reporters: [ createOverkillLineReporter() ] });
+const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
+
+await runTestFileIfMain(import.meta, testSuite);

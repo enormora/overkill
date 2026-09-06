@@ -150,7 +150,6 @@ authoring helper:
 
 ```ts
 import { runIfMain, suite, test } from '#tests/micro';
-import { createDotReporter } from '@overkill-dev/reporter-dot';
 
 export const testNode = suite('users', [
     test('build', (scope) => {
@@ -159,9 +158,7 @@ export const testNode = suite('users', [
     })
 ]);
 
-await runIfMain(import.meta, testNode, {
-    reporters: [ createDotReporter() ]
-});
+await runIfMain(import.meta, testNode);
 ```
 
 `runIfMain(...)` is not a second-class escape hatch. It is the supported
@@ -174,7 +171,6 @@ For multi-file bare-`node` runs, use an aggregate suite entrypoint:
 
 ```ts
 import { runIfMain, suite } from '#tests/micro';
-import { createDotReporter } from '@overkill-dev/reporter-dot';
 import { testNode as orders } from './orders.test.ts';
 import { testNode as users } from './users.test.ts';
 
@@ -188,7 +184,10 @@ await runIfMain(import.meta, testNode, {
 
 The aggregate entrypoint is ordinary tests-as-values composition. Leaf files
 keep exporting composable `TestNode` values; `runIfMain(...)` wraps the chosen
-node in an execution root for direct Node runs.
+node in an execution root for direct Node runs. It uses the matching runner
+profile when the current file is covered by one profile's file policy, falls
+back to the configured `microtest` profile, and uses default reporters when no
+reporter is configured.
 
 ## Why This Is Better
 

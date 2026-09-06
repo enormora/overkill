@@ -1,9 +1,7 @@
 import { createDeterministicWallClock } from '@enormora/wall-clock';
-import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
-    runIfMain,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import {
@@ -184,14 +182,7 @@ function createReporterDeliveryEngine(wallClock: ReturnType<typeof createDetermi
             }),
             wallClock
         }),
-        nodeVersion: '26.0.0',
-        readExitCode() {
-            return process.exitCode;
-        },
-        wallClock,
-        writeExitCode(exitCode) {
-            process.exitCode = exitCode;
-        }
+        wallClock
     });
 }
 
@@ -462,4 +453,6 @@ export const testSuite = createOverkillSuite({
     ]
 });
 
-await runIfMain(import.meta, testSuite, { reporters: [ createOverkillLineReporter() ] });
+const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
+
+await runTestFileIfMain(import.meta, testSuite);

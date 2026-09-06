@@ -20,6 +20,10 @@ import {
     type RunEngineSelection,
     type RunExecutionFacts,
     type RunFacts,
+    type RunIfMain,
+    type RunIfMainOptions,
+    type RunIfMainRootOptions,
+    type runIfMain,
     type RunSelection,
     type RunMicrotestProfileConfig,
     type RunOrchestrator,
@@ -36,6 +40,10 @@ import {
     type RunScheduling,
     type SerializedValue
 } from './run.entry-point.ts';
+
+declare const outputRenderer: OutputRenderer;
+declare const reporter: Reporter;
+declare const testNode: Parameters<RunIfMain>[1];
 
 type RunRequestKeys = readonly [
     'baselineUpdateMode',
@@ -67,6 +75,31 @@ describe('@overkill-dev/run', function () {
         expect<typeof orchestrator>().type.toBe<RunOrchestrator>();
         expect<typeof orchestrator.resolve>().type.toBe<(command: RunCommand) => Promise<ResolvedRun>>();
         expect<typeof orchestrator.run>().type.toBe<(command: RunCommand) => Promise<RunResult>>();
+    });
+
+    test('exposes the direct-file execution companion', function () {
+        expect<typeof runIfMain>().type.toBe<RunIfMain>();
+        expect<RunIfMainOptions>().type.toBe<{
+            readonly outputRenderer?: OutputRenderer;
+            readonly reporters?: readonly Reporter[];
+            readonly root?: RunIfMainRootOptions;
+        }>();
+        expect<RunIfMainRootOptions>().type.toBe<{
+            readonly metadata: Parameters<RunIfMain>[1]['metadata'];
+            readonly title: string;
+        }>();
+        expect<typeof runIfMain>().type.toBeCallableWith(import.meta, testNode);
+        expect<typeof runIfMain>().type.toBeCallableWith(import.meta, testNode, {
+            outputRenderer,
+            reporters: [ reporter ],
+            root: {
+                metadata: {},
+                title: 'root'
+            }
+        });
+        expect<typeof runIfMain>().type.not.toBeCallableWith(import.meta, testNode, { runFacts: {} });
+        expect<typeof runIfMain>().type.not.toBeCallableWith(import.meta, testNode, { profile: 'microtest' });
+        expect<typeof runIfMain>().type.not.toBeCallableWith(import.meta, testNode, { cwd: 'project' });
     });
 
     test('keeps request fields explicit for the implemented runner slice', function () {

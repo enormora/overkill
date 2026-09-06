@@ -4,7 +4,6 @@ import { testSuite as reporterDeliveryCleanupTestSuite } from '../../engine/repo
 import { testSuite as reporterDeliveryTestSuite } from '../../engine/reporter-delivery.test.ts';
 import { testSuite as reporterEventQueueTestSuite } from '../../engine/reporter-event-queue.test.ts';
 import { testSuite as reporterTestSuite } from '../../engine/reporter.test.ts';
-import { testSuite as runIfMainTestSuite } from '../../engine/run-if-main.test.ts';
 import { testSuite as runResultTestSuite } from '../../engine/run-result.test.ts';
 import { testSuite as testNodeTestSuite } from '../../engine/test-node.test.ts';
 import { testSuite as enginePlanningTestSuite } from './engine-planning.ts';
@@ -18,7 +17,6 @@ export const testSuite = createSuite({
         reporterDeliveryTestSuite,
         reporterEventQueueTestSuite,
         reporterTestSuite,
-        runIfMainTestSuite,
         runResultTestSuite,
         testNodeTestSuite,
         enginePlanningTestSuite
