@@ -4,7 +4,7 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { isReporter, type Reporter } from '../engine/reporter.ts';
+import type { Reporter } from '../engine/reporter.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import {
     defaultMicrotestProfile,
@@ -57,13 +57,16 @@ const failingEventReporter: Reporter = {
 };
 
 function createConsoleReporter(): Reporter {
-    const reporter = createOverkillLineReporter();
-
-    if (!isReporter(reporter)) {
-        throw new TypeError('Expected package line reporter.');
-    }
-
-    return reporter;
+    return {
+        dispose: null,
+        kind: 'real-time',
+        name: 'terminal',
+        onEvent() {
+            return undefined;
+        },
+        onFinish: null,
+        sinks: [ { kind: 'stdout-raw' } ]
+    };
 }
 
 function createRunConfig(profile: RunMicrotestProfileConfig): RunConfig {

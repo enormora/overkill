@@ -14,7 +14,6 @@ import {
     ownsTestNode,
     serializeValue,
     type Engine,
-    type RunIfMainOptions,
     type RunResult,
     type SourceLocation,
     type TestCase,
@@ -22,6 +21,8 @@ import {
     type TestRoot,
     type TestScope
 } from '@overkill-dev/engine';
+import { createLineReporter } from '@overkill-dev/reporter-line';
+import { runIfMain } from './direct-launcher.test.ts';
 
 type SmokeCaseDefinition = {
     readonly name: string;
@@ -225,7 +226,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            title: 'consumer imports top-level @overkill-dev/engine runIfMain',
+            title: 'integration launcher returns for imported metadata',
             metadata: {},
             async body(scope: TestScope) {
                 const testCase = createTestCase({
@@ -236,11 +237,8 @@ export const testSuite = createSuite({
                     metadata: {},
                     title: 'passes'
                 });
-                const options: RunIfMainOptions = {
-                    runFacts: { smoke: true }
-                };
 
-                await runIfMain({ main: false } as ImportMeta, testCase, options);
+                await runIfMain({ main: false } as ImportMeta, testCase, []);
                 scope.assert.true(true, { message: 'runIfMain returned' });
 
                 return scope.assert.collect();
@@ -339,6 +337,4 @@ export const testSuite = createSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('../../test-support/run-if-main.ts');
-
-await runTestFileIfMain(import.meta, testSuite);
+await runIfMain(import.meta, testSuite, [ createLineReporter() ]);

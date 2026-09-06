@@ -171,8 +171,7 @@ export const testSuite = createOverkillSuite({
                         createTestPlanFromTestFiles: method,
                         execute: method,
                         formatCaseId: method,
-                        ownsTestNode: method,
-                        runIfMain: method
+                        ownsTestNode: method
                     };
                     export function getEngine() {
                         return engine;
@@ -183,7 +182,7 @@ export const testSuite = createOverkillSuite({
                 const getterEngine = await loadRunEngineModule(moduleEngine(moduleUrl, 'getEngine', 'getter'));
 
                 scope.assert.equal(typeof valueEngine.execute, 'function');
-                scope.assert.equal(typeof getterEngine.runIfMain, 'function');
+                scope.assert.equal(typeof getterEngine.execute, 'function');
 
                 return scope.assert.collect();
             }

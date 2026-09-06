@@ -3,7 +3,9 @@ import {
     createTestCase,
     type TestScope
 } from '../../packages/engine/engine.entry-point.ts';
+import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import type { Reporter } from '../../engine/reporter.ts';
+import { runIfMain } from '../direct-launcher.test.ts';
 import {
     createCommandLineRunner,
     type CommandLineRunnerDependencies,
@@ -329,6 +331,4 @@ export const testSuite = createSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('../../test-support/run-if-main.ts');
-
-await runTestFileIfMain(import.meta, testSuite);
+await runIfMain(import.meta, testSuite, [ createLineReporter() ]);

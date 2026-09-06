@@ -7,7 +7,7 @@ import {
     type Reporter,
     type RunResult,
     type TestNode
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 
 const successExitCodes = new Set<number | string | null | undefined>([ undefined, null, 0, '0' ]);
 

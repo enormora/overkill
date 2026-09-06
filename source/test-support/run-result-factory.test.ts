@@ -1,13 +1,23 @@
 import { defineNarrowingCompositeAssertion } from '../packages/assert/assert.entry-point.ts';
 import {
+    defineReporter,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
+    type Reporter,
+    type ReporterEvent,
+    type TestBody,
+    type TestNode,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import type { AssertionTestFailure, FailOutcome, RunResult, TestFailure, TestOutcome } from '../engine/run-result.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import { runIfMain } from './run-if-main.ts';
 import { runResultFactory } from './run-result-factory.ts';
+
+type CapturedRoot = {
+    readonly tags: readonly string[];
+    readonly title: string;
+};
 
 function defaultFailure(): unknown {
     return {
@@ -63,6 +73,56 @@ function assertExplicitFailureFields(scope: OverkillScope, runResult: RunResult)
             file: 'source/example.test.ts',
             line: 10
         }
+    });
+}
+
+function importMeta(main: boolean): Readonly<ImportMeta> {
+    return {
+        dirname: '/workspace',
+        filename: '/workspace/direct.test.ts',
+        main,
+        resolve(specifier: string) {
+            return import.meta.resolve(specifier);
+        },
+        url: 'file:///workspace/direct.test.ts'
+    };
+}
+
+function passingBody(scope: OverkillScope): ReturnType<TestBody> {
+    scope.assert.true(true);
+
+    return scope.assert.collect();
+}
+
+function failingBody(scope: OverkillScope): ReturnType<TestBody> {
+    scope.assert.true(false);
+
+    return scope.assert.collect();
+}
+
+function supportTestCase(body: TestBody): TestNode {
+    return createOverkillTestCase({
+        body,
+        metadata: {},
+        title: 'case'
+    });
+}
+
+function captureRoot(recordRoot: (root: CapturedRoot) => void): Reporter {
+    return defineReporter({
+        dispose: null,
+        kind: 'real-time',
+        name: 'capture-root',
+        onEvent(event: ReporterEvent) {
+            if (event.kind === 'run-start') {
+                recordRoot({
+                    tags: event.root.metadata.tags,
+                    title: event.root.title
+                });
+            }
+        },
+        onFinish: null,
+        sinks: []
     });
 }
 
@@ -214,6 +274,77 @@ export const testSuite = createOverkillSuite({
                 scope.assert.equal(runResult.perTest[1]?.verdict, 'inconclusive');
                 scope.assert.equal(runResult.perTest[1]?.outcome?.kind, 'skip');
                 scope.assert.equal(runResult.perTest[2]?.verdict, 'crashed');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            title: 'test support runIfMain() returns without running imported modules',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const originalExitCode = process.exitCode;
+
+                try {
+                    process.exitCode = undefined;
+
+                    await runIfMain(importMeta(false), supportTestCase(failingBody), { reporters: [] });
+
+                    scope.assert.equal(process.exitCode, undefined);
+                } finally {
+                    process.exitCode = originalExitCode;
+                }
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            title: 'test support runIfMain() runs direct files with explicit root options',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const roots: CapturedRoot[] = [];
+
+                await runIfMain(importMeta(true), supportTestCase(passingBody), {
+                    outputRenderer: {
+                        render(intent) {
+                            return intent.text;
+                        }
+                    },
+                    reporters: [
+                        captureRoot(function recordRoot(root) {
+                            roots.push(root);
+                        })
+                    ],
+                    root: {
+                        metadata: { tags: [ 'support' ] },
+                        title: 'support-root'
+                    }
+                });
+
+                scope.assert.deepEqual(roots, [
+                    {
+                        tags: [ 'support' ],
+                        title: 'support-root'
+                    }
+                ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            title: 'test support runIfMain() sets a failure exit code for failing direct files',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const originalExitCode = process.exitCode;
+
+                try {
+                    process.exitCode = undefined;
+
+                    await runIfMain(importMeta(true), supportTestCase(failingBody), { reporters: [] });
+
+                    scope.assert.equal(process.exitCode, 1);
+                } finally {
+                    process.exitCode = originalExitCode;
+                }
 
                 return scope.assert.collect();
             }

@@ -1,12 +1,10 @@
 import {
+    createTestCase as createDirectTestCase,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '@overkill-dev/engine';
-import {
-    createTestCase as createDirectTestCase,
     type TestBody as DirectTestBody,
-    type TestScope as DirectScope
+    type TestScope as DirectScope,
+    type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import type { Reporter } from '../engine/reporter.ts';
 import type { TestPlan } from '../engine/test-plan.ts';

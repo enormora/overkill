@@ -182,14 +182,7 @@ function createReporterDeliveryEngine(wallClock: ReturnType<typeof createDetermi
             }),
             wallClock
         }),
-        nodeVersion: '26.0.0',
-        readExitCode() {
-            return process.exitCode;
-        },
-        wallClock,
-        writeExitCode(exitCode) {
-            process.exitCode = exitCode;
-        }
+        wallClock
     });
 }
 

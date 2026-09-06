@@ -28,14 +28,7 @@ export const testSuite = createOverkillSuite({
                 const wallClock = createDeterministicWallClock();
                 const engine = createEngine({
                     execute,
-                    nodeVersion: '26.0.0',
-                    readExitCode() {
-                        return undefined;
-                    },
-                    wallClock,
-                    writeExitCode() {
-                        return undefined;
-                    }
+                    wallClock
                 });
                 const testPlan = engine.createTestPlan(
                     engine.createRoot({

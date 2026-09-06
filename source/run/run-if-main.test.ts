@@ -3,15 +3,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
+    createTestCase as createDirectTestCase,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '@overkill-dev/engine';
-import {
-    createTestCase as createDirectTestCase,
     type TestBody as DirectTestBody,
     type TestNode as DirectTestNode,
-    type TestScope as DirectScope
+    type TestScope as DirectScope,
+    type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import {
     defineReporter,

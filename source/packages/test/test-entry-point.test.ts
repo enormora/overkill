@@ -17,7 +17,6 @@ import {
 import {
     createTestFacade,
     defineMacro,
-    runIfMain as rootRunIfMain,
     suite,
     table,
     test
@@ -49,8 +48,7 @@ type TableAuthoringExecution = {
 
 const placeholderExports: readonly PlaceholderExport[] = [
     { invoke: createTestFacade, name: 'createTestFacade' },
-    { invoke: defineMacro, name: 'defineMacro' },
-    { invoke: rootRunIfMain, name: 'runIfMain' }
+    { invoke: defineMacro, name: 'defineMacro' }
 ];
 
 const invokeTest = test as (...parameters: readonly unknown[]) => unknown;
