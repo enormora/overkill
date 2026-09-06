@@ -313,7 +313,7 @@ selected profile's discovered file set and cannot be mixed with file operands.
 Important distinction:
 
 - configuration files define project policy
-- ordinary CLI selection and run-intent flags such as `--file`, `--name`,
+- ordinary CLI selection and run-intent flags such as `--file`, `--title`,
   `--id`, `--seed`, or `--shard` are still valid because they are not a
   second configuration channel; they are one run request against that
   policy

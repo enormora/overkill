@@ -54,8 +54,8 @@ current concept.
 | `overkill replay <run-id>`       | Replay a recorded run from `.overkill/runs/<id>.json`.      | [Reproducibility § Replay](../architecture/reproducibility.md#replay)                                                  |
 | `overkill replay-witness <path>` | Replay a single property/simulation failure from a witness. | [Failure Artifacts § Witnesses And Replay Artifacts](../authoring/failure-artifacts.md#witnesses-and-replay-artifacts) |
 
-`overkill list` prints a plain plan tree: file, suite path, and case name,
-with parameterized cases rendered as `case name [params]`. By default it lists
+`overkill list` prints a plain plan tree: file, suite path, and case title,
+with parameterized cases rendered as `case title [params]`. By default it lists
 only executable planned cases. `--with-orphans` appends orphaned constructed
 nodes under an `Orphans` section, or `(none)` when there are none.
 `--with-locations` appends each known suite, case, and orphan definition
@@ -154,7 +154,7 @@ configuration domain and benchmark execution uses `overkill bench`.
 | Flag                | Behavior                                               | Reference                                                                                                                 |
 | ------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
 | `--filter '<expr>'` | Filter by tags, runtime, owner, and related metadata.  | [Metadata And Selection § Filter Expression Grammar](../architecture/metadata-and-selection.md#filter-expression-grammar) |
-| `--name '<text>'`   | Name substring match.                                  | [Metadata And Selection § Local Iteration Workflow](../architecture/metadata-and-selection.md#local-iteration-workflow)   |
+| `--title '<text>'`  | Title substring match.                                 | [Metadata And Selection § Local Iteration Workflow](../architecture/metadata-and-selection.md#local-iteration-workflow)   |
 | `--file <path>`     | Restrict the run to a single file.                     | same                                                                                                                      |
 | `--last-failed`     | Run only tests that failed in the previous run.        | same                                                                                                                      |
 | `--watch`           | Rerun the selected suite with Node's built-in watcher. | [Runtime Behavior § Watch-Mode Targeting](../architecture/runtime-behavior.md#watch-mode-targeting)                       |

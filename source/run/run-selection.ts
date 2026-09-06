@@ -72,7 +72,7 @@ export function selectedTestPlan(testPlan: TestPlan, selection: RunSelection): T
 }
 
 function collectedCaseId(file: string, testCase: CollectedRunCase): CaseId {
-    return createCaseId(file, testCase.suite, testCase.name, testCase.params);
+    return createCaseId(file, testCase.suite, testCase.title, testCase.params);
 }
 
 function collectedCases(files: readonly CollectedRunFile[]): readonly CollectedCaseInput[] {

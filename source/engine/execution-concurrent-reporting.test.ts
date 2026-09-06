@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { Engine } from './engine.ts';
 import type { RealTimeReporter, ReporterEvent } from './reporter.ts';
@@ -44,20 +44,20 @@ function createReporterSignal(): ReporterSignal {
     return { notify, promise };
 }
 
-function eventCaseNames(events: readonly ReporterEvent[], kind: 'test-end' | 'test-start'): readonly string[] {
-    return events.flatMap(function toMatchingCaseName(event) {
-        return event.kind === kind ? [ event.case.name ] : [];
+function eventCaseTitles(events: readonly ReporterEvent[], kind: 'test-end' | 'test-start'): readonly string[] {
+    return events.flatMap(function toMatchingCaseTitle(event) {
+        return event.kind === kind ? [ event.case.title ] : [];
     });
 }
 
-function createPassingCase(engine: Engine, name: string): TestCase {
+function createPassingCase(engine: Engine, title: string): TestCase {
     return engine.createTestCase({
         body(testScope) {
-            testScope.assert.true(true, { message: `${name} passes` });
+            testScope.assert.true(true, { message: `${title} passes` });
             return testScope.assert.collect();
         },
         metadata: {},
-        name
+        title
     });
 }
 
@@ -72,7 +72,7 @@ function createPlanOrderedConcurrentScenario(engine: Engine): PlanOrderedConcurr
         onEvent(event) {
             events.push(event);
 
-            if (event.kind === 'test-end' && event.case.name === 'second') {
+            if (event.kind === 'test-end' && event.case.title === 'second') {
                 secondEnded.notify();
             }
         },
@@ -89,12 +89,12 @@ function createPlanOrderedConcurrentScenario(engine: Engine): PlanOrderedConcurr
                         return testScope.assert.collect();
                     },
                     metadata: {},
-                    name: 'first'
+                    title: 'first'
                 }),
                 createPassingCase(engine, 'second')
             ],
             metadata: {},
-            name: 'root'
+            title: 'root'
         })
     );
 
@@ -144,7 +144,7 @@ function createReporterSerializationScenario(engine: Engine): ReporterSerializat
                 createPassingCase(engine, 'second')
             ],
             metadata: {},
-            name: 'root'
+            title: 'root'
         })
     );
 
@@ -160,11 +160,11 @@ function createReporterSerializationScenario(engine: Engine): ReporterSerializat
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/engine/execution-concurrent-reporting.test.ts',
+    title: 'source/engine/execution-concurrent-reporting.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'execute() runs concurrent in-process cases with plan-ordered starts and results',
+            title: 'execute() runs concurrent in-process cases with plan-ordered starts and results',
             metadata: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -174,11 +174,11 @@ export const testSuite = createOverkillSuite({
                 scenario.releaseFirst.notify();
                 const result = await execution;
 
-                scope.assert.deepEqual(eventCaseNames(scenario.events, 'test-start'), [ 'first', 'second' ]);
-                scope.assert.deepEqual(eventCaseNames(scenario.events, 'test-end'), [ 'second', 'first' ]);
+                scope.assert.deepEqual(eventCaseTitles(scenario.events, 'test-start'), [ 'first', 'second' ]);
+                scope.assert.deepEqual(eventCaseTitles(scenario.events, 'test-end'), [ 'second', 'first' ]);
                 scope.assert.deepEqual(
                     result.perTest.map(function toCaseName(testResult) {
-                        return testResult.id.name;
+                        return testResult.id.title;
                     }),
                     [ 'first', 'second' ]
                 );
@@ -187,7 +187,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() serializes reporter callbacks during concurrent execution',
+            title: 'execute() serializes reporter callbacks during concurrent execution',
             metadata: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();

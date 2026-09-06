@@ -1,13 +1,13 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { loadRunConfig, type LoadedRunConfig } from './run-config.ts';
 
 const reporterConfigSource = `const reporterBrand = Symbol.for('@overkill-dev/engine/reporter');
@@ -65,11 +65,11 @@ function reporterNames(scope: OverkillScope, config: LoadedRunConfig): readonly 
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/run-config-reporters.test.ts',
+    title: 'source/run/run-config-reporters.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'loadRunConfig() preserves global reporter fallback and profile reporter overrides',
+            title: 'loadRunConfig() preserves global reporter fallback and profile reporter overrides',
             metadata: {},
             async body(scope: OverkillScope) {
                 scope.assert.deepEqual(reporterNames(scope, await loadReporterConfig()), [ 'global', 'profile' ]);

@@ -31,12 +31,23 @@ Standard subpaths:
 Implemented root authoring forms:
 
 ```ts
-import { suite, test } from '@overkill-dev/test';
+import { suite, table, test } from '@overkill-dev/test';
 
 export const testNode = suite('users', [
     test('loads user', (scope) => {
         scope.assert.equal(loadUser('42').name, 'Ada');
         return scope.assert.collect();
+    }),
+    table({
+        title: 'role access',
+        cases: [ 'admin', 'reader' ],
+        caseTitle(role) {
+            return role;
+        },
+        test(scope) {
+            scope.assert.true(canLoadUser(scope.parameters));
+            return scope.assert.collect();
+        }
     })
 ]);
 ```
@@ -48,11 +59,11 @@ Use the object form when attaching node metadata:
 
 ```ts
 export const testNode = suite({
-    name: 'users',
+    title: 'users',
     metadata: { tags: [ 'auth' ] },
     children: [
         test({
-            name: 'loads user',
+            title: 'loads user',
             metadata: { tags: [ 'critical' ] },
             body(scope) {
                 scope.assert.equal(loadUser('42').name, 'Ada');
@@ -63,8 +74,13 @@ export const testNode = suite({
 });
 ```
 
-`table`, `defineMacro`, `createTestFacade`, and `runIfMain` still throw
-explicit unavailable errors.
+`table` expands its `cases` into engine table cases during authoring. The
+body receives the original row value as `scope.parameters`; default row titles
+are `case 1`, `case 2`, and so on. Reachable tables must contain at least two
+rows.
+
+`defineMacro`, `createTestFacade`, and `runIfMain` still throw explicit
+unavailable errors.
 
 Supported command-line surface:
 
@@ -73,7 +89,7 @@ Supported command-line surface:
 - `--config <path>`
 - `--file <path>`
 - `--filter <expr>`
-- `--name <text>`
+- `--title <text>`
 - `--profile <name>`
 - `--measure-resource-usage`
 - `--resource-budget <name=value>`
@@ -85,9 +101,9 @@ Supported command-line surface:
 `residentSetGrowthBytesPerSecond`. Supplying a resource budget enables
 resource usage measurement for that run.
 
-`--filter`, `--name`, and `--file` apply the same run selection to `run` and
+`--filter`, `--title`, and `--file` apply the same run selection to `run` and
 `list`. `--filter` supports `=`, `~`, `:`, `!`, `|`, and parentheses over
-`tag`, `runtime`, `owner`, `stability`, `file`, `name`, `suite`, and `params`.
+`tag`, `runtime`, `owner`, `stability`, `file`, `title`, `suite`, and `params`.
 
 When no paths are supplied, `run` and `list` discover files from the selected
 profile's `files.include` and `files.exclude` policy. Explicit file paths run

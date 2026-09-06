@@ -1,11 +1,11 @@
 import { fork, type ChildProcess } from 'node:child_process';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { isReporter, type Reporter } from '../engine/reporter.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import {
@@ -210,11 +210,11 @@ function runnerErrorCapabilityCount(result: Awaited<ReturnType<typeof orchestrat
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/supervised-run.test.ts',
+    title: 'source/run/supervised-run.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'orchestrator.run() reports hard-timeout crashes from the supervised child',
+            title: 'orchestrator.run() reports hard-timeout crashes from the supervised child',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -231,7 +231,7 @@ export const testSuite = createOverkillSuite({
                 scope.require.defined(error);
                 scope.require.defined(error.attributedTo);
                 scope.assert.equal(error.subtype, 'crash');
-                scope.assert.equal(error.attributedTo.name, 'loops');
+                scope.assert.equal(error.attributedTo.title, 'loops');
                 scope.assert.equal(result.summary.crashed, 1);
                 scope.assert.equal(result.summary.resourceExhausted, 0);
 
@@ -239,7 +239,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() reports sampled resource exhaustion from the supervised child',
+            title: 'orchestrator.run() reports sampled resource exhaustion from the supervised child',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -261,7 +261,7 @@ export const testSuite = createOverkillSuite({
                 scope.require.defined(error);
                 scope.require.defined(error.attributedTo);
                 scope.assert.equal(error.subtype, 'resource-exhaustion');
-                scope.assert.equal(error.attributedTo.name, 'delays');
+                scope.assert.equal(error.attributedTo.title, 'delays');
                 scope.assert.equal(result.summary.crashed, 0);
                 scope.assert.equal(result.summary.resourceExhausted, 1);
 
@@ -269,7 +269,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() reports supervised active resource count exhaustion',
+            title: 'orchestrator.run() reports supervised active resource count exhaustion',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -292,13 +292,13 @@ export const testSuite = createOverkillSuite({
 
                 scope.require.defined(error);
                 scope.require.defined(error.attributedTo);
-                scope.assert.equal(error.attributedTo.name, 'delays');
+                scope.assert.equal(error.attributedTo.title, 'delays');
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() accepts measured supervised execution within budgets',
+            title: 'orchestrator.run() accepts measured supervised execution within budgets',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -315,7 +315,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() records supervised reporter event failures',
+            title: 'orchestrator.run() records supervised reporter event failures',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await orchestrator.run({
@@ -334,7 +334,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() consolidates supervised process.env policy errors',
+            title: 'orchestrator.run() consolidates supervised process.env policy errors',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await orchestrator.run(
@@ -352,7 +352,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() does not report supervised parent orchestration as runtime policy',
+            title: 'orchestrator.run() does not report supervised parent orchestration as runtime policy',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await orchestrator.run({
@@ -373,7 +373,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() covers default singleton resource tracking dependencies',
+            title: 'orchestrator.run() covers default singleton resource tracking dependencies',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await orchestrator.run(createRunCommand(delayedPassFixturePath, microtestProfile, {
@@ -391,7 +391,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'supervised child reports assignment mismatches as loader errors',
+            title: 'supervised child reports assignment mismatches as loader errors',
             metadata: {},
             async body(scope: OverkillScope) {
                 const child = fork(childEntryPoint, [ supervisedChildProcessEntryPointArgument ], {
@@ -418,7 +418,7 @@ export const testSuite = createOverkillSuite({
                     assignedCases: [
                         {
                             file: delayedPassFixturePath,
-                            name: 'missing-case',
+                            title: 'missing-case',
                             params: null,
                             suite: []
                         }

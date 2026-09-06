@@ -120,9 +120,9 @@ declare const unknownValues: readonly unknown[];
 
 type CaseIdFixture = {
     readonly file: null;
-    readonly name: 'case';
     readonly params: null;
     readonly suite: readonly ['suite'];
+    readonly title: 'case';
 };
 type TestStartReporterEvent = Extract<ReporterEvent, { readonly kind: 'test-start'; }>;
 type SuiteStartReporterEvent = Extract<ReporterEvent, { readonly kind: 'suite-start'; }>;
@@ -490,13 +490,13 @@ describe('CaseId', function () {
 
     test('requires explicit nullable identity fields', function () {
         expect<CaseId>().type.not.toBeAssignableFrom<{
-            readonly name: 'case';
             readonly suite: readonly ['suite'];
+            readonly title: 'case';
         }>();
         expect<CaseId>().type.not.toBeAssignableFrom<{
             readonly file: null;
-            readonly name: 'case';
             readonly suite: readonly ['suite'];
+            readonly title: 'case';
         }>();
     });
 });

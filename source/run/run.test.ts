@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
@@ -69,11 +69,11 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/run.test.ts',
+    title: 'source/run/run.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'orchestrator.resolve() returns frozen run facts for explicit paths',
+            title: 'orchestrator.resolve() returns frozen run facts for explicit paths',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -92,7 +92,7 @@ export const testSuite = createOverkillSuite({
                         {
                             id: {
                                 file: passingFixturePath,
-                                name: 'passes',
+                                title: 'passes',
                                 params: null,
                                 suite: [ 'fixture' ]
                             },
@@ -146,7 +146,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.resolve() generates a seed when the request does not provide one',
+            title: 'orchestrator.resolve() generates a seed when the request does not provide one',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -166,7 +166,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.resolve() rejects empty input without profile file discovery',
+            title: 'orchestrator.resolve() rejects empty input without profile file discovery',
             metadata: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function resolveEmptyPaths() {
@@ -187,7 +187,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.resolve() rejects invalid negative seeds',
+            title: 'orchestrator.resolve() rejects invalid negative seeds',
             metadata: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function resolveInvalidSeed() {
@@ -208,7 +208,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.resolve() rejects unsupported sharding',
+            title: 'orchestrator.resolve() rejects unsupported sharding',
             metadata: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function resolveUnsupportedShard() {
@@ -229,7 +229,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.resolve() rejects unknown profiles',
+            title: 'orchestrator.resolve() rejects unknown profiles',
             metadata: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function resolveUnknownProfile() {
@@ -250,7 +250,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.resolve() rejects resource budget overrides without measurement',
+            title: 'orchestrator.resolve() rejects resource budget overrides without measurement',
             metadata: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function resolveInvalidResourceUsage() {
@@ -277,7 +277,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() executes the resolved plan and reports run facts',
+            title: 'orchestrator.run() executes the resolved plan and reports run facts',
             metadata: {},
             async body(scope: OverkillScope) {
                 const reporter = createInMemoryRealTimeReporter();
@@ -307,7 +307,7 @@ export const testSuite = createOverkillSuite({
                         {
                             id: {
                                 file: passingFixturePath,
-                                name: 'passes',
+                                title: 'passes',
                                 params: null,
                                 suite: [ 'fixture' ]
                             },
@@ -373,7 +373,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() executes the supervised process profile in a child process',
+            title: 'orchestrator.run() executes the supervised process profile in a child process',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -408,7 +408,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() rejects invalid requests before collection',
+            title: 'orchestrator.run() rejects invalid requests before collection',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -429,7 +429,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'RunResolutionError exposes stable error codes',
+            title: 'RunResolutionError exposes stable error codes',
             metadata: {},
             async body(scope: OverkillScope) {
                 const error = new RunResolutionError('Unsupported.', undefined, 'unsupported-request');

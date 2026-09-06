@@ -1,18 +1,18 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { serializeValue, serializeValueWithBudget } from './serialized-value.ts';
 
 export const testSuite = createOverkillSuite({
-    name: 'source/compare/serialized-value-edge.test.ts',
+    title: 'source/compare/serialized-value-edge.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'serializeValue() handles invalid dates and anonymous functions',
+            title: 'serializeValue() handles invalid dates and anonymous functions',
             metadata: {},
             body(scope: OverkillScope) {
                 const anonymousInstance = { value: 1 };
@@ -38,7 +38,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'serializeValue() reports unavailable constructor names when prototypes cannot be read',
+            title: 'serializeValue() reports unavailable constructor names when prototypes cannot be read',
             metadata: {},
             body(scope: OverkillScope) {
                 const proxy = new Proxy({}, {
@@ -58,7 +58,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'serializeValue() reports descriptor failures',
+            title: 'serializeValue() reports descriptor failures',
             metadata: {},
             body(scope: OverkillScope) {
                 const proxy = new Proxy({}, {
@@ -83,7 +83,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'serializeValueWithBudget() truncates maps, sets, binary bytes, and arrays independently',
+            title: 'serializeValueWithBudget() truncates maps, sets, binary bytes, and arrays independently',
             metadata: {},
             body(scope: OverkillScope) {
                 const budget = {
@@ -140,7 +140,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'serializeValue() reports Map and Set impostors as unavailable',
+            title: 'serializeValue() reports Map and Set impostors as unavailable',
             metadata: {},
             body(scope: OverkillScope) {
                 const mapImpostor = Object.create(Map.prototype) as Readonly<Record<string, unknown>>;

@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { parseRunFilterExpression } from './run-filter-grammar.ts';
 
 function parseErrorMessage(expression: string): string | null {
@@ -18,19 +18,19 @@ function parseErrorMessage(expression: string): string | null {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/run-filter-grammar.test.ts',
+    title: 'source/run/run-filter-grammar.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'parseRunFilterExpression() parses field operators',
+            title: 'parseRunFilterExpression() parses field operators',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(
-                    parseRunFilterExpression('tag=fast name~"should " file:source/**/*.test.ts'),
+                    parseRunFilterExpression('tag=fast title~"should " file:source/**/*.test.ts'),
                     {
                         filters: [
                             { field: 'tag', kind: 'equals', value: 'fast' },
-                            { field: 'name', kind: 'contains', value: 'should ' },
+                            { field: 'title', kind: 'contains', value: 'should ' },
                             { field: 'file', kind: 'glob', pattern: 'source/**/*.test.ts' }
                         ],
                         kind: 'all'
@@ -41,7 +41,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'parseRunFilterExpression() keeps OR lower precedence than whitespace AND',
+            title: 'parseRunFilterExpression() keeps OR lower precedence than whitespace AND',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(
@@ -65,7 +65,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'parseRunFilterExpression() parses negated groups',
+            title: 'parseRunFilterExpression() parses negated groups',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(
@@ -92,11 +92,11 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'parseRunFilterExpression() unescapes quoted values',
+            title: 'parseRunFilterExpression() unescapes quoted values',
             metadata: {},
             body(scope: OverkillScope) {
-                scope.assert.deepEqual(parseRunFilterExpression('name~"should \\"quote\\""'), {
-                    field: 'name',
+                scope.assert.deepEqual(parseRunFilterExpression('title~"should \\"quote\\""'), {
+                    field: 'title',
                     kind: 'contains',
                     value: 'should "quote"'
                 });
@@ -110,17 +110,17 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'parseRunFilterExpression() accepts supported string dimensions',
+            title: 'parseRunFilterExpression() accepts supported string dimensions',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(
                     parseRunFilterExpression(
-                        'file:source/**/*.test.ts name~smoke owner=@payments params~EUR runtime=node stability=stable suite~checkout tag:critical-*'
+                        'file:source/**/*.test.ts title~smoke owner=@payments params~EUR runtime=node stability=stable suite~checkout tag:critical-*'
                     ),
                     {
                         filters: [
                             { field: 'file', kind: 'glob', pattern: 'source/**/*.test.ts' },
-                            { field: 'name', kind: 'contains', value: 'smoke' },
+                            { field: 'title', kind: 'contains', value: 'smoke' },
                             { field: 'owner', kind: 'equals', value: '@payments' },
                             { field: 'params', kind: 'contains', value: 'EUR' },
                             { field: 'runtime', kind: 'equals', value: 'node' },
@@ -136,7 +136,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'parseRunFilterExpression() rejects malformed expressions',
+            title: 'parseRunFilterExpression() rejects malformed expressions',
             metadata: {},
             body(scope: OverkillScope) {
                 const malformedExpressions: readonly (readonly [string, string])[] = [
@@ -147,10 +147,10 @@ export const testSuite = createOverkillSuite({
                     [ 'tag=fast |', 'Expected a filter term.' ],
                     [ '(tag=fast', 'Expected closing parenthesis.' ],
                     [ 'tag=', 'Run filter value must not be empty.' ],
-                    [ 'name~""', 'Run filter value must not be empty.' ],
+                    [ 'title~""', 'Run filter value must not be empty.' ],
                     [ 'tag fast', 'Expected one of =, ~, or : after run filter dimension.' ],
-                    [ 'name~"unterminated', 'Unterminated double quote string.' ],
-                    [ 'name~"unterminated\\', 'Unterminated double quote string.' ],
+                    [ 'title~"unterminated', 'Unterminated double quote string.' ],
+                    [ 'title~"unterminated\\', 'Unterminated double quote string.' ],
                     [ "suite~'unterminated", 'Unterminated single quote string.' ]
                 ];
 

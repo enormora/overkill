@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import {
     defaultMicrotestProfile,
     defaultRunConfig,
@@ -96,11 +96,11 @@ function invalidCustomEngineCommand(engine: RunCommand['engine']): RunCommand {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/run-custom-engine.test.ts',
+    title: 'source/run/run-custom-engine.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'orchestrator.run() rejects instance engines for supervised execution',
+            title: 'orchestrator.run() rejects instance engines for supervised execution',
             metadata: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function runWithCustomSupervisedEngine() {
@@ -119,7 +119,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() rejects invalid supervised module engine requests',
+            title: 'orchestrator.run() rejects invalid supervised module engine requests',
             metadata: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function runWithEmptyModuleUrl() {
@@ -159,7 +159,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunEngineModule() loads value and getter engine exports',
+            title: 'loadRunEngineModule() loads value and getter engine exports',
             metadata: {},
             async body(scope: OverkillScope) {
                 const moduleUrl = await writeCustomEngineModule(`
@@ -191,7 +191,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'loadRunEngineModule() reports invalid module exports',
+            title: 'loadRunEngineModule() reports invalid module exports',
             metadata: {},
             async body(scope: OverkillScope) {
                 const moduleUrl = await writeCustomEngineModule(`
@@ -218,7 +218,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() executes a supervised module engine value export',
+            title: 'orchestrator.run() executes a supervised module engine value export',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await orchestrator.run(customEngineCommand('engine', 'value'));
@@ -230,7 +230,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.resolve() collects a supervised module engine getter export',
+            title: 'orchestrator.resolve() collects a supervised module engine getter export',
             metadata: {},
             async body(scope: OverkillScope) {
                 const resolvedRun = await orchestrator.resolve(customEngineCommand('getEngine', 'getter'));
@@ -240,7 +240,7 @@ export const testSuite = createOverkillSuite({
                 scope.assert.equal(resolvedRun.plan.kind, 'supervised');
                 scope.assert.deepEqual(firstCase.id, {
                     file: customEnginePassingFixturePath,
-                    name: 'custom engine passes',
+                    title: 'custom engine passes',
                     params: null,
                     suite: []
                 });
@@ -249,7 +249,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() reports invalid module engine exports',
+            title: 'orchestrator.run() reports invalid module engine exports',
             metadata: {},
             async body(scope: OverkillScope) {
                 const invalidValueResult = await orchestrator.run(customEngineCommand('invalidEngine', 'value'));
@@ -268,7 +268,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.run() rejects module engines when test nodes use another engine',
+            title: 'orchestrator.run() rejects module engines when test nodes use another engine',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await orchestrator.run(customEngineCommand('engine', 'value', [ passingFixturePath ]));

@@ -1,11 +1,11 @@
 import { createDeterministicWallClock } from '@enormora/wall-clock';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import {
     createExecutionSupervision,
@@ -26,7 +26,7 @@ const softTimeoutPolicy = {
     timeoutMilliseconds: 10
 };
 
-function createPlannedCase(name: string, body: TestCaseBody): TestPlanCase {
+function createPlannedCase(title: string, body: TestCaseBody): TestPlanCase {
     const engine = createEngine();
     const testPlan = engine.createTestPlan(
         engine.createRoot({
@@ -34,11 +34,11 @@ function createPlannedCase(name: string, body: TestCaseBody): TestPlanCase {
                 engine.createTestCase({
                     body,
                     metadata: {},
-                    name
+                    title
                 })
             ],
             metadata: {},
-            name: 'root'
+            title: 'root'
         })
     );
     const [ testCase ] = testPlan.cases;
@@ -107,15 +107,15 @@ function assertHardTimeoutResult(
 
     scope.assert.equal(executedCase.result.verdict, 'crashed');
     scope.assert.equal(error.subtype, 'crash');
-    scope.assert.equal(error.attributedTo.name, 'hard timeout');
+    scope.assert.equal(error.attributedTo.title, 'hard timeout');
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/engine/execution-timeout-supervision.test.ts',
+    title: 'source/engine/execution-timeout-supervision.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'executeCaseBody() completes active cases after the hard timeout',
+            title: 'executeCaseBody() completes active cases after the hard timeout',
             metadata: {},
             async body(scope: OverkillScope) {
                 const wallClock = createDeterministicWallClock();
@@ -132,7 +132,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'executeCaseBody() appends a soft timeout failure to body failures',
+            title: 'executeCaseBody() appends a soft timeout failure to body failures',
             metadata: {},
             async body(scope: OverkillScope) {
                 const bodyGate = Promise.withResolvers<undefined>();
@@ -159,7 +159,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'executeCaseBody() converts a passing body into a soft timeout failure',
+            title: 'executeCaseBody() converts a passing body into a soft timeout failure',
             metadata: {},
             async body(scope: OverkillScope) {
                 const bodyGate = Promise.withResolvers<undefined>();

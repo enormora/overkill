@@ -1,13 +1,13 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
-import { defineCompositeAssertion as definePublishedCompositeAssertion } from '@overkill-dev/assert';
+} from '../packages/engine/engine.entry-point.ts';
 import {
     defineCompositeAssertion,
+    defineCompositeAssertion as definePublishedCompositeAssertion,
     defineNarrowingCompositeAssertion
 } from '../packages/assert/assert.entry-point.ts';
 import type {
@@ -66,11 +66,11 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
                     engine.createTestCase({
                         body,
                         metadata: {},
-                        name: 'case'
+                        title: 'case'
                     })
                 ],
                 metadata: {},
-                name: 'root'
+                title: 'root'
             })
         )
     );
@@ -153,11 +153,11 @@ function firstForeignChild(outcome: FailOutcome): FailedForeignCheck | null {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/engine/assertion-execution-composite.test.ts',
+    title: 'source/engine/assertion-execution-composite.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'execute() records callable composite assertion references as one planned boundary',
+            title: 'execute() records callable composite assertion references as one planned boundary',
             metadata: {},
             async body(scope: OverkillScope) {
                 const resultOk = defineCompositeAssertion({
@@ -190,7 +190,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() reports composite parent failures with child diagnostics',
+            title: 'execute() reports composite parent failures with child diagnostics',
             metadata: {},
             async body(scope: OverkillScope) {
                 const resultOk = defineCompositeAssertion({
@@ -271,7 +271,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() records narrowing assertion references through assert',
+            title: 'execute() records narrowing assertion references through assert',
             metadata: {},
             async body(scope: OverkillScope) {
                 const isString = defineNarrowingCompositeAssertion({
@@ -291,7 +291,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() rejects non-engine assertion references',
+            title: 'execute() rejects non-engine assertion references',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
@@ -309,7 +309,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() rejects non-narrowing references through require',
+            title: 'execute() rejects non-narrowing references through require',
             metadata: {},
             async body(scope: OverkillScope) {
                 const reference = defineCompositeAssertion({
@@ -333,7 +333,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() short-circuits failed narrowing assertion references through require',
+            title: 'execute() short-circuits failed narrowing assertion references through require',
             metadata: {},
             async body(scope: OverkillScope) {
                 const error = new Error('boom');
@@ -394,7 +394,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() rejects unawaited async custom assertions at collect',
+            title: 'execute() rejects unawaited async custom assertions at collect',
             metadata: {},
             async body(scope: OverkillScope) {
                 const eventuallyOk = defineCompositeAssertion({
@@ -427,7 +427,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() normalizes foreign bridge failures under the composite parent',
+            title: 'execute() normalizes foreign bridge failures under the composite parent',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {

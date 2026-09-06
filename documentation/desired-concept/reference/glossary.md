@@ -103,7 +103,7 @@ Source: [Microtests And Capabilities](../authoring/microtests-and-capabilities.m
 
 ## Suite
 
-A `TestNode` that groups child nodes under a name. Suites are for naming,
+A `TestNode` that groups child nodes under a title. Suites are for naming,
 identity composition, and metadata inheritance; they do not carry hooks or
 shared mutable lifecycle.
 

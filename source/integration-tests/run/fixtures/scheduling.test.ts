@@ -13,7 +13,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             },
             metadata: {},
-            name: 'delayed'
+            title: 'delayed'
         }),
         createTestCase({
             body(scope) {
@@ -22,9 +22,9 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             },
             metadata: {},
-            name: 'immediate'
+            title: 'immediate'
         })
     ],
     metadata: {},
-    name: 'scheduling fixture'
+    title: 'scheduling fixture'
 });

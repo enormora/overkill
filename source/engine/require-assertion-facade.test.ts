@@ -1,11 +1,11 @@
-import { defineNarrowingCompositeAssertion } from '@overkill-dev/assert';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { defineNarrowingCompositeAssertion } from '../packages/assert/assert.entry-point.ts';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { RequireAssertionNode } from '../assertion-protocol/assertion-node.ts';
 import type { AssertionSource, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import {
@@ -131,11 +131,11 @@ function recordRequireNodes(facade: RequireAssertionFacade): void {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/engine/require-assertion-facade.test.ts',
+    title: 'source/engine/require-assertion-facade.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'createRecordingRequireFacade() records every built-in requirement node',
+            title: 'createRecordingRequireFacade() records every built-in requirement node',
             metadata: {},
             body(scope: OverkillScope) {
                 const recording = createRequireRecording();
@@ -201,7 +201,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'createRecordingRequireFacade() applies annotated messages',
+            title: 'createRecordingRequireFacade() applies annotated messages',
             metadata: {},
             body(scope: OverkillScope) {
                 const recording = createRequireRecording();

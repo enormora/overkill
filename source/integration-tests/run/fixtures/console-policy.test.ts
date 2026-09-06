@@ -9,9 +9,9 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             },
             metadata: {},
-            name: 'writes console output'
+            title: 'writes console output'
         })
     ],
     metadata: {},
-    name: 'fixture'
+    title: 'fixture'
 });

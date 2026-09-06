@@ -172,7 +172,7 @@ export function createBriefReporter(): DefinedReporter<RealTimeReporter<BriefRep
                     planned: readPlannedCount(event.facts)
                 };
 
-                return [ stdout(`run ${event.root.name}`, null) ];
+                return [ stdout(`run ${event.root.title}`, null) ];
             }
 
             if (event.kind === 'test-end') {

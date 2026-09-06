@@ -125,7 +125,7 @@ is deferred to the root authoring and module export design.
 
 Propagation is a tree fold computed at collection time. The resolved
 metadata is part of the test's identity for selection but not for artifact
-identity (which uses only file/suite/name structure; see
+identity (which uses only file/suite/title structure; see
 [Artifact Identity](./artifact-identity.md)).
 
 ## Selection Model
@@ -137,7 +137,7 @@ freeze lives in [Composition Order](./composition-order.md).
 
 Filterable dimensions:
 
-- test id through the programmatic API (file, suite path, name, params)
+- test id through the programmatic API (file, suite path, title, params)
 - file path (glob)
 - tag set (`--tag fast`, `--tag '!flaky'`)
 - metadata fields (`--owner '@auth-team'`)
@@ -172,7 +172,7 @@ term     := dimension '=' value          # equality
          |  expr '|' expr                # OR (lower precedence than space-AND)
 value    := identifier | quoted-string
 dimension := 'tag' | 'runtime' | 'owner' | 'stability'
-          |  'file' | 'name' | 'suite' | 'params'
+          |  'file' | 'title' | 'suite' | 'params'
 ```
 
 Examples:
@@ -180,7 +180,7 @@ Examples:
 ```text
 --filter 'tag=fast !tag=flaky'                        # fast AND not flaky
 --filter 'file:source/auth/* tag=critical'            # auth files, critical only
---filter 'name~"should "'                             # name contains text
+--filter 'title~"should "'                            # title contains text
 ```
 
 Rules:
@@ -214,7 +214,7 @@ Both forms produce the same internal predicate tree.
 
 The replacement for `.only`:
 
-- `--name 'login'` runs tests whose name contains the text
+- `--title 'login'` runs tests whose title contains the text
 - `--file source/auth/login.test.ts` runs only that file
 - `--last-failed` runs tests that failed in the previous run
 - `--watch` reruns the selected suite on file change (uses Node's
@@ -279,12 +279,12 @@ operates on the result. See [Composition Order](./composition-order.md) and
 Embedders (IDEs, MCP servers, CI tools) construct filters programmatically:
 
 ```ts
-import { all, any, file, name, not, tag } from '@overkill-dev/run/filters';
+import { all, any, file, not, tag, title } from '@overkill-dev/run/filters';
 
 const filter = all([
     tag('fast'),
     not(tag('flaky')),
-    any([ file('source/auth/**'), name('login') ])
+    any([ file('source/auth/**'), title('login') ])
 ]);
 
 await orchestrator.run({

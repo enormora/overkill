@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { Engine } from './engine.ts';
 import type { TestCaseOptions } from './test-node.ts';
@@ -12,18 +12,18 @@ import type { TestCaseOptions } from './test-node.ts';
 type TestCase = ReturnType<Engine['createTestCase']>;
 type SourceLocation = NonNullable<TestCaseOptions['definitionLocation']>;
 
-function createPassingCase(engine: Engine, name: string): TestCase {
+function createPassingCase(engine: Engine, title: string): TestCase {
     return engine.createTestCase({
         body(testScope) {
             testScope.assert.true(true, { message: 'passes' });
             return testScope.assert.collect();
         },
         metadata: {},
-        name
+        title
     });
 }
 
-function createLocatedPassingCase(engine: Engine, name: string, definitionLocation: SourceLocation): TestCase {
+function createLocatedPassingCase(engine: Engine, title: string, definitionLocation: SourceLocation): TestCase {
     return engine.createTestCase({
         body(testScope) {
             testScope.assert.true(true);
@@ -31,7 +31,7 @@ function createLocatedPassingCase(engine: Engine, name: string, definitionLocati
         },
         definitionLocation,
         metadata: {},
-        name
+        title
     });
 }
 
@@ -46,11 +46,11 @@ function createLocatedPlan(
                 children: [ createLocatedPassingCase(engine, 'located test', testLocation) ],
                 definitionLocation: suiteLocation,
                 metadata: {},
-                name: 'located suite'
+                title: 'located suite'
             })
         ],
         metadata: {},
-        name: 'root'
+        title: 'root'
     }));
 }
 
@@ -65,22 +65,22 @@ function createPlanWithOrphans(
         children: [],
         definitionLocation: unusedSuiteLocation,
         metadata: {},
-        name: 'unused suite'
+        title: 'unused suite'
     });
 
     return engine.createTestPlan(engine.createRoot({
         children: [ reached ],
         metadata: {},
-        name: 'root'
+        title: 'root'
     }));
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/engine/test-plan-location.test.ts',
+    title: 'source/engine/test-plan-location.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'createTestPlan() preserves supplied definition locations',
+            title: 'createTestPlan() preserves supplied definition locations',
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -95,7 +95,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'createTestPlan() reports constructed nodes that do not reach the root as orphans',
+            title: 'createTestPlan() reports constructed nodes that do not reach the root as orphans',
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -105,8 +105,8 @@ export const testSuite = createOverkillSuite({
 
                 scope.assert.equal(testPlan.defined, 3);
                 scope.assert.deepEqual(testPlan.orphans, [
-                    { definitionLocation: unusedTestLocation, file: null, kind: 'test', name: 'unused test' },
-                    { definitionLocation: unusedSuiteLocation, file: null, kind: 'suite', name: 'unused suite' }
+                    { definitionLocation: unusedTestLocation, file: null, kind: 'test', title: 'unused test' },
+                    { definitionLocation: unusedSuiteLocation, file: null, kind: 'suite', title: 'unused suite' }
                 ]);
 
                 return scope.assert.collect();

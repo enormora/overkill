@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { rule } from './double-rule.ts';
 import { testDouble } from './test-double.ts';
 
@@ -13,11 +13,11 @@ type ClientWithId = {
 };
 
 export const testSuite = createOverkillSuite({
-    name: 'source/doubles/test-double-construction.test.ts',
+    title: 'source/doubles/test-double-construction.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'construction rules can call custom answers',
+            title: 'construction rules can call custom answers',
             metadata: {},
             body(scope: OverkillScope) {
                 type ClientConstructor = new (id: string) => ClientWithId;
@@ -36,7 +36,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'construction rules can sequence answers',
+            title: 'construction rules can sequence answers',
             metadata: {},
             body(scope: OverkillScope) {
                 type ClientConstructor = new (id: string) => ClientWithId;
@@ -59,7 +59,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'construction rules can throw',
+            title: 'construction rules can throw',
             metadata: {},
             body(scope: OverkillScope) {
                 type ClientConstructor = new () => ClientWithId;
@@ -77,7 +77,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'constructor doubles throw TypeError when no behavior can answer',
+            title: 'constructor doubles throw TypeError when no behavior can answer',
             metadata: {},
             body(scope: OverkillScope) {
                 type ClientConstructor = new (id: string) => ClientWithId;
@@ -94,7 +94,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'constructor doubles reject primitive behavior answers',
+            title: 'constructor doubles reject primitive behavior answers',
             metadata: {},
             body(scope: OverkillScope) {
                 type ClientConstructor = new () => ClientWithId;

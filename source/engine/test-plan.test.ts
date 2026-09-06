@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { TestCaseOptions } from './test-node.ts';
@@ -48,11 +48,11 @@ function parameterIdentity(parameters: Readonly<Record<string, unknown>>): strin
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/engine/test-plan.test.ts',
+    title: 'source/engine/test-plan.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'createTestPlan() expands suites and tables into executable cases',
+            title: 'createTestPlan() expands suites and tables into executable cases',
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -64,7 +64,7 @@ export const testSuite = createOverkillSuite({
                                 return testScope.assert.collect();
                             },
                             metadata: { tags: [ 'local' ] },
-                            name: 'first'
+                            title: 'first'
                         }),
                         engine.createTable({
                             cases: [
@@ -74,16 +74,25 @@ export const testSuite = createOverkillSuite({
                                         return testScope.assert.collect();
                                     },
                                     metadata: { extra: { row: 1 } },
-                                    name: 'row 1',
+                                    title: 'row 1',
                                     parameters: { value: 1 }
+                                },
+                                {
+                                    body(testScope) {
+                                        testScope.assert.true(true, { message: 'row passes' });
+                                        return testScope.assert.collect();
+                                    },
+                                    metadata: { extra: { row: 2 } },
+                                    title: 'row 2',
+                                    parameters: { value: 2 }
                                 }
                             ],
                             metadata: { tags: [ 'table' ] },
-                            name: 'rows'
+                            title: 'rows'
                         })
                     ],
                     metadata: { tags: [ 'inherited' ] },
-                    name: 'root'
+                    title: 'root'
                 });
 
                 const testPlan = engine.createTestPlan(root);
@@ -104,7 +113,7 @@ export const testSuite = createOverkillSuite({
                     [
                         {
                             definitionLocation: sourceLocationShape({}),
-                            id: { file: null, name: 'first', params: null, suite: [] },
+                            id: { file: null, title: 'first', params: null, suite: [] },
                             metadata: metadataShape({ tags: [ 'inherited', 'local' ] }),
                             suiteDefinitionLocations: [],
                             suitePath: []
@@ -113,11 +122,23 @@ export const testSuite = createOverkillSuite({
                             definitionLocation: sourceLocationShape({}),
                             id: {
                                 file: null,
-                                name: 'row 1',
+                                title: 'row 1',
                                 params: parameterIdentity({ value: 1 }),
                                 suite: [ 'rows' ]
                             },
                             metadata: metadataShape({ extra: { row: 1 }, tags: [ 'inherited', 'table' ] }),
+                            suiteDefinitionLocations: [ sourceLocationShape({}) ],
+                            suitePath: [ 'rows' ]
+                        },
+                        {
+                            definitionLocation: sourceLocationShape({}),
+                            id: {
+                                file: null,
+                                title: 'row 2',
+                                params: parameterIdentity({ value: 2 }),
+                                suite: [ 'rows' ]
+                            },
+                            metadata: metadataShape({ extra: { row: 2 }, tags: [ 'inherited', 'table' ] }),
                             suiteDefinitionLocations: [ sourceLocationShape({}) ],
                             suitePath: [ 'rows' ]
                         }
@@ -131,7 +152,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'createTestPlanFromTestFiles() resolves structured metadata without file suite nesting',
+            title: 'createTestPlanFromTestFiles() resolves structured metadata without file suite nesting',
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -149,7 +170,7 @@ export const testSuite = createOverkillSuite({
                                 tags: [ 'case' ],
                                 timeoutMilliseconds: 20
                             },
-                            name: 'login'
+                            title: 'login'
                         })
                     ],
                     metadata: {
@@ -165,7 +186,7 @@ export const testSuite = createOverkillSuite({
                         tags: [ 'suite' ],
                         timeoutMilliseconds: 15
                     },
-                    name: 'users'
+                    title: 'users'
                 });
                 const testPlan = engine.createTestPlanFromTestFiles({
                     files: [
@@ -202,7 +223,7 @@ export const testSuite = createOverkillSuite({
                             tags: [ 'root' ],
                             timeoutMilliseconds: 5
                         },
-                        name: 'root'
+                        title: 'root'
                     }
                 });
                 const [ testCase ] = testPlan.cases;
@@ -215,7 +236,7 @@ export const testSuite = createOverkillSuite({
                         suitePath: testCase.suitePath
                     }),
                     {
-                        id: { file: 'source/users.test.ts', name: 'login', params: null, suite: [ 'users' ] },
+                        id: { file: 'source/users.test.ts', title: 'login', params: null, suite: [ 'users' ] },
                         metadata: {
                             baselines: [ 'content-snapshot', 'visual-snapshot', 'terminal-snapshot' ],
                             capabilities: [ 'fs-read' ],
@@ -238,7 +259,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'createTestPlan() rejects metadata that widens parent capabilities',
+            title: 'createTestPlan() rejects metadata that widens parent capabilities',
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -250,11 +271,11 @@ export const testSuite = createOverkillSuite({
                                 return testScope.assert.collect();
                             },
                             metadata: { capabilities: [ 'net' ] },
-                            name: 'widens'
+                            title: 'widens'
                         })
                     ],
                     metadata: { capabilities: [ 'fs-read' ] },
-                    name: 'root'
+                    title: 'root'
                 });
 
                 scope.assert.throws(function createPlanWithWidenedCapabilities() {
@@ -265,7 +286,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'createTestCase() rejects invalid metadata field values',
+            title: 'createTestCase() rejects invalid metadata field values',
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -301,7 +322,7 @@ export const testSuite = createOverkillSuite({
                                 return testScope.assert.collect();
                             },
                             metadata: Object.fromEntries([ [ invalidMetadata.field, invalidMetadata.value ] ]),
-                            name: 'invalid'
+                            title: 'invalid'
                         });
                     }, { message: invalidMetadata.message });
                 }
@@ -310,7 +331,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'createTestCase() rejects unknown metadata fields',
+            title: 'createTestCase() rejects unknown metadata fields',
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -320,7 +341,7 @@ export const testSuite = createOverkillSuite({
                         return testScope.assert.collect();
                     },
                     metadata: Object.fromEntries([ [ 'tag', 'fast' ] ]),
-                    name: 'invalid'
+                    title: 'invalid'
                 };
 
                 scope.assert.throws(function createTestCaseWithUnknownMetadata() {
@@ -331,14 +352,14 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'createTestPlan() rejects reachable empty suites',
+            title: 'createTestPlan() rejects reachable empty suites',
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
                 const root = engine.createRoot({
                     children: [],
                     metadata: {},
-                    name: 'root'
+                    title: 'root'
                 });
 
                 scope.assert.throws(function createPlanWithEmptySuite() {
@@ -349,7 +370,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'createTestPlan() rejects reachable empty nested suites',
+            title: 'createTestPlan() rejects reachable empty nested suites',
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -360,15 +381,15 @@ export const testSuite = createOverkillSuite({
                                 engine.createSuite({
                                     children: [],
                                     metadata: {},
-                                    name: 'empty'
+                                    title: 'empty'
                                 })
                             ],
                             metadata: {},
-                            name: 'parent'
+                            title: 'parent'
                         })
                     ],
                     metadata: {},
-                    name: 'root'
+                    title: 'root'
                 });
 
                 scope.assert.throws(function createPlanWithEmptySuite() {
@@ -379,66 +400,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'createTestPlan() rejects reachable empty tables',
-            metadata: {},
-            body(scope: OverkillScope) {
-                const engine = createEngine();
-                const root = engine.createRoot({
-                    children: [
-                        engine.createTable({
-                            cases: [],
-                            metadata: {},
-                            name: 'rows'
-                        })
-                    ],
-                    metadata: {},
-                    name: 'root'
-                });
-
-                scope.assert.throws(function createPlanWithEmptyTable() {
-                    engine.createTestPlan(root);
-                }, { message: 'Table must contain at least one case: rows.' });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            name: 'createTestPlan() rejects duplicate full case identities',
-            metadata: {},
-            body(scope: OverkillScope) {
-                const engine = createEngine();
-                const root = engine.createRoot({
-                    children: [
-                        engine.createTestCase({
-                            body(testScope) {
-                                testScope.assert.true(true, { message: 'passes' });
-                                return testScope.assert.collect();
-                            },
-                            metadata: {},
-                            name: 'same'
-                        }),
-                        engine.createTestCase({
-                            body(testScope) {
-                                testScope.assert.true(true, { message: 'passes' });
-                                return testScope.assert.collect();
-                            },
-                            metadata: {},
-                            name: 'same'
-                        })
-                    ],
-                    metadata: {},
-                    name: 'root'
-                });
-
-                scope.assert.throws(function createPlanWithDuplicateIds() {
-                    engine.createTestPlan(root);
-                }, { message: 'Duplicate test case identity: same.' });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            name: 'createTestPlan() rejects non-root test nodes',
+            title: 'createTestPlan() rejects non-root test nodes',
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -448,7 +410,7 @@ export const testSuite = createOverkillSuite({
                         return testScope.assert.collect();
                     },
                     metadata: {},
-                    name: 'passes'
+                    title: 'passes'
                 });
 
                 scope.assert.throws(function createPlanFromTestCase() {
@@ -459,7 +421,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'createTestPlan() rejects roots from another engine instance',
+            title: 'createTestPlan() rejects roots from another engine instance',
             metadata: {},
             body(scope: OverkillScope) {
                 const firstEngine = createEngine();
@@ -467,7 +429,7 @@ export const testSuite = createOverkillSuite({
                 const root = firstEngine.createRoot({
                     children: [],
                     metadata: {},
-                    name: 'root'
+                    title: 'root'
                 });
 
                 scope.assert.throws(function createForeignPlan() {

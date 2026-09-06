@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { FailedForeignCheck, FailedLeafCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import type { Diff } from '../diff/diff-shape.ts';
@@ -31,11 +31,11 @@ function failedCheck(diff: Diff | null): FailedLeafCheck {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/reporters/line-failure-rendering-edge.test.ts',
+    title: 'source/reporters/line-failure-rendering-edge.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'line failure formatter renders scalar serialized value variants',
+            title: 'line failure formatter renders scalar serialized value variants',
             metadata: {},
             body(scope: OverkillScope) {
                 const diff: Diff = {
@@ -69,7 +69,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'line failure formatter renders valid property paths and named functions',
+            title: 'line failure formatter renders valid property paths and named functions',
             metadata: {},
             body(scope: OverkillScope) {
                 const lines = formatFailure({
@@ -97,7 +97,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'line failure formatter renders foreign checks without diff data',
+            title: 'line failure formatter renders foreign checks without diff data',
             metadata: {},
             body(scope: OverkillScope) {
                 const check: FailedForeignCheck = {
@@ -129,7 +129,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'line failure formatter renders arrays, objects, maps, sets, and invalid dates',
+            title: 'line failure formatter renders arrays, objects, maps, sets, and invalid dates',
             metadata: {},
             body(scope: OverkillScope) {
                 const diff: Diff = {
@@ -168,7 +168,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name:
+            title:
                 'line failure formatter renders regexp, errors, data views, circulars, opaque, and unavailable values',
             metadata: {},
             body(scope: OverkillScope) {
@@ -205,7 +205,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'line failure formatter truncates long diff output by line count',
+            title: 'line failure formatter truncates long diff output by line count',
             metadata: {},
             body(scope: OverkillScope) {
                 const failure: TestFailure = {
@@ -231,7 +231,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'line failure formatter renders missing collection operations',
+            title: 'line failure formatter renders missing collection operations',
             metadata: {},
             body(scope: OverkillScope) {
                 const objectLines = formatFailure({
@@ -295,7 +295,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'line failure formatter renders timeout failures',
+            title: 'line failure formatter renders timeout failures',
             metadata: {},
             body(scope: OverkillScope) {
                 const timeoutLines = formatFailure({
@@ -313,7 +313,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'failure summary formats timeout failures',
+            title: 'failure summary formats timeout failures',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.equal(

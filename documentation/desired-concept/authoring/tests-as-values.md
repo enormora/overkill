@@ -181,7 +181,7 @@ import { testNode as users } from './users.test.ts';
 export const testNode = suite('all', [ users, orders ]);
 
 await runIfMain(import.meta, testNode, {
-    root: { name: 'all', metadata: {} },
+    root: { title: 'all', metadata: {} },
     reporters: [ createDotReporter() ]
 });
 ```
@@ -301,7 +301,7 @@ type TestNode = (TestCase | Suite | Table) & {
 
 type TestCase = {
     readonly kind: 'test';
-    readonly name: string;
+    readonly title: string;
     readonly metadata: Metadata;
     readonly capabilities: ReadonlyArray<Capability>;
     readonly run: (scope: TestScope) => Promise<TestOutcome> | TestOutcome;
@@ -313,14 +313,14 @@ type ParameterizedTestScope<TParameters> = TestScope & {
 
 type Suite = {
     readonly kind: 'suite';
-    readonly name: string;
+    readonly title: string;
     readonly metadata: Metadata;
     readonly children: ReadonlyArray<TestNode>;
 };
 
 type Table = {
     readonly kind: 'table';
-    readonly name: string;
+    readonly title: string;
     readonly metadata: Metadata;
     readonly cases: ReadonlyArray<TableCase>;
     readonly run: (case_: TableCase, scope: ParameterizedTestScope<TableCase>) => Promise<TestOutcome> | TestOutcome;
@@ -369,10 +369,12 @@ The settled semantics should be:
 - `title` names the table/group
 - `cases` is plain data, not a second row-wrapper DSL
 - `caseTitle` is optional and derives each expanded child case title
+- `caseTitle` receives the original row value and a zero-based index
 - if `caseTitle` is omitted, Overkill generates deterministic fallback
-  names such as `case 1`, `case 2`, ...
+  titles such as `case 1`, `case 2`, ...
 - the callback is named `test` and receives the ordinary `scope` object
   refined with `scope.parameters`
+- reachable tables must contain at least two rows
 - tables are authoring sugar over the same underlying expansion model as
   other parameterized helpers; whether that shares macro machinery
   internally is an implementation detail
@@ -587,7 +589,7 @@ macros. Both are pure tree operations.
 
 ### "How do I see test errors at registration time?"
 
-In imperative runners, a typo in a test name is visible immediately when the
+In imperative runners, a typo in a test title is visible immediately when the
 file loads. With tests-as-values, the file loads even if a test value is
 malformed. Mitigation: validate the suite structurally in development mode
 on load (cheap), and provide a typed builder so most errors are caught by

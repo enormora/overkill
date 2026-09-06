@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { createCaseId } from '../engine/identity.ts';
 import { resolveRootMetadata } from '../engine/metadata.ts';
 import {
@@ -18,14 +18,14 @@ import {
     glob,
     invalidRunSelectionMessage,
     matchesRunFilter,
-    name,
     not,
     owner,
     params,
     runtime,
     stability,
     suite,
-    tag
+    tag,
+    title
 } from './run-selection-filters.ts';
 import type { RunFilter } from './run-types.ts';
 
@@ -45,22 +45,22 @@ const anonymousCandidate = {
 };
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/run-selection-filters.test.ts',
+    title: 'source/run/run-selection-filters.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'filter helpers create serializable filter expressions',
+            title: 'filter helpers create serializable filter expressions',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(
-                    all([ tag('fast'), not(file('source/**')), any([ name('charge'), stability('stable') ]) ]),
+                    all([ tag('fast'), not(file('source/**')), any([ title('charge'), stability('stable') ]) ]),
                     {
                         filters: [
                             { field: 'tag', kind: 'equals', value: 'fast' },
                             { filter: { field: 'file', kind: 'glob', pattern: 'source/**' }, kind: 'not' },
                             {
                                 filters: [
-                                    { field: 'name', kind: 'contains', value: 'charge' },
+                                    { field: 'title', kind: 'contains', value: 'charge' },
                                     { field: 'stability', kind: 'equals', value: 'stable' }
                                 ],
                                 kind: 'any'
@@ -79,13 +79,13 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'matchesRunFilter() matches supported dimensions case-insensitively',
+            title: 'matchesRunFilter() matches supported dimensions case-insensitively',
             metadata: {},
             body(scope: OverkillScope) {
                 const matchingFilters: readonly RunFilter[] = [
                     caseId(candidate.id),
                     file('source/payments/*.test.ts'),
-                    name('charges'),
+                    title('charges'),
                     suite('PAYMENTS > CARD'),
                     params('eur'),
                     tag('fast'),
@@ -109,19 +109,19 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'matchesRunFilter() treats absent identity dimensions as non-matches',
+            title: 'matchesRunFilter() treats absent identity dimensions as non-matches',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.equal(matchesRunFilter(file('source/**/*.test.ts'), anonymousCandidate), false);
                 scope.assert.equal(matchesRunFilter(params('currency'), anonymousCandidate), false);
                 scope.assert.equal(matchesRunFilter(suite('payments'), anonymousCandidate), false);
-                scope.assert.equal(matchesRunFilter(name('anonymous'), anonymousCandidate), true);
+                scope.assert.equal(matchesRunFilter(title('anonymous'), anonymousCandidate), true);
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
-            name: 'copyRunSelection() deep-copies serializable filter trees',
+            title: 'copyRunSelection() deep-copies serializable filter trees',
             metadata: {},
             body(scope: OverkillScope) {
                 const selection = {
@@ -145,11 +145,11 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'run filter helpers reject empty text operands',
+            title: 'run filter helpers reject empty text operands',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.throws(function createEmptyContainsFilter() {
-                    contains('name', ' ');
+                    contains('title', ' ');
                 }, { message: 'Run filter value must not be empty.' });
                 scope.assert.throws(function createEmptyGlobFilter() {
                     glob('file', ' ');
@@ -159,7 +159,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'run filter validation rejects malformed filter trees',
+            title: 'run filter validation rejects malformed filter trees',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.throws(function createEmptyComposite() {
@@ -178,7 +178,7 @@ export const testSuite = createOverkillSuite({
                 );
                 const validCaseId = {
                     file: 'source/example.test.ts',
-                    name: 'valid case',
+                    title: 'valid case',
                     params: null,
                     suite: [ 'suite' ]
                 };
@@ -212,8 +212,8 @@ export const testSuite = createOverkillSuite({
                         'Run filter case id file must be a string or null.'
                     ],
                     [
-                        { filter: { id: { ...validCaseId, name: ' ' }, kind: 'case-id' }, kind: 'filter' },
-                        'Run filter case id name must be a non-empty string.'
+                        { filter: { id: { ...validCaseId, title: ' ' }, kind: 'case-id' }, kind: 'filter' },
+                        'Run filter case id title must be a non-empty string.'
                     ],
                     [
                         { filter: { id: { ...validCaseId, params: 1 }, kind: 'case-id' }, kind: 'filter' },

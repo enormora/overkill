@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { CaseId } from '../engine/identity.ts';
 import { resolveRootMetadata } from '../engine/metadata.ts';
 import type { ResourceUsageSnapshot } from '../engine/run-result.ts';
@@ -41,7 +41,7 @@ type TimeoutRuntimeRecord = {
 const collectedPlan = { root: { metadata: resolveRootMetadata({}), name: 'root' } } as unknown as CollectedRunPlan;
 const caseId: CaseId = {
     file: 'source/example.test.ts',
-    name: 'case',
+    title: 'case',
     params: null,
     suite: []
 };
@@ -192,11 +192,11 @@ function startTimeoutForActiveCase(runtime: SupervisedRunRuntimeSeed): Supervise
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/supervised-run-runtime.test.ts',
+    title: 'source/run/supervised-run-runtime.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'supervisedCollectedPlan() accepts only supervised plans',
+            title: 'supervisedCollectedPlan() accepts only supervised plans',
             metadata: {},
             body(scope: OverkillScope) {
                 const supervisedPlan = { collectedPlan, kind: 'supervised' as const };
@@ -217,7 +217,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'kill() only signals a live spawned child',
+            title: 'kill() only signals a live spawned child',
             metadata: {},
             body(scope: OverkillScope) {
                 const live = childProcess({ exitCode: null, pid: 1, signalCode: null });
@@ -241,7 +241,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'createHardTimeout() starts once while cases are active',
+            title: 'createHardTimeout() starts once while cases are active',
             metadata: {},
             body(scope: OverkillScope) {
                 const live = childProcess({ exitCode: null, pid: 1, signalCode: null });
@@ -260,7 +260,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'handleCollectionSample() skips terminal runs and records clean samples',
+            title: 'handleCollectionSample() skips terminal runs and records clean samples',
             metadata: {},
             body(scope: OverkillScope) {
                 const terminal = collectionRuntime(
@@ -286,7 +286,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'handleCollectionSample() reports collection resource budget breaches',
+            title: 'handleCollectionSample() reports collection resource budget breaches',
             metadata: {},
             body(scope: OverkillScope) {
                 const live = childProcess({ exitCode: null, pid: 1, signalCode: null });
@@ -302,7 +302,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'handleChildMessage() records supervised resource samples',
+            title: 'handleChildMessage() records supervised resource samples',
             metadata: {},
             body(scope: OverkillScope) {
                 const runtime = runRuntime(

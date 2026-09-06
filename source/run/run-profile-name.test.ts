@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import {
     defaultMicrotestProfile,
@@ -35,11 +35,11 @@ function runCommand(profile: string, config = defaultRunConfig()): RunCommand {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/run-profile-name.test.ts',
+    title: 'source/run/run-profile-name.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'profile name validation accepts project-owned names',
+            title: 'profile name validation accepts project-owned names',
             metadata: {},
             body(scope: OverkillScope) {
                 for (const profileName of validProjectProfileNames) {
@@ -50,7 +50,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'profile name validation rejects invalid and reserved names',
+            title: 'profile name validation rejects invalid and reserved names',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.equal(invalidRunProfileNameMessage('backend/http'), invalidProfileNameMessage);
@@ -61,7 +61,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.resolve() selects a project-owned profile name',
+            title: 'orchestrator.resolve() selects a project-owned profile name',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -91,7 +91,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.resolve() rejects invalid profile names',
+            title: 'orchestrator.resolve() rejects invalid profile names',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();

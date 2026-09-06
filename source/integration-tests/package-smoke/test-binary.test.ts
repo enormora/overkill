@@ -23,6 +23,7 @@ type FiltersModule = {
     readonly not: (filter: unknown) => unknown;
     readonly parseRunFilterExpression: (expression: string) => unknown;
     readonly tag: (value: string) => unknown;
+    readonly title: (value: string) => unknown;
 };
 
 const packageSmokeFolder = fileURLToPath(new URL('.', import.meta.url));
@@ -35,11 +36,11 @@ const authoringSmokeScript = [
     '',
     "export const testNode = suite('consumer root', [",
     '    suite({',
-    "        name: 'nested',",
+    "        title: 'nested',",
     "        metadata: { tags: [ 'smoke' ] },",
     '        children: [',
     '            test({',
-    "                name: 'passes',",
+    "                title: 'passes',",
     "                metadata: { tags: [ 'authoring' ] },",
     '                body(scope) {',
     '                    scope.assert.equal(1, 1);',
@@ -69,11 +70,16 @@ const rootImportScript = [
     ']);',
     'console.log(testNode.kind);',
     'console.log(testNode.children[0].kind);',
-    'try {',
-    '    testModule.table();',
-    '} catch (error) {',
-    '    console.log(error instanceof Error ? error.message : String(error));',
-    '}'
+    'const tableNode = testModule.table({',
+    "    title: 'rows',",
+    '    cases: [1, 2],',
+    '    test(scope) {',
+    '        scope.assert.true(scope.parameters > 0);',
+    '        return scope.assert.collect();',
+    '    }',
+    '});',
+    'console.log(tableNode.kind);',
+    'console.log(tableNode.cases.length);'
 ]
     .join('\n');
 const standardSubpathImportScript = [
@@ -130,7 +136,8 @@ const expectedRootImportOutput = [
     'function',
     'suite',
     'test',
-    'The @overkill-dev/test table() authoring API is not implemented yet.',
+    'table',
+    '2',
     ''
 ]
     .join('\n');
@@ -262,7 +269,7 @@ function assertRunConfigSubpathExport(scope: TestScope, packageExports: Readonly
 }
 
 function assertPackagedFilters(scope: TestScope, filters: FiltersModule): void {
-    const { all, file, not, parseRunFilterExpression, tag } = filters;
+    const { all, file, not, parseRunFilterExpression, tag, title } = filters;
 
     scope.assert.deepEqual(all([ tag('fast'), not(file('source/**')) ]), {
         filters: [
@@ -274,6 +281,7 @@ function assertPackagedFilters(scope: TestScope, filters: FiltersModule): void {
         ],
         kind: 'all'
     });
+    scope.assert.deepEqual(title('smoke'), { field: 'title', kind: 'contains', value: 'smoke' });
     scope.assert.deepEqual(parseRunFilterExpression('tag=fast !tag=flaky'), {
         filters: [
             { field: 'tag', kind: 'equals', value: 'fast' },
@@ -291,11 +299,11 @@ async function writeAuthoringSmokeFile(): Promise<void> {
 }
 
 export const testSuite = createSuite({
-    name: 'source/integration-tests/package-smoke/test-binary.test.ts',
+    title: 'source/integration-tests/package-smoke/test-binary.test.ts',
     metadata: {},
     children: [
         createTestCase({
-            name: '@overkill-dev/test package owns the overkill binary',
+            title: '@overkill-dev/test package owns the overkill binary',
             metadata: {},
             async body(scope: TestScope) {
                 const testPackageJson = await readPackageJson(testPackageFolder);
@@ -315,7 +323,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'consumer imports packaged @overkill-dev/test root facade',
+            title: 'consumer imports packaged @overkill-dev/test root facade',
             metadata: {},
             async body(scope: TestScope) {
                 const testPackageJson = await readPackageJson(testPackageFolder);
@@ -342,7 +350,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'consumer imports packaged @overkill-dev/test standard subpaths',
+            title: 'consumer imports packaged @overkill-dev/test standard subpaths',
             metadata: {},
             async body(scope: TestScope) {
                 const testPackageJson = await readPackageJson(testPackageFolder);
@@ -366,7 +374,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'packaged overkill binary prints command help',
+            title: 'packaged overkill binary prints command help',
             metadata: {},
             async body(scope: TestScope) {
                 const result = await spawnNode([
@@ -382,7 +390,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'packaged @overkill-dev/test root authoring creates runnable testNode exports',
+            title: 'packaged @overkill-dev/test root authoring creates runnable testNode exports',
             metadata: {},
             async body(scope: TestScope) {
                 await writeAuthoringSmokeFile();
@@ -402,7 +410,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'packaged overkill list renders root authoring definition locations',
+            title: 'packaged overkill list renders root authoring definition locations',
             metadata: {},
             async body(scope: TestScope) {
                 await writeAuthoringSmokeFile();
@@ -423,7 +431,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'consumer imports packaged @overkill-dev/run/filters helpers',
+            title: 'consumer imports packaged @overkill-dev/run/filters helpers',
             metadata: {},
             async body(scope: TestScope) {
                 const packageExports = await readPackageExports(runPackageFolder, '@overkill-dev/run');

@@ -24,8 +24,8 @@ the doc does not blur canonical shared types with illustrative sample names.
 ```ts
 type TestId = {
     readonly file: string | null; // canonical source file path, repository-relative; null when unknown to engine
-    readonly suite: ReadonlyArray<string>; // ordered visible suite names, top-level suite to leaf
-    readonly name: string; // test name within its parent
+    readonly suite: ReadonlyArray<string>; // ordered visible suite titles, top-level suite to leaf
+    readonly title: string; // test title within its parent
 };
 
 type CaseId = TestId & {
@@ -75,14 +75,14 @@ type TestNode = (TestCase | Suite | Table) & {
 
 type TestRoot = {
     readonly kind: 'root';
-    readonly name: string;
+    readonly title: string;
     readonly metadata?: Metadata;
     readonly children: ReadonlyArray<TestNode>;
 };
 
 type TestCase = {
     readonly kind: 'test';
-    readonly name: string;
+    readonly title: string;
     readonly metadata?: Metadata;
     readonly definitionLocation: SourceLocation;
     readonly body: TestBody; // signature varies by DSL
@@ -90,7 +90,7 @@ type TestCase = {
 
 type Suite = {
     readonly kind: 'suite';
-    readonly name: string;
+    readonly title: string;
     readonly metadata?: Metadata;
     readonly definitionLocation: SourceLocation;
     readonly children: ReadonlyArray<TestNode>;
@@ -98,10 +98,17 @@ type Suite = {
 
 type Table = {
     readonly kind: 'table';
-    readonly name: string;
+    readonly title: string;
     readonly metadata?: Metadata;
     readonly definitionLocation: SourceLocation;
-    readonly cases: ReadonlyArray<{ params: Record<string, unknown>; body: TestBody; }>;
+    readonly cases: ReadonlyArray<TableCase>;
+};
+
+type TableCase = {
+    readonly title: string;
+    readonly metadata?: Metadata;
+    readonly parameters: unknown;
+    readonly body: TestBody;
 };
 
 type Metadata = {
@@ -482,9 +489,9 @@ type RunIfMainOptions = {
 };
 
 type TestFacade = {
-    readonly root: (name: string, children: ReadonlyArray<TestNode>) => TestRoot;
-    readonly test: (name: string, body: TestBody) => TestCase;
-    readonly suite: (name: string, children: ReadonlyArray<TestNode>) => Suite;
+    readonly root: (title: string, children: ReadonlyArray<TestNode>) => TestRoot;
+    readonly test: (title: string, body: TestBody) => TestCase;
+    readonly suite: (title: string, children: ReadonlyArray<TestNode>) => Suite;
     readonly table: (options: {
         title: string;
         cases: ReadonlyArray<unknown>;
@@ -566,7 +573,7 @@ Canonical: [Reporters](../architecture/reporters.md).
 Direct engine consumers can create `TestCase` values with `createTestCase`,
 attach them to a `TestRoot` with `createRoot`, build the executable
 `TestPlan` with `createTestPlan(root)`, then pass it to
-`execute(testPlan): Promise<RunResult>`. `TestRoot` carries run-level name
+`execute(testPlan): Promise<RunResult>`. `TestRoot` carries run-level title
 and metadata. It is not a `TestNode` and does not contribute to
 `CaseId.suite`, `suitePath`, or `RunResult.bySuite`.
 
@@ -677,13 +684,13 @@ declare function loadRunConfig(request: LoadRunConfigRequest): Promise<RunConfig
 
 type RunStringFilterField =
     | 'file'
-    | 'name'
     | 'owner'
     | 'params'
     | 'runtime'
     | 'stability'
     | 'suite'
-    | 'tag';
+    | 'tag'
+    | 'title';
 
 type RunFilter =
     | { readonly filters: NonEmptyReadonlyArray<RunFilter>; readonly kind: 'all'; }
@@ -753,11 +760,11 @@ type TestPlan = {
     readonly cases: NonEmptyReadonlyArray<TestPlanCase>;
     readonly orphans: ReadonlyArray<{
         file: string | null;
-        name: string;
+        title: string;
         kind: 'test' | 'suite' | 'table';
         definitionLocation: SourceLocation;
     }>;
-    readonly root: { readonly name: string; readonly metadata: ResolvedMetadata; };
+    readonly root: { readonly title: string; readonly metadata: ResolvedMetadata; };
 };
 
 type RunFacts = {
@@ -794,10 +801,10 @@ type RunCaseFacts = {
 type CollectedRunCase = {
     readonly definitionLocation: SourceLocation;
     readonly metadata: SerializedValue;
-    readonly name: string;
     readonly params: string | null;
     readonly suite: ReadonlyArray<string>;
     readonly suiteDefinitionLocations: ReadonlyArray<SourceLocation>;
+    readonly title: string;
 };
 
 type CollectedRunFile = {
@@ -806,7 +813,7 @@ type CollectedRunFile = {
 };
 
 type CollectedRunPlan = {
-    readonly root: { readonly name: string; readonly metadata: ResolvedMetadata; };
+    readonly root: { readonly title: string; readonly metadata: ResolvedMetadata; };
     readonly defined: number;
     readonly files: ReadonlyArray<CollectedRunFile>;
     readonly orphans: ReadonlyArray<OrphanedNode>;

@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { OutputLineIntent } from '../engine/reporter-output.ts';
 import { createGithubActionsOutputRenderer } from './github-actions-output-renderer.ts';
 
@@ -20,11 +20,11 @@ const diagnosticIntent: OutputLineIntent = {
 };
 
 export const testSuite = createOverkillSuite({
-    name: 'source/output-renderers/github-actions-output-renderer.test.ts',
+    title: 'source/output-renderers/github-actions-output-renderer.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'GitHub Actions output renderer renders located diagnostics as workflow commands',
+            title: 'GitHub Actions output renderer renders located diagnostics as workflow commands',
             metadata: {},
             body(scope: OverkillScope) {
                 const renderer = createGithubActionsOutputRenderer();
@@ -43,7 +43,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'GitHub Actions output renderer passes unlocated output through',
+            title: 'GitHub Actions output renderer passes unlocated output through',
             metadata: {},
             body(scope: OverkillScope) {
                 const renderer = createGithubActionsOutputRenderer();
@@ -62,7 +62,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'GitHub Actions output renderer handles optional annotation properties',
+            title: 'GitHub Actions output renderer handles optional annotation properties',
             metadata: {},
             body(scope: OverkillScope) {
                 const renderer = createGithubActionsOutputRenderer();

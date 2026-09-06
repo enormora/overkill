@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type {
     FailedCheck,
     FailedCompositeCheck
@@ -45,11 +45,11 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
                     engine.createTestCase({
                         body,
                         metadata: {},
-                        name: 'case'
+                        title: 'case'
                     })
                 ],
                 metadata: {},
-                name: 'root'
+                title: 'root'
             })
         )
     );
@@ -109,11 +109,11 @@ function failureSummaries(result: RunResult): readonly string[] | null {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/doubles/double-usage-order.test.ts',
+    title: 'source/doubles/double-usage-order.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'doubleUsage construction argument assertions use construction history',
+            title: 'doubleUsage construction argument assertions use construction history',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const Client = testDouble<ClientConstructor>({
@@ -142,7 +142,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubleUsage indexed argument assertions validate index and event presence',
+            title: 'doubleUsage indexed argument assertions validate index and event presence',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
@@ -173,7 +173,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubleUsage order assertions compare events across doubles from one scope',
+            title: 'doubleUsage order assertions compare events across doubles from one scope',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const { testDouble: scopedDouble } = createTestDoubleScope();
@@ -195,7 +195,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubleUsage construction order compares constructor events',
+            title: 'doubleUsage construction order compares constructor events',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const { testDouble: scopedDouble } = createTestDoubleScope();
@@ -218,7 +218,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubleUsage order assertions require all previous events before the next double',
+            title: 'doubleUsage order assertions require all previous events before the next double',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const { testDouble: scopedDouble } = createTestDoubleScope();
@@ -242,7 +242,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubleUsage order assertions reject invalid and unused order inputs',
+            title: 'doubleUsage order assertions reject invalid and unused order inputs',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const { testDouble: scopedDouble } = createTestDoubleScope();
@@ -272,7 +272,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubleUsage order assertions reject mixed double scopes',
+            title: 'doubleUsage order assertions reject mixed double scopes',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const [ firstScope, secondScope ] = [ createTestDoubleScope(), createTestDoubleScope() ];
@@ -308,7 +308,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubleUsage count and argument assertions reject non-doubles independently',
+            title: 'doubleUsage count and argument assertions reject non-doubles independently',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
@@ -337,7 +337,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubleUsage assertions reject non-doubles with assertion diagnostics',
+            title: 'doubleUsage assertions reject non-doubles with assertion diagnostics',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {

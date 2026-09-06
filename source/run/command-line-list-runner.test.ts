@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { Reporter } from '../engine/reporter.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
@@ -76,19 +76,19 @@ function createPassingPlan(): TestPlan {
                 },
                 definitionLocation: testLocation,
                 metadata: {},
-                name: 'passes'
+                title: 'passes'
             })
         ],
         definitionLocation: suiteLocation,
         metadata: {},
-        name: 'suite'
+        title: 'suite'
     });
 
     return engine.createTestPlanFromTestFiles({
         files: [ { file: 'source/a.test.ts', metadata: {}, testNode } ],
         root: {
             metadata: {},
-            name: 'root'
+            title: 'root'
         }
     });
 }
@@ -173,7 +173,7 @@ async function createResolvedRunWithOrphanLocation(command: RunCommand): Promise
                         },
                         file: null,
                         kind: 'suite',
-                        name: 'unused'
+                        title: 'unused'
                     }
                 ],
                 root: resolvedRun.plan.testPlan.root
@@ -233,11 +233,11 @@ async function listTests(
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/command-line-list-runner.test.ts',
+    title: 'source/run/command-line-list-runner.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'commandLineRunner.listTests() renders the resolved plan tree without loading reporters',
+            title: 'commandLineRunner.listTests() renders the resolved plan tree without loading reporters',
             metadata: {},
             async body(scope: OverkillScope) {
                 let defaultReporterLoadCount = 0;
@@ -270,7 +270,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'commandLineRunner.listTests() preserves list selection',
+            title: 'commandLineRunner.listTests() preserves list selection',
             metadata: {},
             async body(scope: OverkillScope) {
                 const receivedCommands: RunCommand[] = [];
@@ -308,7 +308,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'commandLineRunner.listTests() renders definition locations when requested',
+            title: 'commandLineRunner.listTests() renders definition locations when requested',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await listTests(
@@ -334,7 +334,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'commandLineRunner.listTests() renders explicit orphan diagnostics',
+            title: 'commandLineRunner.listTests() renders explicit orphan diagnostics',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await listTests(
@@ -362,7 +362,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'commandLineRunner.listTests() renders orphan definition locations when requested',
+            title: 'commandLineRunner.listTests() renders orphan definition locations when requested',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await listTests(
@@ -385,7 +385,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'commandLineRunner.listTests() maps collection runner errors without printing the plan',
+            title: 'commandLineRunner.listTests() maps collection runner errors without printing the plan',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await listTests(
@@ -418,7 +418,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'commandLineRunner.listTests() maps config load errors',
+            title: 'commandLineRunner.listTests() maps config load errors',
             metadata: {},
             async body(scope: OverkillScope) {
                 const runner = createCommandLineRunner({
@@ -456,7 +456,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'commandLineRunner.listTests() maps thrown collection errors',
+            title: 'commandLineRunner.listTests() maps thrown collection errors',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await listTests(

@@ -1,12 +1,12 @@
 import { createDeterministicWallClock } from '@enormora/wall-clock';
-import { doubleUsage, rule, testDouble } from '@overkill-dev/doubles';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { doubleUsage, rule, testDouble } from '../packages/doubles/doubles.entry-point.ts';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createEngine } from './engine.ts';
 import type { Execute, ExecuteOptions } from './execution.ts';
@@ -14,11 +14,11 @@ import { createPlainOutputRenderer } from './reporter-output.ts';
 import type { RunResult } from './run-result.ts';
 
 export const testSuite = createOverkillSuite({
-    name: 'source/engine/engine.test.ts',
+    title: 'source/engine/engine.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'engine.execute() invokes the injected execute dependency',
+            title: 'engine.execute() invokes the injected execute dependency',
             metadata: {},
             async body(scope: OverkillScope) {
                 const expectedResult = runResultFactory.build({ wallTimeMs: 42 });
@@ -48,11 +48,11 @@ export const testSuite = createOverkillSuite({
                                     return testScope.assert.collect();
                                 },
                                 metadata: {},
-                                name: 'passes'
+                                title: 'passes'
                             })
                         ],
                         metadata: {},
-                        name: 'root'
+                        title: 'root'
                     })
                 );
                 const options: ExecuteOptions = {

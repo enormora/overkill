@@ -32,7 +32,7 @@ Activation is always explicit:
   underlying setting (`RunFacts.debugMode` `'selected'` versus
   `'all'`), so passing both is a usage error.
 - `--debug` debugs every test in the resolved set; pair with
-  `--filter`, `--name`, `--id`, or `--file` to scope
+  `--filter`, `--title`, `--id`, or `--file` to scope
 - per-test metadata `{ debug: true }` debugs that one test on every
   run, regardless of CLI flags
 
@@ -129,7 +129,7 @@ requires one. The ordinary path keeps failure data in memory and in the
 reporter/event stream only. Per-test debug files exist solely for tests the user
 explicitly put into debug mode (`--debug` or `--debug-scope`), and the
 expected microtest workflow is to scope that mode narrowly with
-`--debug-scope`, `--id`, `--name`, `--file`, or `--filter`.
+`--debug-scope`, `--id`, `--title`, `--file`, or `--filter`.
 
 ## Reporter Interaction
 
@@ -212,7 +212,7 @@ into action; the runner stays neutral.
   artifact makes the absence visible across runs.
 - `stats.handleCallCount === 0` in a profile that expects effects
   — the test exercised no recorded effects. Often intentional for
-  pure-logic tests; suspicious when the test name implies I/O.
+  pure-logic tests; suspicious when the test title implies I/O.
 - `stats.unaccountedGapMs / wallTimeMs > 0.5` — more than half of
   the wall time was not captured by handle calls or assertion
   activity. Suggests external I/O bypassing the handle layer, or

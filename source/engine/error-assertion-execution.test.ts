@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { FailedCompositeCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { BodyErrorTestFailure, FailOutcome, RunResult } from './run-result.ts';
@@ -20,11 +20,11 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
                     engine.createTestCase({
                         body,
                         metadata: {},
-                        name: 'case'
+                        title: 'case'
                     })
                 ],
                 metadata: {},
-                name: 'root'
+                title: 'root'
             })
         )
     );
@@ -65,11 +65,11 @@ function firstBodyError(outcome: FailOutcome): BodyErrorTestFailure | null {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/engine/error-assertion-execution.test.ts',
+    title: 'source/engine/error-assertion-execution.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'execute() counts throws and awaited rejects as assertion boundaries',
+            title: 'execute() counts throws and awaited rejects as assertion boundaries',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(async function testBody(testScope: TestScope) {
@@ -90,7 +90,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() rejects unawaited async rejects assertions at collect',
+            title: 'execute() rejects unawaited async rejects assertions at collect',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
@@ -120,7 +120,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() treats sync throws from rejects thunks as body errors',
+            title: 'execute() treats sync throws from rejects thunks as body errors',
             metadata: {},
             async body(scope: OverkillScope) {
                 function throwBeforePromise(): never {
@@ -143,7 +143,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() reports throws matcher field failures under one composite boundary',
+            title: 'execute() reports throws matcher field failures under one composite boundary',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {

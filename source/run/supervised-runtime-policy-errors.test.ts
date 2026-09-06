@@ -1,17 +1,17 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type { CaseId } from '../engine/identity.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import { deduplicatedChildRuntimePolicyErrors } from './supervised-run-state.ts';
 
 const caseId: CaseId = {
     file: 'source/example.test.ts',
-    name: 'case',
+    title: 'case',
     params: null,
     suite: []
 };
@@ -35,11 +35,11 @@ function reporterError(): RunnerError {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/supervised-runtime-policy-errors.test.ts',
+    title: 'source/run/supervised-runtime-policy-errors.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name:
+            title:
                 'deduplicatedChildRuntimePolicyErrors() drops child process.env errors already observed by the supervisor',
             metadata: {},
             body(scope: OverkillScope) {
@@ -63,7 +63,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'deduplicatedChildRuntimePolicyErrors() preserves process.env errors for another boundary',
+            title: 'deduplicatedChildRuntimePolicyErrors() preserves process.env errors for another boundary',
             metadata: {},
             body(scope: OverkillScope) {
                 const childError = runtimePolicyError(
@@ -86,7 +86,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'deduplicatedChildRuntimePolicyErrors() preserves non-env errors',
+            title: 'deduplicatedChildRuntimePolicyErrors() preserves non-env errors',
             metadata: {},
             body(scope: OverkillScope) {
                 const childError = runtimePolicyError('Runtime policy violation: timer.', caseId, 'timer');

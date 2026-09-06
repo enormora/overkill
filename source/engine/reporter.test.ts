@@ -1,11 +1,11 @@
 import { createDeterministicWallClock } from '@enormora/wall-clock';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import {
     type FinalResultReporter,
     type ManagedStandardOutputSinkDeclaration,
@@ -127,11 +127,11 @@ const stderrSupplementalIntent: OutputLineIntent = {
 };
 
 export const testSuite = createOverkillSuite({
-    name: 'source/engine/reporter.test.ts',
+    title: 'source/engine/reporter.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'validateReporterSinks() allows managed supplemental standard output sinks',
+            title: 'validateReporterSinks() allows managed supplemental standard output sinks',
             metadata: {},
             body(scope: OverkillScope) {
                 validateReporterSinks([
@@ -144,7 +144,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'validateReporterSinks() rejects raw standard output conflicts',
+            title: 'validateReporterSinks() rejects raw standard output conflicts',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.throws(function validateConflictingStandardOutputSinks() {
@@ -161,7 +161,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'validateReporterSinks() rejects duplicate managed primary standard output sinks',
+            title: 'validateReporterSinks() rejects duplicate managed primary standard output sinks',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.throws(function validateConflictingManagedOutputSinks() {
@@ -178,7 +178,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'validateReporterSinks() allows one managed primary with managed supplemental standard output sinks',
+            title: 'validateReporterSinks() allows one managed primary with managed supplemental standard output sinks',
             metadata: {},
             body(scope: OverkillScope) {
                 validateReporterSinks([
@@ -191,7 +191,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'validateReporterSinks() rejects exact file and directory path conflicts',
+            title: 'validateReporterSinks() rejects exact file and directory path conflicts',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.throws(function validateConflictingPathSinks() {
@@ -212,7 +212,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'validateReporterSinks() treats memory and stream sinks as private',
+            title: 'validateReporterSinks() treats memory and stream sinks as private',
             metadata: {},
             body(scope: OverkillScope) {
                 const stream = new WritableStream<unknown>();
@@ -233,7 +233,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'reporter dispatcher records direct runner-error delivery failures without notification',
+            title: 'reporter dispatcher records direct runner-error delivery failures without notification',
             metadata: {},
             async body(scope: OverkillScope) {
                 const wallClock = createDeterministicWallClock();
@@ -276,7 +276,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'reporter dispatcher records runner-error notification output failures',
+            title: 'reporter dispatcher records runner-error notification output failures',
             metadata: {},
             async body(scope: OverkillScope) {
                 const { dispatcher } = createRecordingDispatcher();
@@ -321,7 +321,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'reporter dispatcher reports non-error failures',
+            title: 'reporter dispatcher reports non-error failures',
             metadata: {},
             async body(scope: OverkillScope) {
                 const { dispatcher } = createRecordingDispatcher();
@@ -356,7 +356,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'reporter dispatcher writes managed output in reporter registration order',
+            title: 'reporter dispatcher writes managed output in reporter registration order',
             metadata: {},
             async body(scope: OverkillScope) {
                 const { dispatcher, stderrLines, stdoutLines } = createRecordingDispatcher();
@@ -383,7 +383,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'reporter dispatcher writes managed stderr output',
+            title: 'reporter dispatcher writes managed stderr output',
             metadata: {},
             async body(scope: OverkillScope) {
                 const { dispatcher, stderrLines, stdoutLines } = createRecordingDispatcher();
@@ -407,7 +407,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'reporter dispatcher records undeclared managed output as a reporter error',
+            title: 'reporter dispatcher records undeclared managed output as a reporter error',
             metadata: {},
             async body(scope: OverkillScope) {
                 const { dispatcher } = createRecordingDispatcher();
@@ -430,7 +430,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'reporter dispatcher records wrong-role managed output as a reporter error',
+            title: 'reporter dispatcher records wrong-role managed output as a reporter error',
             metadata: {},
             async body(scope: OverkillScope) {
                 const { dispatcher } = createRecordingDispatcher();
@@ -457,7 +457,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'reporter dispatcher records invalid managed output as a reporter error',
+            title: 'reporter dispatcher records invalid managed output as a reporter error',
             metadata: {},
             async body(scope: OverkillScope) {
                 const { dispatcher } = createRecordingDispatcher();
@@ -482,7 +482,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'reporter dispatcher records rendered newlines as a reporter error',
+            title: 'reporter dispatcher records rendered newlines as a reporter error',
             metadata: {},
             async body(scope: OverkillScope) {
                 const { dispatcher } = createRecordingDispatcher();

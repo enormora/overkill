@@ -44,7 +44,7 @@ need custom lint rules just to contain that footgun.
 Where: [Metadata And Selection § Local Iteration Workflow](../architecture/metadata-and-selection.md#local-iteration-workflow),
 [Tests As Values § Recommendation](../authoring/tests-as-values.md#recommendation).
 
-Alternative: CLI selection (`--name`, `--file`, `--id`, `--last-failed`).
+Alternative: CLI selection (`--title`, `--file`, `--id`, `--last-failed`).
 
 ### No Sinon-style doubles surface
 

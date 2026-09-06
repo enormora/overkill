@@ -1,10 +1,10 @@
-import { createLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite,
     createTestCase,
     runIfMain,
     type TestScope
-} from '@overkill-dev/engine';
+} from '../../packages/engine/engine.entry-point.ts';
 import type { Reporter } from '../../engine/reporter.ts';
 import {
     createCommandLineRunner,
@@ -218,11 +218,11 @@ function selectedEngineRunnerDiagnostic(path: string): string {
 }
 
 export const testSuite = createSuite({
-    name: 'source/integration-tests/run/runner-command-line.test.ts',
+    title: 'source/integration-tests/run/runner-command-line.test.ts',
     metadata: {},
     children: [
         createTestCase({
-            name: 'command-line runner lists explicit files without executing them',
+            title: 'command-line runner lists explicit files without executing them',
             metadata: {},
             async body(scope: TestScope) {
                 const localResult = await listCommandLine([ passingFixturePath ], 'in-process', false);
@@ -247,7 +247,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'command-line runner runs and lists profile-discovered files',
+            title: 'command-line runner runs and lists profile-discovered files',
             metadata: {},
             async body(scope: TestScope) {
                 const runResult = await runDiscoveryCommandLine('supervised-process');
@@ -277,7 +277,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'command-line runner maps invalid module exports to runner errors',
+            title: 'command-line runner maps invalid module exports to runner errors',
             metadata: {},
             async body(scope: TestScope) {
                 const missingExportResult = await runCommandLine([ missingTestNodeFixturePath ]);
@@ -296,7 +296,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'command-line runner maps collection failures to runner errors',
+            title: 'command-line runner maps collection failures to runner errors',
             metadata: {},
             async body(scope: TestScope) {
                 const importFailureResult = await runCommandLine([ throwsOnImportFixturePath ]);
@@ -315,7 +315,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
-            name: 'command-line runner maps empty explicit input to no tests collected',
+            title: 'command-line runner maps empty explicit input to no tests collected',
             metadata: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine([]);

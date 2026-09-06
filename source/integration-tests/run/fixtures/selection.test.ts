@@ -22,7 +22,7 @@ export const testNode = createSuite({
                         stability: 'stable',
                         tags: [ 'Fast' ]
                     },
-                    name: 'charges card'
+                    title: 'charges card'
                 }),
                 createTestCase({
                     body: pass,
@@ -32,11 +32,11 @@ export const testNode = createSuite({
                         stability: 'flaky',
                         tags: [ 'Slow' ]
                     },
-                    name: 'refunds card'
+                    title: 'refunds card'
                 })
             ],
             metadata: {},
-            name: 'payments'
+            title: 'payments'
         }),
         createTable({
             cases: [
@@ -48,14 +48,25 @@ export const testNode = createSuite({
                         stability: 'experimental',
                         tags: [ 'Search' ]
                     },
-                    name: 'query row',
+                    title: 'query row',
                     parameters: { query: 'Alpha' }
+                },
+                {
+                    body: pass,
+                    metadata: {
+                        ownership: [ '@Other' ],
+                        runtimes: [ 'Node' ],
+                        stability: 'stable',
+                        tags: [ 'Other' ]
+                    },
+                    title: 'other query row',
+                    parameters: { query: 'Beta' }
                 }
             ],
             metadata: {},
-            name: 'search rows'
+            title: 'search rows'
         })
     ],
     metadata: {},
-    name: 'selection fixture'
+    title: 'selection fixture'
 });

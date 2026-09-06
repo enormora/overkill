@@ -1,11 +1,11 @@
-import { defineNarrowingCompositeAssertion } from '@overkill-dev/assert';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { defineNarrowingCompositeAssertion } from '../packages/assert/assert.entry-point.ts';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
 import type { Engine } from './engine.ts';
@@ -39,24 +39,24 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
                     engine.createTestCase({
                         body,
                         metadata: {},
-                        name: 'case'
+                        title: 'case'
                     })
                 ],
                 metadata: {},
-                name: 'root'
+                title: 'root'
             })
         )
     );
 }
 
-function createPassingCase(engine: Engine, name: string): ReturnType<Engine['createTestCase']> {
+function createPassingCase(engine: Engine, title: string): ReturnType<Engine['createTestCase']> {
     return engine.createTestCase({
         body(testScope) {
             testScope.assert.true(true, { message: 'passes' });
             return testScope.assert.collect();
         },
         metadata: {},
-        name
+        title
     });
 }
 
@@ -70,22 +70,22 @@ function createPlanWithUnusedTable(
         cases: [],
         definitionLocation: unusedTableLocation,
         metadata: {},
-        name: 'unused rows'
+        title: 'unused rows'
     });
 
     return engine.createTestPlan(engine.createRoot({
         children: [ reached ],
         metadata: {},
-        name: 'root'
+        title: 'root'
     }));
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/engine/execution.test.ts',
+    title: 'source/engine/execution.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'execute() returns passing and failing outcomes with run counts',
+            title: 'execute() returns passing and failing outcomes with run counts',
             metadata: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -98,7 +98,7 @@ export const testSuite = createOverkillSuite({
                                     return testScope.assert.collect();
                                 },
                                 metadata: {},
-                                name: 'passes'
+                                title: 'passes'
                             }),
                             engine.createTestCase({
                                 body(testScope: TestScope) {
@@ -106,11 +106,11 @@ export const testSuite = createOverkillSuite({
                                     return testScope.assert.collect();
                                 },
                                 metadata: {},
-                                name: 'fails'
+                                title: 'fails'
                             })
                         ],
                         metadata: {},
-                        name: 'root'
+                        title: 'root'
                     })
                 );
 
@@ -146,7 +146,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() carries orphaned nodes from the plan',
+            title: 'execute() carries orphaned nodes from the plan',
             metadata: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -155,7 +155,7 @@ export const testSuite = createOverkillSuite({
                 const result = await engine.execute(testPlan);
 
                 scope.assert.deepEqual(result.orphans, [
-                    { definitionLocation: unusedTableLocation, file: null, kind: 'table', name: 'unused rows' }
+                    { definitionLocation: unusedTableLocation, file: null, kind: 'table', title: 'unused rows' }
                 ]);
                 scope.assert.equal(result.summary.defined, 2);
                 scope.assert.equal(result.summary.discovered, 1);
@@ -165,7 +165,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() fails tests with zero assertions',
+            title: 'execute() fails tests with zero assertions',
             metadata: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -177,11 +177,11 @@ export const testSuite = createOverkillSuite({
                                     return testScope.assert.collect();
                                 },
                                 metadata: {},
-                                name: 'empty'
+                                title: 'empty'
                             })
                         ],
                         metadata: {},
-                        name: 'root'
+                        title: 'root'
                     })
                 );
 
@@ -207,7 +207,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() fails tests when assertion plan count does not match',
+            title: 'execute() fails tests when assertion plan count does not match',
             metadata: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -221,11 +221,11 @@ export const testSuite = createOverkillSuite({
                                     return testScope.assert.collect();
                                 },
                                 metadata: {},
-                                name: 'planned'
+                                title: 'planned'
                             })
                         ],
                         metadata: {},
-                        name: 'root'
+                        title: 'root'
                     })
                 );
 
@@ -251,7 +251,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() accepts a directly returned assertion node',
+            title: 'execute() accepts a directly returned assertion node',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function body() {
@@ -270,7 +270,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() fails tests with invalid assertion plans',
+            title: 'execute() fails tests with invalid assertion plans',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope) {
@@ -294,7 +294,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() exposes assertion and requirement convenience methods',
+            title: 'execute() exposes assertion and requirement convenience methods',
             metadata: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -310,11 +310,11 @@ export const testSuite = createOverkillSuite({
                                     return testScope.assert.collect();
                                 },
                                 metadata: {},
-                                name: 'uses context'
+                                title: 'uses context'
                             })
                         ],
                         metadata: {},
-                        name: 'root'
+                        title: 'root'
                     })
                 );
 
@@ -326,7 +326,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() fails the test when a requirement fails',
+            title: 'execute() fails the test when a requirement fails',
             metadata: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -339,7 +339,7 @@ export const testSuite = createOverkillSuite({
                                     return testScope.assert.collect();
                                 },
                                 metadata: {},
-                                name: 'requires equality'
+                                title: 'requires equality'
                             }),
                             engine.createTestCase({
                                 body(testScope: TestScope) {
@@ -347,11 +347,11 @@ export const testSuite = createOverkillSuite({
                                     return testScope.assert.collect();
                                 },
                                 metadata: {},
-                                name: 'requires truth'
+                                title: 'requires truth'
                             })
                         ],
                         metadata: {},
-                        name: 'root'
+                        title: 'root'
                     })
                 );
 

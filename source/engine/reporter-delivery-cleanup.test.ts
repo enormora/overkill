@@ -1,11 +1,11 @@
 import { createDeterministicWallClock } from '@enormora/wall-clock';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import {
     createInMemoryFinalResultReporter,
     createInMemoryRealTimeReporter,
@@ -29,11 +29,11 @@ function createPassingPlan(engine: Engine): TestPlan {
                         return testScope.assert.collect();
                     },
                     metadata: {},
-                    name: 'passes'
+                    title: 'passes'
                 })
             ],
             metadata: {},
-            name: 'root'
+            title: 'root'
         })
     );
 }
@@ -217,11 +217,11 @@ function createConcurrentFinishFixture(): ConcurrentFinishFixture {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/engine/reporter-delivery-cleanup.test.ts',
+    title: 'source/engine/reporter-delivery-cleanup.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'execute() times out reporter disposal',
+            title: 'execute() times out reporter disposal',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const { disposeSignal, engine, wallClock } = createReporterDeliveryFixture();
@@ -262,7 +262,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() disposes reporters after validation failure',
+            title: 'execute() disposes reporters after validation failure',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const engine = createDefaultReporterDeliveryEngine();
@@ -304,7 +304,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() throws AggregateError when execution and cleanup both fail',
+            title: 'execute() throws AggregateError when execution and cleanup both fail',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const engine = createDefaultReporterDeliveryEngine();
@@ -355,7 +355,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() does not retry disposal after disposal throws',
+            title: 'execute() does not retry disposal after disposal throws',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const engine = createDefaultReporterDeliveryEngine();
@@ -396,7 +396,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() includes run-end reporter errors before final reporting',
+            title: 'execute() includes run-end reporter errors before final reporting',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const engine = createDefaultReporterDeliveryEngine();
@@ -417,7 +417,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() records dispose failures without reporter re-entry',
+            title: 'execute() records dispose failures without reporter re-entry',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const engine = createDefaultReporterDeliveryEngine();
@@ -454,7 +454,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'execute() preserves concurrent final-result and real-time finish callbacks',
+            title: 'execute() preserves concurrent final-result and real-time finish callbacks',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const fixture = createConcurrentFinishFixture();

@@ -12,9 +12,9 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             },
             metadata: {},
-            name: 'creates a timer'
+            title: 'creates a timer'
         })
     ],
     metadata: {},
-    name: 'fixture'
+    title: 'fixture'
 });

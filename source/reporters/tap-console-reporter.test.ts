@@ -1,11 +1,11 @@
-import { doubleUsage, testDouble, type TestDouble } from '@overkill-dev/doubles';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { doubleUsage, testDouble, type TestDouble } from '../packages/doubles/doubles.entry-point.ts';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { serializedValueDiff } from '../compare/comparison.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import type { CaseId } from '../engine/identity.ts';
@@ -33,17 +33,17 @@ function tapConsoleRealTimeReporterWithLog(log: Log): RealTimeReporter {
     return createTapConsoleRealTimeReporter(fakeDependencies);
 }
 
-const failingCaseId: CaseId = { file: null, name: 'bar', params: null, suite: [ 'root' ] };
-const passingCaseId: CaseId = { file: null, name: 'foo', params: null, suite: [ 'root' ] };
-const fallbackCaseId: CaseId = { file: null, name: 'fails', params: null, suite: [ 'root' ] };
-const inconclusiveCaseId: CaseId = { file: null, name: 'unknown', params: null, suite: [ 'root' ] };
-const skippedCaseId: CaseId = { file: null, name: 'skip me', params: null, suite: [ 'root' ] };
+const failingCaseId: CaseId = { file: null, title: 'bar', params: null, suite: [ 'root' ] };
+const passingCaseId: CaseId = { file: null, title: 'foo', params: null, suite: [ 'root' ] };
+const fallbackCaseId: CaseId = { file: null, title: 'fails', params: null, suite: [ 'root' ] };
+const inconclusiveCaseId: CaseId = { file: null, title: 'unknown', params: null, suite: [ 'root' ] };
+const skippedCaseId: CaseId = { file: null, title: 'skip me', params: null, suite: [ 'root' ] };
 
 async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
     await reporter.onEvent({
         facts: {},
         kind: 'run-start',
-        root: { metadata: resolveRootMetadata({}), name: 'root' },
+        root: { metadata: resolveRootMetadata({}), title: 'root' },
         startedAt: '2026-07-15T00:00:00.000Z'
     });
     await reporter.onEvent({
@@ -86,11 +86,11 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/reporters/tap-console-reporter.test.ts',
+    title: 'source/reporters/tap-console-reporter.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'reports the final result without any test cases formatted as TAP',
+            title: 'reports the final result without any test cases formatted as TAP',
             metadata: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
@@ -118,7 +118,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'reports the final result with passed and failed test cases formatted as TAP',
+            title: 'reports the final result with passed and failed test cases formatted as TAP',
             metadata: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
@@ -161,7 +161,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'reports a failed TAP test point with a fallback diagnostic reason',
+            title: 'reports a failed TAP test point with a fallback diagnostic reason',
             metadata: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
@@ -208,7 +208,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'reports skip and inconclusive outcomes as TAP directives and diagnostics',
+            title: 'reports skip and inconclusive outcomes as TAP directives and diagnostics',
             metadata: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
@@ -259,7 +259,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'real-time TAP reporter streams test points before the final plan',
+            title: 'real-time TAP reporter streams test points before the final plan',
             metadata: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
@@ -279,7 +279,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'real-time TAP reporter writes runner errors as comments',
+            title: 'real-time TAP reporter writes runner errors as comments',
             metadata: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();

@@ -102,7 +102,7 @@ const client: Client = { baseUrl: 'https://api.example.test' };
 const clientWithTimeout: ClientWithTimeout = { baseUrl: 'https://api.example.test', timeout: 500 };
 declare const assertFacade: AssertAssertionFacade;
 
-describe('@overkill-dev/doubles', function () {
+describe('./doubles.entry-point.ts', function () {
     describe('fixed doubles', function () {
         test('creates an untyped default double', function () {
             const value = testDouble();

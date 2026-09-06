@@ -4,8 +4,8 @@ import {
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+} from '../packages/engine/engine.entry-point.ts';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import { commandLineRunner } from './command-line-runner.ts';
 import type { CommandLineCommandContext } from './command-line-command.ts';
 import {
@@ -47,11 +47,11 @@ const singletonRunRequest: RunRequest = {
 };
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/command-line-unimplemented-commands.test.ts',
+    title: 'source/run/command-line-unimplemented-commands.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'unimplemented direct commands return argument errors',
+            title: 'unimplemented direct commands return argument errors',
             metadata: {},
             async body(scope: OverkillScope) {
                 const command = createUnimplementedCommand('replay');
@@ -68,7 +68,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'unimplemented command families return argument errors',
+            title: 'unimplemented command families return argument errors',
             metadata: {},
             async body(scope: OverkillScope) {
                 const baseline = await loadUnimplementedBaselineCommands();
@@ -88,7 +88,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'commandLineRunner singleton uses unimplemented command families',
+            title: 'commandLineRunner singleton uses unimplemented command families',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await commandLineRunner.bench.listBenchmarks(commandLineCommandContextFactory.build());
@@ -101,7 +101,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'commandLineRunner singleton runs tests with the default reporter',
+            title: 'commandLineRunner singleton runs tests with the default reporter',
             metadata: {},
             async body(scope: OverkillScope) {
                 const result = await commandLineRunner.runTests({

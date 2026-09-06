@@ -1,11 +1,11 @@
 import ansiEscapes from 'ansi-escapes';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import {
     createTerminalProgressRenderer,
     type TerminalOutput,
@@ -57,11 +57,11 @@ function createFakeTerminal(columns: number): FakeTerminal {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/reporters/terminal.test.ts',
+    title: 'source/reporters/terminal.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'visibleTerminalWidth() ignores ANSI escapes and counts Unicode display width',
+            title: 'visibleTerminalWidth() ignores ANSI escapes and counts Unicode display width',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.equal(visibleTerminalWidth('\u{1B}[31m✓\u{1B}[39m漢'), 3);
@@ -70,7 +70,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'terminal progress renderer redraws the full block on interactive resize',
+            title: 'terminal progress renderer redraws the full block on interactive resize',
             metadata: {},
             body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(4);
@@ -90,7 +90,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'terminal progress renderer ignores resize before progress and after finish',
+            title: 'terminal progress renderer ignores resize before progress and after finish',
             metadata: {},
             body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(4);
@@ -110,7 +110,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'terminal progress renderer does not emit cursor escapes in non-interactive output',
+            title: 'terminal progress renderer does not emit cursor escapes in non-interactive output',
             metadata: {},
             body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(2);
@@ -131,7 +131,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'terminal progress renderer falls back when output columns are invalid',
+            title: 'terminal progress renderer falls back when output columns are invalid',
             metadata: {},
             body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(0);
@@ -150,7 +150,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'terminal progress renderer treats finish as idempotent',
+            title: 'terminal progress renderer treats finish as idempotent',
             metadata: {},
             body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(4);
@@ -169,7 +169,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'terminal progress renderer removes resize listener on dispose',
+            title: 'terminal progress renderer removes resize listener on dispose',
             metadata: {},
             body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(4);

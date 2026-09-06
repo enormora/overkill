@@ -1,18 +1,18 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { testDouble } from './test-double.ts';
 
 export const testSuite = createOverkillSuite({
-    name: 'source/doubles/double-history-empty.test.ts',
+    title: 'source/doubles/double-history-empty.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'empty history boundary accessors return null snapshots',
+            title: 'empty history boundary accessors return null snapshots',
             metadata: {},
             body(scope: OverkillScope) {
                 const loadValue = testDouble.returns('value');
@@ -30,7 +30,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'invalid history indexes return null snapshots',
+            title: 'invalid history indexes return null snapshots',
             metadata: {},
             body(scope: OverkillScope) {
                 const loadValue = testDouble.returns('value');

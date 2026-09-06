@@ -20,7 +20,7 @@ describe('runIfMain', function () {
             readonly root?: RunIfMainRootOptions;
             readonly runFacts?: RunFacts;
         }>();
-        expect<keyof RunIfMainRootOptions>().type.toBe<'metadata' | 'name'>();
+        expect<keyof RunIfMainRootOptions>().type.toBe<'metadata' | 'title'>();
     });
 
     test('returns a void promise', function () {

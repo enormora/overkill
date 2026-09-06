@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { rule } from './double-rule.ts';
 import { testDouble, type TestDouble } from './test-double.ts';
 
@@ -86,11 +86,11 @@ function createRejectedResultRecord(error: Error): RejectedResultRecord {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/doubles/test-double-history-runtime.test.ts',
+    title: 'source/doubles/test-double-history-runtime.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'doubles expose aggregate counts for returned calls',
+            title: 'doubles expose aggregate counts for returned calls',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 const { loadValue } = createRecordedScopedLoadValue();
@@ -104,7 +104,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubles expose aggregate call history for returned calls',
+            title: 'doubles expose aggregate call history for returned calls',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 const { actual, loadValue, receiver } = createRecordedScopedLoadValue();
@@ -139,7 +139,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubles expose returned call result history',
+            title: 'doubles expose returned call result history',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 const { actual, loadValue } = createRecordedScopedLoadValue();
@@ -153,7 +153,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubles expose construction counts for returned constructions',
+            title: 'doubles expose construction counts for returned constructions',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 const { Client } = createRecordedClientConstructor();
@@ -166,7 +166,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubles expose construction history for returned constructions',
+            title: 'doubles expose construction history for returned constructions',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 const { Client, actual, client } = createRecordedClientConstructor();
@@ -184,7 +184,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'aggregate history counts calls and constructions together',
+            title: 'aggregate history counts calls and constructions together',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 const { calledClient, calledResult, clientFactoryDouble, constructedClient, constructedResult } =
@@ -200,7 +200,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'aggregate history preserves chronological call and construction order',
+            title: 'aggregate history preserves chronological call and construction order',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 const { calledClient, calledResult, clientFactoryDouble, constructedClient, constructedResult } =
@@ -242,7 +242,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'history records thrown calls',
+            title: 'history records thrown calls',
             metadata: {},
             body(scope: OverkillScope) {
                 type LoadValue = (id: string) => string;
@@ -260,7 +260,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'history records missing behavior',
+            title: 'history records missing behavior',
             metadata: {},
             body(scope: OverkillScope) {
                 type LoadValue = (id: string) => string;
@@ -279,7 +279,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'history records unsupported invocation modes',
+            title: 'history records unsupported invocation modes',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 const Client = testDouble.constructs({ id: 'client' });
@@ -295,7 +295,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'history records thrown constructions with null instances',
+            title: 'history records thrown constructions with null instances',
             metadata: {},
             body: function body(scope: OverkillScope) {
                 type ClientConstructor = new () => ClientWithId;
@@ -319,7 +319,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'promise results are recorded immediately without awaiting settlement',
+            title: 'promise results are recorded immediately without awaiting settlement',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const error = new Error('expected');

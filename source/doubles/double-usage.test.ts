@@ -1,10 +1,10 @@
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import type {
     FailedCheck,
     FailedCompositeCheck
@@ -45,11 +45,11 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
                     engine.createTestCase({
                         body,
                         metadata: {},
-                        name: 'case'
+                        title: 'case'
                     })
                 ],
                 metadata: {},
-                name: 'root'
+                title: 'root'
             })
         )
     );
@@ -109,11 +109,11 @@ function failureSummaries(result: RunResult): readonly string[] | null {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/doubles/double-usage.test.ts',
+    title: 'source/doubles/double-usage.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'doubleUsage call count and mode assertions pass through scope.assert()',
+            title: 'doubleUsage call count and mode assertions pass through scope.assert()',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
@@ -136,7 +136,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubleUsage construction count and mode assertions pass through scope.assert()',
+            title: 'doubleUsage construction count and mode assertions pass through scope.assert()',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const Client = testDouble.constructs<ClientConstructor>({ id: 'client' });
@@ -160,7 +160,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubleUsage negative mode assertions produce domain summaries',
+            title: 'doubleUsage negative mode assertions produce domain summaries',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
@@ -194,7 +194,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubleUsage argument assertions support partial, prefix, and exact matching',
+            title: 'doubleUsage argument assertions support partial, prefix, and exact matching',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const user = { id: '42', name: 'Ada' };
@@ -222,7 +222,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubleUsage iterator assertions pass through scope.assert()',
+            title: 'doubleUsage iterator assertions pass through scope.assert()',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const loadEvents = testDouble.yields([ 'created', 'updated' ]);
@@ -246,7 +246,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubleUsage iterator assertions report protocol history failures',
+            title: 'doubleUsage iterator assertions report protocol history failures',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const loadEvents = testDouble.yields([ 'created' ]);
@@ -274,7 +274,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubleUsage prefix assertions reject empty prefixes',
+            title: 'doubleUsage prefix assertions reject empty prefixes',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const ping = testDouble.returns<Ping>('pong');
@@ -304,7 +304,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubleUsage argument assertions distinguish exact arity from prefix arity',
+            title: 'doubleUsage argument assertions distinguish exact arity from prefix arity',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
@@ -324,7 +324,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubleUsage once, last, and nth argument assertions use the relevant mode history',
+            title: 'doubleUsage once, last, and nth argument assertions use the relevant mode history',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
@@ -344,7 +344,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubleUsage argument assertion failures explain the matched position',
+            title: 'doubleUsage argument assertion failures explain the matched position',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
@@ -383,7 +383,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'doubleUsage calledOnceWith requires one total call in that mode',
+            title: 'doubleUsage calledOnceWith requires one total call in that mode',
             metadata: {},
             body: async function body(scope: OverkillScope) {
                 const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });

@@ -16,7 +16,7 @@ export type RunIfMainOptions = {
 
 export type RunIfMainRootOptions = {
     readonly metadata: Metadata;
-    readonly name: string;
+    readonly title: string;
 };
 
 export type RunIfMain = (
@@ -49,8 +49,8 @@ function rootMetadata(options: RunIfMainOptions | undefined): Metadata {
     return options?.root?.metadata ?? {};
 }
 
-function rootName(meta: Readonly<ImportMeta>, options: RunIfMainOptions | undefined): string {
-    return options?.root?.name ?? meta.url;
+function rootTitle(meta: Readonly<ImportMeta>, options: RunIfMainOptions | undefined): string {
+    return options?.root?.title ?? meta.url;
 }
 
 function createRootOptions(
@@ -61,7 +61,7 @@ function createRootOptions(
     return {
         children: [ testNode ],
         metadata: rootMetadata(options),
-        name: rootName(meta, options)
+        title: rootTitle(meta, options)
     };
 }
 

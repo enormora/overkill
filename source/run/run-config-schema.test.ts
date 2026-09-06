@@ -1,12 +1,12 @@
 import { safeParse } from '@schema-hub/zod-error-formatter';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import type { $ZodType } from 'zod/v4/core';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
-import type { $ZodType } from 'zod/v4/core';
+} from '../packages/engine/engine.entry-point.ts';
 import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import {
     microtestExecutionSchema,
@@ -120,11 +120,11 @@ const invalidNestedFields: readonly SchemaValidationFailure[] = [
 ];
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/run-config-schema.test.ts',
+    title: 'source/run/run-config-schema.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'microtest profile schema accepts the minimal profile',
+            title: 'microtest profile schema accepts the minimal profile',
             metadata: {},
             body(scope: OverkillScope) {
                 assertValidationSuccess(scope, microtestProfileSchema, { testFamily: 'microtest' });
@@ -133,7 +133,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'microtest profile schema accepts every current profile field',
+            title: 'microtest profile schema accepts every current profile field',
             metadata: {},
             body(scope: OverkillScope) {
                 const reporter = createInMemoryRealTimeReporter();
@@ -169,7 +169,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'microtest execution schema accepts process model and scheduling variants',
+            title: 'microtest execution schema accepts process model and scheduling variants',
             metadata: {},
             body(scope: OverkillScope) {
                 for (const processModel of [ 'in-process', 'supervised-process' ] as const) {
@@ -182,7 +182,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'microtest resource usage schema accepts measured and unmeasured policies',
+            title: 'microtest resource usage schema accepts measured and unmeasured policies',
             metadata: {},
             body(scope: OverkillScope) {
                 assertValidationSuccess(scope, resourceUsageSchema, { measure: false });
@@ -201,7 +201,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'microtest timeout schema accepts soft and hard timeouts',
+            title: 'microtest timeout schema accepts soft and hard timeouts',
             metadata: {},
             body(scope: OverkillScope) {
                 assertValidationSuccess(scope, timeoutSchema, {
@@ -214,7 +214,7 @@ export const testSuite = createOverkillSuite({
         }),
         ...invalidMicrotestProfileFields.map(function createInvalidMicrotestProfileFieldTest(testCase) {
             return createOverkillTestCase({
-                name: `microtest profile schema rejects ${testCase.name}`,
+                title: `microtest profile schema rejects ${testCase.name}`,
                 metadata: {},
                 body(scope: OverkillScope) {
                     assertValidationFailure(scope, testCase);
@@ -225,7 +225,7 @@ export const testSuite = createOverkillSuite({
         }),
         ...invalidNestedFields.map(function createInvalidNestedFieldTest(testCase) {
             return createOverkillTestCase({
-                name: `microtest profile nested schema ${testCase.name}`,
+                title: `microtest profile nested schema ${testCase.name}`,
                 metadata: {},
                 body(scope: OverkillScope) {
                     assertValidationFailure(scope, testCase);

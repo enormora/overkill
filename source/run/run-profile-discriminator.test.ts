@@ -3,8 +3,8 @@ import {
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+} from '../packages/engine/engine.entry-point.ts';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     defaultMicrotestProfile,
     defaultRunConfig,
@@ -26,11 +26,11 @@ function createRunCommand(config: RunConfig, profileName: string): RunCommand {
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/run/run-profile-discriminator.test.ts',
+    title: 'source/run/run-profile-discriminator.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'orchestrator.resolve() rejects profiles without a test family',
+            title: 'orchestrator.resolve() rejects profiles without a test family',
             metadata: {},
             async body(scope: OverkillScope) {
                 const profile: Record<string, unknown> = { ...defaultMicrotestProfile() };
@@ -54,7 +54,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'orchestrator.resolve() rejects unsupported profile test families',
+            title: 'orchestrator.resolve() rejects unsupported profile test families',
             metadata: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function resolveInvalidProfile() {

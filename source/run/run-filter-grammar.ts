@@ -20,13 +20,13 @@ const escapedCharacterWidth = 2;
 
 const runFilterFields: ReadonlySet<string> = new Set([
     'file',
-    'name',
     'owner',
     'params',
     'runtime',
     'stability',
     'suite',
-    'tag'
+    'tag',
+    'title'
 ]);
 
 const syntaxCharacters: ReadonlySet<string> = new Set([ '(', ')', '!', '|', '=', '~', ':' ]);

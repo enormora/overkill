@@ -52,19 +52,19 @@ type RunCommandArguments = {
     readonly file: string | null;
     readonly filter: RunFilter | null;
     readonly measureResourceUsage: boolean;
-    readonly name: string | null;
     readonly paths: readonly string[];
     readonly profile: string;
     readonly resourceBudgetOverrides: ResourceBudgetOverrides | null;
+    readonly title: string | null;
 };
 
 type ListCommandArguments = {
     readonly configPath: string | null;
     readonly file: string | null;
     readonly filter: RunFilter | null;
-    readonly name: string | null;
     readonly paths: readonly string[];
     readonly profile: string;
+    readonly title: string | null;
     readonly withLocations: boolean;
     readonly withOrphans: boolean;
 };
@@ -254,10 +254,10 @@ const fileSelectionType: Type<string, string | null> = {
     }
 };
 
-const nameSelectionType: Type<string, string | null> = {
+const titleSelectionType: Type<string, string | null> = {
     displayName: 'text',
     async from(value) {
-        return parseNonEmptySelectorText('Name selector', value);
+        return parseNonEmptySelectorText('Title selector', value);
     }
 };
 
@@ -282,15 +282,15 @@ function selectionFromFilters(filters: readonly RunFilter[]): RunSelection {
     };
 }
 
-function createSelection(args: Pick<RunCommandArguments, 'file' | 'filter' | 'name'>): RunSelection {
+function createSelection(args: Pick<RunCommandArguments, 'file' | 'filter' | 'title'>): RunSelection {
     const filters: RunFilter[] = [];
 
     if (args.filter !== null) {
         filters.push(args.filter);
     }
 
-    if (args.name !== null) {
-        filters.push(contains('name', args.name));
+    if (args.title !== null) {
+        filters.push(contains('title', args.title));
     }
 
     if (args.file !== null) {
@@ -363,9 +363,9 @@ const sharedCommandArguments = {
             return null;
         }
     }),
-    name: option({
-        long: 'name',
-        type: nameSelectionType,
+    title: option({
+        long: 'title',
+        type: titleSelectionType,
         defaultValue() {
             return null;
         }

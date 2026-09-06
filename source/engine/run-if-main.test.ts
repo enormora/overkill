@@ -1,12 +1,12 @@
 import { createDeterministicWallClock } from '@enormora/wall-clock';
-import { doubleUsage, rule, testDouble, type TestDouble } from '@overkill-dev/doubles';
-import { createLineReporter as createOverkillLineReporter } from '@overkill-dev/reporter-line';
+import { doubleUsage, rule, testDouble, type TestDouble } from '../packages/doubles/doubles.entry-point.ts';
+import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     runIfMain,
     type TestScope as OverkillScope
-} from '@overkill-dev/engine';
+} from '../packages/engine/engine.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createEngine, type Engine } from './engine.ts';
 import type { Execute, ExecuteOptions } from './execution.ts';
@@ -62,7 +62,7 @@ function createRunIfMainFixture(
             return testContext.assert.collect();
         },
         metadata: {},
-        name: 'passes'
+        title: 'passes'
     });
 
     return {
@@ -88,11 +88,11 @@ function readExecuteOptions(scope: OverkillScope, execute: TestDouble<Execute>):
 }
 
 export const testSuite = createOverkillSuite({
-    name: 'source/engine/run-if-main.test.ts',
+    title: 'source/engine/run-if-main.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            name: 'runIfMain() does nothing when the module is imported',
+            title: 'runIfMain() does nothing when the module is imported',
             metadata: {},
             async body(scope: OverkillScope) {
                 const fixture = createRunIfMainFixture(runResultFactory.build(), '7');
@@ -106,7 +106,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'runIfMain() executes the test node when the module is main',
+            title: 'runIfMain() executes the test node when the module is main',
             metadata: {},
             async body(scope: OverkillScope) {
                 const fixture = createRunIfMainFixture(runResultFactory.build(), undefined);
@@ -118,7 +118,7 @@ export const testSuite = createOverkillSuite({
                 scope.require.notNull(firstExecute);
                 const firstCase = firstExecute.arguments[0].cases[0];
                 scope.require.defined(firstCase);
-                scope.assert.equal(firstCase.id.name, 'passes');
+                scope.assert.equal(firstCase.id.title, 'passes');
                 scope.assert.deepEqual(firstExecute.arguments[0].root, {
                     metadata: {
                         baselines: [],
@@ -134,14 +134,14 @@ export const testSuite = createOverkillSuite({
                         tags: [],
                         timeoutMilliseconds: null
                     },
-                    name: 'file:///test/file.test.ts'
+                    title: 'file:///test/file.test.ts'
                 });
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
-            name: 'runIfMain() wraps the test node with explicit root data',
+            title: 'runIfMain() wraps the test node with explicit root data',
             metadata: {},
             async body(scope: OverkillScope) {
                 const fixture = createRunIfMainFixture(runResultFactory.build(), undefined);
@@ -149,7 +149,7 @@ export const testSuite = createOverkillSuite({
                 await fixture.engine.runIfMain(importMeta(true), fixture.testNode, {
                     root: {
                         metadata: { ownership: [ 'engine' ] },
-                        name: 'engine tests'
+                        title: 'engine tests'
                     }
                 });
 
@@ -170,14 +170,14 @@ export const testSuite = createOverkillSuite({
                         tags: [],
                         timeoutMilliseconds: null
                     },
-                    name: 'engine tests'
+                    title: 'engine tests'
                 });
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
-            name: 'runIfMain() defaults to no reporters and auto run facts',
+            title: 'runIfMain() defaults to no reporters and auto run facts',
             metadata: {},
             async body(scope: OverkillScope) {
                 const fixture = createRunIfMainFixture(runResultFactory.build(), undefined);
@@ -201,7 +201,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'runIfMain() passes reporters and merges run facts',
+            title: 'runIfMain() passes reporters and merges run facts',
             metadata: {},
             async body(scope: OverkillScope) {
                 const fixture = createRunIfMainFixture(runResultFactory.build(), undefined);
@@ -243,7 +243,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'runIfMain() leaves exit code unchanged when the run passes',
+            title: 'runIfMain() leaves exit code unchanged when the run passes',
             metadata: {},
             async body(scope: OverkillScope) {
                 const fixture = createRunIfMainFixture(runResultFactory.build(), undefined);
@@ -256,7 +256,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'runIfMain() sets exit code when tests fail',
+            title: 'runIfMain() sets exit code when tests fail',
             metadata: {},
             async body(scope: OverkillScope) {
                 const fixture = createRunIfMainFixture(runResultFactory.build({ summary: { failed: 1 } }), 0);
@@ -269,7 +269,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'runIfMain() sets exit code when runner errors are reported',
+            title: 'runIfMain() sets exit code when runner errors are reported',
             metadata: {},
             async body(scope: OverkillScope) {
                 const fixture = createRunIfMainFixture(runResultFactory.build({ runnerErrors: [ {} ] }), '0');
@@ -282,7 +282,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'runIfMain() treats a null exit code as unset',
+            title: 'runIfMain() treats a null exit code as unset',
             metadata: {},
             async body(scope: OverkillScope) {
                 const fixture = createRunIfMainFixture(runResultFactory.build({ summary: { failed: 1 } }), null);
@@ -295,7 +295,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'runIfMain() preserves an existing nonzero exit code',
+            title: 'runIfMain() preserves an existing nonzero exit code',
             metadata: {},
             async body(scope: OverkillScope) {
                 const fixture = createRunIfMainFixture(runResultFactory.build({ summary: { failed: 1 } }), 2);
@@ -308,7 +308,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            name: 'runIfMain() rejects planning or execution errors',
+            title: 'runIfMain() rejects planning or execution errors',
             metadata: {},
             async body(scope: OverkillScope) {
                 let exitCode: number | string | undefined = 0;
@@ -335,7 +335,7 @@ export const testSuite = createOverkillSuite({
                         return testContext.assert.collect();
                     },
                     metadata: {},
-                    name: 'passes'
+                    title: 'passes'
                 });
 
                 await scope.assert.rejects(async function runMain() {
