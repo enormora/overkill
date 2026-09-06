@@ -23,9 +23,11 @@ It does not need:
 - loader magic
 
 Engine consumers configure it directly through ordinary TypeScript values and
-function calls. The engine-owned `runIfMain(import.meta, testNode, options?)`
-helper follows that rule: its third argument is execution options such as
-reporters and run facts, not project configuration.
+function calls. `runIfMain(import.meta, testNode, options?)` is the narrow
+exception owned by `@overkill-dev/run` and lazily exposed by
+`@overkill-dev/test`, because direct-file execution needs config loading,
+profile matching, default reporters, and runner-owned facts. It loads config
+from `process.cwd()` only when `import.meta.main` is true.
 
 ## Higher-Level Configuration
 

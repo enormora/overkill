@@ -1,11 +1,9 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite,
     createTestCase,
-    runIfMain,
     type TestScope
 } from '../../packages/engine/engine.entry-point.ts';
 import type { Reporter } from '../../engine/reporter.ts';
@@ -482,4 +480,6 @@ export const testSuite = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testSuite, { reporters: [ createLineReporter() ] });
+const { runIfMain: runTestFileIfMain } = await import('../../test-support/run-if-main.ts');
+
+await runTestFileIfMain(import.meta, testSuite);

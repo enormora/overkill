@@ -4,6 +4,8 @@ import {
     createTable,
     createTestCase,
     type Metadata,
+    type OutputRenderer,
+    type Reporter,
     type Suite,
     type Table,
     type TableOptions,
@@ -14,6 +16,23 @@ import {
 } from '../engine/engine.entry-point.ts';
 
 type UnavailableAuthoringApi = (...parameters: readonly unknown[]) => never;
+
+export type RunIfMainRootOptions = {
+    readonly metadata: Metadata;
+    readonly title: string;
+};
+
+export type RunIfMainOptions = {
+    readonly outputRenderer?: OutputRenderer;
+    readonly reporters?: readonly Reporter[];
+    readonly root?: RunIfMainRootOptions;
+};
+
+export type RunIfMain = (
+    meta: Readonly<ImportMeta>,
+    testNode: TestNode,
+    options?: RunIfMainOptions
+) => Promise<void>;
 
 type TestDefinition = {
     readonly body: TestBody;
@@ -287,12 +306,25 @@ export function table<Row>(definition: TableDefinition<Row>): Table {
 
 export const createTestFacade = createUnavailableAuthoringApi('createTestFacade');
 export const defineMacro = createUnavailableAuthoringApi('defineMacro');
-export const runIfMain = createUnavailableAuthoringApi('runIfMain');
+
+export async function runIfMain(
+    meta: Readonly<ImportMeta>,
+    testNode: TestNode,
+    options?: RunIfMainOptions
+): Promise<void> {
+    if (!meta.main) {
+        return;
+    }
+
+    const runModule = await import('../run/run.entry-point.ts');
+
+    await runModule.runIfMain(meta, testNode, options);
+}
 
 export type {
     Metadata,
-    RunIfMainOptions,
-    RunIfMainRootOptions,
+    OutputRenderer,
+    Reporter,
     Suite,
     Table,
     TestBody,

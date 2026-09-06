@@ -1,4 +1,5 @@
 export { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
+export { runIfMain } from '../../run/run-if-main.ts';
 export {
     defineConfig,
     loadRunConfig,
@@ -20,6 +21,11 @@ export type {
     RunProjectTimeoutConfig,
     RunProjectUnmeasuredResourceUsage
 } from '../../run/run-config.ts';
+export type { RunIfMain } from '../../run/run-if-main.ts';
+export type {
+    RunIfMainOptions,
+    RunIfMainRootOptions
+} from '../../run/run-if-main-options.ts';
 export type { RunResolutionErrorCode } from '../../run/run-errors.ts';
 export type {
     CollectedRunCase,

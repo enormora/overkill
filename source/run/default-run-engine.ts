@@ -5,14 +5,6 @@ import { formatCaseId } from '../engine/identity.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { defaultTestNodeOwner } from '../engine/test-node.ts';
 
-function readProcessExitCode(): number | string | null | undefined {
-    return process.exitCode;
-}
-
-function writeProcessExitCode(exitCode: number): void {
-    process.exitCode = exitCode;
-}
-
 function writeStdoutLine(line: string): void {
     process.stdout.write(`${line}\n`);
 }
@@ -33,10 +25,7 @@ function createEngineDependencies(): EngineDependencies {
             }),
             wallClock
         }),
-        nodeVersion: process.versions.node,
-        readExitCode: readProcessExitCode,
-        wallClock,
-        writeExitCode: writeProcessExitCode
+        wallClock
     };
 }
 
@@ -51,6 +40,5 @@ export const defaultRunEngine: Engine = {
     createTestPlanFromTestFiles: engine.createTestPlanFromTestFiles,
     execute: engine.execute,
     formatCaseId,
-    ownsTestNode: engine.ownsTestNode,
-    runIfMain: engine.runIfMain
+    ownsTestNode: engine.ownsTestNode
 };

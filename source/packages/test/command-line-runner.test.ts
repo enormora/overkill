@@ -1,5 +1,4 @@
-import { createSuite, createTestCase, runIfMain, type TestScope } from '../engine/engine.entry-point.ts';
-import { createLineReporter } from '../reporter-line/reporter-line.entry-point.ts';
+import { createSuite, createTestCase, type TestScope } from '../engine/engine.entry-point.ts';
 import type {
     CommandLineCommand,
     CommandLineExitCode,
@@ -528,4 +527,6 @@ export const testSuite = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testSuite, { reporters: [ createLineReporter() ] });
+const { runIfMain: runTestFileIfMain } = await import('../../test-support/run-if-main.ts');
+
+await runTestFileIfMain(import.meta, testSuite);

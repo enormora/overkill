@@ -27,9 +27,9 @@ For tiny projects, this layer should already be usable directly. A consumer
 can import `createSuite`, `createTestCase`, `createTestPlan`, and `execute`
 from `@overkill-dev/engine`, build a suite, freeze it into a `TestPlan`, and
 call `execute(testPlan)` to receive a `RunResult` without pulling in the
-higher-level DSL. They can also call `runIfMain(import.meta, testNode, options?)`
-for a direct Node entrypoint when they do not need discovery or runner
-configuration.
+higher-level DSL. Direct-file self-running entrypoints belong to
+`@overkill-dev/run` because they use runner config, profile selection, run
+facts, and default reporters.
 
 Those primitives should also be the only way to create valid engine
 `TestNode`s. Shape-compatible plain objects are not enough: engine-branded
@@ -60,7 +60,7 @@ semantic owner package. In practice that means:
 Recommended public split:
 
 ```ts
-import { execute, runIfMain } from '@overkill-dev/engine';
+import { execute } from '@overkill-dev/engine';
 import { defineConfig } from '@overkill-dev/test/config';
 import { suite, test, testDouble } from '@overkill-dev/test';
 import {
@@ -70,6 +70,7 @@ import {
     replay,
     replayWitness,
     resolveRun,
+    runIfMain,
     run,
     watch
 } from '@overkill-dev/run';
@@ -91,9 +92,10 @@ Conceptually:
   import custom engine modules in the parent process
 - `execute(testPlan)` is the lower-level engine entrypoint once planning is
   already done, and it returns a `RunResult`
-- `runIfMain(import.meta, testNode, options?)` is the lower-level self-running
+- `runIfMain(import.meta, testNode, options?)` is the runner-owned self-running
   entrypoint for one already-authored `TestNode`; it wraps the node in an
-  execution root for direct Node runs
+  execution root, loads config from `process.cwd()`, selects the direct file's
+  profile, and uses default reporters when none are configured
 
 ## Default Test Authoring
 
@@ -639,6 +641,7 @@ or extend the contract but do not redefine it.
 | Test doubles (`testDouble`, `when`, helpers)                      | `@overkill-dev/doubles`                                                | See [Doubles](../authoring/doubles.md).                                                                                                                        |
 | Typed runtime / resource composition                              | `@overkill-dev/resources`                                              | Lifecycle scopes, execution requirements.                                                                                                                      |
 | Discovery, filtering, runner profiles                             | `@overkill-dev/run`                                                    | Reads configuration, freezes `RunFacts`, and produces `ResolvedRun`.                                                                                           |
+| Direct-file `runIfMain(...)` execution                            | `@overkill-dev/run`                                                    | `@overkill-dev/test` lazily re-exports it; engine consumers use `createTestPlan(root)` and `execute(testPlan)` directly.                                       |
 | Selection filter grammar                                          | `@overkill-dev/run`                                                    | Specification in [Metadata And Selection](./metadata-and-selection.md).                                                                                        |
 | Sharding                                                          | `@overkill-dev/run`                                                    | Stable identity-hash partitioning.                                                                                                                             |
 | Reporter event stream contract                                    | `@overkill-dev/engine`                                                 | The `ReporterEvent` ADT.                                                                                                                                       |

@@ -12,6 +12,7 @@ Top-level API:
 - `ResolvedRun`
 - `defineConfig(config)`
 - `loadRunConfig({ cwd, configPath })`
+- `runIfMain(import.meta, testNode, options?)`
 - `orchestrator.resolve(command)`
 - `orchestrator.run(command)`
 - `orchestrator.runWithReporterDelivery(command)`
@@ -19,6 +20,17 @@ Top-level API:
 Configuration loading and authoring are also exposed through
 `@overkill-dev/run/config` for packages that need the config-owned surface
 without importing orchestration.
+
+`runIfMain(import.meta, testNode, options?)` is the supported companion for
+bare `node path/to/file.test.ts` execution. It returns immediately when the
+module was imported, loads config from `process.cwd()` only for the main
+module, selects the matching profile from `profiles.<name>.files`, falls back
+to the configured `microtest` profile, and uses the default line reporter when
+neither options, the selected profile, nor project config provides reporters.
+Direct execution always runs in the current process. When the selected profile
+uses `supervised-process`, it prints a warning and preserves the profile's
+scheduling and run facts while disabling child-process isolation for that
+direct Node invocation.
 
 Command-line business logic is exposed through `@overkill-dev/run/command-line`:
 

@@ -79,8 +79,28 @@ body receives the original row value as `scope.parameters`; default row titles
 are `case 1`, `case 2`, and so on. Reachable tables must contain at least two
 rows.
 
-`defineMacro`, `createTestFacade`, and `runIfMain` still throw explicit
-unavailable errors.
+`defineMacro` and `createTestFacade` still throw explicit unavailable errors.
+
+Direct Node execution:
+
+```ts
+import { runIfMain, suite, test } from '@overkill-dev/test';
+
+export const testNode = suite('users', [
+    test('loads user', (scope) => {
+        scope.assert.equal(loadUser('42').name, 'Ada');
+        return scope.assert.collect();
+    })
+]);
+
+await runIfMain(import.meta, testNode);
+```
+
+`runIfMain(...)` is a lazy root export. Imported test modules return before
+loading runner config or reporters. Entrypoint modules delegate to
+`@overkill-dev/run`, load config from `process.cwd()`, select the matching
+profile by file policy, and use the default line reporter when no reporter is
+configured.
 
 Supported command-line surface:
 

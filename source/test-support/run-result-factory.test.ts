@@ -1,13 +1,12 @@
 import { defineNarrowingCompositeAssertion } from '../packages/assert/assert.entry-point.ts';
-import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
-    runIfMain,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import type { AssertionTestFailure, FailOutcome, RunResult, TestFailure, TestOutcome } from '../engine/run-result.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
+import { runIfMain } from './run-if-main.ts';
 import { runResultFactory } from './run-result-factory.ts';
 
 function defaultFailure(): unknown {
@@ -222,4 +221,6 @@ export const testSuite = createOverkillSuite({
     ]
 });
 
-await runIfMain(import.meta, testSuite, { reporters: [ createOverkillLineReporter() ] });
+const { runIfMain: runTestFileIfMain } = await import('./run-if-main.ts');
+
+await runTestFileIfMain(import.meta, testSuite);

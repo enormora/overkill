@@ -12,7 +12,6 @@ import {
     execute,
     formatCaseId,
     ownsTestNode,
-    runIfMain,
     serializeValue,
     type Engine,
     type RunIfMainOptions,
@@ -23,7 +22,6 @@ import {
     type TestRoot,
     type TestScope
 } from '@overkill-dev/engine';
-import { createLineReporter } from '@overkill-dev/reporter-line';
 
 type SmokeCaseDefinition = {
     readonly name: string;
@@ -218,8 +216,7 @@ export const testSuite = createSuite({
                     createTestPlanFromTestFiles,
                     execute,
                     formatCaseId,
-                    ownsTestNode,
-                    runIfMain
+                    ownsTestNode
                 };
 
                 scope.assert(smokeResult, await executeSmokePlan(topLevelEngine), 8);
@@ -342,4 +339,6 @@ export const testSuite = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testSuite, { reporters: [ createLineReporter() ] });
+const { runIfMain: runTestFileIfMain } = await import('../../test-support/run-if-main.ts');
+
+await runTestFileIfMain(import.meta, testSuite);

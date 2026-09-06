@@ -6,7 +6,6 @@ import {
     execute,
     ownsTestNode,
     serializeValue,
-    runIfMain,
     type Suite,
     type Table,
     type TestBody,
@@ -15,7 +14,6 @@ import {
     type TestScope,
     type TestScope as OverkillScope
 } from '../engine/engine.entry-point.ts';
-import { createLineReporter } from '../reporter-line/reporter-line.entry-point.ts';
 import {
     createTestFacade,
     defineMacro,
@@ -290,4 +288,6 @@ export const testSuite = createOverkillSuite({
     ]
 });
 
-await runIfMain(import.meta, testSuite, { reporters: [ createLineReporter() ] });
+const { runIfMain: runTestFileIfMain } = await import('../../test-support/run-if-main.ts');
+
+await runTestFileIfMain(import.meta, testSuite);

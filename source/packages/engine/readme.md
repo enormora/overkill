@@ -10,14 +10,13 @@ Top-level API:
 - `createTable(options)`
 - `createTestPlan(root)`
 - `execute(testPlan)`
-- `runIfMain(import.meta, testNode, options?)`
 - `createEngine()`
 - `formatCaseId(caseId)`
 - `validateReporterSinks(reporters)`
 - `createPlainOutputRenderer()`
 - `captureSourceLocation()`
 - `unknownSourceLocation`
-- `CaseId`, `TestId`, `TestRoot`, `TestPlan`, `ExecuteOptions`, `RunIfMainOptions`, `NonEmptyReadonlyArray`, `DeepComparable`
+- `CaseId`, `TestId`, `TestRoot`, `TestPlan`, `ExecuteOptions`, `NonEmptyReadonlyArray`, `DeepComparable`
 - `Reporter`, `ReporterEvent`, `RealTimeReporter`, `FinalResultReporter`, `RunFacts`, `SinkDeclaration`, `OutputLineIntent`, `OutputRenderer`
 - `RunResult`, `TestOutcome`, `PassOutcome`, `FailOutcome`, `SkipOutcome`, `InconclusiveOutcome`
 - `AssertionNode`, `AssertionResult`, `AssertAssertionFacade`, `TestScopeAssertContext`
@@ -30,11 +29,10 @@ The top-level constructors share one default engine instance. Use
 `createEngine()` when a collection needs isolated construction state for
 `defined` counts and orphan detection.
 
-Direct Node execution:
+Direct execution:
 
 ```ts
-import { createTestCase, runIfMain } from '@overkill-dev/engine';
-import { createDotReporter } from '@overkill-dev/reporter-dot';
+import { createRoot, createTestCase, createTestPlan, execute } from '@overkill-dev/engine';
 
 export const testNode = createTestCase({
     body(scope) {
@@ -45,17 +43,24 @@ export const testNode = createTestCase({
     name: 'passes'
 });
 
-await runIfMain(import.meta, testNode, {
-    root: { name: import.meta.url, metadata: {} },
-    reporters: [ createDotReporter() ]
+const root = createRoot({
+    children: [ testNode ],
+    metadata: { kind: 'microtest' },
+    name: 'direct'
 });
+
+await execute(createTestPlan(root));
 ```
 
-Aggregate direct Node execution:
+Runner-owned direct Node entrypoints are exposed by `@overkill-dev/run` and
+`@overkill-dev/test` through `runIfMain(import.meta, testNode, options?)`.
+Those entrypoints load runner config, match the direct file to a profile, and
+use default runner reporters when no explicit reporters are configured.
+
+Aggregate direct execution:
 
 ```ts
-import { createSuite, runIfMain } from '@overkill-dev/engine';
-import { createDotReporter } from '@overkill-dev/reporter-dot';
+import { createRoot, createSuite, createTestPlan, execute } from '@overkill-dev/engine';
 import { testNode as orders } from './orders.test.ts';
 import { testNode as users } from './users.test.ts';
 
@@ -65,10 +70,13 @@ export const testNode = createSuite({
     name: 'all'
 });
 
-await runIfMain(import.meta, testNode, {
-    root: { name: 'all', metadata: {} },
-    reporters: [ createDotReporter() ]
+const root = createRoot({
+    children: [ testNode ],
+    metadata: { kind: 'microtest' },
+    name: 'all'
 });
+
+await execute(createTestPlan(root));
 ```
 
 Direct `createTestPlan(...)` calls require an explicit `createRoot(...)`.
