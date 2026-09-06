@@ -5,6 +5,7 @@ import { testSuite as runConfigurationTestSuite } from './run-configuration-suit
 import { testSuite as runListRendererTestSuite } from './run-list-renderer.test.ts';
 import { testSuite as runOrchestratorTestSuite } from './run-orchestrator-suite.test.ts';
 import { testSuite as runPlanningTestSuite } from './run-planning-suite.test.ts';
+import { testSuite as runIfMainTestSuite } from './run-if-main-suite.test.ts';
 import { testSuite as supervisedRunTestSuite } from './supervised-run.test.ts';
 
 export const testSuite = createOverkillSuite({
@@ -14,6 +15,7 @@ export const testSuite = createOverkillSuite({
         commandLineRunnerTestSuite,
         resourceUsageTestSuite,
         runConfigurationTestSuite,
+        runIfMainTestSuite,
         runListRendererTestSuite,
         runOrchestratorTestSuite,
         runPlanningTestSuite,
