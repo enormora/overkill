@@ -202,6 +202,12 @@ function assertTableCases(scope: OverkillScope, execution: TableAuthoringExecuti
         { file: null, params: parameterIdentity(execution.rows[0]), suite: [ 'rows' ], title: 'row 1' },
         { file: null, params: parameterIdentity(execution.rows[1]), suite: [ 'rows' ], title: 'row 2' }
     ]);
+    scope.assert.deepEqual(
+        execution.plan.discoveredCases.map(function toTagList(testCase) {
+            return testCase.metadata.tags.join(',');
+        }),
+        [ 'table', 'table' ]
+    );
 }
 
 type FailOutcome = Extract<TestOutcome, { readonly kind: 'fail'; }>;

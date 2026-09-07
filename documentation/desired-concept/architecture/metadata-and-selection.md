@@ -80,7 +80,7 @@ with the default behavior.
 Metadata cascades from root to test, with override semantics:
 
 1. root metadata applies to the whole plan
-2. file-frame metadata applies to all tests in that file
+2. top-level `testNode` metadata applies to that exported tree
 3. a parent `Suite`'s or `Table`'s metadata applies to all children
 4. a child's metadata overrides the parent on a per-key basis
 5. set-valued fields (`tags`, `ownership`, `baselines`) merge by union with the parent
@@ -90,7 +90,8 @@ Metadata cascades from root to test, with override semantics:
 
 The default `@overkill-dev/test` authoring facade creates ordinary `test(...)`
 and `suite(...)` nodes with `kind: 'microtest'` unless object-form metadata
-supplies another `kind`.
+supplies another `kind`. Test modules express file-wide metadata by attaching
+metadata to their exported top-level `testNode`.
 
 Example:
 
@@ -117,11 +118,9 @@ export const testNode = suite({
 });
 ```
 
-The file frame is metadata-only. It participates in propagation but does
-not add a suite segment, does not affect `CaseId`, and does not change
-reporter nesting. The current programmatic engine API exposes it as
-`TestPlanFile.metadata`; public module-level authoring for file metadata
-is deferred to the root authoring and module export design.
+File origin is identity data, not metadata. Runner-backed collection records
+file origin on `CaseId.file`; it does not auto-add file paths or module URLs to
+`Metadata`.
 
 Propagation is a tree fold computed at collection time. The resolved
 metadata is part of the test's identity for selection but not for artifact

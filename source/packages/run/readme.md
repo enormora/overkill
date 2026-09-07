@@ -76,6 +76,7 @@ The current runner accepts explicit file paths through `RunRequest.paths` and
 profile file discovery through `profiles.<name>.files`. Each discovered or
 explicit file is imported as a native Node ESM module and must export a named
 `testNode` value created by the selected engine.
+Attach broad module metadata to that exported top-level node.
 `commandLineRunner.listTests(...)` resolves those modules and prints a plain
 plan tree without executing tests or loading fallback reporters.
 `RunCommand.engine` may be `{ kind: 'default' }` to use the shared public engine,

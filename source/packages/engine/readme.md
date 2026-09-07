@@ -85,7 +85,7 @@ case suite paths or `RunResult.bySuite`.
 
 Metadata is closed structured input. Unknown first-party metadata fields
 fail during test construction or collection. `TestPlanCase.metadata` is the
-resolved metadata after root, file, suite, table, and case propagation. Use
+resolved metadata after root, suite, table, and case propagation. Use
 `extra` for package-owned extension data.
 
 Reporter lifecycle:
