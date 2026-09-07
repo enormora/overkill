@@ -202,10 +202,12 @@ function plainData(value: unknown): unknown {
 }
 
 export const testSuite = createSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/integration-tests/run/runner-explicit-files.test.ts',
     metadata: {},
     children: [
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runner resolves and executes one explicit testNode file',
             metadata: {},
             async body(scope: TestScope) {
@@ -237,6 +239,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runner executes a supervised microtest in a child process',
             metadata: {},
             async body(scope: TestScope) {
@@ -262,6 +265,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runner resolves and executes profile-discovered files',
             metadata: {},
             async body(scope: TestScope) {
@@ -305,6 +309,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runner runs in-process microtests concurrently from profile scheduling',
             metadata: {},
             async body(scope: TestScope) {
@@ -321,6 +326,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runner runs in-process microtests serially from profile scheduling',
             metadata: {},
             async body(scope: TestScope) {
@@ -337,6 +343,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runner runs supervised microtests concurrently from profile scheduling',
             metadata: {},
             async body(scope: TestScope) {
@@ -353,6 +360,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runner runs supervised microtests serially from profile scheduling',
             metadata: {},
             async body(scope: TestScope) {
@@ -369,6 +377,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runner kills a supervised microtest that blocks past hard timeout',
             metadata: {},
             async body(scope: TestScope) {
@@ -415,6 +424,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runner uses file identity to distinguish duplicate case names across files',
             metadata: {},
             async body(scope: TestScope) {
@@ -447,6 +457,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runner rejects invalid explicit paths before module import',
             metadata: {},
             async body(scope: TestScope) {

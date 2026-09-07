@@ -43,10 +43,12 @@ const anonymousCandidate = {
 };
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run-selection-filters.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'filter helpers create serializable filter expressions',
             metadata: {},
             body(scope: OverkillScope) {
@@ -77,6 +79,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'matchesRunFilter() matches supported dimensions case-insensitively',
             metadata: {},
             body(scope: OverkillScope) {
@@ -107,6 +110,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'matchesRunFilter() treats absent identity dimensions as non-matches',
             metadata: {},
             body(scope: OverkillScope) {
@@ -119,6 +123,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'copyRunSelection() deep-copies serializable filter trees',
             metadata: {},
             body(scope: OverkillScope) {
@@ -143,6 +148,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'run filter helpers reject empty text operands',
             metadata: {},
             body(scope: OverkillScope) {
@@ -157,6 +163,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'run filter validation rejects malformed filter trees',
             metadata: {},
             body(scope: OverkillScope) {

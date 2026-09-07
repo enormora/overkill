@@ -61,7 +61,7 @@ function failedAssertionLocation(result: RunResult): SourceLocation | null {
         return null;
     }
 
-    return failure.checks[0].location;
+    return failure.checks[0].sourceLocations[0];
 }
 
 function packagedSourceFile(location: SourceLocation | null): string {
@@ -123,9 +123,9 @@ const smokeResult = defineCompositeAssertion({
                                             expected: serializeValue(2),
                                             id: '1',
                                             kind: 'leaf',
-                                            location,
                                             path: [],
                                             source: 'assert',
+                                            sourceLocations: [ location ],
                                             summary: 'numbers differ'
                                         }
                                     ],
@@ -158,6 +158,7 @@ const smokeCaseDefinitionFactory = createFactory<SmokeCaseDefinition>(function c
 
 function createSmokeCase(engine: Engine, definition: SmokeCaseDefinition): TestCase {
     return engine.createTestCase({
+        definitionLocations: [ { column: null, file: '', line: null } ],
         body(testScope: TestScope) {
             if (definition.expectedVerdict === 'pass') {
                 testScope.assert.true(true, { message: definition.assertionSummary });
@@ -201,10 +202,12 @@ async function executeSmokePlan(engine: Engine): Promise<RunResult> {
 }
 
 export const testSuite = createSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'package smoke',
     metadata: {},
     children: [
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'consumer imports top-level @overkill-dev/engine exports and executes a TestPlan',
             metadata: {},
             async body(scope: TestScope) {
@@ -226,10 +229,12 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'integration launcher returns for imported metadata',
             metadata: {},
             async body(scope: TestScope) {
                 const testCase = createTestCase({
+                    definitionLocations: [ { column: null, file: '', line: null } ],
                     body(testContext: TestScope) {
                         testContext.assert.true(true, { message: 'passes' });
                         return testContext.assert.collect();
@@ -245,6 +250,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'consumer imports createEngine() and executes a TestPlan',
             metadata: {},
             async body(scope: TestScope) {
@@ -254,10 +260,12 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'consumer imports @overkill-dev/assert reference and executes it through @overkill-dev/engine',
             metadata: {},
             async body(scope: TestScope) {
                 const testCase = createTestCase({
+                    definitionLocations: [ { column: null, file: '', line: null } ],
                     body(testScope: TestScope) {
                         testScope.assert(resultOk, { ok: true });
                         return testScope.assert.collect();
@@ -274,6 +282,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'consumer imports top-level @overkill-dev/doubles facade',
             metadata: {},
             async body(scope: TestScope) {
@@ -308,6 +317,7 @@ export const testSuite = createSuite({
                 );
 
                 const testCase = createTestCase({
+                    definitionLocations: [ { column: null, file: '', line: null } ],
                     body(testScope: TestScope) {
                         const saveValue = doublesPackage.testDouble.returns('saved');
 

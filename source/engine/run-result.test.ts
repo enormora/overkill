@@ -13,9 +13,9 @@ type FailedCheckFixture = {
     readonly expected: FailedCheck['expected'];
     readonly id: FailedCheck['id'];
     readonly kind: 'leaf';
-    readonly location: SourceLocation;
     readonly path: FailedCheck['path'];
     readonly source: FailedCheck['source'];
+    readonly sourceLocations: readonly [SourceLocation];
     readonly summary: FailedCheck['summary'];
 };
 
@@ -26,18 +26,20 @@ function createFailedCheck(): FailedCheckFixture {
         expected: serializeValue(null),
         id: 'check',
         kind: 'leaf',
-        location: { column: null, file: 'source/example.test.ts', line: null },
         path: [],
         source: 'assert',
+        sourceLocations: [ { column: null, file: 'source/example.test.ts', line: null } ],
         summary: 'Check failed'
     };
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/engine/run-result.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'verdictFromOutcome() returns the outcome kind as the verdict',
             metadata: {},
             body(scope: OverkillScope) {

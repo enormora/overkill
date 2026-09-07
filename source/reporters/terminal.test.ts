@@ -55,10 +55,12 @@ function createFakeTerminal(columns: number): FakeTerminal {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/reporters/terminal.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'visibleTerminalWidth() ignores ANSI escapes and counts Unicode display width',
             metadata: {},
             body(scope: OverkillScope) {
@@ -68,6 +70,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'terminal progress renderer redraws the full block on interactive resize',
             metadata: {},
             body(scope: OverkillScope) {
@@ -88,6 +91,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'terminal progress renderer ignores resize before progress and after finish',
             metadata: {},
             body(scope: OverkillScope) {
@@ -108,6 +112,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'terminal progress renderer does not emit cursor escapes in non-interactive output',
             metadata: {},
             body(scope: OverkillScope) {
@@ -129,6 +134,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'terminal progress renderer falls back when output columns are invalid',
             metadata: {},
             body(scope: OverkillScope) {
@@ -148,6 +154,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'terminal progress renderer treats finish as idempotent',
             metadata: {},
             body(scope: OverkillScope) {
@@ -167,6 +174,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'terminal progress renderer removes resize listener on dispose',
             metadata: {},
             body(scope: OverkillScope) {

@@ -34,10 +34,12 @@ function createRecordedSnapshotLoader(): RecordedSnapshotLoader {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/doubles/test-double-history.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'history array snapshots are shallow copies',
             metadata: {},
             body(scope: OverkillScope) {
@@ -56,6 +58,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'history record snapshots are shallow copies',
             metadata: {},
             body(scope: OverkillScope) {
@@ -84,6 +87,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'history result snapshots keep value references',
             metadata: {},
             body(scope: OverkillScope) {
@@ -100,6 +104,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'history properties are non-enumerable',
             metadata: {},
             body(scope: OverkillScope) {
@@ -115,6 +120,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'reset clears history and restarts indexes',
             metadata: {},
             body(scope: OverkillScope) {
@@ -142,6 +148,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'reset rewinds ordered rules and sequence behaviors',
             metadata: {},
             body(scope: OverkillScope) {
@@ -162,6 +169,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'sequence behavior state is independent per double',
             metadata: {},
             body(scope: OverkillScope) {

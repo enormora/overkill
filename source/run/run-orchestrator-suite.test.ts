@@ -9,6 +9,7 @@ import { testSuite as supervisedRunRuntimeTestSuite } from './supervised-run-run
 import { testSuite as supervisedRuntimePolicyErrorsTestSuite } from './supervised-runtime-policy-errors.test.ts';
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run-orchestrator-suite.test.ts',
     metadata: {},
     children: [

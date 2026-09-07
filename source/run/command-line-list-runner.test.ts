@@ -72,12 +72,12 @@ function createPassingPlan(): TestPlan {
                     scope.assert.true(true);
                     return scope.assert.collect();
                 },
-                definitionLocation: testLocation,
+                definitionLocations: [ testLocation ],
                 metadata: {},
                 title: 'passes'
             })
         ],
-        definitionLocation: suiteLocation,
+        definitionLocations: [ suiteLocation ],
         metadata: {},
         title: 'suite'
     });
@@ -164,11 +164,11 @@ async function createResolvedRunWithOrphanLocation(command: RunCommand): Promise
                 files: [],
                 orphans: [
                     {
-                        definitionLocation: {
+                        definitionLocations: [ {
                             column: 11,
                             file: `${process.cwd()}/source/orphan.test.ts`,
                             line: 7
-                        },
+                        } ],
                         file: null,
                         kind: 'suite',
                         title: 'unused'
@@ -231,10 +231,12 @@ async function listTests(
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/command-line-list-runner.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner.listTests() renders the resolved plan tree without loading reporters',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -268,6 +270,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner.listTests() preserves list selection',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -306,6 +309,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner.listTests() renders definition locations when requested',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -332,6 +336,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner.listTests() renders explicit orphan diagnostics',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -360,6 +365,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner.listTests() renders orphan definition locations when requested',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -383,6 +389,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner.listTests() maps collection runner errors without printing the plan',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -416,6 +423,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner.listTests() maps config load errors',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -454,6 +462,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner.listTests() maps thrown collection errors',
             metadata: {},
             async body(scope: OverkillScope) {

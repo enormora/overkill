@@ -42,14 +42,16 @@ export type SourceLocationProvider = () => SourceLocation;
 
 export type ResolvableSourceLocation = SourceLocation | SourceLocationProvider;
 
+export type ResolvableSourceLocations = NonEmptyReadonlyArray<ResolvableSourceLocation>;
+
 type FailedCheckBase = {
     readonly actual: SerializedValue;
     readonly diff: Diff | null;
     readonly expected: SerializedValue;
     readonly id: string;
-    readonly location: SourceLocation;
     readonly path: readonly DiffPathSegment[];
     readonly source: AssertionSource;
+    readonly sourceLocations: NonEmptyReadonlyArray<SourceLocation>;
     readonly summary: string;
 };
 
@@ -75,16 +77,16 @@ export type InstanceConstructor = abstract new (...args: never[]) => unknown;
 export type ActualAssertionNode<Source extends AssertionSource, Check extends string> = {
     readonly actual: unknown;
     readonly check: Check;
-    readonly location: ResolvableSourceLocation;
     readonly message: string | null;
     readonly source: Source;
+    readonly sourceLocations: ResolvableSourceLocations;
 };
 
 export type ExpectedAssertionNode<Source extends AssertionSource, Check extends string> = {
     readonly actual: unknown;
     readonly check: Check;
     readonly expected: unknown;
-    readonly location: ResolvableSourceLocation;
     readonly message: string | null;
     readonly source: Source;
+    readonly sourceLocations: ResolvableSourceLocations;
 };

@@ -15,10 +15,12 @@ type ClientFactory = {
 };
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/doubles/test-double-configuration.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'testDouble() rejects invalid configuration arguments',
             metadata: {},
             body(scope: OverkillScope) {
@@ -37,6 +39,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'testDouble() ignores invalid configuration entries',
             metadata: {},
             body(scope: OverkillScope) {
@@ -58,6 +61,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'fallback can configure call defaults without construction defaults',
             metadata: {},
             body(scope: OverkillScope) {
@@ -79,6 +83,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'fallback can configure construction defaults without call defaults',
             metadata: {},
             body(scope: OverkillScope) {
@@ -100,6 +105,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'fallback behaviors that cannot answer an invocation fall through',
             metadata: {},
             body(scope: OverkillScope) {
@@ -118,6 +124,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'sequence entries that cannot answer an invocation fall through',
             metadata: {},
             body(scope: OverkillScope) {

@@ -15,6 +15,7 @@ const stackFramePattern = /^\s*at (?:.+? \()?(?<file>.+):(?<line>\d+):(?<column>
 
 const internalModulePatterns = [
     /\/assertion-protocol\/source-location\.[cm]?[jt]s$/u,
+    /\/assertion-protocol\/source-location-forwarding\.[cm]?[jt]s$/u,
     /\/assertion-protocol\/assertion-reference\.[cm]?[jt]s$/u,
     /\/engine\/assertion-facade\.[cm]?[jt]s$/u,
     /\/engine\/custom-assertion-recording\.[cm]?[jt]s$/u,

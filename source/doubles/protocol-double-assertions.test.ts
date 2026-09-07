@@ -29,6 +29,7 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
             engine.createRoot({
                 children: [
                     engine.createTestCase({
+                        definitionLocations: [ { column: null, file: '', line: null } ],
                         body,
                         metadata: {},
                         title: 'case'
@@ -62,10 +63,12 @@ function metadataDisposable(dispose: () => void): MetadataDisposable {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/doubles/protocol-double-assertions.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'testAsyncIterator() tracks rejected protocol methods',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -87,6 +90,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'protocol metadata rejects non-protocol values',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -97,6 +101,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'protocol metadata reports null disposal for iterator protocols',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -108,6 +113,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'protocol iterable metadata ignores thrown iterator factory calls',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -127,6 +133,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'protocol iterator assertions accept protocol objects',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -148,6 +155,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'disposal assertions accept disposable protocol objects',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -176,6 +184,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'disposal assertions reject invalid protocol inputs',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -193,6 +202,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'disposal assertions reject protocol inputs without double methods',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -210,6 +220,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'disposal order rejects mixed double scopes',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -231,6 +242,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'disposal assertions validate counts and order inputs',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -245,6 +257,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'disposal order rejects invalid protocol entries',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -259,6 +272,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'disposal order reports missing disposal events',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -273,6 +287,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'disposal order rejects too few runtime entries',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -289,6 +304,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'iterator assertions reject invalid protocol inputs',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -306,6 +322,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'iterator assertions validate expected event counts',
             metadata: {},
             body: async function body(scope: OverkillScope) {

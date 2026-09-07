@@ -159,10 +159,12 @@ async function runTests(
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/command-line-fallback-diagnostics.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner.runTests() maps resource exhaustion to exit code 5',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -181,6 +183,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner.runTests() maps resource exhaustion before generic runner errors',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -200,6 +203,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner.runTests() omits terminal-delivered runner error fallback diagnostics',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -217,6 +221,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner.runTests() omits terminal-finished runner error fallback diagnostics',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -236,6 +241,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner.runTests() omits terminal final-result runner error fallback diagnostics',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -255,6 +261,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner.runTests() falls back to runner errors not delivered to terminal reporters',
             metadata: {},
             async body(scope: OverkillScope) {

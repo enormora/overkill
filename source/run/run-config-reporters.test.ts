@@ -63,10 +63,12 @@ function reporterNames(scope: OverkillScope, config: LoadedRunConfig): readonly 
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run-config-reporters.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'loadRunConfig() preserves global reporter fallback and profile reporter overrides',
             metadata: {},
             async body(scope: OverkillScope) {

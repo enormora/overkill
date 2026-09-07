@@ -67,10 +67,12 @@ function behaviorRuntime(entries: readonly unknown[]): BehaviorRuntime {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/doubles/test-double.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'testDouble() creates an untyped callable double',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -82,6 +84,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'testDouble.returns() creates a fixed-return double',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -93,6 +96,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'testDouble.resolves() creates a fixed-resolution double',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -104,6 +108,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'testDouble.rejects() creates a fixed-rejection double',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -118,6 +123,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'testDouble.throws() creates a fixed-throw double',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -132,6 +138,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'testDouble.constructs() creates a fixed-construction double',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -148,6 +155,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'answerFromBehavior() handles modes and sequence fallthrough',
             metadata: {},
             body(scope: OverkillScope) {
@@ -176,6 +184,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'ruleMatches() handles invocation kind, argument, and index criteria',
             metadata: {},
             body(scope: OverkillScope) {
@@ -195,6 +204,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'fallbackForInvocation() selects direct and invocation-specific fallbacks',
             metadata: {},
             body(scope: OverkillScope) {
@@ -209,6 +219,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'rule fixed behavior markers expose direct results',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -229,6 +240,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'rule generator markers expose result iterators and guarded markers',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -266,6 +278,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'created doubles reject wrong invocation modes',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -284,6 +297,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'testDouble.constructs() rejects primitive instances at runtime',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -297,6 +311,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'rule.when() matches partial-deep argument prefixes',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -318,6 +333,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'rule.whenConstructedWith() matches partial-deep constructor argument prefixes',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -339,6 +355,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'ordered call rules use zero-based indexes',
             metadata: {},
             body(scope: OverkillScope) {
@@ -358,6 +375,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'ordered construction rules use zero-based indexes',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -379,6 +397,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'rules are evaluated in order and exhausted sequences fall through',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -402,6 +421,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'rule.sequence() treats raw array values as returns entries',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -418,6 +438,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'rule.sequence() supports async behavior entries',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -437,6 +458,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'fallback can configure call and construction defaults together',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -461,6 +483,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'answer receives invocation arguments, index, and kind',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -494,6 +517,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'ordered rules reject invalid indexes at runtime',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -508,6 +532,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'configured doubles throw TypeError when no behavior can answer',
             metadata: {},
             body: function body(scope: OverkillScope) {

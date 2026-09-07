@@ -7,15 +7,18 @@ import { createTestEngine as createEngine } from '../test-support/create-test-en
 import { isTestNode, isTestRoot } from './test-node.ts';
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/engine/test-node.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createRoot() creates a branded test root',
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
                 const testCase = engine.createTestCase({
+                    definitionLocations: [ { column: null, file: '', line: null } ],
                     body(testScope) {
                         testScope.assert.true(true, { message: 'passes' });
                         return testScope.assert.collect();
@@ -38,6 +41,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createRoot() rejects an empty title',
             metadata: {},
             body(scope: OverkillScope) {
@@ -55,6 +59,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createRoot() rejects non-object metadata',
             metadata: {},
             body(scope: OverkillScope) {
@@ -72,6 +77,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createRoot() rejects plain object test nodes',
             metadata: {},
             body(scope: OverkillScope) {
@@ -95,12 +101,14 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createRoot() rejects nodes from another engine instance',
             metadata: {},
             body(scope: OverkillScope) {
                 const firstEngine = createEngine();
                 const secondEngine = createEngine();
                 const foreignTest = firstEngine.createTestCase({
+                    definitionLocations: [ { column: null, file: '', line: null } ],
                     body(testScope) {
                         testScope.assert.true(true, { message: 'passes' });
                         return testScope.assert.collect();
@@ -121,11 +129,13 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createTestCase() creates a branded test node',
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
                 const testCase = engine.createTestCase({
+                    definitionLocations: [ { column: null, file: '', line: null } ],
                     body(testScope) {
                         testScope.assert.true(true, { message: 'passes' });
                         return testScope.assert.collect();
@@ -142,6 +152,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createTestCase() rejects an empty title',
             metadata: {},
             body(scope: OverkillScope) {
@@ -149,6 +160,7 @@ export const testSuite = createOverkillSuite({
 
                 scope.assert.throws(function createUnnamedTestCase() {
                     engine.createTestCase({
+                        definitionLocations: [ { column: null, file: '', line: null } ],
                         body(testScope) {
                             testScope.assert.true(true, { message: 'passes' });
                             return testScope.assert.collect();
@@ -162,6 +174,40 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
+            title: 'createTestCase() rejects invalid title and definition location values',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const engine = createEngine();
+                const validBody = function body(
+                    testScope: OverkillScope
+                ): ReturnType<OverkillScope['assert']['collect']> {
+                    testScope.assert.true(true, { message: 'passes' });
+                    return testScope.assert.collect();
+                };
+
+                scope.assert.throws(function createTestCaseWithNonStringTitle() {
+                    engine.createTestCase({
+                        definitionLocations: [ { column: null, file: '', line: null } ],
+                        body: validBody,
+                        metadata: {},
+                        title: 1 as never
+                    });
+                }, { message: 'Test node title must be a string.' });
+                scope.assert.throws(function createTestCaseWithoutDefinitionLocations() {
+                    engine.createTestCase({
+                        definitionLocations: [] as never,
+                        body: validBody,
+                        metadata: {},
+                        title: 'missing location'
+                    });
+                }, { message: 'Test node definition locations must contain at least one location.' });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createSuite() rejects non-object metadata',
             metadata: {},
             body(scope: OverkillScope) {
@@ -169,6 +215,7 @@ export const testSuite = createOverkillSuite({
 
                 scope.assert.throws(function createInvalidSuite() {
                     engine.createSuite({
+                        definitionLocations: [ { column: null, file: '', line: null } ],
                         children: [],
                         metadata: null as never,
                         title: 'suite'
@@ -179,6 +226,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createSuite() rejects plain object test nodes',
             metadata: {},
             body(scope: OverkillScope) {
@@ -186,6 +234,7 @@ export const testSuite = createOverkillSuite({
 
                 scope.assert.throws(function createInvalidSuite() {
                     engine.createSuite({
+                        definitionLocations: [ { column: null, file: '', line: null } ],
                         children: [
                             {
                                 kind: 'test',
@@ -202,12 +251,14 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createSuite() rejects nodes from another engine instance',
             metadata: {},
             body(scope: OverkillScope) {
                 const firstEngine = createEngine();
                 const secondEngine = createEngine();
                 const foreignTest = firstEngine.createTestCase({
+                    definitionLocations: [ { column: null, file: '', line: null } ],
                     body(testScope) {
                         testScope.assert.true(true, { message: 'passes' });
                         return testScope.assert.collect();
@@ -218,6 +269,7 @@ export const testSuite = createOverkillSuite({
 
                 scope.assert.throws(function createInvalidSuite() {
                     secondEngine.createSuite({
+                        definitionLocations: [ { column: null, file: '', line: null } ],
                         children: [ foreignTest ],
                         metadata: {},
                         title: 'suite'
@@ -228,6 +280,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createTable() validates case bodies',
             metadata: {},
             body(scope: OverkillScope) {
@@ -235,6 +288,7 @@ export const testSuite = createOverkillSuite({
 
                 scope.assert.throws(function createInvalidTable() {
                     engine.createTable({
+                        definitionLocations: [ { column: null, file: '', line: null } ],
                         cases: [
                             {
                                 body: 'not-callable' as never,

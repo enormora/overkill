@@ -1,6 +1,7 @@
 import { createTestCase } from './custom-engine.ts';
 
 export const testNode = createTestCase({
+                definitionLocations: [ { column: null, file: '', line: null } ],
     body(scope) {
         scope.assert.true(true, { message: 'custom engine pass' });
 

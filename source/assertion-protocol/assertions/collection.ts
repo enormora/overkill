@@ -1,14 +1,14 @@
 import { assertionOutcome, type AssertionOutcome } from '../assertion-evaluation.ts';
-import type { ActualAssertionNode, AssertionSource, ResolvableSourceLocation } from '../assertion-node-shape.ts';
+import type { ActualAssertionNode, AssertionSource, ResolvableSourceLocations } from '../assertion-node-shape.ts';
 import { collectionCount } from '../collection-count.ts';
 
 export type LengthAssertionNode<Source extends AssertionSource = AssertionSource> = {
     readonly actual: unknown;
     readonly check: 'length';
     readonly expectedLength: number;
-    readonly location: ResolvableSourceLocation;
     readonly message: string | null;
     readonly source: Source;
+    readonly sourceLocations: ResolvableSourceLocations;
 };
 
 export type EmptinessAssertionNode<Source extends AssertionSource = AssertionSource> = {

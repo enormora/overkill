@@ -132,10 +132,12 @@ function createRunCommand(config: RunConfig, request: RunRequest): RunCommand {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run-resource-usage-policy.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.resolve() records resource usage policy from config and request overrides',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -188,6 +190,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.run() records run-level resource usage when measurement is enabled',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -227,6 +230,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.run() accepts budgeted execution when measurement is enabled',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -258,6 +262,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.run() reports final resource budget breaches for in-process microtests',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -306,6 +311,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.resolve() rejects resource budget overrides without measurement',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -332,6 +338,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.resolve() accepts disabled measurement with empty resource budget overrides',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -365,6 +372,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.resolve() rejects invalid resource usage request values',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -403,6 +411,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.resolve() rejects timeout policies where soft exceeds hard timeout',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -435,6 +444,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.resolve() rejects config budgets without measurement',
             metadata: {},
             async body(scope: OverkillScope) {

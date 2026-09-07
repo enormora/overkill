@@ -11,10 +11,12 @@ type ClientWithId = {
 };
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/doubles/test-double-construction.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'construction rules can call custom answers',
             metadata: {},
             body(scope: OverkillScope) {
@@ -34,6 +36,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'construction rules can sequence answers',
             metadata: {},
             body(scope: OverkillScope) {
@@ -57,6 +60,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'construction rules can throw',
             metadata: {},
             body(scope: OverkillScope) {
@@ -75,6 +79,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'constructor doubles throw TypeError when no behavior can answer',
             metadata: {},
             body(scope: OverkillScope) {
@@ -92,6 +97,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'constructor doubles reject primitive behavior answers',
             metadata: {},
             body(scope: OverkillScope) {

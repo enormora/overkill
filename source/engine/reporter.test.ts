@@ -16,6 +16,15 @@ import {
 import { createPlainOutputRenderer, type OutputLineIntent, type OutputRenderer } from './reporter-output.ts';
 import { createReporterDispatcher, type ReporterDispatcher } from './reporter-dispatcher.ts';
 
+const definitionLocation = { column: null, file: '', line: null };
+
+function suiteStartEvent(title: string): Extract<ReporterEvent, { readonly kind: 'suite-start'; }> {
+    return {
+        kind: 'suite-start',
+        suitePath: [ { definitionLocations: [ definitionLocation ], title } ]
+    };
+}
+
 function createFinalReporter(name: string, sinks: readonly SinkDeclaration[]): FinalResultReporter {
     return {
         dispose: null,
@@ -125,10 +134,12 @@ const stderrSupplementalIntent: OutputLineIntent = {
 };
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/engine/reporter.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'validateReporterSinks() allows managed supplemental standard output sinks',
             metadata: {},
             body(scope: OverkillScope) {
@@ -142,6 +153,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'validateReporterSinks() rejects raw standard output conflicts',
             metadata: {},
             body(scope: OverkillScope) {
@@ -159,6 +171,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'validateReporterSinks() rejects duplicate managed primary standard output sinks',
             metadata: {},
             body(scope: OverkillScope) {
@@ -176,6 +189,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'validateReporterSinks() allows one managed primary with managed supplemental standard output sinks',
             metadata: {},
             body(scope: OverkillScope) {
@@ -189,6 +203,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'validateReporterSinks() rejects exact file and directory path conflicts',
             metadata: {},
             body(scope: OverkillScope) {
@@ -210,6 +225,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'validateReporterSinks() treats memory and stream sinks as private',
             metadata: {},
             body(scope: OverkillScope) {
@@ -231,6 +247,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'reporter dispatcher records direct runner-error delivery failures without notification',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -274,6 +291,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'reporter dispatcher records runner-error notification output failures',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -301,7 +319,7 @@ export const testSuite = createOverkillSuite({
 
                 const errors = await dispatcher.reportEvent(
                     [ failingReporter, notifyingReporter ],
-                    { kind: 'suite-start', suitePath: [ 'suite' ] },
+                    suiteStartEvent('suite'),
                     createPlainOutputRenderer()
                 );
 
@@ -319,6 +337,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'reporter dispatcher reports non-error failures',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -344,7 +363,7 @@ export const testSuite = createOverkillSuite({
 
                 const errors = await dispatcher.reportEvent(
                     [ failingReporter ],
-                    { kind: 'suite-start', suitePath: [ 'suite' ] },
+                    suiteStartEvent('suite'),
                     createPlainOutputRenderer()
                 );
 
@@ -354,6 +373,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'reporter dispatcher writes managed output in reporter registration order',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -369,7 +389,7 @@ export const testSuite = createOverkillSuite({
                             [ stdoutSupplementalIntent ]
                         )
                     ],
-                    { kind: 'suite-start', suitePath: [ 'suite' ] },
+                    suiteStartEvent('suite'),
                     createPlainOutputRenderer()
                 );
 
@@ -381,6 +401,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'reporter dispatcher writes managed stderr output',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -393,7 +414,7 @@ export const testSuite = createOverkillSuite({
                             [ stderrSupplementalIntent ]
                         )
                     ],
-                    { kind: 'suite-start', suitePath: [ 'suite' ] },
+                    suiteStartEvent('suite'),
                     createPlainOutputRenderer()
                 );
 
@@ -405,6 +426,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'reporter dispatcher records undeclared managed output as a reporter error',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -413,7 +435,7 @@ export const testSuite = createOverkillSuite({
                     [
                         createInvalidOutputReporter('undeclared-output', [], [ stdoutPrimaryIntent ])
                     ],
-                    { kind: 'suite-start', suitePath: [ 'suite' ] },
+                    suiteStartEvent('suite'),
                     createPlainOutputRenderer()
                 );
 
@@ -428,6 +450,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'reporter dispatcher records wrong-role managed output as a reporter error',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -440,7 +463,7 @@ export const testSuite = createOverkillSuite({
                             [ stdoutPrimaryIntent ]
                         )
                     ],
-                    { kind: 'suite-start', suitePath: [ 'suite' ] },
+                    suiteStartEvent('suite'),
                     createPlainOutputRenderer()
                 );
 
@@ -455,6 +478,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'reporter dispatcher records invalid managed output as a reporter error',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -465,7 +489,7 @@ export const testSuite = createOverkillSuite({
                             { annotation: null, kind: 'stdout-line', role: 'primary' }
                         ])
                     ],
-                    { kind: 'suite-start', suitePath: [ 'suite' ] },
+                    suiteStartEvent('suite'),
                     createPlainOutputRenderer()
                 );
 
@@ -480,6 +504,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'reporter dispatcher records rendered newlines as a reporter error',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -495,7 +520,7 @@ export const testSuite = createOverkillSuite({
                             stdoutPrimaryIntent
                         ])
                     ],
-                    { kind: 'suite-start', suitePath: [ 'suite' ] },
+                    suiteStartEvent('suite'),
                     renderer
                 );
 

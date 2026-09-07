@@ -427,8 +427,8 @@ principal anti-hook tool.
 There is no separate runtime "macro object" in the core model. A macro is
 just ordinary tree construction.
 
-If a project wants a more explicit declaration form, the first-party
-ergonomics layer may also expose optional sugar such as `defineMacro(...)`:
+The first-party ergonomics layer exposes `defineMacro(...)` as the canonical
+source-aware declaration form:
 
 ```ts
 import { defineMacro, suite, test } from '@overkill-dev/test';
@@ -459,8 +459,28 @@ That helper should stay optional sugar only:
 - it does not register anything implicitly
 - it does not change execution semantics
 - plain functions returning `TestNode` remain equally valid macros
-- its value is clearer typing/tooling and a recognizable first-party
-  declaration form, not a second macro system
+- its value is source-location forwarding, clearer typing/tooling, and a
+  recognizable first-party declaration form, not a second macro system
+
+`defineParameterizedTestBody(...)` covers the narrower case where only a test
+body is reused with one explicit data value:
+
+```ts
+import { defineParameterizedTestBody, test } from '@overkill-dev/test';
+
+const checkMissingName = defineParameterizedTestBody<{
+    readonly name: string;
+}>((scope, data) => {
+    scope.assert.equal(data.name.trim(), '', { message: 'missing name' });
+    return scope.assert.collect();
+});
+
+export const missingName = test('rejects missing name', checkMissingName({ name: '' }));
+```
+
+Both helpers record the helper application site before the concrete test or
+assertion construction site. That keeps reused tests and failures attributable
+to the authored callsite that selected the reusable behavior.
 
 ```ts
 import { suite, test } from '@overkill-dev/test';

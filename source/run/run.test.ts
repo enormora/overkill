@@ -67,10 +67,12 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.resolve() returns frozen run facts for explicit paths',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -144,6 +146,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.resolve() generates a seed when the request does not provide one',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -164,6 +167,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.resolve() rejects empty input without profile file discovery',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -185,6 +189,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.resolve() rejects invalid negative seeds',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -206,6 +211,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.resolve() rejects unsupported sharding',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -227,6 +233,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.resolve() rejects unknown profiles',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -248,6 +255,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.resolve() rejects resource budget overrides without measurement',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -275,6 +283,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.run() executes the resolved plan and reports run facts',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -371,6 +380,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.run() executes the supervised process profile in a child process',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -406,6 +416,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.run() rejects invalid requests before collection',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -427,6 +438,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'RunResolutionError exposes stable error codes',
             metadata: {},
             async body(scope: OverkillScope) {

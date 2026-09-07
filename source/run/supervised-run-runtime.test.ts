@@ -190,10 +190,12 @@ function startTimeoutForActiveCase(runtime: SupervisedRunRuntimeSeed): Supervise
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/supervised-run-runtime.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'supervisedCollectedPlan() accepts only supervised plans',
             metadata: {},
             body(scope: OverkillScope) {
@@ -215,6 +217,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'kill() only signals a live spawned child',
             metadata: {},
             body(scope: OverkillScope) {
@@ -239,6 +242,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createHardTimeout() starts once while cases are active',
             metadata: {},
             body(scope: OverkillScope) {
@@ -258,6 +262,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'handleCollectionSample() skips terminal runs and records clean samples',
             metadata: {},
             body(scope: OverkillScope) {
@@ -284,6 +289,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'handleCollectionSample() reports collection resource budget breaches',
             metadata: {},
             body(scope: OverkillScope) {
@@ -300,6 +306,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'handleChildMessage() records supervised resource samples',
             metadata: {},
             body(scope: OverkillScope) {

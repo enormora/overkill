@@ -3,6 +3,7 @@ import { testSuite as resourceUsageTestSuite } from './resource-usage.test.ts';
 import { testSuite as runResourceUsagePolicyTestSuite } from './run-resource-usage-policy.test.ts';
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/resource-usage-suite.test.ts',
     metadata: {},
     children: [

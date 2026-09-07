@@ -13,7 +13,8 @@ import type {
 } from '../engine/engine.entry-point.ts';
 import {
     type createTestFacade,
-    type defineMacro,
+    defineMacro,
+    defineParameterizedTestBody,
     type Metadata as RootMetadata,
     type ParameterizedTestScope,
     runIfMain,
@@ -44,6 +45,7 @@ declare const reporter: Reporter;
 type RootRuntimeExport = keyof {
     readonly createTestFacade: typeof createTestFacade;
     readonly defineMacro: typeof defineMacro;
+    readonly defineParameterizedTestBody: typeof defineParameterizedTestBody;
     readonly runIfMain: typeof runIfMain;
     readonly suite: typeof suite;
     readonly table: typeof table;
@@ -56,6 +58,7 @@ describe('@overkill-dev/test', function () {
             keyof {
                 readonly createTestFacade: true;
                 readonly defineMacro: true;
+                readonly defineParameterizedTestBody: true;
                 readonly runIfMain: true;
                 readonly suite: true;
                 readonly table: true;
@@ -63,8 +66,28 @@ describe('@overkill-dev/test', function () {
             }
         >();
         expect<typeof createTestFacade>().type.toBe<UnavailableAuthoringApi>();
-        expect<typeof defineMacro>().type.toBe<UnavailableAuthoringApi>();
         expect<typeof runIfMain>().type.toBe<RunIfMain>();
+    });
+
+    typeTest('defines reusable source-aware macros and parameterized bodies', function () {
+        const macro = defineMacro(function reusableCase(title: string, value: number) {
+            expect(title).type.toBe<string>();
+            expect(value).type.toBe<number>();
+
+            return test(title, body);
+        });
+        const parameterizedBody = defineParameterizedTestBody<{ readonly value: number; }>(function bodyForData(
+            scope,
+            data
+        ) {
+            expect(scope).type.toBe<TestScope>();
+            expect(data.value).type.toBe<number>();
+
+            return scope.assert.collect();
+        });
+
+        expect(macro('value case', 1)).type.toBe<TestCase>();
+        expect(parameterizedBody({ value: 1 })).type.toBe<TestBody>();
     });
 
     typeTest('creates test, suite, and table nodes from default root authoring forms', function () {

@@ -5,7 +5,11 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import type { AssertAssertionNode } from '../assertion-protocol/assertion-node.ts';
-import type { AssertionSource, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
+import type {
+    AssertionSource,
+    ResolvableSourceLocation,
+    SourceLocation
+} from '../assertion-protocol/assertion-node-shape.ts';
 import {
     createRecordingAssertFacadeWithLocation,
     type AssertAssertionFacade
@@ -48,13 +52,13 @@ function assertionChecks(records: readonly AssertAssertionNode[]): readonly stri
     });
 }
 
-function recordLocations(records: readonly AssertAssertionNode[]): readonly AssertAssertionNode['location'][] {
+function recordLocations(records: readonly AssertAssertionNode[]): readonly ResolvableSourceLocation[] {
     return records.map(function locationOf(record) {
-        return record.location;
+        return record.sourceLocations[0];
     });
 }
 
-function expectedRecordLocations(records: readonly AssertAssertionNode[]): readonly AssertAssertionNode['location'][] {
+function expectedRecordLocations(records: readonly AssertAssertionNode[]): readonly ResolvableSourceLocation[] {
     return records.map(function expectedLocation() {
         return testLocation;
     });
@@ -231,10 +235,12 @@ function recordAssertNodes(facade: AssertAssertionFacade): void {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/engine/assertion-facade.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createRecordingAssertFacade() records every built-in assertion node',
             metadata: {},
             body(scope: OverkillScope) {
@@ -300,14 +306,14 @@ export const testSuite = createOverkillSuite({
                         array: {
                             actual: [ 1 ],
                             check: 'array',
-                            location: testLocation,
+                            sourceLocations: [ testLocation ],
                             message: 'array',
                             source: 'assert'
                         },
                         between: {
                             actual: 2,
                             check: 'between',
-                            location: testLocation,
+                            sourceLocations: [ testLocation ],
                             maximum: 3,
                             message: null,
                             minimum: 1,
@@ -317,7 +323,7 @@ export const testSuite = createOverkillSuite({
                             actual: { name: 'Ada' },
                             check: 'has-property',
                             key: 'name',
-                            location: testLocation,
+                            sourceLocations: [ testLocation ],
                             message: null,
                             source: 'assert'
                         },
@@ -325,7 +331,7 @@ export const testSuite = createOverkillSuite({
                             actual: samples.instanceOf.actual,
                             check: 'instance-of',
                             expected: Error,
-                            location: testLocation,
+                            sourceLocations: [ testLocation ],
                             message: null,
                             source: 'assert'
                         }
@@ -336,6 +342,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createRecordingAssertFacade() records async rejects assertions through pending sink',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -356,6 +363,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createRecordingAssertFacade() applies annotated messages without requiring the builder API',
             metadata: {},
             body(scope: OverkillScope) {

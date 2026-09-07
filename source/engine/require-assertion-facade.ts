@@ -4,6 +4,7 @@ import type {
     InstanceConstructor,
     ResolvableSourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
+import { sourceLocationsWithCurrentForwarding } from '../assertion-protocol/source-location-forwarding.ts';
 import { captureSourceLocation } from '../assertion-protocol/source-location.ts';
 import {
     recordRequireReference,
@@ -64,9 +65,9 @@ export function createRecordingRequireFacadeWithLocation(
             sink.recordRequire({
                 actual,
                 check: 'array',
-                location: captureLocation(),
                 message: messageFromOptions(options, annotation),
-                source: 'require'
+                source: 'require',
+                sourceLocations: sourceLocationsWithCurrentForwarding(captureLocation)
             });
         },
 
@@ -74,9 +75,9 @@ export function createRecordingRequireFacadeWithLocation(
             sink.recordRequire({
                 actual,
                 check: 'boolean',
-                location: captureLocation(),
                 message: messageFromOptions(options, annotation),
-                source: 'require'
+                source: 'require',
+                sourceLocations: sourceLocationsWithCurrentForwarding(captureLocation)
             });
         },
 
@@ -84,9 +85,9 @@ export function createRecordingRequireFacadeWithLocation(
             sink.recordRequire({
                 actual,
                 check: 'defined',
-                location: captureLocation(),
                 message: messageFromOptions(options, annotation),
-                source: 'require'
+                source: 'require',
+                sourceLocations: sourceLocationsWithCurrentForwarding(captureLocation)
             });
         },
 
@@ -94,9 +95,9 @@ export function createRecordingRequireFacadeWithLocation(
             sink.recordRequire({
                 actual,
                 check: 'function',
-                location: captureLocation(),
                 message: messageFromOptions(options, annotation),
-                source: 'require'
+                source: 'require',
+                sourceLocations: sourceLocationsWithCurrentForwarding(captureLocation)
             });
         },
 
@@ -105,9 +106,9 @@ export function createRecordingRequireFacadeWithLocation(
                 actual,
                 check: 'has-property',
                 key,
-                location: captureLocation(),
                 message: messageFromOptions(options, annotation),
-                source: 'require'
+                source: 'require',
+                sourceLocations: sourceLocationsWithCurrentForwarding(captureLocation)
             });
         },
 
@@ -116,9 +117,9 @@ export function createRecordingRequireFacadeWithLocation(
                 actual,
                 check: 'instance-of',
                 expected,
-                location: captureLocation(),
                 message: messageFromOptions(options, annotation),
-                source: 'require'
+                source: 'require',
+                sourceLocations: sourceLocationsWithCurrentForwarding(captureLocation)
             });
         },
 
@@ -126,9 +127,9 @@ export function createRecordingRequireFacadeWithLocation(
             sink.recordRequire({
                 actual,
                 check: 'not-null',
-                location: captureLocation(),
                 message: messageFromOptions(options, annotation),
-                source: 'require'
+                source: 'require',
+                sourceLocations: sourceLocationsWithCurrentForwarding(captureLocation)
             });
         },
 
@@ -136,9 +137,9 @@ export function createRecordingRequireFacadeWithLocation(
             sink.recordRequire({
                 actual,
                 check: 'null',
-                location: captureLocation(),
                 message: messageFromOptions(options, annotation),
-                source: 'require'
+                source: 'require',
+                sourceLocations: sourceLocationsWithCurrentForwarding(captureLocation)
             });
         },
 
@@ -146,9 +147,9 @@ export function createRecordingRequireFacadeWithLocation(
             sink.recordRequire({
                 actual,
                 check: 'number',
-                location: captureLocation(),
                 message: messageFromOptions(options, annotation),
-                source: 'require'
+                source: 'require',
+                sourceLocations: sourceLocationsWithCurrentForwarding(captureLocation)
             });
         },
 
@@ -156,9 +157,9 @@ export function createRecordingRequireFacadeWithLocation(
             sink.recordRequire({
                 actual,
                 check: 'object',
-                location: captureLocation(),
                 message: messageFromOptions(options, annotation),
-                source: 'require'
+                source: 'require',
+                sourceLocations: sourceLocationsWithCurrentForwarding(captureLocation)
             });
         },
 
@@ -166,9 +167,9 @@ export function createRecordingRequireFacadeWithLocation(
             sink.recordRequire({
                 actual,
                 check: 'string',
-                location: captureLocation(),
                 message: messageFromOptions(options, annotation),
-                source: 'require'
+                source: 'require',
+                sourceLocations: sourceLocationsWithCurrentForwarding(captureLocation)
             });
         }
     };
@@ -181,10 +182,10 @@ export function createRecordingRequireFacadeWithLocation(
     function callRequireReference(reference: unknown, ...parameters: readonly unknown[]): void {
         recordRequireReference({
             annotation,
-            location: captureLocation(),
             parameters,
             reference,
-            sink
+            sink,
+            sourceLocations: sourceLocationsWithCurrentForwarding(captureLocation)
         });
     }
 

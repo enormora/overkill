@@ -6,6 +6,7 @@ import { testSuite as serializedValueEdgeTestSuite } from '../../compare/seriali
 import { testSuite as serializedValueTestSuite } from '../../compare/serialized-value.test.ts';
 
 export const testSuite = createSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/test-support/unit-suite-groups/compare.ts',
     metadata: {},
     children: [

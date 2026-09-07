@@ -61,6 +61,12 @@ function suiteKey(suitePath: readonly string[]): string {
     return suitePath.join(' > ');
 }
 
+function suiteTitles(suitePath: TestPlan['cases'][number]['suitePath']): readonly string[] {
+    return suitePath.map(function toTitle(entry) {
+        return entry.title;
+    });
+}
+
 function emptySuiteRunCounts(): RunResult['bySuite'][string] {
     return { discovered: 0, executed: 0, planned: 0 };
 }
@@ -103,14 +109,14 @@ function countSuites(testPlan: TestPlan, perTest: readonly PerTestResult[]): Run
     );
 
     for (const testCase of testPlan.discoveredCases) {
-        counts = countSuitePath(counts, testCase.suitePath, 'discovered');
+        counts = countSuitePath(counts, suiteTitles(testCase.suitePath), 'discovered');
     }
 
     for (const testCase of testPlan.cases) {
-        counts = countSuitePath(counts, testCase.suitePath, 'planned');
+        counts = countSuitePath(counts, suiteTitles(testCase.suitePath), 'planned');
 
         if (executedIds.has(caseIdentityKey(testCase.id))) {
-            counts = countSuitePath(counts, testCase.suitePath, 'executed');
+            counts = countSuitePath(counts, suiteTitles(testCase.suitePath), 'executed');
         }
     }
 

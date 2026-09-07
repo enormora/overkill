@@ -3,7 +3,6 @@ import type {
     AssertionResult
 } from '../assertion-protocol/assertion-node.ts';
 import type { NonEmptyReadonlyArray, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
-import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
 import type { AssertAssertionFacade } from './assertion-facade.ts';
 import { ensureMetadata, type Metadata } from './metadata.ts';
 import type { RequireAssertionFacade } from './require-assertion-facade.ts';
@@ -27,11 +26,13 @@ export type TestScope = {
 
 export type TestBody = (scope: TestScope) => AssertionResult | Promise<AssertionResult>;
 
+export type DefinitionLocations = NonEmptyReadonlyArray<SourceLocation>;
+
 export type TestCase = {
     readonly [testNodeBrand]: true;
     readonly [testNodeOwnerBrand]: TestNodeOwner;
     readonly body: TestBody;
-    readonly definitionLocation: SourceLocation;
+    readonly definitionLocations: DefinitionLocations;
     readonly kind: 'test';
     readonly metadata: Metadata;
     readonly title: string;
@@ -41,7 +42,7 @@ export type Suite = {
     readonly [testNodeBrand]: true;
     readonly [testNodeOwnerBrand]: TestNodeOwner;
     readonly children: readonly TestNode[];
-    readonly definitionLocation: SourceLocation;
+    readonly definitionLocations: DefinitionLocations;
     readonly kind: 'suite';
     readonly metadata: Metadata;
     readonly title: string;
@@ -58,7 +59,7 @@ export type Table = {
     readonly [testNodeBrand]: true;
     readonly [testNodeOwnerBrand]: TestNodeOwner;
     readonly cases: readonly TableCase[];
-    readonly definitionLocation: SourceLocation;
+    readonly definitionLocations: DefinitionLocations;
     readonly kind: 'table';
     readonly metadata: Metadata;
     readonly title: string;
@@ -93,7 +94,7 @@ export type TestNodeFactoryOptions = {
 
 export type TestCaseOptions = {
     readonly body: TestBody;
-    readonly definitionLocation?: SourceLocation;
+    readonly definitionLocations: DefinitionLocations;
     readonly metadata: Metadata;
     readonly title: string;
 };
@@ -106,7 +107,7 @@ export type RootOptions = {
 
 export type SuiteOptions = {
     readonly children: readonly unknown[];
-    readonly definitionLocation?: SourceLocation;
+    readonly definitionLocations: DefinitionLocations;
     readonly metadata: Metadata;
     readonly title: string;
 };
@@ -120,7 +121,7 @@ export type TableCaseOptions = {
 
 export type TableOptions = {
     readonly cases: readonly TableCaseOptions[];
-    readonly definitionLocation?: SourceLocation;
+    readonly definitionLocations: DefinitionLocations;
     readonly metadata: Metadata;
     readonly title: string;
 };
@@ -162,6 +163,12 @@ function ensureTitleValue(title: unknown): asserts title is string {
 function ensureTestBody(body: TestBody): void {
     if (typeof body !== 'function') {
         throw new TypeError('Test case body must be a function.');
+    }
+}
+
+function ensureDefinitionLocations(definitionLocations: readonly SourceLocation[]): void {
+    if (definitionLocations.length === 0) {
+        throw new TypeError('Test node definition locations must contain at least one location.');
     }
 }
 
@@ -234,15 +241,17 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
     const { owner, recordConstructedNode } = factoryOptions;
 
     function createTestCase(options: TestCaseOptions): TestCase {
+        ensureTitleValue(options.title);
         ensureTitle(options.title);
         ensureMetadata(options.metadata);
         ensureTestBody(options.body);
+        ensureDefinitionLocations(options.definitionLocations);
 
         const testCase: TestCase = {
             [testNodeBrand]: true,
             [testNodeOwnerBrand]: owner,
             body: options.body,
-            definitionLocation: options.definitionLocation ?? unknownSourceLocation,
+            definitionLocations: options.definitionLocations,
             kind: 'test',
             metadata: options.metadata,
             title: options.title
@@ -254,6 +263,7 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
     }
 
     function createRoot(options: RootOptions): TestRoot {
+        ensureTitleValue(options.title);
         ensureTitle(options.title);
         ensureMetadata(options.metadata);
         const children = options.children.map(function validateChild(child) {
@@ -276,8 +286,10 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
     }
 
     function createSuite(options: SuiteOptions): Suite {
+        ensureTitleValue(options.title);
         ensureTitle(options.title);
         ensureMetadata(options.metadata);
+        ensureDefinitionLocations(options.definitionLocations);
         const children = options.children.map(function validateChild(child) {
             return toTestNode(
                 child,
@@ -291,7 +303,7 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
             [testNodeBrand]: true,
             [testNodeOwnerBrand]: owner,
             children,
-            definitionLocation: options.definitionLocation ?? unknownSourceLocation,
+            definitionLocations: options.definitionLocations,
             kind: 'suite',
             metadata: options.metadata,
             title: options.title
@@ -302,21 +314,27 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
         return suite;
     }
 
-    function createTable(options: TableOptions): Table {
-        ensureTitle(options.title);
-        ensureMetadata(options.metadata);
-        for (const tableCase of options.cases) {
+    function ensureTableCases(cases: TableOptions['cases']): void {
+        for (const tableCase of cases) {
             ensureTitleValue(tableCase.title);
             ensureTitle(tableCase.title);
             ensureMetadata(tableCase.metadata);
             ensureTestBody(tableCase.body);
         }
+    }
+
+    function createTable(options: TableOptions): Table {
+        ensureTitleValue(options.title);
+        ensureTitle(options.title);
+        ensureMetadata(options.metadata);
+        ensureDefinitionLocations(options.definitionLocations);
+        ensureTableCases(options.cases);
 
         const table: Table = {
             [testNodeBrand]: true,
             [testNodeOwnerBrand]: owner,
             cases: options.cases,
-            definitionLocation: options.definitionLocation ?? unknownSourceLocation,
+            definitionLocations: options.definitionLocations,
             kind: 'table',
             metadata: options.metadata,
             title: options.title

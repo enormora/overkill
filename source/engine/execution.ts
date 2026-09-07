@@ -120,7 +120,9 @@ async function reportTestStart(
     return await context.dependencies.reporterDispatcher.reportEvent(context.reporters, {
         attempt,
         case: testCase.id,
-        kind: 'test-start'
+        definitionLocations: testCase.definitionLocations,
+        kind: 'test-start',
+        suitePath: testCase.suitePath
     }, context.outputRenderer);
 }
 
@@ -131,8 +133,10 @@ async function reportTestEnd(
     return await context.dependencies.reporterDispatcher.reportEvent(context.reporters, {
         attempt: input.attempt,
         case: input.testCase.id,
+        definitionLocations: input.testCase.definitionLocations,
         kind: 'test-end',
         outcome: input.result.outcome,
+        suitePath: input.testCase.suitePath,
         verdict: input.result.verdict,
         wallTimeMs: input.wallTimeMs
     }, context.outputRenderer);
@@ -162,11 +166,17 @@ async function executeCase(input: ExecuteCaseInput): Promise<ReportedCase> {
     };
 }
 
-function commonSuitePrefixLength(firstSuitePath: readonly string[], secondSuitePath: readonly string[]): number {
+function commonSuitePrefixLength(
+    firstSuitePath: TestPlanCase['suitePath'],
+    secondSuitePath: TestPlanCase['suitePath']
+): number {
     const shortestLength = Math.min(firstSuitePath.length, secondSuitePath.length);
     let prefixLength = 0;
 
-    while (prefixLength < shortestLength && firstSuitePath[prefixLength] === secondSuitePath[prefixLength]) {
+    while (
+        prefixLength < shortestLength &&
+        firstSuitePath[prefixLength]?.title === secondSuitePath[prefixLength]?.title
+    ) {
         prefixLength += 1;
     }
 
@@ -175,8 +185,8 @@ function commonSuitePrefixLength(firstSuitePath: readonly string[], secondSuiteP
 
 async function reportSuiteTransition(
     context: ExecutionReportingContext,
-    currentSuitePath: readonly string[],
-    nextSuitePath: readonly string[]
+    currentSuitePath: TestPlanCase['suitePath'],
+    nextSuitePath: TestPlanCase['suitePath']
 ): Promise<readonly RunnerError[]> {
     let reporterErrors: readonly RunnerError[] = [];
     const sharedPrefixLength = commonSuitePrefixLength(currentSuitePath, nextSuitePath);
@@ -212,7 +222,7 @@ async function executeTestPlanCases(
 ): Promise<ExecutedTestPlan> {
     let perTest: readonly PerTestResult[] = [];
     let reporterErrors: readonly RunnerError[] = [];
-    let currentSuitePath: readonly string[] = [];
+    let currentSuitePath: TestPlanCase['suitePath'] = [];
 
     for (const testCase of testPlan.cases) {
         const suiteErrors = await reportSuiteTransition(
@@ -260,7 +270,7 @@ async function reportConcurrentCaseStarts(
         reporters
     };
     let reporterErrors: readonly RunnerError[] = [];
-    let currentSuitePath: readonly string[] = [];
+    let currentSuitePath: TestPlanCase['suitePath'] = [];
 
     for (const testCase of testPlan.cases) {
         const suiteErrors = await reportSuiteTransition(
@@ -287,8 +297,10 @@ async function reportConcurrentCaseEnd(
     return await reportQueue.report({
         attempt: 0,
         case: testCase.id,
+        definitionLocations: testCase.definitionLocations,
         kind: 'test-end',
         outcome: executedCase.result.outcome,
+        suitePath: testCase.suitePath,
         verdict: executedCase.result.verdict,
         wallTimeMs: executedCase.wallTimeMs
     });

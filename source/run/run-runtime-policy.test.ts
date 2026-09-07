@@ -30,10 +30,12 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run-runtime-policy.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.run() supports disabled capability restrictions for in-process runs',
             metadata: {},
             async body(scope: OverkillScope) {

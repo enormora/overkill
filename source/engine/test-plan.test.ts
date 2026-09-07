@@ -46,10 +46,12 @@ function parameterIdentity(parameters: Readonly<Record<string, unknown>>): strin
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/engine/test-plan.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createTestPlan() expands suites and tables into executable cases',
             metadata: {},
             body(scope: OverkillScope) {
@@ -57,6 +59,7 @@ export const testSuite = createOverkillSuite({
                 const root = engine.createRoot({
                     children: [
                         engine.createTestCase({
+                            definitionLocations: [ { column: null, file: '', line: null } ],
                             body(testScope) {
                                 testScope.assert.true(true, { message: 'passes' });
                                 return testScope.assert.collect();
@@ -65,6 +68,7 @@ export const testSuite = createOverkillSuite({
                             title: 'first'
                         }),
                         engine.createTable({
+                            definitionLocations: [ { column: null, file: '', line: null } ],
                             cases: [
                                 {
                                     body(testScope) {
@@ -97,10 +101,9 @@ export const testSuite = createOverkillSuite({
 
                 const comparableTestCases = testPlan.cases.map(function toComparableTestCase(testCase) {
                     return {
-                        definitionLocation: testCase.definitionLocation,
+                        definitionLocations: testCase.definitionLocations,
                         id: testCase.id,
                         metadata: testCase.metadata,
-                        suiteDefinitionLocations: testCase.suiteDefinitionLocations,
                         suitePath: testCase.suitePath
                     };
                 });
@@ -110,14 +113,13 @@ export const testSuite = createOverkillSuite({
                     testCaseShape,
                     [
                         {
-                            definitionLocation: sourceLocationShape({}),
+                            definitionLocations: [ sourceLocationShape({}) ],
                             id: { file: null, title: 'first', params: null, suite: [] },
                             metadata: metadataShape({ tags: [ 'inherited', 'local' ] }),
-                            suiteDefinitionLocations: [],
                             suitePath: []
                         },
                         {
-                            definitionLocation: sourceLocationShape({}),
+                            definitionLocations: [ sourceLocationShape({}) ],
                             id: {
                                 file: null,
                                 title: 'row 1',
@@ -125,11 +127,12 @@ export const testSuite = createOverkillSuite({
                                 suite: [ 'rows' ]
                             },
                             metadata: metadataShape({ extra: { row: 1 }, tags: [ 'inherited', 'table' ] }),
-                            suiteDefinitionLocations: [ sourceLocationShape({}) ],
-                            suitePath: [ 'rows' ]
+                            suitePath: [
+                                { definitionLocations: [ sourceLocationShape({}) ], title: 'rows' }
+                            ]
                         },
                         {
-                            definitionLocation: sourceLocationShape({}),
+                            definitionLocations: [ sourceLocationShape({}) ],
                             id: {
                                 file: null,
                                 title: 'row 2',
@@ -137,8 +140,9 @@ export const testSuite = createOverkillSuite({
                                 suite: [ 'rows' ]
                             },
                             metadata: metadataShape({ extra: { row: 2 }, tags: [ 'inherited', 'table' ] }),
-                            suiteDefinitionLocations: [ sourceLocationShape({}) ],
-                            suitePath: [ 'rows' ]
+                            suitePath: [
+                                { definitionLocations: [ sourceLocationShape({}) ], title: 'rows' }
+                            ]
                         }
                     ]
                 );
@@ -150,13 +154,16 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createTestPlanFromTestFiles() resolves structured metadata without file suite nesting',
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
                 const testNode = engine.createSuite({
+                    definitionLocations: [ { column: null, file: '', line: null } ],
                     children: [
                         engine.createTestCase({
+                            definitionLocations: [ { column: null, file: '', line: null } ],
                             body(testScope) {
                                 testScope.assert.true(true);
                                 return testScope.assert.collect();
@@ -249,7 +256,9 @@ export const testSuite = createOverkillSuite({
                             tags: [ 'root', 'file', 'suite', 'case' ],
                             timeoutMilliseconds: 20
                         },
-                        suitePath: [ 'users' ]
+                        suitePath: [
+                            { definitionLocations: [ { column: null, file: '', line: null } ], title: 'users' }
+                        ]
                     }
                 );
 
@@ -257,6 +266,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createTestPlan() rejects metadata that widens parent capabilities',
             metadata: {},
             body(scope: OverkillScope) {
@@ -264,6 +274,7 @@ export const testSuite = createOverkillSuite({
                 const root = engine.createRoot({
                     children: [
                         engine.createTestCase({
+                            definitionLocations: [ { column: null, file: '', line: null } ],
                             body(testScope) {
                                 testScope.assert.true(true);
                                 return testScope.assert.collect();
@@ -284,6 +295,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createTestCase() rejects invalid metadata field values',
             metadata: {},
             body(scope: OverkillScope) {
@@ -315,6 +327,7 @@ export const testSuite = createOverkillSuite({
                 for (const invalidMetadata of invalidMetadataCases) {
                     scope.assert.throws(function createCaseWithInvalidMetadata() {
                         engine.createTestCase({
+                            definitionLocations: [ { column: null, file: '', line: null } ],
                             body(testScope) {
                                 testScope.assert.true(true);
                                 return testScope.assert.collect();
@@ -329,6 +342,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createTestCase() rejects unknown metadata fields',
             metadata: {},
             body(scope: OverkillScope) {
@@ -338,6 +352,7 @@ export const testSuite = createOverkillSuite({
                         testScope.assert.true(true);
                         return testScope.assert.collect();
                     },
+                    definitionLocations: [ { column: null, file: '', line: null } ],
                     metadata: Object.fromEntries([ [ 'tag', 'fast' ] ]),
                     title: 'invalid'
                 };
@@ -350,6 +365,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createTestPlan() rejects reachable empty suites',
             metadata: {},
             body(scope: OverkillScope) {
@@ -368,6 +384,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createTestPlan() rejects reachable empty nested suites',
             metadata: {},
             body(scope: OverkillScope) {
@@ -375,8 +392,10 @@ export const testSuite = createOverkillSuite({
                 const root = engine.createRoot({
                     children: [
                         engine.createSuite({
+                            definitionLocations: [ { column: null, file: '', line: null } ],
                             children: [
                                 engine.createSuite({
+                                    definitionLocations: [ { column: null, file: '', line: null } ],
                                     children: [],
                                     metadata: {},
                                     title: 'empty'
@@ -398,11 +417,13 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createTestPlan() rejects non-root test nodes',
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
                 const testCase = engine.createTestCase({
+                    definitionLocations: [ { column: null, file: '', line: null } ],
                     body(testScope) {
                         testScope.assert.true(true, { message: 'passes' });
                         return testScope.assert.collect();
@@ -419,6 +440,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createTestPlan() rejects roots from another engine instance',
             metadata: {},
             body(scope: OverkillScope) {

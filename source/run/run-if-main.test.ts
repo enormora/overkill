@@ -85,6 +85,7 @@ function passingBody(scope: DirectScope): ReturnType<DirectTestBody> {
 function passingCase(metadata: DirectTestNode['metadata'] = {}): DirectTestNode {
     return createDirectTestCase({
         body: passingBody,
+        definitionLocations: [ { column: null, file: '', line: null } ],
         metadata,
         title: 'passes'
     });
@@ -151,10 +152,12 @@ async function runDirect(project: DirectProject, testNode: DirectTestNode): Prom
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run-if-main.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runIfMain() returns before config loading when imported',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -178,6 +181,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runIfMain() selects the configured profile matching the current file',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -212,6 +216,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runIfMain() falls back to configured microtest when no profile matches',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -239,6 +244,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runIfMain() rejects ambiguous profile file matches',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -272,6 +278,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runIfMain() warns when direct execution downgrades supervised profiles',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -299,6 +306,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runIfMain() rejects root metadata outside the selected test family',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -322,6 +330,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runIfMain() rejects cases outside the selected test family',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -340,6 +349,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runIfMain() preserves an existing nonzero process exitCode',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -358,6 +368,7 @@ export const testSuite = createOverkillSuite({
 
                                     return testScope.assert.collect();
                                 },
+                                definitionLocations: [ { column: null, file: '', line: null } ],
                                 metadata: {},
                                 title: 'fails'
                             }),

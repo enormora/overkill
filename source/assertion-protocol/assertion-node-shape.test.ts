@@ -6,10 +6,12 @@ import {
 import { assertionSources } from './assertion-node-shape.ts';
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/assertion-protocol/assertion-node-shape.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'assertionSources declares the built-in assertion origins',
             metadata: {},
             body(scope: OverkillScope) {

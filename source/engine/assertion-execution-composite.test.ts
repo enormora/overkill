@@ -62,6 +62,7 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
             engine.createRoot({
                 children: [
                     engine.createTestCase({
+                        definitionLocations: [ { column: null, file: '', line: null } ],
                         body,
                         metadata: {},
                         title: 'case'
@@ -151,10 +152,12 @@ function firstForeignChild(outcome: FailOutcome): FailedForeignCheck | null {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/engine/assertion-execution-composite.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() records callable composite assertion references as one planned boundary',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -188,6 +191,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() reports composite parent failures with child diagnostics',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -214,12 +218,12 @@ export const testSuite = createOverkillSuite({
                 const composite = firstCompositeCheck(outcome);
                 scope.require.notNull(composite);
 
-                scope.assert(capturedTestLocation, composite.location);
+                scope.assert(capturedTestLocation, composite.sourceLocations[0]);
                 scope.assert.deepEqual(
                     composite.children.map(function toLocation(child) {
-                        return child.location;
+                        return child.sourceLocations[0];
                     }),
-                    [ composite.location, composite.location ]
+                    [ composite.sourceLocations[0], composite.sourceLocations[0] ]
                 );
 
                 scope.assert.deepEqual(outcome.failures, [
@@ -234,7 +238,7 @@ export const testSuite = createOverkillSuite({
                                         expected: serializeValue(true),
                                         id: '1.1',
                                         kind: 'leaf',
-                                        location: composite.children[0].location,
+                                        sourceLocations: [ composite.children[0].sourceLocations[0] ],
                                         path: [],
                                         source: 'assert',
                                         summary: 'status'
@@ -245,7 +249,7 @@ export const testSuite = createOverkillSuite({
                                         expected: serializeValue({ count: 2 }),
                                         id: '1.2',
                                         kind: 'leaf',
-                                        location: composite.children[1]?.location,
+                                        sourceLocations: [ composite.children[1]?.sourceLocations[0] ],
                                         path: [ { key: { kind: 'string', value: 'count' }, kind: 'property' } ],
                                         source: 'assert',
                                         summary: 'value'
@@ -255,7 +259,7 @@ export const testSuite = createOverkillSuite({
                                 expected: serializeValue({ count: 2 }),
                                 id: '1',
                                 kind: 'composite',
-                                location: composite.location,
+                                sourceLocations: [ composite.sourceLocations[0] ],
                                 path: [],
                                 source: 'assert',
                                 summary: 'Expected resultOk to match.'
@@ -269,6 +273,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() records narrowing assertion references through assert',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -289,6 +294,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() rejects non-engine assertion references',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -307,6 +313,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() rejects non-narrowing references through require',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -331,6 +338,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() short-circuits failed narrowing assertion references through require',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -348,12 +356,12 @@ export const testSuite = createOverkillSuite({
                 const composite = firstCompositeCheck(outcome);
                 scope.require.notNull(composite);
 
-                scope.assert(capturedTestLocation, composite.location);
+                scope.assert(capturedTestLocation, composite.sourceLocations[0]);
                 scope.assert.deepEqual(
                     composite.children.map(function toLocation(child) {
-                        return child.location;
+                        return child.sourceLocations[0];
                     }),
-                    [ composite.location ]
+                    [ composite.sourceLocations[0] ]
                 );
 
                 scope.assert.deepEqual(outcome.failures, [
@@ -368,7 +376,7 @@ export const testSuite = createOverkillSuite({
                                         expected: serializeValue(true),
                                         id: '1.1',
                                         kind: 'leaf',
-                                        location: composite.children[0].location,
+                                        sourceLocations: [ composite.children[0].sourceLocations[0] ],
                                         path: [],
                                         source: 'require',
                                         summary: 'Expected resultOk narrowing predicate to pass.'
@@ -378,7 +386,7 @@ export const testSuite = createOverkillSuite({
                                 expected: serializeValue('resultOk'),
                                 id: '1',
                                 kind: 'composite',
-                                location: composite.location,
+                                sourceLocations: [ composite.sourceLocations[0] ],
                                 path: [],
                                 source: 'require',
                                 summary: 'Expected resultOk assertion to pass.'
@@ -392,6 +400,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() rejects unawaited async custom assertions at collect',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -425,6 +434,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() normalizes foreign bridge failures under the composite parent',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -444,20 +454,20 @@ export const testSuite = createOverkillSuite({
                         childErrorMessage: child.error.message,
                         childErrorName: child.error.name,
                         childLabel: child.label,
-                        childLocation: child.location,
-                        compositeLocation: composite.location,
+                        childLocation: child.sourceLocations[0],
+                        compositeLocation: composite.sourceLocations[0],
                         compositeSummary: composite.summary
                     },
                     {
                         childErrorMessage: 'wrong shape',
                         childErrorName: 'TypeError',
                         childLabel: 'foreign.expectation',
-                        childLocation: composite.location,
-                        compositeLocation: composite.location,
+                        childLocation: composite.sourceLocations[0],
+                        compositeLocation: composite.sourceLocations[0],
                         compositeSummary: 'foreign failed'
                     }
                 );
-                scope.assert(capturedTestLocation, composite.location);
+                scope.assert(capturedTestLocation, composite.sourceLocations[0]);
 
                 return scope.assert.collect();
             }

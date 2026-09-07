@@ -24,9 +24,9 @@ type FailedCheckOverrides = {
     readonly expected?: unknown;
     readonly id?: string;
     readonly kind?: 'leaf';
-    readonly location?: Partial<SourceLocation>;
     readonly path?: readonly DiffPathSegment[];
     readonly source?: 'assert' | 'require';
+    readonly sourceLocations?: NonEmptyReadonlyArray<Partial<SourceLocation>>;
     readonly summary?: string;
 };
 
@@ -138,9 +138,9 @@ const defaultFailedCheck: FailedLeafCheck = {
     expected: serializeValue(null),
     id: 'check',
     kind: 'leaf',
-    location: defaultLocation,
     path: [],
     source: 'assert',
+    sourceLocations: [ defaultLocation ],
     summary: 'Check failed'
 };
 
@@ -153,8 +153,25 @@ const emptyOrphanedNodeOverrides: readonly OrphanedNodeOverrides[] = [];
 const emptyPerTestResultOverrides: readonly PerTestResultOverrides[] = [];
 const emptyRunnerErrorOverrides: readonly RunnerErrorOverrides[] = [];
 
+function buildSourceLocations(
+    locations: NonEmptyReadonlyArray<Partial<SourceLocation>> | undefined
+): NonEmptyReadonlyArray<SourceLocation> {
+    if (locations === undefined) {
+        return defaultFailedCheck.sourceLocations;
+    }
+
+    const [ firstLocation, ...remainingLocations ] = locations;
+
+    return [
+        { ...defaultLocation, ...firstLocation },
+        ...remainingLocations.map(function buildSourceLocation(location) {
+            return { ...defaultLocation, ...location };
+        })
+    ];
+}
+
 function buildFailedCheck(overrides: FailedCheckOverrides = {}): FailedLeafCheck {
-    const { actual, expected, location, ...checkOverrides } = overrides;
+    const { actual, expected, sourceLocations, ...checkOverrides } = overrides;
     const hasActual = Object.hasOwn(overrides, 'actual');
     const hasExpected = Object.hasOwn(overrides, 'expected');
 
@@ -163,10 +180,7 @@ function buildFailedCheck(overrides: FailedCheckOverrides = {}): FailedLeafCheck
         ...checkOverrides,
         actual: hasActual ? serializeValue(actual) : defaultFailedCheck.actual,
         expected: hasExpected ? serializeValue(expected) : defaultFailedCheck.expected,
-        location: {
-            ...defaultLocation,
-            ...location
-        }
+        sourceLocations: buildSourceLocations(sourceLocations)
     };
 }
 
@@ -302,10 +316,7 @@ function buildPerTestResult(overrides: PerTestResultOverrides = {}): RunResult['
 
 function buildOrphanedNode(overrides: OrphanedNodeOverrides = {}): OrphanedNode {
     return {
-        definitionLocation: {
-            ...defaultLocation,
-            ...overrides.definitionLocation
-        },
+        definitionLocations: overrides.definitionLocations ?? [ defaultLocation ],
         file: overrides.file === undefined ? 'source/example.test.ts' : overrides.file,
         kind: overrides.kind ?? 'test',
         title: overrides.title ?? 'orphaned test'

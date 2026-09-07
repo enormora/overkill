@@ -22,6 +22,7 @@ function createPassingPlan(engine: Engine): TestPlan {
         engine.createRoot({
             children: [
                 engine.createTestCase({
+                    definitionLocations: [ { column: null, file: '', line: null } ],
                     body(testScope) {
                         testScope.assert.true(true, { message: 'passes' });
                         return testScope.assert.collect();
@@ -208,10 +209,12 @@ function createConcurrentFinishFixture(): ConcurrentFinishFixture {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/engine/reporter-delivery-cleanup.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() times out reporter disposal',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -253,6 +256,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() disposes reporters after validation failure',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -295,6 +299,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() throws AggregateError when execution and cleanup both fail',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -346,6 +351,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() does not retry disposal after disposal throws',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -387,6 +393,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() includes run-end reporter errors before final reporting',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -408,6 +415,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() records dispose failures without reporter re-entry',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -445,6 +453,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() preserves concurrent final-result and real-time finish callbacks',
             metadata: {},
             body: async function body(scope: OverkillScope) {

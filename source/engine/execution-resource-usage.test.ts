@@ -106,10 +106,12 @@ function createBreachingResourceUsageTracker(): RunResourceUsageTracker {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/engine/execution-resource-usage.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() includes resource usage in the returned result and final reporter result',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -119,6 +121,7 @@ export const testSuite = createOverkillSuite({
                     engine.createRoot({
                         children: [
                             engine.createTestCase({
+                                definitionLocations: [ { column: null, file: '', line: null } ],
                                 body(testScope) {
                                     testScope.assert.true(true);
                                     return testScope.assert.collect();
@@ -171,6 +174,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() records sampled resource exhaustion against the active case',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -179,6 +183,7 @@ export const testSuite = createOverkillSuite({
                     engine.createRoot({
                         children: [
                             engine.createTestCase({
+                                definitionLocations: [ { column: null, file: '', line: null } ],
                                 async body(testScope) {
                                     await new Promise(function wait(resolve) {
                                         scheduleTimeout(resolve, 10);
@@ -240,6 +245,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() applies valid timeout metadata before the default timeout',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -248,6 +254,7 @@ export const testSuite = createOverkillSuite({
                     engine.createRoot({
                         children: [
                             engine.createTestCase({
+                                definitionLocations: [ { column: null, file: '', line: null } ],
                                 body(testScope) {
                                     testScope.assert.true(true);
                                     return testScope.assert.collect();
@@ -277,6 +284,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() rejects timeout metadata beyond the hard timeout',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -285,6 +293,7 @@ export const testSuite = createOverkillSuite({
                     engine.createRoot({
                         children: [
                             engine.createTestCase({
+                                definitionLocations: [ { column: null, file: '', line: null } ],
                                 body(testScope) {
                                     testScope.assert.true(true);
                                     return testScope.assert.collect();
@@ -315,6 +324,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'recordResourceUsageSample() reports post-test resource diagnostics',
             metadata: {},
             body(scope: OverkillScope) {
@@ -350,6 +360,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'recordResourceUsageSample() ignores omitted budgets',
             metadata: {},
             body(scope: OverkillScope) {

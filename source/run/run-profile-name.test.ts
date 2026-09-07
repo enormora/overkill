@@ -33,10 +33,12 @@ function runCommand(profile: string, config = defaultRunConfig()): RunCommand {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run-profile-name.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'profile name validation accepts project-owned names',
             metadata: {},
             body(scope: OverkillScope) {
@@ -48,6 +50,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'profile name validation rejects invalid and reserved names',
             metadata: {},
             body(scope: OverkillScope) {
@@ -59,6 +62,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.resolve() selects a project-owned profile name',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -89,6 +93,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.resolve() rejects invalid profile names',
             metadata: {},
             async body(scope: OverkillScope) {

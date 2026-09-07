@@ -36,10 +36,12 @@ function createEmptyResourceUsageTracker(): RunResourceUsageTracker {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/resource-usage.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'resource usage tracker summarizes sampled memory and start/end active resources',
             metadata: {},
             body(scope: OverkillScope) {
@@ -94,6 +96,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'resource usage tracker rejects invalid lifecycle calls',
             metadata: {},
             body(scope: OverkillScope) {

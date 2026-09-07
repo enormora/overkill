@@ -3,7 +3,7 @@ import type {
     ActualAssertionNode,
     AssertionSource,
     InstanceConstructor,
-    ResolvableSourceLocation
+    ResolvableSourceLocations
 } from '../assertion-node-shape.ts';
 import { isPlainObject } from '../partial-matching.ts';
 
@@ -17,18 +17,18 @@ export type InstanceOfAssertionNode<Source extends AssertionSource = AssertionSo
     readonly actual: unknown;
     readonly check: 'instance-of';
     readonly expected: InstanceConstructor;
-    readonly location: ResolvableSourceLocation;
     readonly message: string | null;
     readonly source: Source;
+    readonly sourceLocations: ResolvableSourceLocations;
 };
 
 export type HasPropertyAssertionNode<Source extends AssertionSource = AssertionSource> = {
     readonly actual: unknown;
     readonly check: 'has-property';
     readonly key: PropertyKey;
-    readonly location: ResolvableSourceLocation;
     readonly message: string | null;
     readonly source: Source;
+    readonly sourceLocations: ResolvableSourceLocations;
 };
 
 export const typeShapeSummaryByCheck = {

@@ -78,6 +78,7 @@ function createPassingPlan(): TestPlan {
         engine.createRoot({
             children: [
                 engine.createTestCase({
+                    definitionLocations: [ { column: null, file: '', line: null } ],
                     body(scope) {
                         scope.assert.true(true);
 
@@ -151,10 +152,12 @@ function createRunOnlyOrchestrator(run: RunOrchestrator['run']): RunOrchestrator
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/command-line-runner-error.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner.runTests() formats non-error internal crashes',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -174,6 +177,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner.runTests() formats Error internal crashes',
             metadata: {},
             async body(scope: OverkillScope) {

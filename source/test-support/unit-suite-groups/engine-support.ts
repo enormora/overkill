@@ -9,6 +9,7 @@ import { testSuite as testNodeTestSuite } from '../../engine/test-node.test.ts';
 import { testSuite as enginePlanningTestSuite } from './engine-planning.ts';
 
 export const testSuite = createSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/test-support/unit-suite-groups/engine-support.ts',
     metadata: {},
     children: [

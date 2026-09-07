@@ -7,10 +7,12 @@ import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createNullReporter } from './null-reporter.ts';
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/reporters/null-reporter.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'null reporter accepts a final result without producing output',
             metadata: {},
             async body(scope: OverkillScope) {

@@ -10,6 +10,7 @@ const allocationBytes = 1024 * 1024;
 const allocationIntervalMilliseconds = 1;
 
 export const testNode = createTestCase({
+                definitionLocations: [ { column: null, file: '', line: null } ],
     async body(scope) {
         const allocations: Uint8Array[] = [];
         const allocationInterval = setNodeInterval(function allocateMemory() {

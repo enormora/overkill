@@ -22,6 +22,7 @@ function createPassingPlan(engine: Engine): TestPlan {
         engine.createRoot({
             children: [
                 engine.createTestCase({
+                    definitionLocations: [ { column: null, file: '', line: null } ],
                     body(testScope) {
                         testScope.assert.true(true, { message: 'passes' });
                         return testScope.assert.collect();
@@ -191,10 +192,12 @@ function createDefaultReporterDeliveryEngine(): Engine {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/engine/reporter-delivery.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() records reporter callback failures and notifies other real-time reporters',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -232,6 +235,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() does not recurse when a reporter fails while handling runner-error',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -285,6 +289,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() isolates reporter callback timeouts',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -326,6 +331,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() records final reporter errors and emits them after real-time finish',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -360,6 +366,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() returns final-phase reporter errors without changing sibling callback input',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -379,6 +386,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() disposes reporters once after final reporting',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -416,6 +424,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() records dispose failures in the returned result',
             metadata: {},
             body: async function body(scope: OverkillScope) {

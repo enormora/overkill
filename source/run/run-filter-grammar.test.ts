@@ -16,10 +16,12 @@ function parseErrorMessage(expression: string): string | null {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run-filter-grammar.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'parseRunFilterExpression() parses field operators',
             metadata: {},
             body(scope: OverkillScope) {
@@ -39,6 +41,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'parseRunFilterExpression() keeps OR lower precedence than whitespace AND',
             metadata: {},
             body(scope: OverkillScope) {
@@ -63,6 +66,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'parseRunFilterExpression() parses negated groups',
             metadata: {},
             body(scope: OverkillScope) {
@@ -90,6 +94,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'parseRunFilterExpression() unescapes quoted values',
             metadata: {},
             body(scope: OverkillScope) {
@@ -108,6 +113,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'parseRunFilterExpression() accepts supported string dimensions',
             metadata: {},
             body(scope: OverkillScope) {
@@ -134,6 +140,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'parseRunFilterExpression() rejects malformed expressions',
             metadata: {},
             body(scope: OverkillScope) {

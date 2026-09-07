@@ -218,10 +218,12 @@ function selectedEngineRunnerDiagnostic(path: string): string {
 }
 
 export const testSuite = createSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/integration-tests/run/runner-command-line.test.ts',
     metadata: {},
     children: [
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'command-line runner lists explicit files without executing them',
             metadata: {},
             async body(scope: TestScope) {
@@ -247,6 +249,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'command-line runner runs and lists profile-discovered files',
             metadata: {},
             async body(scope: TestScope) {
@@ -277,6 +280,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'command-line runner maps invalid module exports to runner errors',
             metadata: {},
             async body(scope: TestScope) {
@@ -296,6 +300,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'command-line runner maps collection failures to runner errors',
             metadata: {},
             async body(scope: TestScope) {
@@ -315,6 +320,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'command-line runner maps empty explicit input to no tests collected',
             metadata: {},
             async body(scope: TestScope) {

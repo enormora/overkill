@@ -40,7 +40,7 @@ function firstAssertionCheck(failure: TestFailure): FailedCheck | null {
 }
 
 function failureLocation(failure: TestFailure): SourceLocation | null {
-    return firstAssertionCheck(failure)?.location ?? null;
+    return firstAssertionCheck(failure)?.sourceLocations[0] ?? null;
 }
 
 function formatFailureLine(

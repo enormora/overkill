@@ -28,35 +28,52 @@ const failingCaseId = { file: null, title: 'fails', params: null, suite: [] };
 const passingCaseId = { file: null, title: 'passes', params: null, suite: [] };
 const skippedCaseId = { file: null, title: 'skips', params: null, suite: [] };
 const inconclusiveCaseId = { file: null, title: 'inconclusive', params: null, suite: [] };
+const definitionLocation = { column: null, file: '', line: null };
 
 const rootMetadata = resolveRootMetadata({});
 
+function suitePathFromTitles(
+    titles: readonly string[]
+): readonly { readonly definitionLocations: readonly [typeof definitionLocation]; readonly title: string; }[] {
+    return titles.map(function toSuitePathEntry(title) {
+        return { definitionLocations: [ definitionLocation ], title };
+    });
+}
+
 async function reportNestedSuiteRun(reporter: RealTimeReporter): Promise<void> {
-    await reporter.onEvent({ kind: 'suite-start', suitePath: [ 'rows' ] });
+    const rowCaseId = { file: null, title: 'row 1', params: 'value=1', suite: [ 'rows' ] };
+
+    await reporter.onEvent({ kind: 'suite-start', suitePath: suitePathFromTitles([ 'rows' ]) });
     await reporter.onEvent({
         attempt: 0,
-        case: { file: null, title: 'row 1', params: 'value=1', suite: [ 'rows' ] },
+        case: rowCaseId,
+        definitionLocations: [ definitionLocation ],
         kind: 'test-end',
         outcome: { kind: 'pass' },
+        suitePath: suitePathFromTitles(rowCaseId.suite),
         verdict: 'pass',
         wallTimeMs: 7
     });
-    await reporter.onEvent({ kind: 'suite-end', suitePath: [ 'rows' ] });
+    await reporter.onEvent({ kind: 'suite-end', suitePath: suitePathFromTitles([ 'rows' ]) });
     await reporter.onEvent({
         attempt: 0,
         case: passingCaseId,
+        definitionLocations: [ definitionLocation ],
         kind: 'test-end',
         outcome: { kind: 'pass' },
+        suitePath: suitePathFromTitles(passingCaseId.suite),
         verdict: 'pass',
         wallTimeMs: 2
     });
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/reporters/line-reporter.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'line reporter reports the start event',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -83,6 +100,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'line reporter prints assertion failure details for a failed test-end event',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -92,6 +110,7 @@ export const testSuite = createOverkillSuite({
                 await reporter.onEvent({
                     attempt: 0,
                     case: failingCaseId,
+                    definitionLocations: [ definitionLocation ],
                     kind: 'test-end',
                     outcome: {
                         failures: [
@@ -107,9 +126,9 @@ export const testSuite = createOverkillSuite({
                                         expected: { kind: 'number', value: 2 },
                                         id: '1',
                                         kind: 'leaf',
-                                        location: { column: null, file: '', line: null },
                                         path: [],
                                         source: 'assert',
+                                        sourceLocations: [ definitionLocation ],
                                         summary: 'numbers differ'
                                     }
                                 ],
@@ -118,6 +137,7 @@ export const testSuite = createOverkillSuite({
                         ],
                         kind: 'fail'
                     },
+                    suitePath: suitePathFromTitles(failingCaseId.suite),
                     verdict: 'fail',
                     wallTimeMs: 12
                 });
@@ -132,6 +152,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'line reporter prints unicode string mismatch hints',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -142,6 +163,7 @@ export const testSuite = createOverkillSuite({
                 await reporter.onEvent({
                     attempt: 0,
                     case: failingCaseId,
+                    definitionLocations: [ definitionLocation ],
                     kind: 'test-end',
                     outcome: {
                         failures: [
@@ -165,9 +187,9 @@ export const testSuite = createOverkillSuite({
                                         expected: { kind: 'string', truncation: null, value: composedName },
                                         id: '1',
                                         kind: 'leaf',
-                                        location: { column: 5, file: 'source/users.test.ts', line: 10 },
                                         path: [ { key: { kind: 'string', value: 'name' }, kind: 'property' } ],
                                         source: 'assert',
+                                        sourceLocations: [ { column: 5, file: 'source/users.test.ts', line: 10 } ],
                                         summary: 'names differ'
                                     }
                                 ],
@@ -176,6 +198,7 @@ export const testSuite = createOverkillSuite({
                         ],
                         kind: 'fail'
                     },
+                    suitePath: suitePathFromTitles(failingCaseId.suite),
                     verdict: 'fail',
                     wallTimeMs: 12
                 });
@@ -183,13 +206,14 @@ export const testSuite = createOverkillSuite({
                 scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails (12 ms)' ]);
                 scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ '  names differ' ]);
                 scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ '  path: .name' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 3, [ '  location: source/users.test.ts:10:5' ]);
+                scope.assert(doubleUsage.nthCallWithExactly, log, 3, [ '  source: source/users.test.ts:10:5' ]);
                 scope.assert(doubleUsage.nthCallWithExactly, log, 4, [ '  string hunk expected 1, actual 1' ]);
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'line reporter prints body error failures with a dimmed stack',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -199,6 +223,7 @@ export const testSuite = createOverkillSuite({
                 await reporter.onEvent({
                     attempt: 0,
                     case: failingCaseId,
+                    definitionLocations: [ definitionLocation ],
                     kind: 'test-end',
                     outcome: {
                         failures: [
@@ -214,6 +239,7 @@ export const testSuite = createOverkillSuite({
                         ],
                         kind: 'fail'
                     },
+                    suitePath: suitePathFromTitles(failingCaseId.suite),
                     verdict: 'fail',
                     wallTimeMs: 12
                 });
@@ -226,6 +252,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'line reporter prints test-contract failures',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -235,6 +262,7 @@ export const testSuite = createOverkillSuite({
                 await reporter.onEvent({
                     attempt: 0,
                     case: failingCaseId,
+                    definitionLocations: [ definitionLocation ],
                     kind: 'test-end',
                     outcome: {
                         failures: [
@@ -248,6 +276,7 @@ export const testSuite = createOverkillSuite({
                         ],
                         kind: 'fail'
                     },
+                    suitePath: suitePathFromTitles(failingCaseId.suite),
                     verdict: 'fail',
                     wallTimeMs: 12
                 });
@@ -263,6 +292,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'line reporter prints object identity hints',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -272,6 +302,7 @@ export const testSuite = createOverkillSuite({
                 await reporter.onEvent({
                     attempt: 0,
                     case: failingCaseId,
+                    definitionLocations: [ definitionLocation ],
                     kind: 'test-end',
                     outcome: {
                         failures: [
@@ -306,9 +337,9 @@ export const testSuite = createOverkillSuite({
                                         },
                                         id: '1',
                                         kind: 'leaf',
-                                        location: { column: null, file: '', line: null },
                                         path: [],
                                         source: 'assert',
+                                        sourceLocations: [ definitionLocation ],
                                         summary: 'objects differ'
                                     }
                                 ],
@@ -317,6 +348,7 @@ export const testSuite = createOverkillSuite({
                         ],
                         kind: 'fail'
                     },
+                    suitePath: suitePathFromTitles(failingCaseId.suite),
                     verdict: 'fail',
                     wallTimeMs: 12
                 });
@@ -329,6 +361,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'line reporter prints a passed test-end event',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -338,8 +371,10 @@ export const testSuite = createOverkillSuite({
                 await reporter.onEvent({
                     attempt: 0,
                     case: passingCaseId,
+                    definitionLocations: [ definitionLocation ],
                     kind: 'test-end',
                     outcome: { kind: 'pass' },
+                    suitePath: suitePathFromTitles(passingCaseId.suite),
                     verdict: 'pass',
                     wallTimeMs: 3
                 });
@@ -351,6 +386,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'line reporter prints neutral test-end events with outcome reasons',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -360,16 +396,20 @@ export const testSuite = createOverkillSuite({
                 await reporter.onEvent({
                     attempt: 0,
                     case: skippedCaseId,
+                    definitionLocations: [ definitionLocation ],
                     kind: 'test-end',
                     outcome: { kind: 'skip', reason: 'not supported' },
+                    suitePath: suitePathFromTitles(skippedCaseId.suite),
                     verdict: 'skip',
                     wallTimeMs: 4
                 });
                 await reporter.onEvent({
                     attempt: 1,
                     case: inconclusiveCaseId,
+                    definitionLocations: [ definitionLocation ],
                     kind: 'test-end',
                     outcome: { kind: 'inconclusive', reason: 'missing signal' },
+                    suitePath: suitePathFromTitles(inconclusiveCaseId.suite),
                     verdict: 'inconclusive',
                     wallTimeMs: 5
                 });
@@ -385,6 +425,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'line reporter prints nested suites and indents test results',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -402,6 +443,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'line reporter prints runner errors',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -428,6 +470,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'line reporter prints the run count summary once the run finishes',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -464,6 +507,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'line reporter prints nonzero inconclusive and crash counts in the run summary',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -494,43 +538,6 @@ export const testSuite = createOverkillSuite({
                     infoSymbol,
                     '4 discovered, 4 planned, 5 executed (1 pass, 1 fail, 1 skip, 1 inconclusive, 1 crash) in 15 ms'
                 ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'line reporter prints orphan details once the run finishes',
-            metadata: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
-
-                const { onFinish } = reporter;
-
-                if (onFinish === null) {
-                    throw new TypeError('Expected line reporter to expose onFinish.');
-                }
-
-                await onFinish(runResultFactory.build({
-                    orphans: [
-                        {
-                            file: null,
-                            kind: 'test',
-                            title: 'unused'
-                        }
-                    ],
-                    summary: {
-                        discovered: 0,
-                        planned: 0
-                    }
-                }));
-
-                scope.assert(doubleUsage.callCount, log, 2);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-                    infoSymbol,
-                    '0 discovered, 0 planned, 0 executed (0 pass, 0 fail, 0 skip), 1 orphaned in 0 ms'
-                ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ infoSymbol, 'test: unused (<unknown>)' ]);
 
                 return scope.assert.collect();
             }

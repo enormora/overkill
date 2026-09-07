@@ -128,7 +128,7 @@ const runConfigImportScript = [
 ]
     .join('\n');
 const expectedRootImportOutput = [
-    '["createTestFacade","defineMacro","runIfMain","suite","table","test"]',
+    '["createTestFacade","defineMacro","defineParameterizedTestBody","runIfMain","suite","table","test"]',
     'undefined',
     'undefined',
     'undefined',
@@ -300,10 +300,12 @@ async function writeAuthoringSmokeFile(): Promise<void> {
 }
 
 export const testSuite = createSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/integration-tests/package-smoke/test-binary.test.ts',
     metadata: {},
     children: [
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: '@overkill-dev/test package owns the overkill binary',
             metadata: {},
             async body(scope: TestScope) {
@@ -324,6 +326,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'consumer imports packaged @overkill-dev/test root facade',
             metadata: {},
             async body(scope: TestScope) {
@@ -351,6 +354,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'consumer imports packaged @overkill-dev/test standard subpaths',
             metadata: {},
             async body(scope: TestScope) {
@@ -375,6 +379,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'packaged overkill binary prints command help',
             metadata: {},
             async body(scope: TestScope) {
@@ -391,6 +396,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'packaged @overkill-dev/test root authoring creates runnable testNode exports',
             metadata: {},
             async body(scope: TestScope) {
@@ -411,6 +417,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'packaged overkill list renders root authoring definition locations',
             metadata: {},
             async body(scope: TestScope) {
@@ -432,6 +439,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'consumer imports packaged @overkill-dev/run/filters helpers',
             metadata: {},
             async body(scope: TestScope) {

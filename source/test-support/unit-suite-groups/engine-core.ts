@@ -9,6 +9,7 @@ import { testSuite as executionTestSuite } from '../../engine/execution-suite.te
 import { testSuite as requireAssertionFacadeTestSuite } from '../../engine/require-assertion-facade.test.ts';
 
 export const testSuite = createSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/test-support/unit-suite-groups/engine-core.ts',
     metadata: {},
     children: [

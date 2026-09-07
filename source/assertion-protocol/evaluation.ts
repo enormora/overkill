@@ -8,7 +8,13 @@ import {
     type CompositeAssertionNode,
     type ForeignAssertionNode
 } from './assertion-node.ts';
-import type { AssertionSource, FailedCheck, NonEmptyReadonlyArray } from './assertion-node-shape.ts';
+import type {
+    AssertionSource,
+    FailedCheck,
+    NonEmptyReadonlyArray,
+    ResolvableSourceLocations,
+    SourceLocation
+} from './assertion-node-shape.ts';
 import { assertionEvaluatorByCheck, type AssertionNodeByCheck } from './assertions/dispatch.ts';
 import { resolveSourceLocation } from './source-location.ts';
 
@@ -190,6 +196,14 @@ function assertNonEmptyItems<Item>(
     }
 }
 
+function resolveSourceLocations(sourceLocations: ResolvableSourceLocations): NonEmptyReadonlyArray<SourceLocation> {
+    const resolved = sourceLocations.map(resolveSourceLocation);
+
+    assertNonEmptyItems(resolved, 'Expected resolved assertion source locations to be non-empty.');
+
+    return resolved;
+}
+
 function evaluateForeignAssertion(assertion: ForeignAssertionNode, id: string): FailedCheck | null {
     if (assertion.result.passed) {
         return null;
@@ -203,9 +217,9 @@ function evaluateForeignAssertion(assertion: ForeignAssertionNode, id: string): 
         id,
         kind: 'foreign',
         label: assertion.label,
-        location: resolveSourceLocation(assertion.location),
         path: [],
         source: assertion.source,
+        sourceLocations: resolveSourceLocations(assertion.sourceLocations),
         summary: assertion.message ?? assertion.summary
     };
 }
@@ -229,9 +243,9 @@ function evaluateLeafAssertion(
         expected: evaluation.expected,
         id,
         kind: 'leaf',
-        location: resolveSourceLocation(assertion.location),
         path: evaluation.path,
         source: assertion.source,
+        sourceLocations: resolveSourceLocations(assertion.sourceLocations),
         summary: evaluation.summary
     };
 }
@@ -267,9 +281,9 @@ function evaluateCompositeAssertion(assertion: CompositeAssertionNode, id: strin
         expected: serializeValue(assertion.expected),
         id,
         kind: 'composite',
-        location: resolveSourceLocation(assertion.location),
         path: [],
         source: assertion.source,
+        sourceLocations: resolveSourceLocations(assertion.sourceLocations),
         summary: assertionSummary(assertion)
     };
 }

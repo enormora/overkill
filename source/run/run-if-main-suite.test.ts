@@ -4,6 +4,7 @@ import { testSuite as runIfMainSelectionTestSuite } from './run-if-main-selectio
 import { testSuite as runIfMainTestSuite } from './run-if-main.test.ts';
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run-if-main-suite.test.ts',
     metadata: {},
     children: [

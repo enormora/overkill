@@ -85,6 +85,7 @@ function failingBody(scope: DirectScope): ReturnType<DirectTestBody> {
 function passingCase(): DirectTestNode {
     return createDirectTestCase({
         body: passingBody,
+        definitionLocations: [ { column: null, file: '', line: null } ],
         metadata: {},
         title: 'passes'
     });
@@ -93,6 +94,7 @@ function passingCase(): DirectTestNode {
 function failingCase(): DirectTestNode {
     return createDirectTestCase({
         body: failingBody,
+        definitionLocations: [ { column: null, file: '', line: null } ],
         metadata: {},
         title: 'fails'
     });
@@ -138,10 +140,12 @@ async function runDirect(project: DirectProject, testNode: DirectTestNode): Prom
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run-if-main-selection.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runIfMain() falls back when a matching profile excludes the direct file',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -176,6 +180,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runIfMain() rejects non-file import metadata',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -200,6 +205,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runIfMain() sets process exitCode for failed direct runs',
             metadata: {},
             async body(scope: OverkillScope) {

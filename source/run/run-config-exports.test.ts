@@ -21,10 +21,12 @@ async function writeConfig(folder: string, fileName: string, source: string): Pr
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run-config-exports.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'loadRunConfig() accepts branded reporter and output renderer values',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -73,6 +75,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'loadRunConfig() rejects unbranded reporter values',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -104,6 +107,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'loadRunConfig() rejects unbranded output renderer values',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -130,6 +134,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'loadRunConfig() rejects config files without a named config export',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -147,6 +152,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'loadRunConfig() rejects config files with a default export',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -164,6 +170,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'loadRunConfig() rejects config files with named config and default exports',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -181,6 +188,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'loadRunConfig() rejects config files with extra runtime exports',
             metadata: {},
             async body(scope: OverkillScope) {

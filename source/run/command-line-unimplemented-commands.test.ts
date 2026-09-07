@@ -45,10 +45,12 @@ const singletonRunRequest: RunRequest = {
 };
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/command-line-unimplemented-commands.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'unimplemented direct commands return argument errors',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -66,6 +68,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'unimplemented command families return argument errors',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -86,6 +89,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner singleton uses unimplemented command families',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -99,6 +103,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner singleton runs tests with the default reporter',
             metadata: {},
             async body(scope: OverkillScope) {

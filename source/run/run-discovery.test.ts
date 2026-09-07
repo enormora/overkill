@@ -81,10 +81,12 @@ async function createProfileDiscoveryFiles(directory: string): Promise<ProfileDi
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run-discovery.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'discoverRunFiles() resolves canonical file identities under cwd',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -115,6 +117,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'discoverRunFiles() discovers profile files with separate excludes',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -148,6 +151,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'discoverRunFiles() ignores profile glob matches that are not files',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -179,6 +183,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'discoverRunFiles() reports empty profile discovery',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -199,6 +204,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'discoverRunFiles() filters profile discovery by directory operands',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -244,6 +250,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'discoverRunFiles() rejects ineffective and mixed directory filters',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -290,6 +297,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'discoverRunFiles() rejects directory symlinks outside cwd',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -318,6 +326,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'discoverRunFiles() rejects unsupported profile glob syntax',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -378,6 +387,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'discoverRunFiles() rejects invalid explicit inputs before import',
             metadata: {},
             async body(scope: OverkillScope) {
