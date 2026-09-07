@@ -247,7 +247,7 @@ async function runTests(dependencies: CommandLineRunnerDependencies): Promise<Co
     });
 }
 
-export const testSuite = createOverkillSuite({
+export const testNode = createOverkillSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/command-line-runner.test.ts',
     metadata: {},
@@ -507,4 +507,4 @@ export const testSuite = createOverkillSuite({
 
 const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
 
-await runTestFileIfMain(import.meta, testSuite);
+await runTestFileIfMain(import.meta, testNode);

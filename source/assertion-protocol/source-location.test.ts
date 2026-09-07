@@ -14,7 +14,7 @@ import {
     sourceLocationsWithCurrentForwarding
 } from './source-location-forwarding.ts';
 
-export const testSuite = createOverkillSuite({
+export const testNode = createOverkillSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/assertion-protocol/source-location.test.ts',
     metadata: {},
@@ -168,4 +168,4 @@ export const testSuite = createOverkillSuite({
 
 const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
 
-await runTestFileIfMain(import.meta, testSuite);
+await runTestFileIfMain(import.meta, testNode);

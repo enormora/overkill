@@ -71,7 +71,7 @@ function firstFailedCheck(outcome: FailOutcome): FailedCheck | null {
     return firstAssertionFailure(outcome)?.checks.at(0) ?? null;
 }
 
-export const testSuite = createOverkillSuite({
+export const testNode = createOverkillSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/engine/assertion-execution.test.ts',
     metadata: {},
@@ -303,4 +303,4 @@ export const testSuite = createOverkillSuite({
 
 const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
 
-await runTestFileIfMain(import.meta, testSuite);
+await runTestFileIfMain(import.meta, testNode);

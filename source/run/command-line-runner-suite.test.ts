@@ -1,29 +1,29 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
-import { testSuite as commandLineFallbackDiagnosticsTestSuite } from './command-line-fallback-diagnostics.test.ts';
-import { testSuite as commandLineCommandTestSuite } from './command-line-command.test.ts';
-import { testSuite as commandLineCommandNamespaceTestSuite } from './command-line-command-namespace.test.ts';
-import { testSuite as commandLineRunnerErrorTestSuite } from './command-line-runner-error.test.ts';
-import { testSuite as commandLineRunnerReporterResolutionTestSuite } from './command-line-runner-reporter-resolution.test.ts';
-import { testSuite as commandLineRunnerResourceUsageTestSuite } from './command-line-runner-resource-usage.test.ts';
-import { testSuite as commandLineUnimplementedCommandsTestSuite } from './command-line-unimplemented-commands.test.ts';
-import { testSuite as commandLineRunnerRunTestsTestSuite } from './command-line-runner.test.ts';
+import { testNode as commandLineFallbackDiagnosticsTestNode } from './command-line-fallback-diagnostics.test.ts';
+import { testNode as commandLineCommandTestNode } from './command-line-command.test.ts';
+import { testNode as commandLineCommandNamespaceTestNode } from './command-line-command-namespace.test.ts';
+import { testNode as commandLineRunnerErrorTestNode } from './command-line-runner-error.test.ts';
+import { testNode as commandLineRunnerReporterResolutionTestNode } from './command-line-runner-reporter-resolution.test.ts';
+import { testNode as commandLineRunnerResourceUsageTestNode } from './command-line-runner-resource-usage.test.ts';
+import { testNode as commandLineUnimplementedCommandsTestNode } from './command-line-unimplemented-commands.test.ts';
+import { testNode as commandLineRunnerRunTestsTestNode } from './command-line-runner.test.ts';
 
-export const testSuite = createOverkillSuite({
+export const testNode = createOverkillSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/command-line-runner-suite.test.ts',
     metadata: {},
     children: [
-        commandLineCommandTestSuite,
-        commandLineCommandNamespaceTestSuite,
-        commandLineFallbackDiagnosticsTestSuite,
-        commandLineRunnerErrorTestSuite,
-        commandLineRunnerReporterResolutionTestSuite,
-        commandLineRunnerResourceUsageTestSuite,
-        commandLineUnimplementedCommandsTestSuite,
-        commandLineRunnerRunTestsTestSuite
+        commandLineCommandTestNode,
+        commandLineCommandNamespaceTestNode,
+        commandLineFallbackDiagnosticsTestNode,
+        commandLineRunnerErrorTestNode,
+        commandLineRunnerReporterResolutionTestNode,
+        commandLineRunnerResourceUsageTestNode,
+        commandLineUnimplementedCommandsTestNode,
+        commandLineRunnerRunTestsTestNode
     ]
 });
 
 const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
 
-await runTestFileIfMain(import.meta, testSuite);
+await runTestFileIfMain(import.meta, testNode);

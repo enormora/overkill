@@ -189,7 +189,7 @@ function startTimeoutForActiveCase(runtime: SupervisedRunRuntimeSeed): Supervise
     return timeout;
 }
 
-export const testSuite = createOverkillSuite({
+export const testNode = createOverkillSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/supervised-run-runtime.test.ts',
     metadata: {},
@@ -328,4 +328,4 @@ export const testSuite = createOverkillSuite({
 
 const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
 
-await runTestFileIfMain(import.meta, testSuite);
+await runTestFileIfMain(import.meta, testNode);

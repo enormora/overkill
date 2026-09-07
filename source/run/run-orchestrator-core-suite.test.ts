@@ -1,17 +1,17 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
-import { testSuite as runSelectionTestSuite } from './run-selection.test.ts';
-import { testSuite as runTestSuite } from './run.test.ts';
+import { testNode as runSelectionTestNode } from './run-selection.test.ts';
+import { testNode as runTestNode } from './run.test.ts';
 
-export const testSuite = createOverkillSuite({
+export const testNode = createOverkillSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run-orchestrator-core-suite.test.ts',
     metadata: {},
     children: [
-        runSelectionTestSuite,
-        runTestSuite
+        runSelectionTestNode,
+        runTestNode
     ]
 });
 
 const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
 
-await runTestFileIfMain(import.meta, testSuite);
+await runTestFileIfMain(import.meta, testNode);

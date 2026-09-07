@@ -91,7 +91,7 @@ function assertReservedSubpath(scope: TestScope, subpath: ReservedSubpathModule)
     });
 }
 
-export const testSuite = createSuite({
+export const testNode = createSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/packages/test/standard-subpaths.test.ts',
     metadata: {},
@@ -143,4 +143,4 @@ export const testSuite = createSuite({
 
 const { runIfMain: runTestFileIfMain } = await import('../../test-support/run-if-main.ts');
 
-await runTestFileIfMain(import.meta, testSuite);
+await runTestFileIfMain(import.meta, testNode);

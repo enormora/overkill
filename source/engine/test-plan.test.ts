@@ -45,7 +45,7 @@ function parameterIdentity(parameters: Readonly<Record<string, unknown>>): strin
     return JSON.stringify(serializeValue(parameters));
 }
 
-export const testSuite = createOverkillSuite({
+export const testNode = createOverkillSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/engine/test-plan.test.ts',
     metadata: {},
@@ -159,7 +159,7 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
-                const testNode = engine.createSuite({
+                const usersSuite = engine.createSuite({
                     definitionLocations: [ { column: null, file: '', line: null } ],
                     children: [
                         engine.createTestCase({
@@ -210,7 +210,7 @@ export const testSuite = createOverkillSuite({
                                 tags: [ 'file' ],
                                 timeoutMilliseconds: 10
                             },
-                            testNode
+                            testNode: usersSuite
                         }
                     ],
                     root: {
@@ -464,4 +464,4 @@ export const testSuite = createOverkillSuite({
 
 const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
 
-await runTestFileIfMain(import.meta, testSuite);
+await runTestFileIfMain(import.meta, testNode);

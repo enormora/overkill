@@ -1,17 +1,17 @@
 import { createSuite } from '../../packages/engine/engine.entry-point.ts';
-import { testSuite as doubleUsageOrderTestSuite } from '../../doubles/double-usage-order.test.ts';
-import { testSuite as doubleUsageTestSuite } from '../../doubles/double-usage.test.ts';
-import { testSuite as protocolDoubleAssertionsTestSuite } from '../../doubles/protocol-double-assertions.test.ts';
-import { testSuite as protocolDoubleTestSuite } from '../../doubles/protocol-double.test.ts';
+import { testNode as doubleUsageOrderTestNode } from '../../doubles/double-usage-order.test.ts';
+import { testNode as doubleUsageTestNode } from '../../doubles/double-usage.test.ts';
+import { testNode as protocolDoubleAssertionsTestNode } from '../../doubles/protocol-double-assertions.test.ts';
+import { testNode as protocolDoubleTestNode } from '../../doubles/protocol-double.test.ts';
 
-export const testSuite = createSuite({
+export const testNode = createSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/test-support/unit-suite-groups/double-protocol.ts',
     metadata: {},
     children: [
-        doubleUsageOrderTestSuite,
-        doubleUsageTestSuite,
-        protocolDoubleAssertionsTestSuite,
-        protocolDoubleTestSuite
+        doubleUsageOrderTestNode,
+        doubleUsageTestNode,
+        protocolDoubleAssertionsTestNode,
+        protocolDoubleTestNode
     ]
 });

@@ -224,7 +224,7 @@ const policyProcessModels: readonly {
     }
 ];
 
-export const testSuite = createSuite({
+export const testNode = createSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/integration-tests/run/runner-capability-policy.test.ts',
     metadata: {},
@@ -260,4 +260,4 @@ export const testSuite = createSuite({
     })
 });
 
-await runIfMain(import.meta, testSuite, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, [ createLineReporter() ]);

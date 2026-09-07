@@ -6,7 +6,7 @@ import {
 import { createCommandLineErrorResultFromUnknown } from './command-line-command.ts';
 import { RunCollectionError, RunResolutionError } from './run-errors.ts';
 
-export const testSuite = createOverkillSuite({
+export const testNode = createOverkillSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/command-line-command.test.ts',
     metadata: {},
@@ -146,4 +146,4 @@ export const testSuite = createOverkillSuite({
 
 const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
 
-await runTestFileIfMain(import.meta, testSuite);
+await runTestFileIfMain(import.meta, testNode);

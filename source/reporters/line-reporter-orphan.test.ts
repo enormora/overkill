@@ -37,7 +37,7 @@ function assertOrphanOutput(scope: OverkillScope, log: Log): void {
     ]);
 }
 
-export const testSuite = createOverkillSuite({
+export const testNode = createOverkillSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/reporters/line-reporter-orphan.test.ts',
     metadata: {},
@@ -83,4 +83,4 @@ export const testSuite = createOverkillSuite({
 
 const { runIfMain } = await import('../test-support/run-if-main.ts');
 
-await runIfMain(import.meta, testSuite, { reporters: [ createOverkillLineReporter() ] });
+await runIfMain(import.meta, testNode, { reporters: [ createOverkillLineReporter() ] });
