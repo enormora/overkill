@@ -284,6 +284,24 @@ export const testNode = createOverkillSuite({
                         }
                     });
                 }, { message: 'Unknown test file field: metadata.' });
+                scope.assert.throws(function createPlanWithNonObjectFileInput() {
+                    engine.createTestPlanFromTestFiles({
+                        files: [ null as unknown as TestPlanFromTestFilesOptions['files'][number] ],
+                        root: {
+                            metadata: { kind: 'microtest' },
+                            title: 'root'
+                        }
+                    });
+                }, { message: 'Test file input must be an object.' });
+                scope.assert.throws(function createPlanWithEmptyFileIdentity() {
+                    engine.createTestPlanFromTestFiles({
+                        files: [ { file: '', testNode: caseNode } ],
+                        root: {
+                            metadata: { kind: 'microtest' },
+                            title: 'root'
+                        }
+                    });
+                }, { message: 'Test file identity must not be empty.' });
 
                 return scope.assert.collect();
             }
