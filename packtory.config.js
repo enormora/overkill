@@ -192,6 +192,7 @@ export const config = {
             name: '@overkill-dev/test',
             bundleDependencies: [
                 '@overkill-dev/assert',
+                '@overkill-dev/doubles',
                 '@overkill-dev/engine',
                 '@overkill-dev/output-renderer-github-actions',
                 '@overkill-dev/reporter-brief',

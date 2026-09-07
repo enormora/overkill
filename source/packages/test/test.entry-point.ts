@@ -20,6 +20,57 @@ import {
     type TestScope
 } from '../engine/engine.entry-point.ts';
 
+export {
+    doubleUsage,
+    rule,
+    testAsyncDisposable,
+    testAsyncIterable,
+    testAsyncIterator,
+    testDisposable,
+    testDouble,
+    testIterable,
+    testIterator
+} from '../doubles/doubles.entry-point.ts';
+export type {
+    AsyncDisposableConfiguration,
+    AsyncIterableConfiguration,
+    AsyncIteratorConfiguration,
+    AsyncIteratorSource,
+    DisposableConfiguration,
+    DoubleCall,
+    DoubleConstruction,
+    DoubleHistory,
+    DoubleInteraction,
+    DoubleInvocation,
+    DoubleIteratorEvent,
+    DoubleIteratorReturnEvent,
+    DoubleIteratorThrowEvent,
+    DoubleIteratorYieldEvent,
+    DoubleResult,
+    DoubleReturnedResult,
+    DoubleThrownResult,
+    DoubleUsageAssertions,
+    ProtocolMethodConfiguration,
+    RuleFactory,
+    SyncIterableConfiguration,
+    SyncIteratorConfiguration,
+    SyncIteratorSource,
+    TestAsyncDisposable,
+    TestAsyncDisposableFactory,
+    TestAsyncIterable,
+    TestAsyncIterableFactory,
+    TestAsyncIterator,
+    TestAsyncIteratorFactory,
+    TestDisposable,
+    TestDisposableFactory,
+    TestDouble,
+    TestDoubleFactory,
+    TestIterable,
+    TestIterableFactory,
+    TestIterator,
+    TestIteratorFactory
+} from '../doubles/doubles.entry-point.ts';
+
 type UnavailableAuthoringApi = (...parameters: readonly unknown[]) => never;
 
 export type RunIfMainRootOptions = {

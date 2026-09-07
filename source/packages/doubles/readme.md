@@ -22,6 +22,9 @@ import {
 } from '@overkill-dev/doubles';
 ```
 
+The standard package also re-exports these names from `@overkill-dev/test` for
+ordinary test files. This package remains the canonical doubles API owner.
+
 Public runtime values:
 
 - `testDouble`: creates callable or constructable test doubles.
@@ -406,6 +409,11 @@ double must happen before any relevant event on the next double.
 Order is tracked inside the doubles package. Resetting a double clears its
 public history, but it does not reset the hidden chronology used for
 cross-double order assertions.
+
+`doubleUsage` does not include returned-value, thrown-value, or
+constructed-instance assertion references. Inspect direct history such as
+`results`, `firstResult`, `lastResult`, or `constructions` when a test needs
+those details.
 
 ## Types
 
