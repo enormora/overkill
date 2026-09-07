@@ -5,6 +5,7 @@ import { testSuite as protocolDoubleAssertionsTestSuite } from '../../doubles/pr
 import { testSuite as protocolDoubleTestSuite } from '../../doubles/protocol-double.test.ts';
 
 export const testSuite = createSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/test-support/unit-suite-groups/double-protocol.ts',
     metadata: {},
     children: [

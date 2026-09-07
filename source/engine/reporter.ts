@@ -2,6 +2,7 @@ import type { CaseId } from './identity.ts';
 import type { ResolvedMetadata } from './metadata.ts';
 import type { OptionalReporterOutput, OutputIntentRole } from './reporter-output.ts';
 import type { RunResult, RunnerError, TestOutcome, TestVerdict } from './run-result.ts';
+import type { TestPlanCase, TestPlanSuitePathEntry } from './test-plan.ts';
 
 const reporterBrand = Symbol.for('@overkill-dev/engine/reporter');
 
@@ -120,32 +121,38 @@ type RunnerErrorReporterEvent = {
 
 type SuiteStartReporterEvent = {
     readonly kind: 'suite-start';
-    readonly suitePath: readonly string[];
+    readonly suitePath: readonly TestPlanSuitePathEntry[];
 };
 
 type SuiteEndReporterEvent = {
     readonly kind: 'suite-end';
-    readonly suitePath: readonly string[];
+    readonly suitePath: readonly TestPlanSuitePathEntry[];
 };
 
 type TestStartReporterEvent = {
     readonly attempt: number;
     readonly case: CaseId;
+    readonly definitionLocations: TestPlanCase['definitionLocations'];
     readonly kind: 'test-start';
+    readonly suitePath: TestPlanCase['suitePath'];
 };
 
 type TestProgressReporterEvent = {
     readonly attempt: number;
     readonly case: CaseId;
+    readonly definitionLocations: TestPlanCase['definitionLocations'];
     readonly kind: 'test-progress';
     readonly note: string;
+    readonly suitePath: TestPlanCase['suitePath'];
 };
 
 type TestEndReporterEvent = {
     readonly attempt: number;
     readonly case: CaseId;
+    readonly definitionLocations: TestPlanCase['definitionLocations'];
     readonly kind: 'test-end';
     readonly outcome: TestOutcome | null;
+    readonly suitePath: TestPlanCase['suitePath'];
     readonly verdict: TestVerdict;
     readonly wallTimeMs: number;
 };

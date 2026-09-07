@@ -211,10 +211,12 @@ function runnerErrorCapabilityCount(result: Awaited<ReturnType<typeof orchestrat
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/supervised-run.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.run() reports hard-timeout crashes from the supervised child',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -240,6 +242,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.run() reports sampled resource exhaustion from the supervised child',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -270,6 +273,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.run() reports supervised active resource count exhaustion',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -299,6 +303,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.run() accepts measured supervised execution within budgets',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -316,6 +321,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.run() records supervised reporter event failures',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -335,6 +341,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.run() consolidates supervised process.env policy errors',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -353,6 +360,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.run() does not report supervised parent orchestration as runtime policy',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -374,6 +382,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.run() covers default singleton resource tracking dependencies',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -392,6 +401,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'supervised child reports assignment mismatches as loader errors',
             metadata: {},
             async body(scope: OverkillScope) {

@@ -12,6 +12,7 @@ Current root runtime exports:
 - `suite`
 - `table`
 - `defineMacro`
+- `defineParameterizedTestBody`
 - `createTestFacade`
 - `runIfMain`
 
@@ -79,7 +80,38 @@ body receives the original row value as `scope.parameters`; default row titles
 are `case 1`, `case 2`, and so on. Reachable tables must contain at least two
 rows.
 
-`defineMacro` and `createTestFacade` still throw explicit unavailable errors.
+`defineMacro` preserves source locations for reusable test-node factories:
+
+```ts
+const checkMissingName = defineMacro((title: string) =>
+    test(title, (scope) => {
+        scope.assert.equal(buildUser('').name, '', { message: 'missing name' });
+        return scope.assert.collect();
+    })
+);
+
+export const testNode = suite('users', [
+    checkMissingName('rejects missing user name')
+]);
+```
+
+`defineParameterizedTestBody` captures the callsite where data is bound to a
+test body:
+
+```ts
+const checkName = defineParameterizedTestBody<{ readonly name: string; }>(
+    (scope, data) => {
+        scope.assert.equal(buildUser(data.name).name, data.name);
+        return scope.assert.collect();
+    }
+);
+
+export const testNode = suite('users', [
+    test('builds Ada', checkName({ name: 'Ada' }))
+]);
+```
+
+`createTestFacade` still throws an explicit unavailable error.
 
 Direct Node execution:
 

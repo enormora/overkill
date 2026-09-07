@@ -6,10 +6,12 @@ import {
 import { testDouble } from './test-double.ts';
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/doubles/double-history-empty.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'empty history boundary accessors return null snapshots',
             metadata: {},
             body(scope: OverkillScope) {
@@ -28,6 +30,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'invalid history indexes return null snapshots',
             metadata: {},
             body(scope: OverkillScope) {

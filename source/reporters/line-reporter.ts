@@ -4,6 +4,7 @@ import type { CaseId } from '../engine/identity.ts';
 import { defineReporter, type DefinedReporter, type RealTimeReporter, type ReporterEvent } from '../engine/reporter.ts';
 import type { FailOutcome, OrphanedNode, RunResult, TestOutcome, TestVerdict } from '../engine/run-result.ts';
 import { formatFailure } from './line-failure-rendering.ts';
+import { formatDefinitionLocations, type RenderedSourceLocations } from './source-location-rendering.ts';
 import { createTerminalLineLogger, type TerminalLineLogger } from './terminal.ts';
 
 const successSymbol = colors.green(figures.tick);
@@ -65,13 +66,19 @@ function formatTerminalTestResult(id: CaseId, verdict: TestVerdict, wallTimeMs: 
 }
 
 function formatSuiteName(event: Extract<ReporterEvent, { readonly kind: 'suite-start'; }>): string {
-    return event.suitePath.reduce(function selectLastSuiteName(_previous, suiteName) {
-        return suiteName;
-    });
+    return event.suitePath.at(-1)?.title ?? '';
 }
 
-function formatOrphan(orphan: OrphanedNode): string {
-    return `${orphan.kind}: ${orphan.title} (${orphan.file ?? '<unknown>'})`;
+function formatOrphanLines(orphan: OrphanedNode): readonly string[] {
+    const sourceLocations = formatDefinitionLocations(orphan.definitionLocations);
+    const location = sourceLocations.primary === null ? '' : ` (${sourceLocations.primary})`;
+
+    return [
+        `${orphan.kind}: ${orphan.title} (${orphan.file ?? '<unknown>'})${location}`,
+        ...sourceLocations.details.map(function formatDetail(detail) {
+            return `${indent(1)}${detail}`;
+        })
+    ];
 }
 
 function logFailures(
@@ -114,7 +121,11 @@ function logOrphans(terminal: TerminalLineLogger, orphans: readonly OrphanedNode
     }
 
     for (const orphan of orphans) {
-        terminal.line(infoSymbol, formatOrphan(orphan));
+        const [ firstLine, ...detailLines ] = formatOrphanLines(orphan);
+        terminal.line(infoSymbol, firstLine ?? '');
+        for (const detailLine of detailLines) {
+            terminal.line(detailLine);
+        }
     }
 }
 
@@ -123,15 +134,31 @@ export function createLineReporter(dependencies: LineReporterDependencies): Defi
     const terminal = createTerminalLineLogger({ stdoutConsole });
     let suiteDepth = 0;
 
+    function logFailureDetails(
+        event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>,
+        definitionLocations: RenderedSourceLocations
+    ): void {
+        if (event.outcome?.kind !== 'fail') {
+            return;
+        }
+
+        for (const detailLine of definitionLocations.details) {
+            terminal.line(`${indent(suiteDepth + 1)}${detailLine}`);
+        }
+        logFailures(terminal, suiteDepth, event.outcome);
+    }
+
     function logTestEnd(event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>): void {
         const [ symbol, message ] = event.outcome === null
             ? formatTerminalTestResult(event.case, event.verdict, event.wallTimeMs)
             : formatTestResult(event.case, event.outcome, event.wallTimeMs);
+        const definitionLocations = formatDefinitionLocations(event.definitionLocations);
+        const location = event.outcome?.kind === 'fail' && definitionLocations.primary !== null
+            ? ` (${definitionLocations.primary})`
+            : '';
 
-        terminal.line(symbol, `${indent(suiteDepth)}${message}`);
-        if (event.outcome?.kind === 'fail') {
-            logFailures(terminal, suiteDepth, event.outcome);
-        }
+        terminal.line(symbol, `${indent(suiteDepth)}${message}${location}`);
+        logFailureDetails(event, definitionLocations);
     }
 
     function logSuiteStart(event: Extract<ReporterEvent, { readonly kind: 'suite-start'; }>): void {

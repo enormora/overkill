@@ -9,6 +9,7 @@ import type {
     InstanceConstructor,
     ResolvableSourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
+import { sourceLocationsWithCurrentForwarding } from '../assertion-protocol/source-location-forwarding.ts';
 import { captureSourceLocation } from '../assertion-protocol/source-location.ts';
 import {
     createThrownMatcherAssertion,
@@ -105,9 +106,9 @@ export type AssertAssertionFacade = {
 type AssertAssertionMethods = Pick<AssertAssertionFacade, keyof AssertAssertionFacade>;
 
 type AssertAssertionMetadata = {
-    readonly location: ResolvableSourceLocation;
     readonly message: string | null;
     readonly source: 'assert';
+    readonly sourceLocations: readonly [ResolvableSourceLocation, ...(readonly ResolvableSourceLocation[])];
 };
 
 function messageFromOptions(options: AssertionOptions | undefined, annotation: string | null): string | null {
@@ -120,9 +121,9 @@ function assertAssertionMetadata(
     captureLocation: () => ResolvableSourceLocation
 ): AssertAssertionMetadata {
     return {
-        location: captureLocation(),
         message: messageFromOptions(options, annotation),
-        source: 'assert'
+        source: 'assert',
+        sourceLocations: sourceLocationsWithCurrentForwarding(captureLocation)
     };
 }
 
@@ -516,10 +517,10 @@ export function createRecordingAssertFacadeWithLocation(
     function callAssertReference(reference: unknown, ...parameters: readonly unknown[]): Promise<void> | void {
         return recordAssertReference({
             annotation,
-            location: captureLocation(),
             parameters,
             reference,
-            sink
+            sink,
+            sourceLocations: sourceLocationsWithCurrentForwarding(captureLocation)
         });
     }
 

@@ -4,7 +4,7 @@ import type {
 import type {
     AssertionSource,
     NonEmptyReadonlyArray,
-    ResolvableSourceLocation
+    ResolvableSourceLocations
 } from './assertion-node-shape.ts';
 
 const assertionReferenceIdentity: unique symbol = Symbol.for('OverkillAssertionReference');
@@ -51,10 +51,10 @@ export type CompositeAssertionRunnerInput<
     Arguments extends readonly unknown[],
     Source extends AssertionSource
 > = {
-    readonly location: ResolvableSourceLocation;
     readonly message: string | null;
     readonly parameters: Arguments;
     readonly source: Source;
+    readonly sourceLocations: ResolvableSourceLocations;
 };
 
 export type CompositeAssertionReferenceRecord<

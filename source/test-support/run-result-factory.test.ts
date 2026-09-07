@@ -26,13 +26,15 @@ function defaultFailure(): unknown {
         expected: serializeValue(null),
         id: 'check',
         kind: 'leaf',
-        location: {
-            column: null,
-            file: 'source/example.test.ts',
-            line: null
-        },
         path: [],
         source: 'assert',
+        sourceLocations: [
+            {
+                column: null,
+                file: 'source/example.test.ts',
+                line: null
+            }
+        ],
         summary: 'Check failed'
     };
 }
@@ -68,11 +70,13 @@ function assertExplicitFailureFields(scope: OverkillScope, runResult: RunResult)
         ...(defaultFailure() as Record<string, unknown>),
         actual: serializeValue(1),
         expected: serializeValue(2),
-        location: {
-            column: null,
-            file: 'source/example.test.ts',
-            line: 10
-        }
+        sourceLocations: [
+            {
+                column: null,
+                file: 'source/example.test.ts',
+                line: 10
+            }
+        ]
     });
 }
 
@@ -103,6 +107,7 @@ function failingBody(scope: OverkillScope): ReturnType<TestBody> {
 function supportTestCase(body: TestBody): TestNode {
     return createOverkillTestCase({
         body,
+        definitionLocations: [ { column: null, file: '', line: null } ],
         metadata: {},
         title: 'case'
     });
@@ -127,10 +132,12 @@ function captureRoot(recordRoot: (root: CapturedRoot) => void): Reporter {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/test-support/run-result-factory.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runResultFactory builds nested result data',
             metadata: {},
             body(scope: OverkillScope) {
@@ -173,6 +180,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runResultFactory builds non-failing outcome variants',
             metadata: {},
             body(scope: OverkillScope) {
@@ -199,6 +207,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runResultFactory builds default and empty failure fallbacks',
             metadata: {},
             body(scope: OverkillScope) {
@@ -237,6 +246,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runResultFactory builds body-error and default contract failures',
             metadata: {},
             body(scope: OverkillScope) {
@@ -254,6 +264,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runResultFactory preserves explicit failure and verdict fields',
             metadata: {},
             body(scope: OverkillScope) {
@@ -261,7 +272,7 @@ export const testSuite = createOverkillSuite({
                     perTest: [
                         {
                             outcome: {
-                                checks: [ { actual: 1, expected: 2, location: { line: 10 } } ],
+                                checks: [ { actual: 1, expected: 2, sourceLocations: [ { line: 10 } ] } ],
                                 kind: 'fail'
                             }
                         },
@@ -279,6 +290,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'test support runIfMain() returns without running imported modules',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -298,6 +310,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'test support runIfMain() runs direct files with explicit root options',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -331,6 +344,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'test support runIfMain() sets a failure exit code for failing direct files',
             metadata: {},
             async body(scope: OverkillScope) {

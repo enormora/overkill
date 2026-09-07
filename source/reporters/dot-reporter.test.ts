@@ -22,6 +22,15 @@ const failingCaseId: CaseId = { file: null, title: 'fails', params: null, suite:
 const inconclusiveCaseId: CaseId = { file: null, title: 'maybe', params: null, suite: [ 'root' ] };
 const passingCaseId: CaseId = { file: null, title: 'passes', params: null, suite: [ 'root' ] };
 const skippedCaseId: CaseId = { file: null, title: 'skips', params: null, suite: [ 'root' ] };
+const definitionLocation = { column: null, file: '', line: null };
+
+function suitePathFromTitles(
+    titles: readonly string[]
+): readonly { readonly definitionLocations: readonly [typeof definitionLocation]; readonly title: string; }[] {
+    return titles.map(function toSuitePathEntry(title) {
+        return { definitionLocations: [ definitionLocation ], title };
+    });
+}
 
 function createFakeTerminal(columns: number): FakeTerminal {
     let text = '';
@@ -59,8 +68,10 @@ async function reportTestEnd(
     await reporter.onEvent({
         attempt: 0,
         case: id,
+        definitionLocations: [ definitionLocation ],
         kind: 'test-end',
         outcome,
+        suitePath: suitePathFromTitles(id.suite),
         verdict: outcome?.kind ?? 'crashed',
         wallTimeMs: 1
     });
@@ -119,10 +130,12 @@ function createFailureDetailResult(): RunResult {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/reporters/dot-reporter.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'dot reporter declares raw stdout',
             metadata: {},
             body(scope: OverkillScope) {
@@ -138,6 +151,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'dot reporter maps outcomes and runner errors to compact marks',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -162,9 +176,9 @@ export const testSuite = createOverkillSuite({
                                     expected: { kind: 'number', value: 2 },
                                     id: 'check',
                                     kind: 'leaf',
-                                    location: { column: null, file: '', line: null },
                                     path: [],
                                     source: 'assert',
+                                    sourceLocations: [ definitionLocation ],
                                     summary: 'numbers differ'
                                 }
                             ],
@@ -201,6 +215,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'dot reporter wraps progress marks by terminal width',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -223,6 +238,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'dot reporter prints summary and short details on finish',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -288,6 +304,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'dot reporter prints body-error and contract failure details',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -324,6 +341,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'dot reporter prints post-finish runner errors below the summary',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -363,6 +381,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'dot reporter disposes its resize listener',
             metadata: {},
             async body(scope: OverkillScope) {

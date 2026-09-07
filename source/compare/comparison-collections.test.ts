@@ -20,10 +20,12 @@ const binaryDiff = defineNarrowingCompositeAssertion<Diff, Extract<Diff, { reado
 });
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/compare/comparison-collections.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'compareDeepValues() compares Set members order independently with deep values',
             metadata: {},
             body(scope: OverkillScope) {
@@ -99,6 +101,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'compareDeepValues() compares Date, RegExp, and Error identity',
             metadata: {},
             body(scope: OverkillScope) {
@@ -139,6 +142,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'compareDeepValues() compares opaque built-ins by reference identity',
             metadata: {},
             body(scope: OverkillScope) {
@@ -168,6 +172,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'compareDeepValues() preserves repeated reference topology',
             metadata: {},
             body(scope: OverkillScope) {
@@ -186,6 +191,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'compareDeepValues() preserves cycle topology',
             metadata: {},
             body(scope: OverkillScope) {
@@ -200,6 +206,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'compareDeepValues() reports small binary diffs',
             metadata: {},
             body(scope: OverkillScope) {
@@ -223,6 +230,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'compareDeepValues() reports large binary summaries',
             metadata: {},
             body(scope: OverkillScope) {
@@ -254,6 +262,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'comparePartialValue() matches only the expected structural subset',
             metadata: {},
             body(scope: OverkillScope) {
@@ -298,6 +307,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'compareArrayContainsPartial() and compareMembersPartialDeepEqual() report missing members',
             metadata: {},
             body(scope: OverkillScope) {

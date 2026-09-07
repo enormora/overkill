@@ -156,7 +156,7 @@ export type RunResourceUsageTracker = {
 };
 
 export type OrphanedNode = {
-    readonly definitionLocation: SourceLocation;
+    readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
     readonly file: string | null;
     readonly kind: 'suite' | 'table' | 'test';
     readonly title: string;

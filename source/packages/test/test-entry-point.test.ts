@@ -6,17 +6,21 @@ import {
     execute,
     ownsTestNode,
     serializeValue,
+    type SourceLocation,
     type Suite,
     type Table,
     type TestBody,
     type TestCase,
+    type TestNode,
     type TestPlan,
+    type TestOutcome,
     type TestScope,
     type TestScope as OverkillScope
 } from '../engine/engine.entry-point.ts';
 import {
     createTestFacade,
     defineMacro,
+    defineParameterizedTestBody,
     suite,
     table,
     test
@@ -37,6 +41,10 @@ type TableRow = {
     readonly value: number;
 };
 
+type NameData = {
+    readonly name: string;
+};
+
 type TableAuthoringExecution = {
     readonly bodyRows: readonly TableRow[];
     readonly caseTitleCalls: readonly string[];
@@ -47,8 +55,7 @@ type TableAuthoringExecution = {
 };
 
 const placeholderExports: readonly PlaceholderExport[] = [
-    { invoke: createTestFacade, name: 'createTestFacade' },
-    { invoke: defineMacro, name: 'defineMacro' }
+    { invoke: createTestFacade, name: 'createTestFacade' }
 ];
 
 const invokeTest = test as (...parameters: readonly unknown[]) => unknown;
@@ -187,11 +194,107 @@ function assertTableCases(scope: OverkillScope, execution: TableAuthoringExecuti
     ]);
 }
 
+type FailOutcome = Extract<TestOutcome, { readonly kind: 'fail'; }>;
+
+function firstFailedOutcome(result: Awaited<ReturnType<typeof execute>>): FailOutcome {
+    const testResult = result.perTest[0];
+
+    if (testResult === undefined || testResult.outcome?.kind !== 'fail') {
+        throw new TypeError('Expected failing test result.');
+    }
+
+    return testResult.outcome;
+}
+
+function firstFailedCheckSourceLocations(result: Awaited<ReturnType<typeof execute>>): readonly SourceLocation[] {
+    const failure = firstFailedOutcome(result).failures[0];
+
+    if (failure.kind !== 'assertion') {
+        throw new TypeError('Expected assertion failure.');
+    }
+
+    return failure.checks[0].sourceLocations;
+}
+
+async function executeAuthoredNode(testNode: TestNode): Promise<Awaited<ReturnType<typeof execute>>> {
+    return await execute(createTestPlan(createRoot({
+        children: [ testNode ],
+        metadata: {},
+        title: 'root'
+    })));
+}
+
+function assertSourceLocationInThisFile(scope: OverkillScope, location: SourceLocation): void {
+    scope.assert.match(
+        location.file.replaceAll('\\', '/'),
+        /source\/packages\/test\/test-entry-point\.test\.[cm]?[jt]s$/u
+    );
+}
+
+function assertFirstSourceLocationInThisFile(
+    scope: OverkillScope,
+    sourceLocations: readonly SourceLocation[]
+): void {
+    const sourceLocation = sourceLocations[0];
+    scope.require.defined(sourceLocation);
+    assertSourceLocationInThisFile(scope, sourceLocation);
+}
+
+function assertMacroLocationForwarding(
+    scope: OverkillScope,
+    testCase: TestCase,
+    failedSourceLocations: readonly SourceLocation[]
+): void {
+    const macroDefinitionLocation = testCase.definitionLocations[0];
+    scope.require.defined(macroDefinitionLocation);
+
+    scope.assert.equal(testCase.definitionLocations.length, 2);
+    scope.assert.equal(failedSourceLocations.length, 2);
+    assertSourceLocationInThisFile(scope, macroDefinitionLocation);
+    assertFirstSourceLocationInThisFile(scope, failedSourceLocations);
+}
+
+function assertParameterizedBodyLocationForwarding(
+    scope: OverkillScope,
+    testCase: TestCase,
+    failedSourceLocations: readonly SourceLocation[]
+): void {
+    scope.assert.equal(testCase.definitionLocations.length, 1);
+    scope.assert.equal(failedSourceLocations.length, 2);
+    assertFirstSourceLocationInThisFile(scope, failedSourceLocations);
+}
+
+function createMissingNameTest(title: string): TestCase {
+    return test(title, function checkName(testScope) {
+        testScope.assert.equal('', 'Ada', { message: 'missing name' });
+        return testScope.assert.collect();
+    });
+}
+
+function checkParameterizedName(testScope: TestScope, data: NameData): ReturnType<TestBody> {
+    testScope.assert.equal(data.name, 'Ada', { message: 'wrong name' });
+    return testScope.assert.collect();
+}
+
+function assertDefinitionLocationInThisFile(
+    scope: OverkillScope,
+    sourceLocations: readonly SourceLocation[]
+): void {
+    const sourceLocation = sourceLocations[0];
+    scope.require.defined(sourceLocation);
+
+    assertSourceLocationInThisFile(scope, sourceLocation);
+    scope.assert.equal(typeof sourceLocation.line, 'number');
+    scope.assert.equal(typeof sourceLocation.column, 'number');
+}
+
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/packages/test/test-entry-point.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: '@overkill-dev/test staged root authoring placeholders throw unavailable errors',
             metadata: {},
             body(scope: OverkillScope) {
@@ -211,6 +314,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: '@overkill-dev/test test() and suite() create executable engine nodes',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -225,6 +329,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: '@overkill-dev/test table() creates parameterized executable engine nodes',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -241,29 +346,51 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
+            title: '@overkill-dev/test defineMacro() forwards definition and assertion source locations',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const checkMissingName = defineMacro(createMissingNameTest);
+                const testCase = checkMissingName('requires name');
+                const result = await executeAuthoredNode(testCase);
+                const failedSourceLocations = firstFailedCheckSourceLocations(result);
+
+                assertMacroLocationForwarding(scope, testCase, failedSourceLocations);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
+            title: '@overkill-dev/test defineParameterizedTestBody() forwards assertion source locations',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const checkName = defineParameterizedTestBody(checkParameterizedName);
+                const testCase = test('checks name', checkName({ name: 'Grace' }));
+                const result = await executeAuthoredNode(testCase);
+                const failedSourceLocations = firstFailedCheckSourceLocations(result);
+
+                assertParameterizedBodyLocationForwarding(scope, testCase, failedSourceLocations);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: '@overkill-dev/test captures definition locations from the authoring callsite',
             metadata: {},
             body(scope: OverkillScope) {
                 const testCase = test('located test', passingBody);
                 const testNode = suite('located suite', [ testCase ]);
 
-                scope.assert.match(
-                    testCase.definitionLocation.file.replaceAll('\\', '/'),
-                    /source\/packages\/test\/test-entry-point\.test\.[cm]?[jt]s$/u
-                );
-                scope.assert.equal(typeof testCase.definitionLocation.line, 'number');
-                scope.assert.equal(typeof testCase.definitionLocation.column, 'number');
-                scope.assert.match(
-                    testNode.definitionLocation.file.replaceAll('\\', '/'),
-                    /source\/packages\/test\/test-entry-point\.test\.[cm]?[jt]s$/u
-                );
-                scope.assert.equal(typeof testNode.definitionLocation.line, 'number');
-                scope.assert.equal(typeof testNode.definitionLocation.column, 'number');
+                assertDefinitionLocationInThisFile(scope, testCase.definitionLocations);
+                assertDefinitionLocationInThisFile(scope, testNode.definitionLocations);
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: '@overkill-dev/test delegates invalid authoring inputs to engine validation',
             metadata: {},
             body(scope: OverkillScope) {

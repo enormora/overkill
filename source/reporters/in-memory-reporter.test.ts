@@ -13,10 +13,12 @@ import {
 } from './in-memory-reporter.ts';
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/reporters/in-memory-reporter.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'in-memory real-time reporter records events and final result notification',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -46,6 +48,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'in-memory final-result reporter records final results',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -64,6 +67,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'in-memory configurable reporter creates a real-time reporter',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -84,6 +88,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'in-memory configurable reporter creates a final-result reporter',
             metadata: {},
             async body(scope: OverkillScope) {

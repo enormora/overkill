@@ -30,6 +30,7 @@ function createPlannedCase(title: string, body: TestCaseBody): TestPlanCase {
         engine.createRoot({
             children: [
                 engine.createTestCase({
+                    definitionLocations: [ { column: null, file: '', line: null } ],
                     body,
                     metadata: {},
                     title
@@ -109,10 +110,12 @@ function assertHardTimeoutResult(
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/engine/execution-timeout-supervision.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'executeCaseBody() completes active cases after the hard timeout',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -130,6 +133,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'executeCaseBody() appends a soft timeout failure to body failures',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -157,6 +161,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'executeCaseBody() converts a passing body into a soft timeout failure',
             metadata: {},
             async body(scope: OverkillScope) {

@@ -9,6 +9,7 @@ import { testSuite as commandLineUnimplementedCommandsTestSuite } from './comman
 import { testSuite as commandLineRunnerRunTestsTestSuite } from './command-line-runner.test.ts';
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/command-line-runner-suite.test.ts',
     metadata: {},
     children: [

@@ -144,6 +144,7 @@ export type {
     InstanceConstructor,
     NonEmptyReadonlyArray,
     ResolvableSourceLocation,
+    ResolvableSourceLocations,
     SourceLocationProvider,
     SourceLocation
 } from '../../assertion-protocol/assertion-node-shape.ts';
@@ -174,6 +175,7 @@ export {
     captureSourceLocation,
     unknownSourceLocation
 } from '../../assertion-protocol/source-location.ts';
+export { forwardAssertionSourceLocations } from '../../assertion-protocol/source-location-forwarding.ts';
 export type {
     ErrorMatcher,
     ExactThrownMatcher,
@@ -260,6 +262,7 @@ export type {
     TestBody,
     TestCase,
     TestCaseOptions,
+    DefinitionLocations,
     TestRoot,
     TestScope,
     TestNode

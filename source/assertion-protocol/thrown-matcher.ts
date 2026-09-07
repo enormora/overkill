@@ -6,7 +6,7 @@ import type {
     AssertionSource,
     InstanceConstructor,
     NonEmptyReadonlyArray,
-    ResolvableSourceLocation
+    ResolvableSourceLocations
 } from './assertion-node-shape.ts';
 
 type OptionalFields<Shape, RequiredKey extends keyof Shape> = {
@@ -62,19 +62,19 @@ export type ThrownAssertionObservation = {
 
 type ThrownAssertionInput<Source extends AssertionSource> = {
     readonly kind: ThrownAssertionKind;
-    readonly location: ResolvableSourceLocation;
     readonly matcher: ThrownMatcher;
     readonly message: string | null;
     readonly observation: ThrownAssertionObservation;
     readonly source: Source;
+    readonly sourceLocations: ResolvableSourceLocations;
 };
 
 type AssertionChildInput<Source extends AssertionSource, Check extends string> = {
     readonly actual: unknown;
     readonly check: Check;
-    readonly location: ResolvableSourceLocation;
     readonly message: string;
     readonly source: Source;
+    readonly sourceLocations: ResolvableSourceLocations;
 };
 
 type EqualChildInput<Source extends AssertionSource> = AssertionChildInput<Source, 'equal'> & {
@@ -135,9 +135,9 @@ function missingThrownValueChild<Source extends AssertionSource>(
     return {
         actual: false,
         check: 'true',
-        location: input.location,
         message: `Expected function to ${expectedAction(input.kind)}.`,
-        source: input.source
+        source: input.source,
+        sourceLocations: input.sourceLocations
     };
 }
 
@@ -149,9 +149,9 @@ function expectedMatcherChild<Source extends AssertionSource>(
             actual: input.actual,
             check: input.check,
             expected: input.expected,
-            location: input.location,
             message: input.message,
-            source: input.source
+            source: input.source,
+            sourceLocations: input.sourceLocations
         };
     }
 
@@ -159,9 +159,9 @@ function expectedMatcherChild<Source extends AssertionSource>(
         actual: input.actual,
         check: input.check,
         expected: input.expected,
-        location: input.location,
         message: input.message,
-        source: input.source
+        source: input.source,
+        sourceLocations: input.sourceLocations
     };
 }
 
@@ -171,10 +171,10 @@ function matchMatcherChild<Source extends AssertionSource>(
     return {
         actual: input.actual,
         check: input.check,
-        location: input.location,
         message: input.message,
         pattern: input.pattern,
-        source: input.source
+        source: input.source,
+        sourceLocations: input.sourceLocations
     };
 }
 
@@ -198,9 +198,9 @@ function errorInstanceChild<Source extends AssertionSource>(
         actual: value,
         check: 'instance-of',
         expected: Error,
-        location: input.location,
         message: `Expected ${label} to be an Error.`,
-        source: input.source
+        source: input.source,
+        sourceLocations: input.sourceLocations
     });
 }
 
@@ -216,9 +216,9 @@ function typeMatcherChildren<Source extends AssertionSource>(
                 actual: value,
                 check: 'instance-of',
                 expected: matcher.type,
-                location: input.location,
                 message: `Expected ${label} to be an instance of the constructor.`,
-                source: input.source
+                source: input.source,
+                sourceLocations: input.sourceLocations
             })
         ]
         : [];
@@ -236,10 +236,10 @@ function messageMatcherChildren<Source extends AssertionSource>(
                 matchMatcherChild({
                     actual: value.message,
                     check: 'match',
-                    location: input.location,
                     message: `Expected ${label} message to match the pattern.`,
                     pattern: matcher.message,
-                    source: input.source
+                    source: input.source,
+                    sourceLocations: input.sourceLocations
                 })
             ]
             : [
@@ -247,9 +247,9 @@ function messageMatcherChildren<Source extends AssertionSource>(
                     actual: value.message,
                     check: 'equal',
                     expected: matcher.message,
-                    location: input.location,
                     message: `Expected ${label} message to equal the string.`,
-                    source: input.source
+                    source: input.source,
+                    sourceLocations: input.sourceLocations
                 })
             ];
     }
@@ -269,9 +269,9 @@ function codeMatcherChildren<Source extends AssertionSource>(
                 actual: errorCode(value),
                 check: 'equal',
                 expected: matcher.code,
-                location: input.location,
                 message: `Expected ${label} code to equal the string.`,
-                source: input.source
+                source: input.source,
+                sourceLocations: input.sourceLocations
             })
         ]
         : [];
@@ -289,9 +289,9 @@ function nameMatcherChildren<Source extends AssertionSource>(
                 actual: value.name,
                 check: 'equal',
                 expected: matcher.name,
-                location: input.location,
                 message: `Expected ${label} name to equal the string.`,
-                source: input.source
+                source: input.source,
+                sourceLocations: input.sourceLocations
             })
         ]
         : [];
@@ -339,9 +339,9 @@ const matcherChildren: MatcherChildrenFactory = function createMatcherChildren<S
                 actual: value,
                 check: 'equal',
                 expected: matcher.exact,
-                location: input.location,
                 message: `Expected ${label} to equal the exact matcher.`,
-                source: input.source
+                source: input.source,
+                sourceLocations: input.sourceLocations
             })
         ]
         : structuredErrorChildren({
@@ -378,10 +378,10 @@ export function createThrownMatcherAssertion<Source extends AssertionSource>(
         check: 'composite',
         children: thrownMatcherChildren(input),
         expected: input.matcher,
-        location: input.location,
         message: input.message,
         name: input.kind,
         source: input.source,
+        sourceLocations: input.sourceLocations,
         summary: thrownMatcherSummary(input.kind)
     };
 }

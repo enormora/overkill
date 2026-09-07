@@ -3,9 +3,14 @@ import {
     createSuite,
     createTable,
     createTestCase,
+    forwardAssertionSourceLocations,
     type Metadata,
     type OutputRenderer,
     type Reporter,
+    type NonEmptyReadonlyArray,
+    ownsTestNode,
+    type ResolvableSourceLocation,
+    type SourceLocation,
     type Suite,
     type Table,
     type TableOptions,
@@ -71,12 +76,20 @@ type RuntimeTableDefinition<Row> = {
 };
 
 type TableCases = TableOptions['cases'];
+type MacroFactory<MacroParameters extends readonly unknown[], Node extends TestNode> = (
+    ...parameters: MacroParameters
+) => Node;
+type ParameterizedTestBody<Data> = (
+    scope: TestScope,
+    data: Data
+) => ReturnType<TestBody>;
 
 const singleArgumentCount = 1;
 const positionalArgumentCount = 2;
 const testArgumentsError = 'test() requires (title, body) or ({ title, metadata, body }).';
 const suiteArgumentsError = 'suite() requires (title, children) or ({ title, metadata, children }).';
 const tableArgumentsError = 'table() requires ({ title, cases, metadata?, caseTitle?, test }).';
+const activeMacroDefinitionLocations: NonEmptyReadonlyArray<SourceLocation>[] = [];
 
 function createUnavailableAuthoringApi(name: string): UnavailableAuthoringApi {
     return function unavailableAuthoringApi(): never {
@@ -170,6 +183,57 @@ function defaultCaseTitle(index: number): string {
     return `case ${index + 1}`;
 }
 
+function captureAuthoringLocation(): SourceLocation {
+    return captureSourceLocation()();
+}
+
+function currentMacroDefinitionLocations(): readonly SourceLocation[] {
+    return activeMacroDefinitionLocations.at(-1) ?? [];
+}
+
+function sourceLocationsWithTrailingLocation<Location>(
+    sourceLocations: readonly Location[],
+    location: Location
+): NonEmptyReadonlyArray<Location> {
+    const firstLocation = sourceLocations[0];
+
+    return firstLocation === undefined
+        ? [ location ]
+        : [ firstLocation, ...sourceLocations.slice(1), location ];
+}
+
+function definitionLocationsForAuthoringCall(): NonEmptyReadonlyArray<SourceLocation> {
+    return sourceLocationsWithTrailingLocation(
+        currentMacroDefinitionLocations(),
+        captureAuthoringLocation()
+    );
+}
+
+function runWithForwardedSourceLocations<Result>(
+    sourceLocations: readonly ResolvableSourceLocation[],
+    body: () => Result
+): Result {
+    const firstLocation = sourceLocations[0];
+
+    return firstLocation === undefined
+        ? body()
+        : forwardAssertionSourceLocations([ firstLocation, ...sourceLocations.slice(1) ], body);
+}
+
+function assertionBodyForActiveMacro(body: TestBody): TestBody {
+    const sourceLocations = currentMacroDefinitionLocations();
+
+    if (sourceLocations.length === 0) {
+        return body;
+    }
+
+    return async function runMacroGeneratedTestBody(scope) {
+        return await runWithForwardedSourceLocations(sourceLocations, async function runBody() {
+            return await body(scope);
+        });
+    };
+}
+
 function tableCaseTitle<Row>(
     caseTitle: ((parameters: Row, index: number) => string) | null,
     parameters: Row,
@@ -186,10 +250,13 @@ function tableCaseTitle<Row>(
 
 function tableCaseBody<Row>(
     definition: RuntimeTableDefinition<Row>,
-    parameters: Row
+    parameters: Row,
+    sourceLocations: readonly SourceLocation[]
 ): TestBody {
     return async function runTableCase(scope) {
-        return await definition.test({ ...scope, parameters });
+        return await runWithForwardedSourceLocations(sourceLocations, async function runMacroGeneratedTableCase() {
+            return await definition.test({ ...scope, parameters });
+        });
     };
 }
 
@@ -223,9 +290,11 @@ function readTableDefinition<Row>(definition: TableDefinition<Row>): RuntimeTabl
 function tableCases<Row>(
     definition: RuntimeTableDefinition<Row>
 ): TableCases {
+    const sourceLocations = currentMacroDefinitionLocations();
+
     return definition.cases.map(function createTableCase(parameters, index) {
         return {
-            body: tableCaseBody(definition, parameters),
+            body: tableCaseBody(definition, parameters, sourceLocations),
             metadata: {},
             parameters,
             title: tableCaseTitle(definition.caseTitle, parameters, index)
@@ -242,8 +311,8 @@ export function test(...input: readonly unknown[]): TestCase {
         const definition = readTestDefinition(input[0]);
 
         return createTestCase({
-            body: definition.body,
-            definitionLocation: captureSourceLocation()(),
+            body: assertionBodyForActiveMacro(definition.body),
+            definitionLocations: definitionLocationsForAuthoringCall(),
             metadata: definition.metadata,
             title: definition.title
         });
@@ -253,8 +322,8 @@ export function test(...input: readonly unknown[]): TestCase {
         const [ name, body ] = input;
 
         return createTestCase({
-            body: readBody(body),
-            definitionLocation: captureSourceLocation()(),
+            body: assertionBodyForActiveMacro(readBody(body)),
+            definitionLocations: definitionLocationsForAuthoringCall(),
             metadata: createMicrotestMetadata({}),
             title: readTitle(name, testArgumentsError)
         });
@@ -273,7 +342,7 @@ export function suite(...input: readonly unknown[]): Suite {
 
         return createSuite({
             children: definition.children,
-            definitionLocation: captureSourceLocation()(),
+            definitionLocations: definitionLocationsForAuthoringCall(),
             metadata: definition.metadata,
             title: definition.title
         });
@@ -284,7 +353,7 @@ export function suite(...input: readonly unknown[]): Suite {
 
         return createSuite({
             children: readChildren(children, suiteArgumentsError),
-            definitionLocation: captureSourceLocation()(),
+            definitionLocations: definitionLocationsForAuthoringCall(),
             metadata: createMicrotestMetadata({}),
             title: readTitle(name, suiteArgumentsError)
         });
@@ -298,14 +367,63 @@ export function table<Row>(definition: TableDefinition<Row>): Table {
 
     return createTable({
         cases: tableCases(tableDefinition),
-        definitionLocation: captureSourceLocation()(),
+        definitionLocations: definitionLocationsForAuthoringCall(),
         metadata: tableDefinition.metadata,
         title: tableDefinition.title
     });
 }
 
 export const createTestFacade = createUnavailableAuthoringApi('createTestFacade');
-export const defineMacro = createUnavailableAuthoringApi('defineMacro');
+
+function createMacroNode<const MacroParameters extends readonly unknown[], Node extends TestNode>(
+    factory: MacroFactory<MacroParameters, Node>,
+    parameters: MacroParameters
+): Node {
+    const node = factory(...parameters);
+
+    if (!ownsTestNode(node)) {
+        throw new TypeError('defineMacro() factory must return a default-engine TestNode value.');
+    }
+
+    return node;
+}
+
+export function defineMacro<const MacroParameters extends readonly unknown[], Node extends TestNode>(
+    factory: MacroFactory<MacroParameters, Node>
+): MacroFactory<MacroParameters, Node> {
+    if (typeof factory !== 'function') {
+        throw new TypeError('defineMacro() requires a factory function.');
+    }
+
+    return function runMacro(...parameters) {
+        const definitionLocations = definitionLocationsForAuthoringCall();
+
+        activeMacroDefinitionLocations.push(definitionLocations);
+        try {
+            return createMacroNode(factory, parameters);
+        } finally {
+            activeMacroDefinitionLocations.pop();
+        }
+    };
+}
+
+export function defineParameterizedTestBody<Data>(
+    body: ParameterizedTestBody<Data>
+): (data: Data) => TestBody {
+    if (typeof body !== 'function') {
+        throw new TypeError('defineParameterizedTestBody() requires a body function.');
+    }
+
+    return function createParameterizedTestBody(data) {
+        const sourceLocations: NonEmptyReadonlyArray<ResolvableSourceLocation> = [ captureAuthoringLocation() ];
+
+        return async function runParameterizedTestBody(scope) {
+            return forwardAssertionSourceLocations(sourceLocations, async function runBody() {
+                return body(scope, data);
+            });
+        };
+    };
+}
 
 export async function runIfMain(
     meta: Readonly<ImportMeta>,

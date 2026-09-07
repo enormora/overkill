@@ -7,6 +7,7 @@ if (typeof environment === 'object' && environment !== null) {
 }
 
 export const testNode = createTestCase({
+                definitionLocations: [ { column: null, file: '', line: null } ],
     body(scope) {
         scope.assert.true(true);
 

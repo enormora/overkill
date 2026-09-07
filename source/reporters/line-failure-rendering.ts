@@ -11,7 +11,7 @@ import type {
 import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import type { TestFailure } from '../engine/run-result.ts';
 import { formatSerializedValue, keyText } from './serialized-value-rendering.ts';
-import { formatSourceLocation } from './source-location-rendering.ts';
+import { formatSourceLocations } from './source-location-rendering.ts';
 
 const blockLineLimit = 100;
 const bytesPerKilobyte = 1024;
@@ -238,7 +238,7 @@ function failedCheckDetailLines(check: FailedCheck): readonly string[] {
 
 function formatFailedCheck(check: FailedCheck): readonly string[] {
     const path = formatPath(check.path);
-    const location = formatSourceLocation(check.location);
+    const sourceLocations = formatSourceLocations(check.sourceLocations);
     const detailLines = failedCheckDetailLines(check);
     const childLines = check.kind === 'composite'
         ? check.children.flatMap(function formatChild(child, index) {
@@ -254,7 +254,10 @@ function formatFailedCheck(check: FailedCheck): readonly string[] {
     return [
         check.summary,
         ...path.length === 0 ? [] : [ `path: ${path}` ],
-        ...location === null ? [] : [ `location: ${location}` ],
+        ...sourceLocations.primary === null ? [] : [ `source: ${sourceLocations.primary}` ],
+        ...sourceLocations.details.map(function formatLocationDetail(detail) {
+            return `  ${detail}`;
+        }),
         ...detailLines,
         ...childLines
     ];

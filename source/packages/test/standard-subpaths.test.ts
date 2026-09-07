@@ -92,10 +92,12 @@ function assertReservedSubpath(scope: TestScope, subpath: ReservedSubpathModule)
 }
 
 export const testSuite = createSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/packages/test/standard-subpaths.test.ts',
     metadata: {},
     children: [
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: '@overkill-dev/test/config exposes config authoring only',
             metadata: {},
             body(scope: TestScope) {
@@ -105,6 +107,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: '@overkill-dev/test/reporters exposes current built-in factories',
             metadata: {},
             async body(scope: TestScope) {
@@ -114,6 +117,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: '@overkill-dev/test/assert re-exports assertion extension ownership',
             metadata: {},
             body(scope: TestScope) {
@@ -123,6 +127,7 @@ export const testSuite = createSuite({
             }
         }),
         createTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: '@overkill-dev/test reserved subpaths expose sentinel only',
             metadata: {},
             body(scope: TestScope) {

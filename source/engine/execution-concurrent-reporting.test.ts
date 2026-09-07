@@ -50,6 +50,7 @@ function eventCaseTitles(events: readonly ReporterEvent[], kind: 'test-end' | 't
 
 function createPassingCase(engine: Engine, title: string): TestCase {
     return engine.createTestCase({
+        definitionLocations: [ { column: null, file: '', line: null } ],
         body(testScope) {
             testScope.assert.true(true, { message: `${title} passes` });
             return testScope.assert.collect();
@@ -81,6 +82,7 @@ function createPlanOrderedConcurrentScenario(engine: Engine): PlanOrderedConcurr
         engine.createRoot({
             children: [
                 engine.createTestCase({
+                    definitionLocations: [ { column: null, file: '', line: null } ],
                     async body(testScope) {
                         await releaseFirst.promise;
                         testScope.assert.true(true, { message: 'first passes' });
@@ -158,10 +160,12 @@ function createReporterSerializationScenario(engine: Engine): ReporterSerializat
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/engine/execution-concurrent-reporting.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() runs concurrent in-process cases with plan-ordered starts and results',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -185,6 +189,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() serializes reporter callbacks during concurrent execution',
             metadata: {},
             async body(scope: OverkillScope) {

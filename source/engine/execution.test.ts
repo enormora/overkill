@@ -35,6 +35,7 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
             engine.createRoot({
                 children: [
                     engine.createTestCase({
+                        definitionLocations: [ { column: null, file: '', line: null } ],
                         body,
                         metadata: {},
                         title: 'case'
@@ -49,6 +50,7 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
 
 function createPassingCase(engine: Engine, title: string): ReturnType<Engine['createTestCase']> {
     return engine.createTestCase({
+        definitionLocations: [ { column: null, file: '', line: null } ],
         body(testScope) {
             testScope.assert.true(true, { message: 'passes' });
             return testScope.assert.collect();
@@ -66,7 +68,7 @@ function createPlanWithUnusedTable(
 
     engine.createTable({
         cases: [],
-        definitionLocation: unusedTableLocation,
+        definitionLocations: [ unusedTableLocation ],
         metadata: {},
         title: 'unused rows'
     });
@@ -79,10 +81,12 @@ function createPlanWithUnusedTable(
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/engine/execution.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() returns passing and failing outcomes with run counts',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -91,6 +95,7 @@ export const testSuite = createOverkillSuite({
                     engine.createRoot({
                         children: [
                             engine.createTestCase({
+                                definitionLocations: [ { column: null, file: '', line: null } ],
                                 body(testScope: TestScope) {
                                     testScope.assert.true(true, { message: 'passes' });
                                     return testScope.assert.collect();
@@ -99,6 +104,7 @@ export const testSuite = createOverkillSuite({
                                 title: 'passes'
                             }),
                             engine.createTestCase({
+                                definitionLocations: [ { column: null, file: '', line: null } ],
                                 body(testScope: TestScope) {
                                     testScope.assert.equal(1, 2, { message: 'numbers differ' });
                                     return testScope.assert.collect();
@@ -144,6 +150,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() carries orphaned nodes from the plan',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -153,7 +160,7 @@ export const testSuite = createOverkillSuite({
                 const result = await engine.execute(testPlan);
 
                 scope.assert.deepEqual(result.orphans, [
-                    { definitionLocation: unusedTableLocation, file: null, kind: 'table', title: 'unused rows' }
+                    { definitionLocations: [ unusedTableLocation ], file: null, kind: 'table', title: 'unused rows' }
                 ]);
                 scope.assert.equal(result.summary.defined, 2);
                 scope.assert.equal(result.summary.discovered, 1);
@@ -163,6 +170,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() fails tests with zero assertions',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -171,6 +179,7 @@ export const testSuite = createOverkillSuite({
                     engine.createRoot({
                         children: [
                             engine.createTestCase({
+                                definitionLocations: [ { column: null, file: '', line: null } ],
                                 body(testScope: TestScope) {
                                     return testScope.assert.collect();
                                 },
@@ -205,6 +214,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() fails tests when assertion plan count does not match',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -213,6 +223,7 @@ export const testSuite = createOverkillSuite({
                     engine.createRoot({
                         children: [
                             engine.createTestCase({
+                                definitionLocations: [ { column: null, file: '', line: null } ],
                                 body(testScope) {
                                     testScope.plan(2);
                                     testScope.assert.true(true, { message: 'one' });
@@ -249,6 +260,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() accepts a directly returned assertion node',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -256,9 +268,9 @@ export const testSuite = createOverkillSuite({
                     return {
                         actual: true,
                         check: 'true',
-                        location: unknownSourceLocation,
                         message: 'direct assertion',
-                        source: 'assert'
+                        source: 'assert',
+                        sourceLocations: [ unknownSourceLocation ]
                     };
                 });
 
@@ -268,6 +280,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() fails tests with invalid assertion plans',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -292,6 +305,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() exposes assertion and requirement convenience methods',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -300,6 +314,7 @@ export const testSuite = createOverkillSuite({
                     engine.createRoot({
                         children: [
                             engine.createTestCase({
+                                definitionLocations: [ { column: null, file: '', line: null } ],
                                 body(testScope: TestScope) {
                                     testScope.assert.true(true, { message: 'one' });
                                     testScope.require.string('value', { message: 'string' });
@@ -324,6 +339,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() fails the test when a requirement fails',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -332,6 +348,7 @@ export const testSuite = createOverkillSuite({
                     engine.createRoot({
                         children: [
                             engine.createTestCase({
+                                definitionLocations: [ { column: null, file: '', line: null } ],
                                 body(testScope: TestScope) {
                                     testScope.require.string(1, { message: 'required string' });
                                     return testScope.assert.collect();
@@ -340,6 +357,7 @@ export const testSuite = createOverkillSuite({
                                 title: 'requires equality'
                             }),
                             engine.createTestCase({
+                                definitionLocations: [ { column: null, file: '', line: null } ],
                                 body(testScope: TestScope) {
                                     testScope.require.defined(null, { message: 'required defined' });
                                     return testScope.assert.collect();

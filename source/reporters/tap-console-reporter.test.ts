@@ -36,6 +36,15 @@ const passingCaseId: CaseId = { file: null, title: 'foo', params: null, suite: [
 const fallbackCaseId: CaseId = { file: null, title: 'fails', params: null, suite: [ 'root' ] };
 const inconclusiveCaseId: CaseId = { file: null, title: 'unknown', params: null, suite: [ 'root' ] };
 const skippedCaseId: CaseId = { file: null, title: 'skip me', params: null, suite: [ 'root' ] };
+const definitionLocation = { column: null, file: '', line: null };
+
+function suitePathFromTitles(
+    titles: readonly string[]
+): readonly { readonly definitionLocations: readonly [typeof definitionLocation]; readonly title: string; }[] {
+    return titles.map(function toSuitePathEntry(title) {
+        return { definitionLocations: [ definitionLocation ], title };
+    });
+}
 
 async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
     await reporter.onEvent({
@@ -47,14 +56,17 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
     await reporter.onEvent({
         attempt: 0,
         case: passingCaseId,
+        definitionLocations: [ definitionLocation ],
         kind: 'test-end',
         outcome: { kind: 'pass' },
+        suitePath: suitePathFromTitles(passingCaseId.suite),
         verdict: 'pass',
         wallTimeMs: 1
     });
     await reporter.onEvent({
         attempt: 0,
         case: failingCaseId,
+        definitionLocations: [ definitionLocation ],
         kind: 'test-end',
         outcome: {
             failures: [
@@ -66,9 +78,9 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
                             expected: serializeValue(2),
                             id: '1',
                             kind: 'leaf',
-                            location: { column: null, file: '', line: null },
                             path: [],
                             source: 'assert',
+                            sourceLocations: [ definitionLocation ],
                             summary: 'the-reason'
                         }
                     ],
@@ -77,6 +89,7 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
             ],
             kind: 'fail'
         },
+        suitePath: suitePathFromTitles(failingCaseId.suite),
         verdict: 'fail',
         wallTimeMs: 1
     });
@@ -84,10 +97,12 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/reporters/tap-console-reporter.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'reports the final result without any test cases formatted as TAP',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -116,6 +131,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'reports the final result with passed and failed test cases formatted as TAP',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -159,6 +175,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'reports a failed TAP test point with a fallback diagnostic reason',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -206,6 +223,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'reports skip and inconclusive outcomes as TAP directives and diagnostics',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -257,6 +275,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'real-time TAP reporter streams test points before the final plan',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -277,6 +296,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'real-time TAP reporter writes runner errors as comments',
             metadata: {},
             async body(scope: OverkillScope) {

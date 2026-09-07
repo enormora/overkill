@@ -6,10 +6,12 @@ import {
 import { serializeValue, serializeValueWithBudget } from './serialized-value.ts';
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/compare/serialized-value.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'serializeValue() preserves primitive edge cases explicitly',
             metadata: {},
             body(scope: OverkillScope) {
@@ -50,6 +52,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'serializeValue() handles functions, arrays, holes, objects, symbols, and accessors',
             metadata: {},
             body(scope: OverkillScope) {
@@ -111,6 +114,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'serializeValue() handles maps and sets',
             metadata: {},
             body(scope: OverkillScope) {
@@ -124,6 +128,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'serializeValue() handles errors, dates, and regexps',
             metadata: {},
             body(scope: OverkillScope) {
@@ -145,6 +150,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'serializeValue() handles opaque references',
             metadata: {},
             body(scope: OverkillScope) {
@@ -166,6 +172,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'serializeValue() handles binary value kinds',
             metadata: {},
             body(scope: OverkillScope) {
@@ -207,6 +214,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'serializeValue() represents cycles and repeated references',
             metadata: {},
             body(scope: OverkillScope) {
@@ -229,6 +237,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'serializeValueWithBudget() enforces every configured budget boundary',
             metadata: {},
             body(scope: OverkillScope) {
@@ -306,6 +315,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'serializeValue() catches unavailable proxy introspection',
             metadata: {},
             body(scope: OverkillScope) {

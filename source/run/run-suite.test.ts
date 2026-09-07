@@ -9,6 +9,7 @@ import { testSuite as runIfMainTestSuite } from './run-if-main-suite.test.ts';
 import { testSuite as supervisedRunTestSuite } from './supervised-run.test.ts';
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run-suite.test.ts',
     metadata: {},
     children: [

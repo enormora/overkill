@@ -9,12 +9,18 @@ import {
     sourceLocationFromStack,
     unknownSourceLocation
 } from './source-location.ts';
+import {
+    forwardAssertionSourceLocations,
+    sourceLocationsWithCurrentForwarding
+} from './source-location-forwarding.ts';
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/assertion-protocol/source-location.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'sourceLocationFromStack() parses file URL stack frames',
             metadata: {},
             body(scope: OverkillScope) {
@@ -38,6 +44,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'sourceLocationFromStack() parses plain path stack frames',
             metadata: {},
             body(scope: OverkillScope) {
@@ -61,6 +68,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'sourceLocationFromStack() returns the unknown location for unusable stacks',
             metadata: {},
             body(scope: OverkillScope) {
@@ -80,6 +88,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'sourceLocationFromStack() preserves invalid file URL stack frames',
             metadata: {},
             body(scope: OverkillScope) {
@@ -96,6 +105,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'captureSourceLocation() returns a memoized provider for the capture callsite',
             metadata: {},
             body(scope: OverkillScope) {
@@ -112,6 +122,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'resolveSourceLocation() protects failures from provider errors',
             metadata: {},
             body(scope: OverkillScope) {
@@ -121,6 +132,33 @@ export const testSuite = createOverkillSuite({
                     }),
                     unknownSourceLocation
                 );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
+            title: 'assertion source location forwarding preserves nested authoring chains',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const outerLocation = { column: 1, file: 'macro.ts', line: 2 };
+                const innerLocation = { column: 3, file: 'body.ts', line: 4 };
+                const assertionLocation = { column: 5, file: 'assertion.ts', line: 6 };
+
+                const sourceLocations = forwardAssertionSourceLocations([ outerLocation ], function forwardOuter() {
+                    return forwardAssertionSourceLocations([ innerLocation ], function forwardInner() {
+                        return sourceLocationsWithCurrentForwarding(function captureAssertion() {
+                            return assertionLocation;
+                        });
+                    });
+                });
+
+                scope.assert.deepEqual(sourceLocations, [ outerLocation, innerLocation, assertionLocation ]);
+                scope.assert.throws(function forwardWithoutLocations() {
+                    forwardAssertionSourceLocations([] as never, function noop() {
+                        return null;
+                    });
+                }, { message: 'Assertion source location forwarding requires at least one location.' });
 
                 return scope.assert.collect();
             }

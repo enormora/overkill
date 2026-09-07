@@ -18,10 +18,12 @@ const diagnosticIntent: OutputLineIntent = {
 };
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/output-renderers/github-actions-output-renderer.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'GitHub Actions output renderer renders located diagnostics as workflow commands',
             metadata: {},
             body(scope: OverkillScope) {
@@ -41,6 +43,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'GitHub Actions output renderer passes unlocated output through',
             metadata: {},
             body(scope: OverkillScope) {
@@ -60,6 +63,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'GitHub Actions output renderer handles optional annotation properties',
             metadata: {},
             body(scope: OverkillScope) {

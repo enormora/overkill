@@ -1,11 +1,11 @@
 import { assertionOutcome, type AssertionOutcome } from '../assertion-evaluation.ts';
-import type { AssertionSource, ResolvableSourceLocation } from '../assertion-node-shape.ts';
+import type { AssertionSource, ResolvableSourceLocations } from '../assertion-node-shape.ts';
 
 export type FailAssertionNode<Source extends AssertionSource = AssertionSource> = {
     readonly check: 'fail';
-    readonly location: ResolvableSourceLocation;
     readonly message: string | null;
     readonly source: Source;
+    readonly sourceLocations: ResolvableSourceLocations;
 };
 
 export const failSummaryByCheck = {

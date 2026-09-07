@@ -10,6 +10,7 @@ import { testSuite as runTestSuite } from '../../run/run-suite.test.ts';
 import { testSuite as runResultFactoryTestSuite } from '../run-result-factory.test.ts';
 
 export const testSuite = createSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'assertion protocol, assert, run, and test support',
     metadata: {},
     children: [

@@ -195,10 +195,12 @@ async function runWithRunnerErrors(): ReturnType<RunOrchestrator['run']> {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/command-line-runner-reporter-resolution.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title:
                 'commandLineRunner.runTests() keeps global reporters as fallback when profile reporters override them',
             metadata: {},
@@ -220,6 +222,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner.runTests() skips the default reporter when profile reporters exist',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -239,6 +242,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner.runTests() skips the default reporter when global non-terminal reporters exist',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -257,6 +261,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner.runTests() skips the default reporter for unknown profiles',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -279,6 +284,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner.runTests() falls back when profile terminal reporters did not receive errors',
             metadata: {},
             async body(scope: OverkillScope) {

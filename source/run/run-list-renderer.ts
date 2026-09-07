@@ -10,14 +10,18 @@ type RenderOptions = {
     readonly withOrphans: boolean;
 };
 
+const indentation = '  ';
+const orphanDetailDepth = 2;
+const secondToLastOffset = 2;
+
 function indent(depth: number): string {
-    return '  '.repeat(depth);
+    return indentation.repeat(depth);
 }
 
-function sharedPrefixLength(left: readonly string[], right: readonly string[]): number {
+function sharedPrefixLength(left: CollectedRunCase['suitePath'], right: CollectedRunCase['suitePath']): number {
     let length = 0;
 
-    while (left[length] !== undefined && left[length] === right[length]) {
+    while (left[length] !== undefined && left[length]?.title === right[length]?.title) {
         length += 1;
     }
 
@@ -64,24 +68,57 @@ function locationSuffix(location: SourceLocation, options: RenderOptions): strin
     return renderedLocation === null ? '' : ` (${renderedLocation})`;
 }
 
-function formatNodeLine(name: string, location: SourceLocation, options: RenderOptions): string {
-    return `${name}${locationSuffix(location, options)}`;
+function formatDefinitionLocationDetails(
+    locations: readonly SourceLocation[],
+    options: RenderOptions,
+    depth: number
+): readonly string[] {
+    if (!options.withLocations || locations.length <= 1) {
+        return [];
+    }
+
+    return locations.slice(1).flatMap(function renderLocation(location, index) {
+        const renderedLocation = formatLocation(location, options.cwd);
+
+        if (renderedLocation === null) {
+            return [];
+        }
+
+        const label = index === locations.length - secondToLastOffset ? 'constructed at' : 'expanded at';
+
+        return [ `${indent(depth)}${label} ${renderedLocation}` ];
+    });
+}
+
+function formatNodeLines(
+    name: string,
+    locations: readonly SourceLocation[],
+    options: RenderOptions,
+    depth: number
+): readonly string[] {
+    const primaryLocation = locations[0];
+    const primaryLine = primaryLocation === undefined
+        ? name
+        : `${name}${locationSuffix(primaryLocation, options)}`;
+
+    return [
+        `${indent(depth)}${primaryLine}`,
+        ...formatDefinitionLocationDetails(locations, options, depth + 1)
+    ];
 }
 
 function renderSuiteLines(
     sharedLength: number,
-    suite: readonly string[],
-    locations: readonly SourceLocation[],
+    suitePath: CollectedRunCase['suitePath'],
     options: RenderOptions
 ): readonly string[] {
     const lines: string[] = [];
 
-    for (let index = sharedLength; index < suite.length; index += 1) {
-        const suiteName = suite[index];
-        const location = locations[index];
+    for (let index = sharedLength; index < suitePath.length; index += 1) {
+        const entry = suitePath[index];
 
-        if (suiteName !== undefined && location !== undefined) {
-            lines.push(`${indent(index + 1)}${formatNodeLine(suiteName, location, options)}`);
+        if (entry !== undefined) {
+            lines.push(...formatNodeLines(entry.title, entry.definitionLocations, options, index + 1));
         }
     }
 
@@ -90,27 +127,35 @@ function renderSuiteLines(
 
 function renderFile(file: CollectedRunFile, options: RenderOptions): readonly string[] {
     const lines: string[] = [ file.file ];
-    let currentSuite: readonly string[] = [];
+    let currentSuitePath: CollectedRunCase['suitePath'] = [];
 
     for (const testCase of file.cases) {
-        const sharedLength = sharedPrefixLength(currentSuite, testCase.suite);
+        const sharedLength = sharedPrefixLength(currentSuitePath, testCase.suitePath);
 
         lines.push(
-            ...renderSuiteLines(sharedLength, testCase.suite, testCase.suiteDefinitionLocations, options),
-            `${indent(testCase.suite.length + 1)}${
-                formatNodeLine(formatCaseName(testCase), testCase.definitionLocation, options)
-            }`
+            ...renderSuiteLines(sharedLength, testCase.suitePath, options),
+            ...formatNodeLines(
+                formatCaseName(testCase),
+                testCase.definitionLocations,
+                options,
+                testCase.suitePath.length + 1
+            )
         );
-        currentSuite = testCase.suite;
+        currentSuitePath = testCase.suitePath;
     }
 
     return lines;
 }
 
-function renderOrphan(orphan: OrphanedNode, options: RenderOptions): string {
+function renderOrphan(orphan: OrphanedNode, options: RenderOptions): readonly string[] {
     const file = orphan.file ?? '<unknown>';
 
-    return `${indent(1)}${orphan.kind}: ${orphan.title} (${file})${locationSuffix(orphan.definitionLocation, options)}`;
+    return [
+        `${indent(1)}${orphan.kind}: ${orphan.title} (${file})${
+            locationSuffix(orphan.definitionLocations[0], options)
+        }`,
+        ...formatDefinitionLocationDetails(orphan.definitionLocations, options, orphanDetailDepth)
+    ];
 }
 
 function renderOrphans(orphans: readonly OrphanedNode[], options: RenderOptions): readonly string[] {
@@ -120,7 +165,7 @@ function renderOrphans(orphans: readonly OrphanedNode[], options: RenderOptions)
 
     return [
         'Orphans',
-        ...orphans.map(function renderOrphanLine(orphan) {
+        ...orphans.flatMap(function renderOrphanLine(orphan) {
             return renderOrphan(orphan, options);
         })
     ];

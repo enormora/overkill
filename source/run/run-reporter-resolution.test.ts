@@ -60,10 +60,12 @@ function runConfigWithReporters(
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run-reporter-resolution.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.resolve() uses profile reporters over global fallback',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -83,6 +85,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.resolve() uses global reporters when profile reporters are absent',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -101,6 +104,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.run() ignores inactive global reporter sink conflicts',
             metadata: {},
             async body(scope: OverkillScope) {

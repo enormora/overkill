@@ -75,10 +75,12 @@ function selectedCaseTitles(resolvedRun: ResolvedRun): readonly string[] {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run-selection.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.resolve() selects local test cases by stable filter dimensions',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -128,6 +130,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.resolve() rejects local filters that match no cases',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -146,6 +149,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.run() returns a zero-plan result when local selection matches no cases',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -180,6 +184,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.run() executes selected supervised cases and preserves discovered counts',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -220,6 +225,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.run() returns a zero-plan result when supervised selection matches no cases',
             metadata: {},
             async body(scope: OverkillScope) {

@@ -15,6 +15,12 @@ import type {
     RunCaseFacts
 } from './run-types.ts';
 
+function suiteTitles(suitePath: TestPlan['cases'][number]['suitePath']): readonly string[] {
+    return suitePath.map(function toTitle(entry) {
+        return entry.title;
+    });
+}
+
 type RunResultTiming = {
     readonly resourceUsage: RunResourceUsage | null;
     readonly startedAtMs: number;
@@ -22,7 +28,7 @@ type RunResultTiming = {
 };
 
 function collectedCaseId(file: string, testCase: CollectedRunCase): CaseId {
-    return createCaseId(file, testCase.suite, testCase.title, testCase.params);
+    return createCaseId(file, suiteTitles(testCase.suitePath), testCase.title, testCase.params);
 }
 
 function collectedCases(files: readonly CollectedRunFile[]): readonly {
@@ -89,14 +95,14 @@ function countSuites(plan: CollectedRunPlan, perTest: readonly PerTestResult[]):
     }));
 
     for (const collectedCase of collectedCases(plan.discoveredFiles)) {
-        counts = countSuitePath(counts, collectedCase.testCase.suite, 'discovered');
+        counts = countSuitePath(counts, suiteTitles(collectedCase.testCase.suitePath), 'discovered');
     }
 
     for (const collectedCase of collectedCases(plan.files)) {
-        counts = countSuitePath(counts, collectedCase.testCase.suite, 'planned');
+        counts = countSuitePath(counts, suiteTitles(collectedCase.testCase.suitePath), 'planned');
 
         if (executedIds.has(caseIdentityKey(collectedCaseId(collectedCase.file, collectedCase.testCase)))) {
-            counts = countSuitePath(counts, collectedCase.testCase.suite, 'executed');
+            counts = countSuitePath(counts, suiteTitles(collectedCase.testCase.suitePath), 'executed');
         }
     }
 
@@ -125,11 +131,10 @@ function collectRunPlanFile(file: string, cases: readonly TestPlan['cases'][numb
     return {
         cases: cases.map(function collectCase(testCase): CollectedRunCase {
             return {
-                definitionLocation: testCase.definitionLocation,
+                definitionLocations: testCase.definitionLocations,
                 metadata: testCase.metadata,
                 params: testCase.id.params,
-                suite: testCase.id.suite,
-                suiteDefinitionLocations: testCase.suiteDefinitionLocations,
+                suitePath: testCase.suitePath,
                 title: testCase.id.title
             };
         }),

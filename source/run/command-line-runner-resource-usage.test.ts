@@ -73,6 +73,7 @@ function createPassingPlan(): TestPlan {
         engine.createRoot({
             children: [
                 engine.createTestCase({
+                    definitionLocations: [ { column: null, file: '', line: null } ],
                     body(scope) {
                         scope.assert.true(true);
                         return scope.assert.collect();
@@ -237,10 +238,12 @@ function assertResourceUsageCommand(scope: OverkillScope, command: RunCommand): 
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/command-line-runner-resource-usage.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'commandLineRunner.runTests() carries resource usage config and request values',
             metadata: {},
             async body(scope: OverkillScope) {

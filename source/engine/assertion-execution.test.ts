@@ -33,6 +33,7 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
             engine.createRoot({
                 children: [
                     engine.createTestCase({
+                        definitionLocations: [ { column: null, file: '', line: null } ],
                         body,
                         metadata: {},
                         title: 'case'
@@ -71,10 +72,12 @@ function firstFailedCheck(outcome: FailOutcome): FailedCheck | null {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/engine/assertion-execution.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() counts successful requirements once a returned assertion result exists',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -91,6 +94,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() rejects successful require-only builder collection',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -115,6 +119,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() skips plan mismatch when a requirement fails',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -128,7 +133,7 @@ export const testSuite = createOverkillSuite({
                 scope.require.notNull(outcome);
                 const check = firstFailedCheck(outcome);
                 scope.require.notNull(check);
-                scope.assert(capturedTestLocation, check.location);
+                scope.assert(capturedTestLocation, check.sourceLocations[0]);
 
                 scope.assert.deepEqual(outcome.failures, [
                     {
@@ -139,7 +144,7 @@ export const testSuite = createOverkillSuite({
                                 expected: serializeValue('string'),
                                 id: '1',
                                 kind: 'leaf',
-                                location: check.location,
+                                sourceLocations: [ check.sourceLocations[0] ],
                                 path: [],
                                 source: 'require',
                                 summary: 'required string'
@@ -153,6 +158,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() treats caught failed requirements as fatal and ignores later assertions',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -170,7 +176,7 @@ export const testSuite = createOverkillSuite({
                 scope.require.notNull(outcome);
                 const check = firstFailedCheck(outcome);
                 scope.require.notNull(check);
-                scope.assert(capturedTestLocation, check.location);
+                scope.assert(capturedTestLocation, check.sourceLocations[0]);
 
                 scope.assert.deepEqual(outcome.failures, [
                     {
@@ -181,7 +187,7 @@ export const testSuite = createOverkillSuite({
                                 expected: serializeValue('string'),
                                 id: '1',
                                 kind: 'leaf',
-                                location: check.location,
+                                sourceLocations: [ check.sourceLocations[0] ],
                                 path: [],
                                 source: 'require',
                                 summary: 'required string'
@@ -195,6 +201,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() rejects returned results that drop recorded builder assertions',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -202,7 +209,7 @@ export const testSuite = createOverkillSuite({
                     const replacement: AssertAssertionNode = {
                         actual: true,
                         check: 'true',
-                        location: unknownSourceLocation,
+                        sourceLocations: [ unknownSourceLocation ],
                         message: null,
                         source: 'assert'
                     };
@@ -228,6 +235,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() accepts appended direct assertions around builder assertions',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -235,14 +243,14 @@ export const testSuite = createOverkillSuite({
                     const leading: AssertAssertionNode = {
                         actual: true,
                         check: 'true',
-                        location: unknownSourceLocation,
+                        sourceLocations: [ unknownSourceLocation ],
                         message: null,
                         source: 'assert'
                     };
                     const trailing: AssertAssertionNode = {
                         actual: false,
                         check: 'false',
-                        location: unknownSourceLocation,
+                        sourceLocations: [ unknownSourceLocation ],
                         message: null,
                         source: 'assert'
                     };
@@ -259,6 +267,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'execute() merges successful requirements by timeline for counts and check ids',
             metadata: {},
             async body(scope: OverkillScope) {

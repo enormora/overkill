@@ -84,7 +84,7 @@ type TestCase = {
     readonly kind: 'test';
     readonly title: string;
     readonly metadata?: Metadata;
-    readonly definitionLocation: SourceLocation;
+    readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
     readonly body: TestBody; // signature varies by DSL
 };
 
@@ -92,7 +92,7 @@ type Suite = {
     readonly kind: 'suite';
     readonly title: string;
     readonly metadata?: Metadata;
-    readonly definitionLocation: SourceLocation;
+    readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
     readonly children: ReadonlyArray<TestNode>;
 };
 
@@ -100,7 +100,7 @@ type Table = {
     readonly kind: 'table';
     readonly title: string;
     readonly metadata?: Metadata;
-    readonly definitionLocation: SourceLocation;
+    readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
     readonly cases: ReadonlyArray<TableCase>;
 };
 
@@ -504,6 +504,9 @@ type TestFacade = {
     readonly defineMacro: <Args extends ReadonlyArray<unknown>>(
         factory: (...args: Args) => TestNode,
     ) => (...args: Args) => TestNode;
+    readonly defineParameterizedTestBody: <Data>(
+        body: (scope: TestScope, data: Data) => ReturnType<TestBody>,
+    ) => (data: Data) => TestBody;
     readonly runIfMain: (meta: ImportMeta, testNode: TestNode, options?: RunIfMainOptions) => Promise<void>;
 };
 ```
@@ -748,12 +751,16 @@ type RunCommand = {
 declare function resolveRun(command: RunCommand): Promise<ResolvedRun>;
 declare function run(command: RunCommand): Promise<RunResult>;
 
+type TestPlanSuitePathEntry = {
+    readonly title: string;
+    readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
+};
+
 type TestPlanCase = {
     readonly id: CaseId;
-    readonly suitePath: ReadonlyArray<string>;
-    readonly suiteDefinitionLocations: ReadonlyArray<SourceLocation>;
+    readonly suitePath: ReadonlyArray<TestPlanSuitePathEntry>;
     readonly metadata: ResolvedMetadata;
-    readonly definitionLocation: SourceLocation;
+    readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
     readonly body: TestBody;
 };
 
@@ -765,7 +772,7 @@ type TestPlan = {
         file: string | null;
         title: string;
         kind: 'test' | 'suite' | 'table';
-        definitionLocation: SourceLocation;
+        definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
     }>;
     readonly root: { readonly title: string; readonly metadata: ResolvedMetadata; };
 };
@@ -802,11 +809,10 @@ type RunCaseFacts = {
 };
 
 type CollectedRunCase = {
-    readonly definitionLocation: SourceLocation;
+    readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
     readonly metadata: SerializedValue;
     readonly params: string | null;
-    readonly suite: ReadonlyArray<string>;
-    readonly suiteDefinitionLocations: ReadonlyArray<SourceLocation>;
+    readonly suitePath: ReadonlyArray<TestPlanSuitePathEntry>;
     readonly title: string;
 };
 

@@ -105,6 +105,7 @@ function directTestPlan(): TestPlan {
         children: [
             createDirectTestCase({
                 body: passingBody,
+                definitionLocations: [ { column: null, file: '', line: null } ],
                 metadata: {},
                 title: 'passes'
             })
@@ -182,10 +183,12 @@ function assertOutputAndRootOptions(scope: OverkillScope): void {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run-if-main-options.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'runIfMain() resolves direct execution options',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -207,6 +210,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'directRunFacts() rejects unknown direct profiles',
             metadata: {},
             body(scope: OverkillScope) {

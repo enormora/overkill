@@ -5,13 +5,14 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { Engine } from './engine.ts';
-import type { TestCaseOptions } from './test-node.ts';
+import type { DefinitionLocations } from './test-node.ts';
 
 type TestCase = ReturnType<Engine['createTestCase']>;
-type SourceLocation = NonNullable<TestCaseOptions['definitionLocation']>;
+type SourceLocation = DefinitionLocations[number];
 
 function createPassingCase(engine: Engine, title: string): TestCase {
     return engine.createTestCase({
+        definitionLocations: [ { column: null, file: '', line: null } ],
         body(testScope) {
             testScope.assert.true(true, { message: 'passes' });
             return testScope.assert.collect();
@@ -23,11 +24,11 @@ function createPassingCase(engine: Engine, title: string): TestCase {
 
 function createLocatedPassingCase(engine: Engine, title: string, definitionLocation: SourceLocation): TestCase {
     return engine.createTestCase({
+        definitionLocations: [ definitionLocation ],
         body(testScope) {
             testScope.assert.true(true);
             return testScope.assert.collect();
         },
-        definitionLocation,
         metadata: {},
         title
     });
@@ -42,7 +43,7 @@ function createLocatedPlan(
         children: [
             engine.createSuite({
                 children: [ createLocatedPassingCase(engine, 'located test', testLocation) ],
-                definitionLocation: suiteLocation,
+                definitionLocations: [ suiteLocation ],
                 metadata: {},
                 title: 'located suite'
             })
@@ -61,7 +62,7 @@ function createPlanWithOrphans(
     createLocatedPassingCase(engine, 'unused test', unusedTestLocation);
     engine.createSuite({
         children: [],
-        definitionLocation: unusedSuiteLocation,
+        definitionLocations: [ unusedSuiteLocation ],
         metadata: {},
         title: 'unused suite'
     });
@@ -74,10 +75,12 @@ function createPlanWithOrphans(
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/engine/test-plan-location.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createTestPlan() preserves supplied definition locations',
             metadata: {},
             body(scope: OverkillScope) {
@@ -86,13 +89,16 @@ export const testSuite = createOverkillSuite({
                 const testLocation = { column: 9, file: 'source/suite.test.ts', line: 12 };
                 const [ testCase ] = createLocatedPlan(engine, suiteLocation, testLocation).cases;
 
-                scope.assert.deepEqual(testCase.definitionLocation, testLocation);
-                scope.assert.deepEqual(testCase.suiteDefinitionLocations, [ suiteLocation ]);
+                scope.assert.deepEqual(testCase.definitionLocations, [ testLocation ]);
+                scope.assert.deepEqual(testCase.suitePath, [
+                    { definitionLocations: [ suiteLocation ], title: 'located suite' }
+                ]);
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createTestPlan() reports constructed nodes that do not reach the root as orphans',
             metadata: {},
             body(scope: OverkillScope) {
@@ -103,8 +109,8 @@ export const testSuite = createOverkillSuite({
 
                 scope.assert.equal(testPlan.defined, 3);
                 scope.assert.deepEqual(testPlan.orphans, [
-                    { definitionLocation: unusedTestLocation, file: null, kind: 'test', title: 'unused test' },
-                    { definitionLocation: unusedSuiteLocation, file: null, kind: 'suite', title: 'unused suite' }
+                    { definitionLocations: [ unusedTestLocation ], file: null, kind: 'test', title: 'unused test' },
+                    { definitionLocations: [ unusedSuiteLocation ], file: null, kind: 'suite', title: 'unused suite' }
                 ]);
 
                 return scope.assert.collect();

@@ -5,7 +5,11 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import type { RequireAssertionNode } from '../assertion-protocol/assertion-node.ts';
-import type { AssertionSource, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
+import type {
+    AssertionSource,
+    ResolvableSourceLocation,
+    SourceLocation
+} from '../assertion-protocol/assertion-node-shape.ts';
 import {
     createRecordingRequireFacadeWithLocation,
     type RequireAssertionFacade
@@ -47,15 +51,15 @@ function assertionChecks(records: readonly RequireAssertionNode[]): readonly str
     });
 }
 
-function recordLocations(records: readonly RequireAssertionNode[]): readonly RequireAssertionNode['location'][] {
+function recordLocations(records: readonly RequireAssertionNode[]): readonly ResolvableSourceLocation[] {
     return records.map(function locationOf(record) {
-        return record.location;
+        return record.sourceLocations[0];
     });
 }
 
 function expectedRecordLocations(
     records: readonly RequireAssertionNode[]
-): readonly RequireAssertionNode['location'][] {
+): readonly ResolvableSourceLocation[] {
     return records.map(function expectedLocation() {
         return testLocation;
     });
@@ -129,10 +133,12 @@ function recordRequireNodes(facade: RequireAssertionFacade): void {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/engine/require-assertion-facade.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createRecordingRequireFacade() records every built-in requirement node',
             metadata: {},
             body(scope: OverkillScope) {
@@ -172,7 +178,7 @@ export const testSuite = createOverkillSuite({
                         array: {
                             actual: [ 1 ],
                             check: 'array',
-                            location: testLocation,
+                            sourceLocations: [ testLocation ],
                             message: 'array',
                             source: 'require'
                         },
@@ -180,7 +186,7 @@ export const testSuite = createOverkillSuite({
                             actual: { name: 'Ada' },
                             check: 'has-property',
                             key: 'name',
-                            location: testLocation,
+                            sourceLocations: [ testLocation ],
                             message: null,
                             source: 'require'
                         },
@@ -188,7 +194,7 @@ export const testSuite = createOverkillSuite({
                             actual: samples.instanceOf.actual,
                             check: 'instance-of',
                             expected: Error,
-                            location: testLocation,
+                            sourceLocations: [ testLocation ],
                             message: null,
                             source: 'require'
                         }
@@ -199,6 +205,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'createRecordingRequireFacade() applies annotated messages',
             metadata: {},
             body(scope: OverkillScope) {

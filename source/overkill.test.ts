@@ -8,6 +8,7 @@ import { testSuite as outputRenderersTestSuite } from './test-support/unit-suite
 import { testSuite as reportersTestSuite } from './test-support/unit-suite-groups/reporters.ts';
 
 export const testSuite = createSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/overkill.test.ts',
     metadata: {},
     children: [

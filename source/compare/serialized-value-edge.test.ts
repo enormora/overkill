@@ -6,10 +6,12 @@ import {
 import { serializeValue, serializeValueWithBudget } from './serialized-value.ts';
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/compare/serialized-value-edge.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'serializeValue() handles invalid dates and anonymous functions',
             metadata: {},
             body(scope: OverkillScope) {
@@ -36,6 +38,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'serializeValue() reports unavailable constructor names when prototypes cannot be read',
             metadata: {},
             body(scope: OverkillScope) {
@@ -56,6 +59,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'serializeValue() reports descriptor failures',
             metadata: {},
             body(scope: OverkillScope) {
@@ -81,6 +85,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'serializeValueWithBudget() truncates maps, sets, binary bytes, and arrays independently',
             metadata: {},
             body(scope: OverkillScope) {
@@ -138,6 +143,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'serializeValue() reports Map and Set impostors as unavailable',
             metadata: {},
             body(scope: OverkillScope) {

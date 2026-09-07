@@ -110,10 +110,10 @@ export type ForeignAssertionResult = ForeignAssertionResultByOutcome[keyof Forei
 export type ForeignAssertionNode<Source extends AssertionSource = AssertionSource> = {
     readonly check: 'foreign';
     readonly label: string;
-    readonly location: ResolvableSourceLocation;
     readonly message: string | null;
     readonly result: ForeignAssertionResult;
     readonly source: Source;
+    readonly sourceLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
     readonly summary: string;
 };
 
@@ -130,10 +130,10 @@ export type CompositeAssertionNode<Source extends AssertionSource = AssertionSou
     readonly check: 'composite';
     readonly children: NonEmptyReadonlyArray<CompositeAssertionChildNode<Source>>;
     readonly expected: unknown;
-    readonly location: ResolvableSourceLocation;
     readonly message: string | null;
     readonly name: string;
     readonly source: Source;
+    readonly sourceLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
     readonly summary: string;
 };
 

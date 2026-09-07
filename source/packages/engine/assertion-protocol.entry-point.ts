@@ -46,6 +46,7 @@ export type {
     InstanceConstructor,
     NonEmptyReadonlyArray,
     ResolvableSourceLocation,
+    ResolvableSourceLocations,
     SourceLocation,
     SourceLocationProvider
 } from '../../assertion-protocol/assertion-node-shape.ts';

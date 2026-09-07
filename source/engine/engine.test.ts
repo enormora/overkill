@@ -12,10 +12,12 @@ import { createPlainOutputRenderer } from './reporter-output.ts';
 import type { RunResult } from './run-result.ts';
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/engine/engine.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'engine.execute() invokes the injected execute dependency',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -34,6 +36,7 @@ export const testSuite = createOverkillSuite({
                     engine.createRoot({
                         children: [
                             engine.createTestCase({
+                                definitionLocations: [ { column: null, file: '', line: null } ],
                                 body(testScope) {
                                     testScope.assert.true(true, { message: 'passes' });
                                     return testScope.assert.collect();

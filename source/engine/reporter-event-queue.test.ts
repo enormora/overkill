@@ -8,6 +8,15 @@ import type { ReporterDispatcher } from './reporter-dispatcher.ts';
 import type { ReporterEvent } from './reporter.ts';
 import { createReporterEventQueue } from './reporter-event-queue.ts';
 
+const definitionLocation = { column: null, file: '', line: null };
+
+function suitePath(title: string): ReporterEvent & { readonly kind: 'suite-start'; } {
+    return {
+        kind: 'suite-start',
+        suitePath: [ { definitionLocations: [ definitionLocation ], title } ]
+    };
+}
+
 type RejectingDispatcher = {
     readonly dispatcher: ReporterDispatcher;
     readonly events: () => readonly ReporterEvent[];
@@ -47,10 +56,12 @@ function createRejectingDispatcher(): RejectingDispatcher {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/engine/reporter-event-queue.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'reporter event queue continues after a previous report rejects',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -60,13 +71,13 @@ export const testSuite = createOverkillSuite({
                 });
 
                 await scope.assert.rejects(async function reportFirstEvent() {
-                    await queue.report({ kind: 'suite-start', suitePath: [ 'first' ] });
+                    await queue.report(suitePath('first'));
                 }, { message: 'first report failed' });
-                await queue.report({ kind: 'suite-start', suitePath: [ 'second' ] });
+                await queue.report(suitePath('second'));
 
                 scope.assert.deepEqual(
                     rejectingDispatcher.events().map(function toSuiteName(event) {
-                        return event.kind === 'suite-start' ? event.suitePath[0] : null;
+                        return event.kind === 'suite-start' ? event.suitePath[0]?.title : null;
                     }),
                     [ 'first', 'second' ]
                 );

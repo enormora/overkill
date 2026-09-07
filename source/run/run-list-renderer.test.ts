@@ -22,13 +22,14 @@ const otherRowParameterIdentity = [
 function createLocationVariantPlan(): TestPlan {
     const engine = createTestEngine();
     const testNode = engine.createSuite({
+        definitionLocations: [ { column: null, file: '', line: null } ],
         children: [
             engine.createTestCase({
                 body(scope) {
                     scope.assert.true(true);
                     return scope.assert.collect();
                 },
-                definitionLocation: { column: null, file: '', line: null },
+                definitionLocations: [ { column: null, file: '', line: null } ],
                 metadata: {},
                 title: 'no location'
             }),
@@ -37,7 +38,12 @@ function createLocationVariantPlan(): TestPlan {
                     scope.assert.true(true);
                     return scope.assert.collect();
                 },
-                definitionLocation: { column: null, file: 'relative.test.ts', line: 7 },
+                definitionLocations: [
+                    { column: null, file: 'relative.test.ts', line: 7 },
+                    { column: null, file: '', line: null },
+                    { column: null, file: 'macro.test.ts', line: 5 },
+                    { column: null, file: 'constructed.test.ts', line: null }
+                ],
                 metadata: {},
                 title: 'line only'
             }),
@@ -62,7 +68,7 @@ function createLocationVariantPlan(): TestPlan {
                         parameters: { value: 2 }
                     }
                 ],
-                definitionLocation: { column: null, file: '/outside/table.test.ts', line: null },
+                definitionLocations: [ { column: null, file: '/outside/table.test.ts', line: null } ],
                 metadata: {},
                 title: 'rows'
             })
@@ -78,10 +84,12 @@ function createLocationVariantPlan(): TestPlan {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run-list-renderer.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'renderResolvedRunList() renders location variants',
             metadata: {},
             body(scope: OverkillScope) {
@@ -100,6 +108,8 @@ export const testSuite = createOverkillSuite({
                     '  suite',
                     '    no location',
                     '    line only (relative.test.ts:7)',
+                    '      expanded at macro.test.ts:5',
+                    '      constructed at constructed.test.ts',
                     '    rows (/outside/table.test.ts)',
                     `      row [${rowParameterIdentity}] (/outside/table.test.ts)`,
                     `      other row [${otherRowParameterIdentity}] (/outside/table.test.ts)`

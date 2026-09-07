@@ -18,7 +18,7 @@ import {
 import type {
     AssertionSource,
     NonEmptyReadonlyArray,
-    ResolvableSourceLocation
+    ResolvableSourceLocations
 } from '../assertion-protocol/assertion-node-shape.ts';
 import type { TestContractFailure } from './run-result.ts';
 
@@ -42,52 +42,52 @@ export type RequireAssertionSink = {
 type CompositeAssertionNodeInput<Source extends AssertionSource> = {
     readonly annotation: string | null;
     readonly children: NonEmptyReadonlyArray<CompositeAssertionChildNode<Source>>;
-    readonly location: ResolvableSourceLocation;
     readonly parameters: readonly unknown[];
     readonly record: AssertionReferenceRecord;
     readonly source: Source;
+    readonly sourceLocations: ResolvableSourceLocations;
 };
 
 type PendingCompositeAssertionInput = {
     readonly annotation: string | null;
-    readonly location: ResolvableSourceLocation;
     readonly parameters: readonly unknown[];
     readonly pending: PendingAssertAssertionSink;
     readonly record: CompositeAssertionReferenceRecord;
     readonly result: Promise<CompositeAssertionReturn<'assert'>>;
     readonly sink: AssertAssertionSink;
+    readonly sourceLocations: ResolvableSourceLocations;
 };
 
 type NarrowingCompositeAssertionNodeInput<Source extends AssertionSource> = {
     readonly annotation: string | null;
-    readonly location: ResolvableSourceLocation;
     readonly parameters: readonly unknown[];
     readonly record: NarrowingCompositeAssertionReferenceRecord;
     readonly source: Source;
+    readonly sourceLocations: ResolvableSourceLocations;
 };
 
 type CompositeAssertionRecordingInput = {
     readonly annotation: string | null;
-    readonly location: ResolvableSourceLocation;
     readonly parameters: readonly unknown[];
     readonly record: CompositeAssertionReferenceRecord;
     readonly sink: AssertAssertionSink;
+    readonly sourceLocations: ResolvableSourceLocations;
 };
 
 type AssertReferenceRecordingInput = {
     readonly annotation: string | null;
-    readonly location: ResolvableSourceLocation;
     readonly parameters: readonly unknown[];
     readonly reference: unknown;
     readonly sink: AssertAssertionSink;
+    readonly sourceLocations: ResolvableSourceLocations;
 };
 
 type RequireReferenceRecordingInput = {
     readonly annotation: string | null;
-    readonly location: ResolvableSourceLocation;
     readonly parameters: readonly unknown[];
     readonly reference: unknown;
     readonly sink: RequireAssertionSink;
+    readonly sourceLocations: ResolvableSourceLocations;
 };
 
 function createInvalidAssertionReferenceFailure(actual: unknown): TestContractFailure {
@@ -189,10 +189,10 @@ function createCompositeAssertionNode<Source extends AssertionSource>(
         check: 'composite',
         children: input.children,
         expected: expectedArgument ?? input.record.name,
-        location: input.location,
         message: input.annotation,
         name: input.record.name,
         source: input.source,
+        sourceLocations: input.sourceLocations,
         summary: customSummary(input.record, input.source, input.annotation, input.parameters)
     };
 }
@@ -204,18 +204,18 @@ function createNarrowingCompositeAssertionNode<Source extends AssertionSource>(
     const child: CompositeAssertionChildNode<Source> = {
         actual: passed,
         check: 'true',
-        location: input.location,
         message: `Expected ${input.record.name} narrowing predicate to pass.`,
-        source: input.source
+        source: input.source,
+        sourceLocations: input.sourceLocations
     };
 
     return createCompositeAssertionNode({
         annotation: input.annotation,
         children: [ child ],
-        location: input.location,
         parameters: input.parameters,
         record: input.record,
-        source: input.source
+        source: input.source,
+        sourceLocations: input.sourceLocations
     });
 }
 
@@ -225,41 +225,41 @@ async function recordResolvedCompositeAssertion(input: PendingCompositeAssertion
     input.pending.resolve(createCompositeAssertionNode({
         annotation: input.annotation,
         children: normalizeCompositeChildren(resolved, input.sink.failContract),
-        location: input.location,
         parameters: input.parameters,
         record: input.record,
-        source: 'assert'
+        source: 'assert',
+        sourceLocations: input.sourceLocations
     }));
 }
 
 function recordCompositeAssertion(input: CompositeAssertionRecordingInput): Promise<void> | void {
     const result = input.record.run({
-        location: input.location,
         message: null,
         parameters: input.parameters,
-        source: 'assert'
+        source: 'assert',
+        sourceLocations: input.sourceLocations
     });
 
     if (!isPromiseLike(result)) {
         input.sink.recordAssert(createCompositeAssertionNode({
             annotation: input.annotation,
             children: normalizeCompositeChildren(result, input.sink.failContract),
-            location: input.location,
             parameters: input.parameters,
             record: input.record,
-            source: 'assert'
+            source: 'assert',
+            sourceLocations: input.sourceLocations
         }));
         return undefined;
     }
 
     return recordResolvedCompositeAssertion({
         annotation: input.annotation,
-        location: input.location,
         parameters: input.parameters,
         pending: input.sink.recordPendingAssert(),
         record: input.record,
         result,
-        sink: input.sink
+        sink: input.sink,
+        sourceLocations: input.sourceLocations
     });
 }
 
@@ -273,20 +273,20 @@ export function recordAssertReference(input: AssertReferenceRecordingInput): Pro
     if (record.kind === 'narrowing-composite') {
         input.sink.recordAssert(createNarrowingCompositeAssertionNode({
             annotation: input.annotation,
-            location: input.location,
             parameters: input.parameters,
             record,
-            source: 'assert'
+            source: 'assert',
+            sourceLocations: input.sourceLocations
         }));
         return undefined;
     }
 
     return recordCompositeAssertion({
         annotation: input.annotation,
-        location: input.location,
         parameters: input.parameters,
         record,
-        sink: input.sink
+        sink: input.sink,
+        sourceLocations: input.sourceLocations
     });
 }
 
@@ -303,9 +303,9 @@ export function recordRequireReference(input: RequireReferenceRecordingInput): v
 
     input.sink.recordRequire(createNarrowingCompositeAssertionNode({
         annotation: input.annotation,
-        location: input.location,
         parameters: input.parameters,
         record,
-        source: 'require'
+        source: 'require',
+        sourceLocations: input.sourceLocations
     }));
 }

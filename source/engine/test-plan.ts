@@ -25,13 +25,17 @@ import {
 
 export type TestPlanCaseBody = TestBody;
 
+export type TestPlanSuitePathEntry = {
+    readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
+    readonly title: string;
+};
+
 export type TestPlanCase = {
     readonly body: TestPlanCaseBody;
-    readonly definitionLocation: SourceLocation;
+    readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
     readonly id: CaseId;
     readonly metadata: ResolvedMetadata;
-    readonly suiteDefinitionLocations: readonly SourceLocation[];
-    readonly suitePath: readonly string[];
+    readonly suitePath: readonly TestPlanSuitePathEntry[];
 };
 
 export type TestPlan = {
@@ -75,8 +79,7 @@ type CollectedTestCases = {
 type CollectionContext = {
     readonly file: string | null;
     readonly metadata: ResolvedMetadata;
-    readonly suiteDefinitionLocations: readonly SourceLocation[];
-    readonly suitePath: readonly string[];
+    readonly suitePath: readonly TestPlanSuitePathEntry[];
 };
 
 type TitledNode = {
@@ -87,6 +90,12 @@ const minimumTableCaseCount = 2;
 
 function parameterIdentity(parameters: TableCase['parameters']): string {
     return JSON.stringify(serializeValue(parameters));
+}
+
+function suiteTitles(suitePath: readonly TestPlanSuitePathEntry[]): readonly string[] {
+    return suitePath.map(function toTitle(entry) {
+        return entry.title;
+    });
 }
 
 function duplicateTitleMessage(title: string, path: readonly string[]): string {
@@ -117,10 +126,9 @@ function collectTestCase(
         cases: [
             {
                 body: testCase.body,
-                definitionLocation: testCase.definitionLocation,
-                id: createCaseId(context.file, context.suitePath, testCase.title, null),
+                definitionLocations: testCase.definitionLocations,
+                id: createCaseId(context.file, suiteTitles(context.suitePath), testCase.title, null),
                 metadata: resolvedMetadata,
-                suiteDefinitionLocations: context.suiteDefinitionLocations,
                 suitePath: context.suitePath
             }
         ],
@@ -134,14 +142,16 @@ function collectTable(
 ): CollectedTestCases {
     if (table.cases.length < minimumTableCaseCount) {
         throw new TypeError(
-            `Table must contain at least two cases: ${[ ...context.suitePath, table.title ].join(' > ')}.`
+            `Table must contain at least two cases: ${[ ...suiteTitles(context.suitePath), table.title ].join(' > ')}.`
         );
     }
 
-    assertUniqueSiblingTitles(table.cases, [ ...context.suitePath, table.title ]);
+    assertUniqueSiblingTitles(table.cases, [ ...suiteTitles(context.suitePath), table.title ]);
 
-    const tablePath = [ ...context.suitePath, table.title ];
-    const tablePathLocations = [ ...context.suiteDefinitionLocations, table.definitionLocation ];
+    const tablePath = [
+        ...context.suitePath,
+        { definitionLocations: table.definitionLocations, title: table.title }
+    ];
     const tableMetadata = resolveMetadata(context.metadata, table.metadata);
 
     return {
@@ -150,10 +160,14 @@ function collectTable(
 
             return {
                 body: tableCase.body,
-                definitionLocation: table.definitionLocation,
-                id: createCaseId(context.file, tablePath, tableCase.title, parameterIdentity(tableCase.parameters)),
+                definitionLocations: table.definitionLocations,
+                id: createCaseId(
+                    context.file,
+                    suiteTitles(tablePath),
+                    tableCase.title,
+                    parameterIdentity(tableCase.parameters)
+                ),
                 metadata: resolvedMetadata,
-                suiteDefinitionLocations: tablePathLocations,
                 suitePath: tablePath
             };
         }),
@@ -165,8 +179,10 @@ function childCollectionContext(suite: Suite, context: CollectionContext): Colle
     return {
         file: context.file,
         metadata: resolveMetadata(context.metadata, suite.metadata),
-        suiteDefinitionLocations: [ ...context.suiteDefinitionLocations, suite.definitionLocation ],
-        suitePath: [ ...context.suitePath, suite.title ]
+        suitePath: [
+            ...context.suitePath,
+            { definitionLocations: suite.definitionLocations, title: suite.title }
+        ]
     };
 }
 
@@ -195,11 +211,11 @@ function collectNode(
 
     if (node.children.length === 0) {
         throw new TypeError(
-            `Suite must contain at least one child: ${[ ...context.suitePath, node.title ].join(' > ')}.`
+            `Suite must contain at least one child: ${[ ...suiteTitles(context.suitePath), node.title ].join(' > ')}.`
         );
     }
 
-    assertUniqueSiblingTitles(node.children, [ ...context.suitePath, node.title ]);
+    assertUniqueSiblingTitles(node.children, [ ...suiteTitles(context.suitePath), node.title ]);
 
     const childContext = childCollectionContext(node, context);
     const children = mergeCollectedTestCases(node.children.map(function collectChild(child) {
@@ -223,7 +239,6 @@ function collectRoot(root: TestRoot, rootMetadata: ResolvedMetadata): CollectedT
         return collectNode(child, {
             file: null,
             metadata: rootMetadata,
-            suiteDefinitionLocations: [],
             suitePath: []
         });
     }));
@@ -244,7 +259,6 @@ function collectTestFiles(
         return collectNode(child, {
             file: file.file,
             metadata: resolveMetadata(rootMetadata, file.metadata),
-            suiteDefinitionLocations: [],
             suitePath: []
         });
     }));
@@ -256,7 +270,7 @@ function toReachedNodeSet(reachedNodes: readonly TestNode[]): ReadonlySet<TestNo
 
 function createOrphanedNode(node: TestNode): OrphanedNode {
     return {
-        definitionLocation: node.definitionLocation,
+        definitionLocations: node.definitionLocations,
         file: null,
         kind: node.kind,
         title: node.title

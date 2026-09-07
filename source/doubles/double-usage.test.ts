@@ -41,6 +41,7 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
             engine.createRoot({
                 children: [
                     engine.createTestCase({
+                        definitionLocations: [ { column: null, file: '', line: null } ],
                         body,
                         metadata: {},
                         title: 'case'
@@ -107,10 +108,12 @@ function failureSummaries(result: RunResult): readonly string[] | null {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/doubles/double-usage.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'doubleUsage call count and mode assertions pass through scope.assert()',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -134,6 +137,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'doubleUsage construction count and mode assertions pass through scope.assert()',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -158,6 +162,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'doubleUsage negative mode assertions produce domain summaries',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -192,6 +197,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'doubleUsage argument assertions support partial, prefix, and exact matching',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -220,6 +226,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'doubleUsage iterator assertions pass through scope.assert()',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -244,6 +251,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'doubleUsage iterator assertions report protocol history failures',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -272,6 +280,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'doubleUsage prefix assertions reject empty prefixes',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -302,6 +311,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'doubleUsage argument assertions distinguish exact arity from prefix arity',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -322,6 +332,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'doubleUsage once, last, and nth argument assertions use the relevant mode history',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -342,6 +353,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'doubleUsage argument assertion failures explain the matched position',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -381,6 +393,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'doubleUsage calledOnceWith requires one total call in that mode',
             metadata: {},
             body: async function body(scope: OverkillScope) {

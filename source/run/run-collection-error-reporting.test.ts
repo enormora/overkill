@@ -85,10 +85,12 @@ function createTerminalFinishReporter(): Reporter {
 }
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run-collection-error-reporting.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.run() returns collection failures as runner errors',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -151,6 +153,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.run() reports collection failures before disposal',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -182,6 +185,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'orchestrator.runWithReporterDelivery() tracks terminal collection-error delivery',
             metadata: {},
             async body(scope: OverkillScope) {

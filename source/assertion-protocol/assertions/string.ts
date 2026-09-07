@@ -1,14 +1,14 @@
 import { assertionOutcome, type AssertionOutcome } from '../assertion-evaluation.ts';
-import type { AssertionSource, ExpectedAssertionNode, ResolvableSourceLocation } from '../assertion-node-shape.ts';
+import type { AssertionSource, ExpectedAssertionNode, ResolvableSourceLocations } from '../assertion-node-shape.ts';
 
 export type MatchAssertionNode<Source extends AssertionSource = AssertionSource> = {
     readonly [Check in 'match' | 'not-match']: {
         readonly actual: unknown;
         readonly check: Check;
-        readonly location: ResolvableSourceLocation;
         readonly message: string | null;
         readonly pattern: RegExp;
         readonly source: Source;
+        readonly sourceLocations: ResolvableSourceLocations;
     };
 }['match' | 'not-match'];
 

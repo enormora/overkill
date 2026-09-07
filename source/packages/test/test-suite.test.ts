@@ -4,6 +4,7 @@ import { testSuite as standardSubpathsTestSuite } from './standard-subpaths.test
 import { testSuite as entryPointTestSuite } from './test-entry-point.test.ts';
 
 export const testSuite = createSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/packages/test',
     metadata: {},
     children: [

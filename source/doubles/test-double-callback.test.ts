@@ -26,10 +26,12 @@ const unusedBehaviorRuntime: BehaviorRuntime = {
 };
 
 export const testSuite = createOverkillSuite({
+    definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/doubles/test-double-callback.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'rule.callsCallback() invokes a callback argument synchronously',
             metadata: {},
             body(scope: OverkillScope) {
@@ -48,6 +50,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'rule.callsCallbackAsync() invokes a callback argument in a microtask',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -71,6 +74,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'callback rule factories expose their configured return values',
             metadata: {},
             body(scope: OverkillScope) {
@@ -81,6 +85,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'rule.callsCallback() binds a callback receiver',
             metadata: {},
             body(scope: OverkillScope) {
@@ -102,6 +107,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'rule.callsCallbackAsync() supports argument rules and receiver binding',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -133,6 +139,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'rule.callsCallback() supports argument rules and ordered rules',
             metadata: {},
             body(scope: OverkillScope) {
@@ -159,6 +166,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'rule.callsCallback() validates callback behavior at runtime',
             metadata: {},
             body(scope: OverkillScope) {
@@ -178,6 +186,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'rule.callsCallback() rejects construction invocations',
             metadata: {},
             body(scope: OverkillScope) {
@@ -196,6 +205,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'rule.callsCallback() snapshots callback arguments',
             metadata: {},
             body(scope: OverkillScope) {
@@ -216,6 +226,7 @@ export const testSuite = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
             title: 'rule.sequence() supports callback behavior entries',
             metadata: {},
             async body(scope: OverkillScope) {

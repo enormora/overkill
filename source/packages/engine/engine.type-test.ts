@@ -52,9 +52,9 @@ type FailedCheckFixture = {
     readonly expected: { readonly kind: 'undefined'; };
     readonly id: '1';
     readonly kind: 'leaf';
-    readonly location: { readonly column: null; readonly file: ''; readonly line: null; };
     readonly path: readonly [];
     readonly source: 'assert';
+    readonly sourceLocations: readonly [{ readonly column: null; readonly file: ''; readonly line: null; }];
     readonly summary: 'numbers differ';
 };
 
@@ -64,9 +64,9 @@ type FailedCheckKeyByName = {
     readonly expected: true;
     readonly id: true;
     readonly kind: true;
-    readonly location: true;
     readonly path: true;
     readonly source: true;
+    readonly sourceLocations: true;
     readonly summary: true;
 };
 
@@ -345,7 +345,9 @@ describe('Assertion protocol', function () {
         expect<ResolvableSourceLocation>().type.toBe<SourceLocation | SourceLocationProvider>();
         expect<typeof captureSourceLocation>().type.toBe<() => SourceLocationProvider>();
         expect<typeof unknownSourceLocation>().type.toBeAssignableTo<SourceLocation>();
-        expect<AssertAssertionNode>().type.toBeAssignableTo<{ readonly location: ResolvableSourceLocation; }>();
+        expect<AssertAssertionNode>().type.toBeAssignableTo<{
+            readonly sourceLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
+        }>();
     });
 
     test('exposes the concept assert catalog without ok', function () {
@@ -484,7 +486,12 @@ describe('CaseId', function () {
         expect<CaseId>().type.toBeAssignableFrom<CaseIdFixture>();
         expect<PerTestResult['id']>().type.toBe<CaseId>();
         expect<TestStartReporterEvent['case']>().type.toBe<CaseId>();
-        expect<SuiteStartReporterEvent['suitePath']>().type.toBe<readonly string[]>();
+        expect<SuiteStartReporterEvent['suitePath']>().type.toBe<
+            readonly {
+                readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
+                readonly title: string;
+            }[]
+        >();
         expect<RunnerError['attributedTo']>().type.toBe<CaseId | null>();
     });
 
