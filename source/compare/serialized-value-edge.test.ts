@@ -5,7 +5,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { serializeValue, serializeValueWithBudget } from './serialized-value.ts';
 
-export const testSuite = createOverkillSuite({
+export const testNode = createOverkillSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/compare/serialized-value-edge.test.ts',
     metadata: {},
@@ -161,4 +161,4 @@ export const testSuite = createOverkillSuite({
 
 const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
 
-await runTestFileIfMain(import.meta, testSuite);
+await runTestFileIfMain(import.meta, testNode);

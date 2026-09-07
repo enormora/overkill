@@ -96,7 +96,7 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
     await reporter.onEvent({ kind: 'run-end', result: runResultFactory.build({ summary: { planned: 2 } }) });
 }
 
-export const testSuite = createOverkillSuite({
+export const testNode = createOverkillSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/reporters/tap-console-reporter.test.ts',
     metadata: {},
@@ -324,4 +324,4 @@ export const testSuite = createOverkillSuite({
 
 const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
 
-await runTestFileIfMain(import.meta, testSuite);
+await runTestFileIfMain(import.meta, testNode);

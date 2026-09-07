@@ -39,7 +39,7 @@ function assertProfileFiles(
     scope.assert.deepEqual(files, expected);
 }
 
-export const testSuite = createOverkillSuite({
+export const testNode = createOverkillSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run-config-profile-files.test.ts',
     metadata: {},

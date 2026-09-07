@@ -11,7 +11,7 @@ import type { Execute, ExecuteOptions } from './execution.ts';
 import { createPlainOutputRenderer } from './reporter-output.ts';
 import type { RunResult } from './run-result.ts';
 
-export const testSuite = createOverkillSuite({
+export const testNode = createOverkillSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/engine/engine.test.ts',
     metadata: {},
@@ -70,4 +70,4 @@ export const testSuite = createOverkillSuite({
 
 const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
 
-await runTestFileIfMain(import.meta, testSuite);
+await runTestFileIfMain(import.meta, testNode);

@@ -313,7 +313,7 @@ async function writeAuthoringSmokeFile(): Promise<void> {
     await fs.writeFile(path.join(packageSmokeFolder, authoringSmokeFile), authoringSmokeScript);
 }
 
-export const testSuite = createSuite({
+export const testNode = createSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/integration-tests/package-smoke/test-binary.test.ts',
     metadata: {},
@@ -477,4 +477,4 @@ export const testSuite = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testSuite, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, [ createLineReporter() ]);

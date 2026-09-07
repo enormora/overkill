@@ -6,7 +6,7 @@ import {
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import { isTestNode, isTestRoot } from './test-node.ts';
 
-export const testSuite = createOverkillSuite({
+export const testNode = createOverkillSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/engine/test-node.test.ts',
     metadata: {},
@@ -310,4 +310,4 @@ export const testSuite = createOverkillSuite({
 
 const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
 
-await runTestFileIfMain(import.meta, testSuite);
+await runTestFileIfMain(import.meta, testNode);

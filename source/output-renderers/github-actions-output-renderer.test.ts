@@ -17,7 +17,7 @@ const diagnosticIntent: OutputLineIntent = {
     text: 'expected 100%, actual false'
 };
 
-export const testSuite = createOverkillSuite({
+export const testNode = createOverkillSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/output-renderers/github-actions-output-renderer.test.ts',
     metadata: {},
@@ -104,4 +104,4 @@ export const testSuite = createOverkillSuite({
 
 const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
 
-await runTestFileIfMain(import.meta, testSuite);
+await runTestFileIfMain(import.meta, testNode);

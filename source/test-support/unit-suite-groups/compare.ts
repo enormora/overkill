@@ -1,19 +1,19 @@
 import { createSuite } from '../../packages/engine/engine.entry-point.ts';
-import { testSuite as comparisonCollectionsTestSuite } from '../../compare/comparison-collections.test.ts';
-import { testSuite as comparisonEdgeTestSuite } from '../../compare/comparison-edge.test.ts';
-import { testSuite as comparisonTestSuite } from '../../compare/comparison.test.ts';
-import { testSuite as serializedValueEdgeTestSuite } from '../../compare/serialized-value-edge.test.ts';
-import { testSuite as serializedValueTestSuite } from '../../compare/serialized-value.test.ts';
+import { testNode as comparisonCollectionsTestNode } from '../../compare/comparison-collections.test.ts';
+import { testNode as comparisonEdgeTestNode } from '../../compare/comparison-edge.test.ts';
+import { testNode as comparisonTestNode } from '../../compare/comparison.test.ts';
+import { testNode as serializedValueEdgeTestNode } from '../../compare/serialized-value-edge.test.ts';
+import { testNode as serializedValueTestNode } from '../../compare/serialized-value.test.ts';
 
-export const testSuite = createSuite({
+export const testNode = createSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/test-support/unit-suite-groups/compare.ts',
     metadata: {},
     children: [
-        comparisonCollectionsTestSuite,
-        comparisonEdgeTestSuite,
-        comparisonTestSuite,
-        serializedValueEdgeTestSuite,
-        serializedValueTestSuite
+        comparisonCollectionsTestNode,
+        comparisonEdgeTestNode,
+        comparisonTestNode,
+        serializedValueEdgeTestNode,
+        serializedValueTestNode
     ]
 });

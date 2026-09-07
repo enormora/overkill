@@ -201,7 +201,7 @@ async function executeSmokePlan(engine: Engine): Promise<RunResult> {
     return engine.execute(engine.createTestPlan(root));
 }
 
-export const testSuite = createSuite({
+export const testNode = createSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'package smoke',
     metadata: {},
@@ -347,4 +347,4 @@ export const testSuite = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testSuite, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, [ createLineReporter() ]);

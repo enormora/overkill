@@ -1,25 +1,25 @@
 import { createSuite } from '../../packages/engine/engine.entry-point.ts';
-import { testSuite as doubleHistoryEmptyTestSuite } from '../../doubles/double-history-empty.test.ts';
-import { testSuite as testDoubleCallbackTestSuite } from '../../doubles/test-double-callback.test.ts';
-import { testSuite as testDoubleConfigurationTestSuite } from '../../doubles/test-double-configuration.test.ts';
-import { testSuite as testDoubleConstructionTestSuite } from '../../doubles/test-double-construction.test.ts';
-import { testSuite as testDoubleGeneratorTestSuite } from '../../doubles/test-double-generator.test.ts';
-import { testSuite as testDoubleHistoryTestSuite } from '../../doubles/test-double-history.test.ts';
-import { testSuite as testDoubleHistoryRuntimeTestSuite } from '../../doubles/test-double-history-runtime.test.ts';
-import { testSuite as testDoubleTestSuite } from '../../doubles/test-double.test.ts';
+import { testNode as doubleHistoryEmptyTestNode } from '../../doubles/double-history-empty.test.ts';
+import { testNode as testDoubleCallbackTestNode } from '../../doubles/test-double-callback.test.ts';
+import { testNode as testDoubleConfigurationTestNode } from '../../doubles/test-double-configuration.test.ts';
+import { testNode as testDoubleConstructionTestNode } from '../../doubles/test-double-construction.test.ts';
+import { testNode as testDoubleGeneratorTestNode } from '../../doubles/test-double-generator.test.ts';
+import { testNode as testDoubleHistoryTestNode } from '../../doubles/test-double-history.test.ts';
+import { testNode as testDoubleHistoryRuntimeTestNode } from '../../doubles/test-double-history-runtime.test.ts';
+import { testNode as testDoubleTestNode } from '../../doubles/test-double.test.ts';
 
-export const testSuite = createSuite({
+export const testNode = createSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/test-support/unit-suite-groups/test-double-runtime.ts',
     metadata: {},
     children: [
-        doubleHistoryEmptyTestSuite,
-        testDoubleCallbackTestSuite,
-        testDoubleConfigurationTestSuite,
-        testDoubleConstructionTestSuite,
-        testDoubleGeneratorTestSuite,
-        testDoubleHistoryRuntimeTestSuite,
-        testDoubleHistoryTestSuite,
-        testDoubleTestSuite
+        doubleHistoryEmptyTestNode,
+        testDoubleCallbackTestNode,
+        testDoubleConfigurationTestNode,
+        testDoubleConstructionTestNode,
+        testDoubleGeneratorTestNode,
+        testDoubleHistoryRuntimeTestNode,
+        testDoubleHistoryTestNode,
+        testDoubleTestNode
     ]
 });

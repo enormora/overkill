@@ -1,27 +1,27 @@
 import { createSuite } from '../../packages/engine/engine.entry-point.ts';
-import { testSuite as briefReporterTestSuite } from '../../reporters/brief-reporter.test.ts';
-import { testSuite as dotReporterTestSuite } from '../../reporters/dot-reporter.test.ts';
-import { testSuite as inMemoryReporterTestSuite } from '../../reporters/in-memory-reporter.test.ts';
-import { testSuite as lineFailureRenderingEdgeTestSuite } from '../../reporters/line-failure-rendering-edge.test.ts';
-import { testSuite as lineFailureRenderingTestSuite } from '../../reporters/line-failure-rendering.test.ts';
-import { testSuite as lineReporterTestSuite } from '../../reporters/line-reporter-suite.test.ts';
-import { testSuite as nullReporterTestSuite } from '../../reporters/null-reporter.test.ts';
-import { testSuite as tapConsoleReporterTestSuite } from '../../reporters/tap-console-reporter.test.ts';
-import { testSuite as terminalTestSuite } from '../../reporters/terminal.test.ts';
+import { testNode as briefReporterTestNode } from '../../reporters/brief-reporter.test.ts';
+import { testNode as dotReporterTestNode } from '../../reporters/dot-reporter.test.ts';
+import { testNode as inMemoryReporterTestNode } from '../../reporters/in-memory-reporter.test.ts';
+import { testNode as lineFailureRenderingEdgeTestNode } from '../../reporters/line-failure-rendering-edge.test.ts';
+import { testNode as lineFailureRenderingTestNode } from '../../reporters/line-failure-rendering.test.ts';
+import { testNode as lineReporterTestNode } from '../../reporters/line-reporter-suite.test.ts';
+import { testNode as nullReporterTestNode } from '../../reporters/null-reporter.test.ts';
+import { testNode as tapConsoleReporterTestNode } from '../../reporters/tap-console-reporter.test.ts';
+import { testNode as terminalTestNode } from '../../reporters/terminal.test.ts';
 
-export const testSuite = createSuite({
+export const testNode = createSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/test-support/unit-suite-groups/reporters.ts',
     metadata: {},
     children: [
-        briefReporterTestSuite,
-        dotReporterTestSuite,
-        inMemoryReporterTestSuite,
-        lineFailureRenderingEdgeTestSuite,
-        lineFailureRenderingTestSuite,
-        lineReporterTestSuite,
-        nullReporterTestSuite,
-        tapConsoleReporterTestSuite,
-        terminalTestSuite
+        briefReporterTestNode,
+        dotReporterTestNode,
+        inMemoryReporterTestNode,
+        lineFailureRenderingEdgeTestNode,
+        lineFailureRenderingTestNode,
+        lineReporterTestNode,
+        nullReporterTestNode,
+        tapConsoleReporterTestNode,
+        terminalTestNode
     ]
 });

@@ -1,13 +1,13 @@
 import { createSuite } from '../../packages/engine/engine.entry-point.ts';
 import {
-    testSuite as githubActionsOutputRendererTestSuite
+    testNode as githubActionsOutputRendererTestNode
 } from '../../output-renderers/github-actions-output-renderer.test.ts';
 
-export const testSuite = createSuite({
+export const testNode = createSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/test-support/unit-suite-groups/output-renderers.ts',
     metadata: {},
     children: [
-        githubActionsOutputRendererTestSuite
+        githubActionsOutputRendererTestNode
     ]
 });

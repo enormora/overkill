@@ -1,25 +1,25 @@
 import { createSuite } from '../../packages/engine/engine.entry-point.ts';
-import { testSuite as assertionExecutionCompositeTestSuite } from '../../engine/assertion-execution-composite.test.ts';
-import { testSuite as assertionExecutionTestSuite } from '../../engine/assertion-execution.test.ts';
-import { testSuite as assertionFacadeTestSuite } from '../../engine/assertion-facade.test.ts';
-import { testSuite as deepAssertionOperandsTestSuite } from '../../engine/deep-assertion-operands.test.ts';
-import { testSuite as engineTestSuite } from '../../engine/engine.test.ts';
-import { testSuite as errorAssertionExecutionTestSuite } from '../../engine/error-assertion-execution.test.ts';
-import { testSuite as executionTestSuite } from '../../engine/execution-suite.test.ts';
-import { testSuite as requireAssertionFacadeTestSuite } from '../../engine/require-assertion-facade.test.ts';
+import { testNode as assertionExecutionCompositeTestNode } from '../../engine/assertion-execution-composite.test.ts';
+import { testNode as assertionExecutionTestNode } from '../../engine/assertion-execution.test.ts';
+import { testNode as assertionFacadeTestNode } from '../../engine/assertion-facade.test.ts';
+import { testNode as deepAssertionOperandsTestNode } from '../../engine/deep-assertion-operands.test.ts';
+import { testNode as engineTestNode } from '../../engine/engine.test.ts';
+import { testNode as errorAssertionExecutionTestNode } from '../../engine/error-assertion-execution.test.ts';
+import { testNode as executionTestNode } from '../../engine/execution-suite.test.ts';
+import { testNode as requireAssertionFacadeTestNode } from '../../engine/require-assertion-facade.test.ts';
 
-export const testSuite = createSuite({
+export const testNode = createSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/test-support/unit-suite-groups/engine-core.ts',
     metadata: {},
     children: [
-        assertionExecutionCompositeTestSuite,
-        assertionExecutionTestSuite,
-        assertionFacadeTestSuite,
-        deepAssertionOperandsTestSuite,
-        engineTestSuite,
-        errorAssertionExecutionTestSuite,
-        executionTestSuite,
-        requireAssertionFacadeTestSuite
+        assertionExecutionCompositeTestNode,
+        assertionExecutionTestNode,
+        assertionFacadeTestNode,
+        deepAssertionOperandsTestNode,
+        engineTestNode,
+        errorAssertionExecutionTestNode,
+        executionTestNode,
+        requireAssertionFacadeTestNode
     ]
 });

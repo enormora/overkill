@@ -335,7 +335,7 @@ function rootDoublesBody(testScope: TestScope): ReturnType<TestBody> {
     return testScope.assert.collect();
 }
 
-export const testSuite = createOverkillSuite({
+export const testNode = createOverkillSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/packages/test/test-entry-point.test.ts',
     metadata: {},
@@ -440,10 +440,10 @@ export const testSuite = createOverkillSuite({
             metadata: {},
             body(scope: OverkillScope) {
                 const testCase = test('located test', passingBody);
-                const testNode = suite('located suite', [ testCase ]);
+                const locatedSuite = suite('located suite', [ testCase ]);
 
                 assertDefinitionLocationInThisFile(scope, testCase.definitionLocations);
-                assertDefinitionLocationInThisFile(scope, testNode.definitionLocations);
+                assertDefinitionLocationInThisFile(scope, locatedSuite.definitionLocations);
 
                 return scope.assert.collect();
             }
@@ -474,4 +474,4 @@ export const testSuite = createOverkillSuite({
 
 const { runIfMain: runTestFileIfMain } = await import('../../test-support/run-if-main.ts');
 
-await runTestFileIfMain(import.meta, testSuite);
+await runTestFileIfMain(import.meta, testNode);

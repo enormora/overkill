@@ -11,7 +11,7 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import { testSuite as runCollectionErrorReportingTestSuite } from './run-collection-error-reporting.test.ts';
+import { testNode as runCollectionErrorReportingTestNode } from './run-collection-error-reporting.test.ts';
 import { RunResolutionError } from './run-errors.ts';
 import { orchestrator } from './run-orchestrator.entry-point.ts';
 import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
@@ -66,7 +66,7 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
     };
 }
 
-export const testSuite = createOverkillSuite({
+export const testNode = createOverkillSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/run/run.test.ts',
     metadata: {},
@@ -450,10 +450,10 @@ export const testSuite = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        runCollectionErrorReportingTestSuite
+        runCollectionErrorReportingTestNode
     ]
 });
 
 const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
 
-await runTestFileIfMain(import.meta, testSuite);
+await runTestFileIfMain(import.meta, testNode);

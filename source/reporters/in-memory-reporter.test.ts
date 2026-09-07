@@ -12,7 +12,7 @@ import {
     createInMemoryReporter
 } from './in-memory-reporter.ts';
 
-export const testSuite = createOverkillSuite({
+export const testNode = createOverkillSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/reporters/in-memory-reporter.test.ts',
     metadata: {},
@@ -112,4 +112,4 @@ export const testSuite = createOverkillSuite({
 
 const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
 
-await runTestFileIfMain(import.meta, testSuite);
+await runTestFileIfMain(import.meta, testNode);
