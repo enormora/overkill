@@ -6,6 +6,7 @@ import {
 import { serializeValue } from '../compare/serialized-value.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { TestCaseOptions } from './test-node.ts';
+import type { TestPlanFromTestFilesOptions } from './test-plan.ts';
 
 function plainDataShape(value: unknown): unknown {
     const { stringify } = JSON;
@@ -155,7 +156,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { column: null, file: '', line: null } ],
-            title: 'createTestPlanFromTestFiles() resolves structured metadata without file suite nesting',
+            title: 'createTestPlanFromTestFiles() assigns file identity without file suite nesting',
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
@@ -185,6 +186,7 @@ export const testNode = createOverkillSuite({
                         debug: true,
                         extra: { suite: true },
                         kind: 'integration',
+                        ownership: [ 'suite-team' ],
                         priority: 'standard',
                         runtimes: { mode: 'replace', values: [ 'node' ] },
                         stability: 'stable',
@@ -197,19 +199,6 @@ export const testNode = createOverkillSuite({
                     files: [
                         {
                             file: 'source/users.test.ts',
-                            metadata: {
-                                baselines: [ 'visual-snapshot' ],
-                                capabilities: [ 'fs-read' ],
-                                capture: 'buffered',
-                                debug: false,
-                                extra: { file: true, root: false },
-                                ownership: [ 'file-team' ],
-                                priority: 'optional',
-                                runtimes: { mode: 'append', values: [ 'browser' ] },
-                                stability: 'experimental',
-                                tags: [ 'file' ],
-                                timeoutMilliseconds: 10
-                            },
                             testNode: usersSuite
                         }
                     ],
@@ -243,17 +232,17 @@ export const testNode = createOverkillSuite({
                     {
                         id: { file: 'source/users.test.ts', title: 'login', params: null, suite: [ 'users' ] },
                         metadata: {
-                            baselines: [ 'content-snapshot', 'visual-snapshot', 'terminal-snapshot' ],
+                            baselines: [ 'content-snapshot', 'terminal-snapshot' ],
                             capabilities: [ 'fs-read' ],
                             capture: 'live',
                             debug: false,
-                            extra: { case: true, file: true, root: false, suite: true },
+                            extra: { case: true, root: true, suite: true },
                             kind: 'integration',
-                            ownership: [ 'root-team', 'file-team', 'case-team' ],
+                            ownership: [ 'root-team', 'suite-team', 'case-team' ],
                             priority: 'standard',
                             runtimes: [ 'node' ],
                             stability: 'stable',
-                            tags: [ 'root', 'file', 'suite', 'case' ],
+                            tags: [ 'root', 'suite', 'case' ],
                             timeoutMilliseconds: 20
                         },
                         suitePath: [
@@ -261,6 +250,40 @@ export const testNode = createOverkillSuite({
                         ]
                     }
                 );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
+            title: 'createTestPlanFromTestFiles() rejects file metadata fields',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const engine = createEngine();
+                const caseNode = engine.createTestCase({
+                    definitionLocations: [ { column: null, file: '', line: null } ],
+                    body(testScope) {
+                        testScope.assert.true(true);
+                        return testScope.assert.collect();
+                    },
+                    metadata: {},
+                    title: 'passes'
+                });
+                const fileInput = {
+                    file: 'source/users.test.ts',
+                    metadata: {},
+                    testNode: caseNode
+                } as unknown as TestPlanFromTestFilesOptions['files'][number];
+
+                scope.assert.throws(function createPlanWithFileMetadata() {
+                    engine.createTestPlanFromTestFiles({
+                        files: [ fileInput ],
+                        root: {
+                            metadata: { kind: 'microtest' },
+                            title: 'root'
+                        }
+                    });
+                }, { message: 'Unknown test file field: metadata.' });
 
                 return scope.assert.collect();
             }

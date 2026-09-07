@@ -87,7 +87,6 @@ export function ownsTestNode(value: unknown): value is TestNode {
 export type { Engine } from '../../engine/engine.ts';
 export type { Execute, ExecuteExecution, ExecuteOptions } from '../../engine/execution.ts';
 export type {
-    TestPlanFile,
     TestPlanFromTestFilesFactory,
     TestPlanFromTestFilesOptions
 } from '../../engine/test-plan.ts';

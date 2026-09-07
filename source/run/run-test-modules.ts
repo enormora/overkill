@@ -1,10 +1,11 @@
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import type { Engine } from '../engine/engine.ts';
-import type { TestPlanFile } from '../engine/test-plan.ts';
+import type { TestPlanFromTestFilesOptions } from '../engine/test-plan.ts';
 import type { DiscoveredRunFile } from './run-discovery.ts';
 import { invalidRequest, RunCollectionError } from './run-errors.ts';
 
 type TestModuleNamespace = Readonly<Record<string, unknown>>;
+type RunTestFile = TestPlanFromTestFilesOptions['files'][number];
 
 async function importUnknownModule(href: string): Promise<unknown> {
     return await import(href) as unknown;
@@ -36,7 +37,7 @@ async function importTestModule(file: DiscoveredRunFile): Promise<TestModuleName
     return moduleNamespace;
 }
 
-function readTestNode(moduleNamespace: TestModuleNamespace, file: DiscoveredRunFile, engine: Engine): TestPlanFile {
+function readTestNode(moduleNamespace: TestModuleNamespace, file: DiscoveredRunFile, engine: Engine): RunTestFile {
     if (!Object.hasOwn(moduleNamespace, 'testNode')) {
         invalidRequest(`Test module must export testNode: ${file.file}`);
     }
@@ -49,7 +50,6 @@ function readTestNode(moduleNamespace: TestModuleNamespace, file: DiscoveredRunF
 
     return {
         file: file.file,
-        metadata: {},
         testNode
     };
 }
@@ -57,10 +57,10 @@ function readTestNode(moduleNamespace: TestModuleNamespace, file: DiscoveredRunF
 export async function loadRunTestModules(
     files: NonEmptyReadonlyArray<DiscoveredRunFile>,
     engine: Engine
-): Promise<NonEmptyReadonlyArray<TestPlanFile>> {
+): Promise<NonEmptyReadonlyArray<RunTestFile>> {
     const [ firstFile, ...remainingFiles ] = files;
     const firstTestFile = readTestNode(await importTestModule(firstFile), firstFile, engine);
-    const remainingTestFiles: TestPlanFile[] = [];
+    const remainingTestFiles: RunTestFile[] = [];
 
     for (const file of remainingFiles) {
         remainingTestFiles.push(readTestNode(await importTestModule(file), file, engine));

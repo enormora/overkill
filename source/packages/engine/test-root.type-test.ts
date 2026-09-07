@@ -1,14 +1,16 @@
 import { describe, expect, test } from 'tstyche';
-import type {
-    Engine,
-    Metadata,
-    ResolvedMetadata,
-    TestNode,
-    TestPlan,
-    TestPlanFile,
-    TestPlanFromTestFilesOptions,
-    TestRoot
+import {
+    createTestPlanFromTestFiles,
+    type Engine,
+    type Metadata,
+    type ResolvedMetadata,
+    type TestNode,
+    type TestPlan,
+    type TestPlanFromTestFilesOptions,
+    type TestRoot
 } from './engine.entry-point.ts';
+
+declare const testNode: TestNode;
 
 describe('TestRoot', function () {
     test('is separate from TestNode planning paths', function () {
@@ -21,13 +23,17 @@ describe('TestRoot', function () {
     });
 
     test('exposes file-backed planning for explicit run inputs', function () {
-        expect<TestPlanFile>().type.toBe<{
-            readonly file: string;
-            readonly metadata: Metadata;
-            readonly testNode: TestNode;
-        }>();
         expect<TestPlanFromTestFilesOptions>().type.toBe<{
-            readonly files: readonly [TestPlanFile, ...(readonly TestPlanFile[])];
+            readonly files: readonly [
+                {
+                    readonly file: string;
+                    readonly testNode: TestNode;
+                },
+                ...(readonly {
+                    readonly file: string;
+                    readonly testNode: TestNode;
+                }[])
+            ];
             readonly root: {
                 readonly metadata: Metadata;
                 readonly title: string;
@@ -37,5 +43,15 @@ describe('TestRoot', function () {
             (options: TestPlanFromTestFilesOptions) => TestPlan
         >();
         expect<Engine['ownsTestNode']>().type.toBe<(value: unknown) => value is TestNode>();
+    });
+
+    test('rejects metadata on file-backed planning entries', function () {
+        expect(createTestPlanFromTestFiles).type.not.toBeCallableWith({
+            files: [ { file: 'source/users.test.ts', metadata: {}, testNode } ],
+            root: {
+                metadata: {},
+                title: 'root'
+            }
+        });
     });
 });

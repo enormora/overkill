@@ -78,7 +78,7 @@ function createLocationVariantPlan(): TestPlan {
     });
 
     return engine.createTestPlanFromTestFiles({
-        files: [ { file: 'source/location-variants.test.ts', metadata: {}, testNode } ],
+        files: [ { file: 'source/location-variants.test.ts', testNode } ],
         root: { metadata: {}, title: 'root' }
     });
 }

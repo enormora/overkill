@@ -2,7 +2,6 @@ import type { NonEmptyReadonlyArray, SourceLocation } from '../assertion-protoco
 import { serializeValue } from '../compare/serialized-value.ts';
 import { caseIdentityKey, createCaseId, formatCaseId, type CaseId } from './identity.ts';
 import {
-    ensureMetadata,
     resolveMetadata,
     resolveRootMetadata,
     type Metadata,
@@ -53,23 +52,21 @@ type TestPlanRoot = {
 
 export type TestPlanFactory = (root: TestRoot) => TestPlan;
 
-export type TestPlanFile = {
-    readonly file: string;
-    readonly metadata: Metadata;
-    readonly testNode: TestNode;
-};
-
 type TestPlanRootOptions = {
     readonly metadata: Metadata;
     readonly title: string;
 };
 
 export type TestPlanFromTestFilesOptions = {
-    readonly files: NonEmptyReadonlyArray<TestPlanFile>;
+    readonly files: NonEmptyReadonlyArray<{
+        readonly file: string;
+        readonly testNode: TestNode;
+    }>;
     readonly root: TestPlanRootOptions;
 };
 
 export type TestPlanFromTestFilesFactory = (options: TestPlanFromTestFilesOptions) => TestPlan;
+type FileBackedTestNodeInput = TestPlanFromTestFilesOptions['files'][number];
 
 type CollectedTestCases = {
     readonly cases: readonly TestPlanCase[];
@@ -114,6 +111,10 @@ function assertUniqueSiblingTitles(nodes: readonly TitledNode[], path: readonly 
 
         seenTitles.add(node.title);
     }
+}
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function collectTestCase(
@@ -246,7 +247,7 @@ function collectRoot(root: TestRoot, rootMetadata: ResolvedMetadata): CollectedT
 
 function collectTestFiles(
     root: TestRoot,
-    files: NonEmptyReadonlyArray<TestPlanFile>,
+    files: NonEmptyReadonlyArray<FileBackedTestNodeInput>,
     rootMetadata: ResolvedMetadata
 ): CollectedTestCases {
     return mergeCollectedTestCases(root.children.map(function collectChild(child, index) {
@@ -258,7 +259,7 @@ function collectTestFiles(
 
         return collectNode(child, {
             file: file.file,
-            metadata: resolveMetadata(rootMetadata, file.metadata),
+            metadata: rootMetadata,
             suitePath: []
         });
     }));
@@ -339,12 +340,26 @@ export function createTestPlanFactory(owner: TestNodeOwner, constructedNodes: Re
     };
 }
 
-function ensureTestPlanFile(file: TestPlanFile, owner: TestNodeOwner): void {
-    if (file.file.trim().length === 0) {
-        throw new TypeError('Test file identity must not be empty.');
+function assertKnownFileBackedNodeFields(file: Readonly<Record<string, unknown>>): void {
+    const unknownField = Object.keys(file).find(function unknownFileBackedNodeField(field) {
+        return field !== 'file' && field !== 'testNode';
+    });
+
+    if (unknownField !== undefined) {
+        throw new TypeError(`Unknown test file field: ${unknownField}.`);
+    }
+}
+
+function ensureFileBackedNodeInput(file: unknown, owner: TestNodeOwner): asserts file is FileBackedTestNodeInput {
+    if (!isRecord(file)) {
+        throw new TypeError('Test file input must be an object.');
     }
 
-    ensureMetadata(file.metadata);
+    assertKnownFileBackedNodeFields(file);
+
+    if (typeof file.file !== 'string' || file.file.trim().length === 0) {
+        throw new TypeError('Test file identity must not be empty.');
+    }
 
     if (!isOwnedTestNode(file.testNode, owner)) {
         throw new TypeError('Test file must provide a TestNode created by the selected engine.');
@@ -361,7 +376,7 @@ export function createTestPlanFromTestFilesFactory(
 ): TestPlanFromTestFilesFactory {
     return function createTestPlanFromTestFiles(options): TestPlan {
         for (const file of options.files) {
-            ensureTestPlanFile(file, owner);
+            ensureFileBackedNodeInput(file, owner);
         }
 
         const root = createRoot({

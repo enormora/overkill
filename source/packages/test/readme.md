@@ -72,7 +72,8 @@ testing doubles package ownership.
 Nodes created through this root facade default to `metadata.kind: 'microtest'`
 unless the object form supplies another `kind`.
 
-Use the object form when attaching node metadata:
+Use the object form when attaching node metadata. Metadata on the exported
+top-level `testNode` applies to the whole module's test tree.
 
 ```ts
 export const testNode = suite({
