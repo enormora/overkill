@@ -72,6 +72,20 @@ Where: [Doubles § Position](../authoring/doubles.md#position).
 Alternative: explicit dependency injection plus capability handles when
 the collaborator is a typed effect interface.
 
+### No double result assertion references
+
+`@overkill-dev/doubles` does not ship `doubleUsage` assertion references for
+returned values, thrown values, or constructed instances.
+
+Why: those checks assert implementation outcomes rather than collaborator
+interaction. They also duplicate direct history that already exists on each
+double.
+
+Where: [Doubles § Relationship To Assertions](../authoring/doubles.md#relationship-to-assertions).
+
+Alternative: inspect `results`, `firstResult`, `lastResult`, or construction
+records directly when a test genuinely needs result-history details.
+
 ## Runtime Architecture
 
 ### No persistent runner daemon

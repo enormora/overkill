@@ -21,9 +21,15 @@ import {
     createTestFacade,
     defineMacro,
     defineParameterizedTestBody,
+    doubleUsage,
+    rule,
     suite,
     table,
-    test
+    test,
+    type TestDouble,
+    type TestIterator,
+    testDouble,
+    testIterator
 } from './test.entry-point.ts';
 
 type PlaceholderExport = {
@@ -44,6 +50,10 @@ type TableRow = {
 type NameData = {
     readonly name: string;
 };
+type LoadValue = (id: string) => string;
+type RootLoadValue = TestDouble<LoadValue>;
+type RootSequencedValue = TestDouble<(...parameters: readonly unknown[]) => unknown>;
+type RootEvents = TestIterator<string, undefined>;
 
 type TableAuthoringExecution = {
     readonly bodyRows: readonly TableRow[];
@@ -288,6 +298,43 @@ function assertDefinitionLocationInThisFile(
     scope.assert.equal(typeof sourceLocation.column, 'number');
 }
 
+function createSequencedValue(): RootSequencedValue {
+    return testDouble({
+        fallback: rule.sequence([ 'first', 'second' ])
+    });
+}
+
+function exerciseRootDoubles(
+    loadValue: RootLoadValue,
+    sequencedValue: RootSequencedValue,
+    events: RootEvents
+): void {
+    loadValue('id');
+    sequencedValue();
+    events.next();
+}
+
+function assertRootDoubleUsage(
+    testScope: TestScope,
+    loadValue: RootLoadValue,
+    sequencedValue: RootSequencedValue,
+    events: RootEvents
+): void {
+    testScope.assert(doubleUsage.calledOnceWith, loadValue, [ 'id' ]);
+    testScope.assert(doubleUsage.calledOnce, sequencedValue);
+    testScope.assert(doubleUsage.yieldedExactly, events, [ 'created' ]);
+}
+
+function rootDoublesBody(testScope: TestScope): ReturnType<TestBody> {
+    const loadValue = testDouble.returns<LoadValue>('value');
+    const sequencedValue = createSequencedValue();
+    const events = testIterator.yields([ 'created' ]);
+
+    exerciseRootDoubles(loadValue, sequencedValue, events);
+    assertRootDoubleUsage(testScope, loadValue, sequencedValue, events);
+    return testScope.assert.collect();
+}
+
 export const testSuite = createOverkillSuite({
     definitionLocations: [ { column: null, file: '', line: null } ],
     title: 'source/packages/test/test-entry-point.test.ts',
@@ -341,6 +388,18 @@ export const testSuite = createOverkillSuite({
                 scope.assert.equal(execution.bodyRows[0], execution.rows[0]);
                 scope.assert.equal(execution.bodyRows[1], execution.rows[1]);
                 assertTableSummary(scope, execution.result.summary);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { column: null, file: '', line: null } ],
+            title: '@overkill-dev/test root doubles pass through engine assertions',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const result = await executeAuthoredNode(test('uses root doubles', rootDoublesBody));
+
+                assertPassingSummary(scope, result.summary);
 
                 return scope.assert.collect();
             }

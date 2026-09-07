@@ -13,6 +13,15 @@ Current root runtime exports:
 - `table`
 - `defineMacro`
 - `defineParameterizedTestBody`
+- `doubleUsage`
+- `rule`
+- `testDouble`
+- `testIterator`
+- `testAsyncIterator`
+- `testIterable`
+- `testAsyncIterable`
+- `testDisposable`
+- `testAsyncDisposable`
 - `createTestFacade`
 - `runIfMain`
 
@@ -32,11 +41,14 @@ Standard subpaths:
 Implemented root authoring forms:
 
 ```ts
-import { suite, table, test } from '@overkill-dev/test';
+import { doubleUsage, suite, table, test, testDouble } from '@overkill-dev/test';
 
 export const testNode = suite('users', [
     test('loads user', (scope) => {
+        const loadUser = testDouble.returns({ id: '42', name: 'Ada' });
+
         scope.assert.equal(loadUser('42').name, 'Ada');
+        scope.assert(doubleUsage.calledOnceWith, loadUser, [ '42' ]);
         return scope.assert.collect();
     }),
     table({
@@ -52,6 +64,10 @@ export const testNode = suite('users', [
     })
 ]);
 ```
+
+The root doubles exports are the current lightweight public surface from
+`@overkill-dev/doubles`. Import the leaf package directly when documenting or
+testing doubles package ownership.
 
 Nodes created through this root facade default to `metadata.kind: 'microtest'`
 unless the object form supplies another `kind`.

@@ -553,9 +553,10 @@ internally to keep order assertions deterministic. Public `reset()` clears a
 double's visible history and double-owned sequence state, but it does not reset
 the hidden cross-double chronology.
 
-Returned values, thrown values, and constructed-instance assertions are still
-useful, but they are not part of the first `doubleUsage` assertion set. Add
-them as a separate issue bullet before implementing them.
+`doubleUsage` focuses on observable interaction with collaborators. It does
+not include returned-value, thrown-value, or constructed-instance assertion
+references. Direct history remains available on doubles for tests that need
+to inspect those records.
 
 ## Relationship To Resources
 
@@ -592,6 +593,7 @@ Recommended direction:
 - strong direct introspection on each instance, such as `interactionCount`, `callCount`, `constructionCount`, `firstInteraction`, `firstCall`, `firstConstruction`, and typed interaction/result records
 - advanced escape hatch: `answer(call)` configuration field or `rule.calls(fn)`
 - constructor behavior: `.constructs(instance)`, `rule.constructs(instance)`, and `rule.whenConstructedWith(...)`
+- no returned-value, thrown-value, or constructed-instance assertion references
 - common-case sugar: static fixed-behavior factories on `testDouble`
   (`testDouble.returns`, `testDouble.constructs`, `testDouble.resolves`,
   `testDouble.rejects`, `testDouble.throws`); `rule.returns`,
