@@ -11,7 +11,8 @@ import {
     type TestScope as DirectScope,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import type { Reporter } from '../engine/reporter.ts';
+import type { DefinedReporter } from '../engine/reporter.ts';
+import { defineFixedReporter } from '../test-support/reporter-definition.ts';
 import { runIfMain } from './run-if-main.ts';
 
 type DirectProject = {
@@ -85,7 +86,7 @@ function failingBody(scope: DirectScope): ReturnType<DirectTestBody> {
 function passingCase(): DirectTestNode {
     return createDirectTestCase({
         body: passingBody,
-        definitionLocations: [ { column: null, file: '', line: null } ],
+        definitionLocations: [ { kind: 'unknown' as const } ],
         metadata: {},
         title: 'passes'
     });
@@ -94,14 +95,14 @@ function passingCase(): DirectTestNode {
 function failingCase(): DirectTestNode {
     return createDirectTestCase({
         body: failingBody,
-        definitionLocations: [ { column: null, file: '', line: null } ],
+        definitionLocations: [ { kind: 'unknown' as const } ],
         metadata: {},
         title: 'fails'
     });
 }
 
-function createCapturingReporter(recordRun: (capturedRun: CapturedRun) => void): Reporter {
-    return {
+function createCapturingReporter(recordRun: (capturedRun: CapturedRun) => void): DefinedReporter {
+    return defineFixedReporter({
         dispose: null,
         kind: 'real-time',
         name: 'capture-direct-run',
@@ -114,7 +115,7 @@ function createCapturingReporter(recordRun: (capturedRun: CapturedRun) => void):
         },
         onFinish: null,
         sinks: []
-    };
+    });
 }
 
 async function runDirect(project: DirectProject, testNode: DirectTestNode): Promise<CapturedRun> {
@@ -140,12 +141,12 @@ async function runDirect(project: DirectProject, testNode: DirectTestNode): Prom
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-if-main-selection.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() falls back when a matching profile excludes the direct file',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -180,7 +181,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() rejects non-file import metadata',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -205,7 +206,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() sets process exitCode for failed direct runs',
             metadata: {},
             async body(scope: OverkillScope) {

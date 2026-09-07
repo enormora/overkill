@@ -1,14 +1,13 @@
 import { fileURLToPath } from 'node:url';
 import type {
+    KnownSourceLocation,
     ResolvableSourceLocation,
     SourceLocation,
     SourceLocationProvider
 } from './assertion-node-shape.ts';
 
 export const unknownSourceLocation: SourceLocation = {
-    column: null,
-    file: '',
-    line: null
+    kind: 'unknown'
 };
 
 const stackFramePattern = /^\s*at (?:.+? \()?(?<file>.+):(?<line>\d+):(?<column>\d+)\)?$/u;
@@ -53,11 +52,31 @@ type StackFrameGroups = {
     readonly line: string;
 };
 
+function knownSourceLocation(file: string, line: number | null, column: number | null): KnownSourceLocation {
+    if (file.length === 0) {
+        throw new TypeError('Known source location file must not be empty.');
+    }
+
+    return { column, file, kind: 'known' as const, line };
+}
+
+export function ensureValidSourceLocation(location: SourceLocation): void {
+    if (location.kind === 'known' && location.file.length === 0) {
+        throw new TypeError('Known source location file must not be empty.');
+    }
+}
+
+export function ensureKnownSourceLocation(location: SourceLocation): KnownSourceLocation | null {
+    ensureValidSourceLocation(location);
+
+    return location.kind === 'known' ? location : null;
+}
+
 function sourceLocationFromStackGroups(groups: StackFrameGroups): SourceLocation | null {
     const file = normalizeStackFile(groups.file);
     return stackFileIsInternal(file)
         ? null
-        : { column: Number(groups.column), file, line: Number(groups.line) };
+        : knownSourceLocation(file, Number(groups.line), Number(groups.column));
 }
 
 function isStackFrameGroups(groups: Record<string, string | undefined>): groups is StackFrameGroups {
@@ -91,14 +110,27 @@ export function captureSourceLocation(): SourceLocationProvider {
     };
 }
 
-export function resolveSourceLocation(location: ResolvableSourceLocation): SourceLocation {
-    if (typeof location !== 'function') {
-        return location;
-    }
-
+function resolveProviderSourceLocation(location: SourceLocationProvider): SourceLocation | null {
     try {
         return location();
     } catch {
+        return null;
+    }
+}
+
+export function resolveSourceLocation(location: ResolvableSourceLocation): SourceLocation {
+    if (typeof location !== 'function') {
+        ensureValidSourceLocation(location);
+        return location;
+    }
+
+    const resolvedLocation = resolveProviderSourceLocation(location);
+
+    if (resolvedLocation === null) {
         return unknownSourceLocation;
     }
+
+    ensureValidSourceLocation(resolvedLocation);
+
+    return resolvedLocation;
 }

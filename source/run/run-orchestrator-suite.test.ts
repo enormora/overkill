@@ -9,7 +9,7 @@ import { testNode as supervisedRunRuntimeTestNode } from './supervised-run-runti
 import { testNode as supervisedRuntimePolicyErrorsTestNode } from './supervised-runtime-policy-errors.test.ts';
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-orchestrator-suite.test.ts',
     metadata: {},
     children: [

@@ -1,4 +1,4 @@
-import { discoverRunFiles } from './run-discovery.ts';
+import { discoverRunFilesWithProjectRoot } from './run-discovery.ts';
 import { selectedProfile } from './run-facts.ts';
 import {
     copyRunEngineSelection,
@@ -20,8 +20,9 @@ import {
 export type ResolvedRunInput = {
     readonly config: RunConfig;
     readonly engine: RunCommand['engine'];
-    readonly files: Awaited<ReturnType<typeof discoverRunFiles>>;
+    readonly files: Awaited<ReturnType<typeof discoverRunFilesWithProjectRoot>>['files'];
     readonly profile: RunMicrotestProfileConfig;
+    readonly projectRoot: string;
     readonly request: RunRequest;
 };
 
@@ -31,8 +32,8 @@ export async function readResolvedRunInput(command: RunCommand): Promise<Resolve
     const config = freezeValue(copyRunConfig(command.config));
     const profile = selectedProfile(request, config);
     assertSupportedProcessEngine(command, profile);
-    const files = freezeValue(
-        await discoverRunFiles({
+    const discovery = freezeValue(
+        await discoverRunFilesWithProjectRoot({
             cwd: command.cwd,
             paths: request.paths,
             profileFiles: profile.files
@@ -40,5 +41,5 @@ export async function readResolvedRunInput(command: RunCommand): Promise<Resolve
     );
     const engine = freezeValue(copyRunEngineSelection(command.engine));
 
-    return { config, engine, files, profile, request };
+    return { config, engine, files: discovery.files, profile, projectRoot: discovery.projectRoot, request };
 }

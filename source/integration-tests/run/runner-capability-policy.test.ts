@@ -2,10 +2,12 @@ import { rm } from 'node:fs/promises';
 import {
     createSuite,
     createTestCase,
+    defineOutputRenderer,
+    defineReporter,
     type TestScope
 } from '../../packages/engine/engine.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import type { Reporter } from '../../engine/reporter.ts';
+import type { DefinedReporter, Reporter } from '../../engine/reporter.ts';
 import { runIfMain } from '../direct-launcher.test.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import type { RunCommand, RunConfig, RunProcessModel, RunRequest, RunScheduling } from '../../run/run-types.ts';
@@ -24,16 +26,18 @@ type PolicyFixture = {
     readonly path: string;
 };
 
-const memoryReporter: Reporter = {
-    dispose: null,
-    kind: 'real-time',
-    name: 'memory',
-    onEvent() {
-        return undefined;
-    },
-    onFinish: null,
-    sinks: [ { kind: 'memory' } ]
-};
+const memoryReporter = defineReporter(function createMemoryReporter(): Reporter {
+    return {
+        dispose: null,
+        kind: 'real-time',
+        name: 'memory',
+        onEvent() {
+            return undefined;
+        },
+        onFinish: null,
+        sinks: [ { kind: 'memory' } ]
+    };
+});
 
 function createRunRequest(paths: readonly string[]): RunRequest {
     return {
@@ -55,14 +59,20 @@ function createRunRequest(paths: readonly string[]): RunRequest {
     };
 }
 
-function createRunConfig(processModel: RunProcessModel, scheduling: RunScheduling, reporter: Reporter): RunConfig {
+function createRunConfig(
+    processModel: RunProcessModel,
+    scheduling: RunScheduling,
+    reporter: DefinedReporter
+): RunConfig {
     return {
         loader: { sourceMaps: false, stripMode: 'strip-only' },
-        outputRenderer: {
-            render() {
-                return '';
-            }
-        },
+        outputRenderer: defineOutputRenderer(function createOutputRenderer() {
+            return {
+                render() {
+                    return '';
+                }
+            };
+        }),
         profiles: {
             microtest: {
                 execution: { processModel, scheduling },
@@ -225,13 +235,13 @@ const policyProcessModels: readonly {
 ];
 
 export const testNode = createSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/integration-tests/run/runner-capability-policy.test.ts',
     metadata: {},
     children: policyFixtures.flatMap(function createPolicyFixtureTests(fixture) {
         return policyProcessModels.map(function createPolicyFixtureProcessTest(model) {
             return createTestCase({
-                definitionLocations: [ { column: null, file: '', line: null } ],
+                definitionLocations: [ { kind: 'unknown' } ],
                 title: `${model.processModel} microtest capability restrictions fail ${fixture.name}`,
                 metadata: {},
                 async body(scope: TestScope) {

@@ -10,7 +10,7 @@ import { testNode as runTestNode } from '../../run/run-suite.test.ts';
 import { testNode as runResultFactoryTestNode } from '../run-result-factory.test.ts';
 
 export const testNode = createSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' } ],
     title: 'assertion protocol, assert, run, and test support',
     metadata: {},
     children: [

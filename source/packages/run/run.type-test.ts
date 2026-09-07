@@ -2,8 +2,6 @@ import { describe, expect, test } from 'tstyche';
 import type {
     DefinedOutputRenderer,
     DefinedReporter,
-    OutputRenderer,
-    Reporter,
     RunResult
 } from '../engine/engine.entry-point.ts';
 import {
@@ -41,8 +39,8 @@ import {
     type SerializedValue
 } from './run.entry-point.ts';
 
-declare const outputRenderer: OutputRenderer;
-declare const reporter: Reporter;
+declare const outputRenderer: DefinedOutputRenderer;
+declare const reporter: DefinedReporter;
 declare const testNode: Parameters<RunIfMain>[1];
 
 type RunRequestKeys = readonly [
@@ -80,8 +78,8 @@ describe('@overkill-dev/run', function () {
     test('exposes the direct-file execution companion', function () {
         expect<typeof runIfMain>().type.toBe<RunIfMain>();
         expect<RunIfMainOptions>().type.toBe<{
-            readonly outputRenderer?: OutputRenderer;
-            readonly reporters?: readonly Reporter[];
+            readonly outputRenderer?: DefinedOutputRenderer;
+            readonly reporters?: readonly DefinedReporter[];
             readonly root?: RunIfMainRootOptions;
         }>();
         expect<RunIfMainRootOptions>().type.toBe<{
@@ -136,11 +134,11 @@ describe('@overkill-dev/run', function () {
         expect<keyof RunConfig>().type.toBe<
             'loader' | 'outputRenderer' | 'profiles' | 'reporters' | 'runtimeStateDir'
         >();
-        expect<RunConfig['outputRenderer']>().type.toBe<OutputRenderer>();
+        expect<RunConfig['outputRenderer']>().type.toBe<DefinedOutputRenderer>();
         expect<RunConfig['profiles'][string]>().type.toBe<RunProfileConfig>();
         expect<RunProfileConfig>().type.toBe<RunMicrotestProfileConfig>();
         expect<RunConfig['profiles']['backend-http']>().type.toBe<RunMicrotestProfileConfig>();
-        expect<RunConfig['reporters']>().type.toBe<readonly Reporter[]>();
+        expect<RunConfig['reporters']>().type.toBe<readonly DefinedReporter[]>();
         expect<keyof RunResourceBudgets>().type.toBe<
             'activeResourceCount' | 'javaScriptEngineHeapBytes' | 'residentSetBytes' | 'residentSetGrowthBytesPerSecond'
         >();

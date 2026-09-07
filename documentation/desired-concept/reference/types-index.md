@@ -307,11 +307,14 @@ type ByteDiffRange = {
 
 type SerializedValue = unknown; // bounded JSON-compatible value with explicit truncation metadata when capped
 
-type SourceLocation = {
-    readonly file: string;
-    readonly line: number | null;
-    readonly column: number | null;
-};
+type SourceLocation =
+    | {
+        readonly column: number | null;
+        readonly file: string;
+        readonly kind: 'known';
+        readonly line: number | null;
+    }
+    | { readonly kind: 'unknown'; };
 
 type SourceLocationProvider = () => SourceLocation;
 type ResolvableSourceLocation = SourceLocation | SourceLocationProvider;
@@ -483,8 +486,8 @@ type ThrowingTestBody = (case: unknown) => void | Promise<void>;
 type TestBody = BuilderTestBody | ThrowingTestBody;
 
 type RunIfMainOptions = {
-    readonly outputRenderer?: OutputRenderer;
-    readonly reporters?: ReadonlyArray<Reporter>;
+    readonly outputRenderer?: DefinedOutputRenderer;
+    readonly reporters?: ReadonlyArray<DefinedReporter>;
     readonly root?: {
         readonly metadata: Metadata;
         readonly name: string;
@@ -517,6 +520,12 @@ Canonical: [Assertions And Results](../authoring/assertions-and-results.md).
 
 ```ts
 type Reporter = RealTimeReporter | FinalResultReporter;
+
+type DefinedReporter = (context: ReportingContext) => Reporter;
+
+type ReportingContext = {
+    readonly relativizeLocationPath: (location: Extract<SourceLocation, { readonly kind: 'known'; }>) => string;
+};
 
 type RealTimeReporter = {
     readonly dispose: (() => void | Promise<void>) | null;
@@ -565,6 +574,8 @@ type OutputIntentAnnotation = {
 type OutputRenderer = {
     render(intent: OutputLineIntent): string;
 };
+
+type DefinedOutputRenderer = (context: ReportingContext) => OutputRenderer;
 ```
 
 Reporter method return types are conditional in the public TypeScript
@@ -585,8 +596,8 @@ and metadata. It is not a `TestNode` and does not contribute to
 
 ```ts
 type RunConfig = {
-    readonly outputRenderer: OutputRenderer;
-    readonly reporters: ReadonlyArray<Reporter>;
+    readonly outputRenderer: DefinedOutputRenderer;
+    readonly reporters: ReadonlyArray<DefinedReporter>;
     readonly loader: { readonly stripMode: 'strip-only'; readonly sourceMaps: boolean; };
     readonly profiles: Readonly<Record<ProfileName, RunProfileConfig>>;
     readonly benchmark?: {
@@ -781,6 +792,7 @@ type RunFacts = {
     readonly cases: ReadonlyArray<RunCaseFacts>;
     readonly environment: {
         readonly node: { readonly arch: string; readonly platform: string; readonly version: string; };
+        readonly projectRoot: string;
         readonly runtimeStateDir: string;
     };
     readonly execution: {

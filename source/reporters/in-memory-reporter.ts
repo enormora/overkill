@@ -13,17 +13,13 @@ type RecordedReportEntry = {
     readonly type: 'event' | 'finish' | 'result';
 };
 
-export type InMemoryRealTimeReporter = DefinedReporter<
-    {
-        readonly getRecordedEntries: () => readonly RecordedReportEntry[];
-    } & RealTimeReporter
->;
+type RecordedEntriesReader = {
+    readonly getRecordedEntries: () => readonly RecordedReportEntry[];
+};
 
-export type InMemoryFinalResultReporter = DefinedReporter<
-    {
-        readonly getRecordedEntries: () => readonly RecordedReportEntry[];
-    } & FinalResultReporter
->;
+export type InMemoryRealTimeReporter = DefinedReporter<RealTimeReporter> & RecordedEntriesReader;
+
+export type InMemoryFinalResultReporter = DefinedReporter<FinalResultReporter> & RecordedEntriesReader;
 
 export type InMemoryReporterOptions = {
     readonly mode: 'final-result' | 'real-time';
@@ -46,43 +42,53 @@ function createRecordedEntries(): RecordedReportEntry[] {
 export function createInMemoryRealTimeReporter(): InMemoryRealTimeReporter {
     const recordedEntries = createRecordedEntries();
 
-    return defineReporter({
-        dispose: null,
-        kind: 'real-time',
-        name: 'in-memory-real-time',
-        sinks: [],
+    return Object.assign(
+        defineReporter(function createInMemoryRealTimeRuntimeReporter() {
+            return {
+                dispose: null,
+                kind: 'real-time',
+                name: 'in-memory-real-time',
+                sinks: [],
 
-        async onEvent(event) {
-            recordedEntries.push({ event, result: null, type: 'event' });
-        },
+                async onEvent(event) {
+                    recordedEntries.push({ event, result: null, type: 'event' });
+                },
 
-        async onFinish(result) {
-            recordedEntries.push({ event: null, result, type: 'finish' });
-        },
-
-        getRecordedEntries() {
-            return recordedEntries;
+                async onFinish(result) {
+                    recordedEntries.push({ event: null, result, type: 'finish' });
+                }
+            };
+        }),
+        {
+            getRecordedEntries() {
+                return recordedEntries;
+            }
         }
-    });
+    );
 }
 
 export function createInMemoryFinalResultReporter(): InMemoryFinalResultReporter {
     const recordedEntries = createRecordedEntries();
 
-    return defineReporter({
-        dispose: null,
-        kind: 'final-result',
-        name: 'in-memory-final-result',
-        sinks: [],
+    return Object.assign(
+        defineReporter(function createInMemoryFinalResultRuntimeReporter() {
+            return {
+                dispose: null,
+                kind: 'final-result',
+                name: 'in-memory-final-result',
+                sinks: [],
 
-        async onResult(result) {
-            recordedEntries.push({ event: null, result, type: 'result' });
-        },
-
-        getRecordedEntries() {
-            return recordedEntries;
+                async onResult(result) {
+                    recordedEntries.push({ event: null, result, type: 'result' });
+                }
+            };
+        }),
+        {
+            getRecordedEntries() {
+                return recordedEntries;
+            }
         }
-    });
+    );
 }
 
 export function createInMemoryReporter(

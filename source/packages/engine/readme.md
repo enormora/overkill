@@ -13,11 +13,13 @@ Top-level API:
 - `createEngine()`
 - `formatCaseId(caseId)`
 - `validateReporterSinks(reporters)`
+- `defineReporter(factory)`
+- `defineOutputRenderer(factory)`
 - `createPlainOutputRenderer()`
 - `captureSourceLocation()`
 - `unknownSourceLocation`
 - `CaseId`, `TestId`, `TestRoot`, `TestPlan`, `ExecuteOptions`, `NonEmptyReadonlyArray`, `DeepComparable`
-- `Reporter`, `ReporterEvent`, `RealTimeReporter`, `FinalResultReporter`, `RunFacts`, `SinkDeclaration`, `OutputLineIntent`, `OutputRenderer`
+- `Reporter`, `DefinedReporter`, `ReporterEvent`, `RealTimeReporter`, `FinalResultReporter`, `RunFacts`, `SinkDeclaration`, `OutputLineIntent`, `OutputRenderer`, `DefinedOutputRenderer`, `ReportingContext`
 - `RunResult`, `TestOutcome`, `PassOutcome`, `FailOutcome`, `SkipOutcome`, `InconclusiveOutcome`
 - `AssertionNode`, `AssertionResult`, `AssertAssertionFacade`, `TestScopeAssertContext`
 - `ThrownMatcher`, `ErrorMatcher`, `ExactThrownMatcher`
@@ -119,8 +121,11 @@ Reporter sinks:
 - `stream` sinks are private to each reporter.
 - `memory` sinks are private to each reporter.
 - `execute()` validates declared sink conflicts before emitting `run-start`.
-- Managed output uses one `OutputRenderer`. `createPlainOutputRenderer()`
+- Managed output uses one `DefinedOutputRenderer`. `createPlainOutputRenderer()`
   renders each line intent as plain text.
+- Reporter and output renderer definitions receive one `ReportingContext` per
+  delivery. Use it to render known source-location paths with the shared
+  project-root policy.
 
 Assertion bodies:
 
@@ -154,7 +159,8 @@ Assertion bodies:
   `diff: Diff | null`. Leaf checks carry value comparison data, composite
   checks carry child diagnostics, and foreign checks carry normalized
   thrown-error data.
-- Failed checks carry concrete source locations. Engine-created assertion
-  nodes capture lazy locations at the public assertion boundary. Direct raw
-  assertion nodes must provide `location`; use `captureSourceLocation()` for
-  accuracy or `unknownSourceLocation` when unavailable.
+- Failed checks carry `SourceLocation`, either `{ kind: 'known', file, line,
+  column }` or `{ kind: 'unknown' }`. Engine-created assertion nodes capture
+  lazy locations at the public assertion boundary. Direct raw assertion nodes
+  must provide `location`; use `captureSourceLocation()` for accuracy or
+  `unknownSourceLocation` when unavailable.

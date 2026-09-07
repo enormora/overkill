@@ -11,6 +11,7 @@ import {
     type OutputLineIntent,
     type OutputRenderer,
     type RealTimeReporter,
+    type ReportingContext,
     type ReporterOutput,
     type ReporterEvent,
     type RunFacts,
@@ -72,7 +73,7 @@ type LateManagedStdoutRealTimeReporter = RealTimeReporter<
 describe('Reporter contract', function () {
     test('uses explicit run facts and nullable finish callbacks', function () {
         expect<keyof ExecuteOptions>().type.toBe<ExpectedExecuteOptionKey>();
-        expect<ExecuteOptions['outputRenderer']>().type.toBe<OutputRenderer | undefined>();
+        expect<ExecuteOptions['outputRenderer']>().type.toBe<DefinedOutputRenderer | undefined>();
         expect<ExecuteExecution['mode']>().type.toBe<'concurrent-in-process' | 'serial-in-process'>();
         expect<RunFacts>().type.toBe<Readonly<Record<string, unknown>>>();
         expect<RealTimeReporter['dispose']>().type.toBe<(() => Promise<void> | void) | null>();
@@ -112,26 +113,35 @@ describe('Reporter contract', function () {
     });
 
     test('exposes extension branding helpers without replacing structural contracts', function () {
-        const reporter = defineReporter({
-            dispose: null,
-            kind: 'final-result',
-            name: 'typed',
-            sinks: [],
-            onResult() {
-                return undefined;
+        const context: ReportingContext = {
+            relativizeLocationPath(location) {
+                return location.file;
             }
+        };
+        const reporter = defineReporter(function createTypedReporter() {
+            return {
+                dispose: null,
+                kind: 'final-result',
+                name: 'typed',
+                sinks: [],
+                onResult() {
+                    return undefined;
+                }
+            };
         });
-        const outputRenderer = defineOutputRenderer({
-            render(intent) {
-                return intent.text;
-            }
+        const outputRenderer = defineOutputRenderer(function createTypedOutputRenderer() {
+            return {
+                render(intent) {
+                    return intent.text;
+                }
+            };
         });
 
         expect(reporter).type.toBeAssignableTo<DefinedReporter>();
-        expect(reporter).type.toBeAssignableTo<FinalResultReporter>();
+        expect(reporter(context)).type.toBeAssignableTo<FinalResultReporter>();
         expect<typeof isReporter>().type.toBe<(value: unknown) => value is DefinedReporter>();
         expect(outputRenderer).type.toBeAssignableTo<DefinedOutputRenderer>();
-        expect(outputRenderer).type.toBeAssignableTo<OutputRenderer>();
+        expect(outputRenderer(context)).type.toBeAssignableTo<OutputRenderer>();
         expect<typeof isOutputRenderer>().type.toBe<(value: unknown) => value is DefinedOutputRenderer>();
     });
 

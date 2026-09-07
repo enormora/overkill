@@ -3,6 +3,7 @@ import { clearTimeout as clearNodeTimeout, setTimeout as setNodeTimeout } from '
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
+    defineReporter,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import type { RunnerError } from '../engine/run-result.ts';
@@ -50,7 +51,7 @@ const policyTestCase: PolicyTestCase = {
     body: async function unusedPolicyTestBody() {
         throw new Error('Policy test body should not run.');
     },
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     id: {
         file: 'source/run/run-capability-policy.test.ts',
         title: 'policy case',
@@ -59,7 +60,7 @@ const policyTestCase: PolicyTestCase = {
     },
     metadata: policyMetadata,
     suitePath: [
-        { definitionLocations: [ { column: null, file: '', line: null } ], title: 'runtime policy' }
+        { definitionLocations: [ { kind: 'unknown' as const } ], title: 'runtime policy' }
     ]
 };
 
@@ -161,12 +162,12 @@ function publishPolicyDiagnostics(): void {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-capability-policy.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() reports load-time capability restrictions outside a test case',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -198,7 +199,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runtime capability policy host readers reject invalid host values',
             metadata: {},
             body(scope: OverkillScope) {
@@ -214,20 +215,24 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() preserves profile-level reporter lists',
             metadata: {},
             async body(scope: OverkillScope) {
-                const profileReporter: RunConfig['reporters'][number] = {
-                    dispose: null,
-                    kind: 'real-time',
-                    name: 'profile-memory',
-                    onEvent() {
-                        return undefined;
-                    },
-                    onFinish: null,
-                    sinks: [ { kind: 'memory' } ]
-                };
+                const profileReporter: RunConfig['reporters'][number] = defineReporter(
+                    function profileMemoryReporter() {
+                        return {
+                            dispose: null,
+                            kind: 'real-time',
+                            name: 'profile-memory',
+                            onEvent() {
+                                return undefined;
+                            },
+                            onFinish: null,
+                            sinks: [ { kind: 'memory' } ]
+                        };
+                    }
+                );
                 const resolvedRun = await orchestrator.resolve(createRunCommand({
                     config: defaultRunConfig({
                         profiles: {
@@ -248,7 +253,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runtime capability policy attributes observed case side effects',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -299,7 +304,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runtime capability policy accepts sparse unchanged storage snapshots',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -333,7 +338,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runtime capability policy reports process.env identity drift',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -365,7 +370,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runtime capability policy records diagnostic channel strictness and raw output',
             metadata: {},
             async body(scope: OverkillScope) {

@@ -20,12 +20,12 @@ const binaryDiff = defineNarrowingCompositeAssertion<Diff, Extract<Diff, { reado
 });
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/compare/comparison-collections.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() compares Set members order independently with deep values',
             metadata: {},
             body(scope: OverkillScope) {
@@ -101,7 +101,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() compares Date, RegExp, and Error identity',
             metadata: {},
             body(scope: OverkillScope) {
@@ -142,7 +142,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() compares opaque built-ins by reference identity',
             metadata: {},
             body(scope: OverkillScope) {
@@ -172,7 +172,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() preserves repeated reference topology',
             metadata: {},
             body(scope: OverkillScope) {
@@ -191,7 +191,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() preserves cycle topology',
             metadata: {},
             body(scope: OverkillScope) {
@@ -206,7 +206,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() reports small binary diffs',
             metadata: {},
             body(scope: OverkillScope) {
@@ -230,7 +230,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() reports large binary summaries',
             metadata: {},
             body(scope: OverkillScope) {
@@ -262,7 +262,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'comparePartialValue() matches only the expected structural subset',
             metadata: {},
             body(scope: OverkillScope) {
@@ -307,7 +307,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareArrayContainsPartial() and compareMembersPartialDeepEqual() report missing members',
             metadata: {},
             body(scope: OverkillScope) {

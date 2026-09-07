@@ -81,12 +81,12 @@ async function createProfileDiscoveryFiles(directory: string): Promise<ProfileDi
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-discovery.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() resolves canonical file identities under cwd',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -117,7 +117,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() discovers profile files with separate excludes',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -151,7 +151,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() ignores profile glob matches that are not files',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -183,7 +183,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() reports empty profile discovery',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -204,7 +204,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() filters profile discovery by directory operands',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -250,7 +250,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() rejects ineffective and mixed directory filters',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -297,7 +297,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() rejects directory symlinks outside cwd',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -326,7 +326,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() rejects unsupported profile glob syntax',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -387,7 +387,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() rejects invalid explicit inputs before import',
             metadata: {},
             async body(scope: OverkillScope) {

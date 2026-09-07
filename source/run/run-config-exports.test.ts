@@ -6,6 +6,7 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import { createReportingContext } from '../engine/reporting-context.ts';
 import { loadRunConfig, RunConfigError } from './run-config.ts';
 
 async function createTempFolder(): Promise<string> {
@@ -21,12 +22,12 @@ async function writeConfig(folder: string, fileName: string, source: string): Pr
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-config-exports.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() accepts branded reporter and output renderer values',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -37,31 +38,36 @@ export const testNode = createOverkillSuite({
                     `const outputRendererBrand = Symbol.for('@overkill-dev/engine/output-renderer');
                     const reporterBrand = Symbol.for('@overkill-dev/engine/reporter');
 
-                    const outputRenderer = Object.assign({
-                        render(intent) {
-                            return \`rendered \${intent.text}\`;
-                        }
+                    const outputRenderer = Object.assign(function createOutputRenderer() {
+                        return {
+                            render(intent) {
+                                return \`rendered \${intent.text}\`;
+                            }
+                        };
                     }, { [outputRendererBrand]: true });
+
+                    const reporter = Object.assign(function createReporter() {
+                        return {
+                            dispose: null,
+                            kind: 'real-time',
+                            name: 'configured-memory',
+                            onEvent() {},
+                            onFinish: null,
+                            sinks: [ { kind: 'memory' } ]
+                        };
+                    }, { [reporterBrand]: true });
 
                     export const config = {
                         outputRenderer,
-                        reporters: [
-                            Object.assign({
-                                dispose: null,
-                                kind: 'real-time',
-                                name: 'configured-memory',
-                                onEvent() {},
-                                onFinish: null,
-                                sinks: [ { kind: 'memory' } ]
-                            }, { [reporterBrand]: true })
-                        ]
+                        reporters: [ reporter ]
                     };`
                 );
                 const config = await loadRunConfig({ configPath: 'custom.config.js', cwd });
+                const context = createReportingContext({ projectRoot: null });
 
                 scope.require.defined(config.reporters);
                 scope.assert.equal(
-                    config.outputRenderer.render({
+                    config.outputRenderer(context).render({
                         annotation: null,
                         kind: 'stdout-line',
                         role: 'primary',
@@ -69,13 +75,13 @@ export const testNode = createOverkillSuite({
                     }),
                     'rendered line'
                 );
-                scope.assert.equal(config.reporters[0].name, 'configured-memory');
+                scope.assert.equal(config.reporters[0](context).name, 'configured-memory');
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects unbranded reporter values',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -107,7 +113,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects unbranded output renderer values',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -134,7 +140,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects config files without a named config export',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -152,7 +158,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects config files with a default export',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -170,7 +176,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects config files with named config and default exports',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -188,7 +194,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects config files with extra runtime exports',
             metadata: {},
             async body(scope: OverkillScope) {

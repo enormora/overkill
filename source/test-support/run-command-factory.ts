@@ -1,4 +1,5 @@
-import type { Reporter } from '../engine/reporter.ts';
+import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
+import type { DefinedReporter } from '../engine/reporter.ts';
 import type {
     RunConfig,
     RunMicrotestExecution,
@@ -10,10 +11,6 @@ import type {
     RunTimeoutPolicy
 } from '../run/run-types.ts';
 
-type PlainOutputIntent = {
-    readonly text: string;
-};
-
 type ResourceUsageOverrides = {
     readonly budgets?: Partial<RunResourceBudgets>;
     readonly measure?: boolean;
@@ -23,7 +20,7 @@ type ResourceUsageOverrides = {
 type MicrotestProfileOverrides = {
     readonly execution?: Partial<RunMicrotestExecution>;
     readonly files?: RunProfileFiles | null;
-    readonly reporters?: readonly Reporter[] | null;
+    readonly reporters?: readonly DefinedReporter[] | null;
     readonly resourceUsage?: ResourceUsageOverrides;
     readonly timeouts?: Partial<RunTimeoutPolicy>;
 };
@@ -92,11 +89,7 @@ export function defaultRunConfig(overrides: Partial<RunConfig> = {}): RunConfig 
             sourceMaps: false,
             stripMode: 'strip-only'
         },
-        outputRenderer: {
-            render(intent: PlainOutputIntent) {
-                return intent.text;
-            }
-        },
+        outputRenderer: createPlainOutputRenderer(),
         profiles: {
             microtest: defaultMicrotestProfile()
         },

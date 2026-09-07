@@ -65,15 +65,15 @@ function failedAssertionLocation(result: RunResult): SourceLocation | null {
 }
 
 function packagedSourceFile(location: SourceLocation | null): string {
-    return location === null ? '' : location.file.replaceAll('\\', '/');
+    return location?.kind === 'known' ? location.file.replaceAll('\\', '/') : '';
 }
 
 function locationLineType(location: SourceLocation | null): string {
-    return location === null ? 'missing' : typeof location.line;
+    return location?.kind === 'known' ? typeof location.line : 'missing';
 }
 
 function locationColumnType(location: SourceLocation | null): string {
-    return location === null ? 'missing' : typeof location.column;
+    return location?.kind === 'known' ? typeof location.column : 'missing';
 }
 
 const smokeResult = defineCompositeAssertion({
@@ -158,7 +158,7 @@ const smokeCaseDefinitionFactory = createFactory<SmokeCaseDefinition>(function c
 
 function createSmokeCase(engine: Engine, definition: SmokeCaseDefinition): TestCase {
     return engine.createTestCase({
-        definitionLocations: [ { column: null, file: '', line: null } ],
+        definitionLocations: [ { kind: 'unknown' } ],
         body(testScope: TestScope) {
             if (definition.expectedVerdict === 'pass') {
                 testScope.assert.true(true, { message: definition.assertionSummary });
@@ -202,12 +202,12 @@ async function executeSmokePlan(engine: Engine): Promise<RunResult> {
 }
 
 export const testNode = createSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' } ],
     title: 'package smoke',
     metadata: {},
     children: [
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'consumer imports top-level @overkill-dev/engine exports and executes a TestPlan',
             metadata: {},
             async body(scope: TestScope) {
@@ -229,12 +229,12 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'integration launcher returns for imported metadata',
             metadata: {},
             async body(scope: TestScope) {
                 const testCase = createTestCase({
-                    definitionLocations: [ { column: null, file: '', line: null } ],
+                    definitionLocations: [ { kind: 'unknown' } ],
                     body(testContext: TestScope) {
                         testContext.assert.true(true, { message: 'passes' });
                         return testContext.assert.collect();
@@ -250,7 +250,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'consumer imports createEngine() and executes a TestPlan',
             metadata: {},
             async body(scope: TestScope) {
@@ -260,12 +260,12 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'consumer imports @overkill-dev/assert reference and executes it through @overkill-dev/engine',
             metadata: {},
             async body(scope: TestScope) {
                 const testCase = createTestCase({
-                    definitionLocations: [ { column: null, file: '', line: null } ],
+                    definitionLocations: [ { kind: 'unknown' } ],
                     body(testScope: TestScope) {
                         testScope.assert(resultOk, { ok: true });
                         return testScope.assert.collect();
@@ -282,7 +282,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'consumer imports top-level @overkill-dev/doubles facade',
             metadata: {},
             async body(scope: TestScope) {
@@ -317,7 +317,7 @@ export const testNode = createSuite({
                 );
 
                 const testCase = createTestCase({
-                    definitionLocations: [ { column: null, file: '', line: null } ],
+                    definitionLocations: [ { kind: 'unknown' } ],
                     body(testScope: TestScope) {
                         const saveValue = doublesPackage.testDouble.returns('saved');
 

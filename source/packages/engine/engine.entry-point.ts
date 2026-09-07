@@ -109,6 +109,13 @@ export type {
     StreamSinkDeclaration
 } from '../../engine/reporter.ts';
 export type { ReporterDispatcher, ReporterDispatcherDependencies } from '../../engine/reporter-dispatcher.ts';
+export type { ReportingContext } from '../../engine/reporting-context.ts';
+export {
+    formatAssertionSourceLocations,
+    formatDefinitionLocations,
+    formatSourceLocation,
+    relativizeSourceLocationPath
+} from '../../engine/reporting-context.ts';
 export {
     defineReporter,
     isReporter,
@@ -141,11 +148,13 @@ export type {
     FailedForeignCheck,
     FailedLeafCheck,
     InstanceConstructor,
+    KnownSourceLocation,
     NonEmptyReadonlyArray,
     ResolvableSourceLocation,
     ResolvableSourceLocations,
     SourceLocationProvider,
-    SourceLocation
+    SourceLocation,
+    UnknownSourceLocation
 } from '../../assertion-protocol/assertion-node-shape.ts';
 export type {
     ArrayDiffOperation,

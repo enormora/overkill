@@ -16,6 +16,7 @@ type SelectedDirectProfile = {
 export type DirectProfileContext = SelectedDirectProfile & {
     readonly config: LoadedRunConfig;
     readonly file: string;
+    readonly projectRoot: string;
 };
 
 function directFilePath(meta: Readonly<ImportMeta>): string {
@@ -177,6 +178,7 @@ export async function resolveDirectProfile(
         config,
         file,
         name: selectedProfile.name,
+        projectRoot: canonicalCwd,
         profile: selectedProfile.profile
     };
 }

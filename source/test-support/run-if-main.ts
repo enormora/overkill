@@ -1,16 +1,16 @@
-import { createLineReporter } from '@overkill-dev/reporter-line';
 import {
     createPlainOutputRenderer,
     createRoot,
     createTestPlan,
     execute,
+    type DefinedOutputRenderer,
+    type DefinedReporter,
     type Metadata,
-    type OutputRenderer,
-    type Reporter,
     type RunResult,
     type TestNode,
     type TestPlan
 } from '../packages/engine/engine.entry-point.ts';
+import { createLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 
 type TestSupportRunIfMainRootOptions = {
     readonly metadata: Metadata;
@@ -18,8 +18,8 @@ type TestSupportRunIfMainRootOptions = {
 };
 
 export type TestSupportRunIfMainOptions = {
-    readonly outputRenderer?: OutputRenderer;
-    readonly reporters?: readonly Reporter[];
+    readonly outputRenderer?: DefinedOutputRenderer;
+    readonly reporters?: readonly DefinedReporter[];
     readonly root?: TestSupportRunIfMainRootOptions;
 };
 
@@ -38,11 +38,11 @@ function hasFailure(result: RunResult): boolean {
     return result.summary.failed > 0 || result.runnerErrors.length > 0;
 }
 
-function selectedReporters(options: TestSupportRunIfMainOptions | undefined): readonly Reporter[] {
+function selectedReporters(options: TestSupportRunIfMainOptions | undefined): readonly DefinedReporter[] {
     return options?.reporters ?? [ createLineReporter() ];
 }
 
-function selectedOutputRenderer(options: TestSupportRunIfMainOptions | undefined): OutputRenderer {
+function selectedOutputRenderer(options: TestSupportRunIfMainOptions | undefined): DefinedOutputRenderer {
     return options?.outputRenderer ?? createPlainOutputRenderer();
 }
 

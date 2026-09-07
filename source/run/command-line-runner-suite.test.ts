@@ -9,7 +9,7 @@ import { testNode as commandLineUnimplementedCommandsTestNode } from './command-
 import { testNode as commandLineRunnerRunTestsTestNode } from './command-line-runner.test.ts';
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/command-line-runner-suite.test.ts',
     metadata: {},
     children: [

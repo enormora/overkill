@@ -54,7 +54,9 @@ type FailedCheckFixture = {
     readonly kind: 'leaf';
     readonly path: readonly [];
     readonly source: 'assert';
-    readonly sourceLocations: readonly [{ readonly column: null; readonly file: ''; readonly line: null; }];
+    readonly sourceLocations: readonly [
+        { readonly column: null; readonly file: ''; readonly kind: 'known'; readonly line: null; }
+    ];
     readonly summary: 'numbers differ';
 };
 
@@ -336,11 +338,19 @@ describe('Assertion protocol', function () {
     });
 
     test('exports source location helpers for raw assertion nodes', function () {
-        expect<SourceLocation>().type.toBe<{
-            readonly column: number | null;
-            readonly file: string;
-            readonly line: number | null;
-        }>();
+        expect<SourceLocation>().type.toBe<
+            {
+                readonly column: number | null;
+                readonly file: string;
+                readonly kind: 'known';
+                readonly line: number | null;
+            } | {
+                readonly column?: never;
+                readonly file?: never;
+                readonly kind: 'unknown';
+                readonly line?: never;
+            }
+        >();
         expect<SourceLocationProvider>().type.toBe<() => SourceLocation>();
         expect<ResolvableSourceLocation>().type.toBe<SourceLocation | SourceLocationProvider>();
         expect<typeof captureSourceLocation>().type.toBe<() => SourceLocationProvider>();

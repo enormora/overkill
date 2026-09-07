@@ -6,12 +6,12 @@ import {
 import { serializeValue, serializeValueWithBudget } from './serialized-value.ts';
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/compare/serialized-value-edge.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValue() handles invalid dates and anonymous functions',
             metadata: {},
             body(scope: OverkillScope) {
@@ -38,7 +38,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValue() reports unavailable constructor names when prototypes cannot be read',
             metadata: {},
             body(scope: OverkillScope) {
@@ -59,7 +59,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValue() reports descriptor failures',
             metadata: {},
             body(scope: OverkillScope) {
@@ -85,7 +85,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValueWithBudget() truncates maps, sets, binary bytes, and arrays independently',
             metadata: {},
             body(scope: OverkillScope) {
@@ -143,7 +143,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValue() reports Map and Set impostors as unavailable',
             metadata: {},
             body(scope: OverkillScope) {

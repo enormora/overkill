@@ -4,6 +4,7 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
+import { defineFixedReporter } from '../test-support/reporter-definition.ts';
 import type { Engine } from './engine.ts';
 import type { RealTimeReporter, ReporterEvent } from './reporter.ts';
 import type { RunResult } from './run-result.ts';
@@ -50,7 +51,7 @@ function eventCaseTitles(events: readonly ReporterEvent[], kind: 'test-end' | 't
 
 function createPassingCase(engine: Engine, title: string): TestCase {
     return engine.createTestCase({
-        definitionLocations: [ { column: null, file: '', line: null } ],
+        definitionLocations: [ { kind: 'unknown' as const } ],
         body(testScope) {
             testScope.assert.true(true, { message: `${title} passes` });
             return testScope.assert.collect();
@@ -82,7 +83,7 @@ function createPlanOrderedConcurrentScenario(engine: Engine): PlanOrderedConcurr
         engine.createRoot({
             children: [
                 engine.createTestCase({
-                    definitionLocations: [ { column: null, file: '', line: null } ],
+                    definitionLocations: [ { kind: 'unknown' as const } ],
                     async body(testScope) {
                         await releaseFirst.promise;
                         testScope.assert.true(true, { message: 'first passes' });
@@ -108,7 +109,7 @@ async function executeConcurrentTestPlan(
 ): Promise<RunResult> {
     return await engine.execute(testPlan, {
         execution: { mode: 'concurrent-in-process' },
-        reporters: [ reporter ],
+        reporters: [ defineFixedReporter(reporter) ],
         runFacts: {},
         startedAt: '2026-07-15T00:00:00.000Z'
     });
@@ -160,12 +161,12 @@ function createReporterSerializationScenario(engine: Engine): ReporterSerializat
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/execution-concurrent-reporting.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() runs concurrent in-process cases with plan-ordered starts and results',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -189,7 +190,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() serializes reporter callbacks during concurrent execution',
             metadata: {},
             async body(scope: OverkillScope) {

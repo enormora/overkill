@@ -3,12 +3,11 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { createPlainOutputRenderer } from './reporter-output.ts';
-import type { ReporterDispatcher } from './reporter-dispatcher.ts';
+import type { ReporterDelivery } from './reporter-dispatcher.ts';
 import type { ReporterEvent } from './reporter.ts';
 import { createReporterEventQueue } from './reporter-event-queue.ts';
 
-const definitionLocation = { column: null, file: '', line: null };
+const definitionLocation = { kind: 'unknown' as const };
 
 function suitePath(title: string): ReporterEvent & { readonly kind: 'suite-start'; } {
     return {
@@ -18,7 +17,7 @@ function suitePath(title: string): ReporterEvent & { readonly kind: 'suite-start
 }
 
 type RejectingDispatcher = {
-    readonly dispatcher: ReporterDispatcher;
+    readonly delivery: ReporterDelivery;
     readonly events: () => readonly ReporterEvent[];
 };
 
@@ -26,11 +25,11 @@ function createRejectingDispatcher(): RejectingDispatcher {
     const events: ReporterEvent[] = [];
 
     return {
-        dispatcher: {
+        delivery: {
             async disposeReporters() {
                 return [];
             },
-            async reportEvent(_reporters, event) {
+            async reportEvent(event) {
                 events.push(event);
 
                 if (events.length === 1) {
@@ -41,12 +40,6 @@ function createRejectingDispatcher(): RejectingDispatcher {
             },
             async reportResult() {
                 return [];
-            },
-            async trackRunnerErrorDelivery(work) {
-                return {
-                    deliveredRunnerErrors: [],
-                    result: await work()
-                };
             }
         },
         events() {
@@ -56,19 +49,17 @@ function createRejectingDispatcher(): RejectingDispatcher {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/reporter-event-queue.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'reporter event queue continues after a previous report rejects',
             metadata: {},
             async body(scope: OverkillScope) {
                 const rejectingDispatcher = createRejectingDispatcher();
-                const queue = createReporterEventQueue([], createPlainOutputRenderer(), {
-                    reporterDispatcher: rejectingDispatcher.dispatcher
-                });
+                const queue = createReporterEventQueue(rejectingDispatcher.delivery);
 
                 await scope.assert.rejects(async function reportFirstEvent() {
                     await queue.report(suitePath('first'));

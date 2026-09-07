@@ -6,18 +6,21 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import { createReportingContext } from '../engine/reporting-context.ts';
 import { loadRunConfig, type LoadedRunConfig } from './run-config.ts';
 
 const reporterConfigSource = `const reporterBrand = Symbol.for('@overkill-dev/engine/reporter');
 
 function reporter(name) {
-    return Object.assign({
-        dispose: null,
-        kind: 'real-time',
-        name,
-        onEvent() {},
-        onFinish: null,
-        sinks: [ { kind: 'memory' } ]
+    return Object.assign(function createReporter() {
+        return {
+            dispose: null,
+            kind: 'real-time',
+            name,
+            onEvent() {},
+            onFinish: null,
+            sinks: [ { kind: 'memory' } ]
+        };
     }, { [reporterBrand]: true });
 }
 
@@ -58,17 +61,18 @@ function reporterNames(scope: OverkillScope, config: LoadedRunConfig): readonly 
 
     scope.require.defined(globalReporter);
     scope.require.defined(profileReporter);
+    const context = createReportingContext({ projectRoot: null });
 
-    return [ globalReporter.name, profileReporter.name ];
+    return [ globalReporter(context).name, profileReporter(context).name ];
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-config-reporters.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() preserves global reporter fallback and profile reporter overrides',
             metadata: {},
             async body(scope: OverkillScope) {

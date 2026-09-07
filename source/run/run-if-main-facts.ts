@@ -1,4 +1,4 @@
-import type { Reporter } from '../engine/reporter.ts';
+import type { DefinedReporter } from '../engine/reporter.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import type { LoadedRunConfig } from './run-config.ts';
 import {
@@ -41,7 +41,7 @@ function defaultRunRequest(profileName: string): RunRequest {
 
 export function runConfig(
     loadedConfig: LoadedRunConfig,
-    reporters: readonly Reporter[]
+    reporters: readonly DefinedReporter[]
 ): RunConfig {
     return {
         loader: loadedConfig.loader,
@@ -72,7 +72,8 @@ export function assertDirectTestPlanMatchesTestFamily(
 export function directRunFacts(
     config: RunConfig,
     profileName: string,
-    testPlan: TestPlan
+    testPlan: TestPlan,
+    projectRoot: string
 ): RunFacts {
     const request = defaultRunRequest(profileName);
     const profile = selectedProfile(config, profileName);
@@ -85,6 +86,7 @@ export function directRunFacts(
                 platform: process.platform,
                 version: process.versions.node
             },
+            projectRoot,
             runtimeStateDir: config.runtimeStateDir
         },
         execution: {

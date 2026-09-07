@@ -3,8 +3,9 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import type { Reporter } from '../engine/reporter.ts';
+import type { DefinedReporter } from '../engine/reporter.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
+import { defineFixedReporter } from '../test-support/reporter-definition.ts';
 import {
     defaultMicrotestProfile,
     defaultRunConfig,
@@ -31,8 +32,8 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
     };
 }
 
-function createTerminalReporter(name: string): Reporter {
-    return {
+function createTerminalReporter(name: string): DefinedReporter {
+    return defineFixedReporter({
         dispose: null,
         kind: 'real-time',
         name,
@@ -41,12 +42,12 @@ function createTerminalReporter(name: string): Reporter {
         },
         onFinish: null,
         sinks: [ { kind: 'stdout-raw' } ]
-    };
+    });
 }
 
 function runConfigWithReporters(
-    globalReporter: Reporter,
-    profileReporters: readonly Reporter[] | null
+    globalReporter: DefinedReporter,
+    profileReporters: readonly DefinedReporter[] | null
 ): RunConfig {
     return defaultRunConfig({
         profiles: {
@@ -60,12 +61,12 @@ function runConfigWithReporters(
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-reporter-resolution.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() uses profile reporters over global fallback',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -85,7 +86,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() uses global reporters when profile reporters are absent',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -104,7 +105,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() ignores inactive global reporter sink conflicts',
             metadata: {},
             async body(scope: OverkillScope) {

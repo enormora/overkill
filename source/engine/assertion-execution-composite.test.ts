@@ -62,7 +62,7 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
             engine.createRoot({
                 children: [
                     engine.createTestCase({
-                        definitionLocations: [ { column: null, file: '', line: null } ],
+                        definitionLocations: [ { kind: 'unknown' as const } ],
                         body,
                         metadata: {},
                         title: 'case'
@@ -106,6 +106,10 @@ function firstContractFailure(outcome: FailOutcome): TestContractFailure | null 
 const capturedTestLocation = definePublishedCompositeAssertion({
     name: 'captured test location',
     assert(check, location: SourceLocation) {
+        if (location.kind === 'unknown') {
+            return check.equal(location.kind, 'known');
+        }
+
         return check.group([
             check.match(
                 location.file.replaceAll('\\', '/'),
@@ -152,12 +156,12 @@ function firstForeignChild(outcome: FailOutcome): FailedForeignCheck | null {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/assertion-execution-composite.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() records callable composite assertion references as one planned boundary',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -191,7 +195,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() reports composite parent failures with child diagnostics',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -273,7 +277,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() records narrowing assertion references through assert',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -294,7 +298,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() rejects non-engine assertion references',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -313,7 +317,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() rejects non-narrowing references through require',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -338,7 +342,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() short-circuits failed narrowing assertion references through require',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -400,7 +404,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() rejects unawaited async custom assertions at collect',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -434,7 +438,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() normalizes foreign bridge failures under the composite parent',
             metadata: {},
             async body(scope: OverkillScope) {

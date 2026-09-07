@@ -88,7 +88,7 @@ const recorded: FailedCheck = {
     },
     id: '0001',
     kind: 'leaf',
-    location: { column: null, file: 'source/users.test.ts', line: 10 },
+    location: { column: null, file: 'source/users.test.ts', kind: 'known', line: 10 },
     path: [ { kind: 'property', key: { kind: 'string', value: 'name' } } ],
     source: 'assert',
     summary: 'expected deep equality'

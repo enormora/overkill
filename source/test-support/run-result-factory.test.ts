@@ -1,9 +1,8 @@
 import { defineNarrowingCompositeAssertion } from '../packages/assert/assert.entry-point.ts';
 import {
-    defineReporter,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
-    type Reporter,
+    type DefinedReporter,
     type ReporterEvent,
     type TestBody,
     type TestNode,
@@ -12,6 +11,7 @@ import {
 import type { AssertionTestFailure, FailOutcome, RunResult, TestFailure, TestOutcome } from '../engine/run-result.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import { runIfMain } from './run-if-main.ts';
+import { defineFixedOutputRenderer, defineFixedReporter } from './reporter-definition.ts';
 import { runResultFactory } from './run-result-factory.ts';
 
 type CapturedRoot = {
@@ -32,6 +32,7 @@ function defaultFailure(): unknown {
             {
                 column: null,
                 file: 'source/example.test.ts',
+                kind: 'known',
                 line: null
             }
         ],
@@ -74,6 +75,7 @@ function assertExplicitFailureFields(scope: OverkillScope, runResult: RunResult)
             {
                 column: null,
                 file: 'source/example.test.ts',
+                kind: 'known',
                 line: 10
             }
         ]
@@ -107,14 +109,14 @@ function failingBody(scope: OverkillScope): ReturnType<TestBody> {
 function supportTestCase(body: TestBody): TestNode {
     return createOverkillTestCase({
         body,
-        definitionLocations: [ { column: null, file: '', line: null } ],
+        definitionLocations: [ { kind: 'unknown' as const } ],
         metadata: {},
         title: 'case'
     });
 }
 
-function captureRoot(recordRoot: (root: CapturedRoot) => void): Reporter {
-    return defineReporter({
+function captureRoot(recordRoot: (root: CapturedRoot) => void): DefinedReporter {
+    return defineFixedReporter({
         dispose: null,
         kind: 'real-time',
         name: 'capture-root',
@@ -132,12 +134,12 @@ function captureRoot(recordRoot: (root: CapturedRoot) => void): Reporter {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/test-support/run-result-factory.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runResultFactory builds nested result data',
             metadata: {},
             body(scope: OverkillScope) {
@@ -180,7 +182,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runResultFactory builds non-failing outcome variants',
             metadata: {},
             body(scope: OverkillScope) {
@@ -207,7 +209,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runResultFactory builds default and empty failure fallbacks',
             metadata: {},
             body(scope: OverkillScope) {
@@ -246,7 +248,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runResultFactory builds body-error and default contract failures',
             metadata: {},
             body(scope: OverkillScope) {
@@ -264,7 +266,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runResultFactory preserves explicit failure and verdict fields',
             metadata: {},
             body(scope: OverkillScope) {
@@ -290,7 +292,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'test support runIfMain() returns without running imported modules',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -310,18 +312,18 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'test support runIfMain() runs direct files with explicit root options',
             metadata: {},
             async body(scope: OverkillScope) {
                 const roots: CapturedRoot[] = [];
 
                 await runIfMain(importMeta(true), supportTestCase(passingBody), {
-                    outputRenderer: {
+                    outputRenderer: defineFixedOutputRenderer({
                         render(intent) {
                             return intent.text;
                         }
-                    },
+                    }),
                     reporters: [
                         captureRoot(function recordRoot(root) {
                             roots.push(root);
@@ -344,7 +346,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'test support runIfMain() sets a failure exit code for failing direct files',
             metadata: {},
             async body(scope: OverkillScope) {

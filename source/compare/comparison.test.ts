@@ -20,12 +20,12 @@ const mapDiff = defineNarrowingCompositeAssertion<Diff, Extract<Diff, { readonly
 });
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/compare/comparison.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareEqualValues() uses Object.is primitive semantics',
             metadata: {},
             body(scope: OverkillScope) {
@@ -55,7 +55,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareStringEquality() emits bounded string hunks for string equality failures only',
             metadata: {},
             body(scope: OverkillScope) {
@@ -84,7 +84,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'failedResult() uses an empty path for structured diffs without operations',
             metadata: {},
             body(scope: OverkillScope) {
@@ -96,7 +96,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() distinguishes numeric and primitive edge cases',
             metadata: {},
             body(scope: OverkillScope) {
@@ -115,7 +115,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() compares arrays including holes, undefined, length, and paths',
             metadata: {},
             body(scope: OverkillScope) {
@@ -154,7 +154,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() compares enumerable string and symbol data without invoking accessors',
             metadata: {},
             body(scope: OverkillScope) {
@@ -204,7 +204,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() ignores non-enumerable properties',
             metadata: {},
             body(scope: OverkillScope) {
@@ -219,7 +219,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() requires matching class prototypes before enumerable data comparison',
             metadata: {},
             body(scope: OverkillScope) {
@@ -239,7 +239,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() compares Map entries order independently with deep keys and values',
             metadata: {},
             body(scope: OverkillScope) {
@@ -275,7 +275,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() reports missing Map entries by key',
             metadata: {},
             body(scope: OverkillScope) {

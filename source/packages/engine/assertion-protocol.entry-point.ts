@@ -44,11 +44,13 @@ export type {
     FailedForeignCheck,
     FailedLeafCheck,
     InstanceConstructor,
+    KnownSourceLocation,
     NonEmptyReadonlyArray,
     ResolvableSourceLocation,
     ResolvableSourceLocations,
     SourceLocation,
-    SourceLocationProvider
+    SourceLocationProvider,
+    UnknownSourceLocation
 } from '../../assertion-protocol/assertion-node-shape.ts';
 export type {
     ErrorMatcher,
@@ -60,3 +62,8 @@ export type {
 export { thrownMatcherChildren } from '../../assertion-protocol/thrown-matcher.ts';
 export type { ThrownErrorRecord } from '../../assertion-protocol/thrown-error-record.ts';
 export { createThrownErrorRecord } from '../../assertion-protocol/thrown-error-record.ts';
+export {
+    ensureKnownSourceLocation,
+    ensureValidSourceLocation,
+    unknownSourceLocation
+} from '../../assertion-protocol/source-location.ts';

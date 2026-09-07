@@ -118,12 +118,12 @@ const invalidNestedFields: readonly SchemaValidationFailure[] = [
 ];
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-config-schema.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'microtest profile schema accepts the minimal profile',
             metadata: {},
             body(scope: OverkillScope) {
@@ -133,7 +133,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'microtest profile schema accepts every current profile field',
             metadata: {},
             body(scope: OverkillScope) {
@@ -170,7 +170,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'microtest execution schema accepts process model and scheduling variants',
             metadata: {},
             body(scope: OverkillScope) {
@@ -184,7 +184,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'microtest resource usage schema accepts measured and unmeasured policies',
             metadata: {},
             body(scope: OverkillScope) {
@@ -204,7 +204,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'microtest timeout schema accepts soft and hard timeouts',
             metadata: {},
             body(scope: OverkillScope) {
@@ -218,7 +218,7 @@ export const testNode = createOverkillSuite({
         }),
         ...invalidMicrotestProfileFields.map(function createInvalidMicrotestProfileFieldTest(testCase) {
             return createOverkillTestCase({
-                definitionLocations: [ { column: null, file: '', line: null } ],
+                definitionLocations: [ { kind: 'unknown' as const } ],
                 title: `microtest profile schema rejects ${testCase.name}`,
                 metadata: {},
                 body(scope: OverkillScope) {
@@ -230,7 +230,7 @@ export const testNode = createOverkillSuite({
         }),
         ...invalidNestedFields.map(function createInvalidNestedFieldTest(testCase) {
             return createOverkillTestCase({
-                definitionLocations: [ { column: null, file: '', line: null } ],
+                definitionLocations: [ { kind: 'unknown' as const } ],
                 title: `microtest profile nested schema ${testCase.name}`,
                 metadata: {},
                 body(scope: OverkillScope) {

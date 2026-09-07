@@ -1003,8 +1003,8 @@ Policy:
   captures the immediate assertion boundary
 
 Assertion nodes may carry `SourceLocation` directly or a lazy
-`SourceLocationProvider`. Failed checks always expose a concrete
-`SourceLocation`.
+`SourceLocationProvider`. Failed checks always expose a resolved
+`SourceLocation`, either known or unknown.
 
 ### Error Separation
 

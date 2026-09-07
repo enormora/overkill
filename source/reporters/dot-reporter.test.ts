@@ -9,7 +9,7 @@ import type { CaseId } from '../engine/identity.ts';
 import type { RealTimeReporter } from '../engine/reporter.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
-import { createDotReporter } from './dot-reporter.ts';
+import { createDotReporter, type DotReporterDependencies } from './dot-reporter.ts';
 import type { TerminalOutput } from './terminal.ts';
 
 type FakeTerminal = {
@@ -17,12 +17,13 @@ type FakeTerminal = {
     readonly output: TerminalOutput;
     readonly text: () => string;
 };
+type DotReporterOptions = DotReporterDependencies;
 
 const failingCaseId: CaseId = { file: null, title: 'fails', params: null, suite: [ 'root' ] };
 const inconclusiveCaseId: CaseId = { file: null, title: 'maybe', params: null, suite: [ 'root' ] };
 const passingCaseId: CaseId = { file: null, title: 'passes', params: null, suite: [ 'root' ] };
 const skippedCaseId: CaseId = { file: null, title: 'skips', params: null, suite: [ 'root' ] };
-const definitionLocation = { column: null, file: '', line: null };
+const definitionLocation = { kind: 'unknown' as const };
 
 function suitePathFromTitles(
     titles: readonly string[]
@@ -58,6 +59,14 @@ function createFakeTerminal(columns: number): FakeTerminal {
             return text;
         }
     };
+}
+
+function createDotRuntimeReporter(options: DotReporterOptions): RealTimeReporter {
+    return createDotReporter(options)({
+        relativizeLocationPath(location) {
+            return location.file;
+        }
+    });
 }
 
 async function reportTestEnd(
@@ -130,17 +139,17 @@ function createFailureDetailResult(): RunResult {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/dot-reporter.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter declares raw stdout',
             metadata: {},
             body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
-                const reporter = createDotReporter({
+                const reporter = createDotRuntimeReporter({
                     interactive: false,
                     stdout: terminal.output
                 });
@@ -151,12 +160,12 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter maps outcomes and runner errors to compact marks',
             metadata: {},
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
-                const reporter = createDotReporter({
+                const reporter = createDotRuntimeReporter({
                     interactive: false,
                     stdout: terminal.output
                 });
@@ -215,12 +224,12 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter wraps progress marks by terminal width',
             metadata: {},
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(2);
-                const reporter = createDotReporter({
+                const reporter = createDotRuntimeReporter({
                     interactive: false,
                     stdout: terminal.output
                 });
@@ -238,12 +247,12 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter prints summary and short details on finish',
             metadata: {},
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
-                const reporter = createDotReporter({
+                const reporter = createDotRuntimeReporter({
                     interactive: false,
                     stdout: terminal.output
                 });
@@ -304,12 +313,12 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter prints body-error and contract failure details',
             metadata: {},
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
-                const reporter = createDotReporter({
+                const reporter = createDotRuntimeReporter({
                     interactive: false,
                     stdout: terminal.output
                 });
@@ -341,12 +350,12 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter prints post-finish runner errors below the summary',
             metadata: {},
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
-                const reporter = createDotReporter({
+                const reporter = createDotRuntimeReporter({
                     interactive: false,
                     stdout: terminal.output
                 });
@@ -381,12 +390,12 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter disposes its resize listener',
             metadata: {},
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
-                const reporter = createDotReporter({
+                const reporter = createDotRuntimeReporter({
                     interactive: true,
                     stdout: terminal.output
                 });

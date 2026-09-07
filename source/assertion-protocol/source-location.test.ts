@@ -13,14 +13,27 @@ import {
     forwardAssertionSourceLocations,
     sourceLocationsWithCurrentForwarding
 } from './source-location-forwarding.ts';
+import type { SourceLocation } from './assertion-node-shape.ts';
+
+function assertCapturedSourceLocation(scope: OverkillScope, location: SourceLocation): void {
+    if (location.kind !== 'known') {
+        scope.assert.equal(location.kind, 'known');
+
+        return;
+    }
+
+    scope.assert.match(location.file, /source-location\.test\.ts$/u);
+    scope.assert.equal(typeof location.line, 'number');
+    scope.assert.equal(typeof location.column, 'number');
+}
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/assertion-protocol/source-location.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'sourceLocationFromStack() parses file URL stack frames',
             metadata: {},
             body(scope: OverkillScope) {
@@ -36,6 +49,7 @@ export const testNode = createOverkillSuite({
                     {
                         column: 5,
                         file: '/workspace/source/users.test.ts',
+                        kind: 'known',
                         line: 10
                     }
                 );
@@ -44,7 +58,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'sourceLocationFromStack() parses plain path stack frames',
             metadata: {},
             body(scope: OverkillScope) {
@@ -60,6 +74,7 @@ export const testNode = createOverkillSuite({
                     {
                         column: 7,
                         file: '/workspace/source/users.test.ts',
+                        kind: 'known',
                         line: 12
                     }
                 );
@@ -68,7 +83,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'sourceLocationFromStack() returns the unknown location for unusable stacks',
             metadata: {},
             body(scope: OverkillScope) {
@@ -88,7 +103,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'sourceLocationFromStack() preserves invalid file URL stack frames',
             metadata: {},
             body(scope: OverkillScope) {
@@ -97,6 +112,7 @@ export const testNode = createOverkillSuite({
                     {
                         column: 8,
                         file: 'file:///%zz/source/users.test.ts',
+                        kind: 'known',
                         line: 13
                     }
                 );
@@ -105,7 +121,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'captureSourceLocation() returns a memoized provider for the capture callsite',
             metadata: {},
             body(scope: OverkillScope) {
@@ -114,15 +130,13 @@ export const testNode = createOverkillSuite({
                 const second = location();
 
                 scope.assert.equal(first, second);
-                scope.assert.match(first.file, /source-location\.test\.ts$/u);
-                scope.assert.equal(typeof first.line, 'number');
-                scope.assert.equal(typeof first.column, 'number');
+                assertCapturedSourceLocation(scope, first);
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'resolveSourceLocation() protects failures from provider errors',
             metadata: {},
             body(scope: OverkillScope) {
@@ -137,13 +151,27 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'resolveSourceLocation() rejects invalid known provider results',
+            metadata: {},
+            body(scope: OverkillScope) {
+                scope.assert.throws(function resolveInvalidLocation() {
+                    resolveSourceLocation(function invalidKnownLocation() {
+                        return { column: null, file: '', kind: 'known' as const, line: null };
+                    });
+                }, { message: 'Known source location file must not be empty.' });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'assertion source location forwarding preserves nested authoring chains',
             metadata: {},
             body(scope: OverkillScope) {
-                const outerLocation = { column: 1, file: 'macro.ts', line: 2 };
-                const innerLocation = { column: 3, file: 'body.ts', line: 4 };
-                const assertionLocation = { column: 5, file: 'assertion.ts', line: 6 };
+                const outerLocation = { column: 1, file: 'macro.ts', kind: 'known' as const, line: 2 };
+                const innerLocation = { column: 3, file: 'body.ts', kind: 'known' as const, line: 4 };
+                const assertionLocation = { column: 5, file: 'assertion.ts', kind: 'known' as const, line: 6 };
 
                 const sourceLocations = forwardAssertionSourceLocations([ outerLocation ], function forwardOuter() {
                     return forwardAssertionSourceLocations([ innerLocation ], function forwardInner() {

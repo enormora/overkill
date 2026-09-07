@@ -28,18 +28,18 @@ function createFailedCheck(): FailedCheckFixture {
         kind: 'leaf',
         path: [],
         source: 'assert',
-        sourceLocations: [ { column: null, file: 'source/example.test.ts', line: null } ],
+        sourceLocations: [ { column: null, file: 'source/example.test.ts', kind: 'known' as const, line: null } ],
         summary: 'Check failed'
     };
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/run-result.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'verdictFromOutcome() returns the outcome kind as the verdict',
             metadata: {},
             body(scope: OverkillScope) {

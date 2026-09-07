@@ -4,11 +4,13 @@ import { join } from 'node:path';
 import {
     createSuite,
     createTestCase,
+    defineOutputRenderer,
+    defineReporter,
     type TestScope
 } from '../../packages/engine/engine.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { runIfMain } from '../direct-launcher.test.ts';
-import type { Reporter } from '../../engine/reporter.ts';
+import type { DefinedReporter, Reporter } from '../../engine/reporter.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import type { RunCommand, RunConfig, RunProcessModel, RunRequest, RunScheduling } from '../../run/run-types.ts';
 
@@ -24,19 +26,21 @@ type SchedulingEvent = `end:${string}` | `start:${string}`;
 
 type SchedulingEventRecorder = {
     readonly events: () => readonly SchedulingEvent[];
-    readonly reporter: Reporter;
+    readonly reporter: DefinedReporter;
 };
 
-const memoryReporter: Reporter = {
-    dispose: null,
-    kind: 'real-time',
-    name: 'memory',
-    onEvent() {
-        return undefined;
-    },
-    onFinish: null,
-    sinks: [ { kind: 'memory' } ]
-};
+const memoryReporter = defineReporter(function createMemoryReporter(): Reporter {
+    return {
+        dispose: null,
+        kind: 'real-time',
+        name: 'memory',
+        onEvent() {
+            return undefined;
+        },
+        onFinish: null,
+        sinks: [ { kind: 'memory' } ]
+    };
+});
 
 function createDefaultMicrotestProfile(): RunConfig['profiles'][string] {
     return {
@@ -67,11 +71,13 @@ function createDefaultMicrotestProfile(): RunConfig['profiles'][string] {
 
 const defaultConfig: RunConfig = {
     loader: { sourceMaps: false, stripMode: 'strip-only' },
-    outputRenderer: {
-        render() {
-            return '';
-        }
-    },
+    outputRenderer: defineOutputRenderer(function createOutputRenderer() {
+        return {
+            render() {
+                return '';
+            }
+        };
+    }),
     profiles: {
         microtest: createDefaultMicrotestProfile()
     },
@@ -129,27 +135,29 @@ function createSchedulingEventRecorder(): SchedulingEventRecorder {
         events() {
             return events;
         },
-        reporter: {
-            dispose: null,
-            kind: 'real-time',
-            name: 'scheduling-recorder',
-            onEvent(event) {
-                if (event.kind === 'test-start') {
-                    events.push(`start:${event.case.title}`);
-                } else if (event.kind === 'test-end') {
-                    events.push(`end:${event.case.title}`);
-                }
-            },
-            onFinish: null,
-            sinks: [ { kind: 'memory' } ]
-        }
+        reporter: defineReporter(function createSchedulingReporter(): Reporter {
+            return {
+                dispose: null,
+                kind: 'real-time',
+                name: 'scheduling-recorder',
+                onEvent(event) {
+                    if (event.kind === 'test-start') {
+                        events.push(`start:${event.case.title}`);
+                    } else if (event.kind === 'test-end') {
+                        events.push(`end:${event.case.title}`);
+                    }
+                },
+                onFinish: null,
+                sinks: [ { kind: 'memory' } ]
+            };
+        })
     };
 }
 
 function createSchedulingRunConfig(
     processModel: RunProcessModel,
     scheduling: RunScheduling,
-    reporter: Reporter
+    reporter: DefinedReporter
 ): RunConfig {
     return {
         ...defaultConfig,
@@ -202,12 +210,12 @@ function plainData(value: unknown): unknown {
 }
 
 export const testNode = createSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/integration-tests/run/runner-explicit-files.test.ts',
     metadata: {},
     children: [
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner resolves and executes one explicit testNode file',
             metadata: {},
             async body(scope: TestScope) {
@@ -239,7 +247,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner executes a supervised microtest in a child process',
             metadata: {},
             async body(scope: TestScope) {
@@ -265,7 +273,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner resolves and executes profile-discovered files',
             metadata: {},
             async body(scope: TestScope) {
@@ -309,7 +317,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner runs in-process microtests concurrently from profile scheduling',
             metadata: {},
             async body(scope: TestScope) {
@@ -326,7 +334,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner runs in-process microtests serially from profile scheduling',
             metadata: {},
             async body(scope: TestScope) {
@@ -343,7 +351,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner runs supervised microtests concurrently from profile scheduling',
             metadata: {},
             async body(scope: TestScope) {
@@ -360,7 +368,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner runs supervised microtests serially from profile scheduling',
             metadata: {},
             async body(scope: TestScope) {
@@ -377,7 +385,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner kills a supervised microtest that blocks past hard timeout',
             metadata: {},
             async body(scope: TestScope) {
@@ -424,7 +432,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner uses file identity to distinguish duplicate case names across files',
             metadata: {},
             async body(scope: TestScope) {
@@ -457,7 +465,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner rejects invalid explicit paths before module import',
             metadata: {},
             async body(scope: TestScope) {

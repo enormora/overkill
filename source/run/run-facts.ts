@@ -19,6 +19,7 @@ export type RunFactsInput = {
     readonly config: RunConfig;
     readonly dependencies: RunOrchestratorDependencies;
     readonly engine: RunCommand['engine'];
+    readonly projectRoot: string;
     readonly request: RunRequest;
 };
 
@@ -132,6 +133,7 @@ export function createRunFacts(input: RunFactsInput): RunFacts {
                 platform: input.dependencies.node.platform,
                 version: input.dependencies.node.version
             },
+            projectRoot: input.projectRoot,
             runtimeStateDir: input.config.runtimeStateDir
         },
         execution: {

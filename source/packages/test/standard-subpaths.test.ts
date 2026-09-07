@@ -1,4 +1,5 @@
 import { createSuite, createTestCase, type TestScope } from '../engine/engine.entry-point.ts';
+import { createReportingContext } from '../../engine/reporting-context.ts';
 import { defineCompositeAssertion } from './assert.entry-point.ts';
 import * as assertSubpath from './assert.entry-point.ts';
 import * as baselinesSubpath from './baselines.entry-point.ts';
@@ -46,10 +47,11 @@ function assertConfigSubpath(scope: TestScope): void {
 }
 
 async function assertReporterSubpath(scope: TestScope): Promise<void> {
-    const line = reportersSubpath.createLineReporter();
-    const brief = reportersSubpath.createBriefReporter();
-    const dot = reportersSubpath.createDotReporter();
-    const githubActions = reportersSubpath.createGithubActionsOutputRenderer();
+    const context = createReportingContext({ projectRoot: null });
+    const line = reportersSubpath.createLineReporter()(context);
+    const brief = reportersSubpath.createBriefReporter()(context);
+    const dot = reportersSubpath.createDotReporter()(context);
+    const githubActions = reportersSubpath.createGithubActionsOutputRenderer()(context);
 
     scope.assert.deepEqual(sortedKeys(reportersSubpath), [
         'createBriefReporter',
@@ -92,12 +94,12 @@ function assertReservedSubpath(scope: TestScope, subpath: ReservedSubpathModule)
 }
 
 export const testNode = createSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/packages/test/standard-subpaths.test.ts',
     metadata: {},
     children: [
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test/config exposes config authoring only',
             metadata: {},
             body(scope: TestScope) {
@@ -107,7 +109,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test/reporters exposes current built-in factories',
             metadata: {},
             async body(scope: TestScope) {
@@ -117,7 +119,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test/assert re-exports assertion extension ownership',
             metadata: {},
             body(scope: TestScope) {
@@ -127,7 +129,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test reserved subpaths expose sentinel only',
             metadata: {},
             body(scope: TestScope) {

@@ -233,6 +233,7 @@ export type RunEnvironmentFacts = {
         readonly platform: string;
         readonly version: string;
     };
+    readonly projectRoot: string;
     readonly runtimeStateDir: string;
 };
 

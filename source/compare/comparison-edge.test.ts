@@ -12,12 +12,12 @@ import {
 } from './comparison.ts';
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/compare/comparison-edge.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareStringEquality() returns no diff for equal strings',
             metadata: {},
             body(scope: OverkillScope) {
@@ -33,7 +33,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() rejects mismatched container kinds',
             metadata: {},
             body(scope: OverkillScope) {
@@ -48,7 +48,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() treats unavailable object introspection as a mismatch',
             metadata: {},
             body(scope: OverkillScope) {
@@ -70,7 +70,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() emits object remove and add operations',
             metadata: {},
             body(scope: OverkillScope) {
@@ -106,7 +106,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() emits array removal for missing actual indexes',
             metadata: {},
             body(scope: OverkillScope) {
@@ -129,7 +129,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() handles ArrayBuffer and byte length mismatches',
             metadata: {},
             body(scope: OverkillScope) {
@@ -157,7 +157,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() reports Error name and enumerable data differences',
             metadata: {},
             body(scope: OverkillScope) {
@@ -183,7 +183,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'comparePartialValue() handles primitive, array, built-in, and opaque failures',
             metadata: {},
             body(scope: OverkillScope) {
@@ -200,7 +200,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'comparePartialValue() preserves repeated reference topology',
             metadata: {},
             body(scope: OverkillScope) {
@@ -217,7 +217,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'comparePartialValue() handles Map, Set, Error, and binary subsets',
             metadata: {},
             body(scope: OverkillScope) {
@@ -256,7 +256,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'array membership comparisons report pass and invalid operand cases',
             metadata: {},
             body(scope: OverkillScope) {

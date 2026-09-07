@@ -84,12 +84,12 @@ function createRejectedResultRecord(error: Error): RejectedResultRecord {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/doubles/test-double-history-runtime.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubles expose aggregate counts for returned calls',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -104,7 +104,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubles expose aggregate call history for returned calls',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -140,7 +140,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubles expose returned call result history',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -155,7 +155,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubles expose construction counts for returned constructions',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -169,7 +169,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubles expose construction history for returned constructions',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -188,7 +188,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'aggregate history counts calls and constructions together',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -205,7 +205,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'aggregate history preserves chronological call and construction order',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -248,7 +248,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'history records thrown calls',
             metadata: {},
             body(scope: OverkillScope) {
@@ -267,7 +267,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'history records missing behavior',
             metadata: {},
             body(scope: OverkillScope) {
@@ -287,7 +287,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'history records unsupported invocation modes',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -304,7 +304,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'history records thrown constructions with null instances',
             metadata: {},
             body: function body(scope: OverkillScope) {
@@ -329,7 +329,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'promise results are recorded immediately without awaiting settlement',
             metadata: {},
             body: async function body(scope: OverkillScope) {

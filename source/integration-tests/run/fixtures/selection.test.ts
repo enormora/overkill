@@ -11,13 +11,13 @@ function pass(scope: TestScope) {
 }
 
 export const testNode = createSuite({
-                definitionLocations: [ { column: null, file: '', line: null } ],
+                definitionLocations: [ { kind: 'unknown' } ],
     children: [
         createSuite({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             children: [
                 createTestCase({
-                definitionLocations: [ { column: null, file: '', line: null } ],
+                definitionLocations: [ { kind: 'unknown' } ],
                     body: pass,
                     metadata: {
                         ownership: [ '@Payments' ],
@@ -28,7 +28,7 @@ export const testNode = createSuite({
                     title: 'charges card'
                 }),
                 createTestCase({
-                definitionLocations: [ { column: null, file: '', line: null } ],
+                definitionLocations: [ { kind: 'unknown' } ],
                     body: pass,
                     metadata: {
                         ownership: [ '@Payments' ],
@@ -43,7 +43,7 @@ export const testNode = createSuite({
             title: 'payments'
         }),
         createTable({
-                definitionLocations: [ { column: null, file: '', line: null } ],
+                definitionLocations: [ { kind: 'unknown' } ],
             cases: [
                 {
                     body: pass,

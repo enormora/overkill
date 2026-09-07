@@ -8,7 +8,7 @@ import { testNode as runConfigTestNode } from './run-config.test.ts';
 import { testNode as runProfileNameTestNode } from './run-profile-name.test.ts';
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-configuration-suite.test.ts',
     metadata: {},
     children: [

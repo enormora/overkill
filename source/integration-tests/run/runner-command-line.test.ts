@@ -1,6 +1,8 @@
 import {
     createSuite,
     createTestCase,
+    defineOutputRenderer,
+    defineReporter,
     type TestScope
 } from '../../packages/engine/engine.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
@@ -22,16 +24,18 @@ const plainTestNodeFixturePath = 'source/integration-tests/run/fixtures/plain-te
 const throwsOnImportFixturePath = 'source/integration-tests/run/fixtures/throws-on-import.test.ts';
 const discoveryFixturePath = 'source/integration-tests/run/fixtures/discovery/unit.test.ts';
 
-const memoryReporter: Reporter = {
-    dispose: null,
-    kind: 'real-time',
-    name: 'memory',
-    onEvent() {
-        return undefined;
-    },
-    onFinish: null,
-    sinks: [ { kind: 'memory' } ]
-};
+const memoryReporter = defineReporter(function createMemoryReporter(): Reporter {
+    return {
+        dispose: null,
+        kind: 'real-time',
+        name: 'memory',
+        onEvent() {
+            return undefined;
+        },
+        onFinish: null,
+        sinks: [ { kind: 'memory' } ]
+    };
+});
 
 function createDefaultMicrotestProfile(): RunConfig['profiles'][string] {
     return {
@@ -62,11 +66,13 @@ function createDefaultMicrotestProfile(): RunConfig['profiles'][string] {
 
 const defaultConfig: RunConfig = {
     loader: { sourceMaps: false, stripMode: 'strip-only' },
-    outputRenderer: {
-        render() {
-            return '';
-        }
-    },
+    outputRenderer: defineOutputRenderer(function createOutputRenderer() {
+        return {
+            render() {
+                return '';
+            }
+        };
+    }),
     profiles: {
         microtest: createDefaultMicrotestProfile()
     },
@@ -218,12 +224,12 @@ function selectedEngineRunnerDiagnostic(path: string): string {
 }
 
 export const testNode = createSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/integration-tests/run/runner-command-line.test.ts',
     metadata: {},
     children: [
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'command-line runner lists explicit files without executing them',
             metadata: {},
             async body(scope: TestScope) {
@@ -249,7 +255,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'command-line runner runs and lists profile-discovered files',
             metadata: {},
             async body(scope: TestScope) {
@@ -280,7 +286,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'command-line runner maps invalid module exports to runner errors',
             metadata: {},
             async body(scope: TestScope) {
@@ -300,7 +306,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'command-line runner maps collection failures to runner errors',
             metadata: {},
             async body(scope: TestScope) {
@@ -320,7 +326,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'command-line runner maps empty explicit input to no tests collected',
             metadata: {},
             async body(scope: TestScope) {

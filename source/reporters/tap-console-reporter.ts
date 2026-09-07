@@ -104,15 +104,17 @@ export function createTapConsoleReporter(
 ): DefinedReporter<FinalResultReporter> {
     const { stdoutConsole } = dependencies;
 
-    return defineReporter({
-        dispose: null,
-        kind: 'final-result',
-        name: 'tap',
-        sinks: [ { kind: 'stdout-raw' } ],
+    return defineReporter(function createTapConsoleRuntimeReporter() {
+        return {
+            dispose: null,
+            kind: 'final-result',
+            name: 'tap',
+            sinks: [ { kind: 'stdout-raw' } ],
 
-        async onResult(currentTestRunResult) {
-            stdoutConsole.log(formatResultAsTap(currentTestRunResult));
-        }
+            async onResult(currentTestRunResult) {
+                stdoutConsole.log(formatResultAsTap(currentTestRunResult));
+            }
+        };
     });
 }
 
@@ -120,27 +122,30 @@ export function createTapConsoleRealTimeReporter(
     dependencies: TapConsoleReporterDependencies
 ): DefinedReporter<RealTimeReporter> {
     const { stdoutConsole } = dependencies;
-    let nextTestPointIndex = 0;
 
-    return defineReporter({
-        dispose: null,
-        kind: 'real-time',
-        name: 'tap-real-time',
-        sinks: [ { kind: 'stdout-raw' } ],
+    return defineReporter(function createTapConsoleRealTimeRuntimeReporter() {
+        let nextTestPointIndex = 0;
 
-        async onEvent(event) {
-            if (event.kind === 'run-start') {
-                stdoutConsole.log('TAP version 14');
-            } else if (event.kind === 'test-end') {
-                stdoutConsole.log(formatEventAsTapPoint(event, nextTestPointIndex));
-                nextTestPointIndex += 1;
-            } else if (event.kind === 'runner-error') {
-                stdoutConsole.log(`# runner error: ${event.error.message}`);
-            } else if (event.kind === 'run-end') {
-                stdoutConsole.log(`1..${event.result.summary.planned}`);
-            }
-        },
+        return {
+            dispose: null,
+            kind: 'real-time',
+            name: 'tap-real-time',
+            sinks: [ { kind: 'stdout-raw' } ],
 
-        onFinish: null
+            async onEvent(event) {
+                if (event.kind === 'run-start') {
+                    stdoutConsole.log('TAP version 14');
+                } else if (event.kind === 'test-end') {
+                    stdoutConsole.log(formatEventAsTapPoint(event, nextTestPointIndex));
+                    nextTestPointIndex += 1;
+                } else if (event.kind === 'runner-error') {
+                    stdoutConsole.log(`# runner error: ${event.error.message}`);
+                } else if (event.kind === 'run-end') {
+                    stdoutConsole.log(`1..${event.result.summary.planned}`);
+                }
+            },
+
+            onFinish: null
+        };
     });
 }

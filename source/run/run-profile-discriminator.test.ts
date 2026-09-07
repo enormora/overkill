@@ -24,12 +24,12 @@ function createRunCommand(config: RunConfig, profileName: string): RunCommand {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-profile-discriminator.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() rejects profiles without a test family',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -54,7 +54,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() rejects unsupported profile test families',
             metadata: {},
             async body(scope: OverkillScope) {

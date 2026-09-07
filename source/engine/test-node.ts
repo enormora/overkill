@@ -3,6 +3,7 @@ import type {
     AssertionResult
 } from '../assertion-protocol/assertion-node.ts';
 import type { NonEmptyReadonlyArray, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
+import { ensureValidSourceLocation } from '../assertion-protocol/source-location.ts';
 import type { AssertAssertionFacade } from './assertion-facade.ts';
 import { ensureMetadata, type Metadata } from './metadata.ts';
 import type { RequireAssertionFacade } from './require-assertion-facade.ts';
@@ -169,6 +170,10 @@ function ensureTestBody(body: TestBody): void {
 function ensureDefinitionLocations(definitionLocations: readonly SourceLocation[]): void {
     if (definitionLocations.length === 0) {
         throw new TypeError('Test node definition locations must contain at least one location.');
+    }
+
+    for (const location of definitionLocations) {
+        ensureValidSourceLocation(location);
     }
 }
 

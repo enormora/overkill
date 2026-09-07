@@ -40,12 +40,12 @@ function assertProfileFiles(
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-config-profile-files.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() normalizes profile file discovery',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -84,7 +84,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects invalid profile file globs',
             metadata: {},
             async body(scope: OverkillScope) {

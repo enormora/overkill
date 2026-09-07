@@ -1,6 +1,7 @@
 import type { CaseId } from './identity.ts';
 import type { ResolvedMetadata } from './metadata.ts';
 import type { OptionalReporterOutput, OutputIntentRole } from './reporter-output.ts';
+import type { ReportingContext } from './reporting-context.ts';
 import type { RunResult, RunnerError, TestOutcome, TestVerdict } from './run-result.ts';
 import type { TestPlanCase, TestPlanSuitePathEntry } from './test-plan.ts';
 
@@ -248,18 +249,19 @@ type OutputReporter = OutputFinalReporter | OutputRealTimeReporter;
 type SideEffectReporter = SideEffectFinalReporter | SideEffectRealTimeReporter;
 
 export type Reporter = OutputReporter | SideEffectReporter;
-export type DefinedReporter<ReporterValue extends Reporter = Reporter> = ReporterValue & {
+type ReporterDefinition<ReporterValue extends Reporter> = (context: ReportingContext) => ReporterValue;
+export type DefinedReporter<ReporterValue extends Reporter = Reporter> = ReporterDefinition<ReporterValue> & {
     readonly [reporterBrand]: true;
 };
 
 export function defineReporter<ReporterValue extends Reporter>(
-    reporter: ReporterValue
+    createReporter: ReporterDefinition<ReporterValue>
 ): DefinedReporter<ReporterValue> {
-    return Object.assign(reporter, { [reporterBrand]: true as const });
+    return Object.assign(createReporter, { [reporterBrand]: true as const });
 }
 
 export function isReporter(value: unknown): value is DefinedReporter {
-    return typeof value === 'object' && value !== null && Object.hasOwn(value, reporterBrand);
+    return typeof value === 'function' && Object.hasOwn(value, reporterBrand);
 }
 
 type ClaimedSink = {

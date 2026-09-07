@@ -14,12 +14,12 @@ async function createTempFolder(): Promise<string> {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-config-load-error.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() reports explicit config import failures',
             metadata: {},
             async body(scope: OverkillScope) {

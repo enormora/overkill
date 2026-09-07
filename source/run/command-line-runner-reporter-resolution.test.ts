@@ -3,7 +3,8 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import type { Reporter } from '../engine/reporter.ts';
+import type { DefinedReporter } from '../engine/reporter.ts';
+import { defineFixedOutputRenderer, defineFixedReporter } from '../test-support/reporter-definition.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import {
     defaultMicrotestProfile,
@@ -18,12 +19,8 @@ import { RunResolutionError } from './run-errors.ts';
 import type { LoadedRunConfig } from './run-config.ts';
 import type { RunCommand, RunMicrotestProfileConfig, RunOrchestrator, RunRequest } from './run-types.ts';
 
-type PlainOutputIntent = {
-    readonly text: string;
-};
-
 type ReporterLoader = {
-    readonly createDefaultReporter: () => Promise<Reporter>;
+    readonly createDefaultReporter: () => Promise<DefinedReporter>;
     readonly loadCount: () => number;
 };
 
@@ -32,13 +29,13 @@ type CommandLineScenario = {
     readonly result: CommandLineRunnerResult;
 };
 
-const plainOutputRenderer = {
-    render(intent: PlainOutputIntent): string {
+const plainOutputRenderer = defineFixedOutputRenderer({
+    render(intent): string {
         return intent.text;
     }
-};
+});
 
-const memoryReporter: Reporter = {
+const memoryReporter = defineFixedReporter({
     dispose: null,
     kind: 'real-time',
     name: 'memory',
@@ -47,9 +44,9 @@ const memoryReporter: Reporter = {
     },
     onFinish: null,
     sinks: [ { kind: 'memory' } ]
-};
+});
 
-const terminalReporter: Reporter = {
+const terminalReporter = defineFixedReporter({
     dispose: null,
     kind: 'real-time',
     name: 'terminal',
@@ -58,13 +55,13 @@ const terminalReporter: Reporter = {
     },
     onFinish: null,
     sinks: [ { kind: 'stdout-raw' } ]
-};
+});
 
 const defaultRequest = defaultRunRequest();
 
 function loadedConfig(
     reporters: LoadedRunConfig['reporters'],
-    profileReporters: readonly Reporter[] | null
+    profileReporters: readonly DefinedReporter[] | null
 ): LoadedRunConfig {
     return {
         configPath: null,
@@ -91,7 +88,7 @@ function selectedProfile(command: RunCommand): RunMicrotestProfileConfig {
     return profile;
 }
 
-function selectedProfileReporters(command: RunCommand): readonly Reporter[] {
+function selectedProfileReporters(command: RunCommand): readonly DefinedReporter[] {
     const { reporters } = selectedProfile(command);
 
     if (reporters === null) {
@@ -101,7 +98,7 @@ function selectedProfileReporters(command: RunCommand): readonly Reporter[] {
     return reporters;
 }
 
-function createDefaultReporterLoader(reporter: Reporter): ReporterLoader {
+function createDefaultReporterLoader(reporter: DefinedReporter): ReporterLoader {
     let loadCount = 0;
 
     return {
@@ -195,12 +192,12 @@ async function runWithRunnerErrors(): ReturnType<RunOrchestrator['run']> {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/command-line-runner-reporter-resolution.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title:
                 'commandLineRunner.runTests() keeps global reporters as fallback when profile reporters override them',
             metadata: {},
@@ -215,14 +212,14 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.equal(scenario.result.exitCode, 0);
                 scope.assert.equal(defaultReporter.loadCount(), 0);
-                scope.assert.equal(scenario.command.config.reporters[0]?.name, terminalReporter.name);
+                scope.assert.equal(scenario.command.config.reporters[0], terminalReporter);
                 scope.assert.equal(selectedProfileReporters(scenario.command)[0], memoryReporter);
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() skips the default reporter when profile reporters exist',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -242,7 +239,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() skips the default reporter when global non-terminal reporters exist',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -261,7 +258,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() skips the default reporter for unknown profiles',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -284,7 +281,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() falls back when profile terminal reporters did not receive errors',
             metadata: {},
             async body(scope: OverkillScope) {

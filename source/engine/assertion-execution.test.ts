@@ -33,7 +33,7 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
             engine.createRoot({
                 children: [
                     engine.createTestCase({
-                        definitionLocations: [ { column: null, file: '', line: null } ],
+                        definitionLocations: [ { kind: 'unknown' as const } ],
                         body,
                         metadata: {},
                         title: 'case'
@@ -59,6 +59,10 @@ function firstAssertionFailure(outcome: FailOutcome): AssertionTestFailure | nul
 const capturedTestLocation = definePublishedCompositeAssertion({
     name: 'captured test location',
     assert(check, location: SourceLocation) {
+        if (location.kind === 'unknown') {
+            return check.equal(location.kind, 'known');
+        }
+
         return check.group([
             check.match(location.file.replaceAll('\\', '/'), /source\/engine\/assertion-execution\.test\.ts$/u),
             check.equal(typeof location.line, 'number'),
@@ -72,12 +76,12 @@ function firstFailedCheck(outcome: FailOutcome): FailedCheck | null {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/assertion-execution.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() counts successful requirements once a returned assertion result exists',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -94,7 +98,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() rejects successful require-only builder collection',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -119,7 +123,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() skips plan mismatch when a requirement fails',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -158,7 +162,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() treats caught failed requirements as fatal and ignores later assertions',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -201,7 +205,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() rejects returned results that drop recorded builder assertions',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -235,7 +239,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() accepts appended direct assertions around builder assertions',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -267,7 +271,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() merges successful requirements by timeline for counts and check ids',
             metadata: {},
             async body(scope: OverkillScope) {

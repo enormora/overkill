@@ -13,7 +13,7 @@ import {
 import { createEngine, type Engine } from './engine.ts';
 import { createExecute } from './execution.ts';
 import { createReporterDispatcher, type ReporterDispatcher } from './reporter-dispatcher.ts';
-import type { FinalResultReporter, RealTimeReporter } from './reporter.ts';
+import { defineReporter, type DefinedReporter, type FinalResultReporter, type RealTimeReporter } from './reporter.ts';
 import type { RunResult } from './run-result.ts';
 import type { TestPlan } from './test-plan.ts';
 
@@ -22,7 +22,7 @@ function createPassingPlan(engine: Engine): TestPlan {
         engine.createRoot({
             children: [
                 engine.createTestCase({
-                    definitionLocations: [ { column: null, file: '', line: null } ],
+                    definitionLocations: [ { kind: 'unknown' as const } ],
                     body(testScope) {
                         testScope.assert.true(true, { message: 'passes' });
                         return testScope.assert.collect();
@@ -35,6 +35,14 @@ function createPassingPlan(engine: Engine): TestPlan {
             title: 'root'
         })
     );
+}
+
+function defineRuntimeReporter<ReporterValue extends FinalResultReporter | RealTimeReporter>(
+    reporter: ReporterValue
+): DefinedReporter<ReporterValue> {
+    return defineReporter(function createRuntimeReporter() {
+        return reporter;
+    });
 }
 
 type ReporterSignal = {
@@ -209,12 +217,12 @@ function createConcurrentFinishFixture(): ConcurrentFinishFixture {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/reporter-delivery-cleanup.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() times out reporter disposal',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -236,7 +244,7 @@ export const testNode = createOverkillSuite({
 
                 const execution = engine.execute(createPassingPlan(engine), {
                     execution: { mode: 'serial-in-process' },
-                    reporters: [ hangingReporter ],
+                    reporters: [ defineRuntimeReporter(hangingReporter) ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
@@ -256,7 +264,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() disposes reporters after validation failure',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -288,7 +296,7 @@ export const testNode = createOverkillSuite({
                 await scope.assert.rejects(async function executeWithInvalidReporterSinks() {
                     await engine.execute(createPassingPlan(engine), {
                         execution: { mode: 'serial-in-process' },
-                        reporters: [ firstReporter, secondReporter ],
+                        reporters: [ defineRuntimeReporter(firstReporter), defineRuntimeReporter(secondReporter) ],
                         runFacts: {},
                         startedAt: '2026-07-15T00:00:00.000Z'
                     });
@@ -299,7 +307,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() throws AggregateError when execution and cleanup both fail',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -329,14 +337,14 @@ export const testNode = createOverkillSuite({
 
                 const execution = engine.execute(createPassingPlan(engine), {
                     execution: { mode: 'serial-in-process' },
-                    reporters: [ firstReporter, secondReporter ],
+                    reporters: [ defineRuntimeReporter(firstReporter), defineRuntimeReporter(secondReporter) ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
 
                 await scope.assert.rejects(async function executeWithInvalidReporterSinksAndFailedCleanup() {
                     await execution;
-                }, { message: 'Execution failed and reporter cleanup failed.' });
+                }, { message: 'Reporter delivery creation failed and reporter cleanup failed.' });
                 const capturedError = await rejectedValue(execution);
                 scope.require.instanceOf(capturedError, AggregateError);
                 scope.assert.deepEqual(
@@ -351,7 +359,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() does not retry disposal after disposal throws',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -359,16 +367,20 @@ export const testNode = createOverkillSuite({
                 const wallClock = createDeterministicWallClock();
                 let disposeCalls = 0;
                 const reporterDispatcher: ReporterDispatcher = {
-                    async disposeReporters() {
-                        disposeCalls += 1;
+                    async createDelivery() {
+                        return {
+                            async disposeReporters() {
+                                disposeCalls += 1;
 
-                        throw new Error('disposal transport failed');
-                    },
-                    async reportEvent() {
-                        return [];
-                    },
-                    async reportResult() {
-                        return [];
+                                throw new Error('disposal transport failed');
+                            },
+                            async reportEvent() {
+                                return [];
+                            },
+                            async reportResult() {
+                                return [];
+                            }
+                        };
                     },
                     async trackRunnerErrorDelivery(work) {
                         return {
@@ -393,7 +405,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() includes run-end reporter errors before final reporting',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -403,7 +415,7 @@ export const testNode = createOverkillSuite({
 
                 const result = await engine.execute(createPassingPlan(engine), {
                     execution: { mode: 'serial-in-process' },
-                    reporters: [ createRunEndFailingReporter(), finalReporter, finishReporter ],
+                    reporters: [ defineRuntimeReporter(createRunEndFailingReporter()), finalReporter, finishReporter ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
@@ -415,7 +427,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() records dispose failures without reporter re-entry',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -436,7 +448,7 @@ export const testNode = createOverkillSuite({
 
                 const result = await engine.execute(createPassingPlan(engine), {
                     execution: { mode: 'serial-in-process' },
-                    reporters: [ failingReporter, observer ],
+                    reporters: [ defineRuntimeReporter(failingReporter), observer ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
@@ -453,7 +465,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() preserves concurrent final-result and real-time finish callbacks',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -461,7 +473,10 @@ export const testNode = createOverkillSuite({
 
                 const execution = fixture.engine.execute(createPassingPlan(fixture.engine), {
                     execution: { mode: 'serial-in-process' },
-                    reporters: [ fixture.realTimeReporter, fixture.finalReporter ],
+                    reporters: [
+                        defineRuntimeReporter(fixture.realTimeReporter),
+                        defineRuntimeReporter(fixture.finalReporter)
+                    ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });

@@ -10,8 +10,9 @@ import {
     type InMemoryRealTimeReporter
 } from '../reporters/in-memory-reporter.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
+import type { Engine } from './engine.ts';
 import { resolveRootMetadata } from './metadata.ts';
-import type { RealTimeReporter, ReporterEvent } from './reporter.ts';
+import { defineReporter, type DefinedReporter, type RealTimeReporter, type ReporterEvent } from './reporter.ts';
 import type {
     BodyErrorTestFailure,
     FailOutcome,
@@ -19,6 +20,7 @@ import type {
     TestFailure,
     TestOutcome
 } from './run-result.ts';
+import type { TestPlan } from './test-plan.ts';
 
 function recordedEvents(reporter: InMemoryRealTimeReporter): readonly ReporterEvent[] {
     return reporter.getRecordedEntries().flatMap(function toEvent(entry) {
@@ -31,6 +33,91 @@ function plainDataShape(value: unknown): unknown {
     const { parse } = JSON;
 
     return parse(stringify(value));
+}
+
+type ReporterConflictExecutionState = {
+    readonly bodyRan: () => boolean;
+    readonly recordBodyRun: () => void;
+    readonly recordReporterEvent: () => void;
+    readonly reporterEventCount: () => number;
+};
+
+function createReporterConflictExecutionState(): ReporterConflictExecutionState {
+    let bodyRan = false;
+    let reporterEventCount = 0;
+
+    return {
+        bodyRan() {
+            return bodyRan;
+        },
+        recordBodyRun() {
+            bodyRan = true;
+        },
+        recordReporterEvent() {
+            reporterEventCount += 1;
+        },
+        reporterEventCount() {
+            return reporterEventCount;
+        }
+    };
+}
+
+function createCountingReporter(state: ReporterConflictExecutionState): DefinedReporter {
+    const reporter: RealTimeReporter = {
+        dispose: null,
+        kind: 'real-time',
+        name: 'first',
+        onEvent() {
+            state.recordReporterEvent();
+        },
+        onFinish: null,
+        sinks: [ { kind: 'stdout-raw' } ]
+    };
+
+    return defineReporter(function createCountingRuntimeReporter() {
+        return reporter;
+    });
+}
+
+function createConflictingReporter(): DefinedReporter {
+    const reporter: RealTimeReporter = {
+        dispose: null,
+        kind: 'real-time',
+        name: 'conflicting',
+        onEvent() {
+            return undefined;
+        },
+        onFinish: null,
+        sinks: [ { kind: 'stdout-raw' } ]
+    };
+
+    return defineReporter(function createConflictingRuntimeReporter() {
+        return reporter;
+    });
+}
+
+function createReporterConflictPlan(
+    engine: Engine,
+    state: ReporterConflictExecutionState
+): TestPlan {
+    return engine.createTestPlan(
+        engine.createRoot({
+            children: [
+                engine.createTestCase({
+                    definitionLocations: [ { kind: 'unknown' as const } ],
+                    body(testScope) {
+                        state.recordBodyRun();
+                        testScope.assert.true(true, { message: 'passes' });
+                        return testScope.assert.collect();
+                    },
+                    metadata: {},
+                    title: 'passes'
+                })
+            ],
+            metadata: {},
+            title: 'root'
+        })
+    );
 }
 
 const failOutcome = defineNarrowingCompositeAssertion<TestOutcome, FailOutcome, readonly []>({
@@ -52,12 +139,12 @@ function firstOutcome(result: RunResult): TestOutcome | undefined {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/execution-reporting.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() records thrown test body errors',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -66,7 +153,7 @@ export const testNode = createOverkillSuite({
                     engine.createRoot({
                         children: [
                             engine.createTestCase({
-                                definitionLocations: [ { column: null, file: '', line: null } ],
+                                definitionLocations: [ { kind: 'unknown' as const } ],
                                 body() {
                                     throw new Error('boom');
                                 },
@@ -107,7 +194,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() preserves assertions recorded before a thrown body error',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -116,7 +203,7 @@ export const testNode = createOverkillSuite({
                     engine.createRoot({
                         children: [
                             engine.createTestCase({
-                                definitionLocations: [ { column: null, file: '', line: null } ],
+                                definitionLocations: [ { kind: 'unknown' as const } ],
                                 body(testScope) {
                                     testScope.assert.equal(1, 2, { message: 'numbers differ' });
                                     throw new Error('boom');
@@ -146,7 +233,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() records rejected test body promises as body errors',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -155,7 +242,7 @@ export const testNode = createOverkillSuite({
                     engine.createRoot({
                         children: [
                             engine.createTestCase({
-                                definitionLocations: [ { column: null, file: '', line: null } ],
+                                definitionLocations: [ { kind: 'unknown' as const } ],
                                 async body() {
                                     await Promise.resolve();
                                     throw new Error('rejects');
@@ -182,7 +269,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() delivers events and final results to reporters',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -193,7 +280,7 @@ export const testNode = createOverkillSuite({
                     engine.createRoot({
                         children: [
                             engine.createTestCase({
-                                definitionLocations: [ { column: null, file: '', line: null } ],
+                                definitionLocations: [ { kind: 'unknown' as const } ],
                                 body(testScope) {
                                     testScope.assert.true(true, { message: 'passes' });
                                     return testScope.assert.collect();
@@ -228,14 +315,14 @@ export const testNode = createOverkillSuite({
                         {
                             attempt: 0,
                             case: { file: null, title: 'passes', params: null, suite: [] },
-                            definitionLocations: [ { column: null, file: '', line: null } ],
+                            definitionLocations: [ { kind: 'unknown' as const } ],
                             kind: 'test-start',
                             suitePath: []
                         },
                         {
                             attempt: 0,
                             case: { file: null, title: 'passes', params: null, suite: [] },
-                            definitionLocations: [ { column: null, file: '', line: null } ],
+                            definitionLocations: [ { kind: 'unknown' as const } ],
                             kind: 'test-end',
                             outcome: { kind: 'pass' },
                             suitePath: [],
@@ -254,7 +341,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() emits suite events for table path segments',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -264,7 +351,7 @@ export const testNode = createOverkillSuite({
                     engine.createRoot({
                         children: [
                             engine.createTestCase({
-                                definitionLocations: [ { column: null, file: '', line: null } ],
+                                definitionLocations: [ { kind: 'unknown' as const } ],
                                 body(testScope) {
                                     testScope.assert.true(true, { message: 'passes' });
                                     return testScope.assert.collect();
@@ -273,7 +360,7 @@ export const testNode = createOverkillSuite({
                                 title: 'first'
                             }),
                             engine.createTable({
-                                definitionLocations: [ { column: null, file: '', line: null } ],
+                                definitionLocations: [ { kind: 'unknown' as const } ],
                                 cases: [
                                     {
                                         body(testScope) {
@@ -322,14 +409,14 @@ export const testNode = createOverkillSuite({
                     {
                         kind: 'suite-start',
                         suitePath: [ {
-                            definitionLocations: [ { column: null, file: '', line: null } ],
+                            definitionLocations: [ { kind: 'unknown' as const } ],
                             title: 'rows'
                         } ]
                     },
                     {
                         kind: 'suite-end',
                         suitePath: [ {
-                            definitionLocations: [ { column: null, file: '', line: null } ],
+                            definitionLocations: [ { kind: 'unknown' as const } ],
                             title: 'rows'
                         } ]
                     }
@@ -339,55 +426,27 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() rejects reporter sink conflicts before starting the run',
             metadata: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
-                let bodyRan = false;
-                const realTimeReporter = createInMemoryRealTimeReporter();
-                const conflictingReporter: RealTimeReporter = {
-                    dispose: null,
-                    kind: 'real-time',
-                    name: 'conflicting',
-                    onEvent() {
-                        return undefined;
-                    },
-                    onFinish: null,
-                    sinks: [ { kind: 'stdout-raw' } ]
-                };
-                const testPlan = engine.createTestPlan(
-                    engine.createRoot({
-                        children: [
-                            engine.createTestCase({
-                                definitionLocations: [ { column: null, file: '', line: null } ],
-                                body(testScope) {
-                                    bodyRan = true;
-                                    testScope.assert.true(true, { message: 'passes' });
-                                    return testScope.assert.collect();
-                                },
-                                metadata: {},
-                                title: 'passes'
-                            })
-                        ],
-                        metadata: {},
-                        title: 'root'
-                    })
-                );
+                const executionState = createReporterConflictExecutionState();
+                const testPlan = createReporterConflictPlan(engine, executionState);
 
                 await scope.assert.rejects(async function executeWithConflictingReporters() {
                     await engine.execute(testPlan, {
                         execution: { mode: 'serial-in-process' },
                         reporters: [
-                            { ...realTimeReporter, sinks: [ { kind: 'stdout-raw' } ] },
-                            conflictingReporter
+                            createCountingReporter(executionState),
+                            createConflictingReporter()
                         ],
                         runFacts: {},
                         startedAt: '2026-07-15T00:00:00.000Z'
                     });
                 }, { message: 'Reporter sink conflict: stdout is claimed by incompatible reporters.' });
-                scope.assert.equal(bodyRan, false);
-                scope.assert.deepEqual(realTimeReporter.getRecordedEntries(), []);
+                scope.assert.equal(executionState.bodyRan(), false);
+                scope.assert.equal(executionState.reporterEventCount(), 0);
 
                 return scope.assert.collect();
             }

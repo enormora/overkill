@@ -10,12 +10,12 @@ type LoadNumbers = (prefix: string) => Generator<string, string, number>;
 type LoadAsyncNumbers = (prefix: string) => AsyncGenerator<string, string, number>;
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/doubles/test-double-generator.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testDouble.yields() returns fresh tracked iterators',
             metadata: {},
             body(scope: OverkillScope) {
@@ -62,7 +62,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'rule.yieldsFrom() delegates lazily with invocation arguments',
             metadata: {},
             body(scope: OverkillScope) {
@@ -89,7 +89,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'tracked iterators record return protocol events',
             metadata: {},
             body(scope: OverkillScope) {
@@ -107,7 +107,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'tracked iterators record throw protocol events',
             metadata: {},
             body(scope: OverkillScope) {
@@ -132,7 +132,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'tracked iterators record calls after completion',
             metadata: {},
             body(scope: OverkillScope) {
@@ -154,7 +154,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'reset detaches existing tracked iterators from history',
             metadata: {},
             body(scope: OverkillScope) {
@@ -172,7 +172,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testDouble.yieldsAsync() records async iterator events after settlement',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -205,7 +205,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'rule.yieldsAsyncFrom() delegates to sync and async sources',
             metadata: {},
             async body(scope: OverkillScope) {

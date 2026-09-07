@@ -1,9 +1,11 @@
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
+    defineOutputRenderer,
+    defineReporter,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import type { Reporter } from '../engine/reporter.ts';
+import type { DefinedReporter } from '../engine/reporter.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
@@ -16,37 +18,39 @@ import type { LoadedRunConfig } from './run-config.ts';
 import { RunCollectionError } from './run-errors.ts';
 import type { ResolvedRun, RunCommand, RunMicrotestProfileConfig, RunOrchestrator, RunSelection } from './run-types.ts';
 
-type PlainOutputIntent = {
-    readonly text: string;
-};
+const plainOutputRenderer = defineOutputRenderer(function createPlainRuntimeOutputRenderer() {
+    return {
+        render(intent): string {
+            return intent.text;
+        }
+    };
+});
 
-const plainOutputRenderer = {
-    render(intent: PlainOutputIntent): string {
-        return intent.text;
-    }
-};
+const memoryReporter = defineReporter(function createMemoryReporter() {
+    return {
+        dispose: null,
+        kind: 'real-time',
+        name: 'memory',
+        onEvent() {
+            return undefined;
+        },
+        onFinish: null,
+        sinks: [ { kind: 'memory' } ]
+    };
+});
 
-const memoryReporter: Reporter = {
-    dispose: null,
-    kind: 'real-time',
-    name: 'memory',
-    onEvent() {
-        return undefined;
-    },
-    onFinish: null,
-    sinks: [ { kind: 'memory' } ]
-};
-
-const terminalReporter: Reporter = {
-    dispose: null,
-    kind: 'real-time',
-    name: 'terminal',
-    onEvent() {
-        return undefined;
-    },
-    onFinish: null,
-    sinks: [ { kind: 'stdout-raw' } ]
-};
+const terminalReporter = defineReporter(function createTerminalReporter() {
+    return {
+        dispose: null,
+        kind: 'real-time',
+        name: 'terminal',
+        onEvent() {
+            return undefined;
+        },
+        onFinish: null,
+        sinks: [ { kind: 'stdout-raw' } ]
+    };
+});
 
 async function loadDefaultConfig(): Promise<LoadedRunConfig> {
     return {
@@ -63,8 +67,8 @@ async function loadDefaultConfig(): Promise<LoadedRunConfig> {
 
 function createPassingPlan(): TestPlan {
     const engine = createTestEngine();
-    const suiteLocation = { column: 5, file: `${process.cwd()}/source/a.test.ts`, line: 3 };
-    const testLocation = { column: 9, file: `${process.cwd()}/source/a.test.ts`, line: 5 };
+    const suiteLocation = { column: 5, file: `${process.cwd()}/source/a.test.ts`, kind: 'known' as const, line: 3 };
+    const testLocation = { column: 9, file: `${process.cwd()}/source/a.test.ts`, kind: 'known' as const, line: 5 };
     const testNode = engine.createSuite({
         children: [
             engine.createTestCase({
@@ -116,6 +120,7 @@ function createResolvedRun(
             cases: [],
             environment: {
                 node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
+                projectRoot: command.cwd,
                 runtimeStateDir: command.config.runtimeStateDir
             },
             execution: {
@@ -167,6 +172,7 @@ async function createResolvedRunWithOrphanLocation(command: RunCommand): Promise
                         definitionLocations: [ {
                             column: 11,
                             file: `${process.cwd()}/source/orphan.test.ts`,
+                            kind: 'known' as const,
                             line: 7
                         } ],
                         file: null,
@@ -195,7 +201,7 @@ function createListOnlyOrchestrator(resolve: RunOrchestrator['resolve']): RunOrc
 
 function createDependencies(
     orchestrator: RunOrchestrator,
-    createDefaultReporter: () => Promise<Reporter>
+    createDefaultReporter: () => Promise<DefinedReporter>
 ): CommandLineRunnerDependencies {
     return {
         createDefaultReporter,
@@ -231,12 +237,12 @@ async function listTests(
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/command-line-list-runner.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.listTests() renders the resolved plan tree without loading reporters',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -270,7 +276,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.listTests() preserves list selection',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -309,7 +315,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.listTests() renders definition locations when requested',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -336,7 +342,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.listTests() renders explicit orphan diagnostics',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -365,7 +371,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.listTests() renders orphan definition locations when requested',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -389,7 +395,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.listTests() maps collection runner errors without printing the plan',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -423,7 +429,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.listTests() maps config load errors',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -462,7 +468,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.listTests() maps thrown collection errors',
             metadata: {},
             async body(scope: OverkillScope) {
