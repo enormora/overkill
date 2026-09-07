@@ -1,9 +1,7 @@
 import { describe, expect, test } from 'tstyche';
 import type {
     DefinedOutputRenderer,
-    DefinedReporter,
-    OutputRenderer,
-    Reporter
+    DefinedReporter
 } from '../engine/engine.entry-point.ts';
 import {
     RunConfigError,
@@ -83,11 +81,11 @@ describe('@overkill-dev/run/command-line', function () {
     test('exposes typed config helpers', function () {
         expect<typeof defineConfig>().type.toBe<(config: RunProjectConfig) => RunProjectConfig>();
         expect<RunProjectConfig['outputRenderer']>().type.toBe<DefinedOutputRenderer | undefined>();
-        expect<LoadedRunConfig['outputRenderer']>().type.toBe<OutputRenderer>();
+        expect<LoadedRunConfig['outputRenderer']>().type.toBe<DefinedOutputRenderer>();
         expect<RunProjectConfig['reporters']>().type.toBe<
             readonly [DefinedReporter, ...DefinedReporter[]] | undefined
         >();
-        expect<LoadedRunConfig['reporters']>().type.toBe<readonly [Reporter, ...Reporter[]] | null>();
+        expect<LoadedRunConfig['reporters']>().type.toBe<readonly [DefinedReporter, ...DefinedReporter[]] | null>();
         expect<RunProjectResourceBudgets['residentSetBytes']>().type.toBe<number | null | undefined>();
         expect(new RunConfigError('Invalid config.')).type.toBe<RunConfigError>();
     });

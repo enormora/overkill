@@ -3,12 +3,13 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import type { OutputLineIntent } from '../engine/reporter-output.ts';
+import type { OutputLineIntent, OutputRenderer } from '../engine/reporter-output.ts';
+import { createReportingContext } from '../engine/reporting-context.ts';
 import { createGithubActionsOutputRenderer } from './github-actions-output-renderer.ts';
 
 const diagnosticIntent: OutputLineIntent = {
     annotation: {
-        location: { column: 5, file: 'source/users-test.ts', line: 10 },
+        location: { column: 5, file: 'source/users-test.ts', kind: 'known' as const, line: 10 },
         severity: 'error',
         title: 'users: creates profile'
     },
@@ -17,17 +18,21 @@ const diagnosticIntent: OutputLineIntent = {
     text: 'expected 100%, actual false'
 };
 
+function createRenderer(): OutputRenderer {
+    return createGithubActionsOutputRenderer()(createReportingContext({ projectRoot: null }));
+}
+
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/output-renderers/github-actions-output-renderer.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'GitHub Actions output renderer renders located diagnostics as workflow commands',
             metadata: {},
             body(scope: OverkillScope) {
-                const renderer = createGithubActionsOutputRenderer();
+                const renderer = createRenderer();
                 const renderedDiagnostic = [
                     '::error file=source/users-test.ts,line=10,col=5,title=users%3A creates profile::',
                     'expected 100%25, actual false'
@@ -43,11 +48,11 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'GitHub Actions output renderer passes unlocated output through',
             metadata: {},
             body(scope: OverkillScope) {
-                const renderer = createGithubActionsOutputRenderer();
+                const renderer = createRenderer();
 
                 scope.assert.equal(
                     renderer.render({
@@ -63,16 +68,16 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'GitHub Actions output renderer handles optional annotation properties',
             metadata: {},
             body(scope: OverkillScope) {
-                const renderer = createGithubActionsOutputRenderer();
+                const renderer = createRenderer();
 
                 scope.assert.equal(
                     renderer.render({
                         annotation: {
-                            location: { column: null, file: 'source/users-test.ts', line: 10 },
+                            location: { column: null, file: 'source/users-test.ts', kind: 'known' as const, line: 10 },
                             severity: 'warning',
                             title: null
                         },
@@ -85,7 +90,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(
                     renderer.render({
                         annotation: {
-                            location: { column: 5, file: 'source/users-test.ts', line: null },
+                            location: { column: 5, file: 'source/users-test.ts', kind: 'known' as const, line: null },
                             severity: 'error',
                             title: 'users'
                         },

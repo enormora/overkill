@@ -3,9 +3,9 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import type { Reporter } from '../engine/reporter.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
+import { defineFixedOutputRenderer, defineFixedReporter } from '../test-support/reporter-definition.ts';
 import {
     defaultMicrotestProfile,
     defaultRunRequest
@@ -15,22 +15,18 @@ import { createCommandLineRunner, type CommandLineRunnerDependencies } from './c
 import type { LoadedRunConfig } from './run-config.ts';
 import type { RunCommand, RunMicrotestProfileConfig, RunOrchestrator, RunRequest } from './run-types.ts';
 
-type PlainOutputIntent = {
-    readonly text: string;
-};
-
 type RecordedRunCommands = {
     readonly first: () => RunCommand | undefined;
     readonly record: (command: RunCommand) => void;
 };
 
-const plainOutputRenderer = {
-    render(intent: PlainOutputIntent): string {
+const plainOutputRenderer = defineFixedOutputRenderer({
+    render(intent): string {
         return intent.text;
     }
-};
+});
 
-const terminalReporter: Reporter = {
+const terminalReporter = defineFixedReporter({
     dispose: null,
     kind: 'real-time',
     name: 'terminal',
@@ -39,7 +35,7 @@ const terminalReporter: Reporter = {
     },
     onFinish: null,
     sinks: [ { kind: 'stdout-raw' } ]
-};
+});
 
 const defaultRequest: RunRequest = defaultRunRequest();
 
@@ -73,7 +69,7 @@ function createPassingPlan(): TestPlan {
         engine.createRoot({
             children: [
                 engine.createTestCase({
-                    definitionLocations: [ { column: null, file: '', line: null } ],
+                    definitionLocations: [ { kind: 'unknown' as const } ],
                     body(scope) {
                         scope.assert.true(true);
                         return scope.assert.collect();
@@ -113,6 +109,7 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
                     cases: [],
                     environment: {
                         node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
+                        projectRoot: command.cwd,
                         runtimeStateDir: command.config.runtimeStateDir
                     },
                     execution: {
@@ -238,12 +235,12 @@ function assertResourceUsageCommand(scope: OverkillScope, command: RunCommand): 
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/command-line-runner-resource-usage.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() carries resource usage config and request values',
             metadata: {},
             async body(scope: OverkillScope) {

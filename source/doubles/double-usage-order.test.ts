@@ -41,7 +41,7 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
             engine.createRoot({
                 children: [
                     engine.createTestCase({
-                        definitionLocations: [ { column: null, file: '', line: null } ],
+                        definitionLocations: [ { kind: 'unknown' as const } ],
                         body,
                         metadata: {},
                         title: 'case'
@@ -108,12 +108,12 @@ function failureSummaries(result: RunResult): readonly string[] | null {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/doubles/double-usage-order.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage construction argument assertions use construction history',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -143,7 +143,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage indexed argument assertions validate index and event presence',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -175,7 +175,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage order assertions compare events across doubles from one scope',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -198,7 +198,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage construction order compares constructor events',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -222,7 +222,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage order assertions require all previous events before the next double',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -247,7 +247,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage order assertions reject invalid and unused order inputs',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -278,7 +278,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage order assertions reject mixed double scopes',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -315,7 +315,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage count and argument assertions reject non-doubles independently',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -345,7 +345,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage assertions reject non-doubles with assertion diagnostics',
             metadata: {},
             body: async function body(scope: OverkillScope) {

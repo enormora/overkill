@@ -7,12 +7,12 @@ import { collectionCount } from './collection-count.ts';
 import { isPlainObject, ownKeys, partialDeepEqual } from './partial-matching.ts';
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/assertion-protocol/partial-matching.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'partialDeepEqual() matches nested partial arrays, maps, sets, and objects',
             metadata: {},
             body(scope: OverkillScope) {
@@ -33,7 +33,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'partialDeepEqual() rejects mismatched partial collection shapes',
             metadata: {},
             body(scope: OverkillScope) {
@@ -46,7 +46,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'collectionCount() reports known, iterable, and unsupported collection counts',
             metadata: {},
             body(scope: OverkillScope) {
@@ -77,7 +77,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'isPlainObject() and ownKeys() expose plain-object identity and keys',
             metadata: {},
             body(scope: OverkillScope) {

@@ -9,9 +9,9 @@ import type {
     SetDiffOperation
 } from '../diff/diff-shape.ts';
 import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
+import { formatAssertionSourceLocations, type ReportingContext } from '../engine/reporting-context.ts';
 import type { TestFailure } from '../engine/run-result.ts';
 import { formatSerializedValue, keyText } from './serialized-value-rendering.ts';
-import { formatSourceLocations } from './source-location-rendering.ts';
 
 const blockLineLimit = 100;
 const bytesPerKilobyte = 1024;
@@ -236,15 +236,15 @@ function failedCheckDetailLines(check: FailedCheck): readonly string[] {
         : formatDiff(check.diff);
 }
 
-function formatFailedCheck(check: FailedCheck): readonly string[] {
+function formatFailedCheck(check: FailedCheck, context: ReportingContext): readonly string[] {
     const path = formatPath(check.path);
-    const sourceLocations = formatSourceLocations(check.sourceLocations);
+    const sourceLocations = formatAssertionSourceLocations(check.sourceLocations, context);
     const detailLines = failedCheckDetailLines(check);
     const childLines = check.kind === 'composite'
         ? check.children.flatMap(function formatChild(child, index) {
             return [
                 `child check ${index + 1}`,
-                ...formatFailedCheck(child).map(function indentChild(line) {
+                ...formatFailedCheck(child, context).map(function indentChild(line) {
                     return `  ${line}`;
                 })
             ];
@@ -286,11 +286,14 @@ function formatBodyErrorFailure(failure: Extract<TestFailure, { readonly kind: '
     ];
 }
 
-function formatAssertionFailure(failure: Extract<TestFailure, { readonly kind: 'assertion'; }>): readonly string[] {
+function formatAssertionFailure(
+    failure: Extract<TestFailure, { readonly kind: 'assertion'; }>,
+    context: ReportingContext
+): readonly string[] {
     return failure.checks.flatMap(function formatCheck(check, index) {
         const prefix = failure.checks.length === 1 ? [] : [ `check ${index + 1}` ];
 
-        return [ ...prefix, ...formatFailedCheck(check) ];
+        return [ ...prefix, ...formatFailedCheck(check, context) ];
     });
 }
 
@@ -301,9 +304,9 @@ function formatTimeoutFailure(failure: Extract<TestFailure, { readonly kind: 'ti
     ];
 }
 
-export function formatFailure(failure: TestFailure): readonly string[] {
+export function formatFailure(failure: TestFailure, context: ReportingContext): readonly string[] {
     if (failure.kind === 'assertion') {
-        return formatAssertionFailure(failure);
+        return formatAssertionFailure(failure, context);
     }
 
     if (failure.kind === 'body-error') {

@@ -32,11 +32,21 @@ export type AssertionOptions = {
     readonly message: string;
 };
 
-export type SourceLocation = {
+export type UnknownSourceLocation = {
+    readonly column?: never;
+    readonly file?: never;
+    readonly kind: 'unknown';
+    readonly line?: never;
+};
+
+export type KnownSourceLocation = {
     readonly column: number | null;
     readonly file: string;
+    readonly kind: 'known';
     readonly line: number | null;
 };
+
+export type SourceLocation = KnownSourceLocation | UnknownSourceLocation;
 
 export type SourceLocationProvider = () => SourceLocation;
 

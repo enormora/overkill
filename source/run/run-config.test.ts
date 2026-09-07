@@ -6,6 +6,7 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import { createReportingContext } from '../engine/reporting-context.ts';
 import { defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
 import { defineConfig, loadRunConfig } from './run-config.ts';
 
@@ -31,12 +32,12 @@ function assertDefaultMicrotestResourceUsage(scope: OverkillScope, config: Loade
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-config.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'defineConfig() returns the project config unchanged',
             metadata: {},
             body(scope: OverkillScope) {
@@ -48,7 +49,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() returns defaults when no config exists',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -57,7 +58,10 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.equal(config.configPath, null);
                 scope.assert.deepEqual(config.loader, { sourceMaps: false, stripMode: 'strip-only' });
-                scope.assert.equal(typeof config.outputRenderer.render, 'function');
+                scope.assert.equal(
+                    typeof config.outputRenderer(createReportingContext({ projectRoot: null })).render,
+                    'function'
+                );
                 scope.assert.deepEqual(config.profiles, {
                     microtest: defaultMicrotestProfile()
                 });
@@ -68,7 +72,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() discovers a native TypeScript named config export',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -93,7 +97,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() discovers a JavaScript named config export',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -114,7 +118,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() loads microtest resource usage policy',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -164,7 +168,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() normalizes named profile overrides',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -227,7 +231,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() normalizes unmeasured named profile overrides',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -265,7 +269,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() inherits unmeasured named profile defaults',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -294,7 +298,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects unknown config keys',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -311,7 +315,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects profiles without a test family',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -336,7 +340,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects unsupported profile test families',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -363,7 +367,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects resource budgets without measurement',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -393,7 +397,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects invalid resource usage numbers',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -424,7 +428,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects unknown microtest profile keys',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -456,7 +460,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects invalid profile names',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -483,7 +487,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects an explicit empty reporter list',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -500,7 +504,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects profile soft timeouts greater than hard timeouts',
             metadata: {},
             async body(scope: OverkillScope) {

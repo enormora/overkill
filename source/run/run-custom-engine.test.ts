@@ -94,12 +94,12 @@ function invalidCustomEngineCommand(engine: RunCommand['engine']): RunCommand {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-custom-engine.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() rejects instance engines for supervised execution',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -119,7 +119,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() rejects invalid supervised module engine requests',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -160,7 +160,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunEngineModule() loads value and getter engine exports',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -192,7 +192,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunEngineModule() reports invalid module exports',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -220,7 +220,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() executes a supervised module engine value export',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -233,7 +233,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() collects a supervised module engine getter export',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -253,7 +253,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() reports invalid module engine exports',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -273,7 +273,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() rejects module engines when test nodes use another engine',
             metadata: {},
             async body(scope: OverkillScope) {

@@ -109,51 +109,53 @@ function detailLines(result: RunResult): readonly string[] {
 }
 
 export function createDotReporter(dependencies: DotReporterDependencies): DefinedReporter<RealTimeReporter> {
-    const progress = createTerminalProgressRenderer({
-        interactive: dependencies.interactive,
-        output: dependencies.stdout
-    });
-    let finished = false;
+    return defineReporter(function createDotRuntimeReporter() {
+        const progress = createTerminalProgressRenderer({
+            interactive: dependencies.interactive,
+            output: dependencies.stdout
+        });
+        let finished = false;
 
-    function writeLine(line: string): void {
-        dependencies.stdout.write(`${line}\n`);
-    }
-
-    function finishProgress(): void {
-        if (finished) {
-            return;
+        function writeLine(line: string): void {
+            dependencies.stdout.write(`${line}\n`);
         }
 
-        finished = true;
-        progress.finish();
-    }
+        function finishProgress(): void {
+            if (finished) {
+                return;
+            }
 
-    return defineReporter({
-        dispose() {
-            progress.dispose();
-        },
-        kind: 'real-time',
-        name: 'dot',
-        sinks: [ { kind: 'stdout-raw' } ],
+            finished = true;
+            progress.finish();
+        }
 
-        async onEvent(event: ReporterEvent) {
-            if (event.kind === 'test-end') {
-                progress.writeMark(markForVerdict(event.verdict));
-            } else if (event.kind === 'runner-error') {
-                if (finished) {
-                    writeLine(formatRunnerError(event.error));
-                } else {
-                    progress.writeMark(runnerErrorMark);
+        return {
+            dispose() {
+                progress.dispose();
+            },
+            kind: 'real-time',
+            name: 'dot',
+            sinks: [ { kind: 'stdout-raw' } ],
+
+            async onEvent(event: ReporterEvent) {
+                if (event.kind === 'test-end') {
+                    progress.writeMark(markForVerdict(event.verdict));
+                } else if (event.kind === 'runner-error') {
+                    if (finished) {
+                        writeLine(formatRunnerError(event.error));
+                    } else {
+                        progress.writeMark(runnerErrorMark);
+                    }
+                }
+            },
+
+            async onFinish(result: RunResult) {
+                finishProgress();
+                writeLine(formatSummary(result));
+                for (const detailLine of detailLines(result)) {
+                    writeLine(detailLine);
                 }
             }
-        },
-
-        async onFinish(result: RunResult) {
-            finishProgress();
-            writeLine(formatSummary(result));
-            for (const detailLine of detailLines(result)) {
-                writeLine(detailLine);
-            }
-        }
+        };
     });
 }

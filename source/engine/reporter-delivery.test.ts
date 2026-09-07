@@ -13,7 +13,7 @@ import {
 import { createEngine, type Engine } from './engine.ts';
 import { createExecute } from './execution.ts';
 import { createReporterDispatcher } from './reporter-dispatcher.ts';
-import type { FinalResultReporter, RealTimeReporter } from './reporter.ts';
+import { defineReporter, type DefinedReporter, type FinalResultReporter, type RealTimeReporter } from './reporter.ts';
 import type { RunResult, RunnerError } from './run-result.ts';
 import type { TestPlan } from './test-plan.ts';
 
@@ -22,7 +22,7 @@ function createPassingPlan(engine: Engine): TestPlan {
         engine.createRoot({
             children: [
                 engine.createTestCase({
-                    definitionLocations: [ { column: null, file: '', line: null } ],
+                    definitionLocations: [ { kind: 'unknown' as const } ],
                     body(testScope) {
                         testScope.assert.true(true, { message: 'passes' });
                         return testScope.assert.collect();
@@ -35,6 +35,14 @@ function createPassingPlan(engine: Engine): TestPlan {
             title: 'root'
         })
     );
+}
+
+function defineRuntimeReporter<ReporterValue extends FinalResultReporter | RealTimeReporter>(
+    reporter: ReporterValue
+): DefinedReporter<ReporterValue> {
+    return defineReporter(function createRuntimeReporter() {
+        return reporter;
+    });
 }
 
 function runnerErrorMessages(reporter: InMemoryRealTimeReporter): readonly string[] {
@@ -66,7 +74,7 @@ type FinalPhaseReporterFixture = {
     readonly finishObserver: InMemoryRealTimeReporter;
     readonly readFailingFinalInput: () => RunResult | null;
     readonly readFailingFinishInput: () => RunResult | null;
-    readonly reporters: readonly (FinalResultReporter | RealTimeReporter)[];
+    readonly reporters: readonly DefinedReporter[];
 };
 
 function createReporterSignal(): ReporterSignal {
@@ -141,7 +149,12 @@ function createFinalPhaseReporterFixture(): FinalPhaseReporterFixture {
         readFailingFinishInput() {
             return failingFinishInput;
         },
-        reporters: [ finalObserver, finishObserver, failingFinalReporter, failingFinishReporter ]
+        reporters: [
+            finalObserver,
+            finishObserver,
+            defineRuntimeReporter(failingFinalReporter),
+            defineRuntimeReporter(failingFinishReporter)
+        ]
     };
 }
 
@@ -192,12 +205,12 @@ function createDefaultReporterDeliveryEngine(): Engine {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/reporter-delivery.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() records reporter callback failures and notifies other real-time reporters',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -220,7 +233,7 @@ export const testNode = createOverkillSuite({
 
                 const result = await engine.execute(createPassingPlan(engine), {
                     execution: { mode: 'serial-in-process' },
-                    reporters: [ failingReporter, observer ],
+                    reporters: [ defineRuntimeReporter(failingReporter), observer ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
@@ -235,7 +248,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() does not recurse when a reporter fails while handling runner-error',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -272,7 +285,11 @@ export const testNode = createOverkillSuite({
 
                 const result = await engine.execute(createPassingPlan(engine), {
                     execution: { mode: 'serial-in-process' },
-                    reporters: [ failingReporter, runnerErrorFailingReporter, observer ],
+                    reporters: [
+                        defineRuntimeReporter(failingReporter),
+                        defineRuntimeReporter(runnerErrorFailingReporter),
+                        observer
+                    ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
@@ -289,7 +306,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() isolates reporter callback timeouts',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -314,7 +331,7 @@ export const testNode = createOverkillSuite({
 
                 const execution = engine.execute(createPassingPlan(engine), {
                     execution: { mode: 'serial-in-process' },
-                    reporters: [ hangingReporter, createInMemoryRealTimeReporter() ],
+                    reporters: [ defineRuntimeReporter(hangingReporter), createInMemoryRealTimeReporter() ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
@@ -331,7 +348,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() records final reporter errors and emits them after real-time finish',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -349,7 +366,7 @@ export const testNode = createOverkillSuite({
 
                 const result = await engine.execute(createPassingPlan(engine), {
                     execution: { mode: 'serial-in-process' },
-                    reporters: [ observer, failingFinalReporter ],
+                    reporters: [ observer, defineRuntimeReporter(failingFinalReporter) ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
@@ -366,7 +383,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() returns final-phase reporter errors without changing sibling callback input',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -386,7 +403,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() disposes reporters once after final reporting',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -413,7 +430,7 @@ export const testNode = createOverkillSuite({
 
                 await engine.execute(createPassingPlan(engine), {
                     execution: { mode: 'serial-in-process' },
-                    reporters: [ reporter ],
+                    reporters: [ defineRuntimeReporter(reporter) ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
@@ -424,7 +441,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() records dispose failures in the returned result',
             metadata: {},
             body: async function body(scope: OverkillScope) {
@@ -444,7 +461,7 @@ export const testNode = createOverkillSuite({
 
                 const result = await engine.execute(createPassingPlan(engine), {
                     execution: { mode: 'serial-in-process' },
-                    reporters: [ failingReporter ],
+                    reporters: [ defineRuntimeReporter(failingReporter) ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });

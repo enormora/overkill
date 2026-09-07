@@ -5,10 +5,11 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import type { SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { resolveRootMetadata } from '../engine/metadata.ts';
+import { createReportingContext } from '../engine/reporting-context.ts';
 import type { OutputLineIntent, ReporterOutput } from '../engine/reporter-output.ts';
-import type { ReporterEvent } from '../engine/reporter.ts';
+import type { RealTimeReporter, ReporterEvent } from '../engine/reporter.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
-import { createBriefReporter } from './brief-reporter.ts';
+import { createBriefReporter, type BriefReporterSinks } from './brief-reporter.ts';
 
 const caseId = {
     file: 'source/users.test.ts',
@@ -16,8 +17,13 @@ const caseId = {
     params: null,
     suite: [ 'users' ]
 } as const;
-const definitionLocation = { column: null, file: 'source/users.test.ts', line: null };
+const definitionLocation = { column: null, file: 'source/users.test.ts', kind: 'known' as const, line: null };
 const suitePath = [ { definitionLocations: [ definitionLocation ], title: 'users' } ] as const;
+const reportingContext = createReportingContext({ projectRoot: null });
+
+function createBriefRuntimeReporter(): RealTimeReporter<BriefReporterSinks> {
+    return createBriefReporter()(reportingContext);
+}
 
 async function readOutput(output: unknown): Promise<readonly OutputLineIntent[]> {
     const resolvedOutput = await output;
@@ -54,7 +60,12 @@ function failEvent(): Extract<ReporterEvent, { readonly kind: 'test-end'; }> {
                             expected: { kind: 'boolean', value: true },
                             id: '1',
                             kind: 'leaf',
-                            sourceLocations: [ { column: 5, file: 'source/users.test.ts', line: 10 } ],
+                            sourceLocations: [ {
+                                column: 5,
+                                file: 'source/users.test.ts',
+                                kind: 'known' as const,
+                                line: 10
+                            } ],
                             path: [],
                             source: 'assert',
                             summary: 'expected true, actual false'
@@ -92,6 +103,7 @@ function assertFailureAnnotations(scope: OverkillScope, failureOutput: readonly 
     scope.assert.deepEqual(location, {
         column: 5,
         file: 'source/users.test.ts',
+        kind: 'known',
         line: 10
     });
     scope.assert.equal(unlocatedAnnotation.location, null);
@@ -127,16 +139,16 @@ function assertRunnerErrorOutput(scope: OverkillScope, errorOutput: readonly Out
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/brief-reporter.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter declares managed primary stdout',
             metadata: {},
             body(scope: OverkillScope) {
-                const reporter = createBriefReporter();
+                const reporter = createBriefRuntimeReporter();
 
                 scope.assert.deepEqual(reporter.sinks, [ { kind: 'stdout-managed-primary' } ]);
 
@@ -144,11 +156,11 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter prints run start and omits passing test lines',
             metadata: {},
             async body(scope: OverkillScope) {
-                const reporter = createBriefReporter();
+                const reporter = createBriefRuntimeReporter();
                 const startOutput = await readOutput(reporter.onEvent({
                     facts: { cases: [ { id: caseId, metadata: {} } ] },
                     kind: 'run-start',
@@ -169,11 +181,11 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter prints progress every one hundred completed tests',
             metadata: {},
             async body(scope: OverkillScope) {
-                const reporter = createBriefReporter();
+                const reporter = createBriefRuntimeReporter();
 
                 await reporter.onEvent({
                     facts: { cases: Array.from({ length: 250 }) },
@@ -199,11 +211,11 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter uses an unknown progress denominator without run facts',
             metadata: {},
             async body(scope: OverkillScope) {
-                const reporter = createBriefReporter();
+                const reporter = createBriefRuntimeReporter();
 
                 for (let index = 0; index < 99; index += 1) {
                     await reporter.onEvent(passEvent());
@@ -222,11 +234,11 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter suppresses final progress at the planned count',
             metadata: {},
             async body(scope: OverkillScope) {
-                const reporter = createBriefReporter();
+                const reporter = createBriefRuntimeReporter();
 
                 await reporter.onEvent({
                     facts: { cases: Array.from({ length: 100 }) },
@@ -247,11 +259,11 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter prints one diagnostic line per failure cause',
             metadata: {},
             async body(scope: OverkillScope) {
-                const reporter = createBriefReporter();
+                const reporter = createBriefRuntimeReporter();
                 const failureOutput = await readOutput(reporter.onEvent(failEvent()));
 
                 scope.assert.deepEqual(
@@ -269,11 +281,11 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter prints runner errors and ignores suite events',
             metadata: {},
             async body(scope: OverkillScope) {
-                const reporter = createBriefReporter();
+                const reporter = createBriefRuntimeReporter();
                 const suiteOutput = await readOutput(reporter.onEvent({
                     kind: 'suite-start',
                     suitePath: [ { definitionLocations: [ definitionLocation ], title: 'source' } ]
@@ -287,11 +299,11 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter prints final counts',
             metadata: {},
             async body(scope: OverkillScope) {
-                const reporter = createBriefReporter();
+                const reporter = createBriefRuntimeReporter();
                 scope.require.notNull(reporter.onFinish);
 
                 const finishOutput = await readOutput(reporter.onFinish(runResultFactory.build({

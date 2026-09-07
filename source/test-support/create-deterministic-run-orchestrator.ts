@@ -15,19 +15,23 @@ function installNoPolicyRestriction(): () => void {
     };
 }
 
-export function createDeterministicRunOrchestrator(): RunOrchestrator {
+export function createDeterministicRunOrchestratorWithSeed(createSeed: () => bigint): RunOrchestrator {
     const engine = createTestEngine();
     const wallClock = createWallClock();
     const environment: RuntimeCapabilityPolicyEnvironment = {};
     const reporterDispatcher: ReporterDispatcher = {
-        async disposeReporters() {
-            return [];
-        },
-        async reportEvent() {
-            return [];
-        },
-        async reportResult() {
-            return [];
+        async createDelivery() {
+            return {
+                async disposeReporters() {
+                    return [];
+                },
+                async reportEvent() {
+                    return [];
+                },
+                async reportResult() {
+                    return [];
+                }
+            };
         },
         async trackRunnerErrorDelivery(work) {
             return {
@@ -69,9 +73,7 @@ export function createDeterministicRunOrchestrator(): RunOrchestrator {
                 }
             };
         },
-        createSeed() {
-            return deterministicSeed;
-        },
+        createSeed,
         defaultEngine: defaultRunEngine,
         execute: engine.execute,
         runtimeCapabilityPolicy: {
@@ -91,5 +93,11 @@ export function createDeterministicRunOrchestrator(): RunOrchestrator {
         },
         reporterDispatcher,
         wallClock
+    });
+}
+
+export function createDeterministicRunOrchestrator(): RunOrchestrator {
+    return createDeterministicRunOrchestratorWithSeed(function createSeed() {
+        return deterministicSeed;
     });
 }

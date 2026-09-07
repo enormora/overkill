@@ -82,12 +82,12 @@ const benchmarkCommandsFactory = createFactory<CommandLineBenchmarkCommands>(fun
 });
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/command-line-command-namespace.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'command namespace loads only selected command families',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -108,7 +108,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'command namespace routes every lazy command method',
             metadata: {},
             async body(scope: OverkillScope) {

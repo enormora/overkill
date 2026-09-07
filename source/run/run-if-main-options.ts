@@ -2,8 +2,8 @@ import type {
     Metadata,
     TestFamily
 } from '../engine/metadata.ts';
-import type { Reporter } from '../engine/reporter.ts';
-import type { OutputRenderer } from '../engine/reporter-output.ts';
+import type { DefinedReporter } from '../engine/reporter.ts';
+import type { DefinedOutputRenderer } from '../engine/reporter-output.ts';
 import { createDefaultDirectReporter } from './default-direct-reporter.ts';
 import type { LoadedRunConfig } from './run-config.ts';
 import type {
@@ -17,8 +17,8 @@ export type RunIfMainRootOptions = {
 };
 
 export type RunIfMainOptions = {
-    readonly outputRenderer?: OutputRenderer;
-    readonly reporters?: readonly Reporter[];
+    readonly outputRenderer?: DefinedOutputRenderer;
+    readonly reporters?: readonly DefinedReporter[];
     readonly root?: RunIfMainRootOptions;
 };
 
@@ -36,7 +36,7 @@ export async function selectedReporters(
     profile: RunMicrotestProfileConfig,
     config: LoadedRunConfig,
     options: RunIfMainOptions | undefined
-): Promise<readonly Reporter[]> {
+): Promise<readonly DefinedReporter[]> {
     if (options?.reporters !== undefined) {
         return options.reporters;
     }
@@ -52,7 +52,10 @@ export async function selectedReporters(
     return [ await createDefaultDirectReporter() ];
 }
 
-export function selectedOutputRenderer(config: LoadedRunConfig, options: RunIfMainOptions | undefined): OutputRenderer {
+export function selectedOutputRenderer(
+    config: LoadedRunConfig,
+    options: RunIfMainOptions | undefined
+): DefinedOutputRenderer {
     return options?.outputRenderer ?? config.outputRenderer;
 }
 

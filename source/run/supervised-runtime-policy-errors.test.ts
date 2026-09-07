@@ -33,12 +33,12 @@ function reporterError(): RunnerError {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/supervised-runtime-policy-errors.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title:
                 'deduplicatedChildRuntimePolicyErrors() drops child process.env errors already observed by the supervisor',
             metadata: {},
@@ -63,7 +63,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'deduplicatedChildRuntimePolicyErrors() preserves process.env errors for another boundary',
             metadata: {},
             body(scope: OverkillScope) {
@@ -87,7 +87,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'deduplicatedChildRuntimePolicyErrors() preserves non-env errors',
             metadata: {},
             body(scope: OverkillScope) {

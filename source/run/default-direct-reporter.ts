@@ -1,19 +1,11 @@
 import {
     isReporter,
-    type Reporter
+    type DefinedReporter
 } from '../engine/reporter.ts';
+import { createLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 
-export async function createDefaultDirectReporter(): Promise<Reporter> {
-    const reporterModule = await import('@overkill-dev/reporter-line');
-
-    if (
-        !Object.hasOwn(reporterModule, 'createLineReporter') ||
-        typeof reporterModule.createLineReporter !== 'function'
-    ) {
-        throw new TypeError('Default line reporter module is invalid.');
-    }
-
-    const reporter: unknown = Reflect.apply(reporterModule.createLineReporter, reporterModule, []);
+export async function createDefaultDirectReporter(): Promise<DefinedReporter> {
+    const reporter: unknown = createLineReporter();
 
     if (!isReporter(reporter)) {
         throw new TypeError('Default line reporter factory returned an invalid reporter.');

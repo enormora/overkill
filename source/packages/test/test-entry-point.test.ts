@@ -241,6 +241,12 @@ async function executeAuthoredNode(testNode: TestNode): Promise<Awaited<ReturnTy
 }
 
 function assertSourceLocationInThisFile(scope: OverkillScope, location: SourceLocation): void {
+    if (location.kind !== 'known') {
+        scope.assert.equal(location.kind, 'known');
+
+        return;
+    }
+
     scope.assert.match(
         location.file.replaceAll('\\', '/'),
         /source\/packages\/test\/test-entry-point\.test\.[cm]?[jt]s$/u
@@ -342,12 +348,12 @@ function rootDoublesBody(testScope: TestScope): ReturnType<TestBody> {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/packages/test/test-entry-point.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test staged root authoring placeholders throw unavailable errors',
             metadata: {},
             body(scope: OverkillScope) {
@@ -367,7 +373,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test test() and suite() create executable engine nodes',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -382,7 +388,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test table() creates parameterized executable engine nodes',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -399,7 +405,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test root doubles pass through engine assertions',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -411,7 +417,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test defineMacro() forwards definition and assertion source locations',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -426,7 +432,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test defineParameterizedTestBody() forwards assertion source locations',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -441,7 +447,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test captures definition locations from the authoring callsite',
             metadata: {},
             body(scope: OverkillScope) {
@@ -455,7 +461,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test delegates invalid authoring inputs to engine validation',
             metadata: {},
             body(scope: OverkillScope) {

@@ -6,12 +6,12 @@ import {
 import { serializeValue, serializeValueWithBudget } from './serialized-value.ts';
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/compare/serialized-value.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValue() preserves primitive edge cases explicitly',
             metadata: {},
             body(scope: OverkillScope) {
@@ -52,7 +52,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValue() handles functions, arrays, holes, objects, symbols, and accessors',
             metadata: {},
             body(scope: OverkillScope) {
@@ -114,7 +114,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValue() handles maps and sets',
             metadata: {},
             body(scope: OverkillScope) {
@@ -128,7 +128,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValue() handles errors, dates, and regexps',
             metadata: {},
             body(scope: OverkillScope) {
@@ -150,7 +150,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValue() handles opaque references',
             metadata: {},
             body(scope: OverkillScope) {
@@ -172,7 +172,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValue() handles binary value kinds',
             metadata: {},
             body(scope: OverkillScope) {
@@ -214,7 +214,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValue() represents cycles and repeated references',
             metadata: {},
             body(scope: OverkillScope) {
@@ -237,7 +237,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValueWithBudget() enforces every configured budget boundary',
             metadata: {},
             body(scope: OverkillScope) {
@@ -315,7 +315,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValue() catches unavailable proxy introspection',
             metadata: {},
             body(scope: OverkillScope) {

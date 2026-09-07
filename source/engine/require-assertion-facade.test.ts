@@ -26,7 +26,12 @@ type RequirePayloadSamples = {
     readonly instanceOf: RequireAssertionNode | undefined;
 };
 
-const testLocation: SourceLocation = { column: 7, file: '/test/require-assertion-facade.test.ts', line: 11 };
+const testLocation: SourceLocation = {
+    column: 7,
+    file: '/test/require-assertion-facade.test.ts',
+    kind: 'known' as const,
+    line: 11
+};
 
 type InstanceOfRequireAssertionNode = Extract<RequireAssertionNode, { readonly check: 'instance-of'; }>;
 
@@ -133,12 +138,12 @@ function recordRequireNodes(facade: RequireAssertionFacade): void {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/require-assertion-facade.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createRecordingRequireFacade() records every built-in requirement node',
             metadata: {},
             body(scope: OverkillScope) {
@@ -205,7 +210,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createRecordingRequireFacade() applies annotated messages',
             metadata: {},
             body(scope: OverkillScope) {

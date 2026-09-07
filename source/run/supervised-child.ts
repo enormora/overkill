@@ -2,12 +2,14 @@ import { createWallClock } from '@enormora/wall-clock';
 import { caseIdentityKey, type CaseId } from '../engine/identity.ts';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
-import type {
-    Reporter,
-    RunResult,
-    RunnerError,
-    RunResourceUsageTracker,
-    TestPlan
+import {
+    createPlainOutputRenderer,
+    defineReporter,
+    type DefinedReporter,
+    type RunResult,
+    type RunnerError,
+    type RunResourceUsageTracker,
+    type TestPlan
 } from '../packages/engine/engine.entry-point.ts';
 import { createNodeResourceUsageTracker } from './resource-usage.ts';
 import {
@@ -58,23 +60,21 @@ function ignoreLine(): void {
     return undefined;
 }
 
-function renderNothing(): string {
-    return '';
-}
-
-function createIpcReporter(host: SupervisedChildHost): Reporter {
-    return {
-        dispose: null,
-        kind: 'real-time',
-        name: 'supervised-child-ipc',
-        onEvent(event) {
-            if (event.kind !== 'run-start' && event.kind !== 'run-end') {
-                host.send({ event, kind: 'event' });
-            }
-        },
-        onFinish: null,
-        sinks: [ { kind: 'memory' } ]
-    };
+function createIpcReporter(host: SupervisedChildHost): DefinedReporter {
+    return defineReporter(function createIpcRuntimeReporter() {
+        return {
+            dispose: null,
+            kind: 'real-time',
+            name: 'supervised-child-ipc',
+            onEvent(event) {
+                if (event.kind !== 'run-start' && event.kind !== 'run-end') {
+                    host.send({ event, kind: 'event' });
+                }
+            },
+            onFinish: null,
+            sinks: [ { kind: 'memory' } ]
+        };
+    });
 }
 
 function selectAssignedCases(
@@ -251,7 +251,7 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
 
     return await execute(testPlan, {
         execution: { mode: executionMode(input.command) },
-        outputRenderer: { render: renderNothing },
+        outputRenderer: createPlainOutputRenderer(),
         reporters: [ createIpcReporter(input.host) ],
         resourceBudgets: input.command.resourceBudgets,
         resourceUsageTracker: createResourceUsageTracker(input.command, input.host),

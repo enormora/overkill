@@ -33,12 +33,12 @@ function runCommand(profile: string, config = defaultRunConfig()): RunCommand {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-profile-name.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'profile name validation accepts project-owned names',
             metadata: {},
             body(scope: OverkillScope) {
@@ -50,7 +50,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'profile name validation rejects invalid and reserved names',
             metadata: {},
             body(scope: OverkillScope) {
@@ -62,7 +62,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() selects a project-owned profile name',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -93,7 +93,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() rejects invalid profile names',
             metadata: {},
             async body(scope: OverkillScope) {

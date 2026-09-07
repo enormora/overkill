@@ -28,12 +28,12 @@ function discoveredFile(file: string): DiscoveredRunFile {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-test-modules.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunTestModules() imports named testNode exports for the selected engine',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -59,7 +59,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunTestModules() rejects missing and foreign testNode exports',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -79,7 +79,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunTestModules() reports module import failures as collection errors',
             metadata: {},
             async body(scope: OverkillScope) {

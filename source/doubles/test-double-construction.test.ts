@@ -11,12 +11,12 @@ type ClientWithId = {
 };
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/doubles/test-double-construction.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'construction rules can call custom answers',
             metadata: {},
             body(scope: OverkillScope) {
@@ -36,7 +36,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'construction rules can sequence answers',
             metadata: {},
             body(scope: OverkillScope) {
@@ -60,7 +60,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'construction rules can throw',
             metadata: {},
             body(scope: OverkillScope) {
@@ -79,7 +79,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'constructor doubles throw TypeError when no behavior can answer',
             metadata: {},
             body(scope: OverkillScope) {
@@ -97,7 +97,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'constructor doubles reject primitive behavior answers',
             metadata: {},
             body(scope: OverkillScope) {

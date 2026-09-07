@@ -1,4 +1,4 @@
-import { validateReporterSinks } from '../engine/reporter.ts';
+import type { ReporterDelivery } from '../engine/reporter-dispatcher.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { selectedProfile } from './run-facts.ts';
@@ -45,10 +45,9 @@ function appendRunnerErrors(result: RunResult, runnerErrors: readonly RunResult[
 
 async function throwWithReporterCleanupErrors(
     error: unknown,
-    reporters: RunCommand['config']['reporters'],
-    dependencies: RunOrchestratorDependencies
+    reporterDelivery: ReporterDelivery
 ): Promise<never> {
-    const disposeErrors = await dependencies.reporterDispatcher.disposeReporters(reporters);
+    const disposeErrors = await reporterDelivery.disposeReporters();
 
     if (disposeErrors.length > 0) {
         throw new AggregateError(
@@ -79,23 +78,22 @@ export async function reportCollectionErrorResult(
 ): Promise<RunResult> {
     const profile = selectedProfile(command.request, command.config);
     const reporters = resolveRunReporters(profile, command.config.reporters);
+    const reporterDelivery = await dependencies.reporterDispatcher.createDelivery(
+        reporters,
+        command.config.outputRenderer
+    );
 
     try {
-        validateReporterSinks(reporters);
-        const runEndErrors = await dependencies.reporterDispatcher.reportEvent(reporters, {
+        const runEndErrors = await reporterDelivery.reportEvent({
             kind: 'run-end',
             result
-        }, command.config.outputRenderer);
+        });
         const resultForFinalReporting = appendRunnerErrors(result, runEndErrors);
-        const finalReporterErrors = await dependencies.reporterDispatcher.reportResult(
-            reporters,
-            resultForFinalReporting,
-            command.config.outputRenderer
-        );
-        const disposeErrors = await dependencies.reporterDispatcher.disposeReporters(reporters);
+        const finalReporterErrors = await reporterDelivery.reportResult(resultForFinalReporting);
+        const disposeErrors = await reporterDelivery.disposeReporters();
 
         return appendRunnerErrors(resultForFinalReporting, [ ...finalReporterErrors, ...disposeErrors ]);
     } catch (error: unknown) {
-        return await throwWithReporterCleanupErrors(error, reporters, dependencies);
+        return await throwWithReporterCleanupErrors(error, reporterDelivery);
     }
 }

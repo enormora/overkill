@@ -1,11 +1,12 @@
-import type { SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
+import type { KnownSourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import {
     defineOutputRenderer,
     type DefinedOutputRenderer,
     type OutputLineIntent
 } from '../engine/reporter-output.ts';
+import type { ReportingContext } from '../engine/reporting-context.ts';
 
-type RenderableLocation = SourceLocation & {
+type RenderableLocation = KnownSourceLocation & {
     readonly line: number;
 };
 
@@ -29,7 +30,7 @@ function renderProperty(name: string, value: string | null): string | null {
 function renderableLocation(annotation: OutputLineIntent['annotation']): RenderableLocation | null {
     const location = annotation?.location ?? null;
 
-    if (location === null || location.file.length === 0 || location.line === null) {
+    if (location === null || location.kind === 'unknown' || location.line === null) {
         return null;
     }
 
@@ -39,7 +40,7 @@ function renderableLocation(annotation: OutputLineIntent['annotation']): Rendera
     };
 }
 
-function renderGitHubAnnotation(intent: OutputLineIntent): string | null {
+function renderGitHubAnnotation(intent: OutputLineIntent, context: ReportingContext): string | null {
     const { annotation } = intent;
     const location = renderableLocation(annotation);
 
@@ -49,7 +50,7 @@ function renderGitHubAnnotation(intent: OutputLineIntent): string | null {
 
     const column = location.column === null ? null : String(location.column);
     const properties = [
-        `file=${escapeCommandProperty(location.file)}`,
+        `file=${escapeCommandProperty(context.relativizeLocationPath(location))}`,
         `line=${location.line}`,
         renderProperty('col', column),
         renderProperty('title', annotation.title)
@@ -63,9 +64,11 @@ function renderGitHubAnnotation(intent: OutputLineIntent): string | null {
 }
 
 export function createGithubActionsOutputRenderer(): DefinedOutputRenderer {
-    return defineOutputRenderer({
-        render(intent) {
-            return renderGitHubAnnotation(intent) ?? intent.text;
-        }
+    return defineOutputRenderer(function createGithubActionsRuntimeOutputRenderer(context) {
+        return {
+            render(intent) {
+                return renderGitHubAnnotation(intent, context) ?? intent.text;
+            }
+        };
     });
 }

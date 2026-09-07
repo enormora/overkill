@@ -1,8 +1,8 @@
 import { describe, expect, test as typeTest } from 'tstyche';
 import type {
+    DefinedOutputRenderer,
+    DefinedReporter,
     Metadata,
-    OutputRenderer,
-    Reporter,
     Suite,
     Table,
     TestBody,
@@ -134,8 +134,8 @@ declare const body: TestBody;
 declare const metadata: Metadata;
 declare const node: TestNode;
 declare const tableBody: TableTestBody<{ readonly value: number; }>;
-declare const outputRenderer: OutputRenderer;
-declare const reporter: Reporter;
+declare const outputRenderer: DefinedOutputRenderer;
+declare const reporter: DefinedReporter;
 type RootRuntimeExport = keyof {
     readonly createTestFacade: typeof createTestFacade;
     readonly defineMacro: typeof defineMacro;
@@ -335,8 +335,8 @@ describe('@overkill-dev/test', function () {
     typeTest('re-exports high-level authoring types from the engine', function () {
         expect<RootMetadata>().type.toBe<Metadata>();
         expect<RootRunIfMainOptions>().type.toBe<{
-            readonly outputRenderer?: OutputRenderer;
-            readonly reporters?: readonly Reporter[];
+            readonly outputRenderer?: DefinedOutputRenderer;
+            readonly reporters?: readonly DefinedReporter[];
             readonly root?: RootRunIfMainRootOptions;
         }>();
         expect<RootRunIfMainRootOptions>().type.toBe<{

@@ -3,8 +3,9 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import type { Reporter } from '../engine/reporter.ts';
+import type { DefinedReporter } from '../engine/reporter.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
+import { defineFixedReporter } from '../test-support/reporter-definition.ts';
 import {
     defaultMicrotestProfile,
     defaultRunConfig,
@@ -22,7 +23,7 @@ type RunCommandParts = {
 
 type ReporterLifecycleRecorder = {
     readonly entries: () => readonly string[];
-    readonly reporter: Reporter;
+    readonly reporter: DefinedReporter;
 };
 
 const throwsOnImportFixturePath = 'source/integration-tests/run/fixtures/throws-on-import.test.ts';
@@ -52,7 +53,7 @@ function createReporterLifecycleRecorder(): ReporterLifecycleRecorder {
         entries() {
             return entries;
         },
-        reporter: {
+        reporter: defineFixedReporter({
             dispose() {
                 entries.push('dispose');
             },
@@ -65,12 +66,12 @@ function createReporterLifecycleRecorder(): ReporterLifecycleRecorder {
                 entries.push(`finish:${result.runnerErrors[0]?.message ?? 'none'}`);
             },
             sinks: [ { kind: 'memory' } ]
-        }
+        })
     };
 }
 
-function createTerminalFinishReporter(): Reporter {
-    return {
+function createTerminalFinishReporter(): DefinedReporter {
+    return defineFixedReporter({
         dispose: null,
         kind: 'real-time',
         name: 'terminal-finish',
@@ -81,16 +82,16 @@ function createTerminalFinishReporter(): Reporter {
             return undefined;
         },
         sinks: [ { kind: 'stderr-raw' } ]
-    };
+    });
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-collection-error-reporting.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() returns collection failures as runner errors',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -153,7 +154,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() reports collection failures before disposal',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -185,7 +186,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.runWithReporterDelivery() tracks terminal collection-error delivery',
             metadata: {},
             async body(scope: OverkillScope) {

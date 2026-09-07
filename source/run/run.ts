@@ -77,6 +77,7 @@ type CollectedResolvedRunInput = {
     readonly dependencies: RunOrchestratorDependencies;
     readonly engine: RunCommand['engine'];
     readonly profile: RunMicrotestProfileConfig;
+    readonly projectRoot: string;
     readonly request: RunRequest;
 };
 
@@ -169,6 +170,7 @@ function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): R
         config: input.config,
         dependencies: input.dependencies,
         engine: input.engine,
+        projectRoot: input.projectRoot,
         request: input.request
     }));
 
@@ -202,6 +204,7 @@ function createResolvedRunFromSupervisedCollection(resolution: SupervisedResolut
         dependencies: resolution.dependencies,
         engine: resolution.input.engine,
         profile: resolution.input.profile,
+        projectRoot: resolution.input.projectRoot,
         request: resolution.input.request
     });
 }
@@ -238,6 +241,7 @@ function createLocalResolvedRunFromTestPlan(
         config: input.config,
         dependencies,
         engine: input.engine,
+        projectRoot: input.projectRoot,
         request: input.request
     }));
 
@@ -461,18 +465,33 @@ async function executeResolvedRun(
     });
 }
 
-async function runCommand(command: RunCommand, dependencies: RunOrchestratorDependencies): Promise<RunResult> {
-    const profile = command.config.profiles[command.request.profile];
-
-    if (profile?.execution.processModel === 'supervised-process') {
-        return await createSupervisedRunResult(command, dependencies);
+function commandWithResolvedSeed(command: RunCommand, dependencies: RunOrchestratorDependencies): RunCommand {
+    if (command.request.seed.value !== null) {
+        return command;
     }
 
-    const runtimePolicy = createRunRuntimePolicy(command.request, dependencies);
-    const resolvedRun = await createLocalRunResult(command, dependencies, runtimePolicy);
+    return {
+        ...command,
+        request: {
+            ...command.request,
+            seed: { value: dependencies.createSeed() }
+        }
+    };
+}
+
+async function runCommand(command: RunCommand, dependencies: RunOrchestratorDependencies): Promise<RunResult> {
+    const seededCommand = commandWithResolvedSeed(command, dependencies);
+    const profile = seededCommand.config.profiles[seededCommand.request.profile];
+
+    if (profile?.execution.processModel === 'supervised-process') {
+        return await createSupervisedRunResult(seededCommand, dependencies);
+    }
+
+    const runtimePolicy = createRunRuntimePolicy(seededCommand.request, dependencies);
+    const resolvedRun = await createLocalRunResult(seededCommand, dependencies, runtimePolicy);
 
     if (isRunResult(resolvedRun)) {
-        return await reportCollectionErrorResult(command, dependencies, resolvedRun);
+        return await reportCollectionErrorResult(seededCommand, dependencies, resolvedRun);
     }
 
     return await executeResolvedRun(resolvedRun, dependencies, runtimePolicy);

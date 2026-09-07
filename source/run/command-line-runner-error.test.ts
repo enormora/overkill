@@ -3,10 +3,10 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import type { Reporter } from '../engine/reporter.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { testDouble } from '../doubles/test-double.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
+import { defineFixedOutputRenderer, defineFixedReporter } from '../test-support/reporter-definition.ts';
 import {
     defaultMicrotestProfile,
     defaultRunRequest
@@ -15,7 +15,7 @@ import { createCommandLineRunner, type CommandLineRunnerDependencies } from './c
 import type { LoadedRunConfig } from './run-config.ts';
 import type { RunCommand, RunMicrotestProfileConfig, RunOrchestrator, RunRequest } from './run-types.ts';
 
-const memoryReporter: Reporter = {
+const memoryReporter = defineFixedReporter({
     dispose: null,
     kind: 'real-time',
     name: 'memory',
@@ -24,7 +24,7 @@ const memoryReporter: Reporter = {
     },
     onFinish: null,
     sinks: [ { kind: 'memory' } ]
-};
+});
 
 const defaultRequest: RunRequest = defaultRunRequest();
 
@@ -32,11 +32,11 @@ async function loadDefaultRunConfig(): Promise<LoadedRunConfig> {
     return {
         configPath: null,
         loader: { sourceMaps: false, stripMode: 'strip-only' },
-        outputRenderer: {
+        outputRenderer: defineFixedOutputRenderer({
             render() {
                 return '';
             }
-        },
+        }),
         profiles: {
             microtest: defaultMicrotestProfile()
         },
@@ -78,7 +78,7 @@ function createPassingPlan(): TestPlan {
         engine.createRoot({
             children: [
                 engine.createTestCase({
-                    definitionLocations: [ { column: null, file: '', line: null } ],
+                    definitionLocations: [ { kind: 'unknown' as const } ],
                     body(scope) {
                         scope.assert.true(true);
 
@@ -104,6 +104,7 @@ async function resolvePassingRun(command: RunCommand): Promise<Awaited<ReturnTyp
             cases: [],
             environment: {
                 node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
+                projectRoot: command.cwd,
                 runtimeStateDir: command.config.runtimeStateDir
             },
             execution: {
@@ -152,12 +153,12 @@ function createRunOnlyOrchestrator(run: RunOrchestrator['run']): RunOrchestrator
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/command-line-runner-error.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() formats non-error internal crashes',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -177,7 +178,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() formats Error internal crashes',
             metadata: {},
             async body(scope: OverkillScope) {

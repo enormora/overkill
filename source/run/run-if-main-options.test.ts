@@ -6,8 +6,13 @@ import {
     type TestScope as DirectScope,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import type { Reporter } from '../engine/reporter.ts';
+import { createReportingContext } from '../engine/reporting-context.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
+import {
+    defineFixedOutputRenderer,
+    defineFixedReporter,
+    type FixedDefinedReporter
+} from '../test-support/reporter-definition.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import type { LoadedRunConfig } from './run-config.ts';
 import {
@@ -29,11 +34,11 @@ type StderrCapture = {
     readonly restore: () => void;
 };
 
-const outputRenderer = {
+const outputRenderer = defineFixedOutputRenderer({
     render(): string {
         return '';
     }
-};
+});
 
 function passingBody(scope: DirectScope): ReturnType<DirectTestBody> {
     scope.assert.true(true);
@@ -41,8 +46,8 @@ function passingBody(scope: DirectScope): ReturnType<DirectTestBody> {
     return scope.assert.collect();
 }
 
-function createReporter(name: string): Reporter {
-    return {
+function createReporter(name: string): FixedDefinedReporter {
+    return defineFixedReporter({
         dispose: null,
         kind: 'real-time',
         name,
@@ -51,7 +56,7 @@ function createReporter(name: string): Reporter {
         },
         onFinish: null,
         sinks: []
-    };
+    });
 }
 
 function directProfile(
@@ -105,7 +110,7 @@ function directTestPlan(): TestPlan {
         children: [
             createDirectTestCase({
                 body: passingBody,
-                definitionLocations: [ { column: null, file: '', line: null } ],
+                definitionLocations: [ { kind: 'unknown' as const } ],
                 metadata: {},
                 title: 'passes'
             })
@@ -155,7 +160,9 @@ async function assertReporterSelection(scope: OverkillScope): Promise<void> {
         await selectedReporters(directProfile(null, 'concurrent'), loadedConfig([ configReporter ]), undefined),
         [ configReporter ]
     );
-    scope.assert.equal(defaultReporters[0]?.name, 'line');
+    const defaultReporter = defaultReporters[0];
+    scope.require.defined(defaultReporter);
+    scope.assert.equal(defaultReporter(createReportingContext({ projectRoot: null })).name, 'line');
 }
 
 function assertOutputAndRootOptions(scope: OverkillScope): void {
@@ -183,12 +190,12 @@ function assertOutputAndRootOptions(scope: OverkillScope): void {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-if-main-options.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() resolves direct execution options',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -210,12 +217,12 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'directRunFacts() rejects unknown direct profiles',
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.throws(function readMissingDirectProfileFacts() {
-                    directRunFacts(runConfig(loadedConfig(null), []), 'missing', directTestPlan());
+                    directRunFacts(runConfig(loadedConfig(null), []), 'missing', directTestPlan(), process.cwd());
                 }, {
                     message: 'Unknown direct run profile: missing.'
                 });

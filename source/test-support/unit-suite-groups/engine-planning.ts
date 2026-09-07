@@ -4,7 +4,7 @@ import { testNode as testPlanLocationTestNode } from '../../engine/test-plan-loc
 import { testNode as testPlanTestNode } from '../../engine/test-plan.test.ts';
 
 export const testNode = createSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/test-support/unit-suite-groups/engine-planning.ts',
     metadata: {},
     children: [

@@ -1,4 +1,5 @@
 import type { SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
+import type { ReportingContext } from './reporting-context.ts';
 
 const outputRendererBrand = Symbol.for('@overkill-dev/engine/output-renderer');
 
@@ -24,28 +25,34 @@ export type OptionalReporterOutput = ReporterOutput | undefined;
 export type OutputRenderer = {
     readonly render: (intent: OutputLineIntent) => string;
 };
-export type DefinedOutputRenderer<OutputRendererValue extends OutputRenderer = OutputRenderer> = OutputRendererValue & {
+type RendererFactory<Renderer extends OutputRenderer> = (
+    context: ReportingContext
+) => Renderer;
+type Brand = {
     readonly [outputRendererBrand]: true;
 };
+export type DefinedOutputRenderer<Renderer extends OutputRenderer = OutputRenderer> = Brand & RendererFactory<Renderer>;
 
 export type OutputLineWriter = {
     readonly writeLine: (line: string) => void;
 };
 
-export function defineOutputRenderer<OutputRendererValue extends OutputRenderer>(
-    outputRenderer: OutputRendererValue
-): DefinedOutputRenderer<OutputRendererValue> {
-    return Object.assign(outputRenderer, { [outputRendererBrand]: true as const });
+export function defineOutputRenderer<Renderer extends OutputRenderer>(
+    createOutputRenderer: RendererFactory<Renderer>
+): DefinedOutputRenderer<Renderer> {
+    return Object.assign(createOutputRenderer, { [outputRendererBrand]: true as const });
 }
 
 export function isOutputRenderer(value: unknown): value is DefinedOutputRenderer {
-    return typeof value === 'object' && value !== null && Object.hasOwn(value, outputRendererBrand);
+    return typeof value === 'function' && Object.hasOwn(value, outputRendererBrand);
 }
 
 export function createPlainOutputRenderer(): DefinedOutputRenderer {
-    return defineOutputRenderer({
-        render(intent) {
-            return intent.text;
-        }
+    return defineOutputRenderer(function createPlainRuntimeOutputRenderer() {
+        return {
+            render(intent) {
+                return intent.text;
+            }
+        };
     });
 }

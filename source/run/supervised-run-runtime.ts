@@ -1,11 +1,10 @@
 import { caseIdentityKey } from '../engine/identity.ts';
 import type {
-    OutputRenderer,
-    Reporter,
     ReporterEvent,
     ResourceUsageSnapshot,
     RunResult
 } from '../packages/engine/engine.entry-point.ts';
+import type { ReporterDelivery } from '../engine/reporter-dispatcher.ts';
 import {
     collectedRunCaseIds,
     createRunResultFromCollectedPlan
@@ -37,11 +36,6 @@ import {
     type SupervisedRunState
 } from './supervised-run-state.ts';
 
-type ReporterContext = {
-    readonly outputRenderer: OutputRenderer;
-    readonly reporters: readonly Reporter[];
-};
-
 type ReporterEventQueue = {
     readonly add: (eventReport: Promise<void>) => void;
     readonly wait: () => Promise<void>;
@@ -58,7 +52,7 @@ export type SupervisedRunRuntimeSeed = {
     readonly completedResult: StoredRunValue<RunResult | null>;
     readonly dependencies: RunOrchestratorDependencies;
     readonly previousSample: StoredRunValue<ResourceUsageSnapshot | null>;
-    readonly reporterContext: ReporterContext;
+    readonly reporterDelivery: ReporterDelivery;
     readonly reporterEvents: ReporterEventQueue;
     readonly resolvedRun: ResolvedRun;
     readonly state: SupervisedRunState;
@@ -101,14 +95,9 @@ export function createReporterEventQueue(): ReporterEventQueue {
 async function recordReporterEventErrors(
     event: ReporterEvent,
     state: SupervisedRunState,
-    context: ReporterContext,
-    dependencies: RunOrchestratorDependencies
+    reporterDelivery: ReporterDelivery
 ): Promise<void> {
-    const errors = await dependencies.reporterDispatcher.reportEvent(
-        context.reporters,
-        event,
-        context.outputRenderer
-    );
+    const errors = await reporterDelivery.reportEvent(event);
 
     if (errors.length > 0) {
         state.recordRunnerErrors(errors);
@@ -171,11 +160,14 @@ export function kill(child: SupervisedChildProcess): void {
     }
 }
 
-export function createReporterContext(resolvedRun: ResolvedRun): ReporterContext {
-    return {
-        outputRenderer: resolvedRun.config.outputRenderer,
-        reporters: resolvedRun.reporters
-    };
+export async function createReporterDelivery(
+    resolvedRun: ResolvedRun,
+    dependencies: RunOrchestratorDependencies
+): Promise<ReporterDelivery> {
+    return await dependencies.reporterDispatcher.createDelivery(
+        resolvedRun.reporters,
+        resolvedRun.config.outputRenderer
+    );
 }
 
 export function supervisedCollectedPlan(resolvedRun: ResolvedRun): CollectedRunPlan {
@@ -269,8 +261,7 @@ function handleChildEvent(event: ReporterEvent, runtime: SupervisedRunRuntime): 
     runtime.reporterEvents.add(recordReporterEventErrors(
         event,
         runtime.state,
-        runtime.reporterContext,
-        runtime.dependencies
+        runtime.reporterDelivery
     ));
 }
 
@@ -284,8 +275,7 @@ function handleResourceBudgetBreach(
     runtime.reporterEvents.add(recordReporterEventErrors(
         { error, kind: 'runner-error' },
         runtime.state,
-        runtime.reporterContext,
-        runtime.dependencies
+        runtime.reporterDelivery
     ));
     runtime.state.recordTerminalActiveCases('resource-exhausted');
     runtime.timeout.clear();
@@ -392,8 +382,7 @@ export async function reportRunStart(
             startedAt: runStartTimeFromMilliseconds(startedAtMs)
         },
         runtime.state,
-        runtime.reporterContext,
-        runtime.dependencies
+        runtime.reporterDelivery
     );
 }
 
@@ -410,23 +399,13 @@ function selectRunResult(runtime: SupervisedRunRuntime, startedAtMs: number): Ru
 }
 
 async function reportFinalResult(result: RunResult, runtime: SupervisedRunRuntime): Promise<RunResult> {
-    const runEndErrors = await runtime.dependencies.reporterDispatcher.reportEvent(
-        runtime.reporterContext.reporters,
-        { kind: 'run-end', result },
-        runtime.reporterContext.outputRenderer
-    );
+    const runEndErrors = await runtime.reporterDelivery.reportEvent({ kind: 'run-end', result });
     const resultForFinalReporting = {
         ...result,
         runnerErrors: [ ...result.runnerErrors, ...runEndErrors ]
     };
-    const finalReporterErrors = await runtime.dependencies.reporterDispatcher.reportResult(
-        runtime.reporterContext.reporters,
-        resultForFinalReporting,
-        runtime.reporterContext.outputRenderer
-    );
-    const disposeErrors = await runtime.dependencies.reporterDispatcher.disposeReporters(
-        runtime.reporterContext.reporters
-    );
+    const finalReporterErrors = await runtime.reporterDelivery.reportResult(resultForFinalReporting);
+    const disposeErrors = await runtime.reporterDelivery.disposeReporters();
 
     return {
         ...resultForFinalReporting,

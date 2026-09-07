@@ -153,12 +153,12 @@ async function runCommandLine(
 }
 
 export const testNode = createSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/packages/test/command-line-runner.test.ts',
     metadata: {},
     children: [
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper parses explicit run paths',
             metadata: {},
             async body(scope: TestScope) {
@@ -201,7 +201,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper parses explicit list paths',
             metadata: {},
             async body(scope: TestScope) {
@@ -239,7 +239,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper writes list stdout lines',
             metadata: {},
             async body(scope: TestScope) {
@@ -258,7 +258,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper maps unsupported list flags to argument errors',
             metadata: {},
             async body(scope: TestScope) {
@@ -277,7 +277,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper parses config and profile flags',
             metadata: {},
             async body(scope: TestScope) {
@@ -296,7 +296,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper parses resource usage flags',
             metadata: {},
             async body(scope: TestScope) {
@@ -329,7 +329,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper resource budget enables measurement',
             metadata: {},
             async body(scope: TestScope) {
@@ -355,7 +355,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper preserves path operands after delimiter',
             metadata: {},
             async body(scope: TestScope) {
@@ -369,7 +369,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper writes fallback diagnostics and applies run exit code',
             metadata: {},
             async body(scope: TestScope) {
@@ -390,7 +390,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper parses run selectors',
             metadata: {},
             async body(scope: TestScope) {
@@ -435,7 +435,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper parses list selectors',
             metadata: {},
             async body(scope: TestScope) {
@@ -468,7 +468,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper rejects malformed run filters',
             metadata: {},
             async body(scope: TestScope) {
@@ -486,7 +486,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper rejects duplicate resource budget names',
             metadata: {},
             async body(scope: TestScope) {
@@ -509,7 +509,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper rejects unknown resource budget names',
             metadata: {},
             async body(scope: TestScope) {
@@ -526,7 +526,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper prints help without running tests',
             metadata: {},
             async body(scope: TestScope) {

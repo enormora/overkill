@@ -1,7 +1,7 @@
 import { createTestCase } from '../../../packages/engine/engine.entry-point.ts';
 
 export const testNode = createTestCase({
-                definitionLocations: [ { column: null, file: '', line: null } ],
+                definitionLocations: [ { kind: 'unknown' } ],
     body(scope) {
         while (Date.now() >= 0) {
             if (process.pid < 0) {

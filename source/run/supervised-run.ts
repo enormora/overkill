@@ -25,7 +25,7 @@ import { RunCollectionError } from './run-errors.ts';
 import {
     applyEvent,
     createHardTimeout,
-    createReporterContext,
+    createReporterDelivery,
     createReporterEventQueue,
     finishSupervisedRuntime,
     handleChildMessage,
@@ -307,14 +307,17 @@ async function readLiveCollection(liveRun: SupervisedLiveRun): Promise<Supervise
     );
 }
 
-function createLiveRunRuntime(liveRun: SupervisedLiveRun, resolvedRun: ResolvedRun): SupervisedRunRuntime {
+async function createLiveRunRuntime(
+    liveRun: SupervisedLiveRun,
+    resolvedRun: ResolvedRun
+): Promise<SupervisedRunRuntime> {
     const runtimeWithoutTimeout = {
         child: liveRun.child,
         collectedPlan: createStoredRunValue<CollectedRunPlan | null>(supervisedCollectedPlan(resolvedRun)),
         completedResult: createStoredRunValue<RunResult | null>(null),
         dependencies: liveRun.dependencies,
         previousSample: liveRun.previousSample,
-        reporterContext: createReporterContext(resolvedRun),
+        reporterDelivery: await createReporterDelivery(resolvedRun, liveRun.dependencies),
         reporterEvents: createReporterEventQueue(),
         resolvedRun,
         state: liveRun.state,
@@ -353,7 +356,7 @@ async function continueLiveRun(
 ): Promise<RunResult> {
     const resolvedRun = createResolvedRun(collection);
     const startedAtMs = liveRun.dependencies.wallClock.currentTimestampInMilliseconds;
-    const runtime = createLiveRunRuntime(liveRun, resolvedRun);
+    const runtime = await createLiveRunRuntime(liveRun, resolvedRun);
     const collectedPlan = supervisedCollectedPlan(resolvedRun);
     liveRun.runtime.write(runtime);
     runtime.state.recordRunnerErrors(resolvedRun.collectionRunnerErrors);
@@ -403,7 +406,7 @@ async function createRuntime(
         completedResult: createStoredRunValue<RunResult | null>(null),
         dependencies,
         previousSample: createStoredRunValue<ResourceUsageSnapshot | null>(null),
-        reporterContext: createReporterContext(resolvedRun),
+        reporterDelivery: await createReporterDelivery(resolvedRun, dependencies),
         reporterEvents: createReporterEventQueue(),
         resolvedRun,
         state: createSupervisedRunState(),

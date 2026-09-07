@@ -3,7 +3,7 @@ import { testNode as resourceUsageTestNode } from './resource-usage.test.ts';
 import { testNode as runResourceUsagePolicyTestNode } from './run-resource-usage-policy.test.ts';
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/resource-usage-suite.test.ts',
     metadata: {},
     children: [

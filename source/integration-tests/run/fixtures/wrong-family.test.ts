@@ -7,12 +7,12 @@ export const testNode = createSuite({
                 scope.assert.true(true, { message: 'passes' });
                 return scope.assert.collect();
             },
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             metadata: { kind: 'integration' },
             title: 'wrong family'
         })
     ],
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' } ],
     metadata: {},
     title: 'wrong family fixture'
 });

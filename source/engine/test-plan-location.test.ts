@@ -12,7 +12,7 @@ type SourceLocation = DefinitionLocations[number];
 
 function createPassingCase(engine: Engine, title: string): TestCase {
     return engine.createTestCase({
-        definitionLocations: [ { column: null, file: '', line: null } ],
+        definitionLocations: [ { kind: 'unknown' as const } ],
         body(testScope) {
             testScope.assert.true(true, { message: 'passes' });
             return testScope.assert.collect();
@@ -75,18 +75,18 @@ function createPlanWithOrphans(
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/test-plan-location.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createTestPlan() preserves supplied definition locations',
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
-                const suiteLocation = { column: 5, file: 'source/suite.test.ts', line: 10 };
-                const testLocation = { column: 9, file: 'source/suite.test.ts', line: 12 };
+                const suiteLocation = { column: 5, file: 'source/suite.test.ts', kind: 'known' as const, line: 10 };
+                const testLocation = { column: 9, file: 'source/suite.test.ts', kind: 'known' as const, line: 12 };
                 const [ testCase ] = createLocatedPlan(engine, suiteLocation, testLocation).cases;
 
                 scope.assert.deepEqual(testCase.definitionLocations, [ testLocation ]);
@@ -98,13 +98,23 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createTestPlan() reports constructed nodes that do not reach the root as orphans',
             metadata: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
-                const unusedSuiteLocation = { column: 3, file: 'source/orphan.test.ts', line: 7 };
-                const unusedTestLocation = { column: 3, file: 'source/orphan.test.ts', line: 3 };
+                const unusedSuiteLocation = {
+                    column: 3,
+                    file: 'source/orphan.test.ts',
+                    kind: 'known' as const,
+                    line: 7
+                };
+                const unusedTestLocation = {
+                    column: 3,
+                    file: 'source/orphan.test.ts',
+                    kind: 'known' as const,
+                    line: 3
+                };
                 const testPlan = createPlanWithOrphans(engine, unusedTestLocation, unusedSuiteLocation);
 
                 scope.assert.equal(testPlan.defined, 3);

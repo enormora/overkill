@@ -15,12 +15,12 @@ type ClientFactory = {
 };
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/doubles/test-double-configuration.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testDouble() rejects invalid configuration arguments',
             metadata: {},
             body(scope: OverkillScope) {
@@ -39,7 +39,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testDouble() ignores invalid configuration entries',
             metadata: {},
             body(scope: OverkillScope) {
@@ -61,7 +61,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'fallback can configure call defaults without construction defaults',
             metadata: {},
             body(scope: OverkillScope) {
@@ -83,7 +83,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'fallback can configure construction defaults without call defaults',
             metadata: {},
             body(scope: OverkillScope) {
@@ -105,7 +105,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'fallback behaviors that cannot answer an invocation fall through',
             metadata: {},
             body(scope: OverkillScope) {
@@ -124,7 +124,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'sequence entries that cannot answer an invocation fall through',
             metadata: {},
             body(scope: OverkillScope) {

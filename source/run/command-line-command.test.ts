@@ -7,12 +7,12 @@ import { createCommandLineErrorResultFromUnknown } from './command-line-command.
 import { RunCollectionError, RunResolutionError } from './run-errors.ts';
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/command-line-command.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createCommandLineErrorResultFromUnknown() maps no tests collected errors',
             metadata: {},
             body(scope: OverkillScope) {
@@ -29,7 +29,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createCommandLineErrorResultFromUnknown() maps collection errors',
             metadata: {},
             body(scope: OverkillScope) {
@@ -47,7 +47,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createCommandLineErrorResultFromUnknown() formats supplemental aggregate errors',
             metadata: {},
             body(scope: OverkillScope) {
@@ -66,7 +66,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createCommandLineErrorResultFromUnknown() formats supplemental runner errors',
             metadata: {},
             body(scope: OverkillScope) {
@@ -93,7 +93,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createCommandLineErrorResultFromUnknown() keeps malformed supplemental errors internal',
             metadata: {},
             body(scope: OverkillScope) {
@@ -125,7 +125,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createCommandLineErrorResultFromUnknown() falls back to the aggregate message',
             metadata: {},
             body(scope: OverkillScope) {

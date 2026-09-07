@@ -1,4 +1,4 @@
-import { isReporter, type Reporter } from '../engine/reporter.ts';
+import type { DefinedReporter } from '../engine/reporter.ts';
 import type { RunCommand, RunConfig, RunOrchestrator } from './run-types.ts';
 import {
     loadRunConfig,
@@ -32,6 +32,7 @@ import {
     type CommandLineReporterFallback
 } from './run-reporter-resolution.ts';
 import { renderResolvedRunList } from './run-list-renderer.ts';
+import { createDefaultDirectReporter } from './default-direct-reporter.ts';
 
 export type CommandLineRunner = {
     readonly baseline: CommandLineBaselineCommands;
@@ -45,35 +46,15 @@ export type CommandLineRunner = {
 export type CommandLineRunnerResult = CommandLineRunnerResultShape;
 
 export type CommandLineRunnerDependencies = CommandLineCommandLoaders & {
-    readonly createDefaultReporter: () => Promise<Reporter>;
+    readonly createDefaultReporter: () => Promise<DefinedReporter>;
     readonly loadRunConfig: (request: RunConfigLoadRequest) => Promise<LoadedRunConfig>;
     readonly orchestrator: RunOrchestrator;
 };
 
-type DefaultReporterModule = {
-    readonly createLineReporter: () => unknown;
-};
-
-function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-    return typeof value === 'object' && value !== null;
-}
-
-function isDefaultReporterModule(value: unknown): value is DefaultReporterModule {
-    return isRecord(value) && typeof value.createLineReporter === 'function';
-}
-
-function readDefaultReporter(value: unknown): Reporter {
-    if (!isReporter(value)) {
-        throw new TypeError('Default line reporter module returned an invalid reporter.');
-    }
-
-    return value;
-}
-
 async function loadCommandLineReporterFallback(
     fallback: CommandLineReporterFallback,
     dependencies: CommandLineRunnerDependencies
-): Promise<readonly Reporter[]> {
+): Promise<readonly DefinedReporter[]> {
     if (fallback.kind === 'configured') {
         return fallback.reporters;
     }
@@ -199,7 +180,6 @@ async function listTestsWithLoadedConfig(
         fallbackDiagnostics: [],
         runResult: null,
         stdoutLines: renderResolvedRunList(resolvedRun, {
-            cwd: request.cwd,
             withLocations: request.listRequest.withLocations,
             withOrphans: request.listRequest.withOrphans
         })
@@ -233,14 +213,8 @@ export function createCommandLineRunner(dependencies: CommandLineRunnerDependenc
     };
 }
 
-export async function loadDefaultLineReporter(): Promise<Reporter> {
-    const reporterModule = await import('@overkill-dev/reporter-line');
-
-    if (!isDefaultReporterModule(reporterModule)) {
-        throw new TypeError('Default line reporter module is invalid.');
-    }
-
-    return readDefaultReporter(reporterModule.createLineReporter());
+export async function loadDefaultLineReporter(): Promise<DefinedReporter> {
+    return await createDefaultDirectReporter();
 }
 
 const commandLoaders = {

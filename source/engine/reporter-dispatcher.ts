@@ -1,36 +1,43 @@
-import { AsyncLocalStorage } from 'node:async_hooks';
 import type { WallClock } from '@enormora/wall-clock';
+import {
+    createReporterDisposal as createReporterDisposalFromCallback,
+    type ReporterDisposal as CoreReporterDisposal
+} from './reporter-disposal.ts';
+import { recordRunnerErrorDelivery, trackRunnerErrorDelivery } from './reporter-error-delivery-tracking.ts';
+import {
+    normalizeReporterOutput,
+    type ReporterCallbackFailure,
+    type ReporterCallbackSuccess,
+    writeReporterOutputs
+} from './reporter-managed-output.ts';
 import type {
-    OutputLineIntent,
+    DefinedOutputRenderer,
     OutputLineWriter,
-    OutputRenderer,
-    ReporterOutput
+    OutputRenderer
 } from './reporter-output.ts';
-import type { Reporter, ReporterEvent } from './reporter.ts';
+import { validateReporterSinks, type DefinedReporter, type Reporter, type ReporterEvent } from './reporter.ts';
+import { createReportingContext, type ReportingContext } from './reporting-context.ts';
 import type { RunResult, RunnerError } from './run-result.ts';
 
 type RealTimeReporterInDispatch = Extract<Reporter, { readonly kind: 'real-time'; }>;
 
 export type ReporterDispatcher = {
-    readonly disposeReporters: (
-        reporters: readonly Reporter[]
-    ) => Promise<readonly RunnerError[]>;
-    readonly reportEvent: (
-        reporters: readonly Reporter[],
-        event: ReporterEvent,
-        outputRenderer: OutputRenderer
-    ) => Promise<readonly RunnerError[]>;
-    readonly reportResult: (
-        reporters: readonly Reporter[],
-        result: RunResult,
-        outputRenderer: OutputRenderer
-    ) => Promise<readonly RunnerError[]>;
+    readonly createDelivery: (
+        reporters: readonly DefinedReporter[],
+        outputRenderer: DefinedOutputRenderer
+    ) => Promise<ReporterDelivery>;
     readonly trackRunnerErrorDelivery: <Result>(
         work: () => Promise<Result>
     ) => Promise<{
         readonly deliveredRunnerErrors: readonly RunnerError[];
         readonly result: Result;
     }>;
+};
+
+export type ReporterDelivery = {
+    readonly disposeReporters: () => Promise<readonly RunnerError[]>;
+    readonly reportEvent: (event: ReporterEvent) => Promise<readonly RunnerError[]>;
+    readonly reportResult: (result: RunResult) => Promise<readonly RunnerError[]>;
 };
 
 export type ReporterDispatcherDependencies = {
@@ -45,18 +52,6 @@ type ReporterDispatchContext = {
     readonly reporters: readonly Reporter[];
 };
 
-type ReporterCallbackFailure = {
-    readonly error: RunnerError;
-    readonly kind: 'failure';
-    readonly reporter: Reporter;
-};
-
-type ReporterCallbackSuccess = {
-    readonly kind: 'success';
-    readonly output: ReporterOutput;
-    readonly reporter: Reporter;
-};
-
 type ReporterCallbackResult = ReporterCallbackFailure | ReporterCallbackSuccess;
 
 type ReporterTimeout = {
@@ -65,13 +60,17 @@ type ReporterTimeout = {
 };
 
 type ReporterCallback = () => unknown;
-type RunnerErrorDeliveryStore = {
-    readonly deliveredRunnerErrors: () => readonly RunnerError[];
-    readonly recordDeliveredRunnerError: (error: RunnerError) => void;
+
+type RuntimeReporterCollector = {
+    readonly addReporter: (reporter: Reporter) => void;
+    readonly reporters: () => readonly Reporter[];
 };
 
 const callbackTimeoutMs = 100;
-const runnerErrorDeliveryStorage = new AsyncLocalStorage<RunnerErrorDeliveryStore>();
+
+export type ReporterDisposal = CoreReporterDisposal;
+
+export const createReporterDisposal: typeof createReporterDisposalFromCallback = createReporterDisposalFromCallback;
 
 function hasTerminalSink(sink: Reporter['sinks'][number]): boolean {
     return sink.kind.startsWith('stdout') || sink.kind.startsWith('stderr');
@@ -81,8 +80,22 @@ function hasTerminalReporter(reporter: Reporter): boolean {
     return reporter.sinks.some(hasTerminalSink);
 }
 
-function recordRunnerErrorDelivery(error: RunnerError): void {
-    runnerErrorDeliveryStorage.getStore()?.recordDeliveredRunnerError(error);
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+    return typeof value === 'object' && value !== null;
+}
+
+function projectRootFromRunFacts(facts: unknown): string | null {
+    if (!isRecord(facts)) {
+        return null;
+    }
+
+    const { environment } = facts;
+
+    if (!isRecord(environment) || typeof environment.projectRoot !== 'string') {
+        return null;
+    }
+
+    return environment.projectRoot.trim().length === 0 ? null : environment.projectRoot;
 }
 
 function recordDeliveredRunnerErrorEvent(
@@ -149,38 +162,6 @@ function createReporterTimeout(
     };
 }
 
-function isObject(value: unknown): value is Readonly<Record<PropertyKey, unknown>> {
-    return typeof value === 'object' && value !== null;
-}
-
-function isOutputLineKind(value: unknown): value is OutputLineIntent['kind'] {
-    return value === 'stdout-line' || value === 'stderr-line';
-}
-
-function isOutputLineRole(value: unknown): value is OutputLineIntent['role'] {
-    return value === 'primary' || value === 'supplemental';
-}
-
-function isOutputLineIntent(value: unknown): value is OutputLineIntent {
-    return isObject(value) &&
-        isOutputLineKind(value.kind) &&
-        isOutputLineRole(value.role) &&
-        typeof value.text === 'string' &&
-        Object.hasOwn(value, 'annotation');
-}
-
-function normalizeReporterOutput(output: unknown): ReporterOutput {
-    if (output === undefined) {
-        return [];
-    }
-
-    if (Array.isArray(output) && output.every(isOutputLineIntent)) {
-        return output;
-    }
-
-    throw new Error('Reporter returned invalid managed output.');
-}
-
 async function awaitReporterCallback(
     dependencies: ReporterDispatcherDependencies,
     reporter: Reporter,
@@ -215,33 +196,6 @@ async function awaitReporterDispose(
     }
 }
 
-function outputIntentStream(intent: OutputLineIntent): 'stderr' | 'stdout' {
-    return intent.kind === 'stderr-line' ? 'stderr' : 'stdout';
-}
-
-function expectedSinkKind(intent: OutputLineIntent): string {
-    return `${outputIntentStream(intent)}-managed-${intent.role}`;
-}
-
-function reporterDeclaresOutputIntent(reporter: Reporter, intent: OutputLineIntent): boolean {
-    return reporter.sinks.some(function sinkMatchesIntent(sink) {
-        return sink.kind === expectedSinkKind(intent);
-    });
-}
-
-function validateRenderedLine(line: string): void {
-    if (line.includes('\n') || line.includes('\r')) {
-        throw new Error('Managed output renderer returned a line containing a newline.');
-    }
-}
-
-function outputWriterForIntent(
-    dependencies: ReporterDispatcherDependencies,
-    intent: OutputLineIntent
-): OutputLineWriter {
-    return outputIntentStream(intent) === 'stdout' ? dependencies.stdout : dependencies.stderr;
-}
-
 function reporterFailures(results: readonly ReporterCallbackResult[]): readonly ReporterCallbackFailure[] {
     return results.flatMap(function collectFailure(result) {
         return result.kind === 'failure' ? [ result ] : [];
@@ -252,51 +206,6 @@ function reporterSuccesses(results: readonly ReporterCallbackResult[]): readonly
     return results.flatMap(function collectSuccess(result) {
         return result.kind === 'success' ? [ result ] : [];
     });
-}
-
-function assertReporterDeclaresOutputIntent(reporter: Reporter, intent: OutputLineIntent): void {
-    if (!reporterDeclaresOutputIntent(reporter, intent)) {
-        throw new Error(`Reporter returned undeclared managed ${outputIntentStream(intent)} output.`);
-    }
-}
-
-function writeReporterOutput(
-    dependencies: ReporterDispatcherDependencies,
-    reporter: Reporter,
-    intent: OutputLineIntent,
-    outputRenderer: OutputRenderer
-): ReporterCallbackFailure | null {
-    try {
-        assertReporterDeclaresOutputIntent(reporter, intent);
-        const line = outputRenderer.render(intent);
-
-        validateRenderedLine(line);
-        outputWriterForIntent(dependencies, intent).writeLine(line);
-
-        return null;
-    } catch (error: unknown) {
-        return { error: formatReporterError(reporter, error), kind: 'failure', reporter };
-    }
-}
-
-function writeReporterOutputs(
-    dependencies: ReporterDispatcherDependencies,
-    outputs: readonly ReporterCallbackSuccess[],
-    outputRenderer: OutputRenderer
-): readonly ReporterCallbackFailure[] {
-    const failures: ReporterCallbackFailure[] = [];
-
-    for (const output of outputs) {
-        for (const intent of output.output) {
-            const failure = writeReporterOutput(dependencies, output.reporter, intent, outputRenderer);
-
-            if (failure !== null) {
-                failures.push(failure);
-            }
-        }
-    }
-
-    return failures;
 }
 
 async function reportEventToReporter(
@@ -337,7 +246,8 @@ async function reportRunnerErrorToOtherReporters(
     const outputFailures = writeReporterOutputs(
         context.dependencies,
         successes,
-        context.outputRenderer
+        context.outputRenderer,
+        formatReporterError
     );
 
     return [
@@ -390,7 +300,8 @@ async function reportEvent(
     const outputErrors = writeReporterOutputs(
         context.dependencies,
         successes,
-        context.outputRenderer
+        context.outputRenderer,
+        formatReporterError
     );
     const reporterErrors = [ ...reporterFailures(callbackResults), ...outputErrors ];
 
@@ -442,7 +353,8 @@ async function reportResult(
     const outputErrors = writeReporterOutputs(
         context.dependencies,
         successes,
-        context.outputRenderer
+        context.outputRenderer,
+        formatReporterError
     );
     const reporterErrors = [ ...reporterFailures(callbackResults), ...outputErrors ];
 
@@ -480,33 +392,100 @@ function createReporterDispatchContext(
     };
 }
 
+function createRuntimeReporterCollector(): RuntimeReporterCollector {
+    const reporters: Reporter[] = [];
+
+    return {
+        addReporter(reporter) {
+            reporters.push(reporter);
+        },
+        reporters() {
+            return reporters;
+        }
+    };
+}
+
+function collectRuntimeReporters(
+    collector: RuntimeReporterCollector,
+    reporterDefinitions: readonly DefinedReporter[],
+    reportingContext: ReportingContext
+): void {
+    for (const reporterDefinition of reporterDefinitions) {
+        collector.addReporter(reporterDefinition(reportingContext));
+    }
+}
+
+async function throwWithReporterCleanupErrors(
+    error: unknown,
+    dependencies: ReporterDispatcherDependencies,
+    reporters: readonly Reporter[]
+): Promise<never> {
+    const disposeErrors = await disposeReporters(dependencies, reporters);
+
+    if (disposeErrors.length > 0) {
+        throw new AggregateError(
+            [ error, ...disposeErrors ],
+            'Reporter delivery creation failed and reporter cleanup failed.',
+            { cause: error }
+        );
+    }
+
+    throw error;
+}
+
+async function createReporterDelivery(
+    dependencies: ReporterDispatcherDependencies,
+    reporterDefinitions: readonly DefinedReporter[],
+    outputRendererDefinition: DefinedOutputRenderer
+): Promise<ReporterDelivery> {
+    const state = { projectRoot: null as string | null };
+    const reportingContext = createReportingContext(state);
+    const reporterCollector = createRuntimeReporterCollector();
+
+    try {
+        collectRuntimeReporters(reporterCollector, reporterDefinitions, reportingContext);
+        validateReporterSinks(reporterCollector.reporters());
+    } catch (error: unknown) {
+        return await throwWithReporterCleanupErrors(error, dependencies, reporterCollector.reporters());
+    }
+
+    const context = createReporterDispatchContext(
+        dependencies,
+        reporterCollector.reporters(),
+        outputRendererDefinition(reportingContext)
+    );
+    let reportersDisposed = false;
+
+    return {
+        async disposeReporters() {
+            if (reportersDisposed) {
+                return [];
+            }
+
+            reportersDisposed = true;
+
+            return await disposeReporters(dependencies, context.reporters);
+        },
+        async reportEvent(event) {
+            if (event.kind === 'run-start') {
+                state.projectRoot = projectRootFromRunFacts(event.facts);
+            }
+
+            return await reportEvent(context, event);
+        },
+        async reportResult(result) {
+            return await reportResult(context, result);
+        }
+    };
+}
+
 export function createReporterDispatcher(dependencies: ReporterDispatcherDependencies): ReporterDispatcher {
     return {
-        async disposeReporters(reporters) {
-            return await disposeReporters(dependencies, reporters);
-        },
-        async reportEvent(reporters, event, outputRenderer) {
-            return await reportEvent(createReporterDispatchContext(dependencies, reporters, outputRenderer), event);
-        },
-        async reportResult(reporters, result, outputRenderer) {
-            return await reportResult(createReporterDispatchContext(dependencies, reporters, outputRenderer), result);
+        async createDelivery(reporters, outputRenderer) {
+            return await createReporterDelivery(dependencies, reporters, outputRenderer);
         },
         async trackRunnerErrorDelivery(work) {
-            const deliveredRunnerErrors = new Set<RunnerError>();
-            const deliveryStore: RunnerErrorDeliveryStore = {
-                deliveredRunnerErrors() {
-                    return Array.from(deliveredRunnerErrors);
-                },
-                recordDeliveredRunnerError(error) {
-                    deliveredRunnerErrors.add(error);
-                }
-            };
-            const result = await runnerErrorDeliveryStorage.run(deliveryStore, work);
-
-            return {
-                deliveredRunnerErrors: deliveryStore.deliveredRunnerErrors(),
-                result
-            };
+            return await trackRunnerErrorDelivery(work);
         }
     };
 }

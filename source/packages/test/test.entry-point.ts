@@ -4,9 +4,9 @@ import {
     createTable,
     createTestCase,
     forwardAssertionSourceLocations,
+    type DefinedOutputRenderer,
+    type DefinedReporter,
     type Metadata,
-    type OutputRenderer,
-    type Reporter,
     type NonEmptyReadonlyArray,
     ownsTestNode,
     type ResolvableSourceLocation,
@@ -79,8 +79,8 @@ export type RunIfMainRootOptions = {
 };
 
 export type RunIfMainOptions = {
-    readonly outputRenderer?: OutputRenderer;
-    readonly reporters?: readonly Reporter[];
+    readonly outputRenderer?: DefinedOutputRenderer;
+    readonly reporters?: readonly DefinedReporter[];
     readonly root?: RunIfMainRootOptions;
 };
 

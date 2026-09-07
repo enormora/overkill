@@ -4,7 +4,7 @@ import {
     createRoot,
     createTestPlan,
     execute,
-    type Reporter,
+    type DefinedReporter,
     type RunResult,
     type TestNode
 } from '../packages/engine/engine.entry-point.ts';
@@ -30,7 +30,7 @@ function setFailureExitCode(result: RunResult): void {
 export async function runIfMain(
     meta: Readonly<ImportMeta>,
     testNode: TestNode,
-    reporters: readonly Reporter[]
+    reporters: readonly DefinedReporter[]
 ): Promise<void> {
     if (!isMainModule(meta)) {
         return;

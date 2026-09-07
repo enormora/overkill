@@ -58,6 +58,12 @@ already exists in [Package Architecture](./package-architecture.md) and is settl
 ```ts
 type Reporter = RealTimeReporter | FinalResultReporter;
 
+type DefinedReporter = (context: ReportingContext) => Reporter;
+
+type ReportingContext = {
+    readonly relativizeLocationPath: (location: KnownSourceLocation) => string;
+};
+
 type RealTimeReporter = {
     readonly dispose: (() => void | Promise<void>) | null;
     readonly kind: 'real-time';
@@ -87,8 +93,13 @@ A reporter cannot be both: pick the lifecycle that matches your data
 shape. If you need both behaviours, ship two reporters that share an
 implementation.
 
-Reporter instances are single-use. The runner calls `dispose` exactly once
-when it is present, including after reporter validation failures and thrown
+Project config, direct execution options, and package exports register
+`DefinedReporter` factories, not reporter instances. The runner creates a
+fresh reporter instance for each run delivery and passes the same
+`ReportingContext` to every reporter and output renderer in that delivery.
+
+Reporter instances are single-use. The runner calls `dispose` exactly once when
+it is present, including after reporter validation failures and thrown
 execution paths. Cleanup uses the same 100 ms reporter callback timeout as
 event and result delivery.
 
@@ -186,6 +197,8 @@ type OutputIntentAnnotation = {
 type OutputRenderer = {
     render(intent: OutputLineIntent): string;
 };
+
+type DefinedOutputRenderer = (context: ReportingContext) => OutputRenderer;
 ```
 
 Returned intents are only part of the type contract for reporters whose
@@ -195,13 +208,13 @@ sinks are side-effect-only: their reporter methods return only `void` or
 `Promise<void>`. Managed reporters may still return `void` for callbacks that
 have nothing to print.
 
-The runner applies one `outputRenderer` to managed output intents. The default
-renderer is plain text and returns `intent.text`. Renderers are pure line
-formatters: they do not own reporter state, do not write to streams, and must
-return one physical line without newline characters. This lets a CI renderer
-such as `@overkill-dev/output-renderer-github-actions` turn located failure
-diagnostics into workflow annotations while ordinary lines remain readable in
-the same stdout log.
+The runner applies one `DefinedOutputRenderer` to managed output intents. The
+default renderer is plain text and returns `intent.text`. Renderers are pure
+line formatters: they do not write to streams and must return one physical line
+without newline characters. This lets a CI renderer such as
+`@overkill-dev/output-renderer-github-actions` turn located failure diagnostics
+into workflow annotations while ordinary lines remain readable in the same
+stdout log.
 
 ## Registration
 
@@ -371,6 +384,31 @@ It renders:
 Failure lines include source location when a structured failure has one.
 Located failure intents carry annotations so renderers can adapt them for CI
 systems without the reporter knowing platform-specific command syntax.
+
+## Source Location Rendering
+
+Reporter-facing locations use one shape:
+
+```ts
+type SourceLocation =
+    | {
+        readonly column: number | null;
+        readonly file: string;
+        readonly kind: 'known';
+        readonly line: number | null;
+    }
+    | { readonly kind: 'unknown'; };
+```
+
+Reporters and output renderers should not implement their own project-root
+path policy. They receive `ReportingContext` and use
+`context.relativizeLocationPath(location)` for known locations. Unknown
+locations are omitted from formatted output.
+
+The project root is the canonical real current working directory captured
+during run discovery or direct `runIfMain()` startup. Paths below that root are
+rendered relative to the root; paths outside the root, relative paths, and
+unknown locations keep their original display behavior.
 
 ## Reporter Errors
 

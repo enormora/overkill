@@ -6,7 +6,7 @@ import { testNode as runSelectionFiltersTestNode } from './run-selection-filters
 import { testNode as runTestModulesTestNode } from './run-test-modules.test.ts';
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-planning-suite.test.ts',
     metadata: {},
     children: [

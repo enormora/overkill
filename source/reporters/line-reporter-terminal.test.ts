@@ -6,6 +6,7 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import { createReportingContext } from '../engine/reporting-context.ts';
 import type { RealTimeReporter } from '../engine/reporter.ts';
 import { createLineReporter, type LineReporterDependencies } from './line-reporter.ts';
 
@@ -15,21 +16,21 @@ type Log = TestDouble<LogFunction>;
 const errorSymbol = colors.red(figures.cross);
 const infoSymbol = colors.cyan(figures.info);
 const failingCaseId = { file: null, title: 'fails', params: null, suite: [] };
-const definitionLocation = { column: null, file: '', line: null };
+const definitionLocation = { kind: 'unknown' as const };
 
 function lineReporterWithLog(log: Log): RealTimeReporter {
     const fakeDependencies = { stdoutConsole: { log } } as unknown as LineReporterDependencies;
 
-    return createLineReporter(fakeDependencies);
+    return createLineReporter(fakeDependencies)(createReportingContext({ projectRoot: null }));
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/line-reporter-terminal.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter renders terminal test results and empty suite names',
             metadata: {},
             async body(scope: OverkillScope) {

@@ -27,7 +27,12 @@ type AssertPayloadSamples = {
     readonly instanceOf: AssertAssertionNode | undefined;
 };
 
-const testLocation: SourceLocation = { column: 7, file: '/test/assertion-facade.test.ts', line: 11 };
+const testLocation: SourceLocation = {
+    column: 7,
+    file: '/test/assertion-facade.test.ts',
+    kind: 'known' as const,
+    line: 11
+};
 
 type InstanceOfAssertAssertionNode = Extract<AssertAssertionNode, { readonly check: 'instance-of'; }>;
 
@@ -235,12 +240,12 @@ function recordAssertNodes(facade: AssertAssertionFacade): void {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/assertion-facade.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createRecordingAssertFacade() records every built-in assertion node',
             metadata: {},
             body(scope: OverkillScope) {
@@ -342,7 +347,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createRecordingAssertFacade() records async rejects assertions through pending sink',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -363,7 +368,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createRecordingAssertFacade() applies annotated messages without requiring the builder API',
             metadata: {},
             body(scope: OverkillScope) {

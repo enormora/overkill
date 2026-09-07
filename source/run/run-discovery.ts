@@ -21,6 +21,11 @@ export type DiscoveredRunFile = {
     readonly path: string;
 };
 
+export type DiscoveredRunFiles = {
+    readonly files: NonEmptyReadonlyArray<DiscoveredRunFile>;
+    readonly projectRoot: string;
+};
+
 type DiscoveredRunDirectory = {
     readonly path: string;
     readonly requestedPath: string;
@@ -366,12 +371,22 @@ async function discoverRequestedRunFiles(
     );
 }
 
+export async function discoverRunFilesWithProjectRoot(request: RunDiscoveryRequest): Promise<DiscoveredRunFiles> {
+    const realCwd = await readRealCwd(request.cwd);
+    const files = request.paths.length === 0
+        ? await discoverProfileOnlyRunFiles(realCwd, request.profileFiles)
+        : await discoverRequestedRunFiles(realCwd, request);
+
+    return {
+        files,
+        projectRoot: realCwd
+    };
+}
+
 export async function discoverRunFiles(
     request: RunDiscoveryRequest
 ): Promise<NonEmptyReadonlyArray<DiscoveredRunFile>> {
-    const realCwd = await readRealCwd(request.cwd);
+    const discovered = await discoverRunFilesWithProjectRoot(request);
 
-    return request.paths.length === 0
-        ? await discoverProfileOnlyRunFiles(realCwd, request.profileFiles)
-        : await discoverRequestedRunFiles(realCwd, request);
+    return discovered.files;
 }

@@ -2,6 +2,7 @@ import type { CaseId } from '../engine/identity.ts';
 import type {
     FailedCheck,
     FailedLeafCheck,
+    KnownSourceLocation,
     NonEmptyReadonlyArray,
     SourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
@@ -26,7 +27,7 @@ type FailedCheckOverrides = {
     readonly kind?: 'leaf';
     readonly path?: readonly DiffPathSegment[];
     readonly source?: 'assert' | 'require';
-    readonly sourceLocations?: NonEmptyReadonlyArray<Partial<SourceLocation>>;
+    readonly sourceLocations?: NonEmptyReadonlyArray<Partial<KnownSourceLocation> | SourceLocation>;
     readonly summary?: string;
 };
 
@@ -106,9 +107,10 @@ type RunResultOverrides = {
     readonly wallTimeMs?: number;
 };
 
-const defaultLocation: SourceLocation = {
+const defaultLocation: KnownSourceLocation = {
     column: null,
     file: 'source/example.test.ts',
+    kind: 'known' as const,
     line: null
 };
 
@@ -153,8 +155,16 @@ const emptyOrphanedNodeOverrides: readonly OrphanedNodeOverrides[] = [];
 const emptyPerTestResultOverrides: readonly PerTestResultOverrides[] = [];
 const emptyRunnerErrorOverrides: readonly RunnerErrorOverrides[] = [];
 
+function buildSourceLocation(location: Partial<KnownSourceLocation> | SourceLocation): SourceLocation {
+    if (location.kind === 'unknown') {
+        return location;
+    }
+
+    return { ...defaultLocation, ...location, kind: 'known' };
+}
+
 function buildSourceLocations(
-    locations: NonEmptyReadonlyArray<Partial<SourceLocation>> | undefined
+    locations: NonEmptyReadonlyArray<Partial<KnownSourceLocation> | SourceLocation> | undefined
 ): NonEmptyReadonlyArray<SourceLocation> {
     if (locations === undefined) {
         return defaultFailedCheck.sourceLocations;
@@ -163,10 +173,8 @@ function buildSourceLocations(
     const [ firstLocation, ...remainingLocations ] = locations;
 
     return [
-        { ...defaultLocation, ...firstLocation },
-        ...remainingLocations.map(function buildSourceLocation(location) {
-            return { ...defaultLocation, ...location };
-        })
+        buildSourceLocation(firstLocation),
+        ...remainingLocations.map(buildSourceLocation)
     ];
 }
 

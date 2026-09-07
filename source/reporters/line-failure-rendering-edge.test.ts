@@ -6,9 +6,16 @@ import {
 import type { FailedForeignCheck, FailedLeafCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import type { Diff } from '../diff/diff-shape.ts';
+import { createReportingContext } from '../engine/reporting-context.ts';
 import type { TestFailure } from '../engine/run-result.ts';
 import { formatFailureSummary } from './failure-summary.ts';
-import { formatFailure } from './line-failure-rendering.ts';
+import { formatFailure as formatFailureWithContext } from './line-failure-rendering.ts';
+
+const reportingContext = createReportingContext({ projectRoot: null });
+
+function formatFailure(failure: TestFailure): readonly string[] {
+    return formatFailureWithContext(failure, reportingContext);
+}
 
 function failedCheck(diff: Diff | null): FailedLeafCheck {
     return {
@@ -23,18 +30,18 @@ function failedCheck(diff: Diff | null): FailedLeafCheck {
             { key: { kind: 'string', truncation: null, value: 'name' }, kind: 'map-value' }
         ],
         source: 'assert',
-        sourceLocations: [ { column: 9, file: 'source/users.test.ts', line: 7 } ],
+        sourceLocations: [ { column: 9, file: 'source/users.test.ts', kind: 'known' as const, line: 7 } ],
         summary: 'differs'
     };
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/line-failure-rendering-edge.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders scalar serialized value variants',
             metadata: {},
             body(scope: OverkillScope) {
@@ -69,7 +76,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders valid property paths and named functions',
             metadata: {},
             body(scope: OverkillScope) {
@@ -98,7 +105,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders foreign checks without diff data',
             metadata: {},
             body(scope: OverkillScope) {
@@ -117,7 +124,7 @@ export const testNode = createOverkillSuite({
                     label: 'node assert',
                     path: [],
                     source: 'assert',
-                    sourceLocations: [ { column: null, file: '', line: null } ],
+                    sourceLocations: [ { kind: 'unknown' as const } ],
                     summary: 'foreign failed'
                 };
 
@@ -131,7 +138,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders arrays, objects, maps, sets, and invalid dates',
             metadata: {},
             body(scope: OverkillScope) {
@@ -171,7 +178,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title:
                 'line failure formatter renders regexp, errors, data views, circulars, opaque, and unavailable values',
             metadata: {},
@@ -209,7 +216,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter truncates long diff output by line count',
             metadata: {},
             body(scope: OverkillScope) {
@@ -236,7 +243,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders missing collection operations',
             metadata: {},
             body(scope: OverkillScope) {
@@ -301,7 +308,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders timeout failures',
             metadata: {},
             body(scope: OverkillScope) {
@@ -320,7 +327,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'failure summary formats timeout failures',
             metadata: {},
             body(scope: OverkillScope) {

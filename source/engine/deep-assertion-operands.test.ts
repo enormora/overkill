@@ -29,7 +29,7 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
             engine.createRoot({
                 children: [
                     engine.createTestCase({
-                        definitionLocations: [ { column: null, file: '', line: null } ],
+                        definitionLocations: [ { kind: 'unknown' as const } ],
                         body,
                         metadata: {},
                         title: 'case'
@@ -57,12 +57,12 @@ function expectedInvalidDeepAssertionOperand(
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/deep-assertion-operands.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() rejects primitive facade deep assertion operands at runtime',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -90,7 +90,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() rejects primitive raw deep assertion operands at runtime',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -122,7 +122,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() rejects primitive composite deep assertion members at runtime',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -156,7 +156,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() rejects primitive async composite deep assertion members at runtime',
             metadata: {},
             async body(scope: OverkillScope) {

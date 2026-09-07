@@ -43,12 +43,12 @@ const anonymousCandidate = {
 };
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-selection-filters.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'filter helpers create serializable filter expressions',
             metadata: {},
             body(scope: OverkillScope) {
@@ -79,7 +79,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'matchesRunFilter() matches supported dimensions case-insensitively',
             metadata: {},
             body(scope: OverkillScope) {
@@ -110,7 +110,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'matchesRunFilter() treats absent identity dimensions as non-matches',
             metadata: {},
             body(scope: OverkillScope) {
@@ -123,7 +123,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'copyRunSelection() deep-copies serializable filter trees',
             metadata: {},
             body(scope: OverkillScope) {
@@ -148,7 +148,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'run filter helpers reject empty text operands',
             metadata: {},
             body(scope: OverkillScope) {
@@ -163,7 +163,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'run filter validation rejects malformed filter trees',
             metadata: {},
             body(scope: OverkillScope) {

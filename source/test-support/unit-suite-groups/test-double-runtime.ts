@@ -9,7 +9,7 @@ import { testNode as testDoubleHistoryRuntimeTestNode } from '../../doubles/test
 import { testNode as testDoubleTestNode } from '../../doubles/test-double.test.ts';
 
 export const testNode = createSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/test-support/unit-suite-groups/test-double-runtime.ts',
     metadata: {},
     children: [

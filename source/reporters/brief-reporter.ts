@@ -8,9 +8,9 @@ import {
     type ReporterEvent,
     type RunFacts
 } from '../engine/reporter.ts';
+import { formatSourceLocation, type ReportingContext } from '../engine/reporting-context.ts';
 import type { RunResult, RunnerError, TestFailure } from '../engine/run-result.ts';
 import { formatFailureSummary } from './failure-summary.ts';
-import { formatSourceLocation } from './source-location-rendering.ts';
 
 const progressInterval = 100;
 
@@ -45,10 +45,11 @@ function failureLocation(failure: TestFailure): SourceLocation | null {
 
 function formatFailureLine(
     event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>,
-    failure: TestFailure
+    failure: TestFailure,
+    context: ReportingContext
 ): string {
     const location = failureLocation(failure);
-    const locationText = location === null ? null : formatSourceLocation(location);
+    const locationText = location === null ? null : formatSourceLocation(location, context);
     const origin = locationText === null ? formatCaseId(event.case) : `${locationText} ${formatCaseId(event.case)}`;
 
     return `fail ${origin}: ${formatFailureSummary(failure)}`;
@@ -56,11 +57,12 @@ function formatFailureLine(
 
 function failureIntent(
     event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>,
-    failure: TestFailure
+    failure: TestFailure,
+    context: ReportingContext
 ): OutputLineIntent {
     const location = failureLocation(failure);
 
-    return stdout(formatFailureLine(event, failure), {
+    return stdout(formatFailureLine(event, failure, context), {
         location,
         severity: 'error',
         title: formatCaseId(event.case)
@@ -127,7 +129,8 @@ function updateForCompletedTest(state: BriefReporterState, failed: boolean): Bri
 
 function testEndUpdate(
     state: BriefReporterState,
-    event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>
+    event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>,
+    context: ReportingContext
 ): BriefReporterUpdate {
     const nextState = updateForCompletedTest(state, event.verdict === 'fail');
 
@@ -139,7 +142,7 @@ function testEndUpdate(
     }
 
     const failureIntents = event.outcome.failures.map(function toFailureIntent(failure) {
-        return failureIntent(event, failure);
+        return failureIntent(event, failure, context);
     });
 
     return {
@@ -152,45 +155,47 @@ function testEndUpdate(
 }
 
 export function createBriefReporter(): DefinedReporter<RealTimeReporter<BriefReporterSinks>> {
-    let state: BriefReporterState = {
-        completed: 0,
-        failed: 0,
-        planned: null
-    };
+    return defineReporter(function createBriefRuntimeReporter(context) {
+        let state: BriefReporterState = {
+            completed: 0,
+            failed: 0,
+            planned: null
+        };
 
-    return defineReporter({
-        dispose: null,
-        kind: 'real-time',
-        name: 'brief',
-        sinks: briefReporterSinks,
+        return {
+            dispose: null,
+            kind: 'real-time',
+            name: 'brief',
+            sinks: briefReporterSinks,
 
-        onEvent(event) {
-            if (event.kind === 'run-start') {
-                state = {
-                    completed: state.completed,
-                    failed: state.failed,
-                    planned: readPlannedCount(event.facts)
-                };
+            onEvent(event) {
+                if (event.kind === 'run-start') {
+                    state = {
+                        completed: state.completed,
+                        failed: state.failed,
+                        planned: readPlannedCount(event.facts)
+                    };
 
-                return [ stdout(`run ${event.root.title}`, null) ];
+                    return [ stdout(`run ${event.root.title}`, null) ];
+                }
+
+                if (event.kind === 'test-end') {
+                    const update = testEndUpdate(state, event, context);
+                    state = update.state;
+
+                    return update.intents;
+                }
+
+                if (event.kind === 'runner-error') {
+                    return [ runnerErrorIntent(event.error) ];
+                }
+
+                return [];
+            },
+
+            onFinish(result) {
+                return [ finishIntent(result) ];
             }
-
-            if (event.kind === 'test-end') {
-                const update = testEndUpdate(state, event);
-                state = update.state;
-
-                return update.intents;
-            }
-
-            if (event.kind === 'runner-error') {
-                return [ runnerErrorIntent(event.error) ];
-            }
-
-            return [];
-        },
-
-        onFinish(result) {
-            return [ finishIntent(result) ];
-        }
+        };
     });
 }

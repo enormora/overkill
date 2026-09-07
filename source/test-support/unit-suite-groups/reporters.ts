@@ -10,7 +10,7 @@ import { testNode as tapConsoleReporterTestNode } from '../../reporters/tap-cons
 import { testNode as terminalTestNode } from '../../reporters/terminal.test.ts';
 
 export const testNode = createSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/test-support/unit-suite-groups/reporters.ts',
     metadata: {},
     children: [

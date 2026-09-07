@@ -13,12 +13,12 @@ function passingBody(scope: OverkillScope): ReturnType<TestBody> {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/test-plan-authoring-rules.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createTestPlan() rejects reachable tables with fewer than two cases',
             metadata: {},
             body(scope: OverkillScope) {
@@ -26,7 +26,7 @@ export const testNode = createOverkillSuite({
                 const emptyTableRoot = engine.createRoot({
                     children: [
                         engine.createTable({
-                            definitionLocations: [ { column: null, file: '', line: null } ],
+                            definitionLocations: [ { kind: 'unknown' as const } ],
                             cases: [],
                             metadata: {},
                             title: 'empty rows'
@@ -38,7 +38,7 @@ export const testNode = createOverkillSuite({
                 const singleRowTableRoot = engine.createRoot({
                     children: [
                         engine.createTable({
-                            definitionLocations: [ { column: null, file: '', line: null } ],
+                            definitionLocations: [ { kind: 'unknown' as const } ],
                             cases: [
                                 {
                                     body: passingBody,
@@ -66,7 +66,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createTestPlan() rejects duplicate sibling titles',
             metadata: {},
             body(scope: OverkillScope) {
@@ -74,13 +74,13 @@ export const testNode = createOverkillSuite({
                 const root = engine.createRoot({
                     children: [
                         engine.createTestCase({
-                            definitionLocations: [ { column: null, file: '', line: null } ],
+                            definitionLocations: [ { kind: 'unknown' as const } ],
                             body: passingBody,
                             metadata: {},
                             title: 'same'
                         }),
                         engine.createTestCase({
-                            definitionLocations: [ { column: null, file: '', line: null } ],
+                            definitionLocations: [ { kind: 'unknown' as const } ],
                             body: passingBody,
                             metadata: {},
                             title: 'same'
@@ -98,7 +98,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createTestPlan() rejects duplicate table case titles',
             metadata: {},
             body(scope: OverkillScope) {
@@ -106,7 +106,7 @@ export const testNode = createOverkillSuite({
                 const root = engine.createRoot({
                     children: [
                         engine.createTable({
-                            definitionLocations: [ { column: null, file: '', line: null } ],
+                            definitionLocations: [ { kind: 'unknown' as const } ],
                             cases: [
                                 {
                                     body: passingBody,

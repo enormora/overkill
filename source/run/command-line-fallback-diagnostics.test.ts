@@ -3,8 +3,9 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import type { Reporter } from '../engine/reporter.ts';
+import type { DefinedReporter, Reporter } from '../engine/reporter.ts';
 import type { RunResult } from '../engine/run-result.ts';
+import { defineFixedOutputRenderer, defineFixedReporter } from '../test-support/reporter-definition.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import {
     defaultMicrotestProfile,
@@ -18,17 +19,13 @@ import {
 import type { LoadedRunConfig } from './run-config.ts';
 import type { RunOrchestrator, RunRequest } from './run-types.ts';
 
-type PlainOutputIntent = {
-    readonly text: string;
-};
-
-const plainOutputRenderer = {
-    render(intent: PlainOutputIntent): string {
+const plainOutputRenderer = defineFixedOutputRenderer({
+    render(intent): string {
         return intent.text;
     }
-};
+});
 
-const memoryReporter: Reporter = {
+const memoryRuntimeReporter: Reporter = {
     dispose: null,
     kind: 'real-time',
     name: 'memory',
@@ -38,8 +35,9 @@ const memoryReporter: Reporter = {
     onFinish: null,
     sinks: [ { kind: 'memory' } ]
 };
+const memoryReporter = defineFixedReporter(memoryRuntimeReporter);
 
-const terminalEventReporter: Reporter = {
+const terminalEventRuntimeReporter: Reporter = {
     dispose: null,
     kind: 'real-time',
     name: 'terminal-event',
@@ -49,8 +47,9 @@ const terminalEventReporter: Reporter = {
     onFinish: null,
     sinks: [ { kind: 'stdout-raw' } ]
 };
+const terminalEventReporter = defineFixedReporter(terminalEventRuntimeReporter);
 
-const terminalFinishReporter: Reporter = {
+const terminalFinishRuntimeReporter: Reporter = {
     dispose: null,
     kind: 'real-time',
     name: 'terminal-finish',
@@ -62,8 +61,9 @@ const terminalFinishReporter: Reporter = {
     },
     sinks: [ { kind: 'stdout-raw' } ]
 };
+const terminalFinishReporter = defineFixedReporter(terminalFinishRuntimeReporter);
 
-const terminalFinalResultReporter: Reporter = {
+const terminalFinalResultRuntimeReporter: Reporter = {
     dispose: null,
     kind: 'final-result',
     name: 'terminal-final-result',
@@ -72,6 +72,7 @@ const terminalFinalResultReporter: Reporter = {
     },
     sinks: [ { kind: 'stdout-raw' } ]
 };
+const terminalFinalResultReporter = defineFixedReporter(terminalFinalResultRuntimeReporter);
 
 const defaultRequest: RunRequest = defaultRunRequest();
 
@@ -112,7 +113,7 @@ function runnerError(
 }
 
 function createRunnerDependencies(
-    reporter: Reporter,
+    reporter: DefinedReporter,
     run: RunOrchestrator['run'],
     deliveredRunnerErrors: readonly RunResult['runnerErrors'][number][]
 ): CommandLineRunnerDependencies {
@@ -145,7 +146,7 @@ function createRunnerDependencies(
 }
 
 async function runTests(
-    reporter: Reporter,
+    reporter: DefinedReporter,
     run: RunOrchestrator['run'],
     deliveredRunnerErrors: readonly RunResult['runnerErrors'][number][]
 ): Promise<CommandLineRunnerResult> {
@@ -159,12 +160,12 @@ async function runTests(
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/command-line-fallback-diagnostics.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() maps resource exhaustion to exit code 5',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -183,7 +184,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() maps resource exhaustion before generic runner errors',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -203,7 +204,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() omits terminal-delivered runner error fallback diagnostics',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -221,7 +222,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() omits terminal-finished runner error fallback diagnostics',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -241,7 +242,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() omits terminal final-result runner error fallback diagnostics',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -261,7 +262,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() falls back to runner errors not delivered to terminal reporters',
             metadata: {},
             async body(scope: OverkillScope) {

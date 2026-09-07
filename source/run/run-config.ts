@@ -3,8 +3,8 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parse } from '@schema-hub/zod-error-formatter';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
-import { createPlainOutputRenderer, type OutputRenderer } from '../engine/reporter-output.ts';
-import type { Reporter } from '../engine/reporter.ts';
+import { createPlainOutputRenderer, type DefinedOutputRenderer } from '../engine/reporter-output.ts';
+import type { DefinedReporter } from '../engine/reporter.ts';
 import {
     projectConfigSchema,
     type RunProjectConfig as ParsedRunProjectConfig,
@@ -57,9 +57,9 @@ const defaultMicrotestTimeoutMilliseconds = 500;
 export type LoadedRunConfig = {
     readonly configPath: string | null;
     readonly loader: RunLoaderConfig;
-    readonly outputRenderer: OutputRenderer;
+    readonly outputRenderer: DefinedOutputRenderer;
     readonly profiles: RunProfilesConfig;
-    readonly reporters: NonEmptyReadonlyArray<Reporter> | null;
+    readonly reporters: NonEmptyReadonlyArray<DefinedReporter> | null;
     readonly runtimeStateDir: string;
 };
 
@@ -184,7 +184,9 @@ function readNamedConfigExport(configModule: unknown, configPath: string): unkno
     throw new RunConfigError(`Config file "${configPath}" must export a named config value.`);
 }
 
-function normalizeReporters(reporters: NonEmptyReadonlyArray<Reporter> | undefined): LoadedRunConfig['reporters'] {
+function normalizeReporters(
+    reporters: NonEmptyReadonlyArray<DefinedReporter> | undefined
+): LoadedRunConfig['reporters'] {
     return reporters ?? null;
 }
 

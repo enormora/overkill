@@ -3,20 +3,21 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import { createReportingContext } from '../engine/reporting-context.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createNullReporter } from './null-reporter.ts';
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/null-reporter.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'null reporter accepts a final result without producing output',
             metadata: {},
             async body(scope: OverkillScope) {
-                const reporter = createNullReporter();
+                const reporter = createNullReporter()(createReportingContext({ projectRoot: null }));
 
                 scope.assert.equal(reporter.kind, 'final-result');
                 scope.assert.equal(reporter.name, 'null');

@@ -3,7 +3,7 @@ import { testNode as runSelectionTestNode } from './run-selection.test.ts';
 import { testNode as runTestNode } from './run.test.ts';
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-orchestrator-core-suite.test.ts',
     metadata: {},
     children: [

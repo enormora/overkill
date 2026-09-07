@@ -22,14 +22,14 @@ const otherRowParameterIdentity = [
 function createLocationVariantPlan(): TestPlan {
     const engine = createTestEngine();
     const testNode = engine.createSuite({
-        definitionLocations: [ { column: null, file: '', line: null } ],
+        definitionLocations: [ { kind: 'unknown' as const } ],
         children: [
             engine.createTestCase({
                 body(scope) {
                     scope.assert.true(true);
                     return scope.assert.collect();
                 },
-                definitionLocations: [ { column: null, file: '', line: null } ],
+                definitionLocations: [ { kind: 'unknown' as const } ],
                 metadata: {},
                 title: 'no location'
             }),
@@ -39,10 +39,10 @@ function createLocationVariantPlan(): TestPlan {
                     return scope.assert.collect();
                 },
                 definitionLocations: [
-                    { column: null, file: 'relative.test.ts', line: 7 },
-                    { column: null, file: '', line: null },
-                    { column: null, file: 'macro.test.ts', line: 5 },
-                    { column: null, file: 'constructed.test.ts', line: null }
+                    { column: null, file: 'relative.test.ts', kind: 'known' as const, line: 7 },
+                    { kind: 'unknown' as const },
+                    { column: null, file: 'macro.test.ts', kind: 'known' as const, line: 5 },
+                    { column: null, file: 'constructed.test.ts', kind: 'known' as const, line: null }
                 ],
                 metadata: {},
                 title: 'line only'
@@ -68,7 +68,12 @@ function createLocationVariantPlan(): TestPlan {
                         parameters: { value: 2 }
                     }
                 ],
-                definitionLocations: [ { column: null, file: '/outside/table.test.ts', line: null } ],
+                definitionLocations: [ {
+                    column: null,
+                    file: '/outside/table.test.ts',
+                    kind: 'known' as const,
+                    line: null
+                } ],
                 metadata: {},
                 title: 'rows'
             })
@@ -84,23 +89,28 @@ function createLocationVariantPlan(): TestPlan {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-list-renderer.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'renderResolvedRunList() renders location variants',
             metadata: {},
             body(scope: OverkillScope) {
                 const result = renderResolvedRunList(
                     {
+                        facts: {
+                            environment: {
+                                projectRoot: process.cwd()
+                            }
+                        },
                         plan: {
                             kind: 'local',
                             testPlan: createLocationVariantPlan()
                         }
                     } as ResolvedRun,
-                    { cwd: process.cwd(), withLocations: true, withOrphans: false }
+                    { withLocations: true, withOrphans: false }
                 );
 
                 scope.assert.deepEqual(result, [

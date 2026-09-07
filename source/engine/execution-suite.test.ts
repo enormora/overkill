@@ -6,7 +6,7 @@ import { testNode as executionTestNode } from './execution.test.ts';
 import { testNode as executionTimeoutSupervisionTestNode } from './execution-timeout-supervision.test.ts';
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/execution-suite.test.ts',
     metadata: {},
     children: [

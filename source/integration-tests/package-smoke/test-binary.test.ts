@@ -31,7 +31,38 @@ const packageSmokeFolder = fileURLToPath(new URL('.', import.meta.url));
 const packageSmokeNodeModules = path.join(packageSmokeFolder, 'node_modules');
 const testPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/test');
 const runPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/run');
+const packageSmokeConfigFile = 'overkill.config.js';
 const authoringSmokeFile = 'authoring-smoke.test.mjs';
+const packageSmokeConfigScript = [
+    "import { defineConfig } from '@overkill-dev/test/config';",
+    "import { defineReporter } from '@overkill-dev/engine';",
+    '',
+    'const packageSmokeReporter = defineReporter(function createPackageSmokeReporter() {',
+    '    return {',
+    '        dispose: null,',
+    "        kind: 'real-time',",
+    "        name: 'package-smoke',",
+    '        onEvent() {},',
+    '        onFinish: null,',
+    "        sinks: [ { kind: 'memory' } ]",
+    '    };',
+    '});',
+    '',
+    'export const config = defineConfig({',
+    '    reporters: [ packageSmokeReporter ],',
+    '    profiles: {',
+    '        microtest: {',
+    "            testFamily: 'microtest',",
+    '            execution: {',
+    "                processModel: 'in-process',",
+    "                scheduling: 'serial'",
+    '            }',
+    '        }',
+    '    }',
+    '});',
+    ''
+]
+    .join('\n');
 const authoringSmokeScript = [
     "import { suite, test } from '@overkill-dev/test';",
     '',
@@ -102,14 +133,20 @@ const standardSubpathImportScript = [
     'console.log(JSON.stringify(Object.keys(reportersModule)));',
     'console.log(JSON.stringify(Object.keys(assertModule)));',
     'console.log(configModule.defineConfig({ profiles: {} }).profiles === undefined);',
-    'console.log(reportersModule.createLineReporter().name);',
-    'console.log(reportersModule.createBriefReporter().name);',
-    'const dotReporter = reportersModule.createDotReporter();',
+    'const context = {',
+    '    relativizeLocationPath(location) {',
+    '        return location.file;',
+    '    }',
+    '};',
+    'console.log(reportersModule.createLineReporter()(context).name);',
+    'console.log(reportersModule.createBriefReporter()(context).name);',
+    'const dotReporter = reportersModule.createDotReporter()(context);',
     'console.log(dotReporter.name);',
     'if (dotReporter.dispose !== null) {',
     '    dotReporter.dispose();',
     '}',
-    'console.log(reportersModule.createGithubActionsOutputRenderer().render({',
+    'const githubActionsOutputRenderer = reportersModule.createGithubActionsOutputRenderer()(context);',
+    'console.log(githubActionsOutputRenderer.render({',
     "    annotation: null, kind: 'stdout-line', role: 'primary', text: 'hello'",
     '}));',
     'console.log(typeof assertModule.defineCompositeAssertion);',
@@ -313,13 +350,20 @@ async function writeAuthoringSmokeFile(): Promise<void> {
     await fs.writeFile(path.join(packageSmokeFolder, authoringSmokeFile), authoringSmokeScript);
 }
 
+async function writePackageSmokeProject(): Promise<void> {
+    await Promise.all([
+        fs.writeFile(path.join(packageSmokeFolder, packageSmokeConfigFile), packageSmokeConfigScript),
+        writeAuthoringSmokeFile()
+    ]);
+}
+
 export const testNode = createSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/integration-tests/package-smoke/test-binary.test.ts',
     metadata: {},
     children: [
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test package owns the overkill binary',
             metadata: {},
             async body(scope: TestScope) {
@@ -340,7 +384,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'consumer imports packaged @overkill-dev/test root facade',
             metadata: {},
             async body(scope: TestScope) {
@@ -368,7 +412,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'consumer imports packaged @overkill-dev/test standard subpaths',
             metadata: {},
             async body(scope: TestScope) {
@@ -393,7 +437,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'packaged overkill binary prints command help',
             metadata: {},
             async body(scope: TestScope) {
@@ -410,11 +454,11 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'packaged @overkill-dev/test root authoring creates runnable testNode exports',
             metadata: {},
             async body(scope: TestScope) {
-                await writeAuthoringSmokeFile();
+                await writePackageSmokeProject();
 
                 const result = await spawnNode([
                     path.join(testPackageFolder, 'packages/test/overkill.entry-point.js'),
@@ -424,18 +468,17 @@ export const testNode = createSuite({
 
                 scope.assert.equal(result.code, 0);
                 scope.assert.equal(result.stderr, '');
-                scope.assert.includes(result.stdout, 'passes');
-                scope.assert.includes(result.stdout, '1 discovered, 1 planned, 1 executed');
+                scope.assert.equal(result.stdout, '');
 
                 return scope.assert.collect();
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'packaged overkill list renders root authoring definition locations',
             metadata: {},
             async body(scope: TestScope) {
-                await writeAuthoringSmokeFile();
+                await writePackageSmokeProject();
 
                 const result = await spawnNode([
                     path.join(testPackageFolder, 'packages/test/overkill.entry-point.js'),
@@ -453,7 +496,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'consumer imports packaged @overkill-dev/run/filters helpers',
             metadata: {},
             async body(scope: TestScope) {

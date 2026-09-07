@@ -152,12 +152,12 @@ const failingAssertions: readonly EvaluationCase[] = [
 ];
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/assertion-protocol/evaluation.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'evaluateAssertion() passes built-in catalog assertions with strict semantics',
             metadata: {},
             body(scope: OverkillScope) {
@@ -174,7 +174,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'evaluateAssertion() fails built-in catalog assertions with source-aware checks',
             metadata: {},
             body(scope: OverkillScope) {
@@ -191,7 +191,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'evaluateAssertion() preserves custom messages and assertion source',
             metadata: {},
             body(scope: OverkillScope) {
@@ -221,7 +221,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'evaluateAssertion() reports unsupported collection operands',
             metadata: {},
             body(scope: OverkillScope) {
@@ -246,7 +246,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'evaluateAssertion() passes thrown matcher composites',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -278,7 +278,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'evaluateAssertion() reports thrown matcher field failures',
             metadata: {},
             body(scope: OverkillScope) {
@@ -308,7 +308,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'evaluateAssertion() reports missing and non-error thrown values',
             metadata: {},
             body(scope: OverkillScope) {
@@ -341,7 +341,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'invalidDeepAssertionOperand() accepts structural and reference operands',
             metadata: {},
             body(scope: OverkillScope) {
@@ -362,7 +362,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'invalidDeepAssertionOperand() reports primitive exact deep operands',
             metadata: {},
             body(scope: OverkillScope) {
@@ -398,7 +398,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'invalidDeepAssertionOperand() reports primitive partial member operands',
             metadata: {},
             body(scope: OverkillScope) {
@@ -438,7 +438,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'invalidDeepAssertionOperand() reports primitive composite child operands',
             metadata: {},
             body(scope: OverkillScope) {

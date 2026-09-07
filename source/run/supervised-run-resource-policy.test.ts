@@ -82,12 +82,12 @@ function assertCaseId(scope: OverkillScope, actual: CaseId | null, expected: Cas
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/supervised-run-resource-policy.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'findResourceBudgetBreach() selects the first exceeded resource budget',
             metadata: {},
             body(scope: OverkillScope) {
@@ -122,7 +122,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'resource policy errors attribute active case boundaries',
             metadata: {},
             body(scope: OverkillScope) {

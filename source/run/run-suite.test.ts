@@ -9,7 +9,7 @@ import { testNode as runIfMainTestNode } from './run-if-main-suite.test.ts';
 import { testNode as supervisedRunTestNode } from './supervised-run.test.ts';
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-suite.test.ts',
     metadata: {},
     children: [

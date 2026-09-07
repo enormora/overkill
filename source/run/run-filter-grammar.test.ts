@@ -16,12 +16,12 @@ function parseErrorMessage(expression: string): string | null {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-filter-grammar.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'parseRunFilterExpression() parses field operators',
             metadata: {},
             body(scope: OverkillScope) {
@@ -41,7 +41,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'parseRunFilterExpression() keeps OR lower precedence than whitespace AND',
             metadata: {},
             body(scope: OverkillScope) {
@@ -66,7 +66,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'parseRunFilterExpression() parses negated groups',
             metadata: {},
             body(scope: OverkillScope) {
@@ -94,7 +94,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'parseRunFilterExpression() unescapes quoted values',
             metadata: {},
             body(scope: OverkillScope) {
@@ -113,7 +113,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'parseRunFilterExpression() accepts supported string dimensions',
             metadata: {},
             body(scope: OverkillScope) {
@@ -140,7 +140,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'parseRunFilterExpression() rejects malformed expressions',
             metadata: {},
             body(scope: OverkillScope) {

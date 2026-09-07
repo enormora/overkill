@@ -7,9 +7,19 @@ import type { FailedCompositeCheck, FailedLeafCheck } from '../assertion-protoco
 import { compareDeepValues, compareStringEquality, serializedValueDiff } from '../compare/comparison.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import type { Diff } from '../diff/diff-shape.ts';
+import {
+    createReportingContext,
+    formatAssertionSourceLocations,
+    formatDefinitionLocations
+} from '../engine/reporting-context.ts';
 import type { TestFailure } from '../engine/run-result.ts';
-import { formatFailure } from './line-failure-rendering.ts';
-import { formatDefinitionLocations, formatSourceLocations } from './source-location-rendering.ts';
+import { formatFailure as formatFailureWithContext } from './line-failure-rendering.ts';
+
+const reportingContext = createReportingContext({ projectRoot: null });
+
+function formatFailure(failure: TestFailure): readonly string[] {
+    return formatFailureWithContext(failure, reportingContext);
+}
 
 function failedCheck(overrides: Partial<FailedLeafCheck>): FailedLeafCheck {
     return {
@@ -20,7 +30,7 @@ function failedCheck(overrides: Partial<FailedLeafCheck>): FailedLeafCheck {
         kind: 'leaf',
         path: [],
         source: 'assert',
-        sourceLocations: [ { column: null, file: '', line: null } ],
+        sourceLocations: [ { kind: 'unknown' as const } ],
         summary: 'fails',
         ...overrides
     };
@@ -31,12 +41,12 @@ function assertionFailure(checks: readonly [FailedLeafCheck, ...FailedLeafCheck[
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/line-failure-rendering.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders serialized scalar values and locations',
             metadata: {},
             body(scope: OverkillScope) {
@@ -49,7 +59,12 @@ export const testNode = createOverkillSuite({
                             { index: 0, kind: 'index' },
                             { key: { kind: 'string', value: 'display name' }, kind: 'property' }
                         ],
-                        sourceLocations: [ { column: null, file: 'source/users.test.ts', line: null } ],
+                        sourceLocations: [ {
+                            column: null,
+                            file: 'source/users.test.ts',
+                            kind: 'known' as const,
+                            line: null
+                        } ],
                         summary: 'null differs'
                     }),
                     failedCheck({
@@ -57,7 +72,12 @@ export const testNode = createOverkillSuite({
                         diff: null,
                         expected: serializeValue(1n),
                         id: '2',
-                        sourceLocations: [ { column: null, file: 'source/users.test.ts', line: 12 } ],
+                        sourceLocations: [ {
+                            column: null,
+                            file: 'source/users.test.ts',
+                            kind: 'known' as const,
+                            line: 12
+                        } ],
                         summary: 'symbol differs'
                     })
                 ]));
@@ -80,17 +100,17 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'source location rendering labels empty and multi-hop chains',
             metadata: {},
             body(scope: OverkillScope) {
-                scope.assert.deepEqual(formatDefinitionLocations([]), { details: [], primary: null });
+                scope.assert.deepEqual(formatDefinitionLocations([], reportingContext), { details: [], primary: null });
                 scope.assert.deepEqual(
                     formatDefinitionLocations([
-                        { column: 1, file: 'test.ts', line: 2 },
-                        { column: null, file: 'macro.ts', line: 3 },
-                        { column: null, file: 'constructed.ts', line: null }
-                    ]),
+                        { column: 1, file: 'test.ts', kind: 'known' as const, line: 2 },
+                        { column: null, file: 'macro.ts', kind: 'known' as const, line: 3 },
+                        { column: null, file: 'constructed.ts', kind: 'known' as const, line: null }
+                    ], reportingContext),
                     {
                         details: [
                             'expanded at macro.ts:3',
@@ -100,11 +120,11 @@ export const testNode = createOverkillSuite({
                     }
                 );
                 scope.assert.deepEqual(
-                    formatSourceLocations([
-                        { column: null, file: 'test.ts', line: 2 },
-                        { column: null, file: '', line: null },
-                        { column: null, file: 'asserted.ts', line: 5 }
-                    ]),
+                    formatAssertionSourceLocations([
+                        { column: null, file: 'test.ts', kind: 'known' as const, line: 2 },
+                        { kind: 'unknown' as const },
+                        { column: null, file: 'asserted.ts', kind: 'known' as const, line: 5 }
+                    ], reportingContext),
                     {
                         details: [
                             'asserted at asserted.ts:5'
@@ -113,12 +133,12 @@ export const testNode = createOverkillSuite({
                     }
                 );
                 scope.assert.deepEqual(
-                    formatSourceLocations([
-                        { column: null, file: 'test.ts', line: 2 },
-                        { column: null, file: 'macro.ts', line: 3 },
-                        { column: null, file: 'body.ts', line: 4 },
-                        { column: null, file: 'asserted.ts', line: 5 }
-                    ]),
+                    formatAssertionSourceLocations([
+                        { column: null, file: 'test.ts', kind: 'known' as const, line: 2 },
+                        { column: null, file: 'macro.ts', kind: 'known' as const, line: 3 },
+                        { column: null, file: 'body.ts', kind: 'known' as const, line: 4 },
+                        { column: null, file: 'asserted.ts', kind: 'known' as const, line: 5 }
+                    ], reportingContext),
                     {
                         details: [
                             'forwarded through macro.ts:3',
@@ -133,7 +153,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders structured string hunks',
             metadata: {},
             body(scope: OverkillScope) {
@@ -158,7 +178,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders object, array, map, and set diffs',
             metadata: {},
             body(scope: OverkillScope) {
@@ -204,7 +224,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders binary diff summaries',
             metadata: {},
             body(scope: OverkillScope) {
@@ -231,7 +251,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders composite children',
             metadata: {},
             body(scope: OverkillScope) {
@@ -250,7 +270,7 @@ export const testNode = createOverkillSuite({
                     kind: 'composite',
                     path: [],
                     source: 'assert',
-                    sourceLocations: [ { column: null, file: '', line: null } ],
+                    sourceLocations: [ { kind: 'unknown' as const } ],
                     summary: 'Expected resultOk assertion to pass.'
                 };
 
@@ -268,7 +288,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders body errors and test-contract failures',
             metadata: {},
             body(scope: OverkillScope) {
@@ -300,7 +320,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter truncates oversized rendered values',
             metadata: {},
             body(scope: OverkillScope) {

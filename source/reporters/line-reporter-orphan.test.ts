@@ -8,6 +8,7 @@ import {
     type RealTimeReporter,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import { createReportingContext } from '../engine/reporting-context.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createLineReporter, type LineReporterDependencies } from './line-reporter.ts';
 
@@ -19,7 +20,7 @@ const infoSymbol = colors.cyan(figures.info);
 function lineReporterWithLog(log: Log): RealTimeReporter {
     const fakeDependencies = { stdoutConsole: { log } } as unknown as LineReporterDependencies;
 
-    return createLineReporter(fakeDependencies);
+    return createLineReporter(fakeDependencies)(createReportingContext({ projectRoot: null }));
 }
 
 function assertOrphanOutput(scope: OverkillScope, log: Log): void {
@@ -38,12 +39,12 @@ function assertOrphanOutput(scope: OverkillScope, log: Log): void {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { column: null, file: '', line: null } ],
+    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/line-reporter-orphan.test.ts',
     metadata: {},
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { column: null, file: '', line: null } ],
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter prints orphan details once the run finishes',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -59,8 +60,8 @@ export const testNode = createOverkillSuite({
                     orphans: [
                         {
                             definitionLocations: [
-                                { column: null, file: 'source/macro.test.ts', line: 10 },
-                                { column: null, file: 'source/example.test.ts', line: 20 }
+                                { column: null, file: 'source/macro.test.ts', kind: 'known' as const, line: 10 },
+                                { column: null, file: 'source/example.test.ts', kind: 'known' as const, line: 20 }
                             ],
                             file: null,
                             kind: 'test',

@@ -1,18 +1,29 @@
-import { isAbsolute, relative } from 'node:path';
 import type { SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
+import {
+    createReportingContext,
+    formatDefinitionLocations,
+    formatSourceLocation,
+    type ReportingContext
+} from '../engine/reporting-context.ts';
 import type { OrphanedNode } from '../engine/run-result.ts';
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import type { CollectedRunCase, CollectedRunFile, CollectedRunPlan, ResolvedRun } from './run-types.ts';
 
 type RenderOptions = {
-    readonly cwd: string;
     readonly withLocations: boolean;
     readonly withOrphans: boolean;
 };
 
+type NodeLineInput = {
+    readonly context: ReportingContext;
+    readonly depth: number;
+    readonly locations: readonly SourceLocation[];
+    readonly name: string;
+    readonly options: RenderOptions;
+};
+
 const indentation = '  ';
 const orphanDetailDepth = 2;
-const secondToLastOffset = 2;
 
 function indent(depth: number): string {
     return indentation.repeat(depth);
@@ -32,38 +43,8 @@ function formatCaseName(testCase: CollectedRunCase): string {
     return testCase.params === null ? testCase.title : `${testCase.title} [${testCase.params}]`;
 }
 
-function formatLocationPath(file: string, cwd: string): string {
-    if (!isAbsolute(file)) {
-        return file;
-    }
-
-    const relativeFile = relative(cwd, file);
-
-    return relativeFile.length > 0 && !relativeFile.startsWith('..') && !isAbsolute(relativeFile)
-        ? relativeFile
-        : file;
-}
-
-function formatLocation(location: SourceLocation, cwd: string): string | null {
-    if (location.file.length === 0) {
-        return null;
-    }
-
-    const file = formatLocationPath(location.file, cwd);
-
-    if (location.line === null) {
-        return file;
-    }
-
-    if (location.column === null) {
-        return `${file}:${location.line}`;
-    }
-
-    return `${file}:${location.line}:${location.column}`;
-}
-
-function locationSuffix(location: SourceLocation, options: RenderOptions): string {
-    const renderedLocation = options.withLocations ? formatLocation(location, options.cwd) : null;
+function locationSuffix(location: SourceLocation, options: RenderOptions, context: ReportingContext): string {
+    const renderedLocation = options.withLocations ? formatSourceLocation(location, context) : null;
 
     return renderedLocation === null ? '' : ` (${renderedLocation})`;
 }
@@ -71,46 +52,37 @@ function locationSuffix(location: SourceLocation, options: RenderOptions): strin
 function formatDefinitionLocationDetails(
     locations: readonly SourceLocation[],
     options: RenderOptions,
+    context: ReportingContext,
     depth: number
 ): readonly string[] {
     if (!options.withLocations || locations.length <= 1) {
         return [];
     }
 
-    return locations.slice(1).flatMap(function renderLocation(location, index) {
-        const renderedLocation = formatLocation(location, options.cwd);
+    const sourceLocations = formatDefinitionLocations(locations, context);
 
-        if (renderedLocation === null) {
-            return [];
-        }
-
-        const label = index === locations.length - secondToLastOffset ? 'constructed at' : 'expanded at';
-
-        return [ `${indent(depth)}${label} ${renderedLocation}` ];
+    return sourceLocations.details.map(function renderLocation(detail) {
+        return `${indent(depth)}${detail}`;
     });
 }
 
-function formatNodeLines(
-    name: string,
-    locations: readonly SourceLocation[],
-    options: RenderOptions,
-    depth: number
-): readonly string[] {
-    const primaryLocation = locations[0];
+function formatNodeLines(input: NodeLineInput): readonly string[] {
+    const primaryLocation = input.locations[0];
     const primaryLine = primaryLocation === undefined
-        ? name
-        : `${name}${locationSuffix(primaryLocation, options)}`;
+        ? input.name
+        : `${input.name}${locationSuffix(primaryLocation, input.options, input.context)}`;
 
     return [
-        `${indent(depth)}${primaryLine}`,
-        ...formatDefinitionLocationDetails(locations, options, depth + 1)
+        `${indent(input.depth)}${primaryLine}`,
+        ...formatDefinitionLocationDetails(input.locations, input.options, input.context, input.depth + 1)
     ];
 }
 
 function renderSuiteLines(
     sharedLength: number,
     suitePath: CollectedRunCase['suitePath'],
-    options: RenderOptions
+    options: RenderOptions,
+    context: ReportingContext
 ): readonly string[] {
     const lines: string[] = [];
 
@@ -118,14 +90,20 @@ function renderSuiteLines(
         const entry = suitePath[index];
 
         if (entry !== undefined) {
-            lines.push(...formatNodeLines(entry.title, entry.definitionLocations, options, index + 1));
+            lines.push(...formatNodeLines({
+                context,
+                depth: index + 1,
+                locations: entry.definitionLocations,
+                name: entry.title,
+                options
+            }));
         }
     }
 
     return lines;
 }
 
-function renderFile(file: CollectedRunFile, options: RenderOptions): readonly string[] {
+function renderFile(file: CollectedRunFile, options: RenderOptions, context: ReportingContext): readonly string[] {
     const lines: string[] = [ file.file ];
     let currentSuitePath: CollectedRunCase['suitePath'] = [];
 
@@ -133,13 +111,14 @@ function renderFile(file: CollectedRunFile, options: RenderOptions): readonly st
         const sharedLength = sharedPrefixLength(currentSuitePath, testCase.suitePath);
 
         lines.push(
-            ...renderSuiteLines(sharedLength, testCase.suitePath, options),
-            ...formatNodeLines(
-                formatCaseName(testCase),
-                testCase.definitionLocations,
-                options,
-                testCase.suitePath.length + 1
-            )
+            ...renderSuiteLines(sharedLength, testCase.suitePath, options, context),
+            ...formatNodeLines({
+                context,
+                depth: testCase.suitePath.length + 1,
+                locations: testCase.definitionLocations,
+                name: formatCaseName(testCase),
+                options
+            })
         );
         currentSuitePath = testCase.suitePath;
     }
@@ -147,18 +126,22 @@ function renderFile(file: CollectedRunFile, options: RenderOptions): readonly st
     return lines;
 }
 
-function renderOrphan(orphan: OrphanedNode, options: RenderOptions): readonly string[] {
+function renderOrphan(orphan: OrphanedNode, options: RenderOptions, context: ReportingContext): readonly string[] {
     const file = orphan.file ?? '<unknown>';
 
     return [
         `${indent(1)}${orphan.kind}: ${orphan.title} (${file})${
-            locationSuffix(orphan.definitionLocations[0], options)
+            locationSuffix(orphan.definitionLocations[0], options, context)
         }`,
-        ...formatDefinitionLocationDetails(orphan.definitionLocations, options, orphanDetailDepth)
+        ...formatDefinitionLocationDetails(orphan.definitionLocations, options, context, orphanDetailDepth)
     ];
 }
 
-function renderOrphans(orphans: readonly OrphanedNode[], options: RenderOptions): readonly string[] {
+function renderOrphans(
+    orphans: readonly OrphanedNode[],
+    options: RenderOptions,
+    context: ReportingContext
+): readonly string[] {
     if (orphans.length === 0) {
         return [ 'Orphans', `${indent(1)}(none)` ];
     }
@@ -166,7 +149,7 @@ function renderOrphans(orphans: readonly OrphanedNode[], options: RenderOptions)
     return [
         'Orphans',
         ...orphans.flatMap(function renderOrphanLine(orphan) {
-            return renderOrphan(orphan, options);
+            return renderOrphan(orphan, options, context);
         })
     ];
 }
@@ -181,13 +164,16 @@ function resolvedCollectedPlan(resolvedRun: ResolvedRun): CollectedRunPlan {
 
 export function renderResolvedRunList(resolvedRun: ResolvedRun, options: RenderOptions): readonly string[] {
     const plan = resolvedCollectedPlan(resolvedRun);
+    const context = createReportingContext({
+        projectRoot: resolvedRun.facts.environment.projectRoot
+    });
     const planLines = plan.files.flatMap(function renderPlanFile(file) {
-        return renderFile(file, options);
+        return renderFile(file, options, context);
     });
 
     if (!options.withOrphans) {
         return planLines;
     }
 
-    return [ ...planLines, ...renderOrphans(plan.orphans, options) ];
+    return [ ...planLines, ...renderOrphans(plan.orphans, options, context) ];
 }
