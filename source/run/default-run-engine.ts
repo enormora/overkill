@@ -34,6 +34,7 @@ const engine = createEngineWithOwner(createEngineDependencies(), defaultTestNode
 export const defaultRunEngine: Engine = {
     createRoot: engine.createRoot,
     createSuite: engine.createSuite,
+    createSkippedTestCase: engine.createSkippedTestCase,
     createTable: engine.createTable,
     createTestCase: engine.createTestCase,
     createTestPlan: engine.createTestPlan,

@@ -126,6 +126,7 @@ import { suite, test, testDouble } from '@overkill-dev/test';
 It should expose authoring helpers plus lightweight doubles:
 
 - `test`
+- `skippedTest`
 - `suite`
 - `table`
 - `defineHarness`
@@ -177,8 +178,8 @@ The facade surface itself should stay narrow and settled:
 - `createTestFacade(...)` configures authoring ergonomics only; it should
   not own assertion vocabulary registration
 - the returned facade re-exports the core authoring helpers:
-  `test`, `suite`, `table`, `defineMacro`, `defineParameterizedTestBody`,
-  and `runIfMain`
+  `test`, `skippedTest`, `suite`, `table`, `defineMacro`,
+  `defineParameterizedTestBody`, and `runIfMain`
 - engine-agnostic helpers such as `defineHarness` stay as ordinary root
   imports and are not injected into `createTestFacade(...)`
 - `testFamily` derives authored node `metadata.kind`; facade metadata is
@@ -676,7 +677,7 @@ or extend the contract but do not redefine it.
 | Configuration loading                                             | `@overkill-dev/run`                                                    | Reads root `overkill.config.ts`; engine has no configuration.                                                                                                  |
 | Standard configuration helper re-export                           | `@overkill-dev/test/config`                                            | User-facing import path for `defineConfig(...)`; custom orchestrators may import from `@overkill-dev/run`.                                                     |
 | Test facade creation                                              | project code + `@overkill-dev/test`                                    | `@overkill-dev/test` owns facade creation for authoring ergonomics only.                                                                                       |
-| Root test authoring import                                        | `@overkill-dev/test`                                                   | `test`, `suite`, `table`, `defineMacro`, `createTestFacade`, `runIfMain`, and explicitly reviewed lightweight doubles only.                                    |
+| Root test authoring import                                        | `@overkill-dev/test`                                                   | `test`, `skippedTest`, `suite`, `table`, `defineMacro`, `createTestFacade`, `runIfMain`, and explicitly reviewed lightweight doubles only.                     |
 | Assertion reference execution                                     | `@overkill-dev/engine`                                                 | Engine owns callable assertion references, counting, `require` behavior, and result normalization.                                                             |
 | CLI command semantics, terminal capability detection              | `@overkill-dev/run`                                                    | Owns typed command behavior behind the `@overkill-dev/test` argv parser and binary wrapper.                                                                    |
 | Test debug mode artifact                                          | `@overkill-dev/run`                                                    | Activation, storage, retention; see [Test Debug Mode](../authoring/debug-mode.md).                                                                             |

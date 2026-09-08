@@ -146,7 +146,29 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.equal(isTestNode(testCase), true);
                 scope.assert.equal(testCase.kind, 'test');
+                scope.assert.equal(testCase.execution.kind, 'body');
                 scope.assert.equal(testCase.title, 'passes');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'createSkippedTestCase() creates a branded test node',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const engine = createEngine();
+                const testCase = engine.createSkippedTestCase({
+                    definitionLocations: [ { kind: 'unknown' as const } ],
+                    metadata: { priority: 'critical' },
+                    reason: ' not available ',
+                    title: 'skips'
+                });
+
+                scope.assert.equal(isTestNode(testCase), true);
+                scope.assert.equal(testCase.kind, 'test');
+                scope.assert.deepEqual(testCase.execution, { kind: 'skip', reason: 'not available' });
+                scope.assert.equal(testCase.title, 'skips');
 
                 return scope.assert.collect();
             }
@@ -169,6 +191,33 @@ export const testNode = createOverkillSuite({
                         title: ' '
                     });
                 }, { message: 'Test node title must not be empty.' });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'createSkippedTestCase() rejects invalid reason values',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const engine = createEngine();
+
+                scope.assert.throws(function createSkippedTestCaseWithNonStringReason() {
+                    engine.createSkippedTestCase({
+                        definitionLocations: [ { kind: 'unknown' as const } ],
+                        metadata: {},
+                        reason: 1 as never,
+                        title: 'skips'
+                    });
+                }, { message: 'Skipped test reason must be a string.' });
+                scope.assert.throws(function createSkippedTestCaseWithEmptyReason() {
+                    engine.createSkippedTestCase({
+                        definitionLocations: [ { kind: 'unknown' as const } ],
+                        metadata: {},
+                        reason: ' ',
+                        title: 'skips'
+                    });
+                }, { message: 'Skipped test reason must not be empty.' });
 
                 return scope.assert.collect();
             }

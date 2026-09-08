@@ -48,8 +48,11 @@ const policyMetadata: PolicyTestCase['metadata'] = {
     timeoutMilliseconds: null
 };
 const policyTestCase: PolicyTestCase = {
-    body: async function unusedPolicyTestBody() {
-        throw new Error('Policy test body should not run.');
+    execution: {
+        body: async function unusedPolicyTestBody() {
+            throw new Error('Policy test body should not run.');
+        },
+        kind: 'body'
     },
     definitionLocations: [ { kind: 'unknown' as const } ],
     id: {

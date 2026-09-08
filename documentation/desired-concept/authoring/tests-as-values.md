@@ -257,6 +257,12 @@ The condition is just an array element. Filters and reporters see the same
 structure. Compare with the imperative version where an `if` around `test()`
 silently elides the test from the registry, invisible to listings.
 
+`skippedTest(title, reason)` is the first-party visible skip primitive for
+every facade, including microtests. It creates a leaf `TestCase` with a
+mandatory non-empty reason. It is not `.skip`, xfail, fixme, quarantine, retry,
+or selection; it records that the runner saw the case and deliberately did not
+execute user code.
+
 ### Ordering is structural
 
 The order of children in a suite is the order they appear in the array.
@@ -303,7 +309,9 @@ type TestCase = {
     readonly title: string;
     readonly metadata: Metadata;
     readonly capabilities: ReadonlyArray<Capability>;
-    readonly run: (scope: TestScope) => Promise<TestOutcome> | TestOutcome;
+    readonly execution:
+        | { readonly kind: 'body'; readonly body: TestBody; }
+        | { readonly kind: 'skip'; readonly reason: string; };
 };
 
 type ParameterizedTestScope<TParameters> = TestScope & {

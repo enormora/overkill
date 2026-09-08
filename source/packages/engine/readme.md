@@ -5,6 +5,7 @@ Core Overkill primitives for defining executable test values and running an alre
 Top-level API:
 
 - `createTestCase(options)`
+- `createSkippedTestCase(options)`
 - `createRoot(options)`
 - `createSuite(options)`
 - `createTable(options)`
@@ -34,7 +35,7 @@ The top-level constructors share one default engine instance. Use
 Direct execution:
 
 ```ts
-import { createRoot, createTestCase, createTestPlan, execute } from '@overkill-dev/engine';
+import { createRoot, createSkippedTestCase, createTestCase, createTestPlan, execute } from '@overkill-dev/engine';
 
 export const testNode = createTestCase({
     body(scope) {
@@ -42,13 +43,20 @@ export const testNode = createTestCase({
         return scope.assert.collect();
     },
     metadata: {},
-    name: 'passes'
+    title: 'passes'
+});
+
+const skippedNode = createSkippedTestCase({
+    definitionLocations: [ { kind: 'unknown' } ],
+    metadata: {},
+    reason: 'unsupported platform',
+    title: 'platform-specific'
 });
 
 const root = createRoot({
-    children: [ testNode ],
+    children: [ testNode, skippedNode ],
     metadata: { kind: 'microtest' },
-    name: 'direct'
+    title: 'direct'
 });
 
 await execute(createTestPlan(root));
