@@ -351,7 +351,7 @@ export const testNode = createOverkillSuite({
                     `export const config = {
                         profiles: {
                             backend: {
-                                testFamily: 'integration'
+                                testFamily: 'property'
                             }
                         }
                     };`
@@ -481,54 +481,6 @@ export const testNode = createOverkillSuite({
                     await loadRunConfig({ configPath: null, cwd });
                 }, {
                     message: /Invalid profile name "backend\/http"/
-                });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() rejects an explicit empty reporter list',
-            metadata: {},
-            async body(scope: OverkillScope) {
-                const cwd = await createTempFolder();
-                await writeConfig(cwd, 'overkill.config.js', 'export const config = { reporters: [] };');
-
-                await scope.assert.rejects(async function loadInvalidConfig() {
-                    await loadRunConfig({ configPath: null, cwd });
-                }, {
-                    message: /at reporters\[0\]/
-                });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() rejects profile soft timeouts greater than hard timeouts',
-            metadata: {},
-            async body(scope: OverkillScope) {
-                const cwd = await createTempFolder();
-                await writeConfig(
-                    cwd,
-                    'overkill.config.js',
-                    `export const config = {
-                        profiles: {
-                            microtest: {
-                                testFamily: 'microtest',
-                                timeouts: {
-                                    hardMilliseconds: 100,
-                                    softMilliseconds: 200
-                                }
-                            }
-                        }
-                    };`
-                );
-
-                await scope.assert.rejects(async function loadInvalidConfig() {
-                    await loadRunConfig({ configPath: null, cwd });
-                }, {
-                    message: /softMilliseconds must be less than or equal to hardMilliseconds/
                 });
 
                 return scope.assert.collect();

@@ -9,7 +9,7 @@ import { assertTestPlanMatchesTestFamily } from './run-selection.ts';
 import type {
     RunConfig,
     RunFacts,
-    RunMicrotestProfileConfig,
+    RunProfileConfig,
     RunRequest
 } from './run-types.ts';
 
@@ -52,7 +52,7 @@ export function runConfig(
     };
 }
 
-function selectedProfile(config: RunConfig, profileName: string): RunMicrotestProfileConfig {
+function selectedProfile(config: RunConfig, profileName: string): RunProfileConfig {
     const profile = config.profiles[profileName];
 
     if (profile === undefined) {
@@ -64,7 +64,7 @@ function selectedProfile(config: RunConfig, profileName: string): RunMicrotestPr
 
 export function assertDirectTestPlanMatchesTestFamily(
     testPlan: TestPlan,
-    testFamily: RunMicrotestProfileConfig['testFamily']
+    testFamily: RunProfileConfig['testFamily']
 ): void {
     assertTestPlanMatchesTestFamily(testPlan, testFamily);
 }

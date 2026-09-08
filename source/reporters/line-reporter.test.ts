@@ -14,7 +14,7 @@ type LogFunction = (...values: readonly unknown[]) => void;
 type Log = TestDouble<LogFunction>;
 
 function lineReporterWithLog(log: Log): RealTimeReporter {
-    const fakeDependencies = { stdoutConsole: { log } } as unknown as LineReporterDependencies;
+    const fakeDependencies: LineReporterDependencies = { stdoutConsole: { log }, verbose: false };
 
     return createLineReporter(fakeDependencies)({
         relativizeLocationPath(location) {
@@ -31,6 +31,12 @@ const passingCaseId = { file: null, title: 'passes', params: null, suite: [] };
 const skippedCaseId = { file: null, title: 'skips', params: null, suite: [] };
 const inconclusiveCaseId = { file: null, title: 'inconclusive', params: null, suite: [] };
 const definitionLocation = { kind: 'unknown' as const };
+const knownDefinitionLocation = {
+    column: 4,
+    file: 'source/fails.test.ts',
+    kind: 'known' as const,
+    line: 8
+};
 
 const rootMetadata = resolveRootMetadata({});
 
@@ -50,6 +56,7 @@ async function reportNestedSuiteRun(reporter: RealTimeReporter): Promise<void> {
         attempt: 0,
         case: rowCaseId,
         definitionLocations: [ definitionLocation ],
+        artifacts: [],
         kind: 'test-end',
         outcome: { kind: 'pass' },
         suitePath: suitePathFromTitles(rowCaseId.suite),
@@ -61,6 +68,7 @@ async function reportNestedSuiteRun(reporter: RealTimeReporter): Promise<void> {
         attempt: 0,
         case: passingCaseId,
         definitionLocations: [ definitionLocation ],
+        artifacts: [],
         kind: 'test-end',
         outcome: { kind: 'pass' },
         suitePath: suitePathFromTitles(passingCaseId.suite),
@@ -112,7 +120,8 @@ export const testNode = createOverkillSuite({
                 await reporter.onEvent({
                     attempt: 0,
                     case: failingCaseId,
-                    definitionLocations: [ definitionLocation ],
+                    definitionLocations: [ knownDefinitionLocation ],
+                    artifacts: [],
                     kind: 'test-end',
                     outcome: {
                         failures: [
@@ -145,7 +154,10 @@ export const testNode = createOverkillSuite({
                 });
 
                 scope.assert(doubleUsage.callCount, log, 4);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails (12 ms)' ]);
+                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
+                    errorSymbol,
+                    'fails (12 ms) (source/fails.test.ts:8:4)'
+                ]);
                 scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ '  numbers differ' ]);
                 scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ '  expected: 2' ]);
                 scope.assert(doubleUsage.nthCallWithExactly, log, 3, [ '  actual: 1' ]);
@@ -166,6 +178,7 @@ export const testNode = createOverkillSuite({
                     attempt: 0,
                     case: failingCaseId,
                     definitionLocations: [ definitionLocation ],
+                    artifacts: [],
                     kind: 'test-end',
                     outcome: {
                         failures: [
@@ -231,6 +244,7 @@ export const testNode = createOverkillSuite({
                     attempt: 0,
                     case: failingCaseId,
                     definitionLocations: [ definitionLocation ],
+                    artifacts: [],
                     kind: 'test-end',
                     outcome: {
                         failures: [
@@ -270,6 +284,7 @@ export const testNode = createOverkillSuite({
                     attempt: 0,
                     case: failingCaseId,
                     definitionLocations: [ definitionLocation ],
+                    artifacts: [],
                     kind: 'test-end',
                     outcome: {
                         failures: [
@@ -310,6 +325,7 @@ export const testNode = createOverkillSuite({
                     attempt: 0,
                     case: failingCaseId,
                     definitionLocations: [ definitionLocation ],
+                    artifacts: [],
                     kind: 'test-end',
                     outcome: {
                         failures: [
@@ -379,6 +395,7 @@ export const testNode = createOverkillSuite({
                     attempt: 0,
                     case: passingCaseId,
                     definitionLocations: [ definitionLocation ],
+                    artifacts: [],
                     kind: 'test-end',
                     outcome: { kind: 'pass' },
                     suitePath: suitePathFromTitles(passingCaseId.suite),
@@ -404,6 +421,7 @@ export const testNode = createOverkillSuite({
                     attempt: 0,
                     case: skippedCaseId,
                     definitionLocations: [ definitionLocation ],
+                    artifacts: [],
                     kind: 'test-end',
                     outcome: { kind: 'skip', reason: 'not supported' },
                     suitePath: suitePathFromTitles(skippedCaseId.suite),
@@ -414,6 +432,7 @@ export const testNode = createOverkillSuite({
                     attempt: 1,
                     case: inconclusiveCaseId,
                     definitionLocations: [ definitionLocation ],
+                    artifacts: [],
                     kind: 'test-end',
                     outcome: { kind: 'inconclusive', reason: 'missing signal' },
                     suitePath: suitePathFromTitles(inconclusiveCaseId.suite),

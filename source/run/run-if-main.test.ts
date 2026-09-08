@@ -279,6 +279,40 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'runIfMain() rejects integration profiles selected by file match',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const project = await createDirectProject('direct.integration.test.ts');
+
+                await writeConfig(
+                    project,
+                    `export const config = {
+                    profiles: {
+                        integration: {
+                            testFamily: 'integration',
+                            files: { include: [ 'direct.integration.test.ts' ] }
+                        }
+                    }
+                };`
+                );
+
+                await scope.assert.rejects(async function runIntegrationFile() {
+                    await withCwd(project.cwd, async function runInProject() {
+                        await runIfMain(project.meta, passingCase({ kind: 'integration' }), { reporters: [] });
+                    });
+                }, {
+                    message: [
+                        'runIfMain() does not support integration profile "integration" yet.',
+                        'Use the overkill CLI with --profile integration.'
+                    ]
+                        .join(' ')
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() warns when direct execution downgrades supervised profiles',
             metadata: {},
             async body(scope: OverkillScope) {

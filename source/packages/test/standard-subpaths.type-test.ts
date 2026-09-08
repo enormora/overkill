@@ -14,6 +14,7 @@ import type { unavailable as benchUnavailable } from './bench.entry-point.ts';
 import type {
     defineConfig,
     RunProjectConfig,
+    RunProjectIntegrationProfileConfig,
     RunProjectMicrotestProfileConfig,
     RunProjectProfileConfig,
     RunProjectProfileFiles,
@@ -24,7 +25,8 @@ import type {
     createBriefReporter,
     createDotReporter,
     createGithubActionsOutputRenderer,
-    createLineReporter
+    createLineReporter,
+    LineReporterOptions
 } from './reporters.entry-point.ts';
 import {
     defineResource,
@@ -34,6 +36,7 @@ import {
 } from './resources.entry-point.ts';
 
 type UnavailableStandardSubpathApi = (...parameters: readonly unknown[]) => never;
+type LineReporterFactory = (options?: LineReporterOptions) => DefinedReporter<RealTimeReporter>;
 type CompositeBooleanDefinition = CompositeAssertionDefinition<
     [value: boolean],
     ReturnType<CompositeCheckBuilder<'assert'>['true']>
@@ -62,7 +65,9 @@ const runtime = defineRuntime({
 describe('@overkill-dev/test standard subpaths', function () {
     test('exposes config authoring types', function () {
         expect<typeof defineConfig>().type.toBe<(config: RunProjectConfig) => RunProjectConfig>();
-        expect<RunProjectProfileConfig>().type.toBe<RunProjectMicrotestProfileConfig>();
+        expect<RunProjectProfileConfig>().type.toBe<
+            RunProjectIntegrationProfileConfig | RunProjectMicrotestProfileConfig
+        >();
         expect<RunProjectProfileFiles['include']>().type.toBe<readonly [string, ...string[]]>();
         expect<keyof RunProjectResourceBudgets>().type.toBe<
             'activeResourceCount' | 'javaScriptEngineHeapBytes' | 'residentSetBytes' | 'residentSetGrowthBytesPerSecond'
@@ -70,7 +75,7 @@ describe('@overkill-dev/test standard subpaths', function () {
     });
 
     test('exposes reporter factories through the standard distribution', function () {
-        expect<typeof createLineReporter>().type.toBe<() => DefinedReporter<RealTimeReporter>>();
+        expect<typeof createLineReporter>().type.toBe<LineReporterFactory>();
         expect<typeof createBriefReporter>().type.toBe<
             () => DefinedReporter<RealTimeReporter<BriefReporterSinks>>
         >();

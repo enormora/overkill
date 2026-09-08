@@ -99,6 +99,13 @@ type WorkUnitId = {
 
 type AttemptId = { readonly index: number; }; // 0-indexed
 
+type ArtifactScope =
+    | { readonly kind: 'run'; }
+    | {
+        readonly kind: 'case';
+        readonly case: CaseId;
+    };
+
 type ArtifactSubtype =
     | 'content-snapshot'
     | 'visual-snapshot'
@@ -109,7 +116,7 @@ type ArtifactSubtype =
     | 'trace';
 
 type ArtifactId = {
-    readonly case: CaseId;
+    readonly scope: ArtifactScope;
     readonly runtime?: RuntimeId;
     readonly workload?: WorkloadId;
     readonly attempt?: AttemptId;
@@ -122,8 +129,8 @@ disk paths only as a derivation, never the canonical form.
 
 ## Path Derivation
 
-The default path derivation rule is deterministic and reversible enough to
-support stale-baseline detection:
+Case-scoped artifacts use a deterministic path derivation rule that is
+reversible enough to support stale-baseline detection:
 
 ```text
 <file-without-extension>__<suite-path>__<name>__<params?>__<runtime?>__<workload?>__<attempt?>.<subtype>.<ext>
@@ -146,6 +153,16 @@ source/users.test__crud__deletes-user__role=admin__node__os=linux__node=26__atte
 Different baseline subtypes can override the derivation if their tooling
 expects a particular layout (Vitest snapshots, Playwright screenshots),
 but the canonical identity remains the structured value.
+
+Run-scoped artifacts omit case identity and use a run-owned namespace:
+
+```text
+run__<runtime?>__<workload?>__<attempt?>.<subtype>.<ext>
+```
+
+Run-scoped captured output covers process output observed before collection
+has selected a case, after all cases have completed, or while the runner cannot
+attribute output to a specific case.
 
 ## Canonicalisation Rules
 
@@ -220,6 +237,9 @@ Sharding partitions the executable work set by hashing `WorkUnitId`. The
 hash function is stable and documented (xxh3 of the canonical JSON
 encoding). Two shards never share a work unit; the union covers everything.
 Reproducibility across CI machines depends on this stability.
+Case-scoped artifact identity therefore remains work-unit-stable.
+Run-scoped artifacts belong to the run record and are not assigned by case
+hashing.
 
 Shard partitioning is _not_ part of artifact identity itself. A test has
 the same `CaseId`, `WorkId`, and artifact identity regardless of which shard

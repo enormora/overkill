@@ -9,7 +9,6 @@ import {
     invalidRunProfileNameMessage,
     type RunCommand,
     type RunConfig,
-    type RunMicrotestProfileConfig,
     type RunProfileConfig,
     type RunRequest,
     type RunResourceBudgets,
@@ -125,7 +124,13 @@ function validateRunMicrotestProfile(profile: RunProfileConfig): void {
     validateTimeoutPolicy(profile.timeouts);
 }
 
+function validateRunIntegrationProfile(profile: RunProfileConfig): void {
+    validateRunResourceUsagePolicy(profile.resourceUsage);
+    validateTimeoutPolicy(profile.timeouts);
+}
+
 const runProfileValidators: Readonly<Record<RunTestFamily, (profile: RunProfileConfig) => void>> = {
+    integration: validateRunIntegrationProfile,
     microtest: validateRunMicrotestProfile
 };
 
@@ -134,14 +139,14 @@ function readProfileTestFamily(profile: RunProfileConfig): unknown {
 }
 
 function isRunTestFamily(value: unknown): value is RunTestFamily {
-    return value === 'microtest';
+    return value === 'integration' || value === 'microtest';
 }
 
 function validateRunProfile(profileName: string, profile: RunProfileConfig): void {
     const testFamily = readProfileTestFamily(profile);
 
     if (!isRunTestFamily(testFamily)) {
-        invalidRequest(`Invalid run profile "${profileName}": testFamily must be "microtest".`);
+        invalidRequest(`Invalid run profile "${profileName}": testFamily must be "integration" or "microtest".`);
     }
 
     runProfileValidators[testFamily](profile);
@@ -160,6 +165,6 @@ export function validateRunInput(command: RunCommand): void {
     validateRunConfig(command.config);
 }
 
-export function assertSupportedProcessEngine(command: RunCommand, profile: RunMicrotestProfileConfig): void {
+export function assertSupportedProcessEngine(command: RunCommand, profile: RunProfileConfig): void {
     assertSupportedProcessEngineSelection(command, profile);
 }

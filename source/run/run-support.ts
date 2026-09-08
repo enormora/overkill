@@ -7,8 +7,7 @@ import type {
     RunEngineFacts,
     RunEngineSelection,
     RunLoaderConfig,
-    RunMicrotestExecution,
-    RunMicrotestProfileConfig,
+    RunProfileConfig,
     RunProfileFiles,
     RunOrchestratorDependencies,
     RunProfilesConfig,
@@ -36,7 +35,7 @@ export function freezeValue<Value>(value: Value): Value {
 }
 
 export function resolveRunReporters(
-    profile: RunMicrotestProfileConfig,
+    profile: RunProfileConfig,
     fallbackReporters: RunConfig['reporters']
 ): RunConfig['reporters'] {
     return profile.reporters ?? fallbackReporters;
@@ -89,13 +88,6 @@ function copyTimeoutPolicy(policy: RunTimeoutPolicy): RunTimeoutPolicy {
     };
 }
 
-function copyExecution(execution: RunMicrotestExecution): RunMicrotestExecution {
-    return {
-        processModel: execution.processModel,
-        scheduling: execution.scheduling
-    };
-}
-
 function copyProfileFiles(files: RunProfileFiles | null): RunProfileFiles | null {
     if (files === null) {
         return null;
@@ -107,9 +99,32 @@ function copyProfileFiles(files: RunProfileFiles | null): RunProfileFiles | null
     };
 }
 
-function copyProfileConfig(profile: RunMicrotestProfileConfig): RunMicrotestProfileConfig {
+function copyProfileConfig(profile: RunProfileConfig): RunProfileConfig {
+    if (profile.testFamily === 'integration') {
+        const files = copyProfileFiles(profile.files);
+
+        if (files === null) {
+            throw new Error('Integration profiles require files.');
+        }
+
+        return {
+            execution: {
+                processModel: profile.execution.processModel,
+                scheduling: profile.execution.scheduling
+            },
+            files,
+            reporters: profile.reporters === null ? null : Array.from(profile.reporters),
+            resourceUsage: copyResourceUsagePolicy(profile.resourceUsage),
+            testFamily: profile.testFamily,
+            timeouts: copyTimeoutPolicy(profile.timeouts)
+        };
+    }
+
     return {
-        execution: copyExecution(profile.execution),
+        execution: {
+            processModel: profile.execution.processModel,
+            scheduling: profile.execution.scheduling
+        },
         files: copyProfileFiles(profile.files),
         reporters: profile.reporters === null ? null : Array.from(profile.reporters),
         resourceUsage: copyResourceUsagePolicy(profile.resourceUsage),

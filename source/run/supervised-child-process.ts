@@ -21,7 +21,11 @@ type TraceEnvMutation = {
 };
 
 export type SupervisedChildOutputRuntime = {
+    readonly capabilityRestrictions: {
+        readonly mode: 'disabled' | 'enabled';
+    };
     readonly child: SupervisedChildProcess;
+    readonly dependencies: Pick<RunOrchestratorDependencies, 'wallClock'>;
     readonly state: SupervisedRunState;
     readonly terminalFailure: StoredRunValue<boolean>;
 };
@@ -137,6 +141,16 @@ function observeChildStdout(runtime: SupervisedChildOutputRuntime): void {
             return;
         }
 
+        if (runtime.capabilityRestrictions.mode === 'disabled') {
+            runtime.state.recordCapturedOutput(
+                'stdout',
+                chunk,
+                runtime.dependencies.wallClock.currentTimestampInMilliseconds
+            );
+
+            return;
+        }
+
         runtime.terminalFailure.write(true);
         runtime.state.recordRuntimePolicyViolation(
             'raw-stdout',
@@ -233,6 +247,20 @@ function observeChildStderr(runtime: SupervisedChildOutputRuntime): void {
     let readingTraceEnvStack = false;
 
     runtime.child.stderr?.on('data', function recordStderrOutput(chunk: Buffer) {
+        if (chunk.length === 0) {
+            return;
+        }
+
+        if (runtime.capabilityRestrictions.mode === 'disabled') {
+            runtime.state.recordCapturedOutput(
+                'stderr',
+                chunk,
+                runtime.dependencies.wallClock.currentTimestampInMilliseconds
+            );
+
+            return;
+        }
+
         pending += chunk.toString('utf8');
         const lines = pending.split('\n');
         pending = lines.pop() ?? '';

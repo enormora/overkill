@@ -9,7 +9,7 @@ import {
 import type {
     RunCommand,
     RunConfig,
-    RunMicrotestProfileConfig,
+    RunProfileConfig,
     RunRequest
 } from './run-types.ts';
 import {
@@ -21,7 +21,7 @@ export type ResolvedRunInput = {
     readonly config: RunConfig;
     readonly engine: RunCommand['engine'];
     readonly files: Awaited<ReturnType<typeof discoverRunFilesWithProjectRoot>>['files'];
-    readonly profile: RunMicrotestProfileConfig;
+    readonly profile: RunProfileConfig;
     readonly projectRoot: string;
     readonly request: RunRequest;
 };

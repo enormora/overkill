@@ -211,9 +211,19 @@ function supervisedEngine(resolvedRun: ResolvedRun): SupervisedRunCommand['engin
     return resolvedRun.engine;
 }
 
+export function effectiveSupervisedCapabilityRestrictions(
+    resolvedRun: ResolvedRun
+): SupervisedRunCommand['capabilityRestrictions'] {
+    if (resolvedRun.facts.execution.testFamily === 'integration') {
+        return { mode: 'disabled' };
+    }
+
+    return resolvedRun.request.capabilityRestrictions;
+}
+
 function createRunCommand(resolvedRun: ResolvedRun): SupervisedRunCommand {
     return {
-        capabilityRestrictions: resolvedRun.request.capabilityRestrictions,
+        capabilityRestrictions: effectiveSupervisedCapabilityRestrictions(resolvedRun),
         collectionTimeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.collectionMilliseconds,
         cwd: resolvedRun.cwd,
         engine: supervisedEngine(resolvedRun),
@@ -247,19 +257,28 @@ export function sendAssignment(runtime: SupervisedRunRuntime): void {
 
 function handleChildEvent(event: ReporterEvent, runtime: SupervisedRunRuntime): void {
     const collectedPlan = runtime.collectedPlan.read();
+    const reportedEvent: ReporterEvent = event.kind === 'test-end'
+        ? {
+            ...event,
+            artifacts: [
+                ...event.artifacts,
+                ...runtime.state.caseArtifacts(event.case)
+            ]
+        }
+        : event;
 
     if (collectedPlan !== null) {
-        applyEvent(event, runtime.state, caseByKey(collectedPlan));
+        applyEvent(reportedEvent, runtime.state, caseByKey(collectedPlan));
     }
 
-    if (event.kind === 'test-start') {
+    if (reportedEvent.kind === 'test-start') {
         runtime.timeout.start();
-    } else if (event.kind === 'test-end' && runtime.state.activeCases.size === 0) {
+    } else if (reportedEvent.kind === 'test-end' && runtime.state.activeCases.size === 0) {
         runtime.timeout.clear();
     }
 
     runtime.reporterEvents.add(recordReporterEventErrors(
-        event,
+        reportedEvent,
         runtime.state,
         runtime.reporterDelivery
     ));
@@ -347,7 +366,13 @@ export function handleCollectionSample<CollectionValue>(
 }
 
 export async function observeChild(runtime: SupervisedRunRuntime): Promise<void> {
-    observeSupervisedChildOutput(runtime);
+    observeSupervisedChildOutput({
+        capabilityRestrictions: effectiveSupervisedCapabilityRestrictions(runtime.resolvedRun),
+        child: runtime.child,
+        dependencies: runtime.dependencies,
+        state: runtime.state,
+        terminalFailure: runtime.terminalFailure
+    });
 
     return new Promise(function waitForChild(resolve) {
         runtime.child.on('message', function receiveMessage(message: SupervisedChildMessage) {
@@ -386,16 +411,32 @@ export async function reportRunStart(
     );
 }
 
+function resultWithSupervisedArtifacts(result: RunResult, runtime: SupervisedRunRuntime): RunResult {
+    const artifacts = runtime.state.artifacts();
+
+    if (artifacts.length === 0) {
+        return result;
+    }
+
+    return {
+        ...result,
+        artifacts: [ ...result.artifacts, ...artifacts ]
+    };
+}
+
 function selectRunResult(runtime: SupervisedRunRuntime, startedAtMs: number): RunResult {
     const completedResult = runtime.completedResult.read();
 
     if (completedResult === null) {
         const collectedPlan = runtime.collectedPlan.read() ?? supervisedCollectedPlan(runtime.resolvedRun);
 
-        return createPartialRunResult(collectedPlan, runtime.state, runtime.dependencies, startedAtMs);
+        return resultWithSupervisedArtifacts(
+            createPartialRunResult(collectedPlan, runtime.state, runtime.dependencies, startedAtMs),
+            runtime
+        );
     }
 
-    return completedResult;
+    return resultWithSupervisedArtifacts(completedResult, runtime);
 }
 
 async function reportFinalResult(result: RunResult, runtime: SupervisedRunRuntime): Promise<RunResult> {

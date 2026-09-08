@@ -15,7 +15,7 @@ import {
 } from '../../run/command-line-runner.ts';
 import type { LoadedRunConfig } from '../../run/run-config.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
-import type { RunConfig, RunProcessModel, RunRequest } from '../../run/run-types.ts';
+import type { RunConfig, RunMicrotestProfileConfig, RunProcessModel, RunRequest } from '../../run/run-types.ts';
 
 const emptySuiteFixturePath = 'source/integration-tests/run/fixtures/empty-suite.test.ts';
 const missingTestNodeFixturePath = 'source/integration-tests/run/fixtures/missing-test-node.test.ts';
@@ -37,7 +37,7 @@ const memoryReporter = defineReporter(function createMemoryReporter(): Reporter 
     };
 });
 
-function createDefaultMicrotestProfile(): RunConfig['profiles'][string] {
+function createDefaultMicrotestProfile(): RunMicrotestProfileConfig {
     return {
         execution: {
             processModel: 'supervised-process',

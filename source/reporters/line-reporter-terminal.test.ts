@@ -19,7 +19,7 @@ const failingCaseId = { file: null, title: 'fails', params: null, suite: [] };
 const definitionLocation = { kind: 'unknown' as const };
 
 function lineReporterWithLog(log: Log): RealTimeReporter {
-    const fakeDependencies = { stdoutConsole: { log } } as unknown as LineReporterDependencies;
+    const fakeDependencies: LineReporterDependencies = { stdoutConsole: { log }, verbose: false };
 
     return createLineReporter(fakeDependencies)(createReportingContext({ projectRoot: null }));
 }
@@ -42,6 +42,7 @@ export const testNode = createOverkillSuite({
                     attempt: 0,
                     case: failingCaseId,
                     definitionLocations: [ definitionLocation ],
+                    artifacts: [],
                     kind: 'test-end',
                     outcome: null,
                     suitePath: [],
@@ -52,6 +53,7 @@ export const testNode = createOverkillSuite({
                     attempt: 0,
                     case: failingCaseId,
                     definitionLocations: [ definitionLocation ],
+                    artifacts: [],
                     kind: 'test-end',
                     outcome: null,
                     suitePath: [],

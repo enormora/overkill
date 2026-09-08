@@ -1,9 +1,9 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { invalidRequest } from './run-errors.ts';
-import type { RunCommand, RunMicrotestProfileConfig } from './run-types.ts';
+import type { RunCommand, RunProfileConfig } from './run-types.ts';
 
-function supervisedProcess(profile: RunMicrotestProfileConfig): boolean {
+function supervisedProcess(profile: RunProfileConfig): boolean {
     return profile.execution.processModel === 'supervised-process';
 }
 
@@ -39,7 +39,7 @@ function assertSupportedSupervisedModule(command: RunCommand): void {
     }
 }
 
-export function assertSupportedProcessEngine(command: RunCommand, profile: RunMicrotestProfileConfig): void {
+export function assertSupportedProcessEngine(command: RunCommand, profile: RunProfileConfig): void {
     if (!supervisedProcess(profile)) {
         return;
     }

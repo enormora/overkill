@@ -38,14 +38,14 @@ async function createTempFolder(): Promise<string> {
     return await fs.mkdtemp(path.join(os.tmpdir(), 'overkill-run-config-reporters-'));
 }
 
-async function writeConfig(folder: string): Promise<void> {
-    await fs.writeFile(path.join(folder, 'overkill.config.js'), reporterConfigSource, 'utf8');
+async function writeConfig(folder: string, source: string): Promise<void> {
+    await fs.writeFile(path.join(folder, 'overkill.config.js'), source, 'utf8');
 }
 
 async function loadReporterConfig(): Promise<LoadedRunConfig> {
     const cwd = await createTempFolder();
 
-    await writeConfig(cwd);
+    await writeConfig(cwd, reporterConfigSource);
 
     return await loadRunConfig({ configPath: null, cwd });
 }
@@ -77,6 +77,23 @@ export const testNode = createOverkillSuite({
             metadata: {},
             async body(scope: OverkillScope) {
                 scope.assert.deepEqual(reporterNames(scope, await loadReporterConfig()), [ 'global', 'profile' ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'loadRunConfig() rejects an explicit empty reporter list',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const cwd = await createTempFolder();
+                await writeConfig(cwd, 'export const config = { reporters: [] };');
+
+                await scope.assert.rejects(async function loadInvalidConfig() {
+                    await loadRunConfig({ configPath: null, cwd });
+                }, {
+                    message: /at reporters\[0\]/
+                });
 
                 return scope.assert.collect();
             }

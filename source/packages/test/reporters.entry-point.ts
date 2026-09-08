@@ -5,3 +5,4 @@ export { createBriefReporter } from '../reporter-brief/reporter-brief.entry-poin
 export type { BriefReporterSinks } from '../reporter-brief/reporter-brief.entry-point.ts';
 export { createDotReporter } from '../reporter-dot/reporter-dot.entry-point.ts';
 export { createLineReporter } from '../reporter-line/reporter-line.entry-point.ts';
+export type { LineReporterOptions } from '../reporter-line/reporter-line.entry-point.ts';

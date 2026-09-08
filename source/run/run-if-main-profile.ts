@@ -6,11 +6,11 @@ import {
     RunConfigError,
     type LoadedRunConfig
 } from './run-config.ts';
-import type { RunMicrotestProfileConfig } from './run-types.ts';
+import type { RunProfileConfig } from './run-types.ts';
 
 type SelectedDirectProfile = {
     readonly name: string;
-    readonly profile: RunMicrotestProfileConfig;
+    readonly profile: RunProfileConfig;
 };
 
 export type DirectProfileContext = SelectedDirectProfile & {
@@ -55,7 +55,7 @@ async function matchedFiles(pattern: string, cwd: string): Promise<readonly stri
 }
 
 async function profileIncludesFile(
-    profile: RunMicrotestProfileConfig,
+    profile: RunProfileConfig,
     file: string,
     cwd: string
 ): Promise<boolean> {
@@ -77,7 +77,7 @@ async function profileIncludesFile(
 }
 
 async function profileExcludesFile(
-    profile: RunMicrotestProfileConfig,
+    profile: RunProfileConfig,
     file: string,
     cwd: string
 ): Promise<boolean> {
@@ -99,7 +99,7 @@ async function profileExcludesFile(
 }
 
 async function profileMatchesFile(
-    profile: RunMicrotestProfileConfig,
+    profile: RunProfileConfig,
     file: string,
     cwd: string
 ): Promise<boolean> {
@@ -134,11 +134,23 @@ function ambiguousProfileMessage(file: string, cwd: string, profiles: readonly S
 function configuredMicrotest(config: LoadedRunConfig): SelectedDirectProfile {
     const profile = config.profiles.microtest;
 
-    if (profile === undefined) {
+    if (profile?.testFamily !== 'microtest') {
         throw new RunConfigError('runIfMain() requires the configured "microtest" profile.');
     }
 
     return { name: 'microtest', profile };
+}
+
+function assertSupportedDirectProfile(context: SelectedDirectProfile): void {
+    if (context.profile.testFamily === 'integration') {
+        throw new RunConfigError(
+            [
+                `runIfMain() does not support integration profile "${context.name}" yet.`,
+                `Use the overkill CLI with --profile ${context.name}.`
+            ]
+                .join(' ')
+        );
+    }
 }
 
 async function selectDirectProfile(
@@ -173,6 +185,8 @@ export async function resolveDirectProfile(
     const file = await canonicalPath(directFilePath(meta));
     const config = await loadRunConfig({ configPath: null, cwd: canonicalCwd });
     const selectedProfile = await selectDirectProfile(config, file, canonicalCwd);
+
+    assertSupportedDirectProfile(selectedProfile);
 
     return {
         config,

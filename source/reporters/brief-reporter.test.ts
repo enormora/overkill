@@ -36,6 +36,7 @@ function passEvent(): Extract<ReporterEvent, { readonly kind: 'test-end'; }> {
         attempt: 0,
         case: caseId,
         definitionLocations: [ definitionLocation ],
+        artifacts: [],
         kind: 'test-end',
         outcome: { kind: 'pass' },
         suitePath,
@@ -49,6 +50,7 @@ function failEvent(): Extract<ReporterEvent, { readonly kind: 'test-end'; }> {
         attempt: 0,
         case: caseId,
         definitionLocations: [ definitionLocation ],
+        artifacts: [],
         kind: 'test-end',
         outcome: {
             failures: [

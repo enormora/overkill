@@ -146,6 +146,7 @@ async function reportTestEnd(
 ): Promise<readonly RunnerError[]> {
     return await context.reporterDelivery.reportEvent({
         attempt: input.attempt,
+        artifacts: [],
         case: input.testCase.id,
         definitionLocations: input.testCase.definitionLocations,
         kind: 'test-end',
@@ -303,6 +304,7 @@ async function reportConcurrentCaseEnd(
 ): Promise<readonly RunnerError[]> {
     return await reportQueue.report({
         attempt: 0,
+        artifacts: [],
         case: testCase.id,
         definitionLocations: testCase.definitionLocations,
         kind: 'test-end',

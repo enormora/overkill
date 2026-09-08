@@ -78,6 +78,7 @@ async function reportTestEnd(
         attempt: 0,
         case: id,
         definitionLocations: [ definitionLocation ],
+        artifacts: [],
         kind: 'test-end',
         outcome,
         suitePath: suitePathFromTitles(id.suite),

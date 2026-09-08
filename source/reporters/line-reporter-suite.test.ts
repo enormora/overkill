@@ -1,4 +1,5 @@
 import { createSuite } from '../packages/engine/engine.entry-point.ts';
+import { testNode as lineReporterArtifactsTestNode } from './line-reporter-artifacts.test.ts';
 import { testNode as lineReporterOrphanTestNode } from './line-reporter-orphan.test.ts';
 import { testNode as lineReporterSummaryTestNode } from './line-reporter-summary.test.ts';
 import { testNode as lineReporterTerminalTestNode } from './line-reporter-terminal.test.ts';
@@ -10,6 +11,7 @@ export const testNode = createSuite({
     metadata: {},
     children: [
         lineReporterTestNode,
+        lineReporterArtifactsTestNode,
         lineReporterSummaryTestNode,
         lineReporterTerminalTestNode,
         lineReporterOrphanTestNode

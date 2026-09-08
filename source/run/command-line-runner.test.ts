@@ -14,7 +14,7 @@ import {
     type CommandLineRunnerDependencies,
     type CommandLineRunnerResult
 } from './command-line-runner.ts';
-import type { RunCommand, RunMicrotestProfileConfig, RunOrchestrator, RunRequest } from './run-types.ts';
+import type { RunCommand, RunProfileConfig, RunOrchestrator, RunRequest } from './run-types.ts';
 import { RunResolutionError } from './run-errors.ts';
 import { RunConfigError, type LoadedRunConfig } from './run-config.ts';
 
@@ -73,7 +73,7 @@ const defaultRequest: RunRequest = {
     verbose: false
 };
 
-function defaultMicrotestProfile(): RunMicrotestProfileConfig {
+function defaultMicrotestProfile(): RunProfileConfig {
     return {
         execution: {
             processModel: 'supervised-process',
@@ -113,7 +113,7 @@ function defaultLoadedConfig(reporters: LoadedRunConfig['reporters']): LoadedRun
     };
 }
 
-function selectedProfile(command: RunCommand): RunMicrotestProfileConfig {
+function selectedProfile(command: RunCommand): RunProfileConfig {
     const profile = command.config.profiles[command.request.profile];
 
     if (profile === undefined) {

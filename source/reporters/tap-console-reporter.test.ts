@@ -65,6 +65,7 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
         attempt: 0,
         case: passingCaseId,
         definitionLocations: [ definitionLocation ],
+        artifacts: [],
         kind: 'test-end',
         outcome: { kind: 'pass' },
         suitePath: suitePathFromTitles(passingCaseId.suite),
@@ -75,6 +76,7 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
         attempt: 0,
         case: failingCaseId,
         definitionLocations: [ definitionLocation ],
+        artifacts: [],
         kind: 'test-end',
         outcome: {
             failures: [

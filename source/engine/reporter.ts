@@ -2,7 +2,7 @@ import type { CaseId } from './identity.ts';
 import type { ResolvedMetadata } from './metadata.ts';
 import type { OptionalReporterOutput, OutputIntentRole } from './reporter-output.ts';
 import type { ReportingContext } from './reporting-context.ts';
-import type { RunResult, RunnerError, TestOutcome, TestVerdict } from './run-result.ts';
+import type { RunArtifact, RunResult, RunnerError, TestOutcome, TestVerdict } from './run-result.ts';
 import type { TestPlanCase, TestPlanSuitePathEntry } from './test-plan.ts';
 
 const reporterBrand = Symbol.for('@overkill-dev/engine/reporter');
@@ -149,6 +149,7 @@ type TestProgressReporterEvent = {
 
 type TestEndReporterEvent = {
     readonly attempt: number;
+    readonly artifacts: readonly RunArtifact[];
     readonly case: CaseId;
     readonly definitionLocations: TestPlanCase['definitionLocations'];
     readonly kind: 'test-end';
