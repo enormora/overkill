@@ -189,6 +189,7 @@ export const runConfigImportScript = [
 
 const expectedRootExportNames = [
     'createTestFacade',
+    'defineHarness',
     'defineMacro',
     'defineParameterizedTestBody',
     'doubleUsage',
