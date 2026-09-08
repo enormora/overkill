@@ -105,6 +105,11 @@ individual thresholds for one run. The `@overkill-dev/test` binary parses
 `--measure-resource-usage` and `--resource-budget <name=value>` into those
 typed request fields.
 
+Output capture is run-level intent. `RunRequest.capture` is `buffered` by
+default; `live` passes capture-capable stdout and stderr through without
+creating `log-capture` artifacts. Microtest profiles reject live capture.
+There is no project config field for capture mode.
+
 Runner profile names are project-owned. Names such as `microtest`,
 `backend-http`, `ui-browser`, `ui.browser`, and `unit_fast` select profile
 entries exactly. Behavior comes from the selected profile config, not from the

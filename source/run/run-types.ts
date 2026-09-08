@@ -327,6 +327,14 @@ export type RunOrchestratorDependencies = {
     readonly createResourceUsageTracker: (options: ResourceUsageTrackerOptions) => RunResourceUsageTracker;
     readonly defaultEngine: Engine;
     readonly execute: Execute;
+    readonly liveOutput: {
+        readonly stderr: {
+            readonly write: (chunk: Buffer) => void;
+        };
+        readonly stdout: {
+            readonly write: (chunk: Buffer) => void;
+        };
+    };
     readonly runtimeCapabilityPolicy: RuntimeCapabilityPolicyDependencies;
     readonly node: {
         readonly arch: string;

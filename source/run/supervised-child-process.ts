@@ -3,7 +3,7 @@ import { realpath } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy.ts';
-import type { RunOrchestratorDependencies } from './run-types.ts';
+import type { RunOrchestratorDependencies, RunRequest } from './run-types.ts';
 import type { StoredRunValue, SupervisedRunState } from './supervised-run-state.ts';
 
 export type SupervisedChildProcess = ChildProcess;
@@ -24,8 +24,9 @@ export type SupervisedChildOutputRuntime = {
     readonly capabilityRestrictions: {
         readonly mode: 'disabled' | 'enabled';
     };
+    readonly capture: RunRequest['capture'];
     readonly child: SupervisedChildProcess;
-    readonly dependencies: Pick<RunOrchestratorDependencies, 'wallClock'>;
+    readonly dependencies: Pick<RunOrchestratorDependencies, 'liveOutput' | 'wallClock'>;
     readonly state: SupervisedRunState;
     readonly terminalFailure: StoredRunValue<boolean>;
 };
@@ -135,6 +136,34 @@ if (process.argv.includes(supervisedChildProcessEntryPointArgument)) {
     await import('./supervised-child.entry-point.ts');
 }
 
+function activeCapture(runtime: SupervisedChildOutputRuntime): RunRequest['capture'] {
+    const [ activeCase ] = Array.from(runtime.state.activeCases.values());
+
+    if (runtime.capture === 'live' || runtime.state.activeCases.size !== 1 || activeCase === undefined) {
+        return runtime.capture;
+    }
+
+    return activeCase.capture ?? runtime.capture;
+}
+
+function recordOrWriteCapturedOutput(
+    stream: 'stderr' | 'stdout',
+    chunk: Buffer,
+    runtime: SupervisedChildOutputRuntime
+): void {
+    if (activeCapture(runtime) === 'live') {
+        runtime.dependencies.liveOutput[stream].write(chunk);
+
+        return;
+    }
+
+    runtime.state.recordCapturedOutput(
+        stream,
+        chunk,
+        runtime.dependencies.wallClock.currentTimestampInMilliseconds
+    );
+}
+
 function observeChildStdout(runtime: SupervisedChildOutputRuntime): void {
     runtime.child.stdout?.on('data', function recordStdoutOutput(chunk: Buffer) {
         if (chunk.length === 0) {
@@ -142,11 +171,7 @@ function observeChildStdout(runtime: SupervisedChildOutputRuntime): void {
         }
 
         if (runtime.capabilityRestrictions.mode === 'disabled') {
-            runtime.state.recordCapturedOutput(
-                'stdout',
-                chunk,
-                runtime.dependencies.wallClock.currentTimestampInMilliseconds
-            );
+            recordOrWriteCapturedOutput('stdout', chunk, runtime);
 
             return;
         }
@@ -252,11 +277,7 @@ function observeChildStderr(runtime: SupervisedChildOutputRuntime): void {
         }
 
         if (runtime.capabilityRestrictions.mode === 'disabled') {
-            runtime.state.recordCapturedOutput(
-                'stderr',
-                chunk,
-                runtime.dependencies.wallClock.currentTimestampInMilliseconds
-            );
+            recordOrWriteCapturedOutput('stderr', chunk, runtime);
 
             return;
         }

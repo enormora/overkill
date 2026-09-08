@@ -1,4 +1,4 @@
-import type { Metadata, TestFamily } from '../engine/engine.entry-point.ts';
+import type { CaptureMode, Metadata, TestFamily } from '../engine/engine.entry-point.ts';
 
 export type AuthoringMetadata = {
     readonly baselines?: never;
@@ -15,15 +15,40 @@ export type AuthoringMetadata = {
     readonly timeoutMilliseconds?: never;
 };
 
-type TestFacadeMetadata = {
-    readonly metadata: AuthoringMetadata;
-    readonly testFamily: TestFamily;
-};
-type TestFacadeWithoutMetadata = {
-    readonly testFamily: TestFamily;
+export type CaptureAuthoringMetadata = {
+    readonly baselines?: never;
+    readonly capabilities?: never;
+    readonly capture?: CaptureMode;
+    readonly debug?: never;
+    readonly extra?: Readonly<Record<string, unknown>>;
+    readonly kind?: never;
+    readonly ownership?: never;
+    readonly priority?: never;
+    readonly runtimes?: never;
+    readonly stability?: never;
+    readonly tags?: readonly string[];
+    readonly timeoutMilliseconds?: never;
 };
 
-export type TestFacadeDefinition = TestFacadeMetadata | TestFacadeWithoutMetadata;
+export type NonMicrotestFamily = Exclude<TestFamily, 'microtest'>;
+
+export type AuthoringMetadataForFamily<Family extends TestFamily> = Family extends 'microtest' ? AuthoringMetadata
+    : CaptureAuthoringMetadata;
+
+type FacadeMetadata<Family extends TestFamily> = {
+    readonly metadata: AuthoringMetadataForFamily<Family>;
+    readonly testFamily: Family;
+};
+type FacadeFamily<Family extends TestFamily> = {
+    readonly testFamily: Family;
+};
+
+export type MicrotestFacadeDefinition = FacadeFamily<'microtest'> | FacadeMetadata<'microtest'>;
+export type CaptureFacadeDefinition = FacadeFamily<NonMicrotestFamily> | FacadeMetadata<NonMicrotestFamily>;
+
+export type TestFacadeDefinition = CaptureFacadeDefinition | MicrotestFacadeDefinition;
+
+export type TestFacadeDefinitionForFamily<Family extends TestFamily> = FacadeFamily<Family> | FacadeMetadata<Family>;
 
 export type ReadTestFacadeDefinitionResult = {
     readonly metadata: Metadata;
@@ -38,7 +63,9 @@ const testFamilyValues: readonly TestFamily[] = [
     'property',
     'type-test'
 ] as const;
+const captureModeValues: readonly CaptureMode[] = [ 'buffered', 'live' ] as const;
 const knownTestFamilies: ReadonlySet<unknown> = new Set(testFamilyValues);
+const knownCaptureModes: ReadonlySet<unknown> = new Set(captureModeValues);
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -54,6 +81,10 @@ function readRecord(value: unknown, message: string): Readonly<Record<string, un
 
 function isTestFamily(value: unknown): value is TestFamily {
     return typeof value === 'string' && knownTestFamilies.has(value);
+}
+
+function isCaptureMode(value: unknown): value is CaptureMode {
+    return typeof value === 'string' && knownCaptureModes.has(value);
 }
 
 function readTestFamily(value: unknown): TestFamily {
@@ -90,6 +121,14 @@ function readExtra(value: unknown): Readonly<Record<string, unknown>> {
     return value;
 }
 
+function readCapture(value: unknown): CaptureMode {
+    if (!isCaptureMode(value)) {
+        throw new TypeError('Metadata field "capture" contains an unknown value.');
+    }
+
+    return value;
+}
+
 function readTagsMetadata(value: Readonly<Record<string, unknown>>): Pick<Metadata, 'tags'> {
     return Object.hasOwn(value, 'tags') ? { tags: readStringArray(value.tags, 'tags') } : {};
 }
@@ -98,16 +137,21 @@ function readExtraMetadata(value: Readonly<Record<string, unknown>>): Pick<Metad
     return Object.hasOwn(value, 'extra') ? { extra: readExtra(value.extra) } : {};
 }
 
+function readCaptureMetadata(value: Readonly<Record<string, unknown>>): Pick<Metadata, 'capture'> {
+    return Object.hasOwn(value, 'capture') ? { capture: readCapture(value.capture) } : {};
+}
+
 export function readAuthoringMetadata(value: unknown): Metadata {
     const metadata = readRecord(value, 'Test node metadata must be an object.');
 
     return {
+        ...readCaptureMetadata(metadata),
         ...readTagsMetadata(metadata),
         ...readExtraMetadata(metadata)
     };
 }
 
-function metadataField<Field extends 'extra' | 'tags'>(
+function metadataField<Field extends 'capture' | 'extra' | 'tags'>(
     metadata: Metadata,
     field: Field
 ): Metadata[Field] | undefined {
@@ -136,6 +180,19 @@ function mergedExtra(facadeMetadata: Metadata, nodeMetadata: Metadata): Metadata
     return nodeExtra ?? facadeExtra;
 }
 
+function mergedCapture(facadeMetadata: Metadata, nodeMetadata: Metadata): Metadata['capture'] | undefined {
+    const facadeCapture = metadataField(facadeMetadata, 'capture');
+    const nodeCapture = metadataField(nodeMetadata, 'capture');
+
+    return nodeCapture ?? facadeCapture;
+}
+
+function assertMicrotestCapture(testFamily: TestFamily, metadata: Metadata): void {
+    if (testFamily === 'microtest' && metadata.capture !== undefined) {
+        throw new TypeError('Microtest authoring metadata does not support capture mode.');
+    }
+}
+
 export function createAuthoringMetadata(
     testFamily: TestFamily,
     facadeMetadata: Metadata,
@@ -143,22 +200,29 @@ export function createAuthoringMetadata(
 ): Metadata {
     const tags = mergedTags(facadeMetadata, nodeMetadata);
     const extra = mergedExtra(facadeMetadata, nodeMetadata);
-
-    return {
+    const capture = mergedCapture(facadeMetadata, nodeMetadata);
+    const metadata = {
         kind: testFamily,
+        ...capture === undefined ? {} : { capture },
         ...tags === undefined ? {} : { tags },
         ...extra === undefined ? {} : { extra }
     };
+
+    assertMicrotestCapture(testFamily, metadata);
+
+    return metadata;
 }
 
 export function readTestFacadeDefinition(definition: TestFacadeDefinition): ReadTestFacadeDefinitionResult {
     const facadeDefinition = readRecord(definition, createTestFacadeArgumentsError);
+    const testFamily = readTestFamily(facadeDefinition.testFamily);
     const metadata = Object.hasOwn(facadeDefinition, 'metadata')
         ? readAuthoringMetadata(facadeDefinition.metadata)
         : {};
+    assertMicrotestCapture(testFamily, metadata);
 
     return {
         metadata,
-        testFamily: readTestFamily(facadeDefinition.testFamily)
+        testFamily
     };
 }

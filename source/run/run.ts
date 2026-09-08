@@ -12,7 +12,11 @@ import {
     resolveResourceUsagePolicy,
     runCaseFactsFromTestPlan
 } from './run-facts.ts';
-import { readResolvedRunInput, type ResolvedRunInput } from './run-input-resolution.ts';
+import {
+    assertMicrotestMetadataCaptureSupported,
+    readResolvedRunInput,
+    type ResolvedRunInput
+} from './run-input-resolution.ts';
 import { createLocalTestPlan } from './run-local-test-plan.ts';
 import {
     assertCollectedRunPlanMatchesTestFamily,
@@ -56,6 +60,7 @@ type RunResourceUsageTracker = ReturnType<RunOrchestratorDependencies['createRes
 
 type SupervisedCommandBase = {
     readonly capabilityRestrictions: SupervisedRunCommand['capabilityRestrictions'];
+    readonly capture: SupervisedRunCommand['capture'];
     readonly collectionTimeoutMilliseconds: number;
     readonly cwd: string;
     readonly engine: SupervisedRunCommand['engine'];
@@ -126,12 +131,14 @@ function supervisedCapabilityRestrictions(
 function createSupervisedCommandBase(
     command: RunCommand,
     profile: RunProfileConfig,
-    files: ResolvedRunInput['files']
+    files: ResolvedRunInput['files'],
+    capture: RunRequest['capture']
 ): SupervisedCommandBase {
     const resourceUsagePolicy = resolveResourceUsagePolicy(command.request, profile);
 
     return {
         capabilityRestrictions: supervisedCapabilityRestrictions(profile, command),
+        capture,
         collectionTimeoutMilliseconds: profile.timeouts.collectionMilliseconds,
         cwd: command.cwd,
         engine: supervisedEngine(command),
@@ -153,7 +160,7 @@ function createSupervisedCollectCommand(
     files: ResolvedRunInput['files']
 ): SupervisedCollectCommand {
     return {
-        ...createSupervisedCommandBase(command, profile, files),
+        ...createSupervisedCommandBase(command, profile, files, 'buffered'),
         kind: 'collect' as const
     };
 }
@@ -164,13 +171,14 @@ function createSupervisedRunCommand(
     files: ResolvedRunInput['files']
 ): SupervisedRunCommand {
     return {
-        ...createSupervisedCommandBase(command, profile, files),
+        ...createSupervisedCommandBase(command, profile, files, command.request.capture),
         kind: 'run' as const
     };
 }
 
 function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): ResolvedRun {
     assertCollectedRunPlanMatchesTestFamily(input.collectedPlan, input.profile.testFamily);
+    assertMicrotestMetadataCaptureSupported(input.profile, input.collectedPlan);
 
     if (!input.allowEmptySelection) {
         assertCollectedRunPlanHasCases(input.collectedPlan);
@@ -246,6 +254,10 @@ function createLocalResolvedRunFromTestPlan(
     plannedTestPlan: Awaited<ReturnType<typeof createLocalTestPlan>>
 ): ResolvedRun {
     assertTestPlanMatchesTestFamily(plannedTestPlan, input.profile.testFamily);
+    assertMicrotestMetadataCaptureSupported(
+        input.profile,
+        collectedRunPlanFromTestPlanCases(plannedTestPlan, plannedTestPlan.cases)
+    );
 
     const facts = freezeValue(createRunFacts({
         cases: runCaseFactsFromTestPlan(plannedTestPlan),

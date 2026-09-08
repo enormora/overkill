@@ -24,6 +24,7 @@ type RunCommandParts = {
 };
 
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
+const microtestCaptureMetadataFixturePath = 'source/integration-tests/run/fixtures/microtest-capture-metadata.test.ts';
 
 const defaultConfig: RunConfig = defaultRunConfig();
 const supervisedCollectionConfig: RunConfig = defaultRunConfig({
@@ -71,6 +72,49 @@ export const testNode = createOverkillSuite({
     title: 'source/run/run.test.ts',
     metadata: {},
     children: [
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'orchestrator.resolve() rejects live capture for microtest profiles',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const runOrchestrator = createDeterministicRunOrchestrator();
+
+                await scope.assert.rejects(async function resolveMicrotestLiveCapture() {
+                    await runOrchestrator.resolve(createRunCommand({
+                        config: defaultConfig,
+                        cwd: process.cwd(),
+                        engine: { kind: 'default' },
+                        request: defaultRunRequest({
+                            capture: 'live',
+                            paths: [ passingFixturePath ]
+                        })
+                    }));
+                }, { message: 'Microtest profiles do not support live capture.' });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'orchestrator.resolve() rejects capture metadata for microtest profiles',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const runOrchestrator = createDeterministicRunOrchestrator();
+
+                await scope.assert.rejects(async function resolveMicrotestCaptureMetadata() {
+                    await runOrchestrator.resolve(createRunCommand({
+                        config: defaultConfig,
+                        cwd: process.cwd(),
+                        engine: { kind: 'default' },
+                        request: defaultRunRequest({
+                            paths: [ microtestCaptureMetadataFixturePath ]
+                        })
+                    }));
+                }, { message: 'Microtest metadata does not support capture mode.' });
+
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() returns frozen run facts for explicit paths',

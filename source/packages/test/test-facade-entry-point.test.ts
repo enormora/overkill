@@ -58,17 +58,17 @@ function assertPassingSummary(scope: OverkillScope, summary: unknown): void {
 
 async function executeFacadeAuthoredNode(): Promise<FacadeAuthoringExecution> {
     const integration = createTestFacade({
-        metadata: { extra: { layer: 'integration' }, tags: [ 'facade' ] },
+        metadata: { capture: 'buffered', extra: { layer: 'integration' }, tags: [ 'facade' ] },
         testFamily: 'integration'
     });
     const testCase = integration.test({
         body: passingBody,
-        metadata: { extra: { case: 'passes' }, tags: [ 'case' ] },
+        metadata: { capture: 'buffered', extra: { case: 'passes' }, tags: [ 'case' ] },
         title: 'passes'
     });
     const testNode = integration.suite({
         children: [ testCase ],
-        metadata: { extra: { suite: 'runtime' }, tags: [ 'suite' ] },
+        metadata: { capture: 'live', extra: { suite: 'runtime' }, tags: [ 'suite' ] },
         title: 'runtime'
     });
     const plan = createTestPlan(createRoot({
@@ -173,6 +173,7 @@ function assertFacadeAuthoredCase(scope: OverkillScope, plannedCase: FacadeAutho
         suite: [ 'runtime' ]
     });
     scope.assert.equal(plannedCase.metadata.kind, 'integration');
+    scope.assert.equal(plannedCase.metadata.capture, 'buffered');
     scope.assert.deepEqual(plannedCase.metadata.tags, [ 'facade', 'suite', 'case' ]);
     scope.assert.deepEqual(plannedCase.metadata.extra, {
         case: 'passes',
@@ -207,6 +208,12 @@ export const testNode = createOverkillSuite({
                 scope.assert.throws(function createFacadeWithoutDefinition() {
                     invokeCreateTestFacade();
                 }, { message: 'createTestFacade() requires ({ testFamily, metadata? }).' });
+                scope.assert.throws(function createMicrotestFacadeWithCapture() {
+                    invokeCreateTestFacade({
+                        metadata: { capture: 'live' },
+                        testFamily: 'microtest'
+                    });
+                }, { message: 'Microtest authoring metadata does not support capture mode.' });
 
                 return scope.assert.collect();
             }

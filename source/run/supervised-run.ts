@@ -106,6 +106,7 @@ async function observeCollection(
 ): Promise<void> {
     observeSupervisedChildOutput({
         capabilityRestrictions: runtime.command.capabilityRestrictions,
+        capture: runtime.command.capture,
         child: runtime.child,
         dependencies: runtime.dependencies,
         state: runtime.state,
@@ -279,6 +280,7 @@ function handleLiveMessage(
 function observeLiveRun(command: SupervisedRunCommand, liveRun: SupervisedLiveRun): void {
     observeSupervisedChildOutput({
         capabilityRestrictions: command.capabilityRestrictions,
+        capture: command.capture,
         child: liveRun.child,
         dependencies: liveRun.dependencies,
         state: liveRun.state,

@@ -1,7 +1,9 @@
 import { caseIdentityKey, type CaseId } from '../engine/identity.ts';
 import type { PerTestResult, RunArtifact, RunnerError } from '../engine/run-result.ts';
+import type { RunRequest } from './run-types.ts';
 
 export type SupervisedCase = {
+    readonly capture: RunRequest['capture'] | null;
     readonly id: CaseId;
 };
 

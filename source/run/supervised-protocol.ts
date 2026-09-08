@@ -3,6 +3,7 @@ import type { ReporterEvent } from '../engine/reporter.ts';
 import type { ResourceUsageSnapshot, RunResult } from '../engine/run-result.ts';
 import type {
     CollectedRunPlan,
+    RunRequest,
     RunEngineSelection,
     RunResourceBudgets,
     RunScheduling,
@@ -13,6 +14,7 @@ type SupervisedCommandBase = {
     readonly capabilityRestrictions: {
         readonly mode: 'disabled' | 'enabled';
     };
+    readonly capture: RunRequest['capture'];
     readonly collectionTimeoutMilliseconds: number;
     readonly cwd: string;
     readonly engine: Exclude<RunEngineSelection, { readonly kind: 'instance'; }>;

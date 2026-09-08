@@ -23,7 +23,7 @@ Likely metadata categories:
 - **stability** - `'stable' | 'flaky' | 'experimental'`
 - **priority** - `'critical' | 'standard' | 'optional'`
 - **debug** - pin [Test Debug Mode](../authoring/debug-mode.md) on for this test or subtree
-- **capture** - per-test capture preference for future capture behavior
+- **capture** - per-test capture preference for capture-capable test families
 - **timeoutMilliseconds** - current per-test soft timeout override
 
 ## Concrete Type Sketch
@@ -91,10 +91,12 @@ Metadata cascades from root to test, with override semantics:
 The default `@overkill-dev/test` authoring facade creates ordinary `test(...)`
 and `suite(...)` nodes with `kind: 'microtest'`. Additional high-level facades
 derive their family from `createTestFacade({ testFamily })`. Object-form
-authoring metadata currently accepts only `tags` and `extra`; full engine
-metadata is reserved for low-level engine APIs and future first-party helpers
-that own specific managed fields. Test modules express file-wide metadata by
-attaching metadata to their exported top-level `testNode`.
+authoring metadata accepts `tags`, `extra`, and, for non-microtest facades,
+`capture`. Microtest authoring rejects `capture` because capture mode does
+not bypass the microtest runtime boundary. Full engine metadata is reserved
+for low-level engine APIs and future first-party helpers that own specific
+managed fields. Test modules express file-wide metadata by attaching metadata
+to their exported top-level `testNode`.
 
 Example:
 

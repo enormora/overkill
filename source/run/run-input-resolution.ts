@@ -7,6 +7,7 @@ import {
     freezeValue
 } from './run-support.ts';
 import type {
+    CollectedRunPlan,
     RunCommand,
     RunConfig,
     RunProfileConfig,
@@ -16,6 +17,7 @@ import {
     assertSupportedProcessEngine,
     validateRunInput
 } from './run-validation.ts';
+import { invalidRequest } from './run-errors.ts';
 
 export type ResolvedRunInput = {
     readonly config: RunConfig;
@@ -26,11 +28,38 @@ export type ResolvedRunInput = {
     readonly request: RunRequest;
 };
 
+function assertMicrotestCaptureSupported(
+    request: RunRequest,
+    profile: RunProfileConfig
+): void {
+    if (profile.testFamily === 'microtest' && request.capture === 'live') {
+        invalidRequest('Microtest profiles do not support live capture.');
+    }
+}
+
+export function assertMicrotestMetadataCaptureSupported(
+    profile: RunProfileConfig,
+    collectedPlan: CollectedRunPlan
+): void {
+    if (profile.testFamily !== 'microtest') {
+        return;
+    }
+
+    for (const file of collectedPlan.files) {
+        for (const testCase of file.cases) {
+            if (testCase.metadata.capture !== null) {
+                invalidRequest('Microtest metadata does not support capture mode.');
+            }
+        }
+    }
+}
+
 export async function readResolvedRunInput(command: RunCommand): Promise<ResolvedRunInput> {
     validateRunInput(command);
     const request = freezeValue(copyRunRequest(command.request));
     const config = freezeValue(copyRunConfig(command.config));
     const profile = selectedProfile(request, config);
+    assertMicrotestCaptureSupported(request, profile);
     assertSupportedProcessEngine(command, profile);
     const discovery = freezeValue(
         await discoverRunFilesWithProjectRoot({

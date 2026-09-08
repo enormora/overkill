@@ -1,4 +1,5 @@
 import { createSuite } from '../engine/engine.entry-point.ts';
+import { testNode as commandLineRunnerCaptureTestNode } from './command-line-runner-capture.test.ts';
 import { testNode as commandLineRunnerTestNode } from './command-line-runner.test.ts';
 import { testNode as standardSubpathsTestNode } from './standard-subpaths.test.ts';
 import { testNode as entryPointTestNode } from './test-entry-point.test.ts';
@@ -9,6 +10,7 @@ export const testNode = createSuite({
     title: 'source/packages/test',
     metadata: {},
     children: [
+        commandLineRunnerCaptureTestNode,
         commandLineRunnerTestNode,
         standardSubpathsTestNode,
         entryPointTestNode,

@@ -76,6 +76,18 @@ export function createDeterministicRunOrchestratorWithSeed(createSeed: () => big
         createSeed,
         defaultEngine: defaultRunEngine,
         execute: engine.execute,
+        liveOutput: {
+            stderr: {
+                write() {
+                    return undefined;
+                }
+            },
+            stdout: {
+                write() {
+                    return undefined;
+                }
+            }
+        },
         runtimeCapabilityPolicy: {
             installIpcRestriction: installNoPolicyRestriction,
             installProcessExecutionRestriction: installNoPolicyRestriction,
