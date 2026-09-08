@@ -138,6 +138,25 @@ export const config = {
             }
         },
         {
+            name: '@overkill-dev/resources',
+            roots: {
+                main: {
+                    js: 'packages/resources/resources.entry-point.js',
+                    declarationFile: 'packages/resources/resources.entry-point.d.ts'
+                }
+            },
+            additionalFiles: [
+                {
+                    sourceFilePath: path.join(projectFolder, 'source/packages/resources/readme.md'),
+                    targetFilePath: 'readme.md'
+                }
+            ],
+            additionalPackageJsonAttributes: {
+                ...packageMetadata,
+                description: 'Typed Overkill resource and runtime descriptors.'
+            }
+        },
+        {
             name: '@overkill-dev/run',
             roots: {
                 commandLine: {
@@ -198,6 +217,7 @@ export const config = {
                 '@overkill-dev/reporter-brief',
                 '@overkill-dev/reporter-dot',
                 '@overkill-dev/reporter-line',
+                '@overkill-dev/resources',
                 '@overkill-dev/run'
             ],
             roots: {

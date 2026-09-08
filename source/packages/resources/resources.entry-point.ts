@@ -1,7 +1,7 @@
 export {
     defineResource,
     defineRuntime
-} from '../resources/resources.entry-point.ts';
+} from '../../resources/resources.ts';
 export type {
     ExecutionRequirement,
     ResourceCreationContext,
@@ -15,4 +15,4 @@ export type {
     RuntimeDefinitionInput,
     RuntimeDimensions,
     RuntimeId
-} from '../resources/resources.entry-point.ts';
+} from '../../resources/resources.ts';

@@ -34,9 +34,10 @@ Standard subpaths:
   `createGithubActionsOutputRenderer`.
 - `@overkill-dev/test/assert` re-exports assertion-extension helpers from
   `@overkill-dev/assert`.
-- `@overkill-dev/test/bench`, `@overkill-dev/test/resources`, and
-  `@overkill-dev/test/baselines` are reserved. They currently export only
-  `unavailable()`.
+- `@overkill-dev/test/resources` re-exports typed resource and runtime
+  descriptors from `@overkill-dev/resources`.
+- `@overkill-dev/test/bench` and `@overkill-dev/test/baselines` are reserved.
+  They currently export only `unavailable()`.
 
 Implemented root authoring forms:
 

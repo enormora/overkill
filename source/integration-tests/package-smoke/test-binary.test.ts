@@ -5,6 +5,11 @@ import type { Readable } from 'node:stream';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createSuite, createTestCase, type TestScope } from '@overkill-dev/engine';
 import { createLineReporter } from '@overkill-dev/reporter-line';
+import {
+    assertResourcesPackageRootExport,
+    assertRunConfigSubpathExport,
+    assertTestStandardSubpathExports
+} from './package-export-assertions.test.ts';
 import { runIfMain } from './direct-launcher.test.ts';
 import {
     authoringSmokeScript,
@@ -41,6 +46,7 @@ const packageSmokeFolder = fileURLToPath(new URL('.', import.meta.url));
 const packageSmokeNodeModules = path.join(packageSmokeFolder, 'node_modules');
 const testPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/test');
 const runPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/run');
+const resourcesPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/resources');
 const packageSmokeConfigFile = 'overkill.config.js';
 const authoringSmokeFile = 'authoring-smoke.test.mjs';
 async function readPackageJson(packageFolder: string): Promise<PackageJson> {
@@ -108,40 +114,6 @@ async function importPackagedFilters(): Promise<FiltersModule> {
     return await import(pathToFileURL(modulePath).href) as FiltersModule;
 }
 
-function assertTestStandardSubpathExports(scope: TestScope, packageExports: Readonly<Record<string, unknown>>): void {
-    scope.assert.deepEqual(packageExports['./config'], {
-        import: './packages/test/config.entry-point.js',
-        types: './packages/test/config.entry-point.d.ts'
-    });
-    scope.assert.deepEqual(packageExports['./reporters'], {
-        import: './packages/test/reporters.entry-point.js',
-        types: './packages/test/reporters.entry-point.d.ts'
-    });
-    scope.assert.deepEqual(packageExports['./assert'], {
-        import: './packages/test/assert.entry-point.js',
-        types: './packages/test/assert.entry-point.d.ts'
-    });
-    scope.assert.deepEqual(packageExports['./bench'], {
-        import: './packages/test/bench.entry-point.js',
-        types: './packages/test/bench.entry-point.d.ts'
-    });
-    scope.assert.deepEqual(packageExports['./resources'], {
-        import: './packages/test/resources.entry-point.js',
-        types: './packages/test/resources.entry-point.d.ts'
-    });
-    scope.assert.deepEqual(packageExports['./baselines'], {
-        import: './packages/test/baselines.entry-point.js',
-        types: './packages/test/baselines.entry-point.d.ts'
-    });
-}
-
-function assertRunConfigSubpathExport(scope: TestScope, packageExports: Readonly<Record<string, unknown>>): void {
-    scope.assert.deepEqual(packageExports['./config'], {
-        import: './packages/run/config.entry-point.js',
-        types: './packages/run/config.entry-point.d.ts'
-    });
-}
-
 function assertPackagedFilters(scope: TestScope, filters: FiltersModule): void {
     const { all, file, not, parseRunFilterExpression, tag, title } = filters;
 
@@ -166,6 +138,24 @@ function assertPackagedFilters(scope: TestScope, filters: FiltersModule): void {
         ],
         kind: 'all'
     });
+}
+
+async function assertPackagedStandardSubpathImports(
+    scope: TestScope,
+    packageExports: Readonly<Record<string, unknown>>
+): Promise<void> {
+    const resourcesPackageExports = await readPackageExports(resourcesPackageFolder, '@overkill-dev/resources');
+    const result = await spawnNode([
+        '--input-type=module',
+        '--eval',
+        standardSubpathImportScript
+    ]);
+
+    assertTestStandardSubpathExports(scope, packageExports);
+    assertResourcesPackageRootExport(scope, resourcesPackageExports);
+    scope.assert.equal(result.code, 0);
+    scope.assert.equal(result.stderr, '');
+    scope.assert.equal(result.stdout, expectedStandardSubpathImportOutput);
 }
 
 async function writeAuthoringSmokeFile(): Promise<void> {
@@ -240,20 +230,12 @@ export const testNode = createSuite({
             async body(scope: TestScope) {
                 const testPackageJson = await readPackageJson(testPackageFolder);
                 const packageExports = testPackageJson.exports;
-                const result = await spawnNode([
-                    '--input-type=module',
-                    '--eval',
-                    standardSubpathImportScript
-                ]);
 
                 if (!isPackageExportsMap(packageExports)) {
                     throw new Error('Expected @overkill-dev/test exports map.');
                 }
 
-                assertTestStandardSubpathExports(scope, packageExports);
-                scope.assert.equal(result.code, 0);
-                scope.assert.equal(result.stderr, '');
-                scope.assert.equal(result.stdout, expectedStandardSubpathImportOutput);
+                await assertPackagedStandardSubpathImports(scope, packageExports);
 
                 return scope.assert.collect();
             }
