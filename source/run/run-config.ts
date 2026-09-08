@@ -23,11 +23,13 @@ import {
 } from './run-config-schema.ts';
 import {
     invalidRunProfileNameMessage,
+    invalidRunProfileFileSetNameMessage,
     type RunIntegrationExecution,
     type RunIntegrationProfileConfig,
     type RunLoaderConfig,
     type RunMicrotestExecution,
     type RunMicrotestProfileConfig,
+    type RunProfileFileSet,
     type RunProfileFiles,
     type RunProfileConfig,
     type RunProfilesConfig,
@@ -36,8 +38,7 @@ import {
     type RunTimeoutPolicy
 } from './run-types.ts';
 import {
-    invalidProfileFileGlobConfigMessage,
-    type ProfileFileGlobField
+    invalidProfileFileGlobConfigMessage
 } from './profile-file-glob.ts';
 
 export type RunProjectConfig = ParsedRunProjectConfig;
@@ -120,6 +121,15 @@ const defaultMicrotestExecution: RunMicrotestExecution = {
 const defaultIntegrationExecution: RunIntegrationExecution = {
     processModel: 'supervised-process',
     scheduling: 'concurrent'
+};
+
+type ProjectProfileFilePatterns = {
+    readonly exclude?: readonly string[] | undefined;
+    readonly include: NonEmptyReadonlyArray<string>;
+};
+
+type ProjectProfileFileSets = {
+    readonly sets: Readonly<Record<string, ProjectProfileFilePatterns>>;
 };
 
 export function defineConfig(config: RunProjectConfig): RunProjectConfig {
@@ -303,7 +313,7 @@ function assertValidTimeouts(timeouts: RunTimeoutPolicy): void {
     }
 }
 
-function assertValidProfileGlob(field: ProfileFileGlobField, pattern: string): void {
+function assertValidProfileGlob(field: string, pattern: string): void {
     const message = invalidProfileFileGlobConfigMessage(field, pattern);
 
     if (message !== null) {
@@ -311,25 +321,68 @@ function assertValidProfileGlob(field: ProfileFileGlobField, pattern: string): v
     }
 }
 
-function normalizeProfileFiles(files: RunProjectProfileFiles | undefined): RunProfileFiles | null {
-    if (files === undefined) {
-        return null;
+function profileFileGlobField(fieldPrefix: string | null, field: 'exclude' | 'include'): string {
+    return fieldPrefix === null ? field : `${fieldPrefix}.${field}`;
+}
+
+function normalizeProfileFilePatterns(
+    files: ProjectProfileFilePatterns,
+    fieldPrefix: string | null
+): RunProfileFileSet {
+    for (const pattern of files.include) {
+        assertValidProfileGlob(profileFileGlobField(fieldPrefix, 'include'), pattern);
     }
 
     const excludePatterns = files.exclude ?? [];
 
-    for (const pattern of files.include) {
-        assertValidProfileGlob('include', pattern);
-    }
-
     for (const pattern of excludePatterns) {
-        assertValidProfileGlob('exclude', pattern);
+        assertValidProfileGlob(profileFileGlobField(fieldPrefix, 'exclude'), pattern);
     }
 
     return {
         exclude: Array.from(excludePatterns),
         include: [ files.include[0], ...files.include.slice(1) ]
     };
+}
+
+function assertValidProfileFileSetName(name: string): void {
+    const message = invalidRunProfileFileSetNameMessage(name);
+
+    if (message !== null) {
+        throw new RunConfigError(message);
+    }
+}
+
+function normalizeProfileFileSets(files: ProjectProfileFileSets): RunProfileFiles {
+    const entries = Object.entries(files.sets);
+
+    if (entries.length === 0) {
+        throw new RunConfigError('Invalid profile files.sets: at least one file set is required.');
+    }
+
+    return {
+        sets: Object.fromEntries(entries.map(function normalizeProfileFileSet([ name, set ]) {
+            assertValidProfileFileSetName(name);
+
+            return [ name, normalizeProfileFilePatterns(set, `sets.${name}`) ];
+        }))
+    };
+}
+
+function hasProfileFileSets(files: RunProjectProfileFiles): files is ProjectProfileFileSets {
+    return files.sets !== undefined;
+}
+
+function normalizeProfileFiles(files: RunProjectProfileFiles | undefined): RunProfileFiles | null {
+    if (files === undefined) {
+        return null;
+    }
+
+    if (hasProfileFileSets(files)) {
+        return normalizeProfileFileSets(files);
+    }
+
+    return normalizeProfileFilePatterns(files, null);
 }
 
 function normalizeRequiredProfileFiles(files: RunProjectProfileFiles): RunProfileFiles {

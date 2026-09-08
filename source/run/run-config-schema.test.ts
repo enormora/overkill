@@ -173,6 +173,29 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'microtest profile schema accepts profile file sets',
+            metadata: {},
+            body(scope: OverkillScope) {
+                assertValidationSuccess(scope, microtestProfileSchema, {
+                    files: {
+                        sets: {
+                            integration: {
+                                exclude: [ 'source/integration/**/*.slow.test.ts' ],
+                                include: [ 'source/integration/**/*.test.ts' ]
+                            },
+                            unit: {
+                                include: [ 'source/unit/**/*.test.ts' ]
+                            }
+                        }
+                    },
+                    testFamily: 'microtest'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'microtest execution schema accepts process model and scheduling variants',
             metadata: {},
             body(scope: OverkillScope) {

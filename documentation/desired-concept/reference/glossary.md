@@ -136,6 +136,16 @@ provide fallback reporters, but profile reporters replace them when present.
 
 Source: [Microtests And Capabilities](../authoring/microtests-and-capabilities.md), [Package Architecture](../architecture/package-architecture.md).
 
+## Profile File Set
+
+A named discovery bucket inside a runner profile's `files.sets` policy. File
+sets use the same include/exclude glob rules as simple profile discovery,
+must be non-empty, and must not overlap with another set in the same profile.
+They classify discovered files for facts and future scheduling policy; they do
+not add a selection dimension.
+
+Source: [Configuration](../architecture/configuration.md).
+
 ## Suite
 
 A `TestNode` that groups child nodes under a title. Suites are for naming,

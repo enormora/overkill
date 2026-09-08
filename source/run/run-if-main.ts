@@ -64,7 +64,13 @@ async function executeDirectTestPlan(context: DirectRunContext, testPlan: TestPl
     const wallClock = createWallClock();
     const reporters = await selectedReporters(context.profile, context.config, context.options);
     const config = runConfig(context.config, reporters);
-    const runFacts = directRunFacts(config, context.name, testPlan, context.projectRoot);
+    const runFacts = directRunFacts({
+        config,
+        fileSet: context.fileSet,
+        profileName: context.name,
+        projectRoot: context.projectRoot,
+        testPlan
+    });
     const runtimePolicy = createDirectRuntimePolicy();
     const { resourceUsagePolicy } = runFacts.execution;
     const startedAt = new Date(wallClock.currentTimestampInMilliseconds);

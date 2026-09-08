@@ -63,10 +63,12 @@ location as `(path:line:column)`, using paths relative to the current working
 directory when possible.
 
 With no path operands, `overkill run` and `overkill list` use the selected
-profile's `files.include` and `files.exclude` policy. Explicit file operands
-bypass that policy and run the named modules directly. Directory operands
-require a selected profile file policy, filter the profile-discovered file
-set, and cannot be mixed with file operands.
+profile's `files` policy. A profile may define top-level `include` and
+`exclude`, or non-overlapping named `files.sets`. Explicit file operands bypass
+top-level include/exclude discovery and run the named modules directly. If the
+selected profile uses `files.sets`, each explicit file must match exactly one
+set. Directory operands require a selected profile file policy, filter the
+profile-discovered file set, and cannot be mixed with file operands.
 
 ### Baseline
 

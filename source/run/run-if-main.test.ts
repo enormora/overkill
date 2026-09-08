@@ -217,6 +217,44 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'runIfMain() selects the configured profile matching a file set',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const project = await createDirectProject('direct.test.ts');
+
+                await writeConfig(
+                    project,
+                    `export const config = {
+                    profiles: {
+                        microtest: {
+                            testFamily: 'microtest',
+                            files: { include: [ 'other.test.ts' ] }
+                        },
+                        focused: {
+                            testFamily: 'microtest',
+                            files: {
+                                sets: {
+                                    unit: { include: [ 'direct.test.ts' ] }
+                                }
+                            },
+                            execution: { processModel: 'in-process', scheduling: 'serial' }
+                        }
+                    }
+                };`
+                );
+
+                const capturedRun = await runDirect(project, passingCase());
+                const firstCase = capturedRun.facts.cases[0];
+
+                scope.require.defined(firstCase);
+                scope.assert.equal(capturedRun.facts.execution.profile, 'focused');
+                scope.assert.equal(firstCase.fileSet, 'unit');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() falls back to configured microtest when no profile matches',
             metadata: {},
             async body(scope: OverkillScope) {
@@ -239,6 +277,82 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.equal(capturedRun.facts.execution.profile, 'microtest');
                 scope.assert.equal(capturedRun.facts.execution.scheduling, 'serial');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'runIfMain() rejects fallback profiles when the current file is outside every file set',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const project = await createDirectProject('direct.test.ts');
+
+                await writeConfig(
+                    project,
+                    `export const config = {
+                    profiles: {
+                        microtest: {
+                            testFamily: 'microtest',
+                            files: {
+                                sets: {
+                                    unit: { include: [ 'other.test.ts' ] }
+                                }
+                            }
+                        }
+                    }
+                };`
+                );
+                await fs.writeFile(path.join(project.cwd, 'other.test.ts'), '', 'utf8');
+
+                await scope.assert.rejects(async function runOutsideFileSet() {
+                    await withCwd(project.cwd, async function runInProject() {
+                        await runIfMain(project.meta, passingCase(), { reporters: [] });
+                    });
+                }, {
+                    message: 'runIfMain() file must match exactly one profile file set for "microtest": direct.test.ts.'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'runIfMain() rejects profile file sets that overlap outside the current file',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const project = await createDirectProject('direct.test.ts');
+
+                await writeConfig(
+                    project,
+                    `export const config = {
+                    profiles: {
+                        microtest: {
+                            testFamily: 'microtest'
+                        },
+                        focused: {
+                            testFamily: 'microtest',
+                            files: {
+                                sets: {
+                                    integration: { include: [ 'other.test.ts' ] },
+                                    duplicate: { include: [ 'other.test.ts' ] },
+                                    unit: { include: [ 'direct.test.ts' ] }
+                                }
+                            }
+                        }
+                    }
+                };`
+                );
+                await fs.writeFile(path.join(project.cwd, 'other.test.ts'), '', 'utf8');
+
+                await scope.assert.rejects(async function runOverlappingFileSets() {
+                    await withCwd(project.cwd, async function runInProject() {
+                        await runIfMain(project.meta, passingCase(), { reporters: [] });
+                    });
+                }, {
+                    message:
+                        'runIfMain() profile file sets must not overlap: other.test.ts matched integration and duplicate.'
+                });
 
                 return scope.assert.collect();
             }

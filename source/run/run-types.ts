@@ -164,9 +164,21 @@ export type RunTimeoutPolicy = {
     readonly softMilliseconds: number;
 };
 
-export type RunProfileFiles = {
+type RunProfileFilePatterns = {
     readonly exclude: readonly string[];
     readonly include: NonEmptyReadonlyArray<string>;
+    readonly sets?: never;
+};
+
+export type RunProfileFileSet = {
+    readonly exclude: readonly string[];
+    readonly include: NonEmptyReadonlyArray<string>;
+};
+
+export type RunProfileFiles = RunProfileFilePatterns | {
+    readonly exclude?: never;
+    readonly include?: never;
+    readonly sets: Readonly<Record<string, RunProfileFileSet>>;
 };
 
 export type RunMicrotestProfileConfig = {
@@ -233,6 +245,7 @@ export type RunFacts = {
 };
 
 export type RunCaseFacts = {
+    readonly fileSet: string | null;
     readonly id: TestPlan['cases'][number]['id'];
     readonly metadata: SerializedValue;
 };
@@ -354,6 +367,15 @@ export function invalidRunProfileNameMessage(profileName: string): string | null
 
     if (profileName === reservedBenchmarkProfileName) {
         return 'Invalid profile name "benchmark". The "benchmark" profile name is reserved for benchmark commands.';
+    }
+
+    return null;
+}
+
+export function invalidRunProfileFileSetNameMessage(fileSetName: string): string | null {
+    if (!runProfileNamePattern.test(fileSetName)) {
+        return `Invalid profile file set name "${fileSetName}". ` +
+            'Profile file set names may only contain letters, numbers, dots, underscores, and hyphens.';
     }
 
     return null;

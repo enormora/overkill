@@ -106,6 +106,7 @@ export const testNode = createOverkillSuite({
 
                     scope.assert.deepEqual(files, [
                         {
+                            fileSet: null,
                             file: 'nested/example.test.ts',
                             href: pathToFileURL(realFilePath).href,
                             path: realFilePath
@@ -135,11 +136,13 @@ export const testNode = createOverkillSuite({
 
                     scope.assert.deepEqual(files, [
                         {
+                            fileSet: null,
                             file: 'source/unit/a.test.ts',
                             href: pathToFileURL(discoveryFiles.firstPath).href,
                             path: discoveryFiles.firstPath
                         },
                         {
+                            fileSet: null,
                             file: 'source/unit/b.test.ts',
                             href: pathToFileURL(discoveryFiles.secondPath).href,
                             path: discoveryFiles.secondPath
@@ -172,6 +175,7 @@ export const testNode = createOverkillSuite({
 
                     scope.assert.deepEqual(files, [
                         {
+                            fileSet: null,
                             file: 'source/unit/a.test.ts',
                             href: pathToFileURL(realFilePath).href,
                             path: realFilePath
@@ -234,11 +238,13 @@ export const testNode = createOverkillSuite({
 
                     scope.assert.deepEqual(files, [
                         {
+                            fileSet: null,
                             file: 'source/unit/a.test.ts',
                             href: pathToFileURL(firstFilePath).href,
                             path: firstFilePath
                         },
                         {
+                            fileSet: null,
                             file: 'source/unit/nested/b.test.ts',
                             href: pathToFileURL(secondFilePath).href,
                             path: secondFilePath

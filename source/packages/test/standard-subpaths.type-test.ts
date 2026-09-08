@@ -42,6 +42,18 @@ type CompositeBooleanDefinition = CompositeAssertionDefinition<
     ReturnType<CompositeCheckBuilder<'assert'>['true']>
 >;
 type NarrowingStringDefinition = NarrowingCompositeAssertionDefinition<unknown, string, readonly []>;
+type ProjectProfileFilePatterns = {
+    readonly exclude?: readonly string[];
+    readonly include: readonly [string, ...readonly string[]];
+};
+type ProjectProfileFileSets = {
+    readonly sets: Readonly<
+        Record<string, {
+            readonly exclude?: readonly string[];
+            readonly include: readonly [string, ...readonly string[]];
+        }>
+    >;
+};
 type Database = {
     readonly url: string;
 };
@@ -68,7 +80,8 @@ describe('@overkill-dev/test standard subpaths', function () {
         expect<RunProjectProfileConfig>().type.toBe<
             RunProjectIntegrationProfileConfig | RunProjectMicrotestProfileConfig
         >();
-        expect<RunProjectProfileFiles['include']>().type.toBe<readonly [string, ...string[]]>();
+        expect<RunProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFilePatterns>();
+        expect<RunProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFileSets>();
         expect<keyof RunProjectResourceBudgets>().type.toBe<
             'activeResourceCount' | 'javaScriptEngineHeapBytes' | 'residentSetBytes' | 'residentSetGrowthBytesPerSecond'
         >();

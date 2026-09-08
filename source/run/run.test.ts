@@ -90,6 +90,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(plainData(resolvedRun.facts), {
                     cases: [
                         {
+                            fileSet: null,
                             id: {
                                 file: passingFixturePath,
                                 title: 'passes',
@@ -313,6 +314,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(plainData(runStartEvent.kind === 'run-start' ? runStartEvent.facts : null), {
                     cases: [
                         {
+                            fileSet: null,
                             id: {
                                 file: passingFixturePath,
                                 title: 'passes',

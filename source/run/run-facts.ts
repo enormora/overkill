@@ -23,6 +23,8 @@ export type RunFactsInput = {
     readonly request: RunRequest;
 };
 
+export type RunCaseFileSet = (file: RunCaseFacts['id']['file']) => string | null;
+
 function disabledResourceBudgets(): RunResourceBudgets {
     return {
         activeResourceCount: null,
@@ -112,13 +114,24 @@ function resolvedSeed(request: RunRequest, dependencies: RunOrchestratorDependen
     return request.seed.value ?? dependencies.createSeed();
 }
 
-function runCaseFacts(metadata: RunCaseFacts['metadata'], id: RunCaseFacts['id']): RunCaseFacts {
-    return { id, metadata };
+function runCaseFacts(
+    metadata: RunCaseFacts['metadata'],
+    id: RunCaseFacts['id'],
+    fileSet: string | null
+): RunCaseFacts {
+    return { fileSet, id, metadata };
 }
 
-export function runCaseFactsFromTestPlan(testPlan: TestPlan): readonly RunCaseFacts[] {
+export function runCaseFactsFromTestPlan(
+    testPlan: TestPlan,
+    fileSetForCase: RunCaseFileSet
+): readonly RunCaseFacts[] {
     return testPlan.cases.map(function toRunCaseFacts(testCase) {
-        return runCaseFacts(serializeValue(testCase.metadata), testCase.id);
+        return runCaseFacts(
+            serializeValue(testCase.metadata),
+            testCase.id,
+            fileSetForCase(testCase.id.file)
+        );
     });
 }
 

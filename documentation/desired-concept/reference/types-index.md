@@ -716,12 +716,14 @@ type BenchmarkProfileConfig = {
 type ProfileFiles = {
     readonly include: NonEmptyReadonlyArray<string>;
     readonly exclude: ReadonlyArray<string>;
+    readonly sets?: never;
 } | {
-    readonly sets: NonEmptyReadonlyArray<NamedFileSet>;
+    readonly include?: never;
+    readonly exclude?: never;
+    readonly sets: Readonly<Record<string, ProfileFileSet>>;
 };
 
-type NamedFileSet = {
-    readonly name: string;
+type ProfileFileSet = {
     readonly include: NonEmptyReadonlyArray<string>;
     readonly exclude: ReadonlyArray<string>;
 };
@@ -912,6 +914,7 @@ type RunFacts = {
 };
 
 type RunCaseFacts = {
+    readonly fileSet: string | null;
     readonly id: CaseId;
     readonly metadata: SerializedValue;
 };

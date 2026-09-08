@@ -1,4 +1,4 @@
-import { glob, realpath } from 'node:fs/promises';
+import { glob, realpath, stat } from 'node:fs/promises';
 import { relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -6,9 +6,14 @@ import {
     RunConfigError,
     type LoadedRunConfig
 } from './run-config.ts';
-import type { RunProfileConfig } from './run-types.ts';
+import type {
+    RunProfileConfig,
+    RunProfileFileSet,
+    RunProfileFiles
+} from './run-types.ts';
 
 type SelectedDirectProfile = {
+    readonly fileSet: string | null;
     readonly name: string;
     readonly profile: RunProfileConfig;
 };
@@ -54,16 +59,33 @@ async function matchedFiles(pattern: string, cwd: string): Promise<readonly stri
     return files;
 }
 
-async function profileIncludesFile(
-    profile: RunProfileConfig,
+async function matchedProfilePatternFiles(
+    profileFiles: RunProfileFileSet,
+    cwd: string
+): Promise<readonly string[]> {
+    const files: string[] = [];
+    const matches = glob(profileFiles.include, { cwd, exclude: profileFiles.exclude, followSymlinks: false });
+
+    for await (const file of matches) {
+        const filePath = resolve(cwd, file);
+        const fileStat = await stat(filePath);
+
+        if (fileStat.isFile()) {
+            files.push(await canonicalPath(filePath));
+        }
+    }
+
+    return Array.from(new Set(files)).toSorted(function compareFiles(left, right) {
+        return left.localeCompare(right);
+    });
+}
+
+async function patternSetIncludesFile(
+    profileFiles: RunProfileFileSet,
     file: string,
     cwd: string
 ): Promise<boolean> {
-    if (profile.files === null) {
-        return false;
-    }
-
-    for (const includePattern of profile.files.include) {
+    for (const includePattern of profileFiles.include) {
         const includedFiles = await matchedFiles(includePattern, cwd);
 
         for (const includedFile of includedFiles) {
@@ -76,16 +98,12 @@ async function profileIncludesFile(
     return false;
 }
 
-async function profileExcludesFile(
-    profile: RunProfileConfig,
+async function patternSetExcludesFile(
+    profileFiles: RunProfileFileSet,
     file: string,
     cwd: string
 ): Promise<boolean> {
-    if (profile.files === null) {
-        return false;
-    }
-
-    for (const excludePattern of profile.files.exclude) {
+    for (const excludePattern of profileFiles.exclude) {
         const excludedFiles = await matchedFiles(excludePattern, cwd);
 
         for (const excludedFile of excludedFiles) {
@@ -98,12 +116,135 @@ async function profileExcludesFile(
     return false;
 }
 
-async function profileMatchesFile(
-    profile: RunProfileConfig,
+async function patternSetMatchesFile(
+    profileFiles: RunProfileFileSet,
     file: string,
     cwd: string
 ): Promise<boolean> {
-    return await profileIncludesFile(profile, file, cwd) && !await profileExcludesFile(profile, file, cwd);
+    return await patternSetIncludesFile(profileFiles, file, cwd) &&
+        !await patternSetExcludesFile(profileFiles, file, cwd);
+}
+
+type RunProfileFileSets = {
+    readonly sets: Readonly<Record<string, RunProfileFileSet>>;
+};
+
+type DirectProfileFileSet = {
+    readonly files: readonly string[];
+    readonly name: string;
+};
+
+function hasProfileFileSets(profileFiles: RunProfileFiles): profileFiles is RunProfileFileSets {
+    return profileFiles.sets !== undefined;
+}
+
+async function directProfileFileSet(
+    name: string,
+    profileFiles: RunProfileFileSet,
+    cwd: string
+): Promise<DirectProfileFileSet> {
+    const files = await matchedProfilePatternFiles(profileFiles, cwd);
+
+    if (files.length === 0) {
+        throw new RunConfigError(`Profile files.sets.${name} matched no test files.`);
+    }
+
+    return { files, name };
+}
+
+function directProfileSetOverlapMessage(file: string, cwd: string, firstSet: string, secondSet: string): string {
+    return `runIfMain() profile file sets must not overlap: ${
+        relative(cwd, file)
+    } matched ${firstSet} and ${secondSet}.`;
+}
+
+function assertNonOverlappingDirectProfileFileSets(fileSets: readonly DirectProfileFileSet[], cwd: string): void {
+    const owners = new Map<string, string>();
+
+    for (const fileSet of fileSets) {
+        for (const file of fileSet.files) {
+            const owner = owners.get(file);
+
+            if (owner !== undefined) {
+                throw new RunConfigError(directProfileSetOverlapMessage(file, cwd, owner, fileSet.name));
+            }
+
+            owners.set(file, fileSet.name);
+        }
+    }
+}
+
+async function directProfileFileSets(
+    sets: Readonly<Record<string, RunProfileFileSet>>,
+    cwd: string
+): Promise<readonly DirectProfileFileSet[]> {
+    const fileSets = await Promise.all(
+        Object.entries(sets).map(async function discoverFileSet([ name, set ]) {
+            return await directProfileFileSet(name, set, cwd);
+        })
+    );
+
+    assertNonOverlappingDirectProfileFileSets(fileSets, cwd);
+
+    return fileSets;
+}
+
+async function profilePatternFileSetForFile(
+    profileFiles: RunProfileFileSet,
+    file: string,
+    cwd: string
+): Promise<null | undefined> {
+    return await patternSetMatchesFile(profileFiles, file, cwd) ? null : undefined;
+}
+
+async function namedProfileFileSetForFile(
+    profileFiles: RunProfileFileSets,
+    file: string,
+    cwd: string
+): Promise<string | undefined> {
+    const canonicalFile = await canonicalPath(file);
+    const fileSets = await directProfileFileSets(profileFiles.sets, cwd);
+    const matchedSet = fileSets.find(function includesFile(fileSet) {
+        return fileSet.files.includes(canonicalFile);
+    });
+
+    return matchedSet?.name;
+}
+
+async function profileFileSetForFile(
+    profileFiles: RunProfileFiles,
+    file: string,
+    cwd: string
+): Promise<string | null | undefined> {
+    if (!hasProfileFileSets(profileFiles)) {
+        return await profilePatternFileSetForFile(profileFiles, file, cwd);
+    }
+
+    return await namedProfileFileSetForFile(profileFiles, file, cwd);
+}
+
+async function selectedProfileForFile(
+    [ name, profile ]: readonly [string, RunProfileConfig],
+    file: string,
+    cwd: string
+): Promise<SelectedDirectProfile | null> {
+    const profileFiles = profile.files;
+
+    if (profileFiles === null) {
+        return null;
+    }
+
+    const fileSet = await profileFileSetForFile(profileFiles, file, cwd);
+
+    if (fileSet === undefined) {
+        return null;
+    }
+
+    return { fileSet, name, profile };
+}
+
+function isSelectedDirectProfile(profile: SelectedDirectProfile | null): profile is SelectedDirectProfile {
+    return profile !== null;
 }
 
 async function matchingProfiles(
@@ -111,15 +252,13 @@ async function matchingProfiles(
     file: string,
     cwd: string
 ): Promise<readonly SelectedDirectProfile[]> {
-    const profiles: SelectedDirectProfile[] = [];
+    const profiles = await Promise.all(
+        Object.entries(config.profiles).map(async function matchProfile(entry) {
+            return await selectedProfileForFile(entry, file, cwd);
+        })
+    );
 
-    for (const [ name, profile ] of Object.entries(config.profiles)) {
-        if (await profileMatchesFile(profile, file, cwd)) {
-            profiles.push({ name, profile });
-        }
-    }
-
-    return profiles;
+    return profiles.filter(isSelectedDirectProfile);
 }
 
 function ambiguousProfileMessage(file: string, cwd: string, profiles: readonly SelectedDirectProfile[]): string {
@@ -131,14 +270,40 @@ function ambiguousProfileMessage(file: string, cwd: string, profiles: readonly S
     return `runIfMain() matched multiple profiles for "${relativeFile}": ${profileNames.join(', ')}.`;
 }
 
-function configuredMicrotest(config: LoadedRunConfig): SelectedDirectProfile {
+async function configuredMicrotestFileSet(
+    profile: RunProfileConfig & { readonly testFamily: 'microtest'; },
+    file: string,
+    cwd: string
+): Promise<string | null> {
+    if (profile.files === null) {
+        return null;
+    }
+
+    const fileSet = await profileFileSetForFile(profile.files, file, cwd);
+
+    if (profile.files.sets !== undefined && fileSet === undefined) {
+        throw new RunConfigError(
+            `runIfMain() file must match exactly one profile file set for "microtest": ${relative(cwd, file)}.`
+        );
+    }
+
+    return fileSet ?? null;
+}
+
+async function configuredMicrotest(
+    config: LoadedRunConfig,
+    file: string,
+    cwd: string
+): Promise<SelectedDirectProfile> {
     const profile = config.profiles.microtest;
 
     if (profile?.testFamily !== 'microtest') {
         throw new RunConfigError('runIfMain() requires the configured "microtest" profile.');
     }
 
-    return { name: 'microtest', profile };
+    const fileSet = await configuredMicrotestFileSet(profile, file, cwd);
+
+    return { fileSet, name: 'microtest', profile };
 }
 
 function assertSupportedDirectProfile(context: SelectedDirectProfile): void {
@@ -159,7 +324,7 @@ async function selectDirectProfile(
     cwd: string
 ): Promise<SelectedDirectProfile> {
     if (config.configPath === null) {
-        return configuredMicrotest(config);
+        return await configuredMicrotest(config, file, cwd);
     }
 
     const matches = await matchingProfiles(config, file, cwd);
@@ -174,7 +339,7 @@ async function selectDirectProfile(
         return profile;
     }
 
-    return configuredMicrotest(config);
+    return await configuredMicrotest(config, file, cwd);
 }
 
 export async function resolveDirectProfile(
@@ -191,6 +356,7 @@ export async function resolveDirectProfile(
     return {
         config,
         file,
+        fileSet: selectedProfile.fileSet,
         name: selectedProfile.name,
         projectRoot: canonicalCwd,
         profile: selectedProfile.profile

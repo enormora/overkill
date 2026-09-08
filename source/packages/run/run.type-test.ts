@@ -65,6 +65,31 @@ type RunRequestKeys = readonly [
 ];
 
 type ExpectedRunRequestKey = RunRequestKeys[number];
+type RuntimeProfileFilePatterns = {
+    readonly exclude: readonly string[];
+    readonly include: readonly [string, ...readonly string[]];
+};
+type RuntimeProfileFileSets = {
+    readonly sets: Readonly<
+        Record<string, {
+            readonly exclude: readonly string[];
+            readonly include: readonly [string, ...readonly string[]];
+        }>
+    >;
+};
+type MixedRuntimeProfileFiles = RuntimeProfileFilePatterns & RuntimeProfileFileSets;
+type ProjectProfileFilePatterns = {
+    readonly exclude?: readonly string[];
+    readonly include: readonly [string, ...readonly string[]];
+};
+type ProjectProfileFileSets = {
+    readonly sets: Readonly<
+        Record<string, {
+            readonly exclude?: readonly string[];
+            readonly include: readonly [string, ...readonly string[]];
+        }>
+    >;
+};
 
 describe('@overkill-dev/run', function () {
     test('exposes the typed run command surface', function () {
@@ -127,6 +152,10 @@ describe('@overkill-dev/run', function () {
         expect<RunFacts>().type.toBeAssignableTo<Readonly<Record<string, unknown>>>();
     });
 
+    test('exposes case file set facts', function () {
+        expect<RunFacts['cases'][number]['fileSet']>().type.toBe<string | null>();
+    });
+
     test('exposes collection, soft, and hard timeout facts', function () {
         expect<RunExecutionFacts['timeoutPolicy']['collectionMilliseconds']>().type.toBe<number>();
         expect<RunExecutionFacts['timeoutPolicy']['hardMilliseconds']>().type.toBe<number>();
@@ -153,11 +182,13 @@ describe('@overkill-dev/run', function () {
     test('exposes profile file discovery types', function () {
         expect<RunMicrotestProfileConfig['files']>().type.toBe<RunProfileFiles | null>();
         expect<RunIntegrationProfileConfig['files']>().type.toBe<RunProfileFiles>();
-        expect<RunProfileFiles['include']>().type.toBe<readonly [string, ...string[]]>();
+        expect<RunProfileFiles>().type.toBeAssignableFrom<RuntimeProfileFilePatterns>();
+        expect<RunProfileFiles>().type.toBeAssignableFrom<RuntimeProfileFileSets>();
+        expect<RunProfileFiles>().type.not.toBeAssignableFrom<MixedRuntimeProfileFiles>();
         expect<RunProjectMicrotestProfileConfig['files']>().type.toBe<RunProjectProfileFiles | undefined>();
         expect<RunProjectIntegrationProfileConfig['files']>().type.toBe<RunProjectProfileFiles>();
-        expect<RunProjectProfileFiles['include']>().type.toBe<readonly [string, ...string[]]>();
-        expect<RunProjectProfileFiles['exclude']>().type.toBe<readonly string[] | undefined>();
+        expect<RunProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFilePatterns>();
+        expect<RunProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFileSets>();
     });
 
     test('exposes config loading helpers from the main package surface', function () {

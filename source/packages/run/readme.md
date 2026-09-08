@@ -73,9 +73,13 @@ Programmatic selection helpers are exposed through `@overkill-dev/run/filters`:
 - `title(value)`
 
 The current runner accepts explicit file paths through `RunRequest.paths` and
-profile file discovery through `profiles.<name>.files`. Each discovered or
-explicit file is imported as a native Node ESM module and must export a named
-`testNode` value created by the selected engine.
+profile file discovery through `profiles.<name>.files`. Profile files may use
+top-level `include` and `exclude`, or mutually exclusive named `sets` whose
+entries use the same include/exclude shape. Named sets must be non-empty and
+non-overlapping. Explicit files bypass top-level discovery, but when the
+selected profile uses `sets`, each explicit file must match exactly one set.
+Each discovered or explicit file is imported as a native Node ESM module and
+must export a named `testNode` value created by the selected engine.
 Attach broad module metadata to that exported top-level node.
 `commandLineRunner.listTests(...)` resolves those modules and prints a plain
 plan tree without executing tests or loading fallback reporters.
