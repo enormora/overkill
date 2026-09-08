@@ -1,24 +1,36 @@
 import {
-    captureSourceLocation,
     createSuite,
     createTable,
     createTestCase,
-    forwardAssertionSourceLocations,
     type DefinedOutputRenderer,
     type DefinedReporter,
     type Metadata,
-    type NonEmptyReadonlyArray,
-    ownsTestNode,
-    type ResolvableSourceLocation,
     type SourceLocation,
+    ownsTestNode,
     type Suite,
     type Table,
     type TableOptions,
     type TestBody,
     type TestCase,
+    type TestFamily,
     type TestNode,
     type TestScope
 } from '../engine/engine.entry-point.ts';
+import {
+    activeMacroSourceLocations,
+    assertionBodyForActiveMacro,
+    defineParameterizedTestBodyFactory,
+    definitionLocationsForAuthoringCall,
+    runWithForwardedSourceLocations,
+    runMacroWithDefinitionLocations
+} from './authoring-source-locations.ts';
+import {
+    createAuthoringMetadata,
+    readAuthoringMetadata,
+    readTestFacadeDefinition,
+    type AuthoringMetadata,
+    type TestFacadeDefinition
+} from './authoring-metadata.ts';
 
 export {
     doubleUsage,
@@ -71,10 +83,10 @@ export type {
     TestIteratorFactory
 } from '../doubles/doubles.entry-point.ts';
 
-type UnavailableAuthoringApi = (...parameters: readonly unknown[]) => never;
+export type { AuthoringMetadata, TestFacadeDefinition } from './authoring-metadata.ts';
 
 export type RunIfMainRootOptions = {
-    readonly metadata: Metadata;
+    readonly metadata: AuthoringMetadata;
     readonly title: string;
 };
 
@@ -92,7 +104,19 @@ export type RunIfMain = (
 
 type TestDefinition = {
     readonly body: TestBody;
+    readonly metadata: AuthoringMetadata;
+    readonly title: string;
+};
+
+type RuntimeTestDefinition = {
+    readonly body: TestBody;
     readonly metadata: Metadata;
+    readonly title: string;
+};
+
+type SuiteDefinition = {
+    readonly children: readonly TestNode[];
+    readonly metadata: AuthoringMetadata;
     readonly title: string;
 };
 
@@ -113,7 +137,7 @@ export type TableTestBody<Row> = (
 export type TableDefinition<Row> = {
     readonly caseTitle?: (parameters: Row, index: number) => string;
     readonly cases: readonly Row[];
-    readonly metadata?: Metadata;
+    readonly metadata?: AuthoringMetadata;
     readonly test: TableTestBody<Row>;
     readonly title: string;
 };
@@ -130,32 +154,32 @@ type TableCases = TableOptions['cases'];
 type MacroFactory<MacroParameters extends readonly unknown[], Node extends TestNode> = (
     ...parameters: MacroParameters
 ) => Node;
-type ParameterizedTestBody<Data> = (
-    scope: TestScope,
-    data: Data
-) => ReturnType<TestBody>;
+type ParameterizedTestBody<Data> = (scope: TestScope, data: Data) => ReturnType<TestBody>;
+type TestAuthor = (
+    ...input: readonly [definition: Readonly<TestDefinition>] | readonly [title: string, body: TestBody]
+) => TestCase;
+type SuiteAuthor = (
+    ...input: readonly [definition: Readonly<SuiteDefinition>] | readonly [title: string, children: readonly TestNode[]]
+) => Suite;
+type TableAuthor = <Row>(definition: TableDefinition<Row>) => Table;
+
+export type TestFacade = {
+    readonly defineMacro: typeof defineMacro;
+    readonly defineParameterizedTestBody: typeof defineParameterizedTestBody;
+    readonly runIfMain: RunIfMain;
+    readonly suite: SuiteAuthor;
+    readonly table: TableAuthor;
+    readonly test: TestAuthor;
+};
 
 const singleArgumentCount = 1;
 const positionalArgumentCount = 2;
 const testArgumentsError = 'test() requires (title, body) or ({ title, metadata, body }).';
 const suiteArgumentsError = 'suite() requires (title, children) or ({ title, metadata, children }).';
 const tableArgumentsError = 'table() requires ({ title, cases, metadata?, caseTitle?, test }).';
-const activeMacroDefinitionLocations: NonEmptyReadonlyArray<SourceLocation>[] = [];
-
-function createUnavailableAuthoringApi(name: string): UnavailableAuthoringApi {
-    return function unavailableAuthoringApi(): never {
-        throw new Error(`The @overkill-dev/test ${name}() authoring API is not implemented yet.`);
-    };
-}
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function assertMetadataObject(value: unknown): asserts value is Metadata {
-    if (!isRecord(value)) {
-        throw new TypeError('Test node metadata must be an object.');
-    }
 }
 
 function readRecord(value: unknown, message: string): Readonly<Record<string, unknown>> {
@@ -186,16 +210,6 @@ function readBody(value: unknown): TestBody {
     return value;
 }
 
-function createMicrotestMetadata(value: unknown): Metadata {
-    const metadata = isRecord(value) && !Object.hasOwn(value, 'kind')
-        ? { ...value, kind: 'microtest' }
-        : value;
-
-    assertMetadataObject(metadata);
-
-    return metadata;
-}
-
 function readChildren(value: unknown, message: string): readonly unknown[] {
     if (!Array.isArray(value)) {
         throw new TypeError(message);
@@ -210,12 +224,12 @@ function readChildren(value: unknown, message: string): readonly unknown[] {
     return children;
 }
 
-function readTestDefinition(value: unknown): TestDefinition {
+function readTestDefinition(value: unknown): RuntimeTestDefinition {
     const definition = readRecord(value, testArgumentsError);
 
     return {
         body: readBody(definition.body),
-        metadata: createMicrotestMetadata(definition.metadata),
+        metadata: readAuthoringMetadata(definition.metadata),
         title: readTitle(definition.title, testArgumentsError)
     };
 }
@@ -225,64 +239,13 @@ function readSuiteDefinition(value: unknown): RuntimeSuiteDefinition {
 
     return {
         children: readChildren(definition.children, suiteArgumentsError),
-        metadata: createMicrotestMetadata(definition.metadata),
+        metadata: readAuthoringMetadata(definition.metadata),
         title: readTitle(definition.title, suiteArgumentsError)
     };
 }
 
 function defaultCaseTitle(index: number): string {
     return `case ${index + 1}`;
-}
-
-function captureAuthoringLocation(): SourceLocation {
-    return captureSourceLocation()();
-}
-
-function currentMacroDefinitionLocations(): readonly SourceLocation[] {
-    return activeMacroDefinitionLocations.at(-1) ?? [];
-}
-
-function sourceLocationsWithTrailingLocation<Location>(
-    sourceLocations: readonly Location[],
-    location: Location
-): NonEmptyReadonlyArray<Location> {
-    const firstLocation = sourceLocations[0];
-
-    return firstLocation === undefined
-        ? [ location ]
-        : [ firstLocation, ...sourceLocations.slice(1), location ];
-}
-
-function definitionLocationsForAuthoringCall(): NonEmptyReadonlyArray<SourceLocation> {
-    return sourceLocationsWithTrailingLocation(
-        currentMacroDefinitionLocations(),
-        captureAuthoringLocation()
-    );
-}
-
-function runWithForwardedSourceLocations<Result>(
-    sourceLocations: readonly ResolvableSourceLocation[],
-    body: () => Result
-): Result {
-    const firstLocation = sourceLocations[0];
-
-    return firstLocation === undefined
-        ? body()
-        : forwardAssertionSourceLocations([ firstLocation, ...sourceLocations.slice(1) ], body);
-}
-
-function assertionBodyForActiveMacro(body: TestBody): TestBody {
-    const sourceLocations = currentMacroDefinitionLocations();
-
-    if (sourceLocations.length === 0) {
-        return body;
-    }
-
-    return async function runMacroGeneratedTestBody(scope) {
-        return await runWithForwardedSourceLocations(sourceLocations, async function runBody() {
-            return await body(scope);
-        });
-    };
 }
 
 function tableCaseTitle<Row>(
@@ -332,7 +295,7 @@ function readTableDefinition<Row>(definition: TableDefinition<Row>): RuntimeTabl
     return {
         caseTitle: definition.caseTitle ?? null,
         cases: definition.cases,
-        metadata: createMicrotestMetadata(runtimeDefinition.metadata ?? {}),
+        metadata: readAuthoringMetadata(runtimeDefinition.metadata ?? {}),
         test: definition.test,
         title: readTitle(runtimeDefinition.title, tableArgumentsError)
     };
@@ -341,7 +304,7 @@ function readTableDefinition<Row>(definition: TableDefinition<Row>): RuntimeTabl
 function tableCases<Row>(
     definition: RuntimeTableDefinition<Row>
 ): TableCases {
-    const sourceLocations = currentMacroDefinitionLocations();
+    const sourceLocations = activeMacroSourceLocations();
 
     return definition.cases.map(function createTableCase(parameters, index) {
         return {
@@ -353,18 +316,18 @@ function tableCases<Row>(
     });
 }
 
-export function test(
-    ...input: readonly [definition: Readonly<Pick<TestCase, 'body' | 'metadata' | 'title'>>]
-): TestCase;
-export function test(...input: readonly [title: string, body: TestBody]): TestCase;
-export function test(...input: readonly unknown[]): TestCase {
+function createAuthoredTest(
+    testFamily: TestFamily,
+    facadeMetadata: Metadata,
+    ...input: readonly unknown[]
+): TestCase {
     if (input.length === singleArgumentCount) {
         const definition = readTestDefinition(input[0]);
 
         return createTestCase({
             body: assertionBodyForActiveMacro(definition.body),
             definitionLocations: definitionLocationsForAuthoringCall(),
-            metadata: definition.metadata,
+            metadata: createAuthoringMetadata(testFamily, facadeMetadata, definition.metadata),
             title: definition.title
         });
     }
@@ -375,7 +338,7 @@ export function test(...input: readonly unknown[]): TestCase {
         return createTestCase({
             body: assertionBodyForActiveMacro(readBody(body)),
             definitionLocations: definitionLocationsForAuthoringCall(),
-            metadata: createMicrotestMetadata({}),
+            metadata: createAuthoringMetadata(testFamily, facadeMetadata, {}),
             title: readTitle(name, testArgumentsError)
         });
     }
@@ -383,18 +346,24 @@ export function test(...input: readonly unknown[]): TestCase {
     throw new TypeError(testArgumentsError);
 }
 
-export function suite(
-    ...input: readonly [definition: Readonly<Pick<Suite, 'children' | 'metadata' | 'title'>>]
-): Suite;
-export function suite(...input: readonly [title: string, children: readonly TestNode[]]): Suite;
-export function suite(...input: readonly unknown[]): Suite {
+export function test(...input: readonly [definition: Readonly<TestDefinition>]): TestCase;
+export function test(...input: readonly [title: string, body: TestBody]): TestCase;
+export function test(...input: readonly unknown[]): TestCase {
+    return createAuthoredTest('microtest', {}, ...input);
+}
+
+function createAuthoredSuite(
+    testFamily: TestFamily,
+    facadeMetadata: Metadata,
+    ...input: readonly unknown[]
+): Suite {
     if (input.length === singleArgumentCount) {
         const definition = readSuiteDefinition(input[0]);
 
         return createSuite({
             children: definition.children,
             definitionLocations: definitionLocationsForAuthoringCall(),
-            metadata: definition.metadata,
+            metadata: createAuthoringMetadata(testFamily, facadeMetadata, definition.metadata),
             title: definition.title
         });
     }
@@ -405,7 +374,7 @@ export function suite(...input: readonly unknown[]): Suite {
         return createSuite({
             children: readChildren(children, suiteArgumentsError),
             definitionLocations: definitionLocationsForAuthoringCall(),
-            metadata: createMicrotestMetadata({}),
+            metadata: createAuthoringMetadata(testFamily, facadeMetadata, {}),
             title: readTitle(name, suiteArgumentsError)
         });
     }
@@ -413,18 +382,30 @@ export function suite(...input: readonly unknown[]): Suite {
     throw new TypeError(suiteArgumentsError);
 }
 
-export function table<Row>(definition: TableDefinition<Row>): Table {
+export function suite(...input: readonly [definition: Readonly<SuiteDefinition>]): Suite;
+export function suite(...input: readonly [title: string, children: readonly TestNode[]]): Suite;
+export function suite(...input: readonly unknown[]): Suite {
+    return createAuthoredSuite('microtest', {}, ...input);
+}
+
+function createAuthoredTable<Row>(
+    testFamily: TestFamily,
+    facadeMetadata: Metadata,
+    definition: TableDefinition<Row>
+): Table {
     const tableDefinition = readTableDefinition<Row>(definition);
 
     return createTable({
         cases: tableCases(tableDefinition),
         definitionLocations: definitionLocationsForAuthoringCall(),
-        metadata: tableDefinition.metadata,
+        metadata: createAuthoringMetadata(testFamily, facadeMetadata, tableDefinition.metadata),
         title: tableDefinition.title
     });
 }
 
-export const createTestFacade = createUnavailableAuthoringApi('createTestFacade');
+export function table<Row>(definition: TableDefinition<Row>): Table {
+    return createAuthoredTable('microtest', {}, definition);
+}
 
 function createMacroNode<const MacroParameters extends readonly unknown[], Node extends TestNode>(
     factory: MacroFactory<MacroParameters, Node>,
@@ -447,14 +428,9 @@ export function defineMacro<const MacroParameters extends readonly unknown[], No
     }
 
     return function runMacro(...parameters) {
-        const definitionLocations = definitionLocationsForAuthoringCall();
-
-        activeMacroDefinitionLocations.push(definitionLocations);
-        try {
+        return runMacroWithDefinitionLocations(function createNode() {
             return createMacroNode(factory, parameters);
-        } finally {
-            activeMacroDefinitionLocations.pop();
-        }
+        });
     };
 }
 
@@ -465,15 +441,7 @@ export function defineParameterizedTestBody<Data>(
         throw new TypeError('defineParameterizedTestBody() requires a body function.');
     }
 
-    return function createParameterizedTestBody(data) {
-        const sourceLocations: NonEmptyReadonlyArray<ResolvableSourceLocation> = [ captureAuthoringLocation() ];
-
-        return async function runParameterizedTestBody(scope) {
-            return forwardAssertionSourceLocations(sourceLocations, async function runBody() {
-                return body(scope, data);
-            });
-        };
-    };
+    return defineParameterizedTestBodyFactory(body);
 }
 
 export async function runIfMain(
@@ -490,14 +458,33 @@ export async function runIfMain(
     await runModule.runIfMain(meta, testNode, options);
 }
 
+export function createTestFacade(definition: TestFacadeDefinition): TestFacade {
+    const facadeDefinition = readTestFacadeDefinition(definition);
+
+    return {
+        defineMacro,
+        defineParameterizedTestBody,
+        runIfMain,
+        suite(...input) {
+            return createAuthoredSuite(facadeDefinition.testFamily, facadeDefinition.metadata, ...input);
+        },
+        table<Row>(tableDefinition: TableDefinition<Row>) {
+            return createAuthoredTable(facadeDefinition.testFamily, facadeDefinition.metadata, tableDefinition);
+        },
+        test(...input) {
+            return createAuthoredTest(facadeDefinition.testFamily, facadeDefinition.metadata, ...input);
+        }
+    };
+}
+
 export type {
-    Metadata,
     OutputRenderer,
     Reporter,
     Suite,
     Table,
     TestBody,
     TestCase,
+    TestFamily,
     TestNode,
     TestScope,
     TestScopeAssertContext

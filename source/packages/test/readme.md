@@ -69,8 +69,9 @@ The root doubles exports are the current lightweight public surface from
 `@overkill-dev/doubles`. Import the leaf package directly when documenting or
 testing doubles package ownership.
 
-Nodes created through this root facade default to `metadata.kind: 'microtest'`
-unless the object form supplies another `kind`.
+Nodes created through this root facade derive `metadata.kind: 'microtest'`.
+High-level authoring metadata accepts `tags` and `extra`; engine-owned fields
+such as `kind`, `runtimes`, and `ownership` stay outside the root facade.
 
 Use the object form when attaching node metadata. Metadata on the exported
 top-level `testNode` applies to the whole module's test tree.
@@ -128,7 +129,27 @@ export const testNode = suite('users', [
 ]);
 ```
 
-`createTestFacade` still throws an explicit unavailable error.
+`createTestFacade` creates another narrow authoring surface for one test
+family:
+
+```ts
+import { createTestFacade } from '@overkill-dev/test';
+
+export const {
+    defineMacro,
+    defineParameterizedTestBody,
+    runIfMain,
+    suite,
+    table,
+    test
+} = createTestFacade({
+    metadata: { tags: [ 'integration' ] },
+    testFamily: 'integration'
+});
+```
+
+The returned facade contains authoring helpers only. Assertions and doubles
+are imported alongside it instead of being registered into the facade.
 
 Direct Node execution:
 

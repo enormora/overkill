@@ -89,25 +89,28 @@ Metadata cascades from root to test, with override semantics:
 7. enum, boolean, capture, and timeout fields replace
 
 The default `@overkill-dev/test` authoring facade creates ordinary `test(...)`
-and `suite(...)` nodes with `kind: 'microtest'` unless object-form metadata
-supplies another `kind`. Test modules express file-wide metadata by attaching
-metadata to their exported top-level `testNode`.
+and `suite(...)` nodes with `kind: 'microtest'`. Additional high-level facades
+derive their family from `createTestFacade({ testFamily })`. Object-form
+authoring metadata currently accepts only `tags` and `extra`; full engine
+metadata is reserved for low-level engine APIs and future first-party helpers
+that own specific managed fields. Test modules express file-wide metadata by
+attaching metadata to their exported top-level `testNode`.
 
 Example:
 
 ```ts
 export const testNode = suite({
-    name: 'users',
-    metadata: { tags: [ 'auth' ], ownership: [ '@auth' ] },
+    title: 'users',
+    metadata: { tags: [ 'auth' ] },
     children: [
         test({
-            name: 'login',
+            title: 'login',
             metadata: { tags: [ 'critical' ] },
             body
         }), // tags = {auth, critical}
         test('logout', body), // tags = {auth}
         suite({
-            name: 'admin',
+            title: 'admin',
             metadata: { tags: [ 'admin' ] },
             children: [
                 // tags = {auth, admin}

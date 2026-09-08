@@ -129,6 +129,21 @@ type Metadata = {
     readonly extra?: Readonly<Record<string, unknown>>;
 };
 
+type AuthoringMetadata = {
+    readonly tags?: readonly string[];
+    readonly extra?: Readonly<Record<string, unknown>>;
+    readonly kind?: never;
+    readonly runtimes?: never;
+    readonly capabilities?: never;
+    readonly baselines?: never;
+    readonly ownership?: never;
+    readonly stability?: never;
+    readonly priority?: never;
+    readonly debug?: never;
+    readonly capture?: never;
+    readonly timeoutMilliseconds?: never;
+};
+
 type ResolvedMetadata = {
     readonly tags: readonly string[];
     readonly kind: TestFamily | null;
@@ -489,18 +504,27 @@ type RunIfMainOptions = {
     readonly outputRenderer?: DefinedOutputRenderer;
     readonly reporters?: ReadonlyArray<DefinedReporter>;
     readonly root?: {
-        readonly metadata: Metadata;
+        readonly metadata: AuthoringMetadata;
         readonly name: string;
     };
 };
 
+type TestFacadeDefinition =
+    | {
+        readonly testFamily: TestFamily;
+        readonly metadata: AuthoringMetadata;
+    }
+    | {
+        readonly testFamily: TestFamily;
+    };
+
 type TestFacade = {
-    readonly root: (title: string, children: ReadonlyArray<TestNode>) => TestRoot;
     readonly test: (title: string, body: TestBody) => TestCase;
     readonly suite: (title: string, children: ReadonlyArray<TestNode>) => Suite;
     readonly table: (options: {
         title: string;
         cases: ReadonlyArray<unknown>;
+        metadata?: AuthoringMetadata;
         caseTitle?: (parameters: unknown, index: number) => string;
         test: TestBody;
     }) => Table;
@@ -512,6 +536,8 @@ type TestFacade = {
     ) => (data: Data) => TestBody;
     readonly runIfMain: (meta: ImportMeta, testNode: TestNode, options?: RunIfMainOptions) => Promise<void>;
 };
+
+declare function createTestFacade(definition: TestFacadeDefinition): TestFacade;
 ```
 
 Canonical: [Assertions And Results](../authoring/assertions-and-results.md).

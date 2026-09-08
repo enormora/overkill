@@ -7,6 +7,7 @@ import type {
     Table,
     TestBody,
     TestCase,
+    TestFamily as EngineTestFamily,
     TestNode,
     TestScope,
     TestScopeAssertContext
@@ -60,7 +61,8 @@ import type {
     TestIteratorFactory as LeafTestIteratorFactory
 } from '../doubles/doubles.entry-point.ts';
 import {
-    type createTestFacade,
+    type AuthoringMetadata,
+    createTestFacade,
     defineMacro,
     defineParameterizedTestBody,
     type doubleUsage,
@@ -82,7 +84,6 @@ import {
     type DoubleReturnedResult as RootDoubleReturnedResult,
     type DoubleThrownResult as RootDoubleThrownResult,
     type DoubleUsageAssertions as RootDoubleUsageAssertions,
-    type Metadata as RootMetadata,
     type ParameterizedTestScope,
     type ProtocolMethodConfiguration as RootProtocolMethodConfiguration,
     type rule,
@@ -99,6 +100,8 @@ import {
     type Table as RootTable,
     type TableDefinition,
     type TableTestBody,
+    type TestFacade,
+    type TestFacadeDefinition,
     type testAsyncDisposable,
     type TestAsyncDisposable as RootTestAsyncDisposable,
     type TestAsyncDisposableFactory as RootTestAsyncDisposableFactory,
@@ -116,6 +119,7 @@ import {
     type testDouble,
     type TestDouble as RootTestDouble,
     type TestDoubleFactory as RootTestDoubleFactory,
+    type TestFamily,
     type testIterable,
     type TestIterable as RootTestIterable,
     type TestIterableFactory as RootTestIterableFactory,
@@ -129,9 +133,9 @@ import {
     test
 } from './test.entry-point.ts';
 
-type UnavailableAuthoringApi = (...parameters: readonly unknown[]) => never;
 declare const body: TestBody;
-declare const metadata: Metadata;
+declare const engineMetadata: Metadata;
+declare const metadata: AuthoringMetadata;
 declare const node: TestNode;
 declare const tableBody: TableTestBody<{ readonly value: number; }>;
 declare const outputRenderer: DefinedOutputRenderer;
@@ -255,8 +259,9 @@ describe('@overkill-dev/test', function () {
                 readonly testIterator: true;
             }
         >();
-        expect<typeof createTestFacade>().type.toBe<UnavailableAuthoringApi>();
+        expect<typeof createTestFacade>().type.toBe<(definition: TestFacadeDefinition) => TestFacade>();
         expect<typeof runIfMain>().type.toBe<RunIfMain>();
+        expect<TestFamily>().type.toBe<EngineTestFamily>();
     });
 
     typeTest('re-exports doubles values from the root facade', function () {
@@ -274,7 +279,9 @@ describe('@overkill-dev/test', function () {
     typeTest('re-exports doubles types from the root facade', function () {
         expect<RootDoublesTypes>().type.toBe<LeafDoublesTypes>();
     });
+});
 
+describe('@overkill-dev/test authoring', function () {
     typeTest('defines reusable source-aware macros and parameterized bodies', function () {
         const macro = defineMacro(function reusableCase(title: string, value: number) {
             expect(title).type.toBe<string>();
@@ -294,6 +301,60 @@ describe('@overkill-dev/test', function () {
 
         expect(macro('value case', 1)).type.toBe<TestCase>();
         expect(parameterizedBody({ value: 1 })).type.toBe<TestBody>();
+    });
+
+    typeTest('creates family-specific test facade nodes', function () {
+        const facade = createTestFacade({
+            metadata,
+            testFamily: 'integration'
+        });
+
+        expect(facade).type.toBe<TestFacade>();
+        expect(facade.test('passes', body)).type.toBe<TestCase>();
+        expect(facade.test({ body, metadata, title: 'passes' })).type.toBe<TestCase>();
+        expect(facade.suite('group', [ node ])).type.toBe<Suite>();
+        expect(facade.suite({ children: [ node ], metadata, title: 'group' })).type.toBe<Suite>();
+        expect(facade.table({
+            cases: [ { value: 1 } ],
+            metadata,
+            test: tableBody,
+            title: 'rows'
+        }))
+            .type
+            .toBe<Table>();
+    });
+
+    typeTest('creates family-specific facade macro forms', function () {
+        const facade = createTestFacade({
+            metadata,
+            testFamily: 'integration'
+        });
+        const macro = facade.defineMacro(function reusableCase(title: string) {
+            return facade.test(title, body);
+        });
+        const parameterizedBody = facade.defineParameterizedTestBody<{ readonly value: number; }>(function bodyForData(
+            scope,
+            data
+        ) {
+            expect(scope).type.toBe<TestScope>();
+            expect(data.value).type.toBe<number>();
+
+            return scope.assert.collect();
+        });
+
+        expect(macro('value case')).type.toBe<TestCase>();
+        expect(parameterizedBody({ value: 1 })).type.toBe<TestBody>();
+    });
+
+    typeTest('keeps family-specific facades narrow', function () {
+        const facade = createTestFacade({
+            metadata,
+            testFamily: 'integration'
+        });
+
+        expect(facade).type.not.toHaveProperty('doubleUsage');
+        expect(facade).type.not.toHaveProperty('testDouble');
+        expect(facade).type.not.toHaveProperty('defineCompositeAssertion');
     });
 
     typeTest('creates test, suite, and table nodes from default root authoring forms', function () {
@@ -332,15 +393,62 @@ describe('@overkill-dev/test', function () {
         expect(table).type.not.toBeCallableWith({ cases: [ { value: 1 } ], name: 'rows', test: tableBody });
     });
 
+    typeTest('defines narrow high-level authoring metadata', function () {
+        expect<AuthoringMetadata>().type.toBe<{
+            readonly baselines?: never;
+            readonly capabilities?: never;
+            readonly capture?: never;
+            readonly debug?: never;
+            readonly extra?: Readonly<Record<string, unknown>>;
+            readonly kind?: never;
+            readonly ownership?: never;
+            readonly priority?: never;
+            readonly runtimes?: never;
+            readonly stability?: never;
+            readonly tags?: readonly string[];
+            readonly timeoutMilliseconds?: never;
+        }>();
+        expect<AuthoringMetadata>().type.toBeAssignableTo<Metadata>();
+        expect<Metadata>().type.not.toBeAssignableTo<AuthoringMetadata>();
+    });
+
+    typeTest('rejects managed high-level authoring metadata', function () {
+        expect<typeof createTestFacade>().type.toBeCallableWith({ testFamily: 'microtest' });
+        expect<typeof createTestFacade>().type.toBeCallableWith({ metadata, testFamily: 'integration' });
+        expect<typeof createTestFacade>().type.not.toBeCallableWith();
+        expect<typeof createTestFacade>().type.not.toBeCallableWith({ metadata });
+        expect<typeof createTestFacade>().type.not.toBeCallableWith({
+            metadata: { kind: 'microtest' },
+            testFamily: 'microtest'
+        });
+        expect(test).type.not.toBeCallableWith({ body, metadata: { kind: 'microtest' }, title: 'passes' });
+        expect(suite).type.not.toBeCallableWith({
+            children: [ node ],
+            metadata: { ownership: [ '@runtime' ] },
+            title: 'group'
+        });
+        expect(table).type.not.toBeCallableWith({
+            cases: [ { value: 1 } ],
+            metadata: { timeoutMilliseconds: 1 },
+            test: tableBody,
+            title: 'rows'
+        });
+        expect(runIfMain).type.not.toBeCallableWith(import.meta, node, {
+            root: {
+                metadata: engineMetadata,
+                title: 'root'
+            }
+        });
+    });
+
     typeTest('re-exports high-level authoring types from the engine', function () {
-        expect<RootMetadata>().type.toBe<Metadata>();
         expect<RootRunIfMainOptions>().type.toBe<{
             readonly outputRenderer?: DefinedOutputRenderer;
             readonly reporters?: readonly DefinedReporter[];
             readonly root?: RootRunIfMainRootOptions;
         }>();
         expect<RootRunIfMainRootOptions>().type.toBe<{
-            readonly metadata: Metadata;
+            readonly metadata: AuthoringMetadata;
             readonly title: string;
         }>();
         expect<RootSuite>().type.toBe<Suite>();

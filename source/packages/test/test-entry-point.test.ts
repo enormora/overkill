@@ -18,7 +18,6 @@ import {
     type TestScope as OverkillScope
 } from '../engine/engine.entry-point.ts';
 import {
-    createTestFacade,
     defineMacro,
     defineParameterizedTestBody,
     doubleUsage,
@@ -32,10 +31,6 @@ import {
     testIterator
 } from './test.entry-point.ts';
 
-type PlaceholderExport = {
-    readonly invoke: (...parameters: readonly unknown[]) => never;
-    readonly name: string;
-};
 type RootAuthoringExecution = {
     readonly plannedCase: TestPlan['discoveredCases'][number] | undefined;
     readonly result: Awaited<ReturnType<typeof execute>>;
@@ -63,10 +58,6 @@ type TableAuthoringExecution = {
     readonly rows: readonly TableRow[];
     readonly testNode: Table;
 };
-
-const placeholderExports: readonly PlaceholderExport[] = [
-    { invoke: createTestFacade, name: 'createTestFacade' }
-];
 
 const invokeTest = test as (...parameters: readonly unknown[]) => unknown;
 const invokeSuite = suite as (...parameters: readonly unknown[]) => unknown;
@@ -98,7 +89,7 @@ async function executeRootAuthoredNode(): Promise<RootAuthoringExecution> {
     const testCase = test({ body: passingBody, metadata: { tags: [ 'case' ] }, title: 'passes' });
     const testNode = suite({
         children: [ testCase ],
-        metadata: { ownership: [ '@runtime' ], tags: [ 'suite' ] },
+        metadata: { extra: { suite: 'runtime' }, tags: [ 'suite' ] },
         title: 'runtime'
     });
     const root = createRoot({
@@ -126,7 +117,7 @@ function assertRootAuthoredCase(scope: OverkillScope, plannedCase: RootAuthoring
     });
     scope.assert.equal(plannedCase.metadata.kind, 'microtest');
     scope.assert.deepEqual(plannedCase.metadata.tags, [ 'suite', 'case' ]);
-    scope.assert.deepEqual(plannedCase.metadata.ownership, [ '@runtime' ]);
+    scope.assert.deepEqual(plannedCase.metadata.extra, { suite: 'runtime' });
 }
 
 function assertTableSummary(scope: OverkillScope, summary: unknown): void {
@@ -352,26 +343,6 @@ export const testNode = createOverkillSuite({
     title: 'source/packages/test/test-entry-point.test.ts',
     metadata: {},
     children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test staged root authoring placeholders throw unavailable errors',
-            metadata: {},
-            body(scope: OverkillScope) {
-                for (const placeholderExport of placeholderExports) {
-                    scope.assert.throws(function invokePlaceholder() {
-                        placeholderExport.invoke('ignored');
-                    }, {
-                        message: [
-                            `The @overkill-dev/test ${placeholderExport.name}() authoring API`,
-                            'is not implemented yet.'
-                        ]
-                            .join(' ')
-                    });
-                }
-
-                return scope.assert.collect();
-            }
-        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test test() and suite() create executable engine nodes',

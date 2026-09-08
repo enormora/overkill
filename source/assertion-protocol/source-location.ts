@@ -19,6 +19,7 @@ const internalModulePatterns = [
     /\/engine\/assertion-facade\.[cm]?[jt]s$/u,
     /\/engine\/custom-assertion-recording\.[cm]?[jt]s$/u,
     /\/engine\/require-assertion-facade\.[cm]?[jt]s$/u,
+    /\/packages\/test\/authoring-source-locations\.[cm]?[jt]s$/u,
     /\/packages\/test\/test\.entry-point\.[cm]?[jt]s$/u
 ] as const;
 
