@@ -100,7 +100,7 @@ function createRunRequest(paths: readonly string[]): RunRequest {
         debug: { mode: 'off', selectors: [] },
         execution: { mode: 'profile-default' },
         measureResourceUsage: null,
-        order: 'plan',
+        order: 'lexical',
         paths,
         profile: 'microtest',
         resourceBudgetOverrides: null,

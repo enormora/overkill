@@ -3,9 +3,6 @@ import type {
     RunResult,
     RunnerError
 } from '../packages/engine/engine.entry-point.ts';
-import {
-    collectedRunCaseIds
-} from './collected-run-plan.ts';
 import type {
     CollectedRunPlan,
     ResolvedRun,
@@ -345,9 +342,11 @@ async function createLiveRunRuntime(
     };
 }
 
-function sendAssignmentForPlan(runtime: SupervisedRunRuntime, collectedPlan: CollectedRunPlan): void {
+function sendAssignmentForPlan(runtime: SupervisedRunRuntime): void {
     runtime.child.send({
-        assignedCases: collectedRunCaseIds(collectedPlan),
+        assignedCases: runtime.resolvedRun.facts.cases.map(function toCaseId(testCase) {
+            return testCase.id;
+        }),
         kind: 'assign'
     });
 }
@@ -357,7 +356,7 @@ async function reportRunStartForPlannedCases(
     collectedPlan: CollectedRunPlan,
     startedAtMs: number
 ): Promise<void> {
-    if (collectedRunCaseIds(collectedPlan).length === 0) {
+    if (runtime.resolvedRun.facts.cases.length === 0) {
         return;
     }
 
@@ -376,7 +375,7 @@ async function continueLiveRun(
     liveRun.runtime.write(runtime);
     runtime.state.recordRunnerErrors(resolvedRun.collectionRunnerErrors);
     await reportRunStartForPlannedCases(runtime, collectedPlan, startedAtMs);
-    sendAssignmentForPlan(runtime, collectedPlan);
+    sendAssignmentForPlan(runtime);
     await liveRun.finishedSignal.promise;
 
     return await finishSupervisedRuntime(runtime, startedAtMs);

@@ -519,7 +519,8 @@ layout. The default scheduler is **seeded random order**:
 - after collection, metadata propagation, filtering, work-unit construction,
   and sharding, selected work units are ordered by a recorded seed
 - if the user does not pass `--seed <value>`, the runner chooses one,
-  prints it, and writes it into `RunFacts` and the final `RunRecord`
+  prints it through first-party human reporters, and writes it into
+  `RunFacts` and the final `RunRecord`
 - rerunning with the same seed and the same selected work-unit set reproduces
   the same order
 - resources or execution constraints may force local serialization, but
@@ -535,11 +536,14 @@ Why randomize by default:
 
 Override surfaces:
 
-- `--order plan` preserves the already resolved `TestPlan` order for explicit
-  programmatic runs
-- `--seed <value>` selects a specific shuffle
-- `--order lexical` disables shuffling and uses deterministic collection
-  order
+- programmatic `RunRequest.order: 'plan'` preserves the already resolved
+  `TestPlan` order
+- `--seed <value>` selects a specific shuffle seed
+- `--order seeded` explicitly requests seeded order
+- `--order lexical` disables shuffling and uses deterministic source-stable
+  collection order
+- direct `runIfMain(...)` uses seeded order with a generated seed and exposes
+  both through `RunFacts`
 - runner profiles may choose stricter scheduling only where the test
   family actually requires it (for example benchmarks)
 

@@ -105,11 +105,22 @@ function selectedProfile(command: RunCommand): RunProfileConfig {
     return profile;
 }
 
+function caseFactsFromPlan(testPlan: TestPlan): ResolvedRun['facts']['cases'] {
+    return testPlan.cases.map(function toRunCaseFacts(testCase) {
+        return {
+            fileSet: null,
+            id: testCase.id,
+            metadata: { constructorName: 'Object', entries: [], kind: 'object', truncation: null }
+        };
+    });
+}
+
 function createResolvedRun(
     command: RunCommand,
     collectionRunnerErrors: ResolvedRun['collectionRunnerErrors']
 ): ResolvedRun {
     const profile = selectedProfile(command);
+    const testPlan = createPassingPlan();
 
     return {
         collectionRunnerErrors,
@@ -117,7 +128,7 @@ function createResolvedRun(
         cwd: command.cwd,
         engine: command.engine,
         facts: {
-            cases: [],
+            cases: caseFactsFromPlan(testPlan),
             environment: {
                 node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
                 projectRoot: command.cwd,
@@ -146,7 +157,7 @@ function createResolvedRun(
         },
         plan: {
             kind: 'local',
-            testPlan: createPassingPlan()
+            testPlan
         },
         reporters: command.config.reporters,
         request: command.request
@@ -227,8 +238,10 @@ async function listTests(
         configPath: null,
         cwd: process.cwd(),
         listRequest: {
+            order: 'seeded',
             paths: [ 'source/a.test.ts' ],
             profile: 'microtest',
+            seed: { value: 42n },
             selection: { kind: 'all' },
             withLocations,
             withOrphans
@@ -265,6 +278,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(result.exitCode, 0);
                 scope.assert.equal(defaultReporterLoadCount, 0);
                 scope.assert.deepEqual(result.stdoutLines, [
+                    'order=seeded seed=42',
                     'source/a.test.ts',
                     '  suite',
                     '    passes'
@@ -300,8 +314,10 @@ export const testNode = createOverkillSuite({
                     configPath: null,
                     cwd: process.cwd(),
                     listRequest: {
+                        order: 'seeded',
                         paths: [ 'source/a.test.ts' ],
                         profile: 'microtest',
+                        seed: { value: 42n },
                         selection,
                         withLocations: false,
                         withOrphans: false
@@ -333,6 +349,7 @@ export const testNode = createOverkillSuite({
                 );
 
                 scope.assert.deepEqual(result.stdoutLines, [
+                    'order=seeded seed=42',
                     'source/a.test.ts',
                     '  suite (source/a.test.ts:3:5)',
                     '    passes (source/a.test.ts:5:9)'
@@ -360,6 +377,7 @@ export const testNode = createOverkillSuite({
                 );
 
                 scope.assert.deepEqual(result.stdoutLines, [
+                    'order=seeded seed=42',
                     'source/a.test.ts',
                     '  suite',
                     '    passes',
@@ -387,6 +405,7 @@ export const testNode = createOverkillSuite({
                 );
 
                 scope.assert.deepEqual(result.stdoutLines, [
+                    'order=seeded seed=42',
                     'Orphans',
                     '  suite: unused (<unknown>) (source/orphan.test.ts:7:11)'
                 ]);
@@ -450,8 +469,10 @@ export const testNode = createOverkillSuite({
                     configPath: null,
                     cwd: process.cwd(),
                     listRequest: {
+                        order: 'seeded',
                         paths: [ 'source/a.test.ts' ],
                         profile: 'microtest',
+                        seed: { value: 42n },
                         selection: { kind: 'all' },
                         withLocations: false,
                         withOrphans: false

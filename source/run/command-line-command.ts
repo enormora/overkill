@@ -4,6 +4,8 @@ import type { RunRequest } from './run-types.ts';
 import { RunCollectionError, RunResolutionError } from './run-errors.ts';
 import { RunConfigError, type RunConfigLoadRequest } from './run-config.ts';
 
+type CommandLineRunOrder = Exclude<RunRequest['order'], 'plan'>;
+
 export const commandLineExitCodes = Object.freeze({
     argumentOrConfig: 3,
     internalCrash: 70,
@@ -22,8 +24,10 @@ export type CommandLineRunTestsRequest = RunConfigLoadRequest & {
 
 export type CommandLineListTestsRequest = RunConfigLoadRequest & {
     readonly listRequest: {
+        readonly order: CommandLineRunOrder;
         readonly paths: readonly string[];
         readonly profile: string;
+        readonly seed: RunRequest['seed'];
         readonly selection: RunRequest['selection'];
         readonly withLocations: boolean;
         readonly withOrphans: boolean;

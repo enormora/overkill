@@ -77,17 +77,37 @@ function createIpcReporter(host: SupervisedChildHost): DefinedReporter {
     });
 }
 
+function casesByIdentity(testPlan: TestPlan): ReadonlyMap<string, TestPlan['cases'][number]> {
+    return new Map(testPlan.cases.map(function toEntry(testCase) {
+        return [ caseIdentityKey(testCase.id), testCase ];
+    }));
+}
+
+function assignedTestPlanCase(
+    casesByKey: ReadonlyMap<string, TestPlan['cases'][number]>,
+    testCase: CaseId
+): TestPlan['cases'][number] {
+    const assigned = casesByKey.get(caseIdentityKey(testCase));
+
+    if (assigned === undefined) {
+        throw new Error('Supervised child test plan did not match assigned case identities.');
+    }
+
+    return assigned;
+}
+
 function selectAssignedCases(
     testPlan: TestPlan,
     assignedCases: readonly CaseId[]
 ): TestPlan {
-    const assigned = new Set(assignedCases.map(caseIdentityKey));
-    const cases = testPlan.cases.filter(function assignedCase(testCase) {
-        return assigned.has(caseIdentityKey(testCase.id));
+    const casesByKey = casesByIdentity(testPlan);
+    const cases = assignedCases.map(function toAssignedCase(testCase) {
+        return assignedTestPlanCase(casesByKey, testCase);
     });
+
     const first = cases[0];
 
-    if (first === undefined || cases.length !== assigned.size) {
+    if (first === undefined) {
         throw new Error('Supervised child test plan did not match assigned case identities.');
     }
 

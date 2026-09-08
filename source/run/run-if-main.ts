@@ -1,5 +1,4 @@
 import { createWallClock } from '@enormora/wall-clock';
-import type { RunResult } from '../engine/run-result.ts';
 import type { TestNode } from '../engine/test-node.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { createDirectRuntimePolicy } from './direct-runtime-policy.ts';
@@ -20,6 +19,7 @@ import {
     type RunIfMainOptions
 } from './run-if-main-options.ts';
 import { resolveDirectProfile, type DirectProfileContext } from './run-if-main-profile.ts';
+import { createSeededTestPlan } from './run-selection.ts';
 
 export type RunIfMain = (
     meta: Readonly<ImportMeta>,
@@ -31,6 +31,7 @@ type DirectRunContext = DirectProfileContext & {
     readonly options: RunIfMainOptions | undefined;
     readonly testNode: TestNode;
 };
+type DirectRunResult = Awaited<ReturnType<typeof defaultRunEngine.execute>>;
 
 const failureExitCodes = new Set<number | string | null | undefined>([ undefined, null, 0, '0' ]);
 
@@ -60,16 +61,18 @@ function directTestPlan(context: DirectRunContext): TestPlan {
     }));
 }
 
-async function executeDirectTestPlan(context: DirectRunContext, testPlan: TestPlan): Promise<RunResult> {
+async function executeDirectTestPlan(context: DirectRunContext, testPlan: TestPlan): Promise<DirectRunResult> {
     const wallClock = createWallClock();
     const reporters = await selectedReporters(context.profile, context.config, context.options);
     const config = runConfig(context.config, reporters);
+    const ordered = createSeededTestPlan(testPlan);
     const runFacts = directRunFacts({
         config,
         fileSet: context.fileSet,
         profileName: context.name,
         projectRoot: context.projectRoot,
-        testPlan
+        seed: ordered.seed,
+        testPlan: ordered.testPlan
     });
     const runtimePolicy = createDirectRuntimePolicy();
     const { resourceUsagePolicy } = runFacts.execution;
@@ -77,7 +80,7 @@ async function executeDirectTestPlan(context: DirectRunContext, testPlan: TestPl
 
     warnOnSupervisedDowngrade(context.profile);
 
-    return await defaultRunEngine.execute(testPlan, {
+    return await defaultRunEngine.execute(ordered.testPlan, {
         execution: { mode: executionMode(context.profile) },
         outputRenderer: selectedOutputRenderer(context.config, context.options),
         reporters,
@@ -97,11 +100,11 @@ async function executeDirectTestPlan(context: DirectRunContext, testPlan: TestPl
     });
 }
 
-function hasFailure(result: RunResult): boolean {
+function hasFailure(result: DirectRunResult): boolean {
     return result.summary.failed > 0 || result.runnerErrors.length > 0;
 }
 
-function applyFailureExitCode(result: RunResult): void {
+function applyFailureExitCode(result: DirectRunResult): void {
     if (hasFailure(result) && shouldSetFailureExitCode(process.exitCode)) {
         process.exitCode = 1;
     }

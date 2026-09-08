@@ -111,6 +111,35 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'line reporter includes order and seed in the start event',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const log = testDouble<LogFunction>();
+                const reporter = lineReporterWithLog(log);
+
+                await reporter.onEvent({
+                    facts: {
+                        execution: { order: 'seeded' },
+                        reproducibility: { seed: '123' }
+                    },
+                    kind: 'run-start',
+                    root: {
+                        metadata: rootMetadata,
+                        title: 'root'
+                    },
+                    startedAt: '2026-07-15T00:00:00.000Z'
+                });
+
+                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
+                    infoSymbol,
+                    'Test run started: root (order=seeded seed=123)'
+                ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter prints assertion failure details for a failed test-end event',
             metadata: {},
             async body(scope: OverkillScope) {

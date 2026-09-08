@@ -6,7 +6,12 @@ import {
     type ReportingContext
 } from '../engine/reporting-context.ts';
 import type { OrphanedNode } from '../engine/run-result.ts';
-import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
+import { caseIdentityKey } from '../engine/identity.ts';
+import {
+    collectedRunCaseEntries,
+    collectedRunPlanFromTestPlan,
+    type CollectedRunCaseEntry
+} from './collected-run-plan.ts';
 import type { CollectedRunCase, CollectedRunFile, CollectedRunPlan, ResolvedRun } from './run-types.ts';
 
 type RenderOptions = {
@@ -20,6 +25,11 @@ type NodeLineInput = {
     readonly locations: readonly SourceLocation[];
     readonly name: string;
     readonly options: RenderOptions;
+};
+type RenderCaseEntriesState = {
+    readonly currentFile: string | null;
+    readonly currentSuitePath: CollectedRunCase['suitePath'];
+    readonly lines: readonly string[];
 };
 
 const indentation = '  ';
@@ -126,6 +136,61 @@ function renderFile(file: CollectedRunFile, options: RenderOptions, context: Rep
     return lines;
 }
 
+function renderCaseEntry(
+    testCase: CollectedRunCaseEntry,
+    currentSuitePath: CollectedRunCase['suitePath'],
+    options: RenderOptions,
+    context: ReportingContext
+): readonly string[] {
+    const sharedLength = sharedPrefixLength(currentSuitePath, testCase.testCase.suitePath);
+
+    return [
+        ...renderSuiteLines(sharedLength, testCase.testCase.suitePath, options, context),
+        ...formatNodeLines({
+            context,
+            depth: testCase.testCase.suitePath.length + 1,
+            locations: testCase.testCase.definitionLocations,
+            name: formatCaseName(testCase.testCase),
+            options
+        })
+    ];
+}
+
+function appendRenderedCaseEntry(
+    state: RenderCaseEntriesState,
+    testCase: CollectedRunCaseEntry,
+    options: RenderOptions,
+    context: ReportingContext
+): RenderCaseEntriesState {
+    const sameFile = testCase.file === state.currentFile;
+    const currentSuitePath = sameFile ? state.currentSuitePath : [];
+    const lines = sameFile ? state.lines : [ ...state.lines, testCase.file ];
+
+    return {
+        currentFile: testCase.file,
+        currentSuitePath: testCase.testCase.suitePath,
+        lines: [ ...lines, ...renderCaseEntry(testCase, currentSuitePath, options, context) ]
+    };
+}
+
+function renderCaseEntries(
+    cases: readonly CollectedRunCaseEntry[],
+    options: RenderOptions,
+    context: ReportingContext
+): readonly string[] {
+    const initialState: RenderCaseEntriesState = {
+        currentFile: null,
+        currentSuitePath: [],
+        lines: []
+    };
+
+    return cases
+        .reduce(function renderCaseEntryLines(state, testCase) {
+            return appendRenderedCaseEntry(state, testCase, options, context);
+        }, initialState)
+        .lines;
+}
+
 function renderOrphan(orphan: OrphanedNode, options: RenderOptions, context: ReportingContext): readonly string[] {
     const file = orphan.file ?? '<unknown>';
 
@@ -162,18 +227,60 @@ function resolvedCollectedPlan(resolvedRun: ResolvedRun): CollectedRunPlan {
     return collectedRunPlanFromTestPlan(resolvedRun.plan.testPlan);
 }
 
+function factsCaseEntries(resolvedRun: ResolvedRun, plan: CollectedRunPlan): readonly CollectedRunCaseEntry[] | null {
+    const { cases: factsCases } = resolvedRun.facts;
+
+    const casesByKey = new Map(
+        collectedRunCaseEntries(plan).map(function toEntry(testCase) {
+            return [ caseIdentityKey(testCase.id), testCase ];
+        })
+    );
+
+    const entries = factsCases.flatMap(function toOrderedCase(testCase) {
+        const entry = casesByKey.get(caseIdentityKey(testCase.id));
+
+        return entry === undefined ? [] : [ entry ];
+    });
+
+    return entries.length === factsCases.length ? entries : null;
+}
+
+function planLines(
+    resolvedRun: ResolvedRun,
+    plan: CollectedRunPlan,
+    options: RenderOptions,
+    context: ReportingContext
+): readonly string[] {
+    const orderedCases = factsCaseEntries(resolvedRun, plan);
+
+    if (orderedCases === null) {
+        return plan.files.flatMap(function renderPlanFile(file) {
+            return renderFile(file, options, context);
+        });
+    }
+
+    return renderCaseEntries(orderedCases, options, context);
+}
+
+function orderSummary(resolvedRun: ResolvedRun): readonly string[] {
+    const { execution, reproducibility } = resolvedRun.facts;
+
+    return [ `order=${execution.order} seed=${reproducibility.seed}` ];
+}
+
 export function renderResolvedRunList(resolvedRun: ResolvedRun, options: RenderOptions): readonly string[] {
     const plan = resolvedCollectedPlan(resolvedRun);
     const context = createReportingContext({
         projectRoot: resolvedRun.facts.environment.projectRoot
     });
-    const planLines = plan.files.flatMap(function renderPlanFile(file) {
-        return renderFile(file, options, context);
-    });
+    const renderedPlan = [
+        ...orderSummary(resolvedRun),
+        ...planLines(resolvedRun, plan, options, context)
+    ];
 
     if (!options.withOrphans) {
-        return planLines;
+        return renderedPlan;
     }
 
-    return [ ...planLines, ...renderOrphans(plan.orphans, options, context) ];
+    return [ ...renderedPlan, ...renderOrphans(plan.orphans, options, context) ];
 }

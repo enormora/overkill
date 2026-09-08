@@ -94,9 +94,12 @@ The current helpers select by stable case id, file, title, suite, table params,
 tag, runtime, ownership, and stability. Test family matching is intentionally
 absent because one run is already bound to one profile test family.
 `parseRunFilterExpression(expression)` parses the CLI filter grammar into the
-same `RunFilter` tree. Sharding, seeded ordering, records, replay, and
-`--last-failed` are separate runner milestones. Direct prebuilt `TestPlan`
-execution belongs to `@overkill-dev/engine` through `execute(testPlan)`.
+same `RunFilter` tree. Runs use seeded ordering by default. Pass
+`RunRequest.order: 'lexical'` for deterministic source-stable order, or
+`RunRequest.order: 'plan'` for programmatic callers that need an already
+materialized order. Sharding, records, replay, and `--last-failed` are
+separate runner milestones. Direct prebuilt `TestPlan` execution belongs to
+`@overkill-dev/engine` through `execute(testPlan)`.
 The command methods other than `runTests` and `listTests` are fixed first-party
 entrypoints and currently return argument errors until their command
 implementations land.

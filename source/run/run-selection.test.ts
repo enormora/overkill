@@ -63,6 +63,7 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
 
 function selectionRequest(filter: RunFilter): RunRequest {
     return defaultRunRequest({
+        order: 'lexical',
         paths: [ selectionFixturePath ],
         selection: { filter, kind: 'filter' }
     });

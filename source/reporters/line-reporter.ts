@@ -16,6 +16,7 @@ import type {
     TestVerdict
 } from '../engine/run-result.ts';
 import { formatFailure } from './line-failure-rendering.ts';
+import { formatRunFactSummary } from './run-fact-summary.ts';
 import { createTerminalLineLogger, type TerminalLineLogger } from './terminal.ts';
 
 const successSymbol = colors.green(figures.tick);
@@ -199,6 +200,13 @@ function runArtifacts(result: RunResult): readonly RunArtifact[] {
     });
 }
 
+function runStartLine(event: Extract<ReporterEvent, { readonly kind: 'run-start'; }>): string {
+    const summary = formatRunFactSummary(event.facts);
+    const details = summary === null ? '' : ` (${summary})`;
+
+    return `Test run started: ${event.root.title}${details}`;
+}
+
 export function createLineReporter(dependencies: LineReporterDependencies): DefinedReporter<RealTimeReporter> {
     const { stdoutConsole, verbose } = dependencies;
     return defineReporter(function createLineRuntimeReporter(context) {
@@ -245,7 +253,7 @@ export function createLineReporter(dependencies: LineReporterDependencies): Defi
 
             async onEvent(event) {
                 if (event.kind === 'run-start') {
-                    terminal.line(infoSymbol, `Test run started: ${event.root.title}`);
+                    terminal.line(infoSymbol, runStartLine(event));
                 } else if (event.kind === 'suite-start') {
                     logSuiteStart(event);
                 } else if (event.kind === 'suite-end') {

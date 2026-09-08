@@ -62,7 +62,7 @@ const defaultRequest: RunRequest = {
     },
     execution: { mode: 'profile-default' },
     measureResourceUsage: null,
-    order: 'plan',
+    order: 'seeded',
     paths: [],
     profile: 'microtest',
     resourceBudgetOverrides: null,

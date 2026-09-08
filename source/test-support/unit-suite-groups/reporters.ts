@@ -1,6 +1,6 @@
 import { createSuite } from '../../packages/engine/engine.entry-point.ts';
 import { testNode as briefReporterTestNode } from '../../reporters/brief-reporter.test.ts';
-import { testNode as dotReporterTestNode } from '../../reporters/dot-reporter.test.ts';
+import { testNode as dotReporterTestNode } from '../../reporters/dot-reporter-suite.test.ts';
 import { testNode as inMemoryReporterTestNode } from '../../reporters/in-memory-reporter.test.ts';
 import { testNode as lineFailureRenderingEdgeTestNode } from '../../reporters/line-failure-rendering-edge.test.ts';
 import { testNode as lineFailureRenderingTestNode } from '../../reporters/line-failure-rendering.test.ts';

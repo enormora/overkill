@@ -211,6 +211,8 @@ export type RunConfig = {
     readonly runtimeStateDir: string;
 };
 
+export type RunOrder = 'lexical' | 'plan' | 'seeded';
+
 export type RunRequest = {
     readonly baselineUpdateMode: 'none';
     readonly capabilityRestrictions: RunCapabilityRestrictionsRequest;
@@ -218,7 +220,7 @@ export type RunRequest = {
     readonly debug: RunDebugRequest;
     readonly execution: RunExecutionRequest;
     readonly measureResourceUsage: boolean | null;
-    readonly order: 'plan';
+    readonly order: RunOrder;
     readonly paths: readonly string[];
     readonly profile: string;
     readonly resourceBudgetOverrides: RunResourceBudgets | null;
@@ -265,7 +267,7 @@ export type RunExecutionFacts = {
     readonly capture: 'buffered' | 'live';
     readonly debug: RunDebugRequest;
     readonly engine: RunEngineFacts;
-    readonly order: 'plan';
+    readonly order: RunOrder;
     readonly processModel: RunProcessModel;
     readonly profile: string;
     readonly resourceUsagePolicy: RunResourceUsagePolicy;
@@ -342,10 +344,10 @@ export type RunOrchestratorDependencies = {
     readonly execute: Execute;
     readonly liveOutput: {
         readonly stderr: {
-            readonly write: (chunk: Buffer) => void;
+            readonly write: (chunk: Uint8Array) => void;
         };
         readonly stdout: {
-            readonly write: (chunk: Buffer) => void;
+            readonly write: (chunk: Uint8Array) => void;
         };
     };
     readonly runtimeCapabilityPolicy: RuntimeCapabilityPolicyDependencies;
