@@ -6,7 +6,9 @@ import type {
     RunConfig,
     RunEngineFacts,
     RunEngineSelection,
+    RunIntegrationExecution,
     RunLoaderConfig,
+    RunMicrotestExecution,
     RunProfileConfig,
     RunProfileFiles,
     RunOrchestratorDependencies,
@@ -21,6 +23,10 @@ import { copyRunSelection } from './run-selection-filters.ts';
 import { validateRunResourceUsagePolicy } from './run-validation.ts';
 
 export type RunRuntimePolicy = RuntimeCapabilityPolicy;
+
+type RunProfileFileSets = {
+    readonly sets: NonNullable<RunProfileFiles['sets']>;
+};
 
 export function freezeValue<Value>(value: Value): Value {
     if (value !== null && typeof value === 'object') {
@@ -88,9 +94,43 @@ function copyTimeoutPolicy(policy: RunTimeoutPolicy): RunTimeoutPolicy {
     };
 }
 
+function copyMicrotestExecution(execution: RunMicrotestExecution): RunMicrotestExecution {
+    return {
+        processModel: execution.processModel,
+        scheduling: execution.scheduling
+    };
+}
+
+function copyIntegrationExecution(execution: RunIntegrationExecution): RunIntegrationExecution {
+    return {
+        processModel: 'supervised-process',
+        scheduling: execution.scheduling
+    };
+}
+
+function hasProfileFileSets(files: RunProfileFiles): files is RunProfileFileSets {
+    return files.sets !== undefined;
+}
+
 function copyProfileFiles(files: RunProfileFiles | null): RunProfileFiles | null {
     if (files === null) {
         return null;
+    }
+
+    if (hasProfileFileSets(files)) {
+        return {
+            sets: Object.fromEntries(
+                Object.entries(files.sets).map(function copyProfileFileSet([ name, set ]) {
+                    return [
+                        name,
+                        {
+                            exclude: Array.from(set.exclude),
+                            include: [ set.include[0], ...set.include.slice(1) ]
+                        }
+                    ];
+                })
+            )
+        };
     }
 
     return {
@@ -108,10 +148,7 @@ function copyProfileConfig(profile: RunProfileConfig): RunProfileConfig {
         }
 
         return {
-            execution: {
-                processModel: profile.execution.processModel,
-                scheduling: profile.execution.scheduling
-            },
+            execution: copyIntegrationExecution(profile.execution),
             files,
             reporters: profile.reporters === null ? null : Array.from(profile.reporters),
             resourceUsage: copyResourceUsagePolicy(profile.resourceUsage),
@@ -121,10 +158,7 @@ function copyProfileConfig(profile: RunProfileConfig): RunProfileConfig {
     }
 
     return {
-        execution: {
-            processModel: profile.execution.processModel,
-            scheduling: profile.execution.scheduling
-        },
+        execution: copyMicrotestExecution(profile.execution),
         files: copyProfileFiles(profile.files),
         reporters: profile.reporters === null ? null : Array.from(profile.reporters),
         resourceUsage: copyResourceUsagePolicy(profile.resourceUsage),

@@ -21,6 +21,7 @@ function discoveredFile(file: string): DiscoveredRunFile {
     const path = resolve(process.cwd(), file);
 
     return {
+        fileSet: null,
         file,
         href: pathToFileURL(path).href,
         path

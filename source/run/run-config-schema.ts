@@ -22,12 +22,30 @@ const positiveSafeIntegerSchema = z.number().refine(function isPositiveSafeInteg
 
 const fileGlobSchema = z.string();
 
-const profileFilesSchema = z
+const profileFilePatternsSchema = z
+    .strictObject({
+        exclude: z.optional(z.array(fileGlobSchema).readonly()),
+        include: z.tuple([ fileGlobSchema ]).rest(fileGlobSchema).readonly(),
+        sets: z.optional(z.never())
+    })
+    .readonly();
+
+const profileFileSetSchema = z
     .strictObject({
         exclude: z.optional(z.array(fileGlobSchema).readonly()),
         include: z.tuple([ fileGlobSchema ]).rest(fileGlobSchema).readonly()
     })
     .readonly();
+
+const profileFileSetsSchema = z
+    .strictObject({
+        exclude: z.optional(z.never()),
+        include: z.optional(z.never()),
+        sets: z.record(z.string(), profileFileSetSchema).readonly()
+    })
+    .readonly();
+
+const profileFilesSchema = z.union([ profileFilePatternsSchema, profileFileSetsSchema ]).readonly();
 
 export const resourceBudgetsSchema = z
     .strictObject({

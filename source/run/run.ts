@@ -76,6 +76,7 @@ type CollectedResolvedRunInput = {
     readonly config: RunConfig;
     readonly dependencies: RunOrchestratorDependencies;
     readonly engine: RunCommand['engine'];
+    readonly files: ResolvedRunInput['files'];
     readonly profile: RunProfileConfig;
     readonly projectRoot: string;
     readonly request: RunRequest;
@@ -102,6 +103,16 @@ function currentRunStartTime(dependencies: RunOrchestratorDependencies): string 
 
 function resolveEngineExecutionMode(execution: RunMicrotestExecution): 'concurrent-in-process' | 'serial-in-process' {
     return execution.scheduling === 'concurrent' ? 'concurrent-in-process' : 'serial-in-process';
+}
+
+function fileSetForDiscoveredFiles(files: ResolvedRunInput['files']): (file: string | null) => string | null {
+    const fileSets = new Map(files.map(function toFileSetEntry(file) {
+        return [ file.file, file.fileSet ];
+    }));
+
+    return function fileSetForFile(file) {
+        return file === null ? null : fileSets.get(file) ?? null;
+    };
 }
 
 function supervisedEngine(command: RunCommand): Exclude<RunCommand['engine'], { readonly kind: 'instance'; }> {
@@ -177,7 +188,7 @@ function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): R
     }
 
     const facts = freezeValue(createRunFacts({
-        cases: collectedRunCaseFacts(input.collectedPlan),
+        cases: collectedRunCaseFacts(input.collectedPlan, fileSetForDiscoveredFiles(input.files)),
         config: input.config,
         dependencies: input.dependencies,
         engine: input.engine,
@@ -214,6 +225,7 @@ function createResolvedRunFromSupervisedCollection(resolution: SupervisedResolut
         config: resolution.input.config,
         dependencies: resolution.dependencies,
         engine: resolution.input.engine,
+        files: resolution.input.files,
         profile: resolution.input.profile,
         projectRoot: resolution.input.projectRoot,
         request: resolution.input.request
@@ -248,7 +260,7 @@ function createLocalResolvedRunFromTestPlan(
     assertTestPlanMatchesTestFamily(plannedTestPlan, input.profile.testFamily);
 
     const facts = freezeValue(createRunFacts({
-        cases: runCaseFactsFromTestPlan(plannedTestPlan),
+        cases: runCaseFactsFromTestPlan(plannedTestPlan, fileSetForDiscoveredFiles(input.files)),
         config: input.config,
         dependencies,
         engine: input.engine,

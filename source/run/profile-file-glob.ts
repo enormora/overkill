@@ -1,7 +1,5 @@
 import { isAbsolute } from 'node:path';
 
-export type ProfileFileGlobField = 'exclude' | 'include';
-
 function globSegments(pattern: string): readonly string[] {
     return pattern.split(/[\\/]+/u);
 }
@@ -10,7 +8,7 @@ function configMessage(message: string): string {
     return `Invalid ${message.charAt(0).toLowerCase()}${message.slice(1)}`;
 }
 
-export function invalidProfileFileGlobMessage(field: ProfileFileGlobField, pattern: string): string | null {
+export function invalidProfileFileGlobMessage(field: string, pattern: string): string | null {
     const trimmedPattern = pattern.trim();
 
     if (trimmedPattern.length === 0) {
@@ -32,7 +30,7 @@ export function invalidProfileFileGlobMessage(field: ProfileFileGlobField, patte
     return null;
 }
 
-export function invalidProfileFileGlobConfigMessage(field: ProfileFileGlobField, pattern: string): string | null {
+export function invalidProfileFileGlobConfigMessage(field: string, pattern: string): string | null {
     const message = invalidProfileFileGlobMessage(field, pattern);
 
     return message === null ? null : configMessage(message);

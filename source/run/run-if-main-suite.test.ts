@@ -1,5 +1,6 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as runIfMainOptionsTestNode } from './run-if-main-options.test.ts';
+import { testNode as runIfMainProfileFileSetsTestNode } from './run-if-main-profile-file-sets.test.ts';
 import { testNode as runIfMainSelectionTestNode } from './run-if-main-selection.test.ts';
 import { testNode as runIfMainTestNode } from './run-if-main.test.ts';
 
@@ -9,6 +10,7 @@ export const testNode = createOverkillSuite({
     metadata: {},
     children: [
         runIfMainOptionsTestNode,
+        runIfMainProfileFileSetsTestNode,
         runIfMainSelectionTestNode,
         runIfMainTestNode
     ]

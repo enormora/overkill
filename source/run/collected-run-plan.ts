@@ -14,6 +14,7 @@ import type {
     CollectedRunPlan,
     RunCaseFacts
 } from './run-types.ts';
+import type { RunCaseFileSet } from './run-facts.ts';
 
 function suiteTitles(suitePath: TestPlan['cases'][number]['suitePath']): readonly string[] {
     return suitePath.map(function toTitle(entry) {
@@ -175,10 +176,16 @@ export function collectedRunPlanFromTestPlan(testPlan: TestPlan): CollectedRunPl
     return collectedRunPlanFromTestPlanCases(testPlan, testPlan.cases);
 }
 
-export function collectedRunCaseFacts(plan: CollectedRunPlan): readonly RunCaseFacts[] {
+export function collectedRunCaseFacts(
+    plan: CollectedRunPlan,
+    fileSetForCase: RunCaseFileSet
+): readonly RunCaseFacts[] {
     return collectedCases(plan.files).map(function toRunCaseFacts(collectedCase): RunCaseFacts {
+        const id = collectedCaseId(collectedCase.file, collectedCase.testCase);
+
         return {
-            id: collectedCaseId(collectedCase.file, collectedCase.testCase),
+            fileSet: fileSetForCase(id.file),
+            id,
             metadata: serializeValue(collectedCase.testCase.metadata)
         };
     });

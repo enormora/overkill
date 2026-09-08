@@ -32,6 +32,18 @@ import type { RunRequest } from './run.entry-point.ts';
 
 type CommandLineRunnerResultKeys = keyof CommandLineRunnerResult;
 type ExpectedCommandLineExitCode = (typeof commandLineExitCodes)[keyof typeof commandLineExitCodes];
+type ProjectProfileFilePatterns = {
+    readonly exclude?: readonly string[];
+    readonly include: readonly [string, ...readonly string[]];
+};
+type ProjectProfileFileSets = {
+    readonly sets: Readonly<
+        Record<string, {
+            readonly exclude?: readonly string[];
+            readonly include: readonly [string, ...readonly string[]];
+        }>
+    >;
+};
 
 describe('@overkill-dev/run/command-line', function () {
     test('exposes an instantiated command-line runner', function () {
@@ -107,8 +119,12 @@ describe('@overkill-dev/run/command-line', function () {
         }>();
         expect<RunProjectProfilesConfig['backend-http']>().type.toBe<RunProjectProfileConfig>();
         expect<RunProjectMicrotestProfileConfig['files']>().type.toBe<RunProjectProfileFiles | undefined>();
-        expect<RunProjectProfileFiles['include']>().type.toBe<readonly [string, ...string[]]>();
         expect<LoadedRunConfig['profiles']['backend-http']['resourceUsage']['measure']>().type.toBe<boolean>();
         expect<LoadedRunConfig['profiles']['backend-http']['files']>().type.not.toBe<undefined>();
+    });
+
+    test('exposes typed profile file discovery', function () {
+        expect<RunProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFilePatterns>();
+        expect<RunProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFileSets>();
     });
 });

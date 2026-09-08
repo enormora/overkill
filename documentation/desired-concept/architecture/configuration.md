@@ -295,8 +295,9 @@ underscores, and hyphens. Names such as `backend-http`, `ui.integration`, and
 `unit_fast` are valid. Spaces, slashes, backslashes, and punctuation outside
 that set are rejected.
 
-Configured profile file discovery supports either one direct include/exclude
-policy or named file sets.
+Configured profile file discovery uses one of two shapes.
+
+Simple profiles use top-level include and exclude globs:
 
 ```ts
 files: {
@@ -305,45 +306,44 @@ files: {
 }
 ```
 
-Named file sets are useful when execution planning needs stable file
-ownership buckets:
+Profiles that need named discovery buckets use `sets` instead:
 
 ```ts
 files: {
-    sets: [
-        {
-            name: 'database',
-            include: [ 'source/integration/database/**/*.test.ts' ],
-            exclude: []
+    sets: {
+        integration: {
+            include: [ 'source/integration/**/*.test.ts' ],
+            exclude: [ 'source/integration/**/*.slow.test.ts' ]
         },
-        {
-            name: 'browser-smoke',
-            include: [ 'source/ui/**/*.smoke.test.ts' ],
-            exclude: []
+        unit: {
+            include: [ 'source/unit/**/*.test.ts' ]
         }
-    ];
+    }
 }
 ```
 
-`include` is required for configured discovery and `exclude` defaults to
-`[]`. Patterns are interpreted relative to the run cwd. Absolute patterns,
-parent segments, blank patterns, and negated patterns are rejected. Overkill
-uses Node's glob support with the separate `exclude` option, so negated
-patterns are not part of the public config language.
+`include` is required for every include/exclude policy and `exclude` defaults
+to `[]`. `files.sets` is mutually exclusive with top-level `include` and
+`exclude`; the union of non-overlapping set matches is the profile's
+discovered file set. Every configured set must match at least one file before
+per-run path narrowing. A file matched by more than one set is an invalid
+request.
 
-`files.sets` uses the same glob language. Set names are unique within a
-profile, set declaration order has no ownership meaning, and overlap is
-checked across the full profile file universe after each set's excludes. A
-file matching more than one set is a plan-resolution error even when the
-current path operands or filters would hide that file. Empty sets are valid
-so shared profile config can cover packages that do not own every bucket.
+Set names are project-owned strings with the same character rules as profile
+names: letters, numbers, dots, underscores, and hyphens. The `benchmark` name
+is reserved for profiles only, not for file sets.
+
+Patterns are interpreted relative to the run cwd. Absolute patterns, parent
+segments, blank patterns, and negated patterns are rejected. Overkill uses
+Node's glob support with the separate `exclude` option, so negated patterns are
+not part of the public config language.
 
 When a run has no path operands, the selected profile's `files` policy
-discovers candidate test modules. Explicit file operands bypass profile file
-discovery. Directory operands do not define new globs; they filter the
-selected profile's discovered file set and cannot be mixed with file operands.
-When the selected profile uses `files.sets`, explicit file operands must
-belong to exactly one named set.
+discovers candidate test modules. Explicit file operands bypass top-level
+include/exclude discovery. When the profile uses `files.sets`, each explicit
+file must match exactly one set. Directory operands do not define new globs;
+they filter the selected profile's discovered file set and cannot be mixed
+with file operands.
 
 Important distinction:
 

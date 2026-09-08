@@ -3,11 +3,14 @@ import { isAbsolute, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import {
-    invalidProfileFileGlobMessage,
-    type ProfileFileGlobField
+    invalidProfileFileGlobMessage
 } from './profile-file-glob.ts';
 import { invalidRequest, noTestsCollected } from './run-errors.ts';
-import type { RunProfileFiles } from './run-types.ts';
+import {
+    invalidRunProfileFileSetNameMessage,
+    type RunProfileFileSet,
+    type RunProfileFiles
+} from './run-types.ts';
 
 export type RunDiscoveryRequest = {
     readonly cwd: string;
@@ -16,9 +19,19 @@ export type RunDiscoveryRequest = {
 };
 
 export type DiscoveredRunFile = {
+    readonly fileSet: string | null;
     readonly file: string;
     readonly href: string;
     readonly path: string;
+};
+
+type DiscoveredProfileFileSet = {
+    readonly files: NonEmptyReadonlyArray<DiscoveredRunFile>;
+    readonly name: string;
+};
+
+type RunProfileFileSets = {
+    readonly sets: Readonly<Record<string, RunProfileFileSet>>;
 };
 
 export type DiscoveredRunFiles = {
@@ -61,7 +74,7 @@ async function readRealCwd(cwd: string): Promise<string> {
     }
 }
 
-function assertValidProfileGlob(field: ProfileFileGlobField, pattern: string): void {
+function assertValidProfileGlob(field: string, pattern: string): void {
     const message = invalidProfileFileGlobMessage(field, pattern);
 
     if (message !== null) {
@@ -69,13 +82,51 @@ function assertValidProfileGlob(field: ProfileFileGlobField, pattern: string): v
     }
 }
 
-function assertValidProfileFiles(profileFiles: RunProfileFiles): void {
+function profileFileGlobField(fieldPrefix: string | null, field: 'exclude' | 'include'): string {
+    return fieldPrefix === null ? field : `${fieldPrefix}.${field}`;
+}
+
+function assertValidProfileFilePatterns(
+    profileFiles: RunProfileFileSet,
+    fieldPrefix: string | null
+): void {
     for (const pattern of profileFiles.include) {
-        assertValidProfileGlob('include', pattern);
+        assertValidProfileGlob(profileFileGlobField(fieldPrefix, 'include'), pattern);
     }
 
     for (const pattern of profileFiles.exclude) {
-        assertValidProfileGlob('exclude', pattern);
+        assertValidProfileGlob(profileFileGlobField(fieldPrefix, 'exclude'), pattern);
+    }
+}
+
+function hasProfileFileSets(profileFiles: RunProfileFiles): profileFiles is RunProfileFileSets {
+    return profileFiles.sets !== undefined;
+}
+
+function assertValidProfileFileSetName(name: string): void {
+    const message = invalidRunProfileFileSetNameMessage(name);
+
+    if (message !== null) {
+        invalidRequest(message);
+    }
+}
+
+function assertValidProfileFileSets(profileFiles: RunProfileFiles): void {
+    if (!hasProfileFileSets(profileFiles)) {
+        assertValidProfileFilePatterns(profileFiles, null);
+
+        return;
+    }
+
+    const entries = Object.entries(profileFiles.sets);
+
+    if (entries.length === 0) {
+        invalidRequest('Invalid profile files.sets: at least one file set is required.');
+    }
+
+    for (const [ name, set ] of entries) {
+        assertValidProfileFileSetName(name);
+        assertValidProfileFilePatterns(set, `sets.${name}`);
     }
 }
 
@@ -104,7 +155,12 @@ function createDiscoveredRunDirectory(
     };
 }
 
-function createDiscoveredRunFile(realCwd: string, realPath: string, requestedPath: string): DiscoveredRunFile {
+function createDiscoveredRunFile(
+    realCwd: string,
+    realPath: string,
+    requestedPath: string,
+    fileSet: string | null
+): DiscoveredRunFile {
     const relativePath = relative(realCwd, realPath);
 
     if (isOutsideCwd(relativePath)) {
@@ -112,6 +168,7 @@ function createDiscoveredRunFile(realCwd: string, realPath: string, requestedPat
     }
 
     return {
+        fileSet,
         file: toFileIdentity(relativePath),
         href: pathToFileURL(realPath).href,
         path: realPath
@@ -127,7 +184,7 @@ async function discoverRunPath(
 
     if (pathStat.isFile()) {
         return {
-            file: createDiscoveredRunFile(realCwd, realPath, requestedPath),
+            file: createDiscoveredRunFile(realCwd, realPath, requestedPath, null),
             kind: 'file'
         };
     }
@@ -179,7 +236,8 @@ function uniqueRunFiles(files: readonly DiscoveredRunFile[]): readonly Discovere
 
 async function maybeDiscoverProfileFile(
     realCwd: string,
-    requestedPath: string
+    requestedPath: string,
+    fileSet: string | null
 ): Promise<DiscoveredRunFile | null> {
     const realPath = await realpath(resolve(realCwd, requestedPath));
     const pathStat = await stat(realPath);
@@ -188,14 +246,14 @@ async function maybeDiscoverProfileFile(
         return null;
     }
 
-    return createDiscoveredRunFile(realCwd, realPath, requestedPath);
+    return createDiscoveredRunFile(realCwd, realPath, requestedPath, fileSet);
 }
 
-async function discoverProfileRunFiles(
+async function discoverProfilePatternRunFiles(
     realCwd: string,
-    profileFiles: RunProfileFiles
+    profileFiles: RunProfileFileSet,
+    fileSet: string | null
 ): Promise<readonly DiscoveredRunFile[]> {
-    assertValidProfileFiles(profileFiles);
     const files: DiscoveredRunFile[] = [];
     const discoveredPaths = glob(profileFiles.include, {
         cwd: realCwd,
@@ -204,7 +262,7 @@ async function discoverProfileRunFiles(
     });
 
     for await (const filePath of discoveredPaths) {
-        const file = await maybeDiscoverProfileFile(realCwd, filePath);
+        const file = await maybeDiscoverProfileFile(realCwd, filePath, fileSet);
 
         if (file !== null) {
             files.push(file);
@@ -214,17 +272,137 @@ async function discoverProfileRunFiles(
     return sortedRunFiles(uniqueRunFiles(files));
 }
 
-function discoverExplicitRunFiles(
-    files: NonEmptyReadonlyArray<DiscoveredRunFile>
-): NonEmptyReadonlyArray<DiscoveredRunFile> {
+async function discoverProfileFileSet(
+    realCwd: string,
+    name: string,
+    profileFiles: RunProfileFileSet
+): Promise<DiscoveredProfileFileSet> {
+    const files = await discoverProfilePatternRunFiles(realCwd, profileFiles, name);
+    assertNonEmptyArray(`Profile files.sets.${name} matched no test files.`, files);
+
+    return {
+        files: [ files[0], ...files.slice(1) ],
+        name
+    };
+}
+
+function profileFileSetOverlapMessage(file: DiscoveredRunFile, firstSet: string, secondSet: string): string {
+    return `Profile file sets must not overlap: ${file.file} matched ${firstSet} and ${secondSet}.`;
+}
+
+function assertNonOverlappingProfileFileSets(fileSets: readonly DiscoveredProfileFileSet[]): void {
+    const owners = new Map<string, string>();
+
+    for (const fileSet of fileSets) {
+        for (const file of fileSet.files) {
+            const owner = owners.get(file.path);
+
+            if (owner !== undefined) {
+                invalidRequest(profileFileSetOverlapMessage(file, owner, fileSet.name));
+            }
+
+            owners.set(file.path, fileSet.name);
+        }
+    }
+}
+
+async function discoverProfileSetRunFiles(
+    realCwd: string,
+    profileFiles: RunProfileFiles
+): Promise<readonly DiscoveredRunFile[]> {
+    if (!hasProfileFileSets(profileFiles)) {
+        return discoverProfilePatternRunFiles(realCwd, profileFiles, null);
+    }
+
+    const fileSets = await Promise.all(
+        Object.entries(profileFiles.sets).map(async function discoverSet([ name, set ]) {
+            return await discoverProfileFileSet(realCwd, name, set);
+        })
+    );
+
+    assertNonOverlappingProfileFileSets(fileSets);
+
+    return sortedRunFiles(fileSets.flatMap(function collectSetFiles(fileSet) {
+        return fileSet.files;
+    }));
+}
+
+async function discoverProfileRunFiles(
+    realCwd: string,
+    profileFiles: RunProfileFiles
+): Promise<readonly DiscoveredRunFile[]> {
+    assertValidProfileFileSets(profileFiles);
+
+    return await discoverProfileSetRunFiles(realCwd, profileFiles);
+}
+
+function explicitRunFileWithProfileFileSet(
+    file: DiscoveredRunFile,
+    fileSetByPath: ReadonlyMap<string, string> | null
+): DiscoveredRunFile {
+    if (fileSetByPath === null) {
+        return file;
+    }
+
+    const fileSet = fileSetByPath.get(file.path);
+
+    if (fileSet === undefined) {
+        invalidRequest(`Run file must match exactly one profile file set: ${file.file}`);
+    }
+
+    return {
+        ...file,
+        fileSet
+    };
+}
+
+function profileFileSetEntry(file: DiscoveredRunFile): readonly [string, string] {
+    if (file.fileSet === null) {
+        throw new Error('Expected profile-discovered file set.');
+    }
+
+    return [ file.path, file.fileSet ];
+}
+
+async function explicitFileSetByPath(
+    realCwd: string,
+    profileFiles: RunProfileFiles | null
+): Promise<ReadonlyMap<string, string> | null> {
+    if (profileFiles === null || !hasProfileFileSets(profileFiles)) {
+        return null;
+    }
+
+    const profileRunFiles = await discoverProfileRunFiles(realCwd, profileFiles);
+
+    return new Map(profileRunFiles.map(profileFileSetEntry));
+}
+
+function nonEmptyDiscoveredRunFiles(files: readonly DiscoveredRunFile[]): NonEmptyReadonlyArray<DiscoveredRunFile> {
+    const firstFile = files[0];
+
+    if (firstFile === undefined) {
+        throw new Error('Expected at least one explicit run file.');
+    }
+
+    return [ firstFile, ...files.slice(1) ];
+}
+
+async function discoverExplicitRunFiles(
+    realCwd: string,
+    files: NonEmptyReadonlyArray<DiscoveredRunFile>,
+    profileFiles: RunProfileFiles | null
+): Promise<NonEmptyReadonlyArray<DiscoveredRunFile>> {
     const seenPaths = new Set<string>();
+    const explicitFiles: DiscoveredRunFile[] = [];
+    const fileSetByPath = await explicitFileSetByPath(realCwd, profileFiles);
 
     for (const file of files) {
         assertUniqueRunFile(file, seenPaths);
         seenPaths.add(file.path);
+        explicitFiles.push(explicitRunFileWithProfileFileSet(file, fileSetByPath));
     }
 
-    return files;
+    return nonEmptyDiscoveredRunFiles(explicitFiles);
 }
 
 function pathIsInsideDirectory(filePath: string, directoryPath: string): boolean {
@@ -355,7 +533,7 @@ async function discoverRequestedRunFiles(
     const firstFile = files[0];
 
     if (firstFile !== undefined) {
-        return discoverExplicitRunFiles([ firstFile, ...files.slice(1) ]);
+        return await discoverExplicitRunFiles(realCwd, [ firstFile, ...files.slice(1) ], request.profileFiles);
     }
 
     const directories = discoveredDirectories(paths);

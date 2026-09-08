@@ -222,7 +222,13 @@ export const testNode = createOverkillSuite({
             metadata: {},
             body(scope: OverkillScope) {
                 scope.assert.throws(function readMissingDirectProfileFacts() {
-                    directRunFacts(runConfig(loadedConfig(null), []), 'missing', directTestPlan(), process.cwd());
+                    directRunFacts({
+                        config: runConfig(loadedConfig(null), []),
+                        fileSet: null,
+                        profileName: 'missing',
+                        projectRoot: process.cwd(),
+                        testPlan: directTestPlan()
+                    });
                 }, {
                     message: 'Unknown direct run profile: missing.'
                 });

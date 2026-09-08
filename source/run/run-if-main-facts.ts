@@ -13,6 +13,14 @@ import type {
     RunRequest
 } from './run-types.ts';
 
+type DirectRunFactsInput = {
+    readonly config: RunConfig;
+    readonly fileSet: string | null;
+    readonly profileName: string;
+    readonly projectRoot: string;
+    readonly testPlan: TestPlan;
+};
+
 function defaultRunRequest(profileName: string): RunRequest {
     return {
         baselineUpdateMode: 'none',
@@ -69,25 +77,22 @@ export function assertDirectTestPlanMatchesTestFamily(
     assertTestPlanMatchesTestFamily(testPlan, testFamily);
 }
 
-export function directRunFacts(
-    config: RunConfig,
-    profileName: string,
-    testPlan: TestPlan,
-    projectRoot: string
-): RunFacts {
-    const request = defaultRunRequest(profileName);
-    const profile = selectedProfile(config, profileName);
+export function directRunFacts(input: DirectRunFactsInput): RunFacts {
+    const request = defaultRunRequest(input.profileName);
+    const profile = selectedProfile(input.config, input.profileName);
 
     return {
-        cases: runCaseFactsFromTestPlan(testPlan),
+        cases: runCaseFactsFromTestPlan(input.testPlan, function directRunFileSet() {
+            return input.fileSet;
+        }),
         environment: {
             node: {
                 arch: process.arch,
                 platform: process.platform,
                 version: process.versions.node
             },
-            projectRoot,
-            runtimeStateDir: config.runtimeStateDir
+            projectRoot: input.projectRoot,
+            runtimeStateDir: input.config.runtimeStateDir
         },
         execution: {
             baselineUpdateMode: request.baselineUpdateMode,
@@ -96,14 +101,14 @@ export function directRunFacts(
             engine: { kind: 'default' },
             order: request.order,
             processModel: 'in-process',
-            profile: profileName,
+            profile: input.profileName,
             resourceUsagePolicy: resolveResourceUsagePolicy(request, profile),
             scheduling: profile.execution.scheduling,
             testFamily: profile.testFamily,
             timeoutPolicy: profile.timeouts,
             verbose: request.verbose
         },
-        loader: config.loader,
+        loader: input.config.loader,
         reproducibility: {
             selection: request.selection,
             seed: '0',
