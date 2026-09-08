@@ -1,8 +1,10 @@
 import figures from 'figures';
 import colors from 'yoctocolors';
-import { formatCaseId } from '../engine/identity.ts';
+import { formatCaseId, type CaseId } from '../engine/identity.ts';
 import { defineReporter, type DefinedReporter, type RealTimeReporter, type ReporterEvent } from '../engine/reporter.ts';
+import { formatSourceLocation, type ReportingContext } from '../engine/reporting-context.ts';
 import type { RunResult, RunnerError, TestOutcome, TestVerdict } from '../engine/run-result.ts';
+import { primaryFailureSourceLocation } from './failure-location.ts';
 import { formatFailureSummary } from './failure-summary.ts';
 import { createTerminalProgressRenderer, type TerminalOutput } from './terminal.ts';
 
@@ -49,11 +51,21 @@ function formatSummary(result: RunResult): string {
     return `${countSummary} (${outcomes})${orphanSummary} in ${formatDuration(result.wallTimeMs)}`;
 }
 
-function outcomeDetail(outcome: TestOutcome): string | null {
-    if (outcome.kind === 'fail') {
-        return formatFailureSummary(outcome.failures[0]);
-    }
+type FailOutcome = Extract<TestOutcome, { readonly kind: 'fail'; }>;
 
+function failureOrigin(
+    caseId: CaseId,
+    outcome: FailOutcome,
+    context: ReportingContext
+): string {
+    const failure = outcome.failures[0];
+    const location = primaryFailureSourceLocation(failure);
+    const locationText = location === null ? null : formatSourceLocation(location, context);
+
+    return locationText === null ? formatCaseId(caseId) : `${locationText} ${formatCaseId(caseId)}`;
+}
+
+function outcomeDetail(outcome: TestOutcome): string | null {
     if (outcome.kind === 'inconclusive') {
         return outcome.reason;
     }
@@ -85,13 +97,32 @@ function formatRunnerError(error: RunnerError): string {
     return `Runner error: ${error.message}`;
 }
 
-function detailLines(result: RunResult): readonly string[] {
+function interruptedTestDetailLine(testResult: RunResult['perTest'][number]): string {
+    const prefix = testResult.verdict === 'resource-exhausted' ? 'Resource exhausted' : 'Crashed';
+
+    return `${prefix}: ${formatCaseId(testResult.id)}`;
+}
+
+function failedTestDetailLine(
+    caseId: CaseId,
+    outcome: FailOutcome,
+    context: ReportingContext
+): string {
+    const origin = failureOrigin(caseId, outcome, context);
+    const summary = formatFailureSummary(outcome.failures[0]);
+
+    return `Failed: ${origin}: ${summary}`;
+}
+
+function detailLines(result: RunResult, context: ReportingContext): readonly string[] {
     return [
         ...result.perTest.flatMap(function testDetail(testResult) {
             if (testResult.outcome === null) {
-                const prefix = testResult.verdict === 'resource-exhausted' ? 'Resource exhausted' : 'Crashed';
+                return [ interruptedTestDetailLine(testResult) ];
+            }
 
-                return [ `${prefix}: ${formatCaseId(testResult.id)}` ];
+            if (testResult.outcome.kind === 'fail') {
+                return [ failedTestDetailLine(testResult.id, testResult.outcome, context) ];
             }
 
             const detail = outcomeDetail(testResult.outcome);
@@ -100,16 +131,14 @@ function detailLines(result: RunResult): readonly string[] {
                 return [];
             }
 
-            const prefix = testResult.outcome.kind === 'fail' ? 'Failed' : 'Inconclusive';
-
-            return [ `${prefix}: ${formatCaseId(testResult.id)}: ${detail}` ];
+            return [ `Inconclusive: ${formatCaseId(testResult.id)}: ${detail}` ];
         }),
         ...result.runnerErrors.map(formatRunnerError)
     ];
 }
 
 export function createDotReporter(dependencies: DotReporterDependencies): DefinedReporter<RealTimeReporter> {
-    return defineReporter(function createDotRuntimeReporter() {
+    return defineReporter(function createDotRuntimeReporter(context) {
         const progress = createTerminalProgressRenderer({
             interactive: dependencies.interactive,
             output: dependencies.stdout
@@ -152,7 +181,7 @@ export function createDotReporter(dependencies: DotReporterDependencies): Define
             async onFinish(result: RunResult) {
                 finishProgress();
                 writeLine(formatSummary(result));
-                for (const detailLine of detailLines(result)) {
+                for (const detailLine of detailLines(result, context)) {
                     writeLine(detailLine);
                 }
             }

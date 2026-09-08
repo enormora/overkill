@@ -17,4 +17,5 @@ await execute(testPlan, {
 
 The reporter declares `stdout-managed-primary`. It emits run start, sparse
 progress, failed-test causes, runner errors, and final counts. It does not emit
-ANSI color, cursor control, or passing test lines.
+ANSI color, cursor control, or passing test lines. Failed assertion lines carry
+source-location annotations when the failed check has one.

@@ -159,8 +159,9 @@ Assertion bodies:
   `diff: Diff | null`. Leaf checks carry value comparison data, composite
   checks carry child diagnostics, and foreign checks carry normalized
   thrown-error data.
-- Failed checks carry `SourceLocation`, either `{ kind: 'known', file, line,
-  column }` or `{ kind: 'unknown' }`. Engine-created assertion nodes capture
-  lazy locations at the public assertion boundary. Direct raw assertion nodes
-  must provide `location`; use `captureSourceLocation()` for accuracy or
+- Failed checks carry a non-empty `sourceLocations` chain. Each entry is a
+  `SourceLocation`, either `{ kind: 'known', file, line, column }` or
+  `{ kind: 'unknown' }`. Engine-created assertion nodes capture lazy
+  locations at the public assertion boundary. Direct raw assertion nodes must
+  provide `location`; use `captureSourceLocation()` for accuracy or
   `unknownSourceLocation` when unavailable.

@@ -27,5 +27,7 @@ Rendering:
 - failed test headers show identity and duration only
 - all failure details come from structured `outcome.failures`
 - all failed checks are rendered
+- failed checks include source locations when available, including forwarding
+  details when a check carries more than one location
 - run summaries include discovered, planned, executed, pass, fail, and skip
   counts, with inconclusive, crash, and orphan counts only when non-zero

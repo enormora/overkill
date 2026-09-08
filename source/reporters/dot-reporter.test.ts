@@ -262,7 +262,12 @@ export const testNode = createOverkillSuite({
                         {
                             id: failingCaseId,
                             outcome: {
-                                checks: [ { summary: 'numbers differ' } ],
+                                checks: [
+                                    {
+                                        sourceLocations: [ definitionLocation ],
+                                        summary: 'numbers differ'
+                                    }
+                                ],
                                 kind: 'fail'
                             }
                         },
@@ -304,6 +309,93 @@ export const testNode = createOverkillSuite({
                         'Failed: root > fails: numbers differ',
                         'Inconclusive: root > maybe: missing signal',
                         'Runner error: loader failed',
+                        ''
+                    ]
+                        .join('\n')
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'dot reporter prints assertion failure source locations on finish',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const terminal = createFakeTerminal(80);
+                const reporter = createDotReporter({
+                    interactive: false,
+                    stdout: terminal.output
+                })({
+                    relativizeLocationPath(location) {
+                        return location.file === '/workspace/source/users.test.ts'
+                            ? 'source/users.test.ts'
+                            : location.file;
+                    }
+                });
+                const fileOnlyCaseId: CaseId = { file: null, title: 'file only', params: null, suite: [ 'root' ] };
+                const result = runResultFactory.build({
+                    perTest: [
+                        {
+                            id: failingCaseId,
+                            outcome: {
+                                checks: [
+                                    {
+                                        sourceLocations: [
+                                            {
+                                                column: 5,
+                                                file: '/workspace/source/users.test.ts',
+                                                kind: 'known',
+                                                line: 10
+                                            }
+                                        ],
+                                        summary: 'numbers differ'
+                                    }
+                                ],
+                                kind: 'fail'
+                            }
+                        },
+                        {
+                            id: fileOnlyCaseId,
+                            outcome: {
+                                checks: [
+                                    {
+                                        sourceLocations: [
+                                            {
+                                                column: null,
+                                                file: 'source/profile.test.ts',
+                                                kind: 'known',
+                                                line: null
+                                            }
+                                        ],
+                                        summary: 'missing field'
+                                    }
+                                ],
+                                kind: 'fail'
+                            }
+                        }
+                    ],
+                    summary: {
+                        discovered: 2,
+                        failed: 2,
+                        planned: 2
+                    },
+                    wallTimeMs: 7
+                });
+                const { onFinish } = reporter;
+
+                if (onFinish === null) {
+                    throw new TypeError('Expected dot reporter to expose onFinish.');
+                }
+
+                await onFinish(result);
+
+                scope.assert.equal(
+                    terminal.text(),
+                    [
+                        '2 discovered, 2 planned, 2 executed (0 pass, 2 fail, 0 skip) in 7 ms',
+                        'Failed: source/users.test.ts:10:5 root > fails: numbers differ',
+                        'Failed: source/profile.test.ts root > file only: missing field',
                         ''
                     ]
                         .join('\n')

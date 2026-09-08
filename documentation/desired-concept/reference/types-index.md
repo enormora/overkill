@@ -217,9 +217,9 @@ type FailedCheckBase = {
     readonly diff: Diff | null;
     readonly expected: SerializedValue;
     readonly id: string;
-    readonly location: SourceLocation;
     readonly path: ReadonlyArray<DiffPathSegment>;
     readonly source: 'assert' | 'require';
+    readonly sourceLocations: NonEmptyReadonlyArray<SourceLocation>;
     readonly summary: string;
 };
 
