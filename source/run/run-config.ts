@@ -8,6 +8,8 @@ import type { DefinedReporter } from '../engine/reporter.ts';
 import {
     projectConfigSchema,
     type RunProjectConfig as ParsedRunProjectConfig,
+    type RunProjectIntegrationExecution as ParsedRunProjectIntegrationExecution,
+    type RunProjectIntegrationProfileConfig as ParsedRunProjectIntegrationProfileConfig,
     type RunProjectMeasuredResourceUsage as ParsedRunProjectMeasuredResourceUsage,
     type RunProjectMicrotestExecution as ParsedRunProjectMicrotestExecution,
     type RunProjectMicrotestProfileConfig as ParsedRunProjectMicrotestProfileConfig,
@@ -21,6 +23,8 @@ import {
 } from './run-config-schema.ts';
 import {
     invalidRunProfileNameMessage,
+    type RunIntegrationExecution,
+    type RunIntegrationProfileConfig,
     type RunLoaderConfig,
     type RunMicrotestExecution,
     type RunMicrotestProfileConfig,
@@ -37,6 +41,8 @@ import {
 } from './profile-file-glob.ts';
 
 export type RunProjectConfig = ParsedRunProjectConfig;
+export type RunProjectIntegrationExecution = ParsedRunProjectIntegrationExecution;
+export type RunProjectIntegrationProfileConfig = ParsedRunProjectIntegrationProfileConfig;
 export type RunProjectMeasuredResourceUsage = ParsedRunProjectMeasuredResourceUsage;
 export type RunProjectMicrotestExecution = ParsedRunProjectMicrotestExecution;
 export type RunProjectMicrotestProfileConfig = ParsedRunProjectMicrotestProfileConfig;
@@ -53,6 +59,9 @@ const defaultResourceUsageSamplingIntervalMilliseconds = 100;
 const defaultMicrotestCollectionTimeoutMilliseconds = 1000;
 const defaultMicrotestHardTimeoutMilliseconds = 1000;
 const defaultMicrotestTimeoutMilliseconds = 500;
+const defaultIntegrationCollectionTimeoutMilliseconds = 5000;
+const defaultIntegrationHardTimeoutMilliseconds = 7000;
+const defaultIntegrationTimeoutMilliseconds = 5000;
 
 export type LoadedRunConfig = {
     readonly configPath: string | null;
@@ -97,7 +106,18 @@ const defaultTimeoutPolicy: RunTimeoutPolicy = {
     softMilliseconds: defaultMicrotestTimeoutMilliseconds
 };
 
+const defaultIntegrationTimeoutPolicy: RunTimeoutPolicy = {
+    collectionMilliseconds: defaultIntegrationCollectionTimeoutMilliseconds,
+    hardMilliseconds: defaultIntegrationHardTimeoutMilliseconds,
+    softMilliseconds: defaultIntegrationTimeoutMilliseconds
+};
+
 const defaultMicrotestExecution: RunMicrotestExecution = {
+    processModel: 'supervised-process',
+    scheduling: 'concurrent'
+};
+
+const defaultIntegrationExecution: RunIntegrationExecution = {
     processModel: 'supervised-process',
     scheduling: 'concurrent'
 };
@@ -264,14 +284,14 @@ function timeoutValue(value: number | undefined, fallback: number): number {
     return value ?? fallback;
 }
 
-function normalizeTimeouts(timeouts: RunProjectTimeoutConfig | undefined): RunTimeoutPolicy {
+function normalizeTimeouts(
+    timeouts: RunProjectTimeoutConfig | undefined,
+    defaultPolicy: RunTimeoutPolicy
+): RunTimeoutPolicy {
     return {
-        collectionMilliseconds: timeoutValue(
-            timeouts?.collectionMilliseconds,
-            defaultTimeoutPolicy.collectionMilliseconds
-        ),
-        hardMilliseconds: timeoutValue(timeouts?.hardMilliseconds, defaultTimeoutPolicy.hardMilliseconds),
-        softMilliseconds: timeoutValue(timeouts?.softMilliseconds, defaultTimeoutPolicy.softMilliseconds)
+        collectionMilliseconds: timeoutValue(timeouts?.collectionMilliseconds, defaultPolicy.collectionMilliseconds),
+        hardMilliseconds: timeoutValue(timeouts?.hardMilliseconds, defaultPolicy.hardMilliseconds),
+        softMilliseconds: timeoutValue(timeouts?.softMilliseconds, defaultPolicy.softMilliseconds)
     };
 }
 
@@ -312,20 +332,39 @@ function normalizeProfileFiles(files: RunProjectProfileFiles | undefined): RunPr
     };
 }
 
-function normalizeExecution(execution: RunProjectMicrotestExecution | undefined): RunMicrotestExecution {
+function normalizeRequiredProfileFiles(files: RunProjectProfileFiles): RunProfileFiles {
+    const normalizedFiles = normalizeProfileFiles(files);
+
+    if (normalizedFiles === null) {
+        throw new RunConfigError('Integration profiles require files.');
+    }
+
+    return normalizedFiles;
+}
+
+function normalizeMicrotestExecution(execution: RunProjectMicrotestExecution | undefined): RunMicrotestExecution {
     return {
         processModel: execution?.processModel ?? defaultMicrotestExecution.processModel,
         scheduling: execution?.scheduling ?? defaultMicrotestExecution.scheduling
     };
 }
 
+function normalizeIntegrationExecution(
+    execution: RunProjectIntegrationExecution | undefined
+): RunIntegrationExecution {
+    return {
+        processModel: execution?.processModel ?? defaultIntegrationExecution.processModel,
+        scheduling: execution?.scheduling ?? defaultIntegrationExecution.scheduling
+    };
+}
+
 function normalizeMicrotestProfile(profile: RunProjectMicrotestProfileConfig): RunMicrotestProfileConfig {
-    const timeouts = normalizeTimeouts(profile.timeouts);
+    const timeouts = normalizeTimeouts(profile.timeouts, defaultTimeoutPolicy);
 
     assertValidTimeouts(timeouts);
 
     return {
-        execution: normalizeExecution(profile.execution),
+        execution: normalizeMicrotestExecution(profile.execution),
         files: normalizeProfileFiles(profile.files),
         reporters: normalizeReporters(profile.reporters),
         resourceUsage: normalizeResourceUsage(profile.resourceUsage),
@@ -334,14 +373,27 @@ function normalizeMicrotestProfile(profile: RunProjectMicrotestProfileConfig): R
     };
 }
 
-const profileNormalizers: Readonly<
-    Record<RunProjectProfileConfig['testFamily'], (profile: RunProjectProfileConfig) => RunProfileConfig>
-> = {
-    microtest: normalizeMicrotestProfile
-};
+function normalizeIntegrationProfile(profile: RunProjectIntegrationProfileConfig): RunIntegrationProfileConfig {
+    const timeouts = normalizeTimeouts(profile.timeouts, defaultIntegrationTimeoutPolicy);
+
+    assertValidTimeouts(timeouts);
+
+    return {
+        execution: normalizeIntegrationExecution(profile.execution),
+        files: normalizeRequiredProfileFiles(profile.files),
+        reporters: normalizeReporters(profile.reporters),
+        resourceUsage: normalizeResourceUsage(profile.resourceUsage),
+        testFamily: 'integration',
+        timeouts
+    };
+}
 
 function normalizeProfile(profile: RunProjectProfileConfig): RunProfileConfig {
-    return profileNormalizers[profile.testFamily](profile);
+    if (profile.testFamily === 'integration') {
+        return normalizeIntegrationProfile(profile);
+    }
+
+    return normalizeMicrotestProfile(profile);
 }
 
 function assertValidProfileName(profileName: string): void {

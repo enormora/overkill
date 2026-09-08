@@ -21,6 +21,7 @@ import {
     type CommandLineRunTestsRequest,
     type LoadedRunConfig,
     type RunProjectConfig,
+    type RunProjectIntegrationProfileConfig,
     type RunProjectMicrotestProfileConfig,
     type RunProjectProfileFiles,
     type RunProjectProfileConfig,
@@ -93,11 +94,18 @@ describe('@overkill-dev/run/command-line', function () {
     test('exposes typed runner profiles', function () {
         expect<RunProjectConfig['profiles']>().type.toBe<RunProjectProfilesConfig | undefined>();
         expect<RunProjectProfilesConfig[string]>().type.toBe<RunProjectProfileConfig>();
-        expect<RunProjectProfileConfig>().type.toBe<RunProjectMicrotestProfileConfig>();
-        expect<RunProjectProfileConfig>().type.not.toBeAssignableFrom<{
+        expect<RunProjectProfileConfig>().type.toBe<
+            RunProjectIntegrationProfileConfig | RunProjectMicrotestProfileConfig
+        >();
+        expect<RunProjectProfileConfig>().type.toBeAssignableFrom<{
             readonly execution: RunProjectMicrotestProfileConfig['execution'];
+            readonly testFamily: 'microtest';
         }>();
-        expect<RunProjectProfilesConfig['backend-http']>().type.toBe<RunProjectMicrotestProfileConfig>();
+        expect<RunProjectProfileConfig>().type.toBeAssignableFrom<{
+            readonly files: RunProjectProfileFiles;
+            readonly testFamily: 'integration';
+        }>();
+        expect<RunProjectProfilesConfig['backend-http']>().type.toBe<RunProjectProfileConfig>();
         expect<RunProjectMicrotestProfileConfig['files']>().type.toBe<RunProjectProfileFiles | undefined>();
         expect<RunProjectProfileFiles['include']>().type.toBe<readonly [string, ...string[]]>();
         expect<LoadedRunConfig['profiles']['backend-http']['resourceUsage']['measure']>().type.toBe<boolean>();

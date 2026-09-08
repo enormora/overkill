@@ -7,7 +7,7 @@ import type { DefinedOutputRenderer } from '../engine/reporter-output.ts';
 import { createDefaultDirectReporter } from './default-direct-reporter.ts';
 import type { LoadedRunConfig } from './run-config.ts';
 import type {
-    RunMicrotestProfileConfig,
+    RunProfileConfig,
     RunTestFamily
 } from './run-types.ts';
 
@@ -33,7 +33,7 @@ function stderrWarning(message: string): void {
 }
 
 export async function selectedReporters(
-    profile: RunMicrotestProfileConfig,
+    profile: RunProfileConfig,
     config: LoadedRunConfig,
     options: RunIfMainOptions | undefined
 ): Promise<readonly DefinedReporter[]> {
@@ -74,11 +74,11 @@ export function rootTitle(options: RunIfMainOptions | undefined): string {
     return options?.root?.title ?? process.cwd();
 }
 
-export function executionMode(profile: RunMicrotestProfileConfig): 'concurrent-in-process' | 'serial-in-process' {
+export function executionMode(profile: RunProfileConfig): 'concurrent-in-process' | 'serial-in-process' {
     return profile.execution.scheduling === 'concurrent' ? 'concurrent-in-process' : 'serial-in-process';
 }
 
-export function warnOnSupervisedDowngrade(profile: RunMicrotestProfileConfig): void {
+export function warnOnSupervisedDowngrade(profile: RunProfileConfig): void {
     if (profile.execution.processModel === 'supervised-process') {
         stderrWarning(supervisedDowngradeWarning);
     }

@@ -7,6 +7,8 @@ export type {
     LoadedRunConfig,
     RunConfigLoadRequest,
     RunProjectConfig,
+    RunProjectIntegrationExecution,
+    RunProjectIntegrationProfileConfig,
     RunProjectMeasuredResourceUsage,
     RunProjectMicrotestExecution,
     RunProjectMicrotestProfileConfig,

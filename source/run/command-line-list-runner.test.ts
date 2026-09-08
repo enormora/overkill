@@ -16,7 +16,7 @@ import {
 } from './command-line-runner.ts';
 import type { LoadedRunConfig } from './run-config.ts';
 import { RunCollectionError } from './run-errors.ts';
-import type { ResolvedRun, RunCommand, RunMicrotestProfileConfig, RunOrchestrator, RunSelection } from './run-types.ts';
+import type { ResolvedRun, RunCommand, RunProfileConfig, RunOrchestrator, RunSelection } from './run-types.ts';
 
 const plainOutputRenderer = defineOutputRenderer(function createPlainRuntimeOutputRenderer() {
     return {
@@ -95,7 +95,7 @@ function createPassingPlan(): TestPlan {
     });
 }
 
-function selectedProfile(command: RunCommand): RunMicrotestProfileConfig {
+function selectedProfile(command: RunCommand): RunProfileConfig {
     const profile = command.config.profiles[command.request.profile];
 
     if (profile === undefined) {

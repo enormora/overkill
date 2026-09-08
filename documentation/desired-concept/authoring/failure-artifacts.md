@@ -262,7 +262,13 @@ Default policy (covered in [Runtime Behavior](../architecture/runtime-behavior.m
   enables it
 - captured output is suppressed in default reporter for passing tests and
   printed for failing tests inline with the failure summary
-- captured data is preserved in the JSON event stream regardless of
+- case-scoped captured data is delivered with the test completion event;
+  run-scoped captured data is delivered through the final run result
+  available on the run completion event
+- captured data uses a JSON-safe UTF-8 text payload with byte length,
+  capture time, stream, and truncation metadata; future storage backends may
+  preserve exact bytes for richer artifact files
+- captured data is preserved in machine-readable reporting regardless of
   terminal rendering
 
 ## Diff Artifacts

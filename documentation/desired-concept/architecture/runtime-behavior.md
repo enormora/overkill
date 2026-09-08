@@ -29,7 +29,9 @@ Default policy:
 - same-process runs should not promise universal transparent capture of
   every stdout/stderr write path
 - captured output is preserved as a structured failure artifact (see
-  [Failure Artifacts](../authoring/failure-artifacts.md)) - typed as `{ stream: 'stdout' | 'stderr', chunks: ReadonlyArray<{ at: bigint; bytes: Uint8Array }> }`
+  [Failure Artifacts](../authoring/failure-artifacts.md)); the current
+  runner-facing payload uses JSON-safe UTF-8 text with byte length,
+  capture time, stream, and truncation metadata
 - in the default reporter, captured output is **suppressed** for passing
   tests and **printed** for failing tests immediately after the failure
   summary
@@ -43,8 +45,8 @@ Override surfaces:
 - instrumented profiles may observe `console.*` through Node diagnostics
   channels even in same-process runs
 - per-test metadata `{ capture: 'live' }` - opt out for one test
-- reporter-level configuration - choose to print captured output for passing
-  tests as well
+- reporter-level configuration, such as `createLineReporter({ verbose: true })`,
+  chooses to print captured output for passing tests as well
 
 When strict console diagnostics are enabled, `console.*` is a runtime policy
 violation. It is reported as a runner error with `runtime-policy` subtype and

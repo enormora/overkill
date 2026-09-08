@@ -7,8 +7,8 @@ import type {
     RunCommand,
     RunConfig,
     RunFacts,
-    RunMicrotestProfileConfig,
     RunOrchestratorDependencies,
+    RunProfileConfig,
     RunRequest,
     RunResourceBudgets,
     RunResourceUsagePolicy
@@ -77,7 +77,7 @@ function assertResourceBudgetOverridesAllowed(
     }
 }
 
-export function selectedProfile(request: RunRequest, config: RunConfig): RunMicrotestProfileConfig {
+export function selectedProfile(request: RunRequest, config: RunConfig): RunProfileConfig {
     const profile = config.profiles[request.profile];
 
     if (profile === undefined) {
@@ -89,7 +89,7 @@ export function selectedProfile(request: RunRequest, config: RunConfig): RunMicr
 
 export function resolveResourceUsagePolicy(
     request: RunRequest,
-    profile: RunMicrotestProfileConfig
+    profile: RunProfileConfig
 ): RunResourceUsagePolicy {
     const configuredPolicy = profile.resourceUsage;
     const measureResourceUsage = request.measureResourceUsage ?? configuredPolicy.measure;

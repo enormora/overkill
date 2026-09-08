@@ -6,7 +6,7 @@ import { testNode as runListRendererTestNode } from './run-list-renderer.test.ts
 import { testNode as runOrchestratorTestNode } from './run-orchestrator-suite.test.ts';
 import { testNode as runPlanningTestNode } from './run-planning-suite.test.ts';
 import { testNode as runIfMainTestNode } from './run-if-main-suite.test.ts';
-import { testNode as supervisedRunTestNode } from './supervised-run.test.ts';
+import { testNode as supervisedRunTestNode } from './supervised-run-suite.test.ts';
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],

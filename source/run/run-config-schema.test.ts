@@ -7,6 +7,8 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import {
+    integrationExecutionSchema,
+    integrationProfileSchema,
     microtestExecutionSchema,
     microtestProfileSchema,
     resourceBudgetsSchema,
@@ -179,6 +181,62 @@ export const testNode = createOverkillSuite({
                         assertValidationSuccess(scope, microtestExecutionSchema, { processModel, scheduling });
                     }
                 }
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'integration profile schema accepts supervised profiles with files',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const reporter = createInMemoryRealTimeReporter();
+
+                assertValidationSuccess(scope, integrationProfileSchema, {
+                    execution: {
+                        processModel: 'supervised-process',
+                        scheduling: 'serial'
+                    },
+                    files: {
+                        exclude: [ 'source/**/*.slow.test.ts' ],
+                        include: [ 'source/**/*.integration.test.ts' ]
+                    },
+                    reporters: [ reporter ],
+                    resourceUsage: { measure: false },
+                    testFamily: 'integration',
+                    timeouts: {
+                        collectionMilliseconds: 5,
+                        hardMilliseconds: 7,
+                        softMilliseconds: 6
+                    }
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'integration execution schema rejects in-process profiles',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const result = safeParse(integrationExecutionSchema, {
+                    processModel: 'in-process',
+                    scheduling: 'serial'
+                });
+
+                scope.assert.equal(result.success, false);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'integration profile schema rejects missing files',
+            metadata: {},
+            body(scope: OverkillScope) {
+                const result = safeParse(integrationProfileSchema, { testFamily: 'integration' });
+
+                scope.assert.equal(result.success, false);
 
                 return scope.assert.collect();
             }

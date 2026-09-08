@@ -323,6 +323,7 @@ export const testNode = createOverkillSuite({
                             attempt: 0,
                             case: { file: null, title: 'passes', params: null, suite: [] },
                             definitionLocations: [ { kind: 'unknown' as const } ],
+                            artifacts: [],
                             kind: 'test-end',
                             outcome: { kind: 'pass' },
                             suitePath: [],

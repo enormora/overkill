@@ -74,7 +74,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter prints nonzero inconclusive and crash counts in the run summary',
+            title: 'line reporter prints nonzero resource, inconclusive, and crash counts in the run summary',
             metadata: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
@@ -87,6 +87,7 @@ export const testNode = createOverkillSuite({
                         inconclusive: 1,
                         passed: 1,
                         planned: 4,
+                        resourceExhausted: 1,
                         skipped: 1
                     },
                     wallTimeMs: 15
@@ -96,7 +97,11 @@ export const testNode = createOverkillSuite({
 
                 scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
                     infoSymbol,
-                    '4 discovered, 4 planned, 5 executed (1 pass, 1 fail, 1 skip, 1 inconclusive, 1 crash) in 15 ms'
+                    [
+                        '4 discovered, 4 planned, 6 executed',
+                        '(1 pass, 1 fail, 1 skip, 1 inconclusive, 1 resource-exhausted, 1 crash) in 15 ms'
+                    ]
+                        .join(' ')
                 ]);
 
                 return scope.assert.collect();

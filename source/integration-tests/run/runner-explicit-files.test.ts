@@ -12,7 +12,14 @@ import { createLineReporter } from '../../packages/reporter-line/reporter-line.e
 import { runIfMain } from '../direct-launcher.test.ts';
 import type { DefinedReporter, Reporter } from '../../engine/reporter.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
-import type { RunCommand, RunConfig, RunProcessModel, RunRequest, RunScheduling } from '../../run/run-types.ts';
+import type {
+    RunCommand,
+    RunConfig,
+    RunMicrotestProfileConfig,
+    RunProcessModel,
+    RunRequest,
+    RunScheduling
+} from '../../run/run-types.ts';
 
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const duplicateFixtureAPath = 'source/integration-tests/run/fixtures/duplicate-a.test.ts';
@@ -42,7 +49,7 @@ const memoryReporter = defineReporter(function createMemoryReporter(): Reporter 
     };
 });
 
-function createDefaultMicrotestProfile(): RunConfig['profiles'][string] {
+function createDefaultMicrotestProfile(): RunMicrotestProfileConfig {
     return {
         execution: {
             processModel: 'supervised-process',

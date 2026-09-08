@@ -44,9 +44,9 @@ import type {
     RunCommand,
     RunConfig,
     RunMicrotestExecution,
-    RunMicrotestProfileConfig,
     RunOrchestrator,
     RunOrchestratorDependencies,
+    RunProfileConfig,
     RunRequest,
     RunResourceUsagePolicy
 } from './run-types.ts';
@@ -76,7 +76,7 @@ type CollectedResolvedRunInput = {
     readonly config: RunConfig;
     readonly dependencies: RunOrchestratorDependencies;
     readonly engine: RunCommand['engine'];
-    readonly profile: RunMicrotestProfileConfig;
+    readonly profile: RunProfileConfig;
     readonly projectRoot: string;
     readonly request: RunRequest;
 };
@@ -112,15 +112,26 @@ function supervisedEngine(command: RunCommand): Exclude<RunCommand['engine'], { 
     return command.engine;
 }
 
+function supervisedCapabilityRestrictions(
+    profile: RunProfileConfig,
+    command: RunCommand
+): SupervisedCommandBase['capabilityRestrictions'] {
+    if (profile.testFamily === 'integration') {
+        return { mode: 'disabled' };
+    }
+
+    return command.request.capabilityRestrictions;
+}
+
 function createSupervisedCommandBase(
     command: RunCommand,
-    profile: RunMicrotestProfileConfig,
+    profile: RunProfileConfig,
     files: ResolvedRunInput['files']
 ): SupervisedCommandBase {
     const resourceUsagePolicy = resolveResourceUsagePolicy(command.request, profile);
 
     return {
-        capabilityRestrictions: command.request.capabilityRestrictions,
+        capabilityRestrictions: supervisedCapabilityRestrictions(profile, command),
         collectionTimeoutMilliseconds: profile.timeouts.collectionMilliseconds,
         cwd: command.cwd,
         engine: supervisedEngine(command),
@@ -138,7 +149,7 @@ function createSupervisedCommandBase(
 
 function createSupervisedCollectCommand(
     command: RunCommand,
-    profile: RunMicrotestProfileConfig,
+    profile: RunProfileConfig,
     files: ResolvedRunInput['files']
 ): SupervisedCollectCommand {
     return {
@@ -149,7 +160,7 @@ function createSupervisedCollectCommand(
 
 function createSupervisedRunCommand(
     command: RunCommand,
-    profile: RunMicrotestProfileConfig,
+    profile: RunProfileConfig,
     files: ResolvedRunInput['files']
 ): SupervisedRunCommand {
     return {

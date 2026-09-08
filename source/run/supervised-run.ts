@@ -25,6 +25,7 @@ import { RunCollectionError } from './run-errors.ts';
 import {
     applyEvent,
     createHardTimeout,
+    effectiveSupervisedCapabilityRestrictions,
     createReporterDelivery,
     createReporterEventQueue,
     finishSupervisedRuntime,
@@ -103,7 +104,13 @@ function handleCollectionMessage(
 async function observeCollection(
     runtime: SupervisedCollectionRuntime<SupervisedCollectionResult | null>
 ): Promise<void> {
-    observeSupervisedChildOutput(runtime);
+    observeSupervisedChildOutput({
+        capabilityRestrictions: runtime.command.capabilityRestrictions,
+        child: runtime.child,
+        dependencies: runtime.dependencies,
+        state: runtime.state,
+        terminalFailure: runtime.terminalFailure
+    });
 
     return new Promise(function waitForCollectionChild(resolve) {
         const collectionTimeout = runtime.dependencies.wallClock.setTimeout(function killTimedOutCollection() {
@@ -270,7 +277,13 @@ function handleLiveMessage(
 }
 
 function observeLiveRun(command: SupervisedRunCommand, liveRun: SupervisedLiveRun): void {
-    observeSupervisedChildOutput(liveRun);
+    observeSupervisedChildOutput({
+        capabilityRestrictions: command.capabilityRestrictions,
+        child: liveRun.child,
+        dependencies: liveRun.dependencies,
+        state: liveRun.state,
+        terminalFailure: liveRun.terminalFailure
+    });
     liveRun.child.on('message', function receiveMessage(message: SupervisedChildMessage) {
         handleLiveMessage(message, command, liveRun);
     });
@@ -399,7 +412,7 @@ async function createRuntime(
     const collectedPlan = supervisedCollectedPlan(resolvedRun);
     const runtimeWithoutTimeout = {
         child: await startSupervisedChild({
-            capabilityRestrictions: resolvedRun.request.capabilityRestrictions,
+            capabilityRestrictions: effectiveSupervisedCapabilityRestrictions(resolvedRun),
             cwd: resolvedRun.cwd
         }, dependencies),
         collectedPlan: createStoredRunValue<CollectedRunPlan | null>(collectedPlan),

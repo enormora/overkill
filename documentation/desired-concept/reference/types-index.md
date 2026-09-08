@@ -68,12 +68,33 @@ type ArtifactSubtype =
     | 'log-capture'
     | 'trace';
 
+type ArtifactScope =
+    | { readonly kind: 'run'; }
+    | { readonly kind: 'case'; readonly case: CaseId; };
+
 type ArtifactId = {
-    readonly case: CaseId;
+    readonly scope: ArtifactScope;
     readonly runtime?: RuntimeId;
     readonly workload?: WorkloadId;
     readonly attempt?: AttemptId;
     readonly subtype: ArtifactSubtype;
+};
+
+type CapturedOutputArtifact = {
+    readonly id: ArtifactId & { readonly subtype: 'log-capture'; };
+    readonly source: 'boundary-captured' | 'instrumented';
+    readonly payload: {
+        readonly kind: 'captured-output';
+        readonly stream: 'stdout' | 'stderr';
+        readonly text: string;
+        readonly byteLength: number;
+        readonly capturedAtMilliseconds: number;
+        readonly truncated: boolean;
+    };
+    readonly attribution:
+        | { readonly confidence: 'active-case'; readonly activeCases: ReadonlyArray<CaseId>; }
+        | { readonly confidence: 'concurrent-active'; readonly activeCases: ReadonlyArray<CaseId>; }
+        | { readonly confidence: 'run-level'; readonly activeCases: readonly []; };
 };
 ```
 
@@ -1021,7 +1042,7 @@ type RunResult = {
     readonly bySuite: Record<string, { discovered: number; planned: number; executed: number; }>;
     readonly orphans: ReadonlyArray<{ file: string | null; name: string; kind: 'test' | 'suite' | 'table'; }>;
     readonly runnerErrors: ReadonlyArray<RunnerError>;
-    readonly artifacts: ReadonlyArray<ArtifactId>;
+    readonly artifacts: ReadonlyArray<ArtifactId | CapturedOutputArtifact>;
     readonly resourceUsage: RunResourceUsage | null;
     readonly wallTimeMs: number;
 };

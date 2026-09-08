@@ -47,7 +47,7 @@ export const testNode = createOverkillSuite({
                         'microtest'
                     ));
                 }, {
-                    message: 'Invalid run profile "microtest": testFamily must be "microtest".'
+                    message: 'Invalid run profile "microtest": testFamily must be "integration" or "microtest".'
                 });
 
                 return scope.assert.collect();
@@ -64,14 +64,14 @@ export const testNode = createOverkillSuite({
                             profiles: {
                                 backend: {
                                     ...defaultMicrotestProfile(),
-                                    testFamily: 'integration'
+                                    testFamily: 'property'
                                 } as unknown as RunConfig['profiles'][string]
                             }
                         }),
                         'backend'
                     ));
                 }, {
-                    message: 'Invalid run profile "backend": testFamily must be "microtest".'
+                    message: 'Invalid run profile "backend": testFamily must be "integration" or "microtest".'
                 });
 
                 return scope.assert.collect();

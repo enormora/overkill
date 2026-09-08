@@ -2,6 +2,8 @@ import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import type { DefinedReporter } from '../engine/reporter.ts';
 import type {
     RunConfig,
+    RunIntegrationExecution,
+    RunIntegrationProfileConfig,
     RunMicrotestExecution,
     RunMicrotestProfileConfig,
     RunProfileFiles,
@@ -25,10 +27,21 @@ type MicrotestProfileOverrides = {
     readonly timeouts?: Partial<RunTimeoutPolicy>;
 };
 
+type IntegrationProfileOverrides = {
+    readonly execution?: Partial<RunIntegrationExecution>;
+    readonly files?: RunProfileFiles;
+    readonly reporters?: readonly DefinedReporter[] | null;
+    readonly resourceUsage?: ResourceUsageOverrides;
+    readonly timeouts?: Partial<RunTimeoutPolicy>;
+};
+
 const defaultResourceUsageSamplingIntervalMilliseconds = 100;
 const defaultCollectionTimeoutMilliseconds = 1000;
 const defaultHardTimeoutMilliseconds = 1000;
 const defaultSoftTimeoutMilliseconds = 500;
+const defaultIntegrationCollectionTimeoutMilliseconds = 5000;
+const defaultIntegrationHardTimeoutMilliseconds = 7000;
+const defaultIntegrationSoftTimeoutMilliseconds = 5000;
 
 const defaultResourceBudgets: RunResourceBudgets = {
     activeResourceCount: null,
@@ -70,6 +83,15 @@ function defaultMicrotestExecution(overrides: Partial<RunMicrotestExecution> = {
     };
 }
 
+function defaultIntegrationExecution(overrides: Partial<RunIntegrationExecution> = {}): RunIntegrationExecution {
+    const processModel = overrides.processModel ?? 'supervised-process';
+
+    return {
+        processModel,
+        scheduling: overrides.scheduling ?? 'concurrent'
+    };
+}
+
 export function defaultMicrotestProfile(
     overrides: MicrotestProfileOverrides = {}
 ): RunMicrotestProfileConfig {
@@ -80,6 +102,27 @@ export function defaultMicrotestProfile(
         resourceUsage: defaultRunResourceUsagePolicy(overrides.resourceUsage),
         testFamily: 'microtest',
         timeouts: defaultRunTimeoutPolicy(overrides.timeouts)
+    };
+}
+
+export function defaultIntegrationProfile(
+    overrides: IntegrationProfileOverrides
+): RunIntegrationProfileConfig {
+    return {
+        execution: defaultIntegrationExecution(overrides.execution),
+        files: overrides.files ?? {
+            exclude: [],
+            include: [ 'source/**/*.integration.test.ts' ]
+        },
+        reporters: overrides.reporters ?? null,
+        resourceUsage: defaultRunResourceUsagePolicy(overrides.resourceUsage),
+        testFamily: 'integration',
+        timeouts: defaultRunTimeoutPolicy({
+            collectionMilliseconds: defaultIntegrationCollectionTimeoutMilliseconds,
+            hardMilliseconds: defaultIntegrationHardTimeoutMilliseconds,
+            softMilliseconds: defaultIntegrationSoftTimeoutMilliseconds,
+            ...overrides.timeouts
+        })
     };
 }
 

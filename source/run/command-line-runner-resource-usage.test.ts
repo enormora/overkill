@@ -13,7 +13,7 @@ import {
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createCommandLineRunner, type CommandLineRunnerDependencies } from './command-line-runner.ts';
 import type { LoadedRunConfig } from './run-config.ts';
-import type { RunCommand, RunMicrotestProfileConfig, RunOrchestrator, RunRequest } from './run-types.ts';
+import type { RunCommand, RunProfileConfig, RunOrchestrator, RunRequest } from './run-types.ts';
 
 type RecordedRunCommands = {
     readonly first: () => RunCommand | undefined;
@@ -52,7 +52,7 @@ function defaultLoadedConfig(): LoadedRunConfig {
     };
 }
 
-function selectedProfile(command: RunCommand): RunMicrotestProfileConfig {
+function selectedProfile(command: RunCommand): RunProfileConfig {
     const profile = command.config.profiles[command.request.profile];
 
     if (profile === undefined) {

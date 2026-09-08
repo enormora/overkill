@@ -97,7 +97,7 @@ type OrphanedNodeOverrides = Partial<OrphanedNode>;
 type RunnerErrorOverrides = Partial<RunnerError>;
 
 type RunResultOverrides = {
-    readonly artifacts?: readonly string[];
+    readonly artifacts?: RunResult['artifacts'];
     readonly bySuite?: Readonly<Record<string, SuiteRunCounts>>;
     readonly orphans?: readonly OrphanedNodeOverrides[];
     readonly perTest?: readonly PerTestResultOverrides[];

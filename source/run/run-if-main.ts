@@ -19,10 +19,7 @@ import {
     warnOnSupervisedDowngrade,
     type RunIfMainOptions
 } from './run-if-main-options.ts';
-import {
-    resolveDirectProfile,
-    type DirectProfileContext
-} from './run-if-main-profile.ts';
+import { resolveDirectProfile, type DirectProfileContext } from './run-if-main-profile.ts';
 
 export type RunIfMain = (
     meta: Readonly<ImportMeta>,
@@ -46,8 +43,10 @@ async function createDirectRunContext(
     testNode: TestNode,
     options: RunIfMainOptions | undefined
 ): Promise<DirectRunContext> {
+    const context = await resolveDirectProfile(meta, process.cwd());
+
     return {
-        ...await resolveDirectProfile(meta, process.cwd()),
+        ...context,
         options,
         testNode
     };

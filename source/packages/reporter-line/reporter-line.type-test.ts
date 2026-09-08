@@ -5,5 +5,6 @@ import { createLineReporter } from './reporter-line.entry-point.ts';
 describe('createLineReporter', function () {
     test('returns the public real-time reporter contract', function () {
         expect(createLineReporter()).type.toBe<DefinedReporter<RealTimeReporter>>();
+        expect(createLineReporter({ verbose: true })).type.toBe<DefinedReporter<RealTimeReporter>>();
     });
 });

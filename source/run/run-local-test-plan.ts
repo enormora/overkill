@@ -4,11 +4,11 @@ import { RunCollectionError } from './run-errors.ts';
 import { resolveRunEngine } from './run-engine-selection.ts';
 import { createRunTestPlanFromFiles } from './run-test-plan.ts';
 import type { DiscoveredRunFile } from './run-discovery.ts';
-import type { RunCommand, RunMicrotestProfileConfig, RunOrchestratorDependencies } from './run-types.ts';
+import type { RunCommand, RunOrchestratorDependencies, RunProfileConfig } from './run-types.ts';
 
 async function createTestPlan(
     command: RunCommand,
-    profile: RunMicrotestProfileConfig,
+    profile: RunProfileConfig,
     files: NonEmptyReadonlyArray<DiscoveredRunFile>,
     dependencies: RunOrchestratorDependencies
 ): Promise<TestPlan> {
@@ -19,7 +19,7 @@ async function createTestPlan(
 
 export async function createLocalTestPlan(
     command: RunCommand,
-    profile: RunMicrotestProfileConfig,
+    profile: RunProfileConfig,
     files: NonEmptyReadonlyArray<DiscoveredRunFile>,
     dependencies: RunOrchestratorDependencies
 ): Promise<TestPlan> {

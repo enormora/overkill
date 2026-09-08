@@ -136,7 +136,7 @@ export type RunResourceBudgets = {
 const runProfileNamePattern = /^[A-Za-z0-9._-]+$/u;
 const reservedBenchmarkProfileName = 'benchmark';
 
-export type RunTestFamily = 'microtest';
+export type RunTestFamily = 'integration' | 'microtest';
 
 export type RunProcessModel = 'in-process' | 'supervised-process';
 
@@ -144,6 +144,11 @@ export type RunScheduling = 'concurrent' | 'serial';
 
 export type RunMicrotestExecution = {
     readonly processModel: RunProcessModel;
+    readonly scheduling: RunScheduling;
+};
+
+export type RunIntegrationExecution = {
+    readonly processModel: 'supervised-process';
     readonly scheduling: RunScheduling;
 };
 
@@ -173,11 +178,16 @@ export type RunMicrotestProfileConfig = {
     readonly timeouts: RunTimeoutPolicy;
 };
 
-export type RunProfileConfig = Readonly<
-    {
-        [Property in keyof RunMicrotestProfileConfig]: RunMicrotestProfileConfig[Property];
-    }
->;
+export type RunIntegrationProfileConfig = {
+    readonly execution: RunIntegrationExecution;
+    readonly files: RunProfileFiles;
+    readonly reporters: RunReporters | null;
+    readonly resourceUsage: RunResourceUsagePolicy;
+    readonly testFamily: 'integration';
+    readonly timeouts: RunTimeoutPolicy;
+};
+
+export type RunProfileConfig = RunIntegrationProfileConfig | RunMicrotestProfileConfig;
 
 export type RunProfilesConfig = Readonly<Record<string, RunProfileConfig>>;
 

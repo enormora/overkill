@@ -77,6 +77,13 @@ export const microtestExecutionSchema = z.discriminatedUnion('processModel', [
         .readonly()
 ]);
 
+export const integrationExecutionSchema = z
+    .strictObject({
+        processModel: z.literal('supervised-process'),
+        scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ]))
+    })
+    .readonly();
+
 export const microtestProfileSchema = z
     .strictObject({
         execution: z.optional(microtestExecutionSchema),
@@ -88,7 +95,19 @@ export const microtestProfileSchema = z
     })
     .readonly();
 
+export const integrationProfileSchema = z
+    .strictObject({
+        execution: z.optional(integrationExecutionSchema),
+        files: profileFilesSchema,
+        reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
+        resourceUsage: z.optional(resourceUsageSchema),
+        testFamily: z.literal('integration'),
+        timeouts: z.optional(timeoutSchema)
+    })
+    .readonly();
+
 const profileSchema = z.discriminatedUnion('testFamily', [
+    integrationProfileSchema,
     microtestProfileSchema
 ]);
 
@@ -110,6 +129,8 @@ export type RunProjectMeasuredResourceUsage = z.infer<typeof measuredResourceUsa
 export type RunProjectUnmeasuredResourceUsage = z.infer<typeof unmeasuredResourceUsageSchema>;
 export type RunProjectResourceUsageConfig = z.infer<typeof resourceUsageSchema>;
 export type RunProjectTimeoutConfig = z.infer<typeof timeoutSchema>;
+export type RunProjectIntegrationExecution = z.infer<typeof integrationExecutionSchema>;
+export type RunProjectIntegrationProfileConfig = z.infer<typeof integrationProfileSchema>;
 export type RunProjectMicrotestExecution = z.infer<typeof microtestExecutionSchema>;
 export type RunProjectMicrotestProfileConfig = z.infer<typeof microtestProfileSchema>;
 export type RunProjectProfileConfig = z.infer<typeof profileSchema>;

@@ -7,7 +7,14 @@ import {
     type RenderedSourceLocations,
     type ReportingContext
 } from '../engine/reporting-context.ts';
-import type { FailOutcome, OrphanedNode, RunResult, TestOutcome, TestVerdict } from '../engine/run-result.ts';
+import type {
+    FailOutcome,
+    OrphanedNode,
+    RunArtifact,
+    RunResult,
+    TestOutcome,
+    TestVerdict
+} from '../engine/run-result.ts';
 import { formatFailure } from './line-failure-rendering.ts';
 import { createTerminalLineLogger, type TerminalLineLogger } from './terminal.ts';
 
@@ -17,6 +24,7 @@ const infoSymbol = colors.cyan(figures.info);
 
 export type LineReporterDependencies = {
     readonly stdoutConsole: Pick<typeof console, 'log'>;
+    readonly verbose: boolean;
 };
 
 function indent(depth: number): string {
@@ -138,8 +146,61 @@ function logOrphans(
     }
 }
 
+function outputArtifactLines(artifact: RunArtifact): readonly string[] {
+    const suffix = artifact.payload.truncated ? ' truncated' : '';
+    const header = `${artifact.payload.stream}${suffix}:`;
+    const textLines = artifact.payload.text.length === 0 ? [] : artifact.payload.text.replace(/\n$/u, '').split('\n');
+
+    return [ header, ...textLines ];
+}
+
+function logOutputArtifacts(
+    terminal: TerminalLineLogger,
+    suiteDepth: number,
+    artifacts: readonly RunArtifact[]
+): void {
+    for (const artifact of artifacts) {
+        for (const line of outputArtifactLines(artifact)) {
+            terminal.line(`${indent(suiteDepth + 1)}${line}`);
+        }
+    }
+}
+
+function shouldLogTestArtifacts(
+    event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>,
+    verbose: boolean
+): boolean {
+    return event.verdict !== 'pass' || verbose;
+}
+
+function failureLocation(
+    event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>,
+    definitionLocations: RenderedSourceLocations
+): string {
+    if (event.outcome?.kind !== 'fail' || definitionLocations.primary === null) {
+        return '';
+    }
+
+    return ` (${definitionLocations.primary})`;
+}
+
+function nonGreenRun(result: RunResult): boolean {
+    return result.runnerErrors.length > 0 ||
+        result.summary.crashed > 0 ||
+        result.summary.failed > 0 ||
+        result.summary.inconclusive > 0 ||
+        result.summary.resourceExhausted > 0 ||
+        result.summary.runtimePolicy > 0;
+}
+
+function runArtifacts(result: RunResult): readonly RunArtifact[] {
+    return result.artifacts.filter(function isRunArtifact(artifact) {
+        return artifact.id.scope.kind === 'run';
+    });
+}
+
 export function createLineReporter(dependencies: LineReporterDependencies): DefinedReporter<RealTimeReporter> {
-    const { stdoutConsole } = dependencies;
+    const { stdoutConsole, verbose } = dependencies;
     return defineReporter(function createLineRuntimeReporter(context) {
         const terminal = createTerminalLineLogger({ stdoutConsole });
         let suiteDepth = 0;
@@ -163,12 +224,12 @@ export function createLineReporter(dependencies: LineReporterDependencies): Defi
                 ? formatTerminalTestResult(event.case, event.verdict, event.wallTimeMs)
                 : formatTestResult(event.case, event.outcome, event.wallTimeMs);
             const definitionLocations = formatDefinitionLocations(event.definitionLocations, context);
-            const location = event.outcome?.kind === 'fail' && definitionLocations.primary !== null
-                ? ` (${definitionLocations.primary})`
-                : '';
 
-            terminal.line(symbol, `${indent(suiteDepth)}${message}${location}`);
+            terminal.line(symbol, `${indent(suiteDepth)}${message}${failureLocation(event, definitionLocations)}`);
             logFailureDetails(event, definitionLocations);
+            if (shouldLogTestArtifacts(event, verbose)) {
+                logOutputArtifacts(terminal, suiteDepth, event.artifacts);
+            }
         }
 
         function logSuiteStart(event: Extract<ReporterEvent, { readonly kind: 'suite-start'; }>): void {
@@ -198,6 +259,9 @@ export function createLineReporter(dependencies: LineReporterDependencies): Defi
 
             async onFinish(finalResult) {
                 logSummary(terminal, finalResult);
+                if (nonGreenRun(finalResult) || verbose) {
+                    logOutputArtifacts(terminal, 0, runArtifacts(finalResult));
+                }
                 logOrphans(terminal, finalResult.orphans, context);
             }
         };

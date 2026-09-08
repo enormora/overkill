@@ -125,6 +125,36 @@ export type PerTestResult = {
     readonly verdict: TestVerdict;
 };
 
+export type RunArtifactScope = {
+    readonly activeCases: readonly CaseId[];
+    readonly case: CaseId;
+    readonly confidence: 'active-case' | 'concurrent-active';
+    readonly kind: 'case';
+} | {
+    readonly kind: 'run';
+};
+
+export type RunArtifactId = {
+    readonly scope: RunArtifactScope;
+    readonly sequence: number;
+    readonly subtype: 'log-capture';
+};
+
+export type CapturedOutputArtifactPayload = {
+    readonly byteLength: number;
+    readonly capturedAtMilliseconds: number;
+    readonly kind: 'captured-output';
+    readonly stream: 'stderr' | 'stdout';
+    readonly text: string;
+    readonly truncated: boolean;
+};
+
+export type RunArtifact = {
+    readonly id: RunArtifactId;
+    readonly payload: CapturedOutputArtifactPayload;
+    readonly source: 'boundary-captured';
+};
+
 export type SuiteRunCounts = {
     readonly discovered: number;
     readonly executed: number;
@@ -163,7 +193,7 @@ export type OrphanedNode = {
 };
 
 export type RunResult = {
-    readonly artifacts: readonly string[];
+    readonly artifacts: readonly RunArtifact[];
     readonly bySuite: Readonly<Record<string, SuiteRunCounts>>;
     readonly orphans: readonly OrphanedNode[];
     readonly perTest: readonly PerTestResult[];

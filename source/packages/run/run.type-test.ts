@@ -22,6 +22,7 @@ import {
     type RunIfMainOptions,
     type RunIfMainRootOptions,
     type runIfMain,
+    type RunIntegrationProfileConfig,
     type RunSelection,
     type RunMicrotestProfileConfig,
     type RunOrchestrator,
@@ -29,6 +30,7 @@ import {
     type RunProfileConfig,
     type RunProfileFiles,
     type RunProjectConfig,
+    type RunProjectIntegrationProfileConfig,
     type RunProjectProfileFiles,
     type RunProjectMicrotestProfileConfig,
     type RunProjectProfileConfig,
@@ -36,6 +38,7 @@ import {
     type RunResourceUsagePolicy,
     type RunRequest,
     type RunScheduling,
+    type RunTestFamily,
     type SerializedValue
 } from './run.entry-point.ts';
 
@@ -118,7 +121,7 @@ describe('@overkill-dev/run', function () {
         expect<RunExecutionFacts['profile']>().type.toBe<string>();
         expect<RunExecutionFacts['resourceUsagePolicy']>().type.toBe<RunResourceUsagePolicy>();
         expect<RunExecutionFacts['scheduling']>().type.toBe<RunScheduling>();
-        expect<RunExecutionFacts['testFamily']>().type.toBe<'microtest'>();
+        expect<RunExecutionFacts['testFamily']>().type.toBe<RunTestFamily>();
         expect<RunFacts['cases'][number]['metadata']>().type.toBe<SerializedValue>();
         expect<RunFacts['reproducibility']['selection']>().type.toBe<RunSelection>();
         expect<RunFacts>().type.toBeAssignableTo<Readonly<Record<string, unknown>>>();
@@ -136,8 +139,8 @@ describe('@overkill-dev/run', function () {
         >();
         expect<RunConfig['outputRenderer']>().type.toBe<DefinedOutputRenderer>();
         expect<RunConfig['profiles'][string]>().type.toBe<RunProfileConfig>();
-        expect<RunProfileConfig>().type.toBe<RunMicrotestProfileConfig>();
-        expect<RunConfig['profiles']['backend-http']>().type.toBe<RunMicrotestProfileConfig>();
+        expect<RunProfileConfig>().type.toBe<RunIntegrationProfileConfig | RunMicrotestProfileConfig>();
+        expect<RunConfig['profiles']['backend-http']>().type.toBe<RunProfileConfig>();
         expect<RunConfig['reporters']>().type.toBe<readonly DefinedReporter[]>();
         expect<keyof RunResourceBudgets>().type.toBe<
             'activeResourceCount' | 'javaScriptEngineHeapBytes' | 'residentSetBytes' | 'residentSetGrowthBytesPerSecond'
@@ -149,8 +152,10 @@ describe('@overkill-dev/run', function () {
 
     test('exposes profile file discovery types', function () {
         expect<RunMicrotestProfileConfig['files']>().type.toBe<RunProfileFiles | null>();
+        expect<RunIntegrationProfileConfig['files']>().type.toBe<RunProfileFiles>();
         expect<RunProfileFiles['include']>().type.toBe<readonly [string, ...string[]]>();
         expect<RunProjectMicrotestProfileConfig['files']>().type.toBe<RunProjectProfileFiles | undefined>();
+        expect<RunProjectIntegrationProfileConfig['files']>().type.toBe<RunProjectProfileFiles>();
         expect<RunProjectProfileFiles['include']>().type.toBe<readonly [string, ...string[]]>();
         expect<RunProjectProfileFiles['exclude']>().type.toBe<readonly string[] | undefined>();
     });
@@ -164,11 +169,17 @@ describe('@overkill-dev/run', function () {
         expect<RunProjectConfig['reporters']>().type.toBe<
             readonly [DefinedReporter, ...DefinedReporter[]] | undefined
         >();
-        expect<RunProjectProfileConfig>().type.toBe<RunProjectMicrotestProfileConfig>();
-        expect<RunProjectProfileConfig>().type.not.toBeAssignableFrom<{
+        expect<RunProjectProfileConfig>().type.toBe<
+            RunProjectIntegrationProfileConfig | RunProjectMicrotestProfileConfig
+        >();
+        expect<RunProjectProfileConfig>().type.toBeAssignableFrom<{
             readonly execution: RunProjectMicrotestProfileConfig['execution'];
+            readonly testFamily: 'microtest';
         }>();
-        expect<RunProjectProfileConfig>().type.not.toBeAssignableFrom<{ readonly testFamily: 'integration'; }>();
+        expect<RunProjectProfileConfig>().type.toBeAssignableFrom<{
+            readonly files: RunProjectProfileFiles;
+            readonly testFamily: 'integration';
+        }>();
         expect(new RunConfigError('Invalid config.')).type.toBe<RunConfigError>();
     });
 });
