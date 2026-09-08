@@ -89,11 +89,16 @@ test('passes dry-run by default', async (scope) => {
 This pattern is common enough to justify first-party support:
 
 - default doubles
-- sparse override support
+- exact sparse override support
 - returned subject plus handles
 - interaction assertions on the handles
 
 That is broad enough to be a first-party concept rather than a local style.
+
+Object-form overrides replace final part values, not factories. When a part
+is overridden, its default factory is not called for that `create()` call.
+Object-form part factories are ordinary value factories; promise values are
+not awaited by the harness helper.
 
 ### Advanced Shape
 
@@ -103,7 +108,9 @@ that need richer setup, React render helpers, or async assembly.
 Example direction:
 
 ```ts
-const renderAccountPage = defineHarness(async (overrides) => {
+const renderAccountPage = defineHarness(async (overrides: {
+    readonly loadAccount?: () => Promise<Account>;
+}) => {
     const loadAccount = overrides.loadAccount ?? testDouble.resolves<() => Promise<Account>>(account);
     const rendered = await render(<AccountPage loadAccount={loadAccount} />);
 
@@ -118,6 +125,7 @@ The important part is not the exact overload list. The important part is:
 
 - object form for common dependency harnesses
 - function form for advanced or async harnesses
+- sparse overrides checked by TypeScript
 - no hidden container behavior
 
 ## Interaction Transcripts

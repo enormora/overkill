@@ -11,6 +11,7 @@ Current root runtime exports:
 - `test`
 - `suite`
 - `table`
+- `defineHarness`
 - `defineMacro`
 - `defineParameterizedTestBody`
 - `doubleUsage`
@@ -98,6 +99,38 @@ export const testNode = suite({
 body receives the original row value as `scope.parameters`; default row titles
 are `case 1`, `case 2`, and so on. Reachable tables must contain at least two
 rows.
+
+`defineHarness` creates reusable test-side harness constructors:
+
+```ts
+const userHarness = defineHarness({
+    loadUser: () => testDouble.resolves<() => Promise<User>>(user)
+}, (parts) => {
+    return {
+        subject: createUserService({ loadUser: parts.loadUser }),
+        ...parts
+    };
+});
+
+const harness = userHarness.create();
+```
+
+Object-form part factories run fresh for each `create()` call. Sparse
+overrides replace final part values; overridden factories are not called.
+Function-form harnesses support richer sync or async setup:
+
+```ts
+const renderUser = defineHarness(async (overrides: {
+    readonly loadUser?: () => Promise<User>;
+}) => {
+    const loadUser = overrides.loadUser ?? testDouble.resolves<() => Promise<User>>(user);
+
+    return {
+        loadUser,
+        rendered: await render(<UserPage loadUser={loadUser} />)
+    };
+});
+```
 
 `defineMacro` preserves source locations for reusable test-node factories:
 

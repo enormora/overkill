@@ -32,6 +32,16 @@ import {
     type TestFacadeDefinition
 } from './authoring-metadata.ts';
 
+export { defineHarness } from './harness-authoring.ts';
+export type {
+    DefinedHarness,
+    ExactHarnessOverrides,
+    HarnessOverrides,
+    HarnessPartFactories,
+    HarnessPartFactory,
+    HarnessParts
+} from './harness-authoring.ts';
+
 export {
     doubleUsage,
     rule,

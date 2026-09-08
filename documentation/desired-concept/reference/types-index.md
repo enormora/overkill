@@ -574,6 +574,38 @@ type TestFacade = {
 };
 
 declare function createTestFacade(definition: TestFacadeDefinition): TestFacade;
+
+type HarnessPartFactory<Part> = () => Part;
+
+type HarnessPartFactories = Readonly<Record<string, HarnessPartFactory<unknown>>>;
+
+type HarnessParts<Factories extends HarnessPartFactories> = {
+    readonly [PartName in keyof Factories]: ReturnType<Factories[PartName]>;
+};
+
+type HarnessOverrides<Parts extends object> = {
+    readonly [PartName in keyof Parts]?: Parts[PartName];
+};
+
+type ExactHarnessOverrides<Candidate extends object, Shape extends object> = Candidate & {
+    readonly [PartName in Exclude<keyof Candidate, keyof Shape>]: never;
+};
+
+type DefinedHarness<OverrideShape extends object, CreatedHarness> = {
+    readonly create: {
+        (): CreatedHarness;
+        <Candidate extends OverrideShape>(overrides: ExactHarnessOverrides<Candidate, OverrideShape>): CreatedHarness;
+    };
+};
+
+declare function defineHarness<OverrideShape extends object, CreatedHarness>(
+    factory: (overrides: OverrideShape) => CreatedHarness,
+): DefinedHarness<OverrideShape, CreatedHarness>;
+
+declare function defineHarness<Factories extends HarnessPartFactories, CreatedHarness>(
+    partFactories: Factories,
+    assemble: (parts: HarnessParts<Factories>) => CreatedHarness,
+): DefinedHarness<HarnessOverrides<HarnessParts<Factories>>, CreatedHarness>;
 ```
 
 Canonical: [Assertions And Results](../authoring/assertions-and-results.md).
