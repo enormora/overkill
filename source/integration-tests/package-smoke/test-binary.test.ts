@@ -6,6 +6,16 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createSuite, createTestCase, type TestScope } from '@overkill-dev/engine';
 import { createLineReporter } from '@overkill-dev/reporter-line';
 import { runIfMain } from './direct-launcher.test.ts';
+import {
+    authoringSmokeScript,
+    expectedRootImportOutput,
+    expectedRunConfigImportOutput,
+    expectedStandardSubpathImportOutput,
+    packageSmokeConfigScript,
+    rootImportScript,
+    runConfigImportScript,
+    standardSubpathImportScript
+} from './test-binary-scripts.ts';
 
 type PackageJson = {
     readonly bin: unknown;
@@ -33,194 +43,6 @@ const testPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/test
 const runPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/run');
 const packageSmokeConfigFile = 'overkill.config.js';
 const authoringSmokeFile = 'authoring-smoke.test.mjs';
-const packageSmokeConfigScript = [
-    "import { defineConfig } from '@overkill-dev/test/config';",
-    "import { defineReporter } from '@overkill-dev/engine';",
-    '',
-    'const packageSmokeReporter = defineReporter(function createPackageSmokeReporter() {',
-    '    return {',
-    '        dispose: null,',
-    "        kind: 'real-time',",
-    "        name: 'package-smoke',",
-    '        onEvent() {},',
-    '        onFinish: null,',
-    "        sinks: [ { kind: 'memory' } ]",
-    '    };',
-    '});',
-    '',
-    'export const config = defineConfig({',
-    '    reporters: [ packageSmokeReporter ],',
-    '    profiles: {',
-    '        microtest: {',
-    "            testFamily: 'microtest',",
-    '            execution: {',
-    "                processModel: 'in-process',",
-    "                scheduling: 'serial'",
-    '            }',
-    '        }',
-    '    }',
-    '});',
-    ''
-]
-    .join('\n');
-const authoringSmokeScript = [
-    "import { suite, test } from '@overkill-dev/test';",
-    '',
-    "export const testNode = suite('consumer root', [",
-    '    suite({',
-    "        title: 'nested',",
-    "        metadata: { tags: [ 'smoke' ] },",
-    '        children: [',
-    '            test({',
-    "                title: 'passes',",
-    "                metadata: { tags: [ 'authoring' ] },",
-    '                body(scope) {',
-    '                    scope.assert.equal(1, 1);',
-    '                    return scope.assert.collect();',
-    '                }',
-    '            })',
-    '        ]',
-    '    })',
-    ']);',
-    ''
-]
-    .join('\n');
-const rootImportScript = [
-    "const testModule = await import('@overkill-dev/test');",
-    'console.log(JSON.stringify(Object.keys(testModule)));',
-    'console.log(String(testModule.defineConfig));',
-    'console.log(String(testModule.orchestrator));',
-    'console.log(String(testModule.createLineReporter));',
-    'console.log(typeof testModule.testDouble);',
-    'console.log(typeof testModule.doubleUsage.calledOnceWith);',
-    'console.log(typeof testModule.rule.sequence);',
-    'console.log(typeof testModule.testIterator);',
-    "const loadValue = testModule.testDouble.returns('value');",
-    "console.log(loadValue('id'));",
-    'console.log(loadValue.callCount);',
-    "const iterator = testModule.testIterator.yields([ 'created' ]);",
-    'console.log(iterator.next().value);',
-    'console.log(typeof testModule.test);',
-    'console.log(typeof testModule.suite);',
-    'const testNode = testModule.suite("smoke", [',
-    '    testModule.test("passes", (scope) => {',
-    '        scope.assert.true(true);',
-    '        return scope.assert.collect();',
-    '    })',
-    ']);',
-    'console.log(testNode.kind);',
-    'console.log(testNode.children[0].kind);',
-    'const tableNode = testModule.table({',
-    "    title: 'rows',",
-    '    cases: [1, 2],',
-    '    test(scope) {',
-    '        scope.assert.true(scope.parameters > 0);',
-    '        return scope.assert.collect();',
-    '    }',
-    '});',
-    'console.log(tableNode.kind);',
-    'console.log(tableNode.cases.length);'
-]
-    .join('\n');
-const standardSubpathImportScript = [
-    "const configModule = await import('@overkill-dev/test/config');",
-    "const reportersModule = await import('@overkill-dev/test/reporters');",
-    "const assertModule = await import('@overkill-dev/test/assert');",
-    "const benchModule = await import('@overkill-dev/test/bench');",
-    "const resourcesModule = await import('@overkill-dev/test/resources');",
-    "const baselinesModule = await import('@overkill-dev/test/baselines');",
-    'console.log(JSON.stringify(Object.keys(configModule)));',
-    'console.log(JSON.stringify(Object.keys(reportersModule)));',
-    'console.log(JSON.stringify(Object.keys(assertModule)));',
-    'console.log(configModule.defineConfig({ profiles: {} }).profiles === undefined);',
-    'const context = {',
-    '    relativizeLocationPath(location) {',
-    '        return location.file;',
-    '    }',
-    '};',
-    'console.log(reportersModule.createLineReporter()(context).name);',
-    'console.log(reportersModule.createBriefReporter()(context).name);',
-    'const dotReporter = reportersModule.createDotReporter()(context);',
-    'console.log(dotReporter.name);',
-    'if (dotReporter.dispose !== null) {',
-    '    dotReporter.dispose();',
-    '}',
-    'const githubActionsOutputRenderer = reportersModule.createGithubActionsOutputRenderer()(context);',
-    'console.log(githubActionsOutputRenderer.render({',
-    "    annotation: null, kind: 'stdout-line', role: 'primary', text: 'hello'",
-    '}));',
-    'console.log(typeof assertModule.defineCompositeAssertion);',
-    'for (const [name, module] of [',
-    "    [ 'bench', benchModule ],",
-    "    [ 'resources', resourcesModule ],",
-    "    [ 'baselines', baselinesModule ]",
-    ']) {',
-    '    console.log(JSON.stringify(Object.keys(module)));',
-    '    try {',
-    '        module.unavailable();',
-    '    } catch (error) {',
-    '        console.log(error instanceof Error ? error.message : String(error));',
-    '    }',
-    '}'
-]
-    .join('\n');
-const runConfigImportScript = [
-    "const configModule = await import('@overkill-dev/run/config');",
-    'console.log(JSON.stringify(Object.keys(configModule)));',
-    'console.log(configModule.defineConfig({ profiles: {} }).profiles === undefined);',
-    'console.log(typeof configModule.loadRunConfig);',
-    "console.log(new configModule.RunConfigError('Invalid config.').name);"
-]
-    .join('\n');
-const expectedRootImportOutput = [
-    '["createTestFacade","defineMacro","defineParameterizedTestBody","doubleUsage","rule","runIfMain","suite","table","test","testAsyncDisposable","testAsyncIterable","testAsyncIterator","testDisposable","testDouble","testIterable","testIterator"]',
-    'undefined',
-    'undefined',
-    'undefined',
-    'function',
-    'object',
-    'function',
-    'function',
-    'value',
-    '1',
-    'created',
-    'function',
-    'function',
-    'suite',
-    'test',
-    'table',
-    '2',
-    ''
-]
-    .join('\n');
-const expectedStandardSubpathImportOutput = [
-    '["defineConfig"]',
-    '["createBriefReporter","createDotReporter","createGithubActionsOutputRenderer","createLineReporter"]',
-    '["defineCompositeAssertion","defineNarrowingCompositeAssertion"]',
-    'false',
-    'line',
-    'brief',
-    'dot',
-    'hello',
-    'function',
-    '["unavailable"]',
-    'The @overkill-dev/test/bench subpath is reserved until its leaf package exists.',
-    '["unavailable"]',
-    'The @overkill-dev/test/resources subpath is reserved until its leaf package exists.',
-    '["unavailable"]',
-    'The @overkill-dev/test/baselines subpath is reserved until its leaf package exists.',
-    ''
-]
-    .join('\n');
-const expectedRunConfigImportOutput = [
-    '["RunConfigError","defineConfig","loadRunConfig"]',
-    'false',
-    'function',
-    'RunConfigError',
-    ''
-]
-    .join('\n');
-
 async function readPackageJson(packageFolder: string): Promise<PackageJson> {
     return JSON.parse(await fs.readFile(path.join(packageFolder, 'package.json'), 'utf8')) as PackageJson;
 }

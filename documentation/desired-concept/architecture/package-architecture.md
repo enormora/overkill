@@ -158,8 +158,8 @@ The preferred DX should be:
 When projects need different authoring surfaces for different suite
 families, the preferred pattern is a Playwright-style **test facade**:
 
-- `createTestFacade(...)` in project code composes one typed authoring
-  surface
+- `createTestFacade({ testFamily, metadata })` in project code composes one
+  typed authoring surface
 - custom assertion vocabulary is normally imported as assertion reference
   values, not registered into that facade
 - the project re-exports that facade through a stable alias such as
@@ -175,7 +175,10 @@ The facade surface itself should stay narrow and settled:
 - `createTestFacade(...)` configures authoring ergonomics only; it should
   not own assertion vocabulary registration
 - the returned facade re-exports the core authoring helpers:
-  `test`, `suite`, `table`, `defineMacro`, and `runIfMain`
+  `test`, `suite`, `table`, `defineMacro`, `defineParameterizedTestBody`,
+  and `runIfMain`
+- `testFamily` derives authored node `metadata.kind`; facade metadata is
+  limited to `tags` and `extra`
 - higher-layer helpers such as `property`, `browserBenchmark`, or
   `eslintRuleSuite` should be imported and re-exported alongside the
   facade from the project's stable alias, not injected into
