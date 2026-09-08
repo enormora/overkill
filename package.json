@@ -52,7 +52,7 @@
         "jscpd": "5.1.2",
         "knip": "6.34.0",
         "rust-just": "1.57.0",
-        "tstyche": "7.2.3",
+        "tstyche": "7.2.4",
         "typescript": "6.0.3"
     },
     "engines": {
