@@ -63,6 +63,7 @@ import type {
 import {
     type AuthoringMetadata,
     createTestFacade,
+    type defineHarness,
     defineMacro,
     defineParameterizedTestBody,
     type doubleUsage,
@@ -142,6 +143,7 @@ declare const outputRenderer: DefinedOutputRenderer;
 declare const reporter: DefinedReporter;
 type RootRuntimeExport = keyof {
     readonly createTestFacade: typeof createTestFacade;
+    readonly defineHarness: typeof defineHarness;
     readonly defineMacro: typeof defineMacro;
     readonly defineParameterizedTestBody: typeof defineParameterizedTestBody;
     readonly doubleUsage: typeof doubleUsage;
@@ -242,6 +244,7 @@ describe('@overkill-dev/test', function () {
         expect<RootRuntimeExport>().type.toBe<
             keyof {
                 readonly createTestFacade: true;
+                readonly defineHarness: true;
                 readonly defineMacro: true;
                 readonly defineParameterizedTestBody: true;
                 readonly doubleUsage: true;
@@ -354,6 +357,7 @@ describe('@overkill-dev/test authoring', function () {
 
         expect(facade).type.not.toHaveProperty('doubleUsage');
         expect(facade).type.not.toHaveProperty('testDouble');
+        expect(facade).type.not.toHaveProperty('defineHarness');
         expect(facade).type.not.toHaveProperty('defineCompositeAssertion');
     });
 

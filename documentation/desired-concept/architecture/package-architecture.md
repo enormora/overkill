@@ -128,7 +128,9 @@ It should expose authoring helpers plus lightweight doubles:
 - `test`
 - `suite`
 - `table`
+- `defineHarness`
 - `defineMacro`
+- `defineParameterizedTestBody`
 - `createTestFacade`
 - `runIfMain`
 - current lightweight doubles APIs and doubles assertion references:
@@ -177,6 +179,8 @@ The facade surface itself should stay narrow and settled:
 - the returned facade re-exports the core authoring helpers:
   `test`, `suite`, `table`, `defineMacro`, `defineParameterizedTestBody`,
   and `runIfMain`
+- engine-agnostic helpers such as `defineHarness` stay as ordinary root
+  imports and are not injected into `createTestFacade(...)`
 - `testFamily` derives authored node `metadata.kind`; facade metadata is
   limited to `tags` and `extra`
 - higher-layer helpers such as `property`, `browserBenchmark`, or

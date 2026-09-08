@@ -60,6 +60,10 @@ export const testNode = createOverkillSuite({
                     count: 2,
                     supported: true
                 });
+                scope.assert.deepEqual(collectionCount({ first: 1, second: 2 }, 10), {
+                    count: 2,
+                    supported: true
+                });
                 scope.assert.deepEqual(collectionCount(values(), 2), {
                     count: 2,
                     supported: true

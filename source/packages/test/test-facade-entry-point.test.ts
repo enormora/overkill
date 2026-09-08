@@ -203,6 +203,7 @@ export const testNode = createOverkillSuite({
                 ]);
                 scope.assert.equal(Object.hasOwn(facade, 'doubleUsage'), false);
                 scope.assert.equal(Object.hasOwn(facade, 'testDouble'), false);
+                scope.assert.equal(Object.hasOwn(facade, 'defineHarness'), false);
                 scope.assert.equal(Object.hasOwn(facade, 'defineCompositeAssertion'), false);
                 scope.assert.throws(function createFacadeWithoutDefinition() {
                     invokeCreateTestFacade();
