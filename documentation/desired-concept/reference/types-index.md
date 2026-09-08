@@ -42,6 +42,19 @@ type WorkloadId = {
     readonly params?: Record<string, string>;
 };
 
+type WorkId = {
+    readonly case: CaseId;
+    readonly runtime: RuntimeId | null;
+    readonly workload: WorkloadId | null;
+};
+
+type WorkUnitId = {
+    readonly mode: 'file' | 'case' | 'group';
+    readonly key: string;
+    readonly runtime: RuntimeId | null;
+    readonly workload: WorkloadId | null;
+};
+
 type AttemptId = { readonly index: number; }; // 0-indexed
 
 type ArtifactSubtype =
@@ -680,6 +693,14 @@ type BenchmarkProfileConfig = {
 type ProfileFiles = {
     readonly include: NonEmptyReadonlyArray<string>;
     readonly exclude: ReadonlyArray<string>;
+} | {
+    readonly sets: NonEmptyReadonlyArray<NamedFileSet>;
+};
+
+type NamedFileSet = {
+    readonly name: string;
+    readonly include: NonEmptyReadonlyArray<string>;
+    readonly exclude: ReadonlyArray<string>;
 };
 
 type MicrotestExecutionConfig = {
@@ -688,8 +709,33 @@ type MicrotestExecutionConfig = {
 };
 
 type IntegrationExecutionConfig = {
-    readonly processModel: 'process-per-file' | 'worker-pool' | 'supervised-process';
+    readonly processModel: 'worker-pool' | 'supervised-process';
     readonly scheduling: 'serial' | 'concurrent';
+    readonly workerLifecycle: 'reuse' | 'fresh-worker-per-unit';
+    readonly workDistribution: WorkDistribution;
+    readonly assignmentPolicy:
+        | 'stable'
+        | 'case-count-balanced'
+        | 'duration-history-balanced'
+        | 'dynamic-lease';
+};
+
+type WorkDistribution =
+    | { readonly mode: 'file'; }
+    | { readonly mode: 'case'; }
+    | {
+        readonly mode: 'group';
+        readonly groups: NonEmptyReadonlyArray<WorkGroup>;
+        readonly unmatched: 'reject' | 'file';
+    };
+
+type WorkGroup = {
+    readonly name: string;
+    readonly fileSets: NonEmptyReadonlyArray<string>;
+    readonly granularity: 'group' | 'file' | 'case';
+    readonly scheduling: 'profile-default' | 'serial' | 'concurrent';
+    readonly order: 'profile-default' | 'plan' | 'lexical' | 'seeded';
+    readonly workerLifecycle: 'profile-default' | 'reuse' | 'fresh-worker-per-unit';
 };
 
 type ResourceUsagePolicy = {
@@ -826,6 +872,7 @@ type RunFacts = {
         readonly capture: 'buffered' | 'live';
         readonly debug: { readonly mode: 'off' | 'all' | 'selected'; readonly selectors: ReadonlyArray<string>; };
         readonly order: 'plan' | 'seeded' | 'lexical';
+        readonly placementPlan: PlacementPlan | null;
         readonly processModel: string;
         readonly profile: ProfileName;
         readonly resourceUsagePolicy: ResourceUsagePolicy;
@@ -845,6 +892,62 @@ type RunCaseFacts = {
     readonly id: CaseId;
     readonly metadata: SerializedValue;
 };
+
+type WorkUnit = {
+    readonly id: WorkUnitId;
+    readonly work: NonEmptyReadonlyArray<WorkId>;
+    readonly group: string | null;
+};
+
+type PlacementPlan = {
+    readonly units: ReadonlyArray<WorkUnit>;
+    readonly lanes: ReadonlyArray<PlacementLane>;
+    readonly assignments: ReadonlyArray<PlacementAssignment>;
+};
+
+type PlacementLane = {
+    readonly id: string;
+    readonly executor: ExecutorDescriptor;
+};
+
+type ExecutorDescriptor = {
+    readonly id: string;
+    readonly kind: 'local-process' | 'browser' | 'remote';
+    readonly capacity: number;
+    readonly capabilities: ReadonlyArray<string>;
+};
+
+type PlacementAssignment = {
+    readonly unit: WorkUnitId;
+    readonly lane: string;
+};
+
+type PlacementTrace = {
+    readonly entries: ReadonlyArray<PlacementTraceEntry>;
+};
+
+type PlacementTraceEntry =
+    | {
+        readonly kind: 'unit-started';
+        readonly unit: WorkUnitId;
+        readonly lane: string;
+        readonly workerId: string;
+    }
+    | {
+        readonly kind: 'unit-completed';
+        readonly unit: WorkUnitId;
+        readonly workerId: string;
+        readonly durationMilliseconds: number;
+    }
+    | { readonly kind: 'worker-crashed'; readonly workerId: string; readonly activeUnit: WorkUnitId | null; }
+    | {
+        readonly kind: 'unit-reassigned';
+        readonly unit: WorkUnitId;
+        readonly fromLane: string;
+        readonly toLane: string;
+    }
+    | { readonly kind: 'hedged-duplicate-started'; readonly unit: WorkUnitId; readonly workerId: string; }
+    | { readonly kind: 'hedged-duplicate-discarded'; readonly unit: WorkUnitId; readonly workerId: string; };
 
 type CollectedRunCase = {
     readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
@@ -893,7 +996,8 @@ type RunRecord = {
     readonly id: string; // ULID
     readonly seed: bigint;
     readonly facts: RunFacts;
-    readonly identities: ReadonlyArray<CaseId>;
+    readonly identities: ReadonlyArray<WorkId>;
+    readonly placementTrace: PlacementTrace | null;
     readonly runtime: ResolvedRuntime;
     readonly versions: { engine: string; node: string; packages: ReadonlyMap<string, string>; };
     readonly startedAt: string; // ISO 8601
