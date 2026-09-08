@@ -264,8 +264,11 @@ export const config = defineConfig({
                 exclude: []
             },
             execution: {
-                processModel: 'process-per-file',
-                scheduling: 'concurrent'
+                processModel: 'worker-pool',
+                scheduling: 'concurrent',
+                workerLifecycle: 'fresh-worker-per-unit',
+                workDistribution: { mode: 'file' },
+                assignmentPolicy: 'case-count-balanced'
             }
         }
     },
@@ -292,12 +295,33 @@ underscores, and hyphens. Names such as `backend-http`, `ui.integration`, and
 `unit_fast` are valid. Spaces, slashes, backslashes, and punctuation outside
 that set are rejected.
 
-Configured profile file discovery uses a single shape:
+Configured profile file discovery supports either one direct include/exclude
+policy or named file sets.
 
 ```ts
 files: {
     include: [ 'source/**/*.test.ts' ],
     exclude: [ 'source/**/*.slow.test.ts' ]
+}
+```
+
+Named file sets are useful when execution planning needs stable file
+ownership buckets:
+
+```ts
+files: {
+    sets: [
+        {
+            name: 'database',
+            include: [ 'source/integration/database/**/*.test.ts' ],
+            exclude: []
+        },
+        {
+            name: 'browser-smoke',
+            include: [ 'source/ui/**/*.smoke.test.ts' ],
+            exclude: []
+        }
+    ];
 }
 ```
 
@@ -307,10 +331,19 @@ parent segments, blank patterns, and negated patterns are rejected. Overkill
 uses Node's glob support with the separate `exclude` option, so negated
 patterns are not part of the public config language.
 
+`files.sets` uses the same glob language. Set names are unique within a
+profile, set declaration order has no ownership meaning, and overlap is
+checked across the full profile file universe after each set's excludes. A
+file matching more than one set is a plan-resolution error even when the
+current path operands or filters would hide that file. Empty sets are valid
+so shared profile config can cover packages that do not own every bucket.
+
 When a run has no path operands, the selected profile's `files` policy
 discovers candidate test modules. Explicit file operands bypass profile file
 discovery. Directory operands do not define new globs; they filter the
 selected profile's discovered file set and cannot be mixed with file operands.
+When the selected profile uses `files.sets`, explicit file operands must
+belong to exactly one named set.
 
 Important distinction:
 

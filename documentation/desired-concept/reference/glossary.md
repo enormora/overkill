@@ -78,18 +78,53 @@ Source: [Microtests And Capabilities](../authoring/microtests-and-capabilities.m
 ## Process Model
 
 A profile-level decision about the process boundary used for execution.
-Ordinary microtests support `in-process` and `supervised-process`.
-Other families may define their own valid process models.
+Ordinary microtests support `in-process` and `supervised-process`. Advanced
+profiles may support `worker-pool`. `process-per-file` is not a process
+model; it is a worker-pool placement shape with file work units and fresh
+workers.
 
 Source: [Runtime Behavior](../architecture/runtime-behavior.md).
 
 ## Scheduling
 
-A profile-level decision about how selected cases are started once the
-process model is chosen. Common values are `serial` and `concurrent`.
-Scheduling is distinct from process isolation.
+A profile-level or group-level decision about how selected cases are started
+inside the chosen process boundary. Common values are `serial` and
+`concurrent`. Scheduling is distinct from process isolation and worker
+lifecycle.
 
 Source: [Runtime Behavior](../architecture/runtime-behavior.md).
+
+## WorkId
+
+The executable identity produced by combining a logical `CaseId` with a
+runtime and workload. A normal non-matrixed microtest has one `WorkId` for
+one `CaseId`; browser, runtime, scenario, and benchmark matrices can produce
+several `WorkId`s for the same `CaseId`.
+
+Source: [Artifact Identity](../architecture/artifact-identity.md), [Runtime Behavior](../architecture/runtime-behavior.md).
+
+## WorkUnit
+
+The unit assigned to an executor lane. A `WorkUnit` contains one or more
+`WorkId`s and may be built by file, case, or named group distribution.
+
+Source: [Runtime Behavior](../architecture/runtime-behavior.md), [Composition Order](../architecture/composition-order.md).
+
+## PlacementPlan
+
+The frozen initial assignment of work units to executor lanes. It records
+the resolved process model, worker lifecycle, work distribution, assignment
+policy, and resource placement constraints before execution starts.
+
+Source: [Runtime Behavior](../architecture/runtime-behavior.md), [Reproducibility](../architecture/reproducibility.md).
+
+## PlacementTrace
+
+The run-record trace of realized worker assignment, crash recovery,
+reassignment, straggler hedging, and work-unit timings. It is diagnostic by
+default and becomes replay input for dynamic scheduling modes.
+
+Source: [Runtime Behavior](../architecture/runtime-behavior.md), [Reproducibility](../architecture/reproducibility.md).
 
 ## Runner Profile
 

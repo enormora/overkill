@@ -21,11 +21,15 @@ A reproducible run captures, at minimum:
 
 - the run seed
 - the resolved selection (filter expression and the resulting set of
-  `CaseId`s after expansion)
+  `WorkId`s after runtime/workload expansion)
 - the resolved runtime matrix (each `RuntimeId` actually used)
 - the resolved execution strategy (process model, worker count,
-  serialisation rules)
+  worker lifecycle, work distribution, assignment policy, serialisation
+  rules)
+- the resolved work units, shard partition, and initial placement plan
 - the resolved capability profile per worker
+- duration-history inputs used for placement, when history-aware placement
+  is enabled
 - the baseline verb invoked, if any (`update`, `apply`, `bootstrap`,
   `diff`)
 - the benchmark workload identity and calibration inputs where
@@ -53,7 +57,8 @@ type RunRecord = {
     readonly id: string; // ULID
     readonly seed: string;
     readonly facts: RunFacts;
-    readonly identities: ReadonlyArray<CaseId>;
+    readonly identities: ReadonlyArray<WorkId>;
+    readonly placementTrace: PlacementTrace | null;
     readonly runtime: ResolvedRuntime; // see types-index.md
     readonly versions: { engine: string; node: string; packages: Readonly<Record<string, string>>; };
     readonly startedAt: string; // ISO 8601
@@ -96,10 +101,15 @@ That implies:
   deterministically from `(runSeed, CaseId)`)
 - stable test identities ([Artifact Identity](./artifact-identity.md))
 - deterministic expansion of parameterized and runtime-driven cases
+- deterministic work-unit construction and initial placement
 
 The default ordering is a seeded shuffle recorded in the run plan and
 reported in the run summary. Lexical ordering is an explicit opt-out for
 debugging or policy-driven runs that prefer source-stable order.
+
+Worker-pool balancing may place larger work units before smaller units. The
+seeded order still matters: it breaks equal-weight ties and determines the
+lane-local execution order recorded in the placement plan.
 
 ## Per-Test Seeds
 
@@ -161,6 +171,9 @@ executes the same plan:
   available; reports inconclusive for runtimes not available
 - restores the execution strategy
 - restores the loader configuration
+- restores the recorded placement trace when replaying a run that used
+  dynamic leasing, runtime reprioritization, pending-unit splitting, or
+  straggler hedging
 
 Limitations:
 

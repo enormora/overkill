@@ -24,35 +24,52 @@ resolution that compose, and they need a documented order.
 When the runner starts, before any test body runs, the orchestration
 layer resolves the run in this order:
 
-1. **Collection.** Test files are imported; the engine builds the
+1. **File policy resolution.** The selected profile's `files` policy and
+   CLI path operands produce the source file universe. Named file sets are
+   validated here, including duplicate names, full-profile overlaps, and
+   explicit files outside all sets.
+2. **Group ownership resolution.** Grouped work distribution maps named
+   file sets to placement groups. File-set references must be valid, a file
+   set may be referenced by at most one group, and unreferenced selected
+   sets fail unless the distribution explicitly uses `unmatched: 'file'`.
+3. **Collection.** Test files are imported; the engine builds the
    `TestNode` tree (suites, tables, test cases). See
    [Tests As Values](../authoring/tests-as-values.md).
-2. **Metadata propagation.** Parent suite metadata cascades to
+4. **Metadata propagation.** Parent suite metadata cascades to
    children. Set-valued fields (`tags`) merge by union;
    array-valued fields (`runtimes`) merge unless `replace: true`;
    enum fields replace. Capabilities **intersect** — children may
    only narrow, not widen. See [Metadata And Selection § Metadata Propagation](./metadata-and-selection.md#metadata-propagation) and [Microtests And Capabilities § Capability Propagation](../authoring/microtests-and-capabilities.md#capability-propagation).
-3. **Filter application.** The CLI filter expression (or
+5. **Runtime and workload expansion.** Each selected logical `CaseId`
+   expands into one or more executable `WorkId`s when runtime matrices,
+   browser variants, scenarios, or benchmark workloads apply.
+6. **Filter application.** The CLI filter expression (or
    programmatic predicate) is evaluated against resolved metadata
-   and identity. Result: a filtered case set. See
+   and identity. Result: a filtered `WorkId` set. See
    [Metadata And Selection § Selection Model](./metadata-and-selection.md#selection-model).
-4. **Sharding.** `--shard <i>/<n>` partitions the filtered set
-   deterministically by `CaseId` hash. See [Runtime Behavior § Sharding](./runtime-behavior.md#sharding).
-5. **Scheduling order.** The filtered, sharded case set is assigned
-   an execution order. By default this is a seeded shuffle recorded
+7. **Work-unit construction.** The resolved `workDistribution` packs
+   filtered `WorkId`s into `WorkUnit`s by file, case, or named group.
+8. **Sharding.** `--shard <i>/<n>` partitions the work-unit set
+   deterministically by `WorkUnitId` hash. See [Runtime Behavior § Sharding](./runtime-behavior.md#sharding).
+9. **Scheduling order.** The filtered, sharded work-unit set is assigned
+   an execution order. By default this uses a seeded order recorded
    in `RunFacts`; profiles or CLI flags may opt into lexical
    order. See [Runtime Behavior § Execution Order](./runtime-behavior.md#execution-order).
-6. **Worker assignment.** The execution strategy (resolved from
-   profile + resource constraints) decides workers, processes,
-   isolation grain. See [Runtime Behavior § Process Model And Scheduling](./runtime-behavior.md#process-model-and-scheduling) and [Package Architecture § Orchestration](./package-architecture.md#orchestration).
-7. **Resolution freeze.** The resulting `ResolvedRun` contains
-   serializable `RunFacts` for records and replay. Local in-process
-   resolution also contains an executable `TestPlan` for
-   `execute(testPlan)`. Supervised and other process-boundary
-   resolution contains a bodyless collected plan that the coordinator
-   can map into assignments without importing user modules itself.
+10. **Resource lowering.** Runtime and resource requirements become
+    placement constraints: serial keys, capacity weights, affinity keys,
+    fault domains, and required executor capabilities.
+11. **Placement planning.** The execution strategy chooses executor lanes,
+    worker lifecycle, work-unit assignment, and any deterministic balancing.
+    See [Runtime Behavior § Process Model And Scheduling](./runtime-behavior.md#process-model-and-scheduling) and [Package Architecture § Orchestration](./package-architecture.md#orchestration).
+12. **Resolution freeze.** The resulting `ResolvedRun` contains
+    serializable `RunFacts` for records and replay. Local in-process
+    resolution also contains an executable `TestPlan` for
+    `execute(testPlan)`. Supervised and other process-boundary
+    resolution contains a bodyless collected plan plus frozen work-unit
+    assignment that the coordinator can execute without worker-side
+    discovery authority.
 
-After step 7, the resolved run does not change. New tests discovered during
+After step 12, the resolved run does not change. New tests discovered during
 execution are an error.
 
 ## Execution-Time Wrapping
@@ -134,7 +151,7 @@ closures. Workers re-import the file to get executable references.
 Supervised profiles that must avoid parent-side user-module execution use
 the same rule at a different boundary: a supervised child imports the files
 for collection, sends a minimal bodyless collected plan to the coordinator,
-then executes only the assigned case identities.
+then executes only the assigned work identities.
 
 In practice the cost stays small because:
 
@@ -182,11 +199,13 @@ the order isn't explicit:
 - **Capabilities can't be raised by metadata.** A child test
   cannot grant itself `fs-write` if its parent suite excluded it.
   Intersection is one-way.
-- **Filters apply before sharding.** `--filter '...' --shard 1/4`
-  shards the filtered subset, not the full tree. Reproducibility
+- **Filters apply before work-unit sharding.** `--filter '...' --shard 1/4`
+  shards the filtered work-unit set, not the full tree. Reproducibility
   depends on this.
-- **Randomization happens before worker assignment.** The seed
-  orders the logical case set first; execution strategy then maps
+- **Work units are built before sharding.** Indivisible groups stay on one
+  shard. Profiles that need CI balance choose finer group granularity.
+- **Randomization happens before placement assignment.** The seed
+  orders work units and breaks balancing ties; execution strategy then maps
   that order onto workers or in-process concurrency.
 - **Resolution freeze is total.** Dynamically-generated tests
   (`describe.each` style) must be discovered at collection.

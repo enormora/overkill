@@ -408,18 +408,49 @@ interpretation patterns the artifact surfaces, and lives in
 
 ## Process Model And Scheduling
 
-Execution has two independent axes.
+Execution has separate axes for process boundary, worker lifecycle, work
+distribution, assignment policy, and in-worker scheduling.
 
 `processModel` describes the boundary:
 
-| Process model        | Description                                    | Families                               |
-| -------------------- | ---------------------------------------------- | -------------------------------------- |
-| `in-process`         | The runner process executes the selected plan  | `microtest`, `property`                |
-| `supervised-process` | A parent process supervises a disposable child | `microtest`, `property`, `integration` |
-| `worker-pool`        | N workers execute assigned plan items          | `integration`                          |
-| `process-per-file`   | One subprocess executes one assigned file      | `integration`                          |
+| Process model        | Description                                    | Families                                 |
+| -------------------- | ---------------------------------------------- | ---------------------------------------- |
+| `in-process`         | The runner process executes the selected plan  | `microtest`, `property`                  |
+| `supervised-process` | A parent process supervises a disposable child | `microtest`, `property`, `integration`   |
+| `worker-pool`        | N bounded executor slots run assigned work     | `integration`, browser-oriented profiles |
 
-`scheduling` describes how selected cases are started within that boundary:
+`process-per-file` is not a process model. It is a resolved execution shape:
+
+```ts
+{
+    processModel: 'worker-pool',
+    workerLifecycle: 'fresh-worker-per-unit',
+    workDistribution: { mode: 'file' }
+}
+```
+
+The same mechanism can express process-per-case or process-per-group by
+changing the work distribution. `worker-pool` means Overkill owns bounded
+executor capacity. It does not imply that a worker is reused.
+
+`workerLifecycle` describes what happens after a worker finishes one
+assigned work unit:
+
+| Worker lifecycle        | Description                                  |
+| ----------------------- | -------------------------------------------- |
+| `reuse`                 | The worker may receive another work unit     |
+| `fresh-worker-per-unit` | The worker exits after exactly one work unit |
+
+`workDistribution` describes how selected work is packed before placement:
+
+| Work distribution | Description                                         |
+| ----------------- | --------------------------------------------------- |
+| `file`            | One unit per source file per runtime/workload       |
+| `case`            | One unit per selected case per runtime/workload     |
+| `group`           | Named file-set groups decide the initial unit shape |
+
+`scheduling` describes how cases are started inside an executor or
+indivisible group:
 
 | Scheduling   | Description                               |
 | ------------ | ----------------------------------------- |
@@ -451,16 +482,36 @@ Selection rules:
   its scope)
 - there is no request-level execution override in the current concept
 
+Grouped distribution requires named profile file sets (see
+[Configuration § Recommended File Story](./configuration.md#recommended-file-story)).
+A group references one or more file-set names and may override
+granularity, scheduling, order, and worker lifecycle for that group.
+
+Default group behavior is intentionally conservative:
+
+- `granularity: 'group'` makes one indivisible unit per group per
+  runtime/workload
+- `scheduling: 'profile-default'` means concurrent profiles still run cases
+  concurrently inside the group unless the group opts into serial execution
+- `order: 'profile-default'` means the profile's run order still applies
+- `workerLifecycle: 'profile-default'` means sensitive groups can opt into
+  fresh workers without forcing that lifecycle onto unrelated work
+- `unmatched: 'reject'` means a grouped distribution must account for every
+  selected file set unless it explicitly opts into `unmatched: 'file'`
+
+Groups affect placement only. They do not create a new test identity and do
+not add a selection/filter dimension.
+
 ## Execution Order
 
 Execution order is a scheduling concern, not a property of source-file
 layout. The default scheduler is **seeded random order**:
 
-- after collection, metadata propagation, filtering, and sharding, the
-  selected case set is shuffled by a recorded seed
+- after collection, metadata propagation, filtering, work-unit construction,
+  and sharding, selected work units are ordered by a recorded seed
 - if the user does not pass `--seed <value>`, the runner chooses one,
   prints it, and writes it into `RunFacts` and the final `RunRecord`
-- rerunning with the same seed and the same filtered case set reproduces
+- rerunning with the same seed and the same selected work-unit set reproduces
   the same order
 - resources or execution constraints may force local serialization, but
   they do not silently disable seeded ordering for unrelated tests
@@ -485,17 +536,22 @@ Override surfaces:
 
 Default worker count is `Math.min(cpus().length - 1, 8)` for worker-pool
 modes, capped to keep the host responsive. Override via `--workers N`.
+Worker-pool placement defaults to case-count balancing: the planner places
+larger work units first, uses selected case count as weight, and uses seeded
+order as a deterministic tie-breaker and lane-local execution order.
 
 ## Sharding
 
 `--shard <i>/<n>` selects shard `i` of `n`. Sharding partitions the
-collected test set deterministically by stable test identity (see
-[Artifact Identity](./artifact-identity.md)), so two shards never share a test and the union
-covers everything. The partition is reproducible across runs given the
-same identities.
+selected work-unit set deterministically by stable `WorkUnitId` (see
+[Artifact Identity](./artifact-identity.md)). Two shards never share a work
+unit and the union covers everything. The partition is reproducible across
+runs given the same identities.
 
 Sharding composes with selection: filters apply first, sharding applies to
-the filtered set.
+the selected work units. Indivisible groups therefore stay on one shard.
+Profiles that need finer CI balance should choose file or case granularity
+for those groups.
 
 Baseline CI mode should not assume that the CI system provides a native
 "collect once, distribute exact test plan" primitive. Instead, each shard
@@ -536,8 +592,9 @@ JSON/HTML report.
 ## Multi-Process Execution
 
 Multi-process execution does **not** decentralize discovery authority.
-The coordinator owns the resolved case set, metadata resolution,
-filtering, sharding, ordering, and `RunFacts` freeze before any assigned
+The coordinator owns file-set resolution, group resolution, collection,
+metadata resolution, runtime/workload expansion, filtering, work-unit
+construction, sharding, ordering, and `RunFacts` freeze before any assigned
 test body runs.
 
 The process that imports user modules depends on the boundary:
@@ -548,13 +605,13 @@ The process that imports user modules depends on the boundary:
   collect inside a supervised child and send the coordinator a minimal
   bodyless collected plan
 - the coordinator maps that collected plan into assignments by stable
-  `CaseId`, then the child reuses executable references inside its own
+  `WorkId`, then the child reuses executable references inside its own
   process
 
 This has two important consequences:
 
 - workers never "register more tests later"
-- sharding is over the coordinator's collected logical case set, not over
+- sharding is over the coordinator's frozen work-unit set, not over
   whatever a worker happens to discover locally
 
 Assignment depends on execution strategy:
@@ -563,25 +620,47 @@ Assignment depends on execution strategy:
   - one process owns the whole frozen plan
   - cases launch inside that process subject to resource constraints
 - `worker-pool`
-  - the orchestrator assigns plan items to N workers
-  - assignment may still group by file when that keeps imports cheaper or
-    respects runtime-sharing boundaries
-- `process-per-file`
-  - the orchestrator groups the frozen case set by source file
-  - each subprocess imports exactly the file(s) it was assigned and
-    executes only the planned subset from that file
+  - the orchestrator assigns `WorkUnit`s to N executor slots
+  - `workerLifecycle` decides whether a worker is reused or replaced after
+    each unit
+  - `workDistribution` decides whether units are built by file, case, or
+    group
 - `single-worker-serial`
   - one dedicated worker/process executes the whole frozen plan in order
 
 The worker input is therefore not "go discover tests." It is:
 
 - the frozen run identity (`runId`, seed, selected shard, ordering)
-- assigned case identities
+- assigned work-unit and work identities
 - runtime / capability / timeout requirements
 - reporter and artifact routing metadata
 
 Workers re-import code to obtain executable test-body references, but that
 re-import is execution-time plumbing, not a second discovery authority.
+
+The frozen `PlacementPlan` is the initial assignment. A runtime
+`PlacementTrace` records what actually happened: worker ids, started units,
+retries, crash recovery, hedged duplicates, cancellations, and timings.
+If a reused worker crashes, only its active unit follows retry/recovery
+policy. Units planned for that lane but not started can move to eligible
+replacement lanes and the trace records that repair.
+
+Advanced policies are concepted now but not required for the first worker
+pool implementation:
+
+- `duration-history-balanced` uses persisted `RunRecord` duration facts as
+  explicit planning input, falling back to case counts when history is
+  missing or stale
+- `dynamic-lease` may reprioritize pending work, split eligible pending
+  units, or duplicate explicit idempotent isolated stragglers
+- the first completed valid hedged execution is authoritative; slower
+  duplicate artifacts are trace or debug data
+- compatible batching may pack small units with identical runtime,
+  resource, and lifecycle requirements
+- warm-lane affinity may prefer path-neighbor or same-runtime units on a
+  reused worker
+- resource-aware placement lowers resource scopes into serial keys,
+  capacity weights, affinity keys, and fault domains before assignment
 
 ## Remote Execution
 
@@ -600,7 +679,7 @@ Minimal remote-execution sketch:
 1. The coordinator resolves the full plan locally.
 2. The plan is partitioned into remote work units.
 3. Each work unit contains:
-   - case identities
+   - work identities
    - ordering / seed data
    - required runtime adapters and capability envelope
    - artifact upload policy
@@ -615,7 +694,8 @@ The important architectural consequences are:
 - remote execution belongs above `@overkill-dev/engine`, in orchestration /
   coordinator packages
 - stable `CaseId`, serializable `RunFacts`, and structured events are what
-  make remote work possible; terminal output alone is not enough
+  make remote work possible, with `WorkId` and `WorkUnitId` describing the
+  executable assignment; terminal output alone is not enough
 - artifact identity cannot depend on which machine executed the case
 - capability and runtime requirements must be declarative enough for a
   coordinator to decide placement before execution starts

@@ -104,16 +104,17 @@ type RunResult = {
 
 ### `summary.discovered`
 
-Count of `CaseId`s reachable from the run's test roots, after table
-expansion and runtime/workload matrix expansion, **before** filter
+Count of executable `WorkId`s reachable from the run's test roots after
+table expansion and runtime/workload matrix expansion, **before** filter
 application and sharding. In a sharded run this is the global count,
-identical on every shard's record.
+identical on every shard's record. For non-matrixed microtests, each
+`WorkId` collapses to one `CaseId`.
 
 ### `summary.planned`
 
-Count of `CaseId`s in the executable `TestPlan` after filtering, sharding,
-and ordering have selected this run's case set. Until those narrowing
-features exist, `planned` is equal to `discovered`.
+Count of `WorkId`s in the executable plan after filtering, work-unit
+construction, sharding, and ordering have selected this run's work set.
+Until those narrowing features exist, `planned` is equal to `discovered`.
 
 `executed` at run scope is intentionally not stored as an explicit
 field. It is derivable as
@@ -160,9 +161,9 @@ joins the path with a stable separator for readability:
 
 Each entry has three integers:
 
-- `discovered` — count of `CaseId`s reachable from this suite
+- `discovered` — count of `WorkId`s reachable from this suite
   (pre-filter, pre-shard, post-expansion).
-- `planned`: count of those cases selected into this run's executable
+- `planned`: count of those work ids selected into this run's executable
   plan.
 - `executed` — count of those cases that received any `TestOutcome`
   or crashed mid-run, on this record's scope (this shard's slice in

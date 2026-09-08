@@ -23,8 +23,12 @@ Overkill distinguishes:
   `@overkill-dev/engine`, independent of files or any specific authoring DSL
 - **authoring identity** — the richer identity derived by a DSL or package
   such as `@overkill-dev/test`
-- **expanded case identity** — the concrete case after parameterization,
-  macro instantiation, and runtime-matrix multiplication
+- **case identity** — the concrete logical case after parameterization
+  and macro instantiation
+- **work identity** — the schedulable case after runtime and workload
+  expansion
+- **work-unit identity** — the placement unit used for worker assignment
+  and sharding
 - **runtime identity** — the resolved runtime target (browser variant,
   OS, Node version, configuration profile)
 - **workload identity** — for benchmarks, the resolved workload
@@ -48,6 +52,10 @@ That means engine identity must stay generic. A higher-level package such as
 - parameterization keys
 - runtime metadata
 - workload metadata
+
+`CaseId` stays logical. Runtime and workload dimensions belong to `WorkId`
+so the same source case can run in many executable variants without
+changing its logical test identity.
 
 So the rest of this document should be read primarily as the **default
 identity derivation for `@overkill-dev/test` and related first-party tooling**,
@@ -74,6 +82,19 @@ type RuntimeId = {
 type WorkloadId = {
     readonly name: string; // 'small', 'medium', 'large', 'real-world-1'
     readonly params?: Record<string, string>;
+};
+
+type WorkId = {
+    readonly case: CaseId;
+    readonly runtime: RuntimeId | null;
+    readonly workload: WorkloadId | null;
+};
+
+type WorkUnitId = {
+    readonly mode: 'file' | 'case' | 'group';
+    readonly key: string;
+    readonly runtime: RuntimeId | null;
+    readonly workload: WorkloadId | null;
 };
 
 type AttemptId = { readonly index: number; }; // 0-indexed
@@ -164,7 +185,7 @@ Without stable identities, Overkill cannot do these cleanly:
 - failure artifact naming (witnesses, traces, captures)
 - IDE jump-to-test from a CI log
 - selection by structured filter
-- sharding partitions (sharding hashes the identity)
+- sharding partitions (advanced sharding hashes `WorkUnitId`)
 
 ## Identity Across Renames
 
@@ -195,13 +216,14 @@ Artifact identity preserves the attempt so that "first failure" and
 
 ## Identity And Sharding
 
-Sharding partitions the collected case set by hashing `CaseId`. The hash
-function is stable and documented (xxh3 of the canonical JSON encoding).
-Two shards never share a case; the union covers everything. Reproducibility
-across CI machines depends on this stability.
+Sharding partitions the executable work set by hashing `WorkUnitId`. The
+hash function is stable and documented (xxh3 of the canonical JSON
+encoding). Two shards never share a work unit; the union covers everything.
+Reproducibility across CI machines depends on this stability.
 
-Shard partitioning is _not_ part of artifact identity itself — a test has
-the same `CaseId` regardless of which shard it ran on.
+Shard partitioning is _not_ part of artifact identity itself. A test has
+the same `CaseId`, `WorkId`, and artifact identity regardless of which shard
+or worker ran it.
 
 ## Identity And Reproducibility
 
@@ -211,6 +233,7 @@ A run record includes the resolved set of identities. Replaying a run with
 - the same selection
 - the same seed (per-test seeds are derived from the run seed plus
   `CaseId`)
+- the same work-unit identities and shard partition
 - the same baseline lookup decisions
 - the same workload parameters
 

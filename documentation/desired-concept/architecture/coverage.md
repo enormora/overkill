@@ -43,8 +43,8 @@ Why a first-class concept anyway:
 - Coverage is restricted to microtest profiles. Integration, property,
   type-test, and benchmark profiles reject coverage configuration.
 - Coverage runs single-threaded - one worker process executes all
-  selected microtests serially. Worker-pool and process-per-file
-  modes do not collect coverage. Supervised microtest mode is
+  selected microtests serially. Worker-pool parallel modes do not collect
+  coverage. Supervised microtest mode is
   supported because supervision does not introduce parallelism.
 - Coverage is opt-in per profile; there is no global "always on"
   default mode in any first-party profile.
@@ -156,9 +156,9 @@ activation surface. Programmatic callers make the same choice by setting
 ## Single-Process Execution Model
 
 Coverage runs **single-threaded**: one Node worker process executes
-all selected microtests serially. Worker-pool and process-per-file
-modes do not collect coverage, even when invoked under a microtest
-profile. A coverage-enabled microtest profile resolves to serial scheduling.
+all selected microtests serially. Worker-pool parallel modes do not collect
+coverage, even when invoked under a microtest profile. A coverage-enabled
+microtest profile resolves to serial scheduling.
 
 Coverage attribution is **per-test**: each executed case has its
 own coverage record (keyed by `CaseId`) in the run-record coverage

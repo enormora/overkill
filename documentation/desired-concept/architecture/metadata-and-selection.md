@@ -155,9 +155,9 @@ inside a filter adds no useful narrowing.
 ### Selection In Multi-Process Runs
 
 Multi-process execution does not change selection semantics. Selection is a
-plan-time operation, not a worker-time side effect: workers receive cases
-from the frozen plan rather than discovering new tests that could alter
-filtering or sharding.
+plan-time operation, not a worker-time side effect: workers receive work
+identities from the frozen plan rather than discovering new tests that could
+alter filtering or sharding.
 
 ## Filter Expression Grammar
 
@@ -272,8 +272,9 @@ them, and tests with incompatible capabilities cannot share a worker.
 
 ## Composition With Sharding
 
-Sharding partitions the filtered test set. Filters apply first; sharding
-operates on the result. See [Composition Order](./composition-order.md) and
+Sharding partitions the filtered work-unit set. Filters apply first; work
+units are built next; sharding operates on the result. See
+[Composition Order](./composition-order.md) and
 [Runtime Behavior § Sharding](./runtime-behavior.md#sharding).
 
 ## Programmatic Selection API
