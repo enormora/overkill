@@ -15,7 +15,7 @@ import {
     rootImportScript,
     runConfigImportScript,
     standardSubpathImportScript
-} from './test-binary-scripts.ts';
+} from './test-binary-scripts.test.ts';
 
 type PackageJson = {
     readonly bin: unknown;
