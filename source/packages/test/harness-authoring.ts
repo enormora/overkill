@@ -22,15 +22,6 @@ export type DefinedHarness<OverrideShape extends Readonly<Record<string, unknown
     };
 };
 
-type RequiredPartName<Shape extends Readonly<Record<string, unknown>>> = {
-    readonly [PartName in keyof Shape]-?: Pick<Shape, PartName> extends Required<Pick<Shape, PartName>> ? PartName
-        : never;
-}[keyof Shape];
-
-type SparseOverrideShape<Shape extends Readonly<Record<string, unknown>>> = RequiredPartName<Shape> extends never
-    ? Shape
-    : never;
-
 type RuntimePartFactories = Readonly<Record<string, () => unknown>>;
 type RuntimeCreatedHarness = Readonly<Record<string, unknown>>;
 type RuntimeHarnessAssembler = (parts: RuntimeCreatedHarness) => unknown;
@@ -58,8 +49,8 @@ function assembleHarness(
 
 export function defineHarness<OverrideShape extends Readonly<Record<string, unknown>>, CreatedHarness>(
     factory: (overrides: OverrideShape) => CreatedHarness,
-    ...requiredOverrideFields: RequiredPartName<OverrideShape> extends never ? readonly [] : readonly [never]
-): DefinedHarness<SparseOverrideShape<OverrideShape>, CreatedHarness>;
+    ...requiredOverrideFields: Record<string, never> extends OverrideShape ? readonly [] : readonly [never]
+): DefinedHarness<OverrideShape, CreatedHarness>;
 export function defineHarness<const Factories extends HarnessPartFactories, CreatedHarness>(
     partFactories: Factories,
     assemble: (parts: HarnessParts<Factories>) => CreatedHarness
