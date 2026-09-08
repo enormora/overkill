@@ -966,7 +966,7 @@ The public concept therefore stays simpler:
 - property helpers such as `scope.forall(...)` use a nested injected
   assertion context
 - direct returned protocol nodes are assert-source only
-- direct returned protocol nodes carry explicit `location` metadata; direct
+- direct returned protocol nodes carry explicit source-location metadata; direct
   authors use `captureSourceLocation()` for accurate lazy locations or
   `unknownSourceLocation` when no source is available
 - engine-created require nodes are carried through the test session, count
@@ -986,8 +986,8 @@ wire shape.
 
 ### Assertion Source Locations
 
-`FailedCheck.location` identifies the Overkill assertion boundary that caused
-the failed check.
+`FailedCheck.sourceLocations` identifies the Overkill assertion boundary that
+caused the failed check.
 
 Policy:
 
@@ -999,12 +999,15 @@ Policy:
   child checks are diagnostics inside one assertion boundary
 - foreign bridge failures use the Overkill boundary location; the thrown
   foreign error keeps its own stack in the structured error diagnostic
-- helper and macro forwarding is a separate API decision; the baseline
-  captures the immediate assertion boundary
+- the first entry is the primary location reporters use in compact output
+- later entries represent forwarding context when an authoring helper or macro
+  intentionally forwards the caller location
+- helper and macro forwarding remains a separate public API decision; the
+  baseline captures the immediate assertion boundary
 
 Assertion nodes may carry `SourceLocation` directly or a lazy
-`SourceLocationProvider`. Failed checks always expose a resolved
-`SourceLocation`, either known or unknown.
+`SourceLocationProvider`. Failed checks always expose a non-empty resolved
+`sourceLocations` chain whose entries are either known or unknown.
 
 ### Error Separation
 
@@ -1376,7 +1379,7 @@ type FailedCheck = {
     readonly expected: SerializedValue;
     readonly actual: SerializedValue;
     readonly path: ReadonlyArray<DiffPathSegment>;
-    readonly location: SourceLocation;
+    readonly sourceLocations: NonEmptyReadonlyArray<SourceLocation>;
     readonly diff: Diff | null;
 };
 

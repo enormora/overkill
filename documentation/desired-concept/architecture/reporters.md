@@ -362,8 +362,9 @@ disables cursor reflow.
 
 On finish, the progress block is persisted, then the reporter prints a compact
 summary and short detail lines for failed tests, inconclusive tests, and
-runner errors. If a `runner-error` arrives after finish, it prints
-`Runner error: <message>` below the summary.
+runner errors. Failed assertion detail lines include the primary source
+location when the failed check has one. If a `runner-error` arrives after
+finish, it prints `Runner error: <message>` below the summary.
 
 ## Brief Reporter Rendering
 
@@ -404,6 +405,10 @@ Reporters and output renderers should not implement their own project-root
 path policy. They receive `ReportingContext` and use
 `context.relativizeLocationPath(location)` for known locations. Unknown
 locations are omitted from formatted output.
+
+Failed checks expose a non-empty `sourceLocations` chain. The first entry is
+the primary location for compact output. Later entries represent forwarding
+or expansion context and may be rendered by detailed reporters.
 
 The project root is the canonical real current working directory captured
 during run discovery or direct `runIfMain()` startup. Paths below that root are

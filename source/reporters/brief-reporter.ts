@@ -1,5 +1,4 @@
 import { formatCaseId } from '../engine/identity.ts';
-import type { FailedCheck, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import type { OutputLineIntent } from '../engine/reporter-output.ts';
 import {
     defineReporter,
@@ -10,6 +9,7 @@ import {
 } from '../engine/reporter.ts';
 import { formatSourceLocation, type ReportingContext } from '../engine/reporting-context.ts';
 import type { RunResult, RunnerError, TestFailure } from '../engine/run-result.ts';
+import { primaryFailureSourceLocation } from './failure-location.ts';
 import { formatFailureSummary } from './failure-summary.ts';
 
 const progressInterval = 100;
@@ -35,20 +35,12 @@ function readPlannedCount(facts: RunFacts): number | null {
     return Array.isArray(cases) ? cases.length : null;
 }
 
-function firstAssertionCheck(failure: TestFailure): FailedCheck | null {
-    return failure.kind === 'assertion' ? failure.checks[0] : null;
-}
-
-function failureLocation(failure: TestFailure): SourceLocation | null {
-    return firstAssertionCheck(failure)?.sourceLocations[0] ?? null;
-}
-
 function formatFailureLine(
     event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>,
     failure: TestFailure,
     context: ReportingContext
 ): string {
-    const location = failureLocation(failure);
+    const location = primaryFailureSourceLocation(failure);
     const locationText = location === null ? null : formatSourceLocation(location, context);
     const origin = locationText === null ? formatCaseId(event.case) : `${locationText} ${formatCaseId(event.case)}`;
 
@@ -60,7 +52,7 @@ function failureIntent(
     failure: TestFailure,
     context: ReportingContext
 ): OutputLineIntent {
-    const location = failureLocation(failure);
+    const location = primaryFailureSourceLocation(failure);
 
     return stdout(formatFailureLine(event, failure, context), {
         location,
