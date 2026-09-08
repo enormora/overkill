@@ -15,6 +15,14 @@ function writeStderrLine(line: string): void {
     process.stderr.write(`${line}\n`);
 }
 
+function writeStdout(chunk: Buffer): void {
+    process.stdout.write(chunk);
+}
+
+function writeStderr(chunk: Buffer): void {
+    process.stderr.write(chunk);
+}
+
 export function createCurrentProcessRunOrchestrator(defaultEngine: Engine): RunOrchestrator {
     return createNodeRunOrchestrator({
         defaultEngine,
@@ -35,7 +43,7 @@ export function createCurrentProcessRunOrchestrator(defaultEngine: Engine): RunO
         readStorage(name) {
             return readWebStorage(globalThis, name);
         },
-        stderr: { writeLine: writeStderrLine },
-        stdout: { writeLine: writeStdoutLine }
+        stderr: { write: writeStderr, writeLine: writeStderrLine },
+        stdout: { write: writeStdout, writeLine: writeStdoutLine }
     });
 }

@@ -62,6 +62,7 @@ import type {
 } from '../doubles/doubles.entry-point.ts';
 import {
     type AuthoringMetadata,
+    type CaptureAuthoringMetadata,
     createTestFacade,
     type defineHarness,
     defineMacro,
@@ -102,7 +103,6 @@ import {
     type TableDefinition,
     type TableTestBody,
     type TestFacade,
-    type TestFacadeDefinition,
     type testAsyncDisposable,
     type TestAsyncDisposable as RootTestAsyncDisposable,
     type TestAsyncDisposableFactory as RootTestAsyncDisposableFactory,
@@ -135,6 +135,7 @@ import {
 } from './test.entry-point.ts';
 
 declare const body: TestBody;
+declare const captureMetadata: CaptureAuthoringMetadata;
 declare const engineMetadata: Metadata;
 declare const metadata: AuthoringMetadata;
 declare const node: TestNode;
@@ -262,7 +263,7 @@ describe('@overkill-dev/test', function () {
                 readonly testIterator: true;
             }
         >();
-        expect<typeof createTestFacade>().type.toBe<(definition: TestFacadeDefinition) => TestFacade>();
+        expect<typeof createTestFacade>().type.toBeCallableWith({ testFamily: 'microtest' });
         expect<typeof runIfMain>().type.toBe<RunIfMain>();
         expect<TestFamily>().type.toBe<EngineTestFamily>();
     });
@@ -308,18 +309,20 @@ describe('@overkill-dev/test authoring', function () {
 
     typeTest('creates family-specific test facade nodes', function () {
         const facade = createTestFacade({
-            metadata,
+            metadata: captureMetadata,
             testFamily: 'integration'
         });
 
-        expect(facade).type.toBe<TestFacade>();
+        expect(facade).type.toBe<TestFacade<CaptureAuthoringMetadata>>();
         expect(facade.test('passes', body)).type.toBe<TestCase>();
-        expect(facade.test({ body, metadata, title: 'passes' })).type.toBe<TestCase>();
+        expect(facade.test({ body, metadata: { capture: 'live' }, title: 'passes' })).type.toBe<TestCase>();
         expect(facade.suite('group', [ node ])).type.toBe<Suite>();
-        expect(facade.suite({ children: [ node ], metadata, title: 'group' })).type.toBe<Suite>();
+        expect(facade.suite({ children: [ node ], metadata: { capture: 'buffered' }, title: 'group' }))
+            .type
+            .toBe<Suite>();
         expect(facade.table({
             cases: [ { value: 1 } ],
-            metadata,
+            metadata: { capture: 'live' },
             test: tableBody,
             title: 'rows'
         }))
@@ -414,11 +417,25 @@ describe('@overkill-dev/test authoring', function () {
         }>();
         expect<AuthoringMetadata>().type.toBeAssignableTo<Metadata>();
         expect<Metadata>().type.not.toBeAssignableTo<AuthoringMetadata>();
+        expect<CaptureAuthoringMetadata>().type.toBe<{
+            readonly baselines?: never;
+            readonly capabilities?: never;
+            readonly capture?: 'buffered' | 'live';
+            readonly debug?: never;
+            readonly extra?: Readonly<Record<string, unknown>>;
+            readonly kind?: never;
+            readonly ownership?: never;
+            readonly priority?: never;
+            readonly runtimes?: never;
+            readonly stability?: never;
+            readonly tags?: readonly string[];
+            readonly timeoutMilliseconds?: never;
+        }>();
+        expect<CaptureAuthoringMetadata>().type.toBeAssignableTo<Metadata>();
     });
 
     typeTest('rejects managed high-level authoring metadata', function () {
         expect<typeof createTestFacade>().type.toBeCallableWith({ testFamily: 'microtest' });
-        expect<typeof createTestFacade>().type.toBeCallableWith({ metadata, testFamily: 'integration' });
         expect<typeof createTestFacade>().type.not.toBeCallableWith();
         expect<typeof createTestFacade>().type.not.toBeCallableWith({ metadata });
         expect<typeof createTestFacade>().type.not.toBeCallableWith({
@@ -442,6 +459,23 @@ describe('@overkill-dev/test authoring', function () {
                 metadata: engineMetadata,
                 title: 'root'
             }
+        });
+    });
+});
+describe('@overkill-dev/test capture and direct execution types', function () {
+    typeTest('types capture metadata by authored family', function () {
+        expect<typeof createTestFacade>().type.toBeCallableWith({
+            metadata: captureMetadata,
+            testFamily: 'integration'
+        });
+        expect<typeof createTestFacade>().type.not.toBeCallableWith({
+            metadata: { capture: 'live' },
+            testFamily: 'microtest'
+        });
+        expect(test).type.not.toBeCallableWith({
+            body,
+            metadata: { capture: 'live' },
+            title: 'passes'
         });
     });
 

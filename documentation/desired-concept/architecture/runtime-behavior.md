@@ -40,13 +40,20 @@ Default policy:
 
 Override surfaces:
 
-- `--no-capture` - pass everything through live (useful for debugging,
-  `console.log` driven exploration)
+- `--no-capture` - pass stdout and stderr through live for capture-capable
+  profiles instead of creating captured-output artifacts
 - instrumented profiles may observe `console.*` through Node diagnostics
   channels even in same-process runs
-- per-test metadata `{ capture: 'live' }` - opt out for one test
+- per-test metadata `{ capture: 'live' }` - opt out for one capture-capable
+  test or subtree
 - reporter-level configuration, such as `createLineReporter({ verbose: true })`,
   chooses to print captured output for passing tests as well
+
+There is no first-party project config field for capture mode. Capture is
+either run-level intent or authored metadata on capture-capable tests.
+Microtest profiles reject `--no-capture` and reject authored capture metadata;
+capture mode never grants permission to write console or raw process output
+inside a strict microtest boundary.
 
 When strict console diagnostics are enabled, `console.*` is a runtime policy
 violation. It is reported as a runner error with `runtime-policy` subtype and

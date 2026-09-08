@@ -29,7 +29,10 @@ import {
     readAuthoringMetadata,
     readTestFacadeDefinition,
     type AuthoringMetadata,
-    type TestFacadeDefinition
+    type AuthoringMetadataForFamily,
+    type CaptureAuthoringMetadata,
+    type TestFacadeDefinition,
+    type TestFacadeDefinitionForFamily
 } from './authoring-metadata.ts';
 
 export { defineHarness } from './harness-authoring.ts';
@@ -93,7 +96,11 @@ export type {
     TestIteratorFactory
 } from '../doubles/doubles.entry-point.ts';
 
-export type { AuthoringMetadata, TestFacadeDefinition } from './authoring-metadata.ts';
+export type {
+    AuthoringMetadata,
+    CaptureAuthoringMetadata,
+    TestFacadeDefinition
+} from './authoring-metadata.ts';
 
 export type RunIfMainRootOptions = {
     readonly metadata: AuthoringMetadata;
@@ -112,9 +119,9 @@ export type RunIfMain = (
     options?: RunIfMainOptions
 ) => Promise<void>;
 
-type TestDefinition = {
+type TestDefinition<MetadataType extends Metadata = AuthoringMetadata> = {
     readonly body: TestBody;
-    readonly metadata: AuthoringMetadata;
+    readonly metadata: MetadataType;
     readonly title: string;
 };
 
@@ -124,9 +131,9 @@ type RuntimeTestDefinition = {
     readonly title: string;
 };
 
-type SuiteDefinition = {
+type SuiteDefinition<MetadataType extends Metadata = AuthoringMetadata> = {
     readonly children: readonly TestNode[];
-    readonly metadata: AuthoringMetadata;
+    readonly metadata: MetadataType;
     readonly title: string;
 };
 
@@ -144,10 +151,10 @@ export type TableTestBody<Row> = (
     scope: ParameterizedTestScope<Row>
 ) => ReturnType<TestBody>;
 
-export type TableDefinition<Row> = {
+export type TableDefinition<Row, MetadataType extends Metadata = AuthoringMetadata> = {
     readonly caseTitle?: (parameters: Row, index: number) => string;
     readonly cases: readonly Row[];
-    readonly metadata?: AuthoringMetadata;
+    readonly metadata?: MetadataType;
     readonly test: TableTestBody<Row>;
     readonly title: string;
 };
@@ -165,21 +172,28 @@ type MacroFactory<MacroParameters extends readonly unknown[], Node extends TestN
     ...parameters: MacroParameters
 ) => Node;
 type ParameterizedTestBody<Data> = (scope: TestScope, data: Data) => ReturnType<TestBody>;
-type TestAuthor = (
-    ...input: readonly [definition: Readonly<TestDefinition>] | readonly [title: string, body: TestBody]
-) => TestCase;
-type SuiteAuthor = (
-    ...input: readonly [definition: Readonly<SuiteDefinition>] | readonly [title: string, children: readonly TestNode[]]
+type ObjectTestAuthorInput<MetadataType extends Metadata> = readonly [
+    definition: Readonly<TestDefinition<MetadataType>>
+];
+type ObjectSuiteAuthorInput<MetadataType extends Metadata> = readonly [
+    definition: Readonly<SuiteDefinition<MetadataType>>
+];
+type PositionalTestAuthorInput = readonly [title: string, body: TestBody];
+type PositionalSuiteAuthorInput = readonly [title: string, children: readonly TestNode[]];
+type TestAuthorInput<MetadataType extends Metadata> = ObjectTestAuthorInput<MetadataType> | PositionalTestAuthorInput;
+type TestAuthor<MetadataType extends Metadata> = (...input: TestAuthorInput<MetadataType>) => TestCase;
+type SuiteAuthor<MetadataType extends Metadata> = (
+    ...input: ObjectSuiteAuthorInput<MetadataType> | PositionalSuiteAuthorInput
 ) => Suite;
-type TableAuthor = <Row>(definition: TableDefinition<Row>) => Table;
+type TableAuthor<MetadataType extends Metadata> = <Row>(definition: TableDefinition<Row, MetadataType>) => Table;
 
-export type TestFacade = {
+export type TestFacade<MetadataType extends Metadata = AuthoringMetadata> = {
     readonly defineMacro: typeof defineMacro;
     readonly defineParameterizedTestBody: typeof defineParameterizedTestBody;
     readonly runIfMain: RunIfMain;
-    readonly suite: SuiteAuthor;
-    readonly table: TableAuthor;
-    readonly test: TestAuthor;
+    readonly suite: SuiteAuthor<MetadataType>;
+    readonly table: TableAuthor<MetadataType>;
+    readonly test: TestAuthor<MetadataType>;
 };
 
 const singleArgumentCount = 1;
@@ -298,7 +312,9 @@ function ensureTableDefinitionShape(definition: Readonly<Record<string, unknown>
     }
 }
 
-function readTableDefinition<Row>(definition: TableDefinition<Row>): RuntimeTableDefinition<Row> {
+function readTableDefinition<Row, MetadataType extends Metadata>(
+    definition: TableDefinition<Row, MetadataType>
+): RuntimeTableDefinition<Row> {
     const runtimeDefinition = readRecord(definition, tableArgumentsError);
     ensureTableDefinitionShape(runtimeDefinition);
 
@@ -398,12 +414,12 @@ export function suite(...input: readonly unknown[]): Suite {
     return createAuthoredSuite('microtest', {}, ...input);
 }
 
-function createAuthoredTable<Row>(
+function createAuthoredTable<Row, MetadataType extends Metadata>(
     testFamily: TestFamily,
     facadeMetadata: Metadata,
-    definition: TableDefinition<Row>
+    definition: TableDefinition<Row, MetadataType>
 ): Table {
-    const tableDefinition = readTableDefinition<Row>(definition);
+    const tableDefinition = readTableDefinition(definition);
 
     return createTable({
         cases: tableCases(tableDefinition),
@@ -468,9 +484,14 @@ export async function runIfMain(
     await runModule.runIfMain(meta, testNode, options);
 }
 
-export function createTestFacade(definition: TestFacadeDefinition): TestFacade {
-    const facadeDefinition = readTestFacadeDefinition(definition);
+type ResolvedTestFacadeDefinition<Family extends TestFamily> = {
+    readonly metadata: Metadata;
+    readonly testFamily: Family;
+};
 
+function createTestFacadeFromDefinition<Family extends TestFamily>(
+    facadeDefinition: ResolvedTestFacadeDefinition<Family>
+): TestFacade<AuthoringMetadataForFamily<Family>> {
     return {
         defineMacro,
         defineParameterizedTestBody,
@@ -478,13 +499,24 @@ export function createTestFacade(definition: TestFacadeDefinition): TestFacade {
         suite(...input) {
             return createAuthoredSuite(facadeDefinition.testFamily, facadeDefinition.metadata, ...input);
         },
-        table<Row>(tableDefinition: TableDefinition<Row>) {
+        table<Row>(tableDefinition: TableDefinition<Row, AuthoringMetadataForFamily<Family>>) {
             return createAuthoredTable(facadeDefinition.testFamily, facadeDefinition.metadata, tableDefinition);
         },
         test(...input) {
             return createAuthoredTest(facadeDefinition.testFamily, facadeDefinition.metadata, ...input);
         }
     };
+}
+
+export function createTestFacade<Family extends TestFamily>(
+    definition: TestFacadeDefinitionForFamily<Family>
+): TestFacade<AuthoringMetadataForFamily<Family>>;
+export function createTestFacade(
+    definition: TestFacadeDefinition
+): TestFacade<AuthoringMetadata | CaptureAuthoringMetadata> {
+    const facadeDefinition = readTestFacadeDefinition(definition);
+
+    return createTestFacadeFromDefinition(facadeDefinition);
 }
 
 export type {

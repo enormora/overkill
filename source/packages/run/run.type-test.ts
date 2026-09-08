@@ -135,14 +135,20 @@ describe('@overkill-dev/run', function () {
         expect<RunRequest['measureResourceUsage']>().type.toBe<boolean | null>();
         expect<RunRequest['profile']>().type.toBe<string>();
         expect<RunRequest['resourceBudgetOverrides']>().type.toBe<RunResourceBudgets | null>();
-        expect<RunRequest['order']>().type.toBe<'plan'>();
+        expect<Pick<RunRequest, 'capture' | 'order'>>().type.toBe<{
+            readonly capture: 'buffered' | 'live';
+            readonly order: 'plan';
+        }>();
         expect<RunRequest['selection']>().type.toBe<RunSelection>();
     });
 
     test('exposes serializable run facts with case metadata', function () {
         expect<keyof RunFacts>().type.toBe<'cases' | 'environment' | 'execution' | 'loader' | 'reproducibility'>();
         expect<RunExecutionFacts['engine']['kind']>().type.toBe<'default' | 'instance' | 'module'>();
-        expect<RunExecutionFacts['processModel']>().type.toBe<RunProcessModel>();
+        expect<Pick<RunExecutionFacts, 'capture' | 'processModel'>>().type.toBe<{
+            readonly capture: 'buffered' | 'live';
+            readonly processModel: RunProcessModel;
+        }>();
         expect<RunExecutionFacts['profile']>().type.toBe<string>();
         expect<RunExecutionFacts['resourceUsagePolicy']>().type.toBe<RunResourceUsagePolicy>();
         expect<RunExecutionFacts['scheduling']>().type.toBe<RunScheduling>();

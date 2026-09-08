@@ -180,6 +180,21 @@ type AuthoringMetadata = {
     readonly timeoutMilliseconds?: never;
 };
 
+type CaptureAuthoringMetadata = {
+    readonly tags?: readonly string[];
+    readonly extra?: Readonly<Record<string, unknown>>;
+    readonly capture?: 'buffered' | 'live';
+    readonly kind?: never;
+    readonly runtimes?: never;
+    readonly capabilities?: never;
+    readonly baselines?: never;
+    readonly ownership?: never;
+    readonly stability?: never;
+    readonly priority?: never;
+    readonly debug?: never;
+    readonly timeoutMilliseconds?: never;
+};
+
 type ResolvedMetadata = {
     readonly tags: readonly string[];
     readonly kind: TestFamily | null;

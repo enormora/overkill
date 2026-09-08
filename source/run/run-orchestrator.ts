@@ -23,9 +23,11 @@ type NodeRunOrchestratorInput = {
     readonly readEnvironment: RuntimeCapabilityPolicyInput['readEnvironment'];
     readonly readStorage: RuntimeCapabilityPolicyInput['readStorage'];
     readonly stderr: {
+        readonly write: (chunk: Buffer) => void;
         readonly writeLine: (line: string) => void;
     };
     readonly stdout: {
+        readonly write: (chunk: Buffer) => void;
         readonly writeLine: (line: string) => void;
     };
 };
@@ -48,6 +50,10 @@ export function createNodeRunOrchestrator(input: NodeRunOrchestratorInput): RunO
             reporterDispatcher,
             wallClock
         }),
+        liveOutput: {
+            stderr: { write: input.stderr.write },
+            stdout: { write: input.stdout.write }
+        },
         node: input.node,
         reporterDispatcher,
         runtimeCapabilityPolicy: {

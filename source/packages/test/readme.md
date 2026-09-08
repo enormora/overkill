@@ -73,7 +73,8 @@ testing doubles package ownership.
 
 Nodes created through this root facade derive `metadata.kind: 'microtest'`.
 High-level authoring metadata accepts `tags` and `extra`; engine-owned fields
-such as `kind`, `runtimes`, and `ownership` stay outside the root facade.
+such as `kind`, `runtimes`, `ownership`, and `capture` stay outside the root
+facade.
 
 Use the object form when attaching node metadata. Metadata on the exported
 top-level `testNode` applies to the whole module's test tree.
@@ -184,6 +185,8 @@ export const {
 
 The returned facade contains authoring helpers only. Assertions and doubles
 are imported alongside it instead of being registered into the facade.
+Non-microtest facades also accept `metadata.capture` as a capture preference
+for tests, suites, tables, and facade-wide metadata.
 
 Direct Node execution:
 
@@ -215,6 +218,7 @@ Supported command-line surface:
 - `--filter <expr>`
 - `--title <text>`
 - `--profile <name>`
+- `--no-capture`
 - `--measure-resource-usage`
 - `--resource-budget <name=value>`
 - `--with-locations`
@@ -224,6 +228,9 @@ Supported command-line surface:
 `javaScriptEngineHeapBytes`, `residentSetBytes`, and
 `residentSetGrowthBytesPerSecond`. Supplying a resource budget enables
 resource usage measurement for that run.
+
+`--no-capture` applies to `run` only. It passes stdout and stderr through live
+for capture-capable profiles and is invalid for microtest profiles.
 
 `--filter`, `--title`, and `--file` apply the same run selection to `run` and
 `list`. `--filter` supports `=`, `~`, `:`, `!`, `|`, and parentheses over

@@ -445,6 +445,13 @@ export const testNode = createOverkillSuite({
                 scope.assert.throws(function createTestWithWrongArity() {
                     invokeTest();
                 }, { message: 'test() requires (title, body) or ({ title, metadata, body }).' });
+                scope.assert.throws(function createMicrotestWithCapture() {
+                    invokeTest({
+                        body: passingBody,
+                        metadata: { capture: 'live' },
+                        title: 'captures'
+                    });
+                }, { message: 'Microtest authoring metadata does not support capture mode.' });
                 scope.assert.throws(function createSuiteWithWrongArity() {
                     invokeSuite();
                 }, { message: 'suite() requires (title, children) or ({ title, metadata, children }).' });

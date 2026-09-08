@@ -178,9 +178,9 @@ Exact `CaseId` selection is programmatic API-only.
 
 ## Output And Capture
 
-| Flag           | Behavior                                              | Reference                                                                                               |
-| -------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `--no-capture` | Pass stdout/stderr through live instead of buffering. | [Runtime Behavior § Console Output Capture](../architecture/runtime-behavior.md#console-output-capture) |
+| Flag           | Behavior                                                                 | Reference                                                                                               |
+| -------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `--no-capture` | Pass capture-capable stdout/stderr live. Invalid for microtest profiles. | [Runtime Behavior § Console Output Capture](../architecture/runtime-behavior.md#console-output-capture) |
 
 ## Lifecycle And Edge Cases
 

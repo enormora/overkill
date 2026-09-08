@@ -52,6 +52,7 @@ type RunCommandArguments = {
     readonly file: string | null;
     readonly filter: RunFilter | null;
     readonly measureResourceUsage: boolean;
+    readonly noCapture: boolean;
     readonly paths: readonly string[];
     readonly profile: string;
     readonly resourceBudgetOverrides: ResourceBudgetOverrides | null;
@@ -269,6 +270,10 @@ function readMeasureResourceUsage(args: RunCommandArguments): boolean | null {
     return null;
 }
 
+function readCapture(args: RunCommandArguments): CommandLineRunTestsRequest['runRequest']['capture'] {
+    return args.noCapture ? 'live' : 'buffered';
+}
+
 function selectionFromFilters(filters: readonly RunFilter[]): RunSelection {
     const [ firstFilter, ...remainingFilters ] = filters;
 
@@ -307,7 +312,7 @@ function createRunTestsRequest(args: RunCommandArguments, cwd: string): CommandL
         runRequest: {
             baselineUpdateMode: 'none',
             capabilityRestrictions: { mode: 'enabled' },
-            capture: 'buffered',
+            capture: readCapture(args),
             debug: {
                 mode: 'off',
                 selectors: []
@@ -389,6 +394,7 @@ function createOverkillCommand(
         args: {
             ...sharedCommandArguments,
             measureResourceUsage: flag({ long: 'measure-resource-usage' }),
+            noCapture: flag({ long: 'no-capture' }),
             resourceBudgetOverrides: multioption({
                 long: 'resource-budget',
                 type: resourceBudgetOverridesType,

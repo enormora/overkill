@@ -69,9 +69,9 @@ function activeCaseStates(): readonly [SupervisedRunState, SupervisedRunState, S
     const singleState = createSupervisedRunState();
     const multiState = createSupervisedRunState();
 
-    singleState.addActiveCase('first', { id: firstCaseId });
-    multiState.addActiveCase('first', { id: firstCaseId });
-    multiState.addActiveCase('second', { id: secondCaseId });
+    singleState.addActiveCase('first', { capture: null, id: firstCaseId });
+    multiState.addActiveCase('first', { capture: null, id: firstCaseId });
+    multiState.addActiveCase('second', { capture: null, id: secondCaseId });
 
     return [ createSupervisedRunState(), singleState, multiState ];
 }

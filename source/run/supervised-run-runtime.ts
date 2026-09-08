@@ -105,11 +105,24 @@ async function recordReporterEventErrors(
 }
 
 function caseByKey(collectedPlan: CollectedRunPlan): ReadonlyMap<string, SupervisedCase> {
-    return new Map(
-        collectedRunCaseIds(collectedPlan).map(function toEntry(id) {
-            return [ caseIdentityKey(id), { id } ];
-        })
-    );
+    const entries: [string, SupervisedCase][] = [];
+
+    for (const file of collectedPlan.files) {
+        for (const testCase of file.cases) {
+            const id = {
+                file: file.file,
+                params: testCase.params,
+                suite: testCase.suitePath.map(function toTitle(suite) {
+                    return suite.title;
+                }),
+                title: testCase.title
+            };
+
+            entries.push([ caseIdentityKey(id), { capture: testCase.metadata.capture, id } ]);
+        }
+    }
+
+    return new Map(entries);
 }
 
 export function applyEvent(
@@ -224,6 +237,7 @@ export function effectiveSupervisedCapabilityRestrictions(
 function createRunCommand(resolvedRun: ResolvedRun): SupervisedRunCommand {
     return {
         capabilityRestrictions: effectiveSupervisedCapabilityRestrictions(resolvedRun),
+        capture: resolvedRun.facts.execution.capture,
         collectionTimeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.collectionMilliseconds,
         cwd: resolvedRun.cwd,
         engine: supervisedEngine(resolvedRun),
@@ -368,6 +382,7 @@ export function handleCollectionSample<CollectionValue>(
 export async function observeChild(runtime: SupervisedRunRuntime): Promise<void> {
     observeSupervisedChildOutput({
         capabilityRestrictions: effectiveSupervisedCapabilityRestrictions(runtime.resolvedRun),
+        capture: runtime.resolvedRun.facts.execution.capture,
         child: runtime.child,
         dependencies: runtime.dependencies,
         state: runtime.state,
