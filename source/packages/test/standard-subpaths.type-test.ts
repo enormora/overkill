@@ -26,7 +26,12 @@ import type {
     createGithubActionsOutputRenderer,
     createLineReporter
 } from './reporters.entry-point.ts';
-import type { unavailable as resourcesUnavailable } from './resources.entry-point.ts';
+import {
+    defineResource,
+    defineRuntime,
+    type ResourceHandle,
+    type RuntimeContext
+} from './resources.entry-point.ts';
 
 type UnavailableStandardSubpathApi = (...parameters: readonly unknown[]) => never;
 type CompositeBooleanDefinition = CompositeAssertionDefinition<
@@ -34,6 +39,25 @@ type CompositeBooleanDefinition = CompositeAssertionDefinition<
     ReturnType<CompositeCheckBuilder<'assert'>['true']>
 >;
 type NarrowingStringDefinition = NarrowingCompositeAssertionDefinition<unknown, string, readonly []>;
+type Database = {
+    readonly url: string;
+};
+
+const database = defineResource({
+    name: 'database',
+    scope: 'per-case',
+    requirements: [],
+    acquire(): Database {
+        return { url: 'postgres://localhost' };
+    },
+    dispose: null
+});
+const runtime = defineRuntime({
+    name: 'api',
+    dimensions: {},
+    resources: { database },
+    requirements: []
+});
 
 describe('@overkill-dev/test standard subpaths', function () {
     test('exposes config authoring types', function () {
@@ -62,9 +86,16 @@ describe('@overkill-dev/test standard subpaths', function () {
         >();
     });
 
+    test('exposes resource descriptor types through the standard distribution', function () {
+        expect<ResourceHandle<typeof database>>().type.toBe<Database>();
+        expect<RuntimeContext<typeof runtime>>().type.toBe<{
+            readonly database: Database;
+        }>();
+        expect(runtime.name).type.toBe<'api'>();
+    });
+
     test('exposes only unavailable sentinel types for reserved subpaths', function () {
         expect<typeof benchUnavailable>().type.toBe<UnavailableStandardSubpathApi>();
-        expect<typeof resourcesUnavailable>().type.toBe<UnavailableStandardSubpathApi>();
         expect<typeof baselinesUnavailable>().type.toBe<UnavailableStandardSubpathApi>();
     });
 });

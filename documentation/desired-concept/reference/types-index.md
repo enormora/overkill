@@ -32,9 +32,11 @@ type CaseId = TestId & {
     readonly params: string | null; // canonical case key for parameterized tests
 };
 
+type RuntimeDimensions = Readonly<Record<string, string>>;
+
 type RuntimeId = {
     readonly name: string; // 'chromium', 'node', 'deterministic-api', ...
-    readonly dimensions?: Record<string, string>;
+    readonly dimensions: RuntimeDimensions;
 };
 
 type WorkloadId = {
@@ -1270,10 +1272,50 @@ type ExecutionRequirement =
     | { kind: 'serial'; }
     | { kind: 'single-worker'; }
     | { kind: 'exclusive-resource'; name: string; }
-    | { kind: 'startup-budget-ms'; min: number; };
+    | { kind: 'startup-budget-milliseconds'; minimumMilliseconds: number; };
 ```
 
 Canonical: [Deterministic Simulation Testing](../authoring/deterministic-simulation.md).
+
+## Resource And Runtime Descriptors
+
+```ts
+type ResourceScope = 'per-run' | 'per-file' | 'per-suite' | 'per-case' | 'shared-per-worker';
+
+type ResourceCreationContext = {
+    readonly signal: AbortSignal;
+};
+
+type ResourceDisposalContext = {
+    readonly signal: AbortSignal;
+};
+
+type ResourceDefinition<Handle> = {
+    readonly name: string;
+    readonly scope: ResourceScope;
+    readonly requirements: ReadonlyArray<ExecutionRequirement>;
+    readonly acquire: (context: ResourceCreationContext) => Handle | Promise<Handle>;
+    readonly dispose: null | ((handle: Handle, context: ResourceDisposalContext) => void | Promise<void>);
+};
+
+type ResourceHandle<Resource extends ResourceDefinition<unknown>> = Resource extends ResourceDefinition<infer Handle>
+    ? Handle
+    : never;
+
+type RuntimeDefinition<Resources extends Readonly<Record<string, ResourceDefinition<unknown>>>> = {
+    readonly name: string;
+    readonly dimensions: RuntimeDimensions;
+    readonly resources: Resources;
+    readonly requirements: ReadonlyArray<ExecutionRequirement>;
+};
+
+type RuntimeContext<Runtime extends RuntimeDefinition<Readonly<Record<string, ResourceDefinition<unknown>>>>> = {
+    readonly [Key in keyof Runtime['resources']]: ResourceHandle<Runtime['resources'][Key]>;
+};
+```
+
+Canonical: [Package Architecture](../architecture/package-architecture.md) for package ownership and
+[Higher Test Layers](../authoring/higher-test-layers.md) for intended resource usage.
 
 ## Illustrative Placeholders Without Domain Definitions
 

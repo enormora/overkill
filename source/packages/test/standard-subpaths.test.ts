@@ -18,8 +18,7 @@ type ReservedSubpathModule = {
 
 const reservedSubpathModules: readonly ReservedSubpathModule[] = [
     { module: baselinesSubpath, name: 'baselines' },
-    { module: benchSubpath, name: 'bench' },
-    { module: resourcesSubpath, name: 'resources' }
+    { module: benchSubpath, name: 'bench' }
 ];
 
 function sortedKeys(value: Readonly<Record<string, unknown>>): readonly string[] {
@@ -84,6 +83,29 @@ function assertAssertSubpath(scope: TestScope): void {
     scope.assert.equal(typeof defineCompositeAssertion, 'function');
 }
 
+function assertResourcesSubpath(scope: TestScope): void {
+    const database = resourcesSubpath.defineResource({
+        name: 'database',
+        scope: 'per-case',
+        requirements: [ { kind: 'exclusive-resource', name: 'database' } ],
+        acquire() {
+            return { url: 'postgres://localhost' };
+        },
+        dispose: null
+    });
+    const runtime = resourcesSubpath.defineRuntime({
+        name: 'api',
+        dimensions: {},
+        resources: { database },
+        requirements: [ { kind: 'startup-budget-milliseconds', minimumMilliseconds: 1000 } ]
+    });
+
+    scope.assert.deepEqual(sortedKeys(resourcesSubpath), [ 'defineResource', 'defineRuntime' ]);
+    scope.assert.equal(database.name, 'database');
+    scope.assert.equal(runtime.id.name, 'api');
+    scope.assert.deepEqual(Object.keys(runtime.resources), [ 'database' ]);
+}
+
 function assertReservedSubpath(scope: TestScope, subpath: ReservedSubpathModule): void {
     scope.assert.deepEqual(sortedKeys(subpath.module), [ 'unavailable' ]);
     scope.assert.throws(function invokeUnavailableSubpath() {
@@ -124,6 +146,16 @@ export const testNode = createSuite({
             metadata: {},
             body(scope: TestScope) {
                 assertAssertSubpath(scope);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: '@overkill-dev/test/resources re-exports resource descriptors',
+            metadata: {},
+            body(scope: TestScope) {
+                assertResourcesSubpath(scope);
 
                 return scope.assert.collect();
             }
