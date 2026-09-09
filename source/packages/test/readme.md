@@ -36,7 +36,8 @@ Standard subpaths:
 - `@overkill-dev/test/assert` re-exports assertion-extension helpers from
   `@overkill-dev/assert`.
 - `@overkill-dev/test/resources` re-exports typed resource and runtime
-  descriptors from `@overkill-dev/resources`.
+  descriptors from `@overkill-dev/resources` and adds `withRuntime(...)`
+  for explicit `scope.runtime` composition.
 - `@overkill-dev/test/bench` and `@overkill-dev/test/baselines` are reserved.
   They currently export only `unavailable()`.
 
@@ -162,6 +163,38 @@ const checkName = defineParameterizedTestBody<{ readonly name: string; }>(
 export const testNode = suite('users', [
     test('builds Ada', checkName({ name: 'Ada' }))
 ]);
+```
+
+Runtime handles stay behind the resources subpath:
+
+```ts
+import { defineResource, defineRuntime, withRuntime } from '@overkill-dev/test/resources';
+
+const database = defineResource({
+    name: 'database',
+    scope: 'per-case',
+    requirements: [],
+    dependencies: {},
+    acquire() {
+        return openDatabase();
+    },
+    dispose: null
+});
+
+const runtime = defineRuntime({
+    name: 'api',
+    dimensions: {},
+    resources: { database },
+    requirements: []
+});
+
+test(
+    'loads user',
+    withRuntime(runtime, { database: databaseHandle }, (scope) => {
+        scope.assert.equal(scope.runtime.database.loadUser('42').id, '42');
+        return scope.assert.collect();
+    })
+);
 ```
 
 `createTestFacade` creates another narrow authoring surface for one test

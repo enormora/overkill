@@ -1353,20 +1353,32 @@ Canonical: [Deterministic Simulation Testing](../authoring/deterministic-simulat
 ```ts
 type ResourceScope = 'per-run' | 'per-file' | 'per-suite' | 'per-case' | 'shared-per-worker';
 
-type ResourceCreationContext = {
+type ResourceDependencies = Readonly<Record<string, ResourceDefinition<unknown>>>;
+
+type ResourceContext<Resources extends ResourceDependencies> = {
+    readonly [Key in keyof Resources]: ResourceHandle<Resources[Key]>;
+};
+
+type ResourceCreationContext<Dependencies extends ResourceDependencies = Readonly<Record<never, never>>> = {
+    readonly resources: ResourceContext<Dependencies>;
     readonly signal: AbortSignal;
 };
 
-type ResourceDisposalContext = {
+type ResourceDisposalContext<Dependencies extends ResourceDependencies = Readonly<Record<never, never>>> = {
+    readonly resources: ResourceContext<Dependencies>;
     readonly signal: AbortSignal;
 };
 
-type ResourceDefinition<Handle> = {
+type ResourceDefinition<
+    Handle,
+    Dependencies extends ResourceDependencies = Readonly<Record<never, never>>
+> = {
+    readonly dependencies: Dependencies;
     readonly name: string;
     readonly scope: ResourceScope;
     readonly requirements: ReadonlyArray<ExecutionRequirement>;
-    readonly acquire: (context: ResourceCreationContext) => Handle | Promise<Handle>;
-    readonly dispose: null | ((handle: Handle, context: ResourceDisposalContext) => void | Promise<void>);
+    readonly acquire: (context: ResourceCreationContext<Dependencies>) => Handle | Promise<Handle>;
+    readonly dispose: null | ((handle: Handle, context: ResourceDisposalContext<Dependencies>) => void | Promise<void>);
 };
 
 type ResourceHandle<Resource extends ResourceDefinition<unknown>> = Resource extends ResourceDefinition<infer Handle>
@@ -1383,6 +1395,25 @@ type RuntimeDefinition<Resources extends Readonly<Record<string, ResourceDefinit
 type RuntimeContext<Runtime extends RuntimeDefinition<Readonly<Record<string, ResourceDefinition<unknown>>>>> = {
     readonly [Key in keyof Runtime['resources']]: ResourceHandle<Runtime['resources'][Key]>;
 };
+
+type RuntimeContextComposition<
+    BaseContext,
+    Runtime extends RuntimeDefinition<Readonly<Record<string, ResourceDefinition<unknown>>>>
+> = BaseContext & {
+    readonly runtime: RuntimeContext<Runtime>;
+};
+
+type RuntimeTestScope<
+    Runtime extends RuntimeDefinition<Readonly<Record<string, ResourceDefinition<unknown>>>>,
+    Scope extends TestScope = TestScope
+> = Scope & {
+    readonly runtime: RuntimeContext<Runtime>;
+};
+
+type RuntimeTestBody<
+    Runtime extends RuntimeDefinition<Readonly<Record<string, ResourceDefinition<unknown>>>>,
+    Scope extends TestScope = TestScope
+> = (scope: RuntimeTestScope<Runtime, Scope>) => ReturnType<TestBody>;
 ```
 
 Canonical: [Package Architecture](../architecture/package-architecture.md) for package ownership and
