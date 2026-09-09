@@ -2,6 +2,7 @@ import {
     command,
     flag,
     multioption,
+    oneOf,
     option,
     restPositionals,
     runSafely,
@@ -41,6 +42,8 @@ export type OverkillCommandLineRunRequest = {
 type ResourceBudgetOverrides = NonNullable<CommandLineRunTestsRequest['runRequest']['resourceBudgetOverrides']>;
 
 type ResourceBudgetName = keyof ResourceBudgetOverrides;
+type RunOrder = Extract<CommandLineRunTestsRequest['runRequest']['order'], 'lexical' | 'seeded'>;
+type RunSeed = CommandLineRunTestsRequest['runRequest']['seed'];
 
 type ResourceBudgetOverride = {
     readonly name: ResourceBudgetName;
@@ -53,9 +56,11 @@ type RunCommandArguments = {
     readonly filter: RunFilter | null;
     readonly measureResourceUsage: boolean;
     readonly noCapture: boolean;
+    readonly order: RunOrder;
     readonly paths: readonly string[];
     readonly profile: string;
     readonly resourceBudgetOverrides: ResourceBudgetOverrides | null;
+    readonly seed: RunSeed;
     readonly title: string | null;
 };
 
@@ -63,8 +68,10 @@ type ListCommandArguments = {
     readonly configPath: string | null;
     readonly file: string | null;
     readonly filter: RunFilter | null;
+    readonly order: RunOrder;
     readonly paths: readonly string[];
     readonly profile: string;
+    readonly seed: RunSeed;
     readonly title: string | null;
     readonly withLocations: boolean;
     readonly withOrphans: boolean;
@@ -103,6 +110,8 @@ const resourceBudgetNames: ReadonlySet<string> = new Set([
     'residentSetBytes',
     'residentSetGrowthBytesPerSecond'
 ]);
+const runOrderType = oneOf([ 'seeded', 'lexical' ] as const);
+const unsignedDecimalPattern = /^(?:0|[1-9]\d*)$/u;
 
 const wrapperExitCodes: {
     readonly argumentOrConfig: CommandLineExitCode;
@@ -171,6 +180,14 @@ function parseResourceBudgetValue(value: string): number {
     return parsedValue;
 }
 
+function parseRunSeed(value: string): RunSeed {
+    if (!unsignedDecimalPattern.test(value)) {
+        throw new TypeError(`Run seed must be a nonnegative base-10 integer: ${value}`);
+    }
+
+    return { value: BigInt(value) };
+}
+
 function parseResourceBudgetOverride(rawValue: string): ResourceBudgetOverride {
     const separatorIndex = rawValue.indexOf('=');
 
@@ -237,6 +254,15 @@ const filterExpressionType: Type<string, RunFilter | null> = {
         await Promise.resolve();
 
         return parseRunFilterExpression(value);
+    }
+};
+
+const runSeedType: Type<string, RunSeed> = {
+    displayName: 'n',
+    async from(value) {
+        await Promise.resolve();
+
+        return parseRunSeed(value);
     }
 };
 
@@ -319,12 +345,12 @@ function createRunTestsRequest(args: RunCommandArguments, cwd: string): CommandL
             },
             execution: { mode: 'profile-default' },
             measureResourceUsage: readMeasureResourceUsage(args),
-            order: 'plan',
+            order: args.order,
             paths: args.paths,
             profile: args.profile,
             resourceBudgetOverrides: args.resourceBudgetOverrides,
             resourceUsageSamplingIntervalMilliseconds: null,
-            seed: { value: null },
+            seed: args.seed,
             selection: createSelection(args),
             shard: { index: 0, total: 1 },
             verbose: false
@@ -337,8 +363,10 @@ function createListTestsRequest(args: ListCommandArguments, cwd: string): Comman
         configPath: args.configPath,
         cwd,
         listRequest: {
+            order: args.order,
             paths: args.paths,
             profile: args.profile,
+            seed: args.seed,
             selection: createSelection(args),
             withLocations: args.withLocations,
             withOrphans: args.withOrphans
@@ -366,6 +394,20 @@ const sharedCommandArguments = {
         type: filterExpressionType,
         defaultValue() {
             return null;
+        }
+    }),
+    order: option({
+        long: 'order',
+        type: runOrderType,
+        defaultValue() {
+            return 'seeded' as const;
+        }
+    }),
+    seed: option({
+        long: 'seed',
+        type: runSeedType,
+        defaultValue() {
+            return { value: null };
         }
     }),
     title: option({

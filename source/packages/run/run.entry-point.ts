@@ -51,6 +51,7 @@ export type {
     RunLoaderConfig,
     RunMicrotestExecution,
     RunMicrotestProfileConfig,
+    RunOrder,
     RunOrchestrator,
     RunProcessModel,
     RunProfileConfig,

@@ -1,5 +1,6 @@
 import {
-    collectedRunCaseFacts,
+    collectedRunCaseEntries,
+    collectedRunCaseFactsFromEntries,
     collectedRunPlanFromTestPlanCases,
     createRunResultFromCollectedPlan
 } from './collected-run-plan.ts';
@@ -21,10 +22,12 @@ import { createLocalTestPlan } from './run-local-test-plan.ts';
 import {
     assertCollectedRunPlanMatchesTestFamily,
     assertCollectedRunPlanHasCases,
+    orderedRunCases,
+    orderedTestPlan,
     assertTestPlanMatchesTestFamily,
     selectedCollectedRunPlan,
-    selectedTestPlan,
-    selectedTestPlanCases
+    selectedNonEmptyTestPlanCases,
+    selectedTestPlan
 } from './run-selection.ts';
 import {
     assertRunnableResourceUsagePolicy,
@@ -195,8 +198,13 @@ function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): R
         assertCollectedRunPlanHasCases(input.collectedPlan);
     }
 
+    const orderedCases = orderedRunCases(
+        collectedRunCaseEntries(input.collectedPlan),
+        input.request.order,
+        input.request.seed
+    );
     const facts = freezeValue(createRunFacts({
-        cases: collectedRunCaseFacts(input.collectedPlan, fileSetForDiscoveredFiles(input.files)),
+        cases: collectedRunCaseFactsFromEntries(orderedCases, fileSetForDiscoveredFiles(input.files)),
         config: input.config,
         dependencies: input.dependencies,
         engine: input.engine,
@@ -300,14 +308,14 @@ async function createLocalResolvedRun(
     dependencies: RunOrchestratorDependencies,
     input: ResolvedRunInput
 ): Promise<ResolvedRun> {
+    const testPlan = await createLocalTestPlan(command, input.profile, input.files, dependencies);
+    const selectedPlan = selectedTestPlan(testPlan, input.request.selection);
+
     return createLocalResolvedRunFromTestPlan(
         command,
         dependencies,
         input,
-        selectedTestPlan(
-            await createLocalTestPlan(command, input.profile, input.files, dependencies),
-            input.request.selection
-        )
+        orderedTestPlan(selectedPlan, input.request.order, input.request.seed)
     );
 }
 
@@ -340,30 +348,46 @@ async function createLocalRunOrEmptySelectionResult(
     }
 
     const testPlan = await createLocalTestPlan(command, input.profile, input.files, dependencies);
-    const selectionResult = selectedTestPlanCases(testPlan, input.request.selection);
-    const firstCase = selectionResult.plannedCases[0];
+    const plannedCases = selectedNonEmptyTestPlanCases(testPlan, input.request.selection);
 
-    if (firstCase === undefined) {
+    if (plannedCases === null) {
         return createEmptySelectionResult(testPlan, dependencies);
     }
 
+    const cases = orderedRunCases(plannedCases, input.request.order, input.request.seed);
+
     return createLocalResolvedRunFromTestPlan(command, dependencies, input, {
         ...testPlan,
-        cases: [ firstCase, ...selectionResult.plannedCases.slice(1) ]
+        cases
     });
+}
+
+function commandWithResolvedSeed(command: RunCommand, dependencies: RunOrchestratorDependencies): RunCommand {
+    if (command.request.seed.value !== null) {
+        return command;
+    }
+
+    return {
+        ...command,
+        request: {
+            ...command.request,
+            seed: { value: dependencies.createSeed() }
+        }
+    };
 }
 
 async function createResolvedRun(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies
 ): Promise<ResolvedRun> {
-    const input = await readResolvedRunInput(command);
+    const seededCommand = commandWithResolvedSeed(command, dependencies);
+    const input = await readResolvedRunInput(seededCommand);
 
     if (input.profile.execution.processModel === 'supervised-process') {
-        return await createSupervisedResolvedRun(command, dependencies, input);
+        return await createSupervisedResolvedRun(seededCommand, dependencies, input);
     }
 
-    return await createLocalResolvedRun(command, dependencies, input);
+    return await createLocalResolvedRun(seededCommand, dependencies, input);
 }
 
 function createExecutionResourceUsageTracker(
@@ -498,20 +522,6 @@ async function executeResolvedRun(
             timeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.softMilliseconds
         }
     });
-}
-
-function commandWithResolvedSeed(command: RunCommand, dependencies: RunOrchestratorDependencies): RunCommand {
-    if (command.request.seed.value !== null) {
-        return command;
-    }
-
-    return {
-        ...command,
-        request: {
-            ...command.request,
-            seed: { value: dependencies.createSeed() }
-        }
-    };
 }
 
 async function runCommand(command: RunCommand, dependencies: RunOrchestratorDependencies): Promise<RunResult> {

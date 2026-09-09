@@ -47,7 +47,7 @@ function createRunRequest(paths: readonly string[]): RunRequest {
         debug: { mode: 'off', selectors: [] },
         execution: { mode: 'profile-default' },
         measureResourceUsage: null,
-        order: 'plan',
+        order: 'seeded',
         paths,
         profile: 'microtest',
         resourceBudgetOverrides: null,

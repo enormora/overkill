@@ -184,7 +184,7 @@ export const testNode = createSuite({
                             },
                             execution: { mode: 'profile-default' },
                             measureResourceUsage: null,
-                            order: 'plan',
+                            order: 'seeded',
                             paths: [ 'source/a.test.ts', 'source/b.test.ts' ],
                             profile: 'microtest',
                             resourceBudgetOverrides: null,
@@ -226,8 +226,10 @@ export const testNode = createSuite({
                         configPath: 'overkill.config.ts',
                         cwd: '/project',
                         listRequest: {
+                            order: 'seeded',
                             paths: [ 'source/a.test.ts', 'source/b.test.ts' ],
                             profile: 'backend-http',
+                            seed: { value: null },
                             selection: { kind: 'all' },
                             withLocations: true,
                             withOrphans: true

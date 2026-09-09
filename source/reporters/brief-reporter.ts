@@ -11,6 +11,7 @@ import { formatSourceLocation, type ReportingContext } from '../engine/reporting
 import type { RunResult, RunnerError, TestFailure } from '../engine/run-result.ts';
 import { primaryFailureSourceLocation } from './failure-location.ts';
 import { formatFailureSummary } from './failure-summary.ts';
+import { formatRunFactSummary } from './run-fact-summary.ts';
 
 const progressInterval = 100;
 
@@ -146,6 +147,13 @@ function testEndUpdate(
     };
 }
 
+function runStartIntent(event: Extract<ReporterEvent, { readonly kind: 'run-start'; }>): OutputLineIntent {
+    const summary = formatRunFactSummary(event.facts);
+    const details = summary === null ? '' : ` ${summary}`;
+
+    return stdout(`run ${event.root.title}${details}`, null);
+}
+
 export function createBriefReporter(): DefinedReporter<RealTimeReporter<BriefReporterSinks>> {
     return defineReporter(function createBriefRuntimeReporter(context) {
         let state: BriefReporterState = {
@@ -168,7 +176,7 @@ export function createBriefReporter(): DefinedReporter<RealTimeReporter<BriefRep
                         planned: readPlannedCount(event.facts)
                     };
 
-                    return [ stdout(`run ${event.root.title}`, null) ];
+                    return [ runStartIntent(event) ];
                 }
 
                 if (event.kind === 'test-end') {

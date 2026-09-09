@@ -88,7 +88,7 @@ function createRunRequest(paths: readonly string[]): RunRequest {
         debug: { mode: 'off', selectors: [] },
         execution: { mode: 'profile-default' },
         measureResourceUsage: null,
-        order: 'plan',
+        order: 'seeded',
         paths,
         profile: 'microtest',
         resourceBudgetOverrides: null,
@@ -194,8 +194,10 @@ async function listCommandLine(
         configPath: null,
         cwd: process.cwd(),
         listRequest: {
+            order: 'seeded',
             paths,
             profile: 'microtest',
+            seed: { value: 42n },
             selection: { kind: 'all' },
             withLocations: false,
             withOrphans
@@ -210,8 +212,10 @@ async function listDiscoveryCommandLine(processModel: RunProcessModel): Promise<
         configPath: null,
         cwd: process.cwd(),
         listRequest: {
+            order: 'seeded',
             paths: [],
             profile: 'microtest',
+            seed: { value: 42n },
             selection: { kind: 'all' },
             withLocations: false,
             withOrphans: false
@@ -238,12 +242,14 @@ export const testNode = createSuite({
 
                 scope.assert.equal(localResult.exitCode, 0);
                 scope.assert.deepEqual(localResult.stdoutLines, [
+                    'order=seeded seed=42',
                     passingFixturePath,
                     '  fixture',
                     '    passes'
                 ]);
                 scope.assert.equal(supervisedResult.exitCode, 0);
                 scope.assert.deepEqual(supervisedResult.stdoutLines, [
+                    'order=seeded seed=42',
                     passingFixturePath,
                     '  fixture',
                     '    passes',
@@ -277,6 +283,7 @@ export const testNode = createSuite({
                     skipped: 0
                 });
                 scope.assert.deepEqual(listResult.stdoutLines, [
+                    'order=seeded seed=42',
                     discoveryFixturePath,
                     '  discovery',
                     '    unit passes'

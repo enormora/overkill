@@ -28,6 +28,12 @@ type RunResultTiming = {
     readonly wallClock: WallClock;
 };
 
+export type CollectedRunCaseEntry = {
+    readonly file: string;
+    readonly id: CaseId;
+    readonly testCase: CollectedRunCase;
+};
+
 function collectedCaseId(file: string, testCase: CollectedRunCase): CaseId {
     return createCaseId(file, suiteTitles(testCase.suitePath), testCase.title, testCase.params);
 }
@@ -176,24 +182,27 @@ export function collectedRunPlanFromTestPlan(testPlan: TestPlan): CollectedRunPl
     return collectedRunPlanFromTestPlanCases(testPlan, testPlan.cases);
 }
 
-export function collectedRunCaseFacts(
-    plan: CollectedRunPlan,
-    fileSetForCase: RunCaseFileSet
-): readonly RunCaseFacts[] {
-    return collectedCases(plan.files).map(function toRunCaseFacts(collectedCase): RunCaseFacts {
+export function collectedRunCaseEntries(plan: CollectedRunPlan): readonly CollectedRunCaseEntry[] {
+    return collectedCases(plan.files).map(function toCaseEntry(collectedCase) {
         const id = collectedCaseId(collectedCase.file, collectedCase.testCase);
 
         return {
-            fileSet: fileSetForCase(id.file),
-            id,
-            metadata: serializeValue(collectedCase.testCase.metadata)
+            ...collectedCase,
+            id
         };
     });
 }
 
-export function collectedRunCaseIds(plan: CollectedRunPlan): readonly CaseId[] {
-    return collectedCases(plan.files).map(function toCaseId(collectedCase) {
-        return collectedCaseId(collectedCase.file, collectedCase.testCase);
+export function collectedRunCaseFactsFromEntries(
+    cases: readonly CollectedRunCaseEntry[],
+    fileSetForCase: RunCaseFileSet
+): readonly RunCaseFacts[] {
+    return cases.map(function toRunCaseFacts(collectedCase): RunCaseFacts {
+        return {
+            fileSet: fileSetForCase(collectedCase.id.file),
+            id: collectedCase.id,
+            metadata: serializeValue(collectedCase.testCase.metadata)
+        };
     });
 }
 

@@ -5,6 +5,11 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
+import {
+    defaultMicrotestProfile,
+    defaultRunConfig,
+    defaultRunRequest
+} from '../test-support/run-command-factory.ts';
 import { renderResolvedRunList } from './run-list-renderer.ts';
 import type { ResolvedRun } from './run-types.ts';
 
@@ -18,6 +23,7 @@ const otherRowParameterIdentity = [
     '"value":{"kind":"number","value":2}}],"kind":"object","truncation":null}'
 ]
     .join('');
+const emptySerializedMetadata = { constructorName: 'Object', entries: [], kind: 'object', truncation: null } as const;
 
 function createLocationVariantPlan(): TestPlan {
     const engine = createTestEngine();
@@ -88,6 +94,63 @@ function createLocationVariantPlan(): TestPlan {
     });
 }
 
+function createResolvedRun(testPlan: TestPlan): ResolvedRun {
+    const profile = defaultMicrotestProfile({
+        execution: { processModel: 'in-process', scheduling: 'serial' }
+    });
+    const config = defaultRunConfig({
+        profiles: { microtest: profile }
+    });
+    const request = defaultRunRequest({
+        order: 'lexical',
+        seed: { value: 42n }
+    });
+
+    return {
+        collectionRunnerErrors: [],
+        config,
+        cwd: process.cwd(),
+        engine: { kind: 'default' },
+        facts: {
+            cases: testPlan.cases.map(function toCaseFacts(testCase) {
+                return {
+                    fileSet: null,
+                    id: testCase.id,
+                    metadata: emptySerializedMetadata
+                };
+            }),
+            environment: {
+                node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
+                projectRoot: process.cwd(),
+                runtimeStateDir: config.runtimeStateDir
+            },
+            execution: {
+                baselineUpdateMode: request.baselineUpdateMode,
+                capture: request.capture,
+                debug: request.debug,
+                engine: { kind: 'default' },
+                order: request.order,
+                processModel: profile.execution.processModel,
+                profile: request.profile,
+                resourceUsagePolicy: profile.resourceUsage,
+                scheduling: profile.execution.scheduling,
+                testFamily: profile.testFamily,
+                timeoutPolicy: profile.timeouts,
+                verbose: request.verbose
+            },
+            loader: config.loader,
+            reproducibility: {
+                selection: request.selection,
+                seed: '42',
+                shard: request.shard
+            }
+        },
+        plan: { kind: 'local', testPlan },
+        reporters: [],
+        request
+    };
+}
+
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-list-renderer.test.ts',
@@ -98,22 +161,14 @@ export const testNode = createOverkillSuite({
             title: 'renderResolvedRunList() renders location variants',
             metadata: {},
             body(scope: OverkillScope) {
+                const testPlan = createLocationVariantPlan();
                 const result = renderResolvedRunList(
-                    {
-                        facts: {
-                            environment: {
-                                projectRoot: process.cwd()
-                            }
-                        },
-                        plan: {
-                            kind: 'local',
-                            testPlan: createLocationVariantPlan()
-                        }
-                    } as ResolvedRun,
+                    createResolvedRun(testPlan),
                     { withLocations: true, withOrphans: false }
                 );
 
                 scope.assert.deepEqual(result, [
+                    'order=lexical seed=42',
                     'source/location-variants.test.ts',
                     '  suite',
                     '    no location',

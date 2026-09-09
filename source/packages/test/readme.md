@@ -223,6 +223,8 @@ Supported command-line surface:
 - `--config <path>`
 - `--file <path>`
 - `--filter <expr>`
+- `--order <seeded|lexical>`
+- `--seed <n>`
 - `--title <text>`
 - `--profile <name>`
 - `--no-capture`
@@ -242,6 +244,11 @@ for capture-capable profiles and is invalid for microtest profiles.
 `--filter`, `--title`, and `--file` apply the same run selection to `run` and
 `list`. `--filter` supports `=`, `~`, `:`, `!`, `|`, and parentheses over
 `tag`, `runtime`, `owner`, `stability`, `file`, `title`, `suite`, and `params`.
+
+Runs use seeded ordering by default. Pass `--seed <n>` to reproduce a shuffle,
+or `--order lexical` to use deterministic source-stable order. `runIfMain(...)`
+also uses seeded order and reports the generated seed through run facts and
+first-party reporters.
 
 When no paths are supplied, `run` and `list` discover files from the selected
 profile's `files.include` and `files.exclude` policy. Explicit file paths run

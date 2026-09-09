@@ -13,15 +13,20 @@ import type {
     RunRequest
 } from './run-types.ts';
 
+type ResolvedRunSeed = {
+    readonly value: bigint;
+};
+
 type DirectRunFactsInput = {
     readonly config: RunConfig;
     readonly fileSet: string | null;
     readonly profileName: string;
     readonly projectRoot: string;
+    readonly seed: ResolvedRunSeed;
     readonly testPlan: TestPlan;
 };
 
-function defaultRunRequest(profileName: string): RunRequest {
+function defaultRunRequest(profileName: string, seed: ResolvedRunSeed): RunRequest {
     return {
         baselineUpdateMode: 'none',
         capabilityRestrictions: { mode: 'enabled' },
@@ -32,12 +37,12 @@ function defaultRunRequest(profileName: string): RunRequest {
         },
         execution: { mode: 'profile-default' },
         measureResourceUsage: null,
-        order: 'plan',
+        order: 'seeded',
         paths: [],
         profile: profileName,
         resourceBudgetOverrides: null,
         resourceUsageSamplingIntervalMilliseconds: null,
-        seed: { value: 0n },
+        seed,
         selection: { kind: 'all' },
         shard: {
             index: 0,
@@ -78,7 +83,7 @@ export function assertDirectTestPlanMatchesTestFamily(
 }
 
 export function directRunFacts(input: DirectRunFactsInput): RunFacts {
-    const request = defaultRunRequest(input.profileName);
+    const request = defaultRunRequest(input.profileName, input.seed);
     const profile = selectedProfile(input.config, input.profileName);
 
     return {
@@ -111,7 +116,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
         loader: input.config.loader,
         reproducibility: {
             selection: request.selection,
-            seed: '0',
+            seed: String(input.seed.value),
             shard: request.shard
         }
     };

@@ -157,7 +157,7 @@ export function defaultRunRequest(overrides: Partial<RunRequest> = {}): RunReque
         },
         execution: { mode: 'profile-default' },
         measureResourceUsage: null,
-        order: 'plan',
+        order: 'seeded',
         paths: [],
         profile: 'microtest',
         resourceBudgetOverrides: null,

@@ -6,6 +6,7 @@ import { formatSourceLocation, type ReportingContext } from '../engine/reporting
 import type { RunResult, RunnerError, TestOutcome, TestVerdict } from '../engine/run-result.ts';
 import { primaryFailureSourceLocation } from './failure-location.ts';
 import { formatFailureSummary } from './failure-summary.ts';
+import { formatRunFactSummary } from './run-fact-summary.ts';
 import { createTerminalProgressRenderer, type TerminalOutput } from './terminal.ts';
 
 export type DotReporterDependencies = {
@@ -167,7 +168,13 @@ export function createDotReporter(dependencies: DotReporterDependencies): Define
             sinks: [ { kind: 'stdout-raw' } ],
 
             async onEvent(event: ReporterEvent) {
-                if (event.kind === 'test-end') {
+                if (event.kind === 'run-start') {
+                    const summary = formatRunFactSummary(event.facts);
+
+                    if (summary !== null) {
+                        writeLine(summary);
+                    }
+                } else if (event.kind === 'test-end') {
                     progress.writeMark(markForVerdict(event.verdict));
                 } else if (event.kind === 'runner-error') {
                     if (finished) {

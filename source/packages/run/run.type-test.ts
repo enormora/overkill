@@ -25,6 +25,7 @@ import {
     type RunIntegrationProfileConfig,
     type RunSelection,
     type RunMicrotestProfileConfig,
+    type RunOrder,
     type RunOrchestrator,
     type RunProcessModel,
     type RunProfileConfig,
@@ -137,8 +138,9 @@ describe('@overkill-dev/run', function () {
         expect<RunRequest['resourceBudgetOverrides']>().type.toBe<RunResourceBudgets | null>();
         expect<Pick<RunRequest, 'capture' | 'order'>>().type.toBe<{
             readonly capture: 'buffered' | 'live';
-            readonly order: 'plan';
+            readonly order: RunOrder;
         }>();
+        expect<RunOrder>().type.toBe<'lexical' | 'plan' | 'seeded'>();
         expect<RunRequest['selection']>().type.toBe<RunSelection>();
     });
 

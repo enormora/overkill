@@ -1,25 +1,120 @@
+import { uniformInt } from 'pure-rand/distribution/uniformInt';
+import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
+
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import { createCaseId, type CaseId } from '../engine/identity.ts';
 import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
 import { noTestsCollected, RunCollectionError } from './run-errors.ts';
 import { matchesRunFilter } from './run-selection-filters.ts';
+import { createRandomRunSeed } from './run-seed.ts';
 import type {
     CollectedRunCase,
     CollectedRunFile,
     CollectedRunPlan,
-    RunTestFamily,
-    RunSelection
+    RunOrder,
+    RunSeed,
+    RunSelection,
+    RunTestFamily
 } from './run-types.ts';
 
-export type SelectedRunCases<Case> = {
+type SelectedRunCases<Case> = {
     readonly discoveredCases: NonEmptyReadonlyArray<Case>;
     readonly plannedCases: readonly Case[];
 };
 
+type OrderedCase = {
+    readonly id: CaseId;
+};
+type OrderedSeededTestPlan = {
+    readonly seed: {
+        readonly value: bigint;
+    };
+    readonly testPlan: TestPlan;
+};
 type CollectedCaseInput = {
     readonly file: string;
     readonly testCase: CollectedRunCase;
 };
+
+const randomSeedRange = 4_294_967_296n;
+
+function resolvedSeed(seed: RunSeed): bigint {
+    if (seed.value === null) {
+        throw new Error('Seeded ordering requires a resolved run seed.');
+    }
+
+    return seed.value;
+}
+
+function generatorSeed(seed: bigint): number {
+    const normalizedSeed = (seed % randomSeedRange + randomSeedRange) % randomSeedRange;
+
+    return Number(normalizedSeed);
+}
+
+function arrayEntry<Value>(values: readonly Value[], index: number): Value {
+    const value = values[index];
+
+    if (value === undefined) {
+        throw new Error('Seeded ordering selected an invalid case index.');
+    }
+
+    return value;
+}
+
+function seededOrder<Value>(values: NonEmptyReadonlyArray<Value>, seed: bigint): NonEmptyReadonlyArray<Value>;
+function seededOrder<Value>(values: readonly Value[], seed: bigint): readonly Value[];
+function seededOrder<Value>(values: readonly Value[], seed: bigint): readonly Value[] {
+    const random = xoroshiro128plus(generatorSeed(seed));
+    const ordered = Array.from(values);
+
+    for (let index = ordered.length - 1; index > 0; index -= 1) {
+        const swapIndex = uniformInt(random, 0, index);
+        const leftValue = arrayEntry(ordered, index);
+        const rightValue = arrayEntry(ordered, swapIndex);
+
+        ordered[index] = rightValue;
+        ordered[swapIndex] = leftValue;
+    }
+
+    return ordered;
+}
+
+export function orderedRunCases<Case extends OrderedCase>(
+    cases: NonEmptyReadonlyArray<Case>,
+    order: RunOrder,
+    seed: RunSeed
+): NonEmptyReadonlyArray<Case>;
+export function orderedRunCases<Case extends OrderedCase>(
+    cases: readonly Case[],
+    order: RunOrder,
+    seed: RunSeed
+): readonly Case[];
+export function orderedRunCases<Case extends OrderedCase>(
+    cases: readonly Case[],
+    order: RunOrder,
+    seed: RunSeed
+): readonly Case[] {
+    return order === 'seeded' ? seededOrder(cases, resolvedSeed(seed)) : cases;
+}
+
+export function orderedTestPlan(testPlan: TestPlan, order: RunOrder, seed: RunSeed): TestPlan {
+    const cases = orderedRunCases(testPlan.cases, order, seed);
+
+    return {
+        ...testPlan,
+        cases
+    };
+}
+
+export function createSeededTestPlan(testPlan: TestPlan): OrderedSeededTestPlan {
+    const seed = { value: createRandomRunSeed() };
+
+    return {
+        seed,
+        testPlan: orderedTestPlan(testPlan, 'seeded', seed)
+    };
+}
 
 function invalidFamilyMessage(testFamily: string, expectedFamily: RunTestFamily): string {
     return `Run profile "${expectedFamily}" cannot run test case with metadata.kind "${testFamily}".`;
@@ -82,21 +177,30 @@ function matchesTestPlanCase(selection: RunSelection): (testCase: TestPlanCase) 
     };
 }
 
-export function selectedTestPlanCases(testPlan: TestPlan, selection: RunSelection): SelectedRunCases<TestPlanCase> {
+function selectedTestPlanCases(testPlan: TestPlan, selection: RunSelection): SelectedRunCases<TestPlanCase> {
     return selectedCases(testPlan.discoveredCases, selection, matchesTestPlanCase(selection));
 }
 
-export function selectedTestPlan(testPlan: TestPlan, selection: RunSelection): TestPlan {
-    const selectionResult = selectedTestPlanCases(testPlan, selection);
-    const firstCase = selectionResult.plannedCases[0];
+export function selectedNonEmptyTestPlanCases(
+    testPlan: TestPlan,
+    selection: RunSelection
+): NonEmptyReadonlyArray<TestPlanCase> | null {
+    const cases = selectedTestPlanCases(testPlan, selection).plannedCases;
+    const firstCase = cases[0];
 
-    if (firstCase === undefined) {
+    return firstCase === undefined ? null : [ firstCase, ...cases.slice(1) ];
+}
+
+export function selectedTestPlan(testPlan: TestPlan, selection: RunSelection): TestPlan {
+    const cases = selectedNonEmptyTestPlanCases(testPlan, selection);
+
+    if (cases === null) {
         noTestsCollected('Run selection matched no test cases.');
     }
 
     return {
         ...testPlan,
-        cases: [ firstCase, ...selectionResult.plannedCases.slice(1) ]
+        cases
     };
 }
 

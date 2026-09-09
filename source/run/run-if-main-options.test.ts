@@ -227,6 +227,7 @@ export const testNode = createOverkillSuite({
                         fileSet: null,
                         profileName: 'missing',
                         projectRoot: process.cwd(),
+                        seed: { value: 42n },
                         testPlan: directTestPlan()
                     });
                 }, {

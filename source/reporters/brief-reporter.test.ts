@@ -184,6 +184,74 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'brief reporter includes order and seed on run start',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const reporter = createBriefRuntimeReporter();
+                const startOutput = await readOutput(reporter.onEvent({
+                    facts: {
+                        cases: [ { id: caseId, metadata: {} } ],
+                        execution: { order: 'seeded' },
+                        reproducibility: { seed: '123' }
+                    },
+                    kind: 'run-start',
+                    root: { metadata: resolveRootMetadata({}), title: 'source' },
+                    startedAt: '2026-07-15T00:00:00.000Z'
+                }));
+
+                scope.assert.deepEqual(
+                    startOutput.map(function toText(intent) {
+                        return intent.text;
+                    }),
+                    [ 'run source order=seeded seed=123' ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'brief reporter ignores incomplete ordering facts',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const reporter = createBriefRuntimeReporter();
+                const missingSeed = await readOutput(reporter.onEvent({
+                    facts: {
+                        cases: [ { id: caseId, metadata: {} } ],
+                        execution: { order: 'seeded' }
+                    },
+                    kind: 'run-start',
+                    root: { metadata: resolveRootMetadata({}), title: 'source' },
+                    startedAt: '2026-07-15T00:00:00.000Z'
+                }));
+                const missingOrder = await readOutput(reporter.onEvent({
+                    facts: {
+                        cases: [ { id: caseId, metadata: {} } ],
+                        reproducibility: { seed: '123' }
+                    },
+                    kind: 'run-start',
+                    root: { metadata: resolveRootMetadata({}), title: 'source' },
+                    startedAt: '2026-07-15T00:00:00.000Z'
+                }));
+
+                scope.assert.deepEqual(
+                    missingSeed.map(function toText(intent) {
+                        return intent.text;
+                    }),
+                    [ 'run source' ]
+                );
+                scope.assert.deepEqual(
+                    missingOrder.map(function toText(intent) {
+                        return intent.text;
+                    }),
+                    [ 'run source' ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter prints progress every one hundred completed tests',
             metadata: {},
             async body(scope: OverkillScope) {

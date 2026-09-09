@@ -53,7 +53,7 @@ layer resolves the run in this order:
    deterministically by `WorkUnitId` hash. See [Runtime Behavior § Sharding](./runtime-behavior.md#sharding).
 9. **Scheduling order.** The filtered, sharded work-unit set is assigned
    an execution order. By default this uses a seeded order recorded
-   in `RunFacts`; profiles or CLI flags may opt into lexical
+   in `RunFacts`; the run request may opt into lexical
    order. See [Runtime Behavior § Execution Order](./runtime-behavior.md#execution-order).
 10. **Resource lowering.** Runtime and resource requirements become
     placement constraints: serial keys, capacity weights, affinity keys,

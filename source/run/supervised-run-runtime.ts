@@ -5,10 +5,7 @@ import type {
     RunResult
 } from '../packages/engine/engine.entry-point.ts';
 import type { ReporterDelivery } from '../engine/reporter-dispatcher.ts';
-import {
-    collectedRunCaseIds,
-    createRunResultFromCollectedPlan
-} from './collected-run-plan.ts';
+import { createRunResultFromCollectedPlan } from './collected-run-plan.ts';
 import type {
     CollectedRunPlan,
     ResolvedRun,
@@ -261,10 +258,10 @@ export function sendRunCommand(runtime: SupervisedRunRuntime): void {
 }
 
 export function sendAssignment(runtime: SupervisedRunRuntime): void {
-    const collectedPlan = runtime.collectedPlan.read() ?? supervisedCollectedPlan(runtime.resolvedRun);
-
     runtime.child.send({
-        assignedCases: collectedRunCaseIds(collectedPlan),
+        assignedCases: runtime.resolvedRun.facts.cases.map(function toCaseId(testCase) {
+            return testCase.id;
+        }),
         kind: 'assign'
     });
 }

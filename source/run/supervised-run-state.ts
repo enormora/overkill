@@ -20,7 +20,7 @@ export type SupervisedRunState = {
     readonly perTestResults: () => readonly PerTestResult[];
     readonly recordCapturedOutput: (
         stream: 'stderr' | 'stdout',
-        chunk: Buffer,
+        chunk: Uint8Array,
         capturedAtMilliseconds: number
     ) => void;
     readonly recordPerTestResult: (key: string, result: PerTestResult) => void;
@@ -83,7 +83,7 @@ function capturedOutputScope(activeCaseIds: readonly CaseId[]): readonly RunArti
 function capturedOutputBytes(
     scope: RunArtifact['id']['scope'],
     capturedOutputByteCount: ReadonlyMap<string, number>,
-    chunk: Buffer
+    chunk: Uint8Array
 ): CapturedOutputByteSpan {
     const key = scope.kind === 'run' ? runArtifactScopeKey : caseIdentityKey(scope.case);
     const usedBytes = capturedOutputByteCount.get(key) ?? 0;
@@ -230,7 +230,7 @@ export function createSupervisedRunState(): SupervisedRunState {
                         capturedAtMilliseconds,
                         kind: 'captured-output',
                         stream,
-                        text: chunk.subarray(0, captured.byteLength).toString('utf8'),
+                        text: Buffer.from(chunk.subarray(0, captured.byteLength)).toString('utf8'),
                         truncated: captured.truncated
                     },
                     source: 'boundary-captured'
