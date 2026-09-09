@@ -148,7 +148,7 @@ function activeCapture(runtime: SupervisedChildOutputRuntime): RunRequest['captu
 
 function recordOrWriteCapturedOutput(
     stream: 'stderr' | 'stdout',
-    chunk: Buffer,
+    chunk: Uint8Array,
     runtime: SupervisedChildOutputRuntime
 ): void {
     if (activeCapture(runtime) === 'live') {
@@ -165,7 +165,7 @@ function recordOrWriteCapturedOutput(
 }
 
 function observeChildStdout(runtime: SupervisedChildOutputRuntime): void {
-    runtime.child.stdout?.on('data', function recordStdoutOutput(chunk: Buffer) {
+    runtime.child.stdout?.on('data', function recordStdoutOutput(chunk: Uint8Array) {
         if (chunk.length === 0) {
             return;
         }
@@ -271,7 +271,7 @@ function observeChildStderr(runtime: SupervisedChildOutputRuntime): void {
     let pending = '';
     let readingTraceEnvStack = false;
 
-    runtime.child.stderr?.on('data', function recordStderrOutput(chunk: Buffer) {
+    runtime.child.stderr?.on('data', function recordStderrOutput(chunk: Uint8Array) {
         if (chunk.length === 0) {
             return;
         }
@@ -282,7 +282,7 @@ function observeChildStderr(runtime: SupervisedChildOutputRuntime): void {
             return;
         }
 
-        pending += chunk.toString('utf8');
+        pending += Buffer.from(chunk).toString('utf8');
         const lines = pending.split('\n');
         pending = lines.pop() ?? '';
 
