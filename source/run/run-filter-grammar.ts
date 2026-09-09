@@ -22,8 +22,6 @@ const runFilterFields: ReadonlySet<string> = new Set([
     'file',
     'owner',
     'params',
-    'runtime',
-    'stability',
     'suite',
     'tag',
     'title'

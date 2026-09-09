@@ -96,12 +96,14 @@ function invalidCustomEngineCommand(engine: RunCommand['engine']): RunCommand {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-custom-engine.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() rejects instance engines for supervised execution',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function runWithCustomSupervisedEngine() {
                     await orchestrator.run(createRunCommand({
@@ -121,7 +123,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() rejects invalid supervised module engine requests',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function runWithEmptyModuleUrl() {
                     await orchestrator.run(invalidCustomEngineCommand({
@@ -162,7 +165,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunEngineModule() loads value and getter engine exports',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const moduleUrl = await writeCustomEngineModule(`
                     const method = () => undefined;
@@ -194,7 +198,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunEngineModule() reports invalid module exports',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const moduleUrl = await writeCustomEngineModule(`
                     export const invalidEngine = {};
@@ -222,7 +227,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() executes a supervised module engine value export',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await orchestrator.run(customEngineCommand('engine', 'value'));
 
@@ -235,7 +241,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() collects a supervised module engine getter export',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const resolvedRun = await orchestrator.resolve(customEngineCommand('getEngine', 'getter'));
                 const firstCase = resolvedRun.facts.cases[0];
@@ -255,7 +262,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() reports invalid module engine exports',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const invalidValueResult = await orchestrator.run(customEngineCommand('invalidEngine', 'value'));
                 const asyncGetterResult = await orchestrator.run(customEngineCommand('getAsyncEngine', 'getter'));
@@ -275,7 +283,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() rejects module engines when test nodes use another engine',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await orchestrator.run(customEngineCommand('engine', 'value', [ passingFixturePath ]));
 

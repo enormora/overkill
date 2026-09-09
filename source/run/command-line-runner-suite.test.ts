@@ -11,7 +11,8 @@ import { testNode as commandLineRunnerRunTestsTestNode } from './command-line-ru
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/command-line-runner-suite.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         commandLineCommandTestNode,
         commandLineCommandNamespaceTestNode,

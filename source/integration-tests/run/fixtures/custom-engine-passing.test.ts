@@ -7,6 +7,7 @@ export const testNode = createTestCase({
 
         return scope.assert.collect();
     },
-    metadata: { extra: { engine: 'custom' } },
+annotations: {},
+controls: {},
     title: 'custom engine passes'
 });

@@ -6,7 +6,7 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { resolveRootMetadata } from '../engine/metadata.ts';
+import { resolveRootTestAnnotations } from '../engine/test-data.ts';
 import type { RealTimeReporter } from '../engine/reporter.ts';
 import { createLineReporter, type LineReporterDependencies } from './line-reporter.ts';
 
@@ -38,7 +38,7 @@ const knownDefinitionLocation = {
     line: 8
 };
 
-const rootMetadata = resolveRootMetadata({});
+const rootAnnotations = resolveRootTestAnnotations({});
 
 function suitePathFromTitles(
     titles: readonly string[]
@@ -80,12 +80,14 @@ async function reportNestedSuiteRun(reporter: RealTimeReporter): Promise<void> {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/line-reporter.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter reports the start event',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = lineReporterWithLog(log);
@@ -94,7 +96,7 @@ export const testNode = createOverkillSuite({
                     facts: {},
                     kind: 'run-start',
                     root: {
-                        metadata: rootMetadata,
+                        annotations: rootAnnotations,
                         title: 'file:///source/reporters/line-reporter.test.ts'
                     },
                     startedAt: '2026-07-15T00:00:00.000Z'
@@ -112,7 +114,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter includes order and seed in the start event',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = lineReporterWithLog(log);
@@ -124,7 +127,7 @@ export const testNode = createOverkillSuite({
                     },
                     kind: 'run-start',
                     root: {
-                        metadata: rootMetadata,
+                        annotations: rootAnnotations,
                         title: 'root'
                     },
                     startedAt: '2026-07-15T00:00:00.000Z'
@@ -141,7 +144,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter prints assertion failure details for a failed test-end event',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = lineReporterWithLog(log);
@@ -197,7 +201,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter prints unicode string mismatch hints',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = lineReporterWithLog(log);
@@ -264,7 +269,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter prints body error failures with a dimmed stack',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = lineReporterWithLog(log);
@@ -304,7 +310,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter prints test-contract failures',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = lineReporterWithLog(log);
@@ -345,7 +352,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter prints object identity hints',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = lineReporterWithLog(log);
@@ -415,7 +423,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter prints a passed test-end event',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = lineReporterWithLog(log);
@@ -441,7 +450,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter prints neutral test-end events with outcome reasons',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = lineReporterWithLog(log);
@@ -482,7 +492,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter prints nested suites and indents test results',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = lineReporterWithLog(log);
@@ -500,7 +511,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter prints runner errors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = lineReporterWithLog(log);

@@ -20,12 +20,14 @@ async function asyncIterableValues(source: AsyncIterable<string>): Promise<reado
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/doubles/protocol-double.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testIterator.yields() creates a well-formed consumable iterator',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: function body(scope: OverkillScope) {
                 const values = testIterator.yields([ 'a', 'b' ], 'done');
 
@@ -41,7 +43,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testIterator.yields() preserves tracked return values',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: function body(scope: OverkillScope) {
                 const values = testIterator.yields([ 'a', 'b' ], 'done');
 
@@ -55,7 +58,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testIterable.yields() creates fresh well-formed iterators',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: function body(scope: OverkillScope) {
                 const source = testIterable.yields([ 'a', 'b' ]);
 
@@ -69,7 +73,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testIterator() exposes programmable protocol methods',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: function body(scope: OverkillScope) {
                 const expected = new Error('expected');
                 const values = testIterator<string, string>({
@@ -93,7 +98,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testIterator() creates default completed protocol methods',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: function body(scope: OverkillScope) {
                 const values = testIterator();
 
@@ -109,7 +115,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testAsyncIterator.yields() creates an async iterable iterator',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const values = testAsyncIterator.yields([ 'a', 'b' ], 'done');
                 const seen: string[] = [];
@@ -129,7 +136,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testAsyncIterator() creates default completed protocol methods',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const values = testAsyncIterator();
 
@@ -145,7 +153,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testAsyncIterable.yields() creates fresh async iterators',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const source = testAsyncIterable.yields([ 'a', 'b' ]);
                 const first = await asyncIterableValues(source);
@@ -161,7 +170,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testIterable() creates default fresh iterators',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: function body(scope: OverkillScope) {
                 const source = testIterable();
 
@@ -175,7 +185,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testAsyncIterable() creates default fresh async iterators',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const source = testAsyncIterable();
 
@@ -189,7 +200,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testIterable() exposes configured iterator factory',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: function body(scope: OverkillScope) {
                 const iterator = testIterator.yields([ 'configured' ]);
                 const source = testIterable({
@@ -205,7 +217,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testAsyncIterable() exposes configured async iterator factory',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const iterator = testAsyncIterator.yields([ 'configured' ]);
                 const source = testAsyncIterable({
@@ -222,7 +235,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testIterable.yieldsFrom() creates fresh delegated iterators',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: function body(scope: OverkillScope) {
                 const source = testIterable.yieldsFrom(function values() {
                     return [ 'a' ][Symbol.iterator]();
@@ -237,7 +251,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testAsyncIterable.yieldsFrom() creates fresh delegated async iterators',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const source = testAsyncIterable.yieldsFrom(async function* values() {
                     yield 'a';
@@ -252,7 +267,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testDisposable() records using disposal',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const resource = testDisposable();
 
@@ -270,7 +286,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testAsyncDisposable() records await using disposal',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const resource = testAsyncDisposable();
 
@@ -288,7 +305,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testDisposable() exposes programmable disposal',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: function body(scope: OverkillScope) {
                 const expected = new Error('expected');
                 const resource = testDisposable({
@@ -306,7 +324,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testAsyncDisposable() exposes programmable async disposal',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const expected = new Error('expected');
                 const resource = testAsyncDisposable({
@@ -324,7 +343,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testIterator.yieldsFrom() delegates return and throw fallbacks',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: function body(scope: OverkillScope) {
                 const values = testIterator.yieldsFrom(function source() {
                     return [ 'a', 'b' ][Symbol.iterator]();
@@ -342,7 +362,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testIterator.yieldsFrom() delegates generator return and throw methods',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: function body(scope: OverkillScope) {
                 const expected = new Error('expected');
                 const values = testIterator.yieldsFrom(function* source() {
@@ -362,7 +383,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testAsyncIterator.yieldsFrom() delegates sync sources',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const values = testAsyncIterator.yieldsFrom(function source() {
                     return [ 'a' ][Symbol.iterator]();
@@ -380,7 +402,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testAsyncIterator.yieldsFrom() delegates async return fallback',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const values = testAsyncIterator.yieldsFrom(function source() {
                     return {
@@ -398,7 +421,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testAsyncIterator.yieldsFrom() delegates async generator return and throw methods',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const expected = new Error('expected');
                 const values = testAsyncIterator.yieldsFrom(async function* source() {

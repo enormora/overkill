@@ -41,12 +41,14 @@ function assertOrphanOutput(scope: OverkillScope, log: Log): void {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/line-reporter-orphan.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter prints orphan details once the run finishes',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = lineReporterWithLog(log);

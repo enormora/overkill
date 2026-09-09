@@ -24,12 +24,14 @@ async function writeConfig(folder: string, fileName: string, source: string): Pr
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-config-exports.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() accepts branded reporter and output renderer values',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 await writeConfig(
@@ -83,7 +85,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects unbranded reporter values',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 await writeConfig(
@@ -115,7 +118,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects unbranded output renderer values',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 await writeConfig(
@@ -142,7 +146,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects config files without a named config export',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 await writeConfig(cwd, 'overkill.config.js', 'export const projectConfig = {};');
@@ -160,7 +165,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects config files with a default export',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 await writeConfig(cwd, 'overkill.config.js', 'export default {};');
@@ -178,7 +184,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects config files with named config and default exports',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 await writeConfig(cwd, 'overkill.config.js', 'export const config = {}; export default {};');
@@ -196,7 +203,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects config files with extra runtime exports',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 await writeConfig(cwd, 'overkill.config.js', 'export const config = {}; export const extra = {};');

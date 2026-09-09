@@ -20,12 +20,14 @@ async function writeConfig(folder: string, source: string): Promise<void> {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-config-integration-profile.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() normalizes integration profile defaults',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 await writeConfig(
@@ -71,7 +73,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() normalizes integration execution overrides',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 await writeConfig(

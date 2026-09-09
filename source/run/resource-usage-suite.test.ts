@@ -5,7 +5,8 @@ import { testNode as runResourceUsagePolicyTestNode } from './run-resource-usage
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/resource-usage-suite.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         resourceUsageTestNode,
         runResourceUsagePolicyTestNode

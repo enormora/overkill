@@ -6,6 +6,7 @@ import {
     createTestCase as createDirectTestCase,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
+    stampTestNodeFamily,
     type TestBody as DirectTestBody,
     type TestNode as DirectTestNode,
     type TestScope as DirectScope,
@@ -82,13 +83,22 @@ function passingBody(scope: DirectScope): ReturnType<DirectTestBody> {
     return scope.assert.collect();
 }
 
-function passingCase(metadata: DirectTestNode['metadata'] = {}): DirectTestNode {
+function passingCase(controls: DirectTestNode['controls'] = {}): DirectTestNode {
     return createDirectTestCase({
+        annotations: {},
         body: passingBody,
+        controls,
         definitionLocations: [ { kind: 'unknown' as const } ],
-        metadata,
         title: 'passes'
     });
+}
+
+function integrationCase(): DirectTestNode {
+    const testCase = passingCase();
+
+    stampTestNodeFamily(testCase, 'integration');
+
+    return testCase;
 }
 
 function createCapturingReporter(recordRun: (capturedRun: CapturedRun) => void): DefinedReporter {
@@ -154,12 +164,14 @@ async function runDirect(project: DirectProject, testNode: DirectTestNode): Prom
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-if-main.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() returns before config loading when imported',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const project = await createDirectProject('direct.test.ts');
 
@@ -183,7 +195,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() selects the configured profile matching the current file',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const project = await createDirectProject('direct.test.ts');
 
@@ -218,7 +231,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() selects the configured profile matching a file set',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const project = await createDirectProject('direct.test.ts');
 
@@ -256,7 +270,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() falls back to configured microtest when no profile matches',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const project = await createDirectProject('direct.test.ts');
 
@@ -284,7 +299,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() rejects fallback profiles when the current file is outside every file set',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const project = await createDirectProject('direct.test.ts');
 
@@ -319,7 +335,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() rejects profile file sets that overlap outside the current file',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const project = await createDirectProject('direct.test.ts');
 
@@ -360,7 +377,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() rejects ambiguous profile file matches',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const project = await createDirectProject('direct.test.ts');
 
@@ -394,7 +412,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() rejects integration profiles selected by file match',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const project = await createDirectProject('direct.integration.test.ts');
 
@@ -412,7 +431,7 @@ export const testNode = createOverkillSuite({
 
                 await scope.assert.rejects(async function runIntegrationFile() {
                     await withCwd(project.cwd, async function runInProject() {
-                        await runIfMain(project.meta, passingCase({ kind: 'integration' }), { reporters: [] });
+                        await runIfMain(project.meta, passingCase(), { reporters: [] });
                     });
                 }, {
                     message: [
@@ -428,7 +447,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() warns when direct execution downgrades supervised profiles',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const project = await createDirectProject('direct.test.ts');
                 const stderr = captureStderr();
@@ -455,41 +475,18 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'runIfMain() rejects root metadata outside the selected test family',
-            metadata: {},
-            async body(scope: OverkillScope) {
-                const project = await createDirectProject('direct.test.ts');
-
-                await scope.assert.rejects(async function runWrongRootFamily() {
-                    await withCwd(project.cwd, async function runInProject() {
-                        await runIfMain(project.meta, passingCase(), {
-                            reporters: [],
-                            root: {
-                                metadata: { kind: 'integration' },
-                                title: 'root'
-                            }
-                        });
-                    });
-                }, {
-                    message: 'runIfMain() root metadata.kind must be "microtest".'
-                });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() rejects cases outside the selected test family',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const project = await createDirectProject('direct.test.ts');
 
                 await scope.assert.rejects(async function runWrongCaseFamily() {
                     await withCwd(project.cwd, async function runInProject() {
-                        await runIfMain(project.meta, passingCase({ kind: 'integration' }), { reporters: [] });
+                        await runIfMain(project.meta, integrationCase(), { reporters: [] });
                     });
                 }, {
-                    message: /metadata\.kind "integration"/u,
+                    message: /authored for "integration"/u,
                     name: 'RunCollectionError'
                 });
 
@@ -499,7 +496,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() preserves an existing nonzero process exitCode',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const project = await createDirectProject('direct.test.ts');
                 const previousExitCode = process.exitCode;
@@ -517,7 +515,8 @@ export const testNode = createOverkillSuite({
                                     return testScope.assert.collect();
                                 },
                                 definitionLocations: [ { kind: 'unknown' as const } ],
-                                metadata: {},
+                                annotations: {},
+                                controls: {},
                                 title: 'fails'
                             }),
                             { reporters: [] }

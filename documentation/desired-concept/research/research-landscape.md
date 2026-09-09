@@ -66,7 +66,7 @@ Playwright Test is the most sophisticated testing system in mainstream JS today.
 
 #### Fixture System
 
-`test.extend({ ... })` builds typed fixture sets. Each fixture is `async (context, use) => { const { deps } = context; setup; await use(value); teardown }` — a coroutine where `await use(value)` is the yield. The runner parses parameter destructuring of every callback (test body, fixture, hook), builds a dependency DAG, instantiates only the requested subgraph lazily, and tears down in reverse order.
+`test.extend({ ... })` builds typed fixture sets. Each fixture is `async (context, use) => { const { deps } = context; setup; await use(value); teardown }` - a coroutine where `await use(value)` is the yield. The runner parses parameter destructuring of every callback (test body, fixture, hook), builds a dependency DAG, instantiates only the requested subgraph lazily, and tears down in reverse order.
 
 Two scope axes: `'test'` (default; setup per test) and `'worker'` (setup once per worker process). Worker fixtures act as global before/after hooks per worker but survive file boundaries when worker reuse kicks in.
 
@@ -79,7 +79,7 @@ What this proves:
 
 What this costs:
 
-- wiring is by string literal — VS Code rename does not propagate from `test.extend` keys to consumer destructuring; silent breakage
+- wiring is by string literal - VS Code rename does not propagate from `test.extend` keys to consumer destructuring; silent breakage
 - without explicit generics, parameter names are not type-checked at all
 - fixtures cannot be accessed from `describe` for data-driven loops without a `for` outside the suite
 - `auto: true` plus `option: true` plus `scope: 'worker'` overload one tuple shape; the API is dense
@@ -94,8 +94,8 @@ Overkill direction:
 
 Projects are top-level matrices. Each project has its own `use` (fixtures and configuration), `testMatch`, `testIgnore`, `fullyParallel`, `retries`, and crucially:
 
-- `dependencies: ['setup']` — must complete (and pass) before this project starts
-- `teardown: 'cleanup'` — runs after this project AND its dependents finish
+- `dependencies: ['setup']` - must complete (and pass) before this project starts
+- `teardown: 'cleanup'` - runs after this project AND its dependents finish
 
 The big idea: **setup is a project, not a hook**. `globalSetup` collapses into "a project that other projects depend on." Setup gets traces, fixtures, retries, parallelism, structured reporting "for free" because it is a real test.
 
@@ -105,11 +105,11 @@ This generalizes Buster's `extends` and pytest's session fixtures into one ortho
 
 Three independent layers:
 
-1. **workers** — per-machine processes (`workers: 4`)
-2. **fullyParallel** — distributes individual _tests_ to workers, not files; without it, file is the scheduling unit
-3. **shards** — `--shard=1/3` deterministic partition across machines; `blob` reporter + `merge-reports` post-hoc
+1. **workers** - per-machine processes (`workers: 4`)
+2. **fullyParallel** - distributes individual _tests_ to workers, not files; without it, file is the scheduling unit
+3. **shards** - `--shard=1/3` deterministic partition across machines; `blob` reporter + `merge-reports` post-hoc
 
-The interaction with worker-scoped fixtures: worker fixtures setup _once per worker process_, not per shard. A 4-shard × 4-worker run pays setup cost 16 times. Worker reuse across files happens only when worker-fixture parameters match — implicit invalidation rules that surprise users.
+The interaction with worker-scoped fixtures: worker fixtures setup _once per worker process_, not per shard. A 4-shard × 4-worker run pays setup cost 16 times. Worker reuse across files happens only when worker-fixture parameters match - implicit invalidation rules that surprise users.
 
 `describe.configure({ mode: 'serial' })` collapses retry semantics: a serial group retries together. This is the only way to express "these tests share mutable state and must run in order."
 
@@ -121,19 +121,19 @@ Overkill direction: name the three axes explicitly (workers × fullyParallel × 
 
 `expect.poll(fn).toBe(value)` and `expect(async () => { ... }).toPass()` generalize the pattern outside UI testing.
 
-Transferable kernel: any async invariant — cache populates within 500ms, queue drains within 2s, metric reaches threshold — is more honestly expressed as a polled assertion than an awaited delay plus point check. Overkill should ship `assertEventually(predicate, { timeout, intervals })` as a first-class assertion alongside the synchronous variants.
+Transferable kernel: any async invariant - cache populates within 500ms, queue drains within 2s, metric reaches threshold - is more honestly expressed as a polled assertion than an awaited delay plus point check. Overkill should ship `assertEventually(predicate, { timeout, intervals })` as a first-class assertion alongside the synchronous variants.
 
 #### Trace Viewer And Trace Format
 
 Traces are zip files containing screenshots, network requests, console output, DOM snapshots before/after each action, source-mapped action timeline, and `expect` calls. Configurable via `trace: 'on' | 'on-first-retry' | 'retain-on-failure' | 'off'`.
 
-The viewer is a static HTML page (`trace.playwright.dev`) that opens the zip locally — no server, no upload. The trace format is open and stable enough that CI artifacts can be linked directly.
+The viewer is a static HTML page (`trace.playwright.dev`) that opens the zip locally - no server, no upload. The trace format is open and stable enough that CI artifacts can be linked directly.
 
 Overkill direction: failure artifacts should be **single self-contained zip files per failed test**, not scattered logs/screenshots/diffs across directories. A static viewer that opens the zip locally beats any cloud upload story. See [Failure Artifacts](../authoring/failure-artifacts.md).
 
 #### Reporters API
 
-Lifecycle: `onBegin`, `onTestBegin`, `onStepBegin`/`onStepEnd` (recursive — steps form a tree per test), `onTestEnd`, `onError`, `onStdOut`/`onStdErr`, `onEnd`, `onExit`. Step categories distinguish library-emitted steps (`expect`, `fixture`, `hook`, `pw:api`) from user-emitted (`test.step`, `test.attach`).
+Lifecycle: `onBegin`, `onTestBegin`, `onStepBegin`/`onStepEnd` (recursive - steps form a tree per test), `onTestEnd`, `onError`, `onStdOut`/`onStdErr`, `onEnd`, `onExit`. Step categories distinguish library-emitted steps (`expect`, `fixture`, `hook`, `pw:api`) from user-emitted (`test.step`, `test.attach`).
 
 Built-in reporters: `list`, `line`, `dot`, `json`, `junit`, `html`, `github`, `blob` (mergeable from shards).
 
@@ -164,15 +164,15 @@ behavior the invisible default. See [Assertions And Results](../authoring/assert
 #### Annotations And Verdict Modifiers
 
 ```ts
-test.fail('not yet ready', body); // xfail — runs; warns if it passes
+test.fail('not yet ready', body); // xfail - runs; warns if it passes
 test.fixme('to be fixed', body); // skip with intent
 test.slow(condition, 'reason'); // 3× timeout multiplier
 test.info().annotations.push({ type: 'issue', description: 'ABC-123' });
 ```
 
-`test.fail` is not a skip — it is xfail (test runs; flips verdict). Annotations are first-class metadata accessible to reporters via `testCase.annotations`.
+`test.fail` is not a skip - it is xfail (test runs; flips verdict). Annotations are first-class metadata accessible to reporters via `testCase.annotations`.
 
-Overkill direction: verdict modifiers belong on the test descriptor as fields, not as imperative side-effecting calls. See [Metadata And Selection § Stability Markers](../architecture/metadata-and-selection.md#stability-markers) and [Glossary § Test Verdict](../reference/glossary.md#test-verdict).
+Overkill direction: verdict modifiers belong on the test descriptor as fields, not as imperative side-effecting calls. See [Test Data And Selection § Future Work](../architecture/test-data-and-selection.md#future-work) and [Glossary § Test Verdict](../reference/glossary.md#test-verdict).
 
 #### `test.step` And Attachments
 
@@ -195,7 +195,7 @@ Steps are nestable, named, and appear in the trace and HTML report as the natura
 - `expect` matchers are narrower than Vitest's; users stack libraries
 - parameter-name injection breaks rename refactors silently
 - project configuration interactions (`fullyParallel`, `dependencies`, `teardown`, `use`, `testMatch`) are non-obvious
-- worker-reuse rules across files depend on worker-fixture parameter equality — surprising invalidation
+- worker-reuse rules across files depend on worker-fixture parameter equality - surprising invalidation
 - `test.use` for fixture override is positional and untyped against the project's options shape unless authors thread types manually
 
 Sources:
@@ -259,7 +259,7 @@ Named groups, each with an `environment`, `libs`/`sources`/`tests`/`resources`, 
 
 #### Controllable Test Start Timing
 
-`autoRun: false` plus explicit `buster.run()` lets the test author gate the start of the run — useful when AMD modules are still loading, when async setup must complete, when a service worker must register. The runner doesn't auto-start; the bootstrapper says "go."
+`autoRun: false` plus explicit `buster.run()` lets the test author gate the start of the run - useful when AMD modules are still loading, when async setup must complete, when a service worker must register. The runner doesn't auto-start; the bootstrapper says "go."
 
 For ESM with `await import()` and dynamic registration, the explicit-start pattern is more honest than today's "tests fire on load" assumption. Overkill's tests-as-values shape (see [Tests As Values](../authoring/tests-as-values.md)) takes this further: the file _exports_ the suite, the runner starts walking when ready.
 
@@ -269,20 +269,20 @@ For ESM with `await import()` and dynamic registration, the explicit-start patte
 
 #### Why Buster Died (And What To Avoid)
 
-1. **Stuck in beta** — no 1.0 ever shipped. Issue #171 (multi-configuration) milestoned for 1.0 in 2012, archived 2018 unfixed.
-2. **Capture-server friction** — users had to install a server, run it, capture browsers manually before tests could run. Karma did the capture automatically; PhantomJS made headless trivial. Buster's killer feature became its onboarding cliff.
-3. **Too modular** — 14+ packages with cross-version drift. A `buster-test` bug needed coordinated releases across half the ecosystem.
-4. **One-author bottleneck** — Christian Johansen put his maintenance attention into Sinon (which lives) and consultancy work; rough edges (hung hybrid Node+browser test runs) stayed rough.
-5. **Headless+Jest wave** — 2014-2016 brought Jest, headless Chrome, jsdom. Buster's evented capture model became a curiosity.
+1. **Stuck in beta** - no 1.0 ever shipped. Issue #171 (multi-configuration) milestoned for 1.0 in 2012, archived 2018 unfixed.
+2. **Capture-server friction** - users had to install a server, run it, capture browsers manually before tests could run. Karma did the capture automatically; PhantomJS made headless trivial. Buster's killer feature became its onboarding cliff.
+3. **Too modular** - 14+ packages with cross-version drift. A `buster-test` bug needed coordinated releases across half the ecosystem.
+4. **One-author bottleneck** - Christian Johansen put his maintenance attention into Sinon (which lives) and consultancy work; rough edges (hung hybrid Node+browser test runs) stayed rough.
+5. **Headless+Jest wave** - 2014-2016 brought Jest, headless Chrome, jsdom. Buster's evented capture model became a curiosity.
 
 Survivors: **Sinon.js** (decoupled from Buster years ago, alive at sinonjs.org) and **referee** (assertions, low traffic but in the `sinonjs` org). Concepts (evented reporting, generic-substrate-not-aware-of-tests, multi-environment named groups, static HTML test runners, controllable run start) exist in modern frameworks individually; none recombines them.
 
 #### Lessons For Overkill
 
-- modularity is right, but ship as **one cohesive workspace with one version line** — Buster's lesson, painful version
-- substrate first, test-aware second — keep `@overkill-dev/transport`, `@overkill-dev/event-stream`, `@overkill-dev/identity` substrate generic
+- modularity is right, but ship as **one cohesive workspace with one version line** - Buster's lesson, painful version
+- substrate first, test-aware second - keep `@overkill-dev/transport`, `@overkill-dev/event-stream`, `@overkill-dev/identity` substrate generic
 - evented reporting is the right shape, but typed
-- onboarding must be `git clone && npm i && overkill` in 60s — anything else fails
+- onboarding must be `git clone && npm i && overkill` in 60s - anything else fails
 
 #### What To Reject
 
@@ -769,58 +769,58 @@ say so.
 
 ### Testing And DSL Design
 
-- **AVA** — macros as a serious reuse model rather than a novelty;
+- **AVA** - macros as a serious reuse model rather than a novelty;
   assertion-count discipline and failure on zero assertions as a quality
   signal.
-- **Swift Testing** — the explicit split between ordinary assertions and
+- **Swift Testing** - the explicit split between ordinary assertions and
   gating checks inspired Overkill's `assert` / `require` distinction.
-- **Haskell `tasty`** — tests as explicit values and unified trees consumed
+- **Haskell `tasty`** - tests as explicit values and unified trees consumed
   by one runner.
-- **RackUnit / Racket** — tests as suites-as-values and the broader idea
+- **RackUnit / Racket** - tests as suites-as-values and the broader idea
   that authoring does not need to begin from side-effectful registration.
-- **Rust** — structured test outcomes and the idea that throwing/panic-style
+- **Rust** - structured test outcomes and the idea that throwing/panic-style
   tests can coexist with richer result models.
 
 ### Doubles And Interaction Testing
 
-- **Sinon** — strong direct introspection on doubles (`callCount`,
+- **Sinon** - strong direct introspection on doubles (`callCount`,
   `firstCall`, ordering); small behavior helpers such as `returns`,
   `resolves`, `rejects`, `throws`. Overkill intentionally borrows these
   strengths while rejecting the larger surface and patching culture.
-- **testdouble.js** — useful precedent for argument-based behavior
+- **testdouble.js** - useful precedent for argument-based behavior
   definitions such as `when(...)`.
 
 ### Property, Model, And Advanced Testing
 
-- **QuickCheck and related property-testing work** — the importance of
+- **QuickCheck and related property-testing work** - the importance of
   generators, shrinking, and properties as a distinct testing family.
-- **Model-based and metamorphic testing literature** — the idea that
+- **Model-based and metamorphic testing literature** - the idea that
   relation-based checks matter more than surface-level DSL style in
   advanced testing.
 
 ### Browser, Runtime, And Platform Philosophy
 
-- **Platform-first web framework work** — the broader philosophy of
+- **Platform-first web framework work** - the broader philosophy of
   building on platform primitives rather than replacing them with
   framework-local concepts.
-- **Node.js and Web Platform APIs** — direct use of platform capabilities
+- **Node.js and Web Platform APIs** - direct use of platform capabilities
   such as `AbortSignal`, diagnostics channels, `perf_hooks`, and typed
   runtime contexts.
 
 ### Benchmarking
 
-- **JMH** — warmup / measurement separation and execution policy as part of
+- **JMH** - warmup / measurement separation and execution policy as part of
   the benchmark definition; forks, measurement iterations, and harness
   discipline against misleading numbers.
-- **Criterion.rs** — grouped benchmarks, parameterized benchmark identities,
+- **Criterion.rs** - grouped benchmarks, parameterized benchmark identities,
   and richer measurement vocabulary; throughput annotations and custom
   measurement backends.
-- **BenchmarkDotNet** — benchmark jobs / execution profiles and
+- **BenchmarkDotNet** - benchmark jobs / execution profiles and
   diagnoser-style metric collection; multiple run strategies such as
   `Throughput` and `ColdStart`.
-- **pytest-benchmark** — compare mode, pedantic/manual control mode, and
+- **pytest-benchmark** - compare mode, pedantic/manual control mode, and
   benchmark-result JSON with machine metadata.
-- **hyperfine** — external-process benchmarking as a primary workflow.
-- **Real-world benchmark suites** — practical evidence that projects need
+- **hyperfine** - external-process benchmarking as a primary workflow.
+- **Real-world benchmark suites** - practical evidence that projects need
   workload files, checked-in thresholds, PTY-aware CLI benchmarks, and
   richer metrics than runtime alone.

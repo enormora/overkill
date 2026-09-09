@@ -15,12 +15,14 @@ function passingBody(scope: OverkillScope): ReturnType<TestBody> {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/test-plan-authoring-rules.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createTestPlan() rejects reachable tables with fewer than two cases',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const engine = createTestEngine();
                 const emptyTableRoot = engine.createRoot({
@@ -28,11 +30,13 @@ export const testNode = createOverkillSuite({
                         engine.createTable({
                             definitionLocations: [ { kind: 'unknown' as const } ],
                             cases: [],
-                            metadata: {},
+                            annotations: {},
+                            controls: {},
                             title: 'empty rows'
                         })
                     ],
-                    metadata: {},
+                    annotations: {},
+                    controls: {},
                     title: 'root'
                 });
                 const singleRowTableRoot = engine.createRoot({
@@ -42,16 +46,19 @@ export const testNode = createOverkillSuite({
                             cases: [
                                 {
                                     body: passingBody,
-                                    metadata: {},
+                                    annotations: {},
+                                    controls: {},
                                     parameters: 'only',
                                     title: 'only row'
                                 }
                             ],
-                            metadata: {},
+                            annotations: {},
+                            controls: {},
                             title: 'single row'
                         })
                     ],
-                    metadata: {},
+                    annotations: {},
+                    controls: {},
                     title: 'root'
                 });
 
@@ -68,7 +75,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createTestPlan() rejects duplicate sibling titles',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const engine = createTestEngine();
                 const root = engine.createRoot({
@@ -76,17 +84,20 @@ export const testNode = createOverkillSuite({
                         engine.createTestCase({
                             definitionLocations: [ { kind: 'unknown' as const } ],
                             body: passingBody,
-                            metadata: {},
+                            annotations: {},
+                            controls: {},
                             title: 'same'
                         }),
                         engine.createTestCase({
                             definitionLocations: [ { kind: 'unknown' as const } ],
                             body: passingBody,
-                            metadata: {},
+                            annotations: {},
+                            controls: {},
                             title: 'same'
                         })
                     ],
-                    metadata: {},
+                    annotations: {},
+                    controls: {},
                     title: 'root'
                 });
 
@@ -100,7 +111,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createTestPlan() rejects reachable empty nested suites',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const engine = createTestEngine();
                 const root = engine.createRoot({
@@ -111,15 +123,18 @@ export const testNode = createOverkillSuite({
                                 engine.createSuite({
                                     definitionLocations: [ { kind: 'unknown' as const } ],
                                     children: [],
-                                    metadata: {},
+                                    annotations: {},
+                                    controls: {},
                                     title: 'empty'
                                 })
                             ],
-                            metadata: {},
+                            annotations: {},
+                            controls: {},
                             title: 'parent'
                         })
                     ],
-                    metadata: {},
+                    annotations: {},
+                    controls: {},
                     title: 'root'
                 });
 
@@ -133,7 +148,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createTestPlan() rejects duplicate table case titles',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const engine = createTestEngine();
                 const root = engine.createRoot({
@@ -143,22 +159,26 @@ export const testNode = createOverkillSuite({
                             cases: [
                                 {
                                     body: passingBody,
-                                    metadata: {},
+                                    annotations: {},
+                                    controls: {},
                                     parameters: { value: 1 },
                                     title: 'same'
                                 },
                                 {
                                     body: passingBody,
-                                    metadata: {},
+                                    annotations: {},
+                                    controls: {},
                                     parameters: { value: 2 },
                                     title: 'same'
                                 }
                             ],
-                            metadata: {},
+                            annotations: {},
+                            controls: {},
                             title: 'rows'
                         })
                     ],
-                    metadata: {},
+                    annotations: {},
+                    controls: {},
                     title: 'root'
                 });
 

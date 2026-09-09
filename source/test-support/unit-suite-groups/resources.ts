@@ -4,7 +4,8 @@ import { testNode as resourcesTestNode } from '../../resources/resources.test.ts
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'resources',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         resourcesTestNode
     ]

@@ -34,12 +34,14 @@ function assertDefaultMicrotestResourceUsage(scope: OverkillScope, config: Loade
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-config.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'defineConfig() returns the project config unchanged',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const projectConfig = { runtimeStateDir: 'target/overkill-state' };
 
@@ -51,7 +53,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() returns defaults when no config exists',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 const config = await loadRunConfig({ configPath: null, cwd });
@@ -74,7 +77,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() discovers a native TypeScript named config export',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 const configPath = await writeConfig(
@@ -99,7 +103,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() discovers a JavaScript named config export',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 const configPath = await writeConfig(
@@ -120,7 +125,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() loads microtest resource usage policy',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 await writeConfig(
@@ -170,7 +176,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() normalizes named profile overrides',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 await writeConfig(
@@ -233,7 +240,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() normalizes unmeasured named profile overrides',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 await writeConfig(
@@ -271,7 +279,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() inherits unmeasured named profile defaults',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 await writeConfig(
@@ -300,7 +309,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects unknown config keys',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 await writeConfig(cwd, 'overkill.config.js', 'export const config = { include: ["source"] };');
@@ -317,7 +327,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects profiles without a test family',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 await writeConfig(
@@ -342,7 +353,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects unsupported profile test families',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 await writeConfig(
@@ -369,7 +381,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects resource budgets without measurement',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 await writeConfig(
@@ -399,7 +412,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects invalid resource usage numbers',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 await writeConfig(
@@ -430,7 +444,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects unknown microtest profile keys',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 await writeConfig(
@@ -462,7 +477,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects invalid profile names',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const cwd = await createTempFolder();
                 await writeConfig(

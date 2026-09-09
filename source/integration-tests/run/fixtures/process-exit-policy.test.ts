@@ -10,10 +10,12 @@ export const testNode = createSuite({
 
                 return scope.assert.collect();
             },
-            metadata: {},
+            annotations: {},
+            controls: {},
             title: 'exits process'
         })
     ],
-    metadata: {},
+    annotations: {},
+    controls: {},
     title: 'fixture'
 });

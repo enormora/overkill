@@ -9,8 +9,6 @@ export {
     not,
     owner,
     params,
-    runtime,
-    stability,
     suite,
     tag,
     title

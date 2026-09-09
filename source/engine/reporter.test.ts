@@ -100,12 +100,14 @@ const stdoutPrimaryIntent: OutputLineIntent = {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/reporter.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'validateReporterSinks() allows managed supplemental standard output sinks',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 validateReporterSinks([
                     createFinalReporter('first', [ { kind: 'stdout-managed-supplemental' } ]),
@@ -119,7 +121,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'validateReporterSinks() rejects raw standard output conflicts',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.throws(function validateConflictingStandardOutputSinks() {
                     validateReporterSinks([
@@ -137,7 +140,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'validateReporterSinks() rejects duplicate managed primary standard output sinks',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.throws(function validateConflictingManagedOutputSinks() {
                     validateReporterSinks([
@@ -155,7 +159,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'validateReporterSinks() allows one managed primary with managed supplemental standard output sinks',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 validateReporterSinks([
                     createFinalReporter('primary', [ { kind: 'stdout-managed-primary' } ]),
@@ -169,7 +174,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'validateReporterSinks() rejects exact file and directory path conflicts',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.throws(function validateConflictingPathSinks() {
                     validateReporterSinks([
@@ -191,7 +197,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'validateReporterSinks() treats memory and stream sinks as private',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const stream = new WritableStream<unknown>();
 
@@ -213,7 +220,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'reporter dispatcher disposes reporters once',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const { dispatcher } = createRecordingDispatcher();
                 let disposeCount = 0;
@@ -243,7 +251,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'reporter dispatcher records direct runner-error delivery failures without notification',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const wallClock = createDeterministicWallClock();
                 const dispatcher = createReporterDispatcher({
@@ -287,7 +296,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'reporter dispatcher records terminal runner-error notifications as delivered',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const { dispatcher } = createRecordingDispatcher();
                 const failingReporter: RealTimeReporter = {
@@ -336,7 +346,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'reporter dispatcher records runner-error notification output failures',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const { dispatcher } = createRecordingDispatcher();
                 const failingReporter: RealTimeReporter = {
@@ -382,7 +393,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'reporter dispatcher reports non-error failures',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const { dispatcher } = createRecordingDispatcher();
                 const failingReporter: RealTimeReporter = {

@@ -87,7 +87,8 @@ function passingCase(): DirectTestNode {
     return createDirectTestCase({
         body: passingBody,
         definitionLocations: [ { kind: 'unknown' as const } ],
-        metadata: {},
+        annotations: {},
+        controls: {},
         title: 'passes'
     });
 }
@@ -96,7 +97,8 @@ function failingCase(): DirectTestNode {
     return createDirectTestCase({
         body: failingBody,
         definitionLocations: [ { kind: 'unknown' as const } ],
-        metadata: {},
+        annotations: {},
+        controls: {},
         title: 'fails'
     });
 }
@@ -143,12 +145,14 @@ async function runDirect(project: DirectProject, testNode: DirectTestNode): Prom
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-if-main-selection.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() falls back when a matching profile excludes the direct file',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const project = await createDirectProject('direct.test.ts');
 
@@ -183,7 +187,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() rejects non-file import metadata',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const project = await createDirectProject('direct.test.ts');
 
@@ -208,7 +213,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() sets process exitCode for failed direct runs',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const project = await createDirectProject('direct.test.ts');
                 const previousExitCode = process.exitCode;

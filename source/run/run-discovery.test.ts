@@ -83,12 +83,14 @@ async function createProfileDiscoveryFiles(directory: string): Promise<ProfileDi
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-discovery.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() resolves canonical file identities under cwd',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 await withTemporaryDirectory(async function testTemporaryDirectory(directory) {
                     const nestedDirectory = join(directory, 'nested');
@@ -120,7 +122,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() discovers profile files with separate excludes',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 await withTemporaryDirectory(async function testTemporaryDirectory(directory) {
                     const discoveryFiles = await createProfileDiscoveryFiles(directory);
@@ -156,7 +159,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() ignores profile glob matches that are not files',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 await withTemporaryDirectory(async function testTemporaryDirectory(directory) {
                     await mkdir(join(directory, 'source', 'unit'), { recursive: true });
@@ -189,7 +193,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() reports empty profile discovery',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 await withTemporaryDirectory(async function testTemporaryDirectory(directory) {
                     await scope.assert.rejects(async function discoverEmptyProfileFiles() {
@@ -210,7 +215,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() filters profile discovery by directory operands',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 await withTemporaryDirectory(async function testTemporaryDirectory(directory) {
                     await mkdir(join(directory, 'source', 'integration'), { recursive: true });
@@ -258,7 +264,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() rejects ineffective and mixed directory filters',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 await withTemporaryDirectory(async function testTemporaryDirectory(directory) {
                     await mkdir(join(directory, 'source', 'empty'), { recursive: true });
@@ -305,7 +312,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() rejects directory symlinks outside cwd',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 await withTemporaryDirectory(async function testTemporaryDirectory(directory) {
                     const outsideDirectory = await mkdtemp(join(tmpdir(), 'overkill-outside-'));
@@ -334,7 +342,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() rejects unsupported profile glob syntax',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 await withTemporaryDirectory(async function testTemporaryDirectory(directory) {
                     await scope.assert.rejects(async function discoverBlankInclude() {
@@ -395,7 +404,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() rejects invalid explicit inputs before import',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 await withTemporaryDirectory(async function testTemporaryDirectory(directory) {
                     const outsideDirectory = await mkdtemp(join(tmpdir(), 'overkill-outside-'));

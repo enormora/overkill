@@ -37,7 +37,7 @@ function assertMicrotestCaptureSupported(
     }
 }
 
-export function assertMicrotestMetadataCaptureSupported(
+export function assertMicrotestControlCaptureSupported(
     profile: RunProfileConfig,
     collectedPlan: CollectedRunPlan
 ): void {
@@ -47,8 +47,8 @@ export function assertMicrotestMetadataCaptureSupported(
 
     for (const file of collectedPlan.files) {
         for (const testCase of file.cases) {
-            if (testCase.metadata.capture !== null) {
-                invalidRequest('Microtest metadata does not support capture mode.');
+            if (testCase.controls.capture !== null) {
+                invalidRequest('Microtest controls do not support capture mode.');
             }
         }
     }

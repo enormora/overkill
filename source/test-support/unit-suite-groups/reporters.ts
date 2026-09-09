@@ -12,7 +12,8 @@ import { testNode as terminalTestNode } from '../../reporters/terminal.test.ts';
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/test-support/unit-suite-groups/reporters.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         briefReporterTestNode,
         dotReporterTestNode,

@@ -152,15 +152,17 @@ async function runCommandLine(
     };
 }
 
+const emptyTestData = { annotations: {}, controls: {} } as const;
+
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/packages/test/command-line-runner.test.ts',
-    metadata: {},
+    ...emptyTestData,
     children: [
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper parses explicit run paths',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const result = await runCommandLine(
                     [ 'run', 'source/a.test.ts', 'source/b.test.ts' ],
@@ -203,7 +205,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper parses explicit list paths',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const result = await runCommandLine(
                     [
@@ -243,7 +245,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper writes list stdout lines',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const result = await runCommandLine([ 'list', 'source/a.test.ts' ], {
                     exitCode: 0,
@@ -262,7 +264,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper maps unsupported list flags to argument errors',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const result = await runCommandLine(
                     [ 'list', '--resource-budget', 'activeResourceCount=8', 'source/a.test.ts' ],
@@ -281,7 +283,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper parses config and profile flags',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const result = await runCommandLine(
                     [ '--config', 'overkill.config.ts', 'run', '--profile=backend-http', 'source/a.test.ts' ],
@@ -300,7 +302,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper parses resource usage flags',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const result = await runCommandLine(
                     [
@@ -333,7 +335,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper resource budget enables measurement',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const result = await runCommandLine(
                     [ 'run', '--resource-budget', 'residentSetBytes=200', 'source/a.test.ts' ],
@@ -359,7 +361,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper preserves path operands after delimiter',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const result = await runCommandLine([ 'run', '--', '--seed' ], passingResult());
                 const [ commandLineRequest ] = result.runRequests;
@@ -373,7 +375,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper writes fallback diagnostics and applies run exit code',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const result = await runCommandLine([ 'run', 'source/a.test.ts' ], {
                     exitCode: testExitCodes.runnerError,
@@ -394,7 +396,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper parses run selectors',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const result = await runCommandLine(
                     [
@@ -439,7 +441,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper parses list selectors',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const result = await runCommandLine(
                     [ 'list', '--filter', 'tag=fast | tag=slow', '--title', 'Login' ],
@@ -472,7 +474,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper rejects malformed run filters',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const result = await runCommandLine(
                     [ 'run', '--filter', 'kind=microtest' ],
@@ -490,7 +492,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper rejects duplicate resource budget names',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const result = await runCommandLine(
                     [
@@ -513,7 +515,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper rejects unknown resource budget names',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const result = await runCommandLine(
                     [ 'run', '--resource-budget', 'heap=8' ],
@@ -530,7 +532,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper prints help without running tests',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const result = await runCommandLine([ '--help' ], passingResult());
 

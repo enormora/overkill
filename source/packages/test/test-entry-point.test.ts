@@ -86,15 +86,16 @@ function assertPassingSummary(scope: OverkillScope, summary: unknown): void {
 }
 
 async function executeRootAuthoredNode(): Promise<RootAuthoringExecution> {
-    const testCase = test({ body: passingBody, metadata: { tags: [ 'case' ] }, title: 'passes' });
+    const testCase = test({ annotations: { tags: [ 'case' ] }, body: passingBody, title: 'passes' });
     const testNode = suite({
+        annotations: { tags: [ 'suite' ] },
         children: [ testCase ],
-        metadata: { extra: { suite: 'runtime' }, tags: [ 'suite' ] },
         title: 'runtime'
     });
     const root = createRoot({
+        annotations: {},
         children: [ testNode ],
-        metadata: { kind: 'microtest' },
+        controls: {},
         title: 'root'
     });
     const plan = createTestPlan(root);
@@ -115,9 +116,8 @@ function assertRootAuthoredCase(scope: OverkillScope, plannedCase: RootAuthoring
         params: null,
         suite: [ 'runtime' ]
     });
-    scope.assert.equal(plannedCase.metadata.kind, 'microtest');
-    scope.assert.deepEqual(plannedCase.metadata.tags, [ 'suite', 'case' ]);
-    scope.assert.deepEqual(plannedCase.metadata.extra, { suite: 'runtime' });
+    scope.assert.deepEqual(plannedCase.annotations.tags, [ 'suite', 'case' ]);
+    scope.assert.deepEqual(plannedCase.controls, { capture: null, timeoutMilliseconds: null });
 }
 
 function assertTableSummary(scope: OverkillScope, summary: unknown): void {
@@ -152,7 +152,8 @@ async function executeTableAuthoredNode(): Promise<TableAuthoringExecution> {
             caseTitleCalls.push(`${index}:${parameters.value}`);
             return `row ${index + 1}`;
         },
-        metadata: { tags: [ 'table' ] },
+        annotations: { tags: [ 'table' ] },
+        controls: {},
         test(testScope) {
             bodyRows.push(testScope.parameters);
             testScope.assert.true(rows.includes(testScope.parameters));
@@ -161,8 +162,9 @@ async function executeTableAuthoredNode(): Promise<TableAuthoringExecution> {
         title: 'rows'
     });
     const root = createRoot({
+        annotations: {},
         children: [ testNode ],
-        metadata: { kind: 'microtest' },
+        controls: {},
         title: 'root'
     });
     const plan = createTestPlan(root);
@@ -195,7 +197,7 @@ function assertTableCases(scope: OverkillScope, execution: TableAuthoringExecuti
     ]);
     scope.assert.deepEqual(
         execution.plan.discoveredCases.map(function toTagList(testCase) {
-            return testCase.metadata.tags.join(',');
+            return testCase.annotations.tags.join(',');
         }),
         [ 'table', 'table' ]
     );
@@ -226,7 +228,8 @@ function firstFailedCheckSourceLocations(result: Awaited<ReturnType<typeof execu
 async function executeAuthoredNode(testNode: TestNode): Promise<Awaited<ReturnType<typeof execute>>> {
     return await execute(createTestPlan(createRoot({
         children: [ testNode ],
-        metadata: {},
+        annotations: {},
+        controls: {},
         title: 'root'
     })));
 }
@@ -341,12 +344,14 @@ function rootDoublesBody(testScope: TestScope): ReturnType<TestBody> {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/packages/test/test-entry-point.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test test() and suite() create executable engine nodes',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const execution = await executeRootAuthoredNode();
 
@@ -361,7 +366,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test table() creates parameterized executable engine nodes',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const execution = await executeTableAuthoredNode();
 
@@ -378,7 +384,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test root doubles pass through engine assertions',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await executeAuthoredNode(test('uses root doubles', rootDoublesBody));
 
@@ -390,7 +397,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test defineMacro() forwards definition and assertion source locations',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const checkMissingName = defineMacro(createMissingNameTest);
                 const testCase = checkMissingName('requires name');
@@ -405,7 +413,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test defineParameterizedTestBody() forwards assertion source locations',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const checkName = defineParameterizedTestBody(checkParameterizedName);
                 const testCase = test('checks name', checkName({ name: 'Grace' }));
@@ -420,7 +429,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test captures definition locations from the authoring callsite',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const testCase = test('located test', passingBody);
                 const locatedSuite = suite('located suite', [ testCase ]);
@@ -434,7 +444,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test delegates invalid authoring inputs to engine validation',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.throws(function createNamelessTest() {
                     test('', passingBody);
@@ -444,17 +455,20 @@ export const testNode = createOverkillSuite({
                 }, { message: 'Suite children must be engine-created TestNode values.' });
                 scope.assert.throws(function createTestWithWrongArity() {
                     invokeTest();
-                }, { message: 'test() requires (title, body) or ({ title, metadata, body }).' });
+                }, { message: 'test() requires (title, body) or ({ title, annotations?, controls?, body }).' });
                 scope.assert.throws(function createMicrotestWithCapture() {
                     invokeTest({
+                        annotations: {},
                         body: passingBody,
-                        metadata: { capture: 'live' },
+                        controls: { capture: 'live' },
                         title: 'captures'
                     });
-                }, { message: 'Microtest authoring metadata does not support capture mode.' });
+                }, { message: 'Microtest authoring controls do not support capture mode.' });
                 scope.assert.throws(function createSuiteWithWrongArity() {
                     invokeSuite();
-                }, { message: 'suite() requires (title, children) or ({ title, metadata, children }).' });
+                }, {
+                    message: 'suite() requires (title, children) or ({ title, annotations?, controls?, children }).'
+                });
 
                 return scope.assert.collect();
             }

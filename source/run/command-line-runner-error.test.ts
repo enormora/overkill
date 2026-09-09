@@ -84,11 +84,13 @@ function createPassingPlan(): TestPlan {
 
                         return scope.assert.collect();
                     },
-                    metadata: {},
+                    annotations: {},
+                    controls: {},
                     title: 'passes'
                 })
             ],
-            metadata: {},
+            annotations: {},
+            controls: {},
             title: 'root'
         })
     );
@@ -155,12 +157,14 @@ function createRunOnlyOrchestrator(run: RunOrchestrator['run']): RunOrchestrator
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/command-line-runner-error.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() formats non-error internal crashes',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const run = testDouble.rejects<RunOrchestrator['run']>('unexpected string failure');
                 const runner = createCommandLineRunner(createRunnerDependencies(createRunOnlyOrchestrator(run)));
@@ -180,7 +184,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() formats Error internal crashes',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const run = testDouble.rejects<RunOrchestrator['run']>(new Error('Unexpected failure.'));
                 const runner = createCommandLineRunner(createRunnerDependencies(createRunOnlyOrchestrator(run)));

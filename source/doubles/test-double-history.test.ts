@@ -36,12 +36,14 @@ function createRecordedSnapshotLoader(): RecordedSnapshotLoader {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/doubles/test-double-history.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'history array snapshots are shallow copies',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const { actual, input, loadValue, output } = createRecordedSnapshotLoader();
                 const calls = loadValue.calls as unknown as unknown[];
@@ -60,7 +62,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'history record snapshots are shallow copies',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const { actual, input, loadValue, output } = createRecordedSnapshotLoader();
                 const firstCall = loadValue.firstCall as DoubleCall | null;
@@ -89,7 +92,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'history result snapshots keep value references',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const { actual, loadValue, output } = createRecordedSnapshotLoader();
                 const outputResult = loadValue.firstResult;
@@ -106,7 +110,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'history properties are non-enumerable',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const loadValue = testDouble.returns('value');
 
@@ -122,7 +127,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'reset clears history and restarts indexes',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 type LoadValue = (id: string) => string;
 
@@ -150,7 +156,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'reset rewinds ordered rules and sequence behaviors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 type LoadValue = () => string;
 
@@ -171,7 +178,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'sequence behavior state is independent per double',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 type LoadValue = () => string;
 

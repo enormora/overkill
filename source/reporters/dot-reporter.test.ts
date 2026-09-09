@@ -142,12 +142,14 @@ function createFailureDetailResult(): RunResult {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/dot-reporter.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter declares raw stdout',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
                 const reporter = createDotRuntimeReporter({
@@ -163,7 +165,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter maps outcomes and runner errors to compact marks',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
                 const reporter = createDotRuntimeReporter({
@@ -227,7 +230,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter wraps progress marks by terminal width',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(2);
                 const reporter = createDotRuntimeReporter({
@@ -250,7 +254,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter prints summary and short details on finish',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
                 const reporter = createDotRuntimeReporter({
@@ -321,7 +326,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter prints assertion failure source locations on finish',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
                 const reporter = createDotReporter({
@@ -408,7 +414,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter prints body-error and contract failure details',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
                 const reporter = createDotRuntimeReporter({
@@ -445,7 +452,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter prints post-finish runner errors below the summary',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
                 const reporter = createDotRuntimeReporter({
@@ -485,7 +493,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter disposes its resize listener',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
                 const reporter = createDotRuntimeReporter({

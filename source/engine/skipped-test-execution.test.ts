@@ -81,8 +81,9 @@ function createRuntimePolicyProbe(): RuntimePolicyProbe {
 
 function createSkippedExecutionPlan(engine: Engine): ReturnType<Engine['createTestPlan']> {
     const skippedCase = engine.createSkippedTestCase({
+        annotations: { tags: [ 'platform' ] },
+        controls: {},
         definitionLocations: [ { kind: 'unknown' as const } ],
-        metadata: { tags: [ 'platform' ] },
         reason: 'unsupported platform',
         title: 'conditional'
     });
@@ -90,13 +91,15 @@ function createSkippedExecutionPlan(engine: Engine): ReturnType<Engine['createTe
     return engine.createTestPlan(engine.createRoot({
         children: [
             engine.createSuite({
+                annotations: {},
                 children: [ skippedCase ],
+                controls: {},
                 definitionLocations: [ { kind: 'unknown' as const } ],
-                metadata: {},
                 title: 'runtime'
             })
         ],
-        metadata: {},
+        annotations: {},
+        controls: {},
         title: 'root'
     }));
 }
@@ -131,12 +134,14 @@ function assertSkippedExecutionResult(scope: OverkillScope, result: RunResult): 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/skipped-test-execution.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() records skipped cases without running body infrastructure',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const lifecycle = createLifecycleRecorder();

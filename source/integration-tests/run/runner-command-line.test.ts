@@ -230,12 +230,14 @@ function selectedEngineRunnerDiagnostic(path: string): string {
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/integration-tests/run/runner-command-line.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'command-line runner lists explicit files without executing them',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 const localResult = await listCommandLine([ passingFixturePath ], 'in-process', false);
                 const supervisedResult = await listCommandLine([ passingFixturePath ], 'supervised-process', true);
@@ -263,7 +265,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'command-line runner runs and lists profile-discovered files',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 const runResult = await runDiscoveryCommandLine('supervised-process');
                 const listResult = await listDiscoveryCommandLine('in-process');
@@ -295,7 +298,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'command-line runner maps invalid module exports to runner errors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 const missingExportResult = await runCommandLine([ missingTestNodeFixturePath ]);
                 const plainExportResult = await runCommandLine([ plainTestNodeFixturePath ]);
@@ -315,7 +319,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'command-line runner maps collection failures to runner errors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 const importFailureResult = await runCommandLine([ throwsOnImportFixturePath ]);
                 const emptySuiteResult = await runCommandLine([ emptySuiteFixturePath ]);
@@ -335,7 +340,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'command-line runner maps empty explicit input to no tests collected',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine([]);
 

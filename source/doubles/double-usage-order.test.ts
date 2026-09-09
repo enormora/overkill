@@ -43,11 +43,13 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
                     engine.createTestCase({
                         definitionLocations: [ { kind: 'unknown' as const } ],
                         body,
-                        metadata: {},
+                        annotations: {},
+                        controls: {},
                         title: 'case'
                     })
                 ],
-                metadata: {},
+                annotations: {},
+                controls: {},
                 title: 'root'
             })
         )
@@ -110,12 +112,14 @@ function failureSummaries(result: RunResult): readonly string[] | null {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/doubles/double-usage-order.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage construction argument assertions use construction history',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const Client = testDouble<ClientConstructor>({
                     fallback: rule.constructs({ id: 'client' })
@@ -145,7 +149,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage indexed argument assertions validate index and event presence',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
@@ -177,7 +182,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage order assertions compare events across doubles from one scope',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const { testDouble: scopedDouble } = createTestDoubleScope();
                 const first = scopedDouble.returns<Ping>('first');
@@ -200,7 +206,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage construction order compares constructor events',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const { testDouble: scopedDouble } = createTestDoubleScope();
                 const First = scopedDouble.constructs<ClientConstructor>({ id: 'first' });
@@ -224,7 +231,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage order assertions require all previous events before the next double',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const { testDouble: scopedDouble } = createTestDoubleScope();
                 const first = scopedDouble.returns<Ping>('first');
@@ -249,7 +257,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage order assertions reject invalid and unused order inputs',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const { testDouble: scopedDouble } = createTestDoubleScope();
                 const first = scopedDouble.returns<Ping>('first');
@@ -280,7 +289,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage order assertions reject mixed double scopes',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const [ firstScope, secondScope ] = [ createTestDoubleScope(), createTestDoubleScope() ];
                 const first = firstScope.testDouble.returns<Ping>('first');
@@ -317,7 +327,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage count and argument assertions reject non-doubles independently',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
                     testScope.assert(doubleUsage.callCount, function notADouble() {
@@ -347,7 +358,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage assertions reject non-doubles with assertion diagnostics',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
                     testScope.assert(doubleUsage.called, function notADouble() {

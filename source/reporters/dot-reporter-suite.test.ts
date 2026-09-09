@@ -5,7 +5,8 @@ import { testNode as dotReporterTestNode } from './dot-reporter.test.ts';
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/reporters/dot-reporter-suite.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         dotReporterOrderingTestNode,
         dotReporterTestNode

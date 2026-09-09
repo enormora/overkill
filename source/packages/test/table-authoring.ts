@@ -1,14 +1,23 @@
 import {
     createTable,
-    type Metadata,
     type SourceLocation,
+    stampTestNodeFamily,
     type Table,
     type TableOptions,
+    type TestAnnotationsInput,
     type TestBody,
+    type TestControlsInput,
     type TestFamily,
     type TestScope
 } from '../engine/engine.entry-point.ts';
-import { createAuthoringMetadata, readAuthoringMetadata, type AuthoringMetadata } from './authoring-metadata.ts';
+import {
+    createAuthoringAnnotations,
+    createAuthoringControls,
+    readAuthoringAnnotations,
+    readAuthoringControls,
+    type AuthoringAnnotations,
+    type MicrotestAuthoringControls
+} from './authoring-test-data.ts';
 import {
     activeMacroSourceLocations,
     definitionLocationsForAuthoringCall,
@@ -20,6 +29,12 @@ import {
     readAuthoringTestBody
 } from './authoring-input.ts';
 
+function stampedTable(table: Table, testFamily: TestFamily): Table {
+    stampTestNodeFamily(table, testFamily);
+
+    return table;
+}
+
 export type ParameterizedTestScope<Row> = TestScope & {
     readonly parameters: Row;
 };
@@ -28,25 +43,27 @@ export type TableTestBody<Row> = (
     scope: ParameterizedTestScope<Row>
 ) => ReturnType<TestBody>;
 
-export type TableDefinition<Row, MetadataType extends Metadata = AuthoringMetadata> = {
+export type TableDefinition<Row, ControlsType extends TestControlsInput = MicrotestAuthoringControls> = {
+    readonly annotations?: AuthoringAnnotations;
     readonly caseTitle?: (parameters: Row, index: number) => string;
     readonly cases: readonly Row[];
-    readonly metadata?: MetadataType;
+    readonly controls?: ControlsType;
     readonly test: TableTestBody<Row>;
     readonly title: string;
 };
 
 type RuntimeTableDefinition<Row> = {
+    readonly annotations: TestAnnotationsInput;
     readonly caseTitle: ((parameters: Row, index: number) => string) | null;
     readonly cases: readonly Row[];
-    readonly metadata: Metadata;
+    readonly controls: TestControlsInput;
     readonly test: TableTestBody<Row>;
     readonly title: string;
 };
 
 type TableCases = TableOptions['cases'];
 
-const tableArgumentsError = 'table() requires ({ title, cases, metadata?, caseTitle?, test }).';
+const tableArgumentsError = 'table() requires ({ title, cases, annotations?, controls?, caseTitle?, test }).';
 
 function defaultCaseTitle(index: number): string {
     return `case ${index + 1}`;
@@ -90,16 +107,17 @@ function ensureTableDefinitionShape(definition: Readonly<Record<string, unknown>
     readAuthoringTestBody(definition.test);
 }
 
-function readTableDefinition<Row, MetadataType extends Metadata>(
-    definition: TableDefinition<Row, MetadataType>
+function readTableDefinition<Row, ControlsType extends TestControlsInput>(
+    definition: TableDefinition<Row, ControlsType>
 ): RuntimeTableDefinition<Row> {
     const runtimeDefinition = readAuthoringRecord(definition, tableArgumentsError);
     ensureTableDefinitionShape(runtimeDefinition);
 
     return {
+        annotations: readAuthoringAnnotations(runtimeDefinition.annotations ?? {}),
         caseTitle: definition.caseTitle ?? null,
         cases: definition.cases,
-        metadata: readAuthoringMetadata(runtimeDefinition.metadata ?? {}),
+        controls: readAuthoringControls(runtimeDefinition.controls ?? {}),
         test: definition.test,
         title: readAuthoringString(runtimeDefinition.title, tableArgumentsError)
     };
@@ -112,25 +130,31 @@ function tableCases<Row>(
 
     return definition.cases.map(function createTableCase(parameters, index) {
         return {
+            annotations: {},
             body: tableCaseBody(definition, parameters, sourceLocations),
-            metadata: {},
+            controls: {},
             parameters,
             title: tableCaseTitle(definition.caseTitle, parameters, index)
         };
     });
 }
 
-export function createAuthoredTable<Row, MetadataType extends Metadata>(
+export function createAuthoredTable<Row, ControlsType extends TestControlsInput>(
     testFamily: TestFamily,
-    facadeMetadata: Metadata,
-    definition: TableDefinition<Row, MetadataType>
+    facadeAnnotations: TestAnnotationsInput,
+    facadeControls: TestControlsInput,
+    definition: TableDefinition<Row, ControlsType>
 ): Table {
     const tableDefinition = readTableDefinition(definition);
 
-    return createTable({
-        cases: tableCases(tableDefinition),
-        definitionLocations: definitionLocationsForAuthoringCall(),
-        metadata: createAuthoringMetadata(testFamily, facadeMetadata, tableDefinition.metadata),
-        title: tableDefinition.title
-    });
+    return stampedTable(
+        createTable({
+            annotations: createAuthoringAnnotations(facadeAnnotations, tableDefinition.annotations),
+            cases: tableCases(tableDefinition),
+            controls: createAuthoringControls(testFamily, facadeControls, tableDefinition.controls),
+            definitionLocations: definitionLocationsForAuthoringCall(),
+            title: tableDefinition.title
+        }),
+        testFamily
+    );
 }

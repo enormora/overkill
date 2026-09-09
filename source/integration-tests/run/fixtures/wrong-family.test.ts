@@ -1,6 +1,10 @@
-import { createSuite, createTestCase } from '../../../packages/engine/engine.entry-point.ts';
+import {
+    createSuite,
+    createTestCase,
+    stampTestNodeFamily
+} from '../../../packages/engine/engine.entry-point.ts';
 
-export const testNode = createSuite({
+const testNode = createSuite({
     children: [
         createTestCase({
             body(scope) {
@@ -8,11 +12,17 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             },
             definitionLocations: [ { kind: 'unknown' } ],
-            metadata: { kind: 'integration' },
+            annotations: {},
+            controls: {},
             title: 'wrong family'
         })
     ],
     definitionLocations: [ { kind: 'unknown' } ],
-    metadata: {},
+    annotations: {},
+    controls: {},
     title: 'wrong family fixture'
 });
+
+stampTestNodeFamily(testNode, 'integration');
+
+export { testNode };

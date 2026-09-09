@@ -44,14 +44,14 @@ Override surfaces:
   profiles instead of creating captured-output artifacts
 - instrumented profiles may observe `console.*` through Node diagnostics
   channels even in same-process runs
-- per-test metadata `{ capture: 'live' }` - opt out for one capture-capable
+- per-test control `{ capture: 'live' }` - opt out for one capture-capable
   test or subtree
 - reporter-level configuration, such as `createLineReporter({ verbose: true })`,
   chooses to print captured output for passing tests as well
 
 There is no first-party project config field for capture mode. Capture is
-either run-level intent or authored metadata on capture-capable tests.
-Microtest profiles reject `--no-capture` and reject authored capture metadata;
+either run-level intent or authored controls on capture-capable tests.
+Microtest profiles reject `--no-capture` and reject authored capture controls;
 capture mode never grants permission to write console or raw process output
 inside a strict microtest boundary.
 
@@ -80,9 +80,9 @@ The full CLI reference (subcommands, flags, and their canonical homes)
 lives in [`cli.md`](../reference/cli.md). Behavior of CLI options that bind
 specifically to runtime concerns - parallelism, watch mode, debug,
 sharding - is documented in this doc; [CLI Reference](../reference/cli.md) cross-links into it.
-Selection itself is metadata-driven: tags are a first-class metadata
+Selection itself is annotation-driven: tags are a first-class annotation
 field, and tag filtering happens through `--filter` expressions such as
-`tag=fast` or `!tag=flaky` (see [Metadata And Selection](./metadata-and-selection.md)).
+`tag=fast` or `!tag=flaky` (see [Test Data And Selection](./test-data-and-selection.md)).
 
 ## Exit Codes And `process.exit`
 
@@ -369,9 +369,8 @@ the worker.
 
 Override surfaces:
 
-- per-test metadata: `{ timeoutMilliseconds: 500 }` shortens the soft
-  timeout for one test (cannot extend past the profile's hard
-  timeout)
+- per-test control: `{ timeoutMilliseconds: 500 }` shortens the soft
+  timeout for one test (cannot extend past the profile's soft timeout)
 - profile configuration overrides set the soft and hard defaults for the
   whole run
 
@@ -407,8 +406,8 @@ In-process modes intentionally lack hard termination - see
 Debug mode is the opt-in switch that keeps per-test diagnostic data
 (timeline, handle events, module loads, heap snapshots, active-handle
 deltas) and emits it as a structured artifact regardless of outcome.
-Activation is always explicit (`--debug`, `--debug-scope`, or per-test
-metadata) and never affects the verdict.
+Activation is always explicit (`--debug` or `--debug-scope`) and never affects
+the verdict.
 
 The full specification covers activation, `TestDebugArtifact` shape, storage,
 reporter interaction, overhead, retry/replay behavior, and the
@@ -516,7 +515,7 @@ not add a selection/filter dimension.
 Execution order is a scheduling concern, not a property of source-file
 layout. The default scheduler is **seeded random order**:
 
-- after collection, metadata propagation, filtering, work-unit construction,
+- after collection, annotation and control propagation, filtering, work-unit construction,
   and sharding, selected work units are ordered by a recorded seed
 - if the user does not pass `--seed <value>`, the runner chooses one,
   prints it through first-party human reporters, and writes it into
@@ -606,7 +605,7 @@ JSON/HTML report.
 
 Multi-process execution does **not** decentralize discovery authority.
 The coordinator owns file-set resolution, group resolution, collection,
-metadata resolution, runtime/workload expansion, filtering, work-unit
+test data resolution, runtime/workload expansion, filtering, work-unit
 construction, sharding, ordering, and `RunFacts` freeze before any assigned
 test body runs.
 
@@ -784,7 +783,7 @@ This document is the runtime counterpart to several others. Cross-links:
   detection, supervision
 - [Failure Artifacts](../authoring/failure-artifacts.md) - output capture, runner-error vs test-failure
   distinction
-- [Metadata And Selection](./metadata-and-selection.md) - selection rules sharding composes with
+- [Test Data And Selection](./test-data-and-selection.md) - selection rules sharding composes with
 - [Fast Feedback Loops](./fast-feedback-loops.md) - watch mode and cache behavior
 - [Platform-First Implementation Notes](./platform-first-implementation-notes.md) - `AbortSignal`, source maps,
   `AsyncLocalStorage`

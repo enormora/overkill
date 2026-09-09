@@ -3,7 +3,8 @@ import { createTestFacade } from '../../../packages/test/test.entry-point.ts';
 process.stdout.write('collection stdout\n');
 
 const integration = createTestFacade({
-    metadata: { tags: [ 'output' ] },
+    annotations: { tags: [ 'output' ] },
+    controls: {},
     testFamily: 'integration'
 });
 

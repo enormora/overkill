@@ -169,7 +169,8 @@ function createSmokeCase(engine: Engine, definition: SmokeCaseDefinition): TestC
             testScope.assert.equal(1, 2, { message: definition.assertionSummary });
             return testScope.assert.collect();
         },
-        metadata: { extra: { expectedVerdict: definition.expectedVerdict } },
+        annotations: {},
+        controls: {},
         title: definition.name
     });
 }
@@ -177,7 +178,8 @@ function createSmokeCase(engine: Engine, definition: SmokeCaseDefinition): TestC
 function createSmokeRoot(children: readonly TestNode[]): TestRoot {
     return createRoot({
         children,
-        metadata: {},
+        annotations: {},
+        controls: {},
         title: 'root'
     });
 }
@@ -195,7 +197,8 @@ async function executeSmokePlan(engine: Engine): Promise<RunResult> {
         children: cases.map(function toSmokeCase(smokeCase) {
             return createSmokeCase(engine, smokeCase);
         }),
-        metadata: {},
+        annotations: {},
+        controls: {},
         title: 'root'
     });
 
@@ -205,12 +208,14 @@ async function executeSmokePlan(engine: Engine): Promise<RunResult> {
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'package smoke',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'consumer imports top-level @overkill-dev/engine exports and executes a TestPlan',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 const topLevelEngine: Engine = {
                     createSuite,
@@ -233,7 +238,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'integration launcher returns for imported metadata',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 const testCase = createTestCase({
                     definitionLocations: [ { kind: 'unknown' } ],
@@ -241,7 +247,8 @@ export const testNode = createSuite({
                         testContext.assert.true(true, { message: 'passes' });
                         return testContext.assert.collect();
                     },
-                    metadata: {},
+                    annotations: {},
+                    controls: {},
                     title: 'passes'
                 });
 
@@ -254,7 +261,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'consumer imports createEngine() and executes a TestPlan',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 scope.assert(smokeResult, await executeSmokePlan(createEngine()), 2);
 
@@ -264,7 +272,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'consumer imports @overkill-dev/assert reference and executes it through @overkill-dev/engine',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 const testCase = createTestCase({
                     definitionLocations: [ { kind: 'unknown' } ],
@@ -272,7 +281,8 @@ export const testNode = createSuite({
                         testScope.assert(resultOk, { ok: true });
                         return testScope.assert.collect();
                     },
-                    metadata: {},
+                    annotations: {},
+                    controls: {},
                     title: 'uses assert package'
                 });
                 const result = await execute(createTestPlan(createSmokeRoot([ testCase ])));
@@ -286,7 +296,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'consumer imports top-level @overkill-dev/doubles facade',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 scope.assert.deepEqual(Object.keys(doublesPackage), [
                     'doubleUsage',
@@ -327,7 +338,8 @@ export const testNode = createSuite({
                         testScope.assert(doublesPackage.doubleUsage.calledOnceWith, saveValue, [ 'id' ]);
                         return testScope.assert.collect();
                     },
-                    metadata: {},
+                    annotations: {},
+                    controls: {},
                     title: 'uses doubles assertions'
                 });
                 const result = await execute(createTestPlan(createSmokeRoot([ testCase ])));

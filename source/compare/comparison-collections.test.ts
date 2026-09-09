@@ -22,12 +22,14 @@ const binaryDiff = defineNarrowingCompositeAssertion<Diff, Extract<Diff, { reado
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/compare/comparison-collections.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() compares Set members order independently with deep values',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const actual = new Set<unknown>([ { id: 2 }, { id: 1 } ]);
                 const expected = new Set<unknown>([ { id: 1 }, { id: 2 } ]);
@@ -103,7 +105,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() compares Date, RegExp, and Error identity',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const firstError = Object.assign(new TypeError('bad value'), { code: 'A' }) as TypeError & {
                     readonly code: string;
@@ -144,7 +147,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() compares opaque built-ins by reference identity',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const promise = Promise.resolve();
                 const weakMap = new WeakMap<Record<string, unknown>, unknown>();
@@ -174,7 +178,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() preserves repeated reference topology',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const actualShared = { left: null, right: null };
                 const expectedShared = { left: null, right: null };
@@ -193,7 +198,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() preserves cycle topology',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const actualCycle = {};
                 const expectedCycle = {};
@@ -208,7 +214,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() reports small binary diffs',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const small = compareDeepValues(Uint8Array.from([ 1, 9, 3 ]), Uint8Array.from([ 1, 2, 3 ]));
                 const { diff } = small;
@@ -232,7 +239,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() reports large binary summaries',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const largeActual = Uint8Array.from({ length: 101 }, function value(unusedValue, index) {
                     scope.assert.equal(unusedValue, undefined);
@@ -264,7 +272,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'comparePartialValue() matches only the expected structural subset',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.equal(comparePartialValue([ 1, { ok: true }, 3 ], [ 1, { ok: true } ]).passed, true);
                 scope.assert.equal(comparePartialValue({ extra: true, id: 1 }, { id: 1 }).passed, true);
@@ -309,7 +318,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareArrayContainsPartial() and compareMembersPartialDeepEqual() report missing members',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const contains = compareArrayContainsPartial([ { id: 1 } ], { id: 2 });
                 const members = compareMembersPartialDeepEqual([ { id: 1 }, { id: 2 } ], [ { id: 2 }, { id: 3 } ]);

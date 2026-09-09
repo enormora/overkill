@@ -4,7 +4,7 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import type { SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
-import { resolveRootMetadata } from '../engine/metadata.ts';
+import { resolveRootTestAnnotations } from '../engine/test-data.ts';
 import { createReportingContext } from '../engine/reporting-context.ts';
 import type { OutputLineIntent, ReporterOutput } from '../engine/reporter-output.ts';
 import type { RealTimeReporter, ReporterEvent } from '../engine/reporter.ts';
@@ -143,12 +143,14 @@ function assertRunnerErrorOutput(scope: OverkillScope, errorOutput: readonly Out
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/brief-reporter.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter declares managed primary stdout',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
 
@@ -160,13 +162,14 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter prints run start and omits passing test lines',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
                 const startOutput = await readOutput(reporter.onEvent({
-                    facts: { cases: [ { id: caseId, metadata: {} } ] },
+                    facts: { cases: [ { annotations: {}, controls: {}, id: caseId } ] },
                     kind: 'run-start',
-                    root: { metadata: resolveRootMetadata({}), title: 'source' },
+                    root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 }));
                 const passOutput = await readOutput(reporter.onEvent(passEvent()));
@@ -185,17 +188,18 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter includes order and seed on run start',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
                 const startOutput = await readOutput(reporter.onEvent({
                     facts: {
-                        cases: [ { id: caseId, metadata: {} } ],
+                        cases: [ { annotations: {}, controls: {}, id: caseId } ],
                         execution: { order: 'seeded' },
                         reproducibility: { seed: '123' }
                     },
                     kind: 'run-start',
-                    root: { metadata: resolveRootMetadata({}), title: 'source' },
+                    root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 }));
 
@@ -212,25 +216,26 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter ignores incomplete ordering facts',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
                 const missingSeed = await readOutput(reporter.onEvent({
                     facts: {
-                        cases: [ { id: caseId, metadata: {} } ],
+                        cases: [ { annotations: {}, controls: {}, id: caseId } ],
                         execution: { order: 'seeded' }
                     },
                     kind: 'run-start',
-                    root: { metadata: resolveRootMetadata({}), title: 'source' },
+                    root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 }));
                 const missingOrder = await readOutput(reporter.onEvent({
                     facts: {
-                        cases: [ { id: caseId, metadata: {} } ],
+                        cases: [ { annotations: {}, controls: {}, id: caseId } ],
                         reproducibility: { seed: '123' }
                     },
                     kind: 'run-start',
-                    root: { metadata: resolveRootMetadata({}), title: 'source' },
+                    root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 }));
 
@@ -253,14 +258,15 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter prints progress every one hundred completed tests',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
 
                 await reporter.onEvent({
                     facts: { cases: Array.from({ length: 250 }) },
                     kind: 'run-start',
-                    root: { metadata: resolveRootMetadata({}), title: 'source' },
+                    root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
 
@@ -283,7 +289,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter uses an unknown progress denominator without run facts',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
 
@@ -306,14 +313,15 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter suppresses final progress at the planned count',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
 
                 await reporter.onEvent({
                     facts: { cases: Array.from({ length: 100 }) },
                     kind: 'run-start',
-                    root: { metadata: resolveRootMetadata({}), title: 'source' },
+                    root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
 
@@ -331,7 +339,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter prints one diagnostic line per failure cause',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
                 const failureOutput = await readOutput(reporter.onEvent(failEvent()));
@@ -353,7 +362,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter prints runner errors and ignores suite events',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
                 const suiteOutput = await readOutput(reporter.onEvent({
@@ -371,7 +381,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter prints final counts',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
                 scope.require.notNull(reporter.onFinish);

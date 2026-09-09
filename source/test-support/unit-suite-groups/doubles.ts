@@ -5,7 +5,8 @@ import { testNode as testDoubleRuntimeTestNode } from './test-double-runtime.ts'
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/test-support/unit-suite-groups/doubles.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         doubleProtocolTestNode,
         testDoubleRuntimeTestNode

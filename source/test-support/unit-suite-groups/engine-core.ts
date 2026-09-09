@@ -11,7 +11,8 @@ import { testNode as requireAssertionFacadeTestNode } from '../../engine/require
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/test-support/unit-suite-groups/engine-core.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         assertionExecutionCompositeTestNode,
         assertionExecutionTestNode,

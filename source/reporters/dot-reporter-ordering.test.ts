@@ -1,30 +1,15 @@
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
-    type ResolvedMetadata,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import { resolveRootTestAnnotations } from '../engine/test-data.ts';
 import { createDotReporter } from './dot-reporter.ts';
 import type { TerminalOutput } from './terminal.ts';
 
 type FakeTerminal = {
     readonly output: TerminalOutput;
     readonly text: () => string;
-};
-
-const rootMetadata: ResolvedMetadata = {
-    baselines: [],
-    capabilities: [],
-    capture: null,
-    debug: false,
-    extra: {},
-    kind: null,
-    ownership: [],
-    priority: 'standard',
-    runtimes: [],
-    stability: 'stable',
-    tags: [],
-    timeoutMilliseconds: null
 };
 
 function createFakeTerminal(columns: number): FakeTerminal {
@@ -52,12 +37,14 @@ function createFakeTerminal(columns: number): FakeTerminal {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/dot-reporter-ordering.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter prints order and seed on run start',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
                 const reporter = createDotReporter({
@@ -75,7 +62,7 @@ export const testNode = createOverkillSuite({
                         reproducibility: { seed: '123' }
                     },
                     kind: 'run-start',
-                    root: { metadata: rootMetadata, title: 'source' },
+                    root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
 

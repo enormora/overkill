@@ -5,10 +5,17 @@ import type {
 import type { NonEmptyReadonlyArray, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { ensureValidSourceLocation } from '../assertion-protocol/source-location.ts';
 import type { AssertAssertionFacade } from './assertion-facade.ts';
-import { ensureMetadata, type Metadata } from './metadata.ts';
 import type { RequireAssertionFacade } from './require-assertion-facade.ts';
+import {
+    normalizeTestAnnotations,
+    normalizeTestControls,
+    type TestAnnotationsInput,
+    type TestControlsInput,
+    type TestFamily
+} from './test-data.ts';
 
 const testNodeBrand = Symbol.for('@overkill-dev/engine/TestNode');
+const testNodeFamilyBrand = Symbol.for('@overkill-dev/engine/TestNodeFamily');
 const testRootBrand = Symbol.for('@overkill-dev/engine/TestRoot');
 const testNodeOwnerBrand = Symbol.for('@overkill-dev/engine/TestNodeOwner');
 const testNodeOwnerIdentity = Symbol.for('@overkill-dev/engine/TestNodeOwnerIdentity');
@@ -43,38 +50,45 @@ export type TestCaseExecution = BodyTestCaseExecution | SkippedTestCaseExecution
 
 export type TestCase = {
     readonly [testNodeBrand]: true;
+    readonly [testNodeFamilyBrand]: TestFamily | null;
     readonly [testNodeOwnerBrand]: TestNodeOwner;
+    readonly annotations: TestAnnotationsInput;
+    readonly controls: TestControlsInput;
     readonly definitionLocations: DefinitionLocations;
     readonly execution: TestCaseExecution;
     readonly kind: 'test';
-    readonly metadata: Metadata;
     readonly title: string;
 };
 
 export type Suite = {
     readonly [testNodeBrand]: true;
+    readonly [testNodeFamilyBrand]: TestFamily | null;
     readonly [testNodeOwnerBrand]: TestNodeOwner;
+    readonly annotations: TestAnnotationsInput;
     readonly children: readonly TestNode[];
+    readonly controls: TestControlsInput;
     readonly definitionLocations: DefinitionLocations;
     readonly kind: 'suite';
-    readonly metadata: Metadata;
     readonly title: string;
 };
 
 export type TableCase = {
+    readonly annotations: TestAnnotationsInput;
     readonly body: TestBody;
-    readonly metadata: Metadata;
+    readonly controls: TestControlsInput;
     readonly parameters: unknown;
     readonly title: string;
 };
 
 export type Table = {
     readonly [testNodeBrand]: true;
+    readonly [testNodeFamilyBrand]: TestFamily | null;
     readonly [testNodeOwnerBrand]: TestNodeOwner;
+    readonly annotations: TestAnnotationsInput;
     readonly cases: readonly TableCase[];
+    readonly controls: TestControlsInput;
     readonly definitionLocations: DefinitionLocations;
     readonly kind: 'table';
-    readonly metadata: Metadata;
     readonly title: string;
 };
 
@@ -82,10 +96,12 @@ export type TestNode = Suite | Table | TestCase;
 
 export type TestRoot = {
     readonly [testRootBrand]: true;
+    readonly [testNodeFamilyBrand]: TestFamily | null;
     readonly [testNodeOwnerBrand]: TestNodeOwner;
+    readonly annotations: TestAnnotationsInput;
     readonly children: readonly TestNode[];
+    readonly controls: TestControlsInput;
     readonly kind: 'root';
-    readonly metadata: Metadata;
     readonly title: string;
 };
 
@@ -107,43 +123,49 @@ export type TestNodeFactoryOptions = {
 };
 
 export type TestCaseOptions = {
+    readonly annotations: TestAnnotationsInput;
     readonly body: TestBody;
+    readonly controls: TestControlsInput;
     readonly definitionLocations: DefinitionLocations;
-    readonly metadata: Metadata;
     readonly title: string;
 };
 
 export type SkippedTestCaseOptions = {
+    readonly annotations: TestAnnotationsInput;
+    readonly controls: TestControlsInput;
     readonly definitionLocations: DefinitionLocations;
-    readonly metadata: Metadata;
     readonly reason: string;
     readonly title: string;
 };
 
 export type RootOptions = {
+    readonly annotations: TestAnnotationsInput;
     readonly children: readonly unknown[];
-    readonly metadata: Metadata;
+    readonly controls: TestControlsInput;
     readonly title: string;
 };
 
 export type SuiteOptions = {
+    readonly annotations: TestAnnotationsInput;
     readonly children: readonly unknown[];
+    readonly controls: TestControlsInput;
     readonly definitionLocations: DefinitionLocations;
-    readonly metadata: Metadata;
     readonly title: string;
 };
 
 export type TableCaseOptions = {
+    readonly annotations: TestAnnotationsInput;
     readonly body: TestBody;
-    readonly metadata: Metadata;
+    readonly controls: TestControlsInput;
     readonly parameters: unknown;
     readonly title: string;
 };
 
 export type TableOptions = {
+    readonly annotations: TestAnnotationsInput;
     readonly cases: readonly TableCaseOptions[];
+    readonly controls: TestControlsInput;
     readonly definitionLocations: DefinitionLocations;
-    readonly metadata: Metadata;
     readonly title: string;
 };
 
@@ -223,6 +245,34 @@ export function isTestRoot(value: unknown): value is TestRoot {
     return typeof value === 'object' && value !== null && Object.hasOwn(value, testRootBrand);
 }
 
+export function testNodeFamily(node: TestNode | TestRoot): TestFamily | null {
+    return node[testNodeFamilyBrand];
+}
+
+function assertCompatibleTestFamily(node: TestNode | TestRoot, family: TestFamily): void {
+    const currentFamily = testNodeFamily(node);
+
+    if (currentFamily !== null && currentFamily !== family) {
+        throw new TypeError(`Test node already belongs to test family "${currentFamily}".`);
+    }
+}
+
+export function stampTestNodeFamily(node: TestNode | TestRoot, family: TestFamily): void {
+    assertCompatibleTestFamily(node, family);
+    Object.defineProperty(node, testNodeFamilyBrand, {
+        configurable: true,
+        enumerable: true,
+        value: family,
+        writable: true
+    });
+
+    if (node.kind === 'root' || node.kind === 'suite') {
+        for (const child of node.children) {
+            stampTestNodeFamily(child, family);
+        }
+    }
+}
+
 export function isOwnedTestNode(value: unknown, owner: TestNodeOwner): value is TestNode {
     return isTestNode(value) && value[testNodeOwnerBrand] === owner;
 }
@@ -286,17 +336,20 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
     function createTestCase(options: TestCaseOptions): TestCase {
         ensureTitleValue(options.title);
         ensureTitle(options.title);
-        ensureMetadata(options.metadata);
+        normalizeTestAnnotations(options.annotations);
+        normalizeTestControls(options.controls);
         ensureTestBody(options.body);
         ensureDefinitionLocations(options.definitionLocations);
 
         const testCase: TestCase = {
             [testNodeBrand]: true,
+            [testNodeFamilyBrand]: null,
             [testNodeOwnerBrand]: owner,
+            annotations: options.annotations,
+            controls: options.controls,
             definitionLocations: options.definitionLocations,
             execution: { body: options.body, kind: 'body' },
             kind: 'test',
-            metadata: options.metadata,
             title: options.title
         };
 
@@ -308,17 +361,20 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
     function createSkippedTestCase(options: SkippedTestCaseOptions): TestCase {
         ensureTitleValue(options.title);
         ensureTitle(options.title);
-        ensureMetadata(options.metadata);
+        normalizeTestAnnotations(options.annotations);
+        normalizeTestControls(options.controls);
         ensureDefinitionLocations(options.definitionLocations);
         const reason = readSkipReason(options.reason);
 
         const testCase: TestCase = {
             [testNodeBrand]: true,
+            [testNodeFamilyBrand]: null,
             [testNodeOwnerBrand]: owner,
+            annotations: options.annotations,
+            controls: options.controls,
             definitionLocations: options.definitionLocations,
             execution: { kind: 'skip', reason },
             kind: 'test',
-            metadata: options.metadata,
             title: options.title
         };
 
@@ -330,7 +386,8 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
     function createRoot(options: RootOptions): TestRoot {
         ensureTitleValue(options.title);
         ensureTitle(options.title);
-        ensureMetadata(options.metadata);
+        normalizeTestAnnotations(options.annotations);
+        normalizeTestControls(options.controls);
         const children = options.children.map(function validateChild(child) {
             return toTestNode(
                 child,
@@ -342,10 +399,12 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
 
         return {
             [testRootBrand]: true,
+            [testNodeFamilyBrand]: null,
             [testNodeOwnerBrand]: owner,
+            annotations: options.annotations,
             children,
+            controls: options.controls,
             kind: 'root',
-            metadata: options.metadata,
             title: options.title
         };
     }
@@ -353,7 +412,8 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
     function createSuite(options: SuiteOptions): Suite {
         ensureTitleValue(options.title);
         ensureTitle(options.title);
-        ensureMetadata(options.metadata);
+        normalizeTestAnnotations(options.annotations);
+        normalizeTestControls(options.controls);
         ensureDefinitionLocations(options.definitionLocations);
         const children = options.children.map(function validateChild(child) {
             return toTestNode(
@@ -366,11 +426,13 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
 
         const suite: Suite = {
             [testNodeBrand]: true,
+            [testNodeFamilyBrand]: null,
             [testNodeOwnerBrand]: owner,
+            annotations: options.annotations,
             children,
+            controls: options.controls,
             definitionLocations: options.definitionLocations,
             kind: 'suite',
-            metadata: options.metadata,
             title: options.title
         };
 
@@ -383,7 +445,8 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
         for (const tableCase of cases) {
             ensureTitleValue(tableCase.title);
             ensureTitle(tableCase.title);
-            ensureMetadata(tableCase.metadata);
+            normalizeTestAnnotations(tableCase.annotations);
+            normalizeTestControls(tableCase.controls);
             ensureTestBody(tableCase.body);
         }
     }
@@ -391,17 +454,20 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
     function createTable(options: TableOptions): Table {
         ensureTitleValue(options.title);
         ensureTitle(options.title);
-        ensureMetadata(options.metadata);
+        normalizeTestAnnotations(options.annotations);
+        normalizeTestControls(options.controls);
         ensureDefinitionLocations(options.definitionLocations);
         ensureTableCases(options.cases);
 
         const table: Table = {
             [testNodeBrand]: true,
+            [testNodeFamilyBrand]: null,
             [testNodeOwnerBrand]: owner,
+            annotations: options.annotations,
             cases: options.cases,
+            controls: options.controls,
             definitionLocations: options.definitionLocations,
             kind: 'table',
-            metadata: options.metadata,
             title: options.title
         };
 

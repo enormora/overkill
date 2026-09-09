@@ -65,7 +65,7 @@ runtime styles are expressed through fixtures, resources, runtimes, or
 higher-layer packages. They are not separate families unless they define a
 different semantic contract for planning, reporting, and policy.
 
-Source: [Metadata And Selection](../architecture/metadata-and-selection.md), [Testing Models](../authoring/testing-models.md).
+Source: [Test Data And Selection](../architecture/test-data-and-selection.md), [Testing Models](../authoring/testing-models.md).
 
 ## Capability Profile
 
@@ -149,7 +149,7 @@ Source: [Configuration](../architecture/configuration.md).
 ## Suite
 
 A `TestNode` that groups child nodes under a title. Suites are for naming,
-identity composition, and metadata inheritance; they do not carry hooks or
+identity composition, and test-data inheritance; they do not carry hooks or
 shared mutable lifecycle.
 
 Source: [Tests As Values](../authoring/tests-as-values.md), [Package Architecture](../architecture/package-architecture.md).
@@ -329,7 +329,7 @@ Source: [Higher Test Layers § Resource Factories](../authoring/higher-test-laye
 ## Run Result
 
 The final structured outcome of a run: per-test verdicts, captured
-artifacts, run-level summary, runner errors, and related metadata.
+artifacts, run-level summary, runner errors, and related observed data.
 
 Source: [Failure Artifacts](../authoring/failure-artifacts.md), [Package Architecture](../architecture/package-architecture.md).
 
@@ -369,9 +369,9 @@ Source: [Baselines And Snapshots](../authoring/baselines-and-snapshots.md).
 ## Selection
 
 The orchestration-level operation of filtering a `TestNode` tree to a
-subset based on metadata, identity, or file path.
+subset based on annotations, identity, or file path.
 
-Source: [Metadata And Selection](../architecture/metadata-and-selection.md).
+Source: [Test Data And Selection](../architecture/test-data-and-selection.md).
 
 ## Microtask vs Macrotask Scheduling
 

@@ -38,12 +38,14 @@ function createEmptyResourceUsageTracker(): RunResourceUsageTracker {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/resource-usage.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'resource usage tracker summarizes sampled memory and start/end active resources',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const wallClock = createDeterministicWallClock();
                 let activeResourceReadCount = 0;
@@ -98,7 +100,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'resource usage tracker rejects invalid lifecycle calls',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const unfinishedTracker = createEmptyResourceUsageTracker();
                 const startedTracker = createEmptyResourceUsageTracker();

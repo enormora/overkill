@@ -26,7 +26,7 @@ If a test depends on a runtime, a capability, or a baseline artifact, that depen
 
 ## Data Over Side Effects
 
-Overkill prefers values to side effects in its primary contracts. Tests are returned data, not invoked via global registration. Outcomes are structured results, not thrown exceptions. Metadata is explicit on the test value, not stashed in ambient state.
+Overkill prefers values to side effects in its primary contracts. Tests are returned data, not invoked via global registration. Outcomes are structured results, not thrown exceptions. Authored test data is explicit on the test value, not stashed in ambient state.
 
 That posture leads to:
 
@@ -35,7 +35,7 @@ That posture leads to:
 - identity and discovery that work without running anything
 - tooling (IDEs, MCP servers, mutation testers) that can introspect the suite without owning execution
 
-The principle does not forbid side effects — the runner has to actually run things. It says the _contracts_ between layers are values, and side-effecting glue lives at the edges where it is needed.
+The principle does not forbid side effects - the runner has to actually run things. It says the _contracts_ between layers are values, and side-effecting glue lives at the edges where it is needed.
 
 ## One First-Party Path Per Layer
 
@@ -158,9 +158,9 @@ acceptable":
 
 - no quarantine workflow that lets a known-flaky test fail without
   gating
-- no flaky-test retry as a microtest mode — a flaky microtest is a
+- no flaky-test retry as a microtest mode - a flaky microtest is a
   design failure, not an expected state
-- no `allowEmpty` escape hatch — a test that asserts nothing is
+- no `allowEmpty` escape hatch - a test that asserts nothing is
   broken, and an opt-out hides defects
 
 The shape is the same in each case: there is no "exit ramp" from the

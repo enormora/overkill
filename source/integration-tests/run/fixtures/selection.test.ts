@@ -19,27 +19,26 @@ export const testNode = createSuite({
                 createTestCase({
                 definitionLocations: [ { kind: 'unknown' } ],
                     body: pass,
-                    metadata: {
+                    annotations: {
                         ownership: [ '@Payments' ],
-                        runtimes: [ 'Node' ],
-                        stability: 'stable',
                         tags: [ 'Fast' ]
                     },
+                    controls: {},
                     title: 'charges card'
                 }),
                 createTestCase({
                 definitionLocations: [ { kind: 'unknown' } ],
                     body: pass,
-                    metadata: {
+                    annotations: {
                         ownership: [ '@Payments' ],
-                        runtimes: [ 'Browser' ],
-                        stability: 'flaky',
                         tags: [ 'Slow' ]
                     },
+                    controls: {},
                     title: 'refunds card'
                 })
             ],
-            metadata: {},
+            annotations: {},
+            controls: {},
             title: 'payments'
         }),
         createTable({
@@ -47,31 +46,31 @@ export const testNode = createSuite({
             cases: [
                 {
                     body: pass,
-                    metadata: {
+                    annotations: {
                         ownership: [ '@Search' ],
-                        runtimes: [ 'Node' ],
-                        stability: 'experimental',
                         tags: [ 'Search' ]
                     },
+                    controls: {},
                     title: 'query row',
                     parameters: { query: 'Alpha' }
                 },
                 {
                     body: pass,
-                    metadata: {
+                    annotations: {
                         ownership: [ '@Other' ],
-                        runtimes: [ 'Node' ],
-                        stability: 'stable',
                         tags: [ 'Other' ]
                     },
+                    controls: {},
                     title: 'other query row',
                     parameters: { query: 'Beta' }
                 }
             ],
-            metadata: {},
+            annotations: {},
+            controls: {},
             title: 'search rows'
         })
     ],
-    metadata: {},
+    annotations: {},
+    controls: {},
     title: 'selection fixture'
 });

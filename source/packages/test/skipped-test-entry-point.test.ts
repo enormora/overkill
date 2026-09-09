@@ -49,18 +49,20 @@ function assertDefinitionLocationInThisFile(
 
 async function executeRootSkippedNode(): Promise<SkippedAuthoringExecution> {
     const testCase = skippedTest({
-        metadata: { tags: [ 'case' ] },
+        annotations: { tags: [ 'case' ] },
         reason: ' unsupported platform ',
         title: 'skips'
     });
     const testNode = suite({
+        annotations: { tags: [ 'suite' ] },
         children: [ testCase ],
-        metadata: { extra: { suite: 'runtime' }, tags: [ 'suite' ] },
+        controls: {},
         title: 'runtime'
     });
     const plan = createTestPlan(createRoot({
+        annotations: {},
         children: [ testNode ],
-        metadata: { kind: 'microtest' },
+        controls: {},
         title: 'root'
     }));
 
@@ -74,22 +76,26 @@ async function executeRootSkippedNode(): Promise<SkippedAuthoringExecution> {
 
 async function executeFacadeSkippedNode(): Promise<SkippedAuthoringExecution> {
     const integration = createTestFacade({
-        metadata: { capture: 'buffered', extra: { layer: 'integration' }, tags: [ 'facade' ] },
+        annotations: { tags: [ 'facade' ] },
+        controls: { capture: 'buffered' },
         testFamily: 'integration'
     });
     const testCase = integration.skippedTest({
-        metadata: { capture: 'live', extra: { case: 'skips' }, tags: [ 'case' ] },
+        annotations: { tags: [ 'case' ] },
+        controls: { capture: 'live' },
         reason: 'external service unavailable',
         title: 'skips'
     });
     const testNode = integration.suite({
+        annotations: { tags: [ 'suite' ] },
         children: [ testCase ],
-        metadata: { capture: 'buffered', extra: { suite: 'runtime' }, tags: [ 'suite' ] },
+        controls: { capture: 'buffered' },
         title: 'runtime'
     });
     const plan = createTestPlan(createRoot({
+        annotations: {},
         children: [ testNode ],
-        metadata: { kind: 'integration' },
+        controls: {},
         title: 'root'
     }));
 
@@ -125,21 +131,16 @@ function assertRootSkippedCase(scope: OverkillScope, execution: SkippedAuthoring
         suite: [ 'runtime' ]
     });
     scope.assert.deepEqual(execution.plannedCase.execution, { kind: 'skip', reason: 'unsupported platform' });
-    scope.assert.equal(execution.plannedCase.metadata.kind, 'microtest');
-    scope.assert.deepEqual(execution.plannedCase.metadata.tags, [ 'suite', 'case' ]);
+    scope.assert.equal(execution.plannedCase.testFamily, 'microtest');
+    scope.assert.deepEqual(execution.plannedCase.annotations.tags, [ 'suite', 'case' ]);
     assertSkippedOutcome(scope, execution, 'unsupported platform');
 }
 
-function assertFacadeSkippedMetadata(scope: OverkillScope, execution: SkippedAuthoringExecution): void {
+function assertFacadeSkippedData(scope: OverkillScope, execution: SkippedAuthoringExecution): void {
     scope.require.defined(execution.plannedCase);
-    scope.assert.equal(execution.plannedCase.metadata.kind, 'integration');
-    scope.assert.equal(execution.plannedCase.metadata.capture, 'live');
-    scope.assert.deepEqual(execution.plannedCase.metadata.tags, [ 'facade', 'suite', 'case' ]);
-    scope.assert.deepEqual(execution.plannedCase.metadata.extra, {
-        case: 'skips',
-        layer: 'integration',
-        suite: 'runtime'
-    });
+    scope.assert.equal(execution.plannedCase.testFamily, 'integration');
+    scope.assert.equal(execution.plannedCase.controls.capture, 'live');
+    scope.assert.deepEqual(execution.plannedCase.annotations.tags, [ 'facade', 'suite', 'case' ]);
 }
 
 function assertFacadeSkippedCase(scope: OverkillScope, execution: SkippedAuthoringExecution): void {
@@ -154,7 +155,7 @@ function assertFacadeSkippedCase(scope: OverkillScope, execution: SkippedAuthori
         kind: 'skip',
         reason: 'external service unavailable'
     });
-    assertFacadeSkippedMetadata(scope, execution);
+    assertFacadeSkippedData(scope, execution);
     assertSkippedOutcome(scope, execution, 'external service unavailable');
     scope.assert.equal(execution.result.summary.skipped, 1);
     scope.assert.equal(execution.result.summary.failed, 0);
@@ -181,12 +182,14 @@ function assertSkippedSummary(scope: OverkillScope, summary: Awaited<ReturnType<
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/packages/test/skipped-test-entry-point.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test skippedTest() creates visible skipped engine nodes',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const execution = await executeRootSkippedNode();
 
@@ -201,8 +204,9 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test facade skippedTest() composes family metadata',
-            metadata: {},
+            title: '@overkill-dev/test facade skippedTest() composes family test data',
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const execution = await executeFacadeSkippedNode();
 
@@ -216,24 +220,29 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test skippedTest() delegates invalid inputs to engine validation',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.throws(function createSkippedTestWithWrongArity() {
                     invokeSkippedTest();
-                }, { message: 'skippedTest() requires (title, reason) or ({ title, metadata, reason }).' });
+                }, {
+                    message: 'skippedTest() requires (title, reason) or ({ title, annotations?, controls?, reason }).'
+                });
                 scope.assert.throws(function createSkippedTestWithoutStringReason() {
                     invokeSkippedTest('skips', 1);
-                }, { message: 'skippedTest() requires (title, reason) or ({ title, metadata, reason }).' });
+                }, {
+                    message: 'skippedTest() requires (title, reason) or ({ title, annotations?, controls?, reason }).'
+                });
                 scope.assert.throws(function createSkippedTestWithoutReason() {
                     skippedTest('skips', ' ');
                 }, { message: 'Skipped test reason must not be empty.' });
                 scope.assert.throws(function createSkippedMicrotestWithCapture() {
                     invokeSkippedTest({
-                        metadata: { capture: 'live' },
+                        controls: { capture: 'live' },
                         reason: 'not supported',
                         title: 'captures'
                     });
-                }, { message: 'Microtest authoring metadata does not support capture mode.' });
+                }, { message: 'Microtest authoring controls do not support capture mode.' });
 
                 return scope.assert.collect();
             }

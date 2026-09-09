@@ -27,7 +27,8 @@ async function createRunTestPlanFromDiscoveredFiles(input: RunTestPlanFromFilesI
         return input.engine.createTestPlanFromTestFiles({
             files: testFiles,
             root: {
-                metadata: { kind: input.testFamily },
+                annotations: {},
+                controls: {},
                 title: input.cwd
             }
         });

@@ -133,12 +133,14 @@ function assertReservedSubpath(scope: TestScope, subpath: ReservedSubpathModule)
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/packages/test/standard-subpaths.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test/config exposes config authoring only',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: TestScope) {
                 assertConfigSubpath(scope);
 
@@ -148,7 +150,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test/reporters exposes current built-in factories',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 await assertReporterSubpath(scope);
 
@@ -158,7 +161,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test/assert re-exports assertion extension ownership',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: TestScope) {
                 assertAssertSubpath(scope);
 
@@ -168,7 +172,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test/resources re-exports resource descriptors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: TestScope) {
                 assertResourcesSubpath(scope);
 
@@ -178,7 +183,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test reserved subpaths expose sentinel only',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: TestScope) {
                 for (const subpath of reservedSubpathModules) {
                     assertReservedSubpath(scope, subpath);

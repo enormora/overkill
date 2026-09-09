@@ -101,12 +101,14 @@ function runOutputArtifact(text: string): RunArtifact {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/line-reporter-artifacts.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter suppresses captured output for passing tests by default',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = lineReporterWithLog(log);
@@ -132,7 +134,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter prints captured output for passing tests in verbose mode',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = lineReporterWithOptions(log, true);
@@ -159,7 +162,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter prints truncated empty captured output as a header',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = lineReporterWithOptions(log, true);
@@ -185,7 +189,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter prints captured output for non-passing tests',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = lineReporterWithLog(log);
@@ -212,7 +217,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter prints run-level captured output for non-green runs',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = lineReporterWithLog(log);

@@ -40,7 +40,8 @@ export async function runIfMain(
     const result = await execute(
         createTestPlan(createRoot({
             children: [ testNode ],
-            metadata: { kind: 'microtest' },
+            annotations: {},
+            controls: {},
             title: meta.url
         })),
         {

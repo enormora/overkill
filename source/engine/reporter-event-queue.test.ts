@@ -51,12 +51,14 @@ function createRejectingDispatcher(): RejectingDispatcher {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/reporter-event-queue.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'reporter event queue continues after a previous report rejects',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const rejectingDispatcher = createRejectingDispatcher();
                 const queue = createReporterEventQueue(rejectingDispatcher.delivery);

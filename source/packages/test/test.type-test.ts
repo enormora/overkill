@@ -1,10 +1,11 @@
 import { describe, expect, test as typeTest } from 'tstyche';
 import type {
-    Metadata,
     Suite,
     Table,
+    TestAnnotationsInput,
     TestBody,
     TestCase,
+    TestControlsInput,
     TestFamily as EngineTestFamily,
     TestNode,
     TestScope
@@ -58,8 +59,8 @@ import type {
     TestIteratorFactory as LeafTestIteratorFactory
 } from '../doubles/doubles.entry-point.ts';
 import {
-    type AuthoringMetadata,
-    type CaptureAuthoringMetadata,
+    type AuthoringAnnotations,
+    type CaptureAuthoringControls,
     createTestFacade,
     type defineHarness,
     defineMacro,
@@ -89,6 +90,7 @@ import {
     type RuleFactory as RootRuleFactory,
     runIfMain,
     type RunIfMain,
+    type MicrotestAuthoringControls,
     type SyncIterableConfiguration as RootSyncIterableConfiguration,
     type SyncIteratorConfiguration as RootSyncIteratorConfiguration,
     type SyncIteratorSource as RootSyncIteratorSource,
@@ -124,9 +126,10 @@ import {
 } from './test.entry-point.ts';
 
 declare const body: TestBody;
-declare const captureMetadata: CaptureAuthoringMetadata;
-declare const engineMetadata: Metadata;
-declare const metadata: AuthoringMetadata;
+declare const annotations: AuthoringAnnotations;
+declare const captureControls: CaptureAuthoringControls;
+declare const engineControls: TestControlsInput;
+declare const microtestControls: MicrotestAuthoringControls;
 declare const node: TestNode;
 declare const tableBody: TableTestBody<{ readonly value: number; }>;
 type RootRuntimeExport = keyof {
@@ -298,28 +301,28 @@ describe('@overkill-dev/test authoring', function () {
 
     typeTest('creates family-specific test facade nodes', function () {
         const facade = createTestFacade({
-            metadata: captureMetadata,
+            controls: captureControls,
             testFamily: 'integration'
         });
 
-        expect(facade).type.toBe<TestFacade<CaptureAuthoringMetadata>>();
+        expect(facade).type.toBe<TestFacade<CaptureAuthoringControls>>();
         expect(facade.skippedTest('skips', 'unsupported platform')).type.toBe<TestCase>();
         expect(facade.skippedTest({
-            metadata: { capture: 'live' },
+            controls: { capture: 'live' },
             reason: 'unsupported platform',
             title: 'skips'
         }))
             .type
             .toBe<TestCase>();
         expect(facade.test('passes', body)).type.toBe<TestCase>();
-        expect(facade.test({ body, metadata: { capture: 'live' }, title: 'passes' })).type.toBe<TestCase>();
+        expect(facade.test({ body, controls: { capture: 'live' }, title: 'passes' })).type.toBe<TestCase>();
         expect(facade.suite('group', [ node ])).type.toBe<Suite>();
-        expect(facade.suite({ children: [ node ], metadata: { capture: 'buffered' }, title: 'group' }))
+        expect(facade.suite({ children: [ node ], controls: { capture: 'buffered' }, title: 'group' }))
             .type
             .toBe<Suite>();
         expect(facade.table({
             cases: [ { value: 1 } ],
-            metadata: { capture: 'live' },
+            controls: { capture: 'live' },
             test: tableBody,
             title: 'rows'
         }))
@@ -329,7 +332,7 @@ describe('@overkill-dev/test authoring', function () {
 
     typeTest('creates family-specific facade macro forms', function () {
         const facade = createTestFacade({
-            metadata,
+            annotations,
             testFamily: 'integration'
         });
         const macro = facade.defineMacro(function reusableCase(title: string) {
@@ -351,7 +354,7 @@ describe('@overkill-dev/test authoring', function () {
 
     typeTest('keeps family-specific facades narrow', function () {
         const facade = createTestFacade({
-            metadata,
+            annotations,
             testFamily: 'integration'
         });
 
@@ -363,12 +366,22 @@ describe('@overkill-dev/test authoring', function () {
 
     typeTest('creates test, suite, and table nodes from default root authoring forms', function () {
         expect(test('passes', body)).type.toBe<TestCase>();
-        expect(test({ body, metadata, title: 'passes' })).type.toBe<TestCase>();
+        expect(test({ annotations, body, controls: microtestControls, title: 'passes' })).type.toBe<TestCase>();
         expect(skippedTest('skips', 'unsupported platform')).type.toBe<TestCase>();
-        expect(skippedTest({ metadata, reason: 'unsupported platform', title: 'skips' })).type.toBe<TestCase>();
+        expect(skippedTest({
+            annotations,
+            controls: microtestControls,
+            reason: 'unsupported platform',
+            title: 'skips'
+        }))
+            .type
+            .toBe<TestCase>();
         expect(suite('group', [ node ])).type.toBe<Suite>();
-        expect(suite({ children: [ node ], metadata, title: 'group' })).type.toBe<Suite>();
+        expect(suite({ annotations, children: [ node ], controls: microtestControls, title: 'group' })).type.toBe<
+            Suite
+        >();
         expect(table({
+            annotations,
             cases: [ { value: 1 } ],
             caseTitle(parameters, index) {
                 expect(parameters.value).type.toBe<number>();
@@ -376,7 +389,7 @@ describe('@overkill-dev/test authoring', function () {
 
                 return String(parameters.value);
             },
-            metadata,
+            controls: microtestControls,
             test: tableBody,
             title: 'rows'
         }))
@@ -391,57 +404,45 @@ describe('@overkill-dev/test authoring', function () {
     });
 
     typeTest('rejects unstaged root authoring forms', function () {
-        expect(test).type.not.toBeCallableWith('passes', metadata, body);
+        expect(test).type.not.toBeCallableWith('passes', annotations, body);
         expect(test).type.not.toBeCallableWith({ body, name: 'passes' });
-        expect(skippedTest).type.not.toBeCallableWith('skips', metadata, 'unsupported platform');
+        expect(skippedTest).type.not.toBeCallableWith('skips', annotations, 'unsupported platform');
         expect(skippedTest).type.not.toBeCallableWith({ name: 'skips', reason: 'unsupported platform' });
-        expect(skippedTest).type.not.toBeCallableWith({ title: 'skips', reason: 'unsupported platform' });
-        expect(suite).type.not.toBeCallableWith('group', metadata, [ node ]);
+        expect(suite).type.not.toBeCallableWith('group', annotations, [ node ]);
         expect(suite).type.not.toBeCallableWith({ children: [ node ], name: 'group' });
-        expect(suite).type.not.toBeCallableWith('group', [ { kind: 'test', metadata: {}, title: 'plain' } ]);
+        expect(suite).type.not.toBeCallableWith('group', [ {
+            annotations: {},
+            controls: {},
+            kind: 'test',
+            title: 'plain'
+        } ]);
         expect(table).type.not.toBeCallableWith({ cases: [ { value: 1 } ], name: 'rows', test: tableBody });
     });
 
-    typeTest('defines narrow high-level authoring metadata', function () {
-        expect<AuthoringMetadata>().type.toBe<{
-            readonly baselines?: never;
-            readonly capabilities?: never;
+    typeTest('defines narrow high-level authoring test data', function () {
+        expect<AuthoringAnnotations>().type.toBe<{
+            readonly ownership?: readonly string[];
+            readonly tags?: readonly string[];
+        }>();
+        expect<AuthoringAnnotations>().type.toBeAssignableTo<TestAnnotationsInput>();
+        expect<MicrotestAuthoringControls>().type.toBe<{
             readonly capture?: never;
-            readonly debug?: never;
-            readonly extra?: Readonly<Record<string, unknown>>;
-            readonly kind?: never;
-            readonly ownership?: never;
-            readonly priority?: never;
-            readonly runtimes?: never;
-            readonly stability?: never;
-            readonly tags?: readonly string[];
-            readonly timeoutMilliseconds?: never;
+            readonly timeoutMilliseconds?: number;
         }>();
-        expect<AuthoringMetadata>().type.toBeAssignableTo<Metadata>();
-        expect<Metadata>().type.not.toBeAssignableTo<AuthoringMetadata>();
-        expect<CaptureAuthoringMetadata>().type.toBe<{
-            readonly baselines?: never;
-            readonly capabilities?: never;
+        expect<MicrotestAuthoringControls>().type.toBeAssignableTo<TestControlsInput>();
+        expect<CaptureAuthoringControls>().type.toBe<{
             readonly capture?: 'buffered' | 'live';
-            readonly debug?: never;
-            readonly extra?: Readonly<Record<string, unknown>>;
-            readonly kind?: never;
-            readonly ownership?: never;
-            readonly priority?: never;
-            readonly runtimes?: never;
-            readonly stability?: never;
-            readonly tags?: readonly string[];
-            readonly timeoutMilliseconds?: never;
+            readonly timeoutMilliseconds?: number;
         }>();
-        expect<CaptureAuthoringMetadata>().type.toBeAssignableTo<Metadata>();
+        expect<CaptureAuthoringControls>().type.toBeAssignableTo<TestControlsInput>();
     });
 
-    typeTest('rejects managed high-level authoring metadata', function () {
+    typeTest('rejects removed high-level authoring metadata', function () {
         expect<typeof createTestFacade>().type.toBeCallableWith({ testFamily: 'microtest' });
         expect<typeof createTestFacade>().type.not.toBeCallableWith();
-        expect<typeof createTestFacade>().type.not.toBeCallableWith({ metadata });
+        expect<typeof createTestFacade>().type.not.toBeCallableWith({ metadata: annotations });
         expect<typeof createTestFacade>().type.not.toBeCallableWith({
-            metadata: { kind: 'microtest' },
+            controls: { capture: 'live' },
             testFamily: 'microtest'
         });
         expect(test).type.not.toBeCallableWith({ body, metadata: { kind: 'microtest' }, title: 'passes' });
@@ -452,13 +453,13 @@ describe('@overkill-dev/test authoring', function () {
         });
         expect(table).type.not.toBeCallableWith({
             cases: [ { value: 1 } ],
-            metadata: { timeoutMilliseconds: 1 },
+            controls: { capture: 'live' },
             test: tableBody,
             title: 'rows'
         });
         expect(runIfMain).type.not.toBeCallableWith(import.meta, node, {
             root: {
-                metadata: engineMetadata,
+                controls: engineControls,
                 title: 'root'
             }
         });

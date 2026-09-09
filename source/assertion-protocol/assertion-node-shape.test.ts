@@ -8,12 +8,14 @@ import { assertionSources } from './assertion-node-shape.ts';
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/assertion-protocol/assertion-node-shape.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'assertionSources declares the built-in assertion origins',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(assertionSources, [ 'assert', 'require' ]);
 

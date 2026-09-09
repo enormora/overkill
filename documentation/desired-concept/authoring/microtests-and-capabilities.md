@@ -63,10 +63,9 @@ type Capability =
     | 'process-exit'; // calling process.exit
 ```
 
-This is the type used in `Metadata.capabilities` (see
-[Metadata And Selection](../architecture/metadata-and-selection.md)) and across the doc set. New capabilities
-require an explicit addition to this enumeration; the runner does not
-recognise free-form strings.
+This is the type requirements will use once capability requirements are part
+of the public model. New capabilities require an explicit addition to this
+enumeration; the runner does not recognise free-form strings.
 
 Strict microtest mode denies, by default:
 
@@ -229,7 +228,7 @@ This means:
 
 Capabilities are _intersected_ down the suite tree: a child can only
 narrow the parent's permissions, never widen them. This is strictly more
-restrictive than metadata propagation, where fields like `tags` merge
+restrictive than annotation propagation, where fields like `tags` merge
 by union. See [Composition Order](../architecture/composition-order.md).
 
 ## Capability Handles As The Language-Level Boundary

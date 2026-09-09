@@ -3,7 +3,7 @@
 ## Position
 
 Many concept documents describe one wrapper or one resolution rule:
-metadata propagation here, capability intersection there, debug mode
+test data propagation here, capability intersection there, debug mode
 elsewhere, retry handling somewhere else. None of them say _what
 happens in what order_ when several apply at once.
 
@@ -16,7 +16,7 @@ in its domain doc; this file is where they meet.
 The framing borrows from aspect-oriented programming literature
 (AspectJ's joinpoint model, ZIO Test's `@@` aspects, Common Lisp
 `:before`/`:after`/`:around` method combination). Overkill doesn't
-ship AOP machinery — it does ship test wrappers and metadata
+ship AOP machinery. It does ship test wrappers and test data
 resolution that compose, and they need a documented order.
 
 ## Resolve-Time Resolution
@@ -35,18 +35,18 @@ layer resolves the run in this order:
 3. **Collection.** Test files are imported; the engine builds the
    `TestNode` tree (suites, tables, test cases). See
    [Tests As Values](../authoring/tests-as-values.md).
-4. **Metadata propagation.** Parent suite metadata cascades to
-   children. Set-valued fields (`tags`) merge by union;
-   array-valued fields (`runtimes`) merge unless `replace: true`;
-   enum fields replace. Capabilities **intersect** — children may
-   only narrow, not widen. See [Metadata And Selection § Metadata Propagation](./metadata-and-selection.md#metadata-propagation) and [Microtests And Capabilities § Capability Propagation](../authoring/microtests-and-capabilities.md#capability-propagation).
+4. **Test data propagation.** Parent annotations and controls cascade to
+   children. Set-valued annotations merge by union. Controls replace.
+   Requirements will own capability and runtime needs once implemented. See
+   [Test Data And Selection § Annotations](./test-data-and-selection.md#annotations)
+   and [Test Data And Selection § Controls](./test-data-and-selection.md#controls).
 5. **Runtime and workload expansion.** Each selected logical `CaseId`
    expands into one or more executable `WorkId`s when runtime matrices,
    browser variants, scenarios, or benchmark workloads apply.
 6. **Filter application.** The CLI filter expression (or
-   programmatic predicate) is evaluated against resolved metadata
+   programmatic predicate) is evaluated against resolved annotations
    and identity. Result: a filtered `WorkId` set. See
-   [Metadata And Selection § Selection Model](./metadata-and-selection.md#selection-model).
+   [Test Data And Selection § Selection](./test-data-and-selection.md#selection).
 7. **Work-unit construction.** The resolved `workDistribution` packs
    filtered `WorkId`s into `WorkUnit`s by file, case, or named group.
 8. **Sharding.** `--shard <i>/<n>` partitions the work-unit set
@@ -91,9 +91,8 @@ the body. Outermost first:
 4. **Timeout watchdog.** Per-attempt soft and (where supported)
    hard deadlines. Sets up the `AbortSignal` and the optional
    watchdog timer. See [Runtime Behavior § Timeouts](./runtime-behavior.md#timeouts).
-5. **Debug recording** (when `--debug` / `--debug-scope` /
-   `{ debug: true }`). Begins capturing the timeline, handle
-   events, module loads, heap baseline. See
+5. **Debug recording** (when `--debug` or `--debug-scope` selects the case).
+   Begins capturing the timeline, handle events, module loads, heap baseline. See
    [Test Debug Mode](../authoring/debug-mode.md).
 6. **Test body.** The actual code under test runs.
 
@@ -118,7 +117,7 @@ choice, not just a forced consequence of how worker boundaries work.
 The split buys several capabilities:
 
 - `overkill list` prints the resolved facts without executing
-  anything — possible only because collection has produced a
+  anything - possible only because collection has produced a
   complete resolved run before any worker runs
 - `--filter`, `--title`, `--last-failed`, and explicit file/id
   selection apply before
@@ -188,7 +187,7 @@ A few consequences flow from this stack and are easy to get wrong if
 the order isn't explicit:
 
 - **Debug observes retries.** Each retry attempt produces its own
-  debug artifact (sibling files: `attempt=0`, `attempt=1`, …);
+  debug artifact (sibling files: `attempt=0`, `attempt=1`);
   debug is _inside_ the retry loop, not outside.
 - **Timeout fires per attempt, not per test.** A 5 s soft timeout
   on an integration test with 3 retries means up to 15 s of total
@@ -196,7 +195,7 @@ the order isn't explicit:
 - **Resource budgets are outside timeout.** A resource breach is
   reported as `resource-exhausted`, not as a timeout, even if the
   same test would later exceed its time budget.
-- **Capabilities can't be raised by metadata.** A child test
+- **Capabilities can't be raised by annotations.** A child test
   cannot grant itself `fs-write` if its parent suite excluded it.
   Intersection is one-way.
 - **Filters apply before work-unit sharding.** `--filter '...' --shard 1/4`
@@ -226,7 +225,7 @@ dependency:
   the timeout but survive across retry attempts (e.g. a
   per-test resource lock).
 - **Outside retry** if it spans the entire test regardless of
-  attempts (e.g. test-level setup/teardown — though Overkill
+  attempts (e.g. test-level setup/teardown - though Overkill
   currently rejects hooks; resources fill this role; see
   [Higher Test Layers § Resource Factories](../authoring/higher-test-layers.md#1-resource-factories-as-the-main-higher-layer-primitive)).
 
@@ -238,15 +237,15 @@ dependency:
   stack
 - not an aspect-weaving system. There is no joinpoint declaration
   surface, no pointcut DSL, no inter-type advice. Overkill does
-  not ship AOP machinery — it ships a small fixed set of wrappers
+  not ship AOP machinery - it ships a small fixed set of wrappers
   and a documented order
 
 ## Cross-References
 
-- [Tests As Values](../authoring/tests-as-values.md) — collection and `TestNode`
-- [Metadata And Selection](./metadata-and-selection.md) — metadata propagation and filters
-- [Microtests And Capabilities](../authoring/microtests-and-capabilities.md) — capability intersection
-- [Runtime Behavior](./runtime-behavior.md) — sharding, parallelism, timeouts, debug
-- [Failure Artifacts](../authoring/failure-artifacts.md) — retry interaction
+- [Tests As Values](../authoring/tests-as-values.md) - collection and `TestNode`
+- [Test Data And Selection](./test-data-and-selection.md) - annotation, control, and filter rules
+- [Microtests And Capabilities](../authoring/microtests-and-capabilities.md) - capability intersection
+- [Runtime Behavior](./runtime-behavior.md) - sharding, parallelism, timeouts, debug
+- [Failure Artifacts](../authoring/failure-artifacts.md) - retry interaction
 - [Reproducibility](./reproducibility.md) - `RunFacts` freeze
-- [Package Architecture](./package-architecture.md) — orchestration responsibilities
+- [Package Architecture](./package-architecture.md) - orchestration responsibilities

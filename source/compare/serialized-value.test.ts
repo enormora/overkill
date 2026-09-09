@@ -8,12 +8,14 @@ import { serializeValue, serializeValueWithBudget } from './serialized-value.ts'
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/compare/serialized-value.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValue() preserves primitive edge cases explicitly',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const symbol = Symbol.for('id');
 
@@ -54,7 +56,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValue() handles functions, arrays, holes, objects, symbols, and accessors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const symbolKey = Symbol('id');
                 const values: unknown[] = [ 'present' ];
@@ -116,7 +119,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValue() handles maps and sets',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const mapValue = serializeValue(new Map<unknown, unknown>([ [ { id: 1 }, { name: 'Ada' } ] ]));
                 const setValue = serializeValue(new Set<unknown>([ { id: 1 } ]));
@@ -130,7 +134,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValue() handles errors, dates, and regexps',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const errorValue = serializeValue(new TypeError('bad value'));
                 const dateValue = serializeValue(new Date('2026-07-29T00:00:00.000Z'));
@@ -152,7 +157,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValue() handles opaque references',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const promiseValue = serializeValue(Promise.resolve());
                 const weakMapValue = serializeValue(new WeakMap<Record<string, unknown>, unknown>());
@@ -174,7 +180,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValue() handles binary value kinds',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const buffer = Buffer.from([ 1, 2, 3 ]);
                 const arrayBuffer = Uint8Array.from([ 4, 5 ]).buffer;
@@ -216,7 +223,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValue() represents cycles and repeated references',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const node = {};
                 Object.defineProperty(node, 'next', { enumerable: true, value: node });
@@ -239,7 +247,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValueWithBudget() enforces every configured budget boundary',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const budget = {
                     arrayEntries: 1,
@@ -317,7 +326,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValue() catches unavailable proxy introspection',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const proxy = new Proxy({}, {
                     ownKeys() {

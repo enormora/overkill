@@ -38,12 +38,14 @@ function failedCheck(diff: Diff | null): FailedLeafCheck {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/line-failure-rendering-edge.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders scalar serialized value variants',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const diff: Diff = {
                     actual: {
@@ -78,7 +80,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders valid property paths and named functions',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const lines = formatFailure({
                     checks: [
@@ -107,7 +110,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders foreign checks without diff data',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const check: FailedForeignCheck = {
                     actual: serializeValue('foreign assertion'),
@@ -140,7 +144,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders arrays, objects, maps, sets, and invalid dates',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const diff: Diff = {
                     actual: {
@@ -181,7 +186,8 @@ export const testNode = createOverkillSuite({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title:
                 'line failure formatter renders regexp, errors, data views, circulars, opaque, and unavailable values',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const diff: Diff = {
                     kind: 'array',
@@ -218,7 +224,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter truncates long diff output by line count',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const failure: TestFailure = {
                     error: {
@@ -245,7 +252,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders missing collection operations',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const objectLines = formatFailure({
                     checks: [
@@ -310,7 +318,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders timeout failures',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const timeoutLines = formatFailure({
                     deadlineMilliseconds: 10,
@@ -329,7 +338,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'failure summary formats timeout failures',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.equal(
                     formatFailureSummary({

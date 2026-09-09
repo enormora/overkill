@@ -11,7 +11,8 @@ import { testNode as facadeEntryPointTestNode } from './test-facade-entry-point.
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/packages/test',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         commandLineRunnerCaptureTestNode,
         commandLineRunnerOrderingTestNode,

@@ -117,7 +117,7 @@ export function createSeededTestPlan(testPlan: TestPlan): OrderedSeededTestPlan 
 }
 
 function invalidFamilyMessage(testFamily: string, expectedFamily: RunTestFamily): string {
-    return `Run profile "${expectedFamily}" cannot run test case with metadata.kind "${testFamily}".`;
+    return `Run profile "${expectedFamily}" cannot run test case authored for "${testFamily}".`;
 }
 
 function assertTestFamily(testFamily: string | null, expectedFamily: RunTestFamily): void {
@@ -127,19 +127,15 @@ function assertTestFamily(testFamily: string | null, expectedFamily: RunTestFami
 }
 
 export function assertTestPlanMatchesTestFamily(testPlan: TestPlan, testFamily: RunTestFamily): void {
-    assertTestFamily(testPlan.root.metadata.kind, testFamily);
-
     for (const testCase of testPlan.discoveredCases) {
-        assertTestFamily(testCase.metadata.kind, testFamily);
+        assertTestFamily(testCase.testFamily, testFamily);
     }
 }
 
 export function assertCollectedRunPlanMatchesTestFamily(plan: CollectedRunPlan, testFamily: RunTestFamily): void {
-    assertTestFamily(plan.root.metadata.kind, testFamily);
-
     for (const file of plan.discoveredFiles) {
         for (const testCase of file.cases) {
-            assertTestFamily(testCase.metadata.kind, testFamily);
+            assertTestFamily(testCase.testFamily, testFamily);
         }
     }
 }
@@ -171,8 +167,8 @@ function matchesTestPlanCase(selection: RunSelection): (testCase: TestPlanCase) 
 
     return function testPlanCaseMatches(testCase) {
         return matchesRunFilter(selection.filter, {
-            id: testCase.id,
-            metadata: testCase.metadata
+            annotations: testCase.annotations,
+            id: testCase.id
         });
     };
 }
@@ -235,8 +231,8 @@ function matchesCollectedCase(selection: RunSelection): (input: CollectedCaseInp
 
     return function collectedCaseMatches(input) {
         return matchesRunFilter(selection.filter, {
-            id: collectedCaseId(input.file, input.testCase),
-            metadata: input.testCase.metadata
+            annotations: input.testCase.annotations,
+            id: collectedCaseId(input.file, input.testCase)
         });
     };
 }

@@ -118,12 +118,14 @@ function errorMessages(errors: readonly RunnerError[]): readonly string[] {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/reporter-managed-output.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'reporter dispatcher writes managed output in reporter registration order',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const { dispatcher, stderrLines, stdoutLines } = createRecordingDispatcher();
                 const errors = await reportEvent(
@@ -149,7 +151,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'reporter dispatcher writes managed stderr output',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const { dispatcher, stderrLines, stdoutLines } = createRecordingDispatcher();
                 const errors = await reportEvent(
@@ -172,7 +175,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'reporter dispatcher records undeclared managed output as a reporter error',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const { dispatcher } = createRecordingDispatcher();
                 const errors = await reportEvent(
@@ -194,7 +198,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'reporter dispatcher records wrong-role managed output as a reporter error',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const { dispatcher } = createRecordingDispatcher();
                 const errors = await reportEvent(
@@ -220,7 +225,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'reporter dispatcher records invalid managed output as a reporter error',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const { dispatcher } = createRecordingDispatcher();
                 const errors = await reportEvent(
@@ -244,7 +250,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'reporter dispatcher records rendered newlines as a reporter error',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const { dispatcher } = createRecordingDispatcher();
                 const renderer: OutputRenderer = {

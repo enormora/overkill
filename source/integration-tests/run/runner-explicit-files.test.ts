@@ -12,10 +12,14 @@ import { createLineReporter } from '../../packages/reporter-line/reporter-line.e
 import { runIfMain } from '../direct-launcher.test.ts';
 import type { DefinedReporter, Reporter } from '../../engine/reporter.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
+import {
+    defaultMicrotestProfile,
+    defaultRunConfig,
+    defaultRunRequest
+} from '../../test-support/run-command-factory.ts';
 import type {
     RunCommand,
     RunConfig,
-    RunMicrotestProfileConfig,
     RunProcessModel,
     RunRequest,
     RunScheduling
@@ -29,6 +33,7 @@ const endlessLoopFixturePath = 'source/integration-tests/run/fixtures/endless-lo
 const schedulingFixturePath = 'source/integration-tests/run/fixtures/scheduling.test.ts';
 const discoveryFixtureGlob = 'source/integration-tests/run/fixtures/discovery/*.test.ts';
 const discoverySlowFixturePath = 'source/integration-tests/run/fixtures/discovery/slow.test.ts';
+const emptyTestData = { annotations: {}, controls: {} } as const;
 
 type SchedulingEvent = `end:${string}` | `start:${string}`;
 
@@ -50,35 +55,7 @@ const memoryReporter = defineReporter(function createMemoryReporter(): Reporter 
     };
 });
 
-function createDefaultMicrotestProfile(): RunMicrotestProfileConfig {
-    return {
-        execution: {
-            processModel: 'supervised-process',
-            scheduling: 'concurrent'
-        },
-        files: null,
-        reporters: null,
-        resourceUsage: {
-            budgets: {
-                activeResourceCount: null,
-                javaScriptEngineHeapBytes: null,
-                residentSetBytes: null,
-                residentSetGrowthBytesPerSecond: null
-            },
-            measure: false,
-            samplingIntervalMilliseconds: 100
-        },
-        testFamily: 'microtest',
-        timeouts: {
-            collectionMilliseconds: 5000,
-            hardMilliseconds: 1000,
-            softMilliseconds: 500
-        }
-    };
-}
-
-const defaultConfig: RunConfig = {
-    loader: { sourceMaps: false, stripMode: 'strip-only' },
+const defaultConfig = defaultRunConfig({
     outputRenderer: defineOutputRenderer(function createOutputRenderer() {
         return {
             render() {
@@ -87,30 +64,16 @@ const defaultConfig: RunConfig = {
         };
     }),
     profiles: {
-        microtest: createDefaultMicrotestProfile()
+        microtest: defaultMicrotestProfile({ timeouts: { collectionMilliseconds: 5000 } })
     },
-    reporters: [],
-    runtimeStateDir: '.overkill'
-};
+    reporters: []
+});
 
 function createRunRequest(paths: readonly string[]): RunRequest {
-    return {
-        baselineUpdateMode: 'none',
-        capabilityRestrictions: { mode: 'enabled' },
-        capture: 'buffered',
-        debug: { mode: 'off', selectors: [] },
-        execution: { mode: 'profile-default' },
-        measureResourceUsage: null,
+    return defaultRunRequest({
         order: 'lexical',
-        paths,
-        profile: 'microtest',
-        resourceBudgetOverrides: null,
-        resourceUsageSamplingIntervalMilliseconds: null,
-        seed: { value: 42n },
-        selection: { kind: 'all' },
-        shard: { index: 0, total: 1 },
-        verbose: false
-    };
+        paths
+    });
 }
 
 function createRunConfig(): RunConfig {
@@ -124,13 +87,13 @@ function createDiscoveryRunConfig(): RunConfig {
     return {
         ...defaultConfig,
         profiles: {
-            microtest: {
-                ...createDefaultMicrotestProfile(),
+            microtest: defaultMicrotestProfile({
                 files: {
                     exclude: [ discoverySlowFixturePath ],
                     include: [ discoveryFixtureGlob ]
-                }
-            }
+                },
+                timeouts: { collectionMilliseconds: 5000 }
+            })
         },
         reporters: [ memoryReporter ]
     };
@@ -170,10 +133,10 @@ function createSchedulingRunConfig(
     return {
         ...defaultConfig,
         profiles: {
-            microtest: {
-                ...createDefaultMicrotestProfile(),
-                execution: { processModel, scheduling }
-            }
+            microtest: defaultMicrotestProfile({
+                execution: { processModel, scheduling },
+                timeouts: { collectionMilliseconds: 5000 }
+            })
         },
         reporters: [ reporter ]
     };
@@ -220,12 +183,12 @@ function plainData(value: unknown): unknown {
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/integration-tests/run/runner-explicit-files.test.ts',
-    metadata: {},
+    ...emptyTestData,
     children: [
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner resolves and executes one explicit testNode file',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const resolvedRun = await orchestrator.resolve(createRunCommand([ passingFixturePath ]));
                 const result = await orchestrator.run(createRunCommand([ passingFixturePath ]));
@@ -257,7 +220,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner executes a supervised microtest in a child process',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const result = await orchestrator.run(
                     createSupervisedRunCommand([ passingFixturePath ], createRunConfig())
@@ -283,7 +246,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner executes all-skipped explicit files successfully',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const result = await orchestrator.run(
                     createSupervisedRunCommand([ skippedFixturePath ], createRunConfig())
@@ -309,7 +272,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner resolves and executes profile-discovered files',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const command = createSupervisedRunCommand([], createDiscoveryRunConfig());
                 const resolvedRun = await orchestrator.resolve(command);
@@ -353,7 +316,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner runs in-process microtests concurrently from profile scheduling',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const events = await runSchedulingScenario('in-process', 'concurrent');
 
@@ -370,7 +333,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner runs in-process microtests serially from profile scheduling',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const events = await runSchedulingScenario('in-process', 'serial');
 
@@ -387,7 +350,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner runs supervised microtests concurrently from profile scheduling',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const events = await runSchedulingScenario('supervised-process', 'concurrent');
 
@@ -404,7 +367,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner runs supervised microtests serially from profile scheduling',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const events = await runSchedulingScenario('supervised-process', 'serial');
 
@@ -421,21 +384,20 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner kills a supervised microtest that blocks past hard timeout',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const result = await orchestrator.run(createSupervisedRunCommand(
                     [ endlessLoopFixturePath ],
                     {
                         ...createRunConfig(),
                         profiles: {
-                            microtest: {
-                                ...createDefaultMicrotestProfile(),
+                            microtest: defaultMicrotestProfile({
                                 timeouts: {
                                     collectionMilliseconds: 5000,
                                     hardMilliseconds: 50,
                                     softMilliseconds: 10
                                 }
-                            }
+                            })
                         }
                     }
                 ));
@@ -468,7 +430,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner uses file identity to distinguish duplicate case names across files',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const resolvedRun = await orchestrator.resolve(createRunCommand([
                     duplicateFixtureAPath,
@@ -501,7 +463,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner rejects invalid explicit paths before module import',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: TestScope) {
                 const outsideDirectory = await mkdtemp(join(tmpdir(), 'overkill-runner-'));
                 const outsideFile = join(outsideDirectory, 'outside.test.ts');

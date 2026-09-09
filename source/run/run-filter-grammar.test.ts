@@ -18,12 +18,14 @@ function parseErrorMessage(expression: string): string | null {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-filter-grammar.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'parseRunFilterExpression() parses field operators',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(
                     parseRunFilterExpression('tag=fast title~"should " file:source/**/*.test.ts'),
@@ -43,17 +45,18 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'parseRunFilterExpression() keeps OR lower precedence than whitespace AND',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(
-                    parseRunFilterExpression('tag=fast | tag=slow runtime=node'),
+                    parseRunFilterExpression('tag=fast | tag=slow owner=@runtime'),
                     {
                         filters: [
                             { field: 'tag', kind: 'equals', value: 'fast' },
                             {
                                 filters: [
                                     { field: 'tag', kind: 'equals', value: 'slow' },
-                                    { field: 'runtime', kind: 'equals', value: 'node' }
+                                    { field: 'owner', kind: 'equals', value: '@runtime' }
                                 ],
                                 kind: 'all'
                             }
@@ -68,10 +71,11 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'parseRunFilterExpression() parses negated groups',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(
-                    parseRunFilterExpression('!(tag=flaky | owner=@old) stability=stable'),
+                    parseRunFilterExpression('!(tag=flaky | owner=@old) tag=stable'),
                     {
                         filters: [
                             {
@@ -84,7 +88,7 @@ export const testNode = createOverkillSuite({
                                 },
                                 kind: 'not'
                             },
-                            { field: 'stability', kind: 'equals', value: 'stable' }
+                            { field: 'tag', kind: 'equals', value: 'stable' }
                         ],
                         kind: 'all'
                     }
@@ -96,7 +100,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'parseRunFilterExpression() unescapes quoted values',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(parseRunFilterExpression('title~"should \\"quote\\""'), {
                     field: 'title',
@@ -115,11 +120,12 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'parseRunFilterExpression() accepts supported string dimensions',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(
                     parseRunFilterExpression(
-                        'file:source/**/*.test.ts title~smoke owner=@payments params~EUR runtime=node stability=stable suite~checkout tag:critical-*'
+                        'file:source/**/*.test.ts title~smoke owner=@payments params~EUR suite~checkout tag:critical-*'
                     ),
                     {
                         filters: [
@@ -127,8 +133,6 @@ export const testNode = createOverkillSuite({
                             { field: 'title', kind: 'contains', value: 'smoke' },
                             { field: 'owner', kind: 'equals', value: '@payments' },
                             { field: 'params', kind: 'contains', value: 'EUR' },
-                            { field: 'runtime', kind: 'equals', value: 'node' },
-                            { field: 'stability', kind: 'equals', value: 'stable' },
                             { field: 'suite', kind: 'contains', value: 'checkout' },
                             { field: 'tag', kind: 'glob', pattern: 'critical-*' }
                         ],
@@ -142,7 +146,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'parseRunFilterExpression() rejects malformed expressions',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const malformedExpressions: readonly (readonly [string, string])[] = [
                     [ ' ', 'Run filter expression must not be empty.' ],

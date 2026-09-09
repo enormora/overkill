@@ -88,12 +88,14 @@ function createTerminalFinishReporter(): DefinedReporter {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-collection-error-reporting.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() returns collection failures as runner errors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const importFailureResult = await runOrchestrator.run(createRunCommand({
@@ -156,7 +158,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() reports collection failures before disposal',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const lifecycle = createReporterLifecycleRecorder();
                 const result = await orchestrator.run(createRunCommand({
@@ -188,7 +191,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.runWithReporterDelivery() tracks terminal collection-error delivery',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await orchestrator.runWithReporterDelivery(createRunCommand({
                     config: defaultRunConfig({

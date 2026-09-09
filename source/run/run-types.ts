@@ -19,8 +19,6 @@ export type RunStringFilterField = keyof {
     readonly file: true;
     readonly owner: true;
     readonly params: true;
-    readonly runtime: true;
-    readonly stability: true;
     readonly suite: true;
     readonly tag: true;
     readonly title: true;
@@ -247,9 +245,10 @@ export type RunFacts = {
 };
 
 export type RunCaseFacts = {
+    readonly annotations: SerializedValue;
+    readonly controls: SerializedValue;
     readonly fileSet: string | null;
     readonly id: TestPlan['cases'][number]['id'];
-    readonly metadata: SerializedValue;
 };
 
 export type RunEnvironmentFacts = {
@@ -295,10 +294,12 @@ export type RunEngineFacts = {
 };
 
 export type CollectedRunCase = {
+    readonly annotations: TestPlan['cases'][number]['annotations'];
+    readonly controls: TestPlan['cases'][number]['controls'];
     readonly definitionLocations: TestPlan['cases'][number]['definitionLocations'];
-    readonly metadata: TestPlan['cases'][number]['metadata'];
     readonly params: string | null;
     readonly suitePath: TestPlan['cases'][number]['suitePath'];
+    readonly testFamily: TestPlan['cases'][number]['testFamily'];
     readonly title: string;
 };
 
@@ -313,7 +314,8 @@ export type CollectedRunPlan = {
     readonly files: readonly CollectedRunFile[];
     readonly orphans: readonly OrphanedNode[];
     readonly root: {
-        readonly metadata: TestPlan['root']['metadata'];
+        readonly annotations: TestPlan['root']['annotations'];
+        readonly controls: TestPlan['root']['controls'];
         readonly title: string;
     };
 };

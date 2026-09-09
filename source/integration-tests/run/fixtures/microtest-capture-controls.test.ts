@@ -12,14 +12,13 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             },
             definitionLocations: [ { kind: 'unknown' as const } ],
-            metadata: {},
+            annotations: {},
+            controls: {},
             title: 'passes'
         })
     ],
     definitionLocations: [ { kind: 'unknown' as const } ],
-    metadata: {
-        capture: 'live',
-        kind: 'microtest'
-    },
+    annotations: {},
+    controls: { capture: 'live' },
     title: 'fixture'
 });

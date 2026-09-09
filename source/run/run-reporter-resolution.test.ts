@@ -63,12 +63,14 @@ function runConfigWithReporters(
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-reporter-resolution.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() uses profile reporters over global fallback',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const globalReporter = createTerminalReporter('global');
                 const profileReporter = createTerminalReporter('profile');
@@ -88,7 +90,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() uses global reporters when profile reporters are absent',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const globalReporter = createTerminalReporter('global');
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -107,7 +110,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() ignores inactive global reporter sink conflicts',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const globalReporter = createTerminalReporter('global');
                 const profileReporter = createTerminalReporter('profile');

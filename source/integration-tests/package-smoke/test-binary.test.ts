@@ -172,12 +172,14 @@ async function writePackageSmokeProject(): Promise<void> {
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/integration-tests/package-smoke/test-binary.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test package owns the overkill binary',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 const testPackageJson = await readPackageJson(testPackageFolder);
                 const runPackageJson = await readPackageJson(runPackageFolder);
@@ -198,7 +200,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'consumer imports packaged @overkill-dev/test root facade',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 const testPackageJson = await readPackageJson(testPackageFolder);
                 const packageExports = testPackageJson.exports;
@@ -226,7 +229,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'consumer imports packaged @overkill-dev/test standard subpaths',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 const testPackageJson = await readPackageJson(testPackageFolder);
                 const packageExports = testPackageJson.exports;
@@ -243,7 +247,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'packaged overkill binary prints command help',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 const result = await spawnNode([
                     path.join(testPackageFolder, 'packages/test/overkill.entry-point.js'),
@@ -260,7 +265,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'packaged @overkill-dev/test root authoring creates runnable testNode exports',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 await writePackageSmokeProject();
 
@@ -280,7 +286,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'packaged overkill list renders root authoring definition locations',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 await writePackageSmokeProject();
 
@@ -302,7 +309,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'consumer imports packaged @overkill-dev/run/filters helpers',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 const packageExports = await readPackageExports(runPackageFolder, '@overkill-dev/run');
                 const result = await spawnNode([

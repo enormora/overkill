@@ -15,8 +15,6 @@ import {
     file,
     owner,
     params,
-    runtime,
-    stability,
     suite,
     tag,
     title
@@ -78,12 +76,14 @@ function selectedCaseTitles(resolvedRun: ResolvedRun): readonly string[] {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-selection.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() selects local test cases by stable filter dimensions',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const allCases = await runOrchestrator.resolve(createRunCommand({
@@ -106,9 +106,7 @@ export const testNode = createOverkillSuite({
                     { filter: suite('PAYMENTS'), titles: [ 'charges card', 'refunds card' ] },
                     { filter: params('alpha'), titles: [ 'query row' ] },
                     { filter: tag('fast'), titles: [ 'charges card' ] },
-                    { filter: runtime('browser'), titles: [ 'refunds card' ] },
                     { filter: owner('@search'), titles: [ 'query row' ] },
-                    { filter: stability('flaky'), titles: [ 'refunds card' ] },
                     { filter: caseId(queryCase.id), titles: [ 'query row' ] }
                 ];
 
@@ -133,7 +131,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() rejects local filters that match no cases',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
 
@@ -152,7 +151,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() returns a zero-plan result when local selection matches no cases',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand({
@@ -187,7 +187,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() executes selected supervised cases and preserves discovered counts',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand({
@@ -228,7 +229,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() returns a zero-plan result when supervised selection matches no cases',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand({

@@ -11,7 +11,8 @@ import { testNode as supervisedRuntimePolicyErrorsTestNode } from './supervised-
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-orchestrator-suite.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         runCapabilityPolicyTestNode,
         runCustomEngineTestNode,

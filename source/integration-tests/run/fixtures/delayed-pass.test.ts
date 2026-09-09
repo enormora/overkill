@@ -30,6 +30,7 @@ export const testNode = createTestCase({
 
         return scope.assert.collect();
     },
-    metadata: {},
+    annotations: {},
+    controls: {},
     title: 'delays'
 });

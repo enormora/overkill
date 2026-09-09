@@ -12,10 +12,12 @@ export const testNode = createSuite({
 
                 return scope.assert.collect();
             },
-            metadata: {},
+            annotations: {},
+            controls: {},
             title: 'registers ipc listener'
         })
     ],
-    metadata: {},
+    annotations: {},
+    controls: {},
     title: 'fixture'
 });

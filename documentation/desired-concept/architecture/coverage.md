@@ -147,7 +147,7 @@ activation surface. Programmatic callers make the same choice by setting
   `coverage.exclude` source
   set ∩ the executed-test set. A filtered or narrowed run does not
   claim suite-wide coverage; the run record (see
-  [Metadata And Selection § Selection Model](./metadata-and-selection.md#selection-model)) records which
+  [Test Data And Selection § Selection](./test-data-and-selection.md#selection)) records which
   cases were actually executed so reports remain interpretable.
 - the programmatic API in `@overkill-dev/run` records the selected profile
   and resolved coverage policy in the run record so reports remain

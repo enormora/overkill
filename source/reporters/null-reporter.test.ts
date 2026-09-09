@@ -10,12 +10,14 @@ import { createNullReporter } from './null-reporter.ts';
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/null-reporter.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'null reporter accepts a final result without producing output',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const reporter = createNullReporter()(createReportingContext({ projectRoot: null }));
 

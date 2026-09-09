@@ -143,12 +143,14 @@ async function runCommandLine(args: readonly string[]): Promise<{
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/packages/test/command-line-runner-ordering.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper parses run order and seed flags',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine([
                     'run',
@@ -171,7 +173,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper parses list order and seed flags',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine([ 'list', '--order=seeded', '--seed=456', 'source/a.test.ts' ]);
                 const [ commandLineRequest ] = result.listRequests;
@@ -187,7 +190,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper rejects plan order from the CLI',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine([ 'run', '--order', 'plan', 'source/a.test.ts' ]);
 
@@ -202,7 +206,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper rejects invalid seed flags',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine([ 'run', '--seed', '-1', 'source/a.test.ts' ]);
 

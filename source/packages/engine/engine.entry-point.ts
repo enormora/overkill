@@ -288,17 +288,15 @@ export type {
     TestScope,
     TestNode
 } from '../../engine/test-node.ts';
+export { stampTestNodeFamily, testNodeFamily } from '../../engine/test-node.ts';
 export type {
-    BaselineSubtype,
-    Capability,
     CaptureMode,
-    Metadata,
-    Priority,
-    ResolvedMetadata,
-    RuntimeMetadata,
-    Stability,
+    TestAnnotations,
+    TestAnnotationsInput,
+    TestControls,
+    TestControlsInput,
     TestFamily
-} from '../../engine/metadata.ts';
+} from '../../engine/test-data.ts';
 export type {
     TestPlan,
     TestPlanCase,

@@ -138,10 +138,12 @@ function collectRunPlanFile(file: string, cases: readonly TestPlan['cases'][numb
     return {
         cases: cases.map(function collectCase(testCase): CollectedRunCase {
             return {
+                annotations: testCase.annotations,
+                controls: testCase.controls,
                 definitionLocations: testCase.definitionLocations,
-                metadata: testCase.metadata,
                 params: testCase.id.params,
                 suitePath: testCase.suitePath,
+                testFamily: testCase.testFamily,
                 title: testCase.id.title
             };
         }),
@@ -172,7 +174,8 @@ export function collectedRunPlanFromTestPlanCases(
         files: collectedRunFilesFromCases(cases),
         orphans: testPlan.orphans,
         root: {
-            metadata: testPlan.root.metadata,
+            annotations: testPlan.root.annotations,
+            controls: testPlan.root.controls,
             title: testPlan.root.title
         }
     };
@@ -188,6 +191,8 @@ export function collectedRunCaseEntries(plan: CollectedRunPlan): readonly Collec
 
         return {
             ...collectedCase,
+            annotations: serializeValue(collectedCase.testCase.annotations),
+            controls: serializeValue(collectedCase.testCase.controls),
             id
         };
     });
@@ -199,9 +204,10 @@ export function collectedRunCaseFactsFromEntries(
 ): readonly RunCaseFacts[] {
     return cases.map(function toRunCaseFacts(collectedCase): RunCaseFacts {
         return {
+            annotations: serializeValue(collectedCase.testCase.annotations),
+            controls: serializeValue(collectedCase.testCase.controls),
             fileSet: fileSetForCase(collectedCase.id.file),
-            id: collectedCase.id,
-            metadata: serializeValue(collectedCase.testCase.metadata)
+            id: collectedCase.id
         };
     });
 }

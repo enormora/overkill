@@ -111,12 +111,14 @@ function assertFreshHarnesses(
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/packages/test/harness-authoring.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test defineHarness() creates fresh object-form harnesses',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: TestScope) {
                 let loadFactoryCalls = 0;
                 const runnerHarness = createFreshRunnerHarness(function recordLoadFactoryCall() {
@@ -135,7 +137,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test defineHarness() replaces overridden object-form parts',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: TestScope) {
                 let defaultFactoryCalls = 0;
                 const replacementLoadValue = createHarnessLoadValue('replacement');
@@ -155,7 +158,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test defineHarness() supports sync and async function forms',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 const syncHarness = createSyncLabelHarness();
                 const asyncHarness = createAsyncLabelHarness();

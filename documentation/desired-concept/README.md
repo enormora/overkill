@@ -7,37 +7,37 @@ project-level `README.md` and design RFCs.
 
 The documentation is organised into folders that mirror their role:
 
-- [`decisions/`](./decisions/) — settled principles and rejected
+- [`decisions/`](./decisions/) - settled principles and rejected
   directions
-- [`architecture/`](./architecture/) — how the system is shaped: packages,
+- [`architecture/`](./architecture/) - how the system is shaped: packages,
   composition, runtime behaviour, identity, configuration
-- [`authoring/`](./authoring/) — how tests are written and what each test
+- [`authoring/`](./authoring/) - how tests are written and what each test
   kind needs: microtests, assertions, doubles, fixtures, baselines,
   benchmarks
-- [`reference/`](./reference/) — lookup material: glossary, types index,
+- [`reference/`](./reference/) - lookup material: glossary, types index,
   CLI reference
-- [`research/`](./research/) — supporting background: comparisons, audits,
+- [`research/`](./research/) - supporting background: comparisons, audits,
   and prior-art notes that inform but do not define the settled concept
 - top-level maintainer documentation such as
-  [Documentation Strategy](./documentation-strategy.md) — how user-facing
+  [Documentation Strategy](./documentation-strategy.md) - how user-facing
   Overkill documentation should be written
 
 ## Recommended Reading Order
 
 For a first read, follow this path:
 
-1. [Overview](./overview.md) — what Overkill is, who it's for, product
+1. [Overview](./overview.md) - what Overkill is, who it's for, product
    shape
-2. [Principles](./decisions/principles.md) — the design rules that drive
+2. [Principles](./decisions/principles.md) - the design rules that drive
    every decision
-3. [Glossary](./reference/glossary.md) — canonical definitions of
+3. [Glossary](./reference/glossary.md) - canonical definitions of
    microtest, macro, profile, sink, baseline subtype, verdict, witness,
    etc.
-4. [Testing Models](./authoring/testing-models.md) — the test categories
+4. [Testing Models](./authoring/testing-models.md) - the test categories
    Overkill recognises
-5. [Microtests And Capabilities](./authoring/microtests-and-capabilities.md) —
+5. [Microtests And Capabilities](./authoring/microtests-and-capabilities.md) -
    the capability-restricted default
-6. [Tests As Values](./authoring/tests-as-values.md) — first-class
+6. [Tests As Values](./authoring/tests-as-values.md) - first-class
    value-oriented authoring mode with explicit runner-owned direct-file
    execution
 
@@ -56,14 +56,14 @@ What has been settled or explicitly rejected.
 How the system is shaped.
 
 - [Package Architecture](./architecture/package-architecture.md)
-- [Composition Order](./architecture/composition-order.md) — reading aid
+- [Composition Order](./architecture/composition-order.md) - reading aid
   threading plan-time and execution-time stages
 - [Configuration](./architecture/configuration.md)
 - [Platform-First Implementation Notes](./architecture/platform-first-implementation-notes.md)
 - [Fast Feedback Loops](./architecture/fast-feedback-loops.md)
 - [Runtime Behavior](./architecture/runtime-behavior.md)
 - [Reporters](./architecture/reporters.md)
-- [Metadata And Selection](./architecture/metadata-and-selection.md)
+- [Test Data And Selection](./architecture/test-data-and-selection.md)
 - [Coverage](./architecture/coverage.md)
 - [Artifact Identity](./architecture/artifact-identity.md)
 - [Reproducibility](./architecture/reproducibility.md)
@@ -82,7 +82,7 @@ How tests are written and what each test kind needs.
 - [Test Ergonomics](./authoring/test-ergonomics.md)
 - [Higher Test Layers](./authoring/higher-test-layers.md)
 - [Failure Artifacts](./authoring/failure-artifacts.md)
-- [Failure Walkthrough](./authoring/failure-walkthrough.md) — reading aid
+- [Failure Walkthrough](./authoring/failure-walkthrough.md) - reading aid
   threading a property-test failure end-to-end
 - [Test Debug Mode](./authoring/debug-mode.md)
 - [Baselines And Snapshots](./authoring/baselines-and-snapshots.md)

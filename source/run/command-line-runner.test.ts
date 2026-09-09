@@ -1,30 +1,24 @@
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
-    defineOutputRenderer,
     defineReporter,
+    type Engine as OverkillEngine,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { ReporterSinkConflictError } from '../engine/reporter.ts';
-import type { TestPlan } from '../engine/test-plan.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
+import { defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import {
     createCommandLineRunner,
     type CommandLineRunnerDependencies,
     type CommandLineRunnerResult
 } from './command-line-runner.ts';
-import type { RunCommand, RunProfileConfig, RunOrchestrator, RunRequest } from './run-types.ts';
+import type { RunCommand, RunProfileConfig, RunOrchestrator } from './run-types.ts';
 import { RunResolutionError } from './run-errors.ts';
 import { RunConfigError, type LoadedRunConfig } from './run-config.ts';
 
-const plainOutputRenderer = defineOutputRenderer(function createPlainRuntimeOutputRenderer() {
-    return {
-        render(intent): string {
-            return intent.text;
-        }
-    };
-});
+const emptyTestData = { annotations: {}, controls: {} } as const;
 
 const memoryReporter = defineReporter(function createMemoryReporter() {
     return {
@@ -52,64 +46,20 @@ const terminalReporter = defineReporter(function createTerminalReporter() {
     };
 });
 
-const defaultRequest: RunRequest = {
-    baselineUpdateMode: 'none',
-    capabilityRestrictions: { mode: 'enabled' },
-    capture: 'buffered',
-    debug: {
-        mode: 'off',
-        selectors: []
-    },
-    execution: { mode: 'profile-default' },
-    measureResourceUsage: null,
-    order: 'seeded',
-    paths: [],
-    profile: 'microtest',
-    resourceBudgetOverrides: null,
-    resourceUsageSamplingIntervalMilliseconds: null,
-    seed: { value: 42n },
-    selection: { kind: 'all' },
-    shard: { index: 0, total: 1 },
-    verbose: false
-};
+const defaultRequest = defaultRunRequest();
 
-function defaultMicrotestProfile(): RunProfileConfig {
-    return {
-        execution: {
-            processModel: 'supervised-process',
-            scheduling: 'concurrent'
-        },
-        files: null,
-        reporters: null,
-        resourceUsage: {
-            budgets: {
-                activeResourceCount: null,
-                javaScriptEngineHeapBytes: null,
-                residentSetBytes: null,
-                residentSetGrowthBytesPerSecond: null
-            },
-            measure: false,
-            samplingIntervalMilliseconds: 100
-        },
-        testFamily: 'microtest',
-        timeouts: {
-            collectionMilliseconds: 1000,
-            hardMilliseconds: 1000,
-            softMilliseconds: 500
-        }
-    };
-}
+type PassingTestPlan = ReturnType<OverkillEngine['createTestPlanFromTestFiles']>;
 
 function defaultLoadedConfig(reporters: LoadedRunConfig['reporters']): LoadedRunConfig {
+    const config = defaultRunConfig();
+
     return {
         configPath: null,
-        loader: { sourceMaps: false, stripMode: 'strip-only' },
-        outputRenderer: plainOutputRenderer,
-        profiles: {
-            microtest: defaultMicrotestProfile()
-        },
+        loader: config.loader,
+        outputRenderer: config.outputRenderer,
+        profiles: config.profiles,
         reporters,
-        runtimeStateDir: '.overkill'
+        runtimeStateDir: config.runtimeStateDir
     };
 }
 
@@ -123,7 +73,7 @@ function selectedProfile(command: RunCommand): RunProfileConfig {
     return profile;
 }
 
-function createPassingPlan(): TestPlan {
+function createPassingPlan(): PassingTestPlan {
     const engine = createTestEngine();
     const testNode = engine.createSuite({
         definitionLocations: [ { kind: 'unknown' as const } ],
@@ -134,18 +84,18 @@ function createPassingPlan(): TestPlan {
                     scope.assert.true(true);
                     return scope.assert.collect();
                 },
-                metadata: {},
+                ...emptyTestData,
                 title: 'passes'
             })
         ],
-        metadata: {},
+        ...emptyTestData,
         title: 'suite'
     });
 
     return engine.createTestPlanFromTestFiles({
         files: [ { file: 'source/a.test.ts', testNode } ],
         root: {
-            metadata: {},
+            ...emptyTestData,
             title: 'root'
         }
     });
@@ -255,12 +205,12 @@ async function runTests(dependencies: CommandLineRunnerDependencies): Promise<Co
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/command-line-runner.test.ts',
-    metadata: {},
+    ...emptyTestData,
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() injects the default reporter when config omits reporters',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const receivedCommands: RunCommand[] = [];
                 const dependencies = createRunnerDependencies({
@@ -286,7 +236,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() preserves configured reporters',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const receivedCommands: RunCommand[] = [];
                 let defaultReporterLoadCount = 0;
@@ -321,7 +271,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() maps test failures to exit code 1',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(
@@ -342,7 +292,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() maps all-skipped runs to exit code 0',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(
@@ -363,7 +313,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() maps no planned tests to exit code 4',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(
@@ -383,7 +333,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() maps runner errors to exit code 2 with fallback diagnostics',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(
@@ -405,7 +355,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() maps config errors to exit code 3',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({
                     async loadRunConfig() {
@@ -424,7 +374,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() maps internal config load errors',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({
                     async loadRunConfig() {
@@ -444,7 +394,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() maps reporter sink conflicts to exit code 3',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(
@@ -468,7 +418,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() maps aggregate sink conflicts to exit code 3',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const conflict = new ReporterSinkConflictError(
                     'Reporter sink conflict: stdout is claimed by incompatible reporters.'
@@ -506,7 +456,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() maps request errors to exit code 3',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(

@@ -2,15 +2,21 @@ import type { NonEmptyReadonlyArray, SourceLocation } from '../assertion-protoco
 import { serializeValue } from '../compare/serialized-value.ts';
 import { caseIdentityKey, createCaseId, formatCaseId, type CaseId } from './identity.ts';
 import {
-    resolveMetadata,
-    resolveRootMetadata,
-    type Metadata,
-    type ResolvedMetadata
-} from './metadata.ts';
+    resolveRootTestAnnotations,
+    resolveRootTestControls,
+    resolveTestAnnotations,
+    resolveTestControls,
+    type TestAnnotations,
+    type TestAnnotationsInput,
+    type TestControls,
+    type TestControlsInput,
+    type TestFamily
+} from './test-data.ts';
 import type { OrphanedNode } from './run-result.ts';
 import {
     ensureOwnedTestRoot,
     isOwnedTestNode,
+    testNodeFamily,
     type RootOptions,
     type Suite,
     type Table,
@@ -32,11 +38,13 @@ export type TestPlanSuitePathEntry = {
 };
 
 export type TestPlanCase = {
+    readonly annotations: TestAnnotations;
+    readonly controls: TestControls;
     readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
     readonly execution: TestPlanCaseExecution;
     readonly id: CaseId;
-    readonly metadata: ResolvedMetadata;
     readonly suitePath: readonly TestPlanSuitePathEntry[];
+    readonly testFamily: TestFamily | null;
 };
 
 export type TestPlan = {
@@ -48,14 +56,16 @@ export type TestPlan = {
 };
 
 type TestPlanRoot = {
-    readonly metadata: ResolvedMetadata;
+    readonly annotations: TestAnnotations;
+    readonly controls: TestControls;
     readonly title: string;
 };
 
 export type TestPlanFactory = (root: TestRoot) => TestPlan;
 
 type TestPlanRootOptions = {
-    readonly metadata: Metadata;
+    readonly annotations: TestAnnotationsInput;
+    readonly controls: TestControlsInput;
     readonly title: string;
 };
 
@@ -76,8 +86,9 @@ type CollectedTestCases = {
 };
 
 type CollectionContext = {
+    readonly annotations: TestAnnotations;
+    readonly controls: TestControls;
     readonly file: string | null;
-    readonly metadata: ResolvedMetadata;
     readonly suitePath: readonly TestPlanSuitePathEntry[];
 };
 
@@ -123,16 +134,19 @@ function collectTestCase(
     testCase: TestCase,
     context: CollectionContext
 ): CollectedTestCases {
-    const resolvedMetadata = resolveMetadata(context.metadata, testCase.metadata);
+    const annotations = resolveTestAnnotations(context.annotations, testCase.annotations);
+    const controls = resolveTestControls(context.controls, testCase.controls);
 
     return {
         cases: [
             {
+                annotations,
+                controls,
                 definitionLocations: testCase.definitionLocations,
                 execution: testCase.execution,
                 id: createCaseId(context.file, suiteTitles(context.suitePath), testCase.title, null),
-                metadata: resolvedMetadata,
-                suitePath: context.suitePath
+                suitePath: context.suitePath,
+                testFamily: testNodeFamily(testCase)
             }
         ],
         reachedNodes: [ testCase ]
@@ -155,13 +169,17 @@ function collectTable(
         ...context.suitePath,
         { definitionLocations: table.definitionLocations, title: table.title }
     ];
-    const tableMetadata = resolveMetadata(context.metadata, table.metadata);
+    const tableAnnotations = resolveTestAnnotations(context.annotations, table.annotations);
+    const tableControls = resolveTestControls(context.controls, table.controls);
 
     return {
         cases: table.cases.map(function collectTableCase(tableCase): TestPlanCase {
-            const resolvedMetadata = resolveMetadata(tableMetadata, tableCase.metadata);
+            const annotations = resolveTestAnnotations(tableAnnotations, tableCase.annotations);
+            const controls = resolveTestControls(tableControls, tableCase.controls);
 
             return {
+                annotations,
+                controls,
                 definitionLocations: table.definitionLocations,
                 execution: { body: tableCase.body, kind: 'body' },
                 id: createCaseId(
@@ -170,8 +188,8 @@ function collectTable(
                     tableCase.title,
                     parameterIdentity(tableCase.parameters)
                 ),
-                metadata: resolvedMetadata,
-                suitePath: tablePath
+                suitePath: tablePath,
+                testFamily: testNodeFamily(table)
             };
         }),
         reachedNodes: [ table ]
@@ -180,8 +198,9 @@ function collectTable(
 
 function childCollectionContext(suite: Suite, context: CollectionContext): CollectionContext {
     return {
+        annotations: resolveTestAnnotations(context.annotations, suite.annotations),
+        controls: resolveTestControls(context.controls, suite.controls),
         file: context.file,
-        metadata: resolveMetadata(context.metadata, suite.metadata),
         suitePath: [
             ...context.suitePath,
             { definitionLocations: suite.definitionLocations, title: suite.title }
@@ -231,7 +250,7 @@ function collectNode(
     };
 }
 
-function collectRoot(root: TestRoot, rootMetadata: ResolvedMetadata): CollectedTestCases {
+function collectRoot(root: TestRoot, rootAnnotations: TestAnnotations, rootControls: TestControls): CollectedTestCases {
     if (root.children.length === 0) {
         throw new TypeError(`Root must contain at least one child: ${root.title}.`);
     }
@@ -240,8 +259,9 @@ function collectRoot(root: TestRoot, rootMetadata: ResolvedMetadata): CollectedT
 
     return mergeCollectedTestCases(root.children.map(function collectChild(child) {
         return collectNode(child, {
+            annotations: rootAnnotations,
+            controls: rootControls,
             file: null,
-            metadata: rootMetadata,
             suitePath: []
         });
     }));
@@ -250,7 +270,8 @@ function collectRoot(root: TestRoot, rootMetadata: ResolvedMetadata): CollectedT
 function collectTestFiles(
     root: TestRoot,
     files: NonEmptyReadonlyArray<FileBackedTestNodeInput>,
-    rootMetadata: ResolvedMetadata
+    rootAnnotations: TestAnnotations,
+    rootControls: TestControls
 ): CollectedTestCases {
     return mergeCollectedTestCases(root.children.map(function collectChild(child, index) {
         const file = files[index];
@@ -260,8 +281,9 @@ function collectTestFiles(
         }
 
         return collectNode(child, {
+            annotations: rootAnnotations,
+            controls: rootControls,
             file: file.file,
-            metadata: rootMetadata,
             suitePath: []
         });
     }));
@@ -323,8 +345,9 @@ export function createTestPlanFactory(owner: TestNodeOwner, constructedNodes: Re
             'Test plan root must be created by the same engine instance.'
         );
 
-        const rootMetadata = resolveRootMetadata(root.metadata);
-        const collection = collectRoot(root, rootMetadata);
+        const rootAnnotations = resolveRootTestAnnotations(root.annotations);
+        const rootControls = resolveRootTestControls(root.controls);
+        const collection = collectRoot(root, rootAnnotations, rootControls);
         const { cases: discoveredCases, reachedNodes } = collection;
         assertNonEmptyCases(discoveredCases);
         assertUniqueCaseIds(discoveredCases);
@@ -335,7 +358,8 @@ export function createTestPlanFactory(owner: TestNodeOwner, constructedNodes: Re
             discoveredCases,
             orphans: collectOrphans(constructedNodes, reachedNodes),
             root: {
-                metadata: rootMetadata,
+                annotations: rootAnnotations,
+                controls: rootControls,
                 title: root.title
             }
         };
@@ -382,14 +406,21 @@ export function createTestPlanFromTestFilesFactory(
         }
 
         const root = createRoot({
+            annotations: options.root.annotations,
             children: options.files.map(function toTestNode(file) {
                 return file.testNode;
             }),
-            metadata: options.root.metadata,
+            controls: options.root.controls,
             title: options.root.title
         });
-        const rootMetadata = resolveRootMetadata(root.metadata);
-        const { cases: discoveredCases, reachedNodes } = collectTestFiles(root, options.files, rootMetadata);
+        const rootAnnotations = resolveRootTestAnnotations(root.annotations);
+        const rootControls = resolveRootTestControls(root.controls);
+        const { cases: discoveredCases, reachedNodes } = collectTestFiles(
+            root,
+            options.files,
+            rootAnnotations,
+            rootControls
+        );
         assertNonEmptyCases(discoveredCases);
         assertUniqueCaseIds(discoveredCases);
 
@@ -399,7 +430,8 @@ export function createTestPlanFromTestFilesFactory(
             discoveredCases,
             orphans: [],
             root: {
-                metadata: rootMetadata,
+                annotations: rootAnnotations,
+                controls: rootControls,
                 title: root.title
             }
         };

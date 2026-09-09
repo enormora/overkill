@@ -56,7 +56,8 @@ function createPassingCase(engine: Engine, title: string): TestCase {
             testScope.assert.true(true, { message: `${title} passes` });
             return testScope.assert.collect();
         },
-        metadata: {},
+        annotations: {},
+        controls: {},
         title
     });
 }
@@ -89,12 +90,14 @@ function createPlanOrderedConcurrentScenario(engine: Engine): PlanOrderedConcurr
                         testScope.assert.true(true, { message: 'first passes' });
                         return testScope.assert.collect();
                     },
-                    metadata: {},
+                    annotations: {},
+                    controls: {},
                     title: 'first'
                 }),
                 createPassingCase(engine, 'second')
             ],
-            metadata: {},
+            annotations: {},
+            controls: {},
             title: 'root'
         })
     );
@@ -144,7 +147,8 @@ function createReporterSerializationScenario(engine: Engine): ReporterSerializat
                 createPassingCase(engine, 'first'),
                 createPassingCase(engine, 'second')
             ],
-            metadata: {},
+            annotations: {},
+            controls: {},
             title: 'root'
         })
     );
@@ -163,12 +167,14 @@ function createReporterSerializationScenario(engine: Engine): ReporterSerializat
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/execution-concurrent-reporting.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() runs concurrent in-process cases with plan-ordered starts and results',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const scenario = createPlanOrderedConcurrentScenario(engine);
@@ -192,7 +198,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() serializes reporter callbacks during concurrent execution',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const scenario = createReporterSerializationScenario(engine);

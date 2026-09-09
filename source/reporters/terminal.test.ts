@@ -57,12 +57,14 @@ function createFakeTerminal(columns: number): FakeTerminal {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/terminal.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'visibleTerminalWidth() ignores ANSI escapes and counts Unicode display width',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.equal(visibleTerminalWidth('\u{1B}[31m✓\u{1B}[39m漢'), 3);
 
@@ -72,7 +74,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'terminal progress renderer redraws the full block on interactive resize',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(4);
                 const renderer = createTerminalProgressRenderer({
@@ -93,7 +96,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'terminal progress renderer ignores resize before progress and after finish',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(4);
                 const renderer = createTerminalProgressRenderer({
@@ -114,7 +118,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'terminal progress renderer does not emit cursor escapes in non-interactive output',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(2);
                 const renderer = createTerminalProgressRenderer({
@@ -136,7 +141,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'terminal progress renderer falls back when output columns are invalid',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(0);
                 const renderer = createTerminalProgressRenderer({
@@ -156,7 +162,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'terminal progress renderer treats finish as idempotent',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(4);
                 const renderer = createTerminalProgressRenderer({
@@ -176,7 +183,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'terminal progress renderer removes resize listener on dispose',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(4);
                 const renderer = createTerminalProgressRenderer({

@@ -17,12 +17,14 @@ type ClientFactory = {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/doubles/test-double-configuration.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testDouble() rejects invalid configuration arguments',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const createDoubleFromUnknowns = testDouble as unknown as (
                     ...configuration: readonly unknown[]
@@ -41,7 +43,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testDouble() ignores invalid configuration entries',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 type LoadValue = () => string;
 
@@ -63,7 +66,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'fallback can configure call defaults without construction defaults',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const calledClient = { id: 'called' };
                 const clientFactory = testDouble<ClientFactory>(
@@ -85,7 +89,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'fallback can configure construction defaults without call defaults',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const constructedClient = { id: 'constructed' };
                 const clientFactory = testDouble<ClientFactory>(
@@ -107,7 +112,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'fallback behaviors that cannot answer an invocation fall through',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const constructedClient = { id: 'constructed' };
                 const clientFactory = testDouble<ClientFactory>({
@@ -126,7 +132,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'sequence entries that cannot answer an invocation fall through',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 type ClientConstructor = new () => ClientWithId;
 

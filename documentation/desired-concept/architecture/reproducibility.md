@@ -34,7 +34,7 @@ A reproducible run captures, at minimum:
   `diff`)
 - the benchmark workload identity and calibration inputs where
   relevant
-- the metadata propagation result (resolved metadata per case)
+- resolved annotations and controls per case
 - the loader configuration (TS strip mode, source-map flag, registered
   hooks)
 - the Overkill engine and package versions
@@ -186,7 +186,7 @@ Limitations:
 ## Replay Witnesses For Properties And Simulations
 
 For property tests and deterministic-simulation tests, a run record is
-overkill — a witness is enough. `overkill replay-witness <path>` loads the
+overkill - a witness is enough. `overkill replay-witness <path>` loads the
 witness JSON and replays that single failing case directly.
 
 For the witness schema and versioning rules, see
@@ -219,13 +219,13 @@ That is enough to make:
 
 ## Cross-References
 
-- [Artifact Identity](./artifact-identity.md) — provides the stable `CaseId` and `ArtifactId`
+- [Artifact Identity](./artifact-identity.md) - provides the stable `CaseId` and `ArtifactId`
   used here
-- [Capability Handles](../authoring/capability-handles.md) — splittable PRNG; recording handles for
+- [Capability Handles](../authoring/capability-handles.md) - splittable PRNG; recording handles for
   deterministic effect logs
-- [Deterministic Simulation Testing](../authoring/deterministic-simulation.md) — the strongest form of reproducibility
+- [Deterministic Simulation Testing](../authoring/deterministic-simulation.md) - the strongest form of reproducibility
   in Overkill
-- [Failure Artifacts](../authoring/failure-artifacts.md) — witnesses are first-class artifacts
-- [Metadata And Selection](./metadata-and-selection.md) — the resolved metadata is part of the
+- [Failure Artifacts](../authoring/failure-artifacts.md) - witnesses are first-class artifacts
+- [Test Data And Selection](./test-data-and-selection.md) - resolved test data is part of the
   plan
-- [Benchmarking](../authoring/benchmarking.md) — calibration and machine-class stratification
+- [Benchmarking](../authoring/benchmarking.md) - calibration and machine-class stratification

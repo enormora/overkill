@@ -242,12 +242,14 @@ function recordAssertNodes(facade: AssertAssertionFacade): void {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/assertion-facade.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createRecordingAssertFacade() records every built-in assertion node',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const recording = createAssertRecording();
 
@@ -349,7 +351,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createRecordingAssertFacade() records async rejects assertions through pending sink',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const recording = createAssertRecording();
 
@@ -370,7 +373,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createRecordingAssertFacade() applies annotated messages without requiring the builder API',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const recording = createAssertRecording();
 
