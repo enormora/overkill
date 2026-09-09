@@ -23,11 +23,11 @@ type NodeRunOrchestratorInput = {
     readonly readEnvironment: RuntimeCapabilityPolicyInput['readEnvironment'];
     readonly readStorage: RuntimeCapabilityPolicyInput['readStorage'];
     readonly stderr: {
-        readonly write: (chunk: Buffer) => void;
+        readonly write: (chunk: Uint8Array) => void;
         readonly writeLine: (line: string) => void;
     };
     readonly stdout: {
-        readonly write: (chunk: Buffer) => void;
+        readonly write: (chunk: Uint8Array) => void;
         readonly writeLine: (line: string) => void;
     };
 };
