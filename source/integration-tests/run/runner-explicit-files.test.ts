@@ -22,6 +22,7 @@ import type {
 } from '../../run/run-types.ts';
 
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
+const skippedFixturePath = 'source/integration-tests/run/fixtures/skipped.test.ts';
 const duplicateFixtureAPath = 'source/integration-tests/run/fixtures/duplicate-a.test.ts';
 const duplicateFixtureBPath = 'source/integration-tests/run/fixtures/duplicate-b.test.ts';
 const endlessLoopFixturePath = 'source/integration-tests/run/fixtures/endless-loop.test.ts';
@@ -273,6 +274,32 @@ export const testNode = createSuite({
                     resourceExhausted: 0,
                     runtimePolicy: 0,
                     skipped: 0
+                });
+                scope.assert.equal(result.runnerErrors.length, 0);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'runner executes all-skipped explicit files successfully',
+            metadata: {},
+            async body(scope: TestScope) {
+                const result = await orchestrator.run(
+                    createSupervisedRunCommand([ skippedFixturePath ], createRunConfig())
+                );
+
+                scope.assert.deepEqual(result.summary, {
+                    crashed: 0,
+                    defined: 2,
+                    discovered: 1,
+                    failed: 0,
+                    inconclusive: 0,
+                    passed: 0,
+                    planned: 1,
+                    resourceExhausted: 0,
+                    runtimePolicy: 0,
+                    skipped: 1
                 });
                 scope.assert.equal(result.runnerErrors.length, 0);
 

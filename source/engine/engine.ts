@@ -8,6 +8,7 @@ import {
     isOwnedTestNode,
     type RootOptions,
     type Suite,
+    type SkippedTestCaseOptions,
     type SuiteOptions,
     type Table,
     type TableOptions,
@@ -26,6 +27,7 @@ import {
 export type Engine = {
     readonly createRoot: (options: RootOptions) => TestRoot;
     readonly createSuite: (options: SuiteOptions) => Suite;
+    readonly createSkippedTestCase: (options: SkippedTestCaseOptions) => TestCase;
     readonly createTable: (options: TableOptions) => Table;
     readonly createTestCase: (options: TestCaseOptions) => TestCase;
     readonly createTestPlan: TestPlanFactory;
@@ -55,6 +57,7 @@ export function createEngineWithOwner(dependencies: EngineDependencies, owner: T
     return {
         createRoot: nodeFactory.createRoot,
         createSuite: nodeFactory.createSuite,
+        createSkippedTestCase: nodeFactory.createSkippedTestCase,
         createTable: nodeFactory.createTable,
         createTestCase: nodeFactory.createTestCase,
         createTestPlan,

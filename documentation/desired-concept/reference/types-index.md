@@ -121,7 +121,9 @@ type TestCase = {
     readonly title: string;
     readonly metadata?: Metadata;
     readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
-    readonly body: TestBody; // signature varies by DSL
+    readonly execution:
+        | { readonly kind: 'body'; readonly body: TestBody; }
+        | { readonly kind: 'skip'; readonly reason: string; };
 };
 
 type Suite = {
@@ -571,6 +573,7 @@ type TestFacadeDefinition =
 
 type TestFacade = {
     readonly test: (title: string, body: TestBody) => TestCase;
+    readonly skippedTest: (title: string, reason: string) => TestCase;
     readonly suite: (title: string, children: ReadonlyArray<TestNode>) => Suite;
     readonly table: (options: {
         title: string;
@@ -696,12 +699,13 @@ Canonical: [Reporters](../architecture/reporters.md).
 
 ## Run Request, Resolution, And Record
 
-Direct engine consumers can create `TestCase` values with `createTestCase`,
-attach them to a `TestRoot` with `createRoot`, build the executable
-`TestPlan` with `createTestPlan(root)`, then pass it to
-`execute(testPlan): Promise<RunResult>`. `TestRoot` carries run-level title
-and metadata. It is not a `TestNode` and does not contribute to
-`CaseId.suite`, `suitePath`, or `RunResult.bySuite`.
+Direct engine consumers can create body-backed `TestCase` values with
+`createTestCase` and visible skipped `TestCase` values with
+`createSkippedTestCase`. They attach those values to a `TestRoot` with
+`createRoot`, build the executable `TestPlan` with `createTestPlan(root)`,
+then pass it to `execute(testPlan): Promise<RunResult>`. `TestRoot` carries
+run-level title and metadata. It is not a `TestNode` and does not contribute
+to `CaseId.suite`, `suitePath`, or `RunResult.bySuite`.
 
 ```ts
 type RunConfig = {

@@ -198,6 +198,7 @@ export const testNode = createOverkillSuite({
                     'defineMacro',
                     'defineParameterizedTestBody',
                     'runIfMain',
+                    'skippedTest',
                     'suite',
                     'table',
                     'test'

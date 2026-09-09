@@ -15,11 +15,11 @@ function writeStderrLine(line: string): void {
     process.stderr.write(`${line}\n`);
 }
 
-function writeStdout(chunk: Buffer): void {
+function writeStdout(chunk: Uint8Array): void {
     process.stdout.write(chunk);
 }
 
-function writeStderr(chunk: Buffer): void {
+function writeStderr(chunk: Uint8Array): void {
     process.stderr.write(chunk);
 }
 

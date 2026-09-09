@@ -5,6 +5,7 @@ import {
     createEngine,
     createRoot,
     createSuite,
+    createSkippedTestCase,
     createTable,
     createTestCase,
     createTestPlan,
@@ -213,6 +214,7 @@ export const testNode = createSuite({
             async body(scope: TestScope) {
                 const topLevelEngine: Engine = {
                     createSuite,
+                    createSkippedTestCase,
                     createTable,
                     createTestCase,
                     createRoot,

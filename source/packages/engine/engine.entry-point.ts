@@ -10,6 +10,7 @@ import { createReporterDispatcher } from '../../engine/reporter-dispatcher.ts';
 import {
     defaultTestNodeOwner,
     type RootOptions,
+    type SkippedTestCaseOptions,
     type SuiteOptions,
     type TableOptions,
     type TestCaseOptions,
@@ -53,6 +54,10 @@ export function createRoot(options: RootOptions): ReturnType<Engine['createRoot'
 
 export function createSuite(options: SuiteOptions): ReturnType<Engine['createSuite']> {
     return defaultEngine.createSuite(options);
+}
+
+export function createSkippedTestCase(options: SkippedTestCaseOptions): ReturnType<Engine['createSkippedTestCase']> {
+    return defaultEngine.createSkippedTestCase(options);
 }
 
 export function createTable(options: TableOptions): ReturnType<Engine['createTable']> {
@@ -265,7 +270,10 @@ export type {
 export type {
     TestScopeAssertContext,
     RootOptions,
+    BodyTestCaseExecution,
     Suite,
+    SkippedTestCaseExecution,
+    SkippedTestCaseOptions,
     SuiteOptions,
     Table,
     TableCase,
@@ -273,6 +281,7 @@ export type {
     TableOptions,
     TestBody,
     TestCase,
+    TestCaseExecution,
     TestCaseOptions,
     DefinitionLocations,
     TestRoot,
@@ -290,4 +299,9 @@ export type {
     Stability,
     TestFamily
 } from '../../engine/metadata.ts';
-export type { TestPlan, TestPlanCase, TestPlanCaseBody } from '../../engine/test-plan.ts';
+export type {
+    TestPlan,
+    TestPlanCase,
+    TestPlanCaseBody,
+    TestPlanCaseExecution
+} from '../../engine/test-plan.ts';

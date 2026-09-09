@@ -191,7 +191,11 @@ async function runCaseBody(
     options: RunTestCaseOptions
 ): Promise<ExecutedBody> {
     const runBody = async function runUserBody(): Promise<AssertionResult> {
-        return await testCase.body(createTestScope(recorder, options.signal));
+        if (testCase.execution.kind !== 'body') {
+            throw new TypeError('Skipped test cases do not have executable bodies.');
+        }
+
+        return await testCase.execution.body(createTestScope(recorder, options.signal));
     };
     const runPolicyCheckedBody = async function runPolicyCheckedUserBody(): Promise<AssertionResult> {
         return options.runtimePolicy === null
@@ -283,8 +287,22 @@ export async function runTestCase(
     wallClock: WallClock,
     options: RunTestCaseOptions = defaultRunTestCaseOptions()
 ): Promise<ExecutedCase> {
-    const recorder = createAssertionRecorder();
     const startedAt = wallClock.currentTimestampInMilliseconds;
+
+    if (testCase.execution.kind === 'skip') {
+        const outcome: TestOutcome = { kind: 'skip', reason: testCase.execution.reason };
+
+        return {
+            result: {
+                id: testCase.id,
+                outcome,
+                verdict: verdictFromOutcome(outcome)
+            },
+            wallTimeMs: wallClock.currentTimestampInMilliseconds - startedAt
+        };
+    }
+
+    const recorder = createAssertionRecorder();
 
     const executedBody = await runCaseBody(testCase, recorder, options);
     const outcome = createOutcome(recorder, executedBody);

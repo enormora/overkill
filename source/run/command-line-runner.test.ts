@@ -341,6 +341,27 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'commandLineRunner.runTests() maps all-skipped runs to exit code 0',
+            metadata: {},
+            async body(scope: OverkillScope) {
+                const result = await runTests(createRunnerDependencies({
+                    orchestrator: createRunOnlyOrchestrator(
+                        async function runCommand() {
+                            return runResultFactory.build({
+                                perTest: [ { outcome: { kind: 'skip', reason: 'unsupported platform' } } ],
+                                summary: { defined: 1, discovered: 1, planned: 1, skipped: 1 }
+                            });
+                        }
+                    )
+                }));
+
+                scope.assert.equal(result.exitCode, 0);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() maps no planned tests to exit code 4',
             metadata: {},
             async body(scope: OverkillScope) {

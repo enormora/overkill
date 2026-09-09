@@ -554,6 +554,10 @@ export async function executeCaseBody(
     supervision: ExecutionSupervision,
     dependencies: ExecutionSupervisionDependencies
 ): Promise<ConcurrentCase> {
+    if (testCase.execution.kind === 'skip') {
+        return await runTestCase(testCase, dependencies.wallClock);
+    }
+
     const timeoutResolution = resolveSoftTimeout(testCase, timeoutPolicy);
 
     if (timeoutResolution.kind === 'failure') {

@@ -29,11 +29,23 @@ export type TestBody = (scope: TestScope) => AssertionResult | Promise<Assertion
 
 export type DefinitionLocations = NonEmptyReadonlyArray<SourceLocation>;
 
+export type BodyTestCaseExecution = {
+    readonly body: TestBody;
+    readonly kind: 'body';
+};
+
+export type SkippedTestCaseExecution = {
+    readonly kind: 'skip';
+    readonly reason: string;
+};
+
+export type TestCaseExecution = BodyTestCaseExecution | SkippedTestCaseExecution;
+
 export type TestCase = {
     readonly [testNodeBrand]: true;
     readonly [testNodeOwnerBrand]: TestNodeOwner;
-    readonly body: TestBody;
     readonly definitionLocations: DefinitionLocations;
+    readonly execution: TestCaseExecution;
     readonly kind: 'test';
     readonly metadata: Metadata;
     readonly title: string;
@@ -84,6 +96,7 @@ export type TestNodeOwner = {
 export type TestNodeFactory = {
     readonly createRoot: (options: RootOptions) => TestRoot;
     readonly createSuite: (options: SuiteOptions) => Suite;
+    readonly createSkippedTestCase: (options: SkippedTestCaseOptions) => TestCase;
     readonly createTable: (options: TableOptions) => Table;
     readonly createTestCase: (options: TestCaseOptions) => TestCase;
 };
@@ -97,6 +110,13 @@ export type TestCaseOptions = {
     readonly body: TestBody;
     readonly definitionLocations: DefinitionLocations;
     readonly metadata: Metadata;
+    readonly title: string;
+};
+
+export type SkippedTestCaseOptions = {
+    readonly definitionLocations: DefinitionLocations;
+    readonly metadata: Metadata;
+    readonly reason: string;
     readonly title: string;
 };
 
@@ -165,6 +185,24 @@ function ensureTestBody(body: TestBody): void {
     if (typeof body !== 'function') {
         throw new TypeError('Test case body must be a function.');
     }
+}
+
+function ensureSkipReasonValue(reason: unknown): asserts reason is string {
+    if (typeof reason !== 'string') {
+        throw new TypeError('Skipped test reason must be a string.');
+    }
+}
+
+function readSkipReason(reason: unknown): string {
+    ensureSkipReasonValue(reason);
+
+    const trimmedReason = reason.trim();
+
+    if (trimmedReason.length === 0) {
+        throw new TypeError('Skipped test reason must not be empty.');
+    }
+
+    return trimmedReason;
 }
 
 function ensureDefinitionLocations(definitionLocations: readonly SourceLocation[]): void {
@@ -255,8 +293,30 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
         const testCase: TestCase = {
             [testNodeBrand]: true,
             [testNodeOwnerBrand]: owner,
-            body: options.body,
             definitionLocations: options.definitionLocations,
+            execution: { body: options.body, kind: 'body' },
+            kind: 'test',
+            metadata: options.metadata,
+            title: options.title
+        };
+
+        recordConstructedNode(testCase);
+
+        return testCase;
+    }
+
+    function createSkippedTestCase(options: SkippedTestCaseOptions): TestCase {
+        ensureTitleValue(options.title);
+        ensureTitle(options.title);
+        ensureMetadata(options.metadata);
+        ensureDefinitionLocations(options.definitionLocations);
+        const reason = readSkipReason(options.reason);
+
+        const testCase: TestCase = {
+            [testNodeBrand]: true,
+            [testNodeOwnerBrand]: owner,
+            definitionLocations: options.definitionLocations,
+            execution: { kind: 'skip', reason },
             kind: 'test',
             metadata: options.metadata,
             title: options.title
@@ -353,6 +413,7 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
     return {
         createRoot,
         createSuite,
+        createSkippedTestCase,
         createTable,
         createTestCase
     };

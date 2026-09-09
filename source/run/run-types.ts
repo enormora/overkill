@@ -342,10 +342,10 @@ export type RunOrchestratorDependencies = {
     readonly execute: Execute;
     readonly liveOutput: {
         readonly stderr: {
-            readonly write: (chunk: Buffer) => void;
+            readonly write: (chunk: Uint8Array) => void;
         };
         readonly stdout: {
-            readonly write: (chunk: Buffer) => void;
+            readonly write: (chunk: Uint8Array) => void;
         };
     };
     readonly runtimeCapabilityPolicy: RuntimeCapabilityPolicyDependencies;

@@ -1,0 +1,93 @@
+import { describe, expect, test as typeTest } from 'tstyche';
+import type {
+    DefinedOutputRenderer,
+    DefinedReporter,
+    Suite,
+    Table,
+    TestBody,
+    TestCase,
+    TestNode,
+    TestScope,
+    TestScopeAssertContext
+} from '../engine/engine.entry-point.ts';
+import {
+    type AuthoringMetadata,
+    type CaptureAuthoringMetadata,
+    type createTestFacade,
+    runIfMain,
+    type RunIfMainOptions as RootRunIfMainOptions,
+    type RunIfMainRootOptions as RootRunIfMainRootOptions,
+    skippedTest,
+    type Suite as RootSuite,
+    test,
+    type Table as RootTable,
+    type TestBody as RootTestBody,
+    type TestCase as RootTestCase,
+    type TestNode as RootTestNode,
+    type TestScope as RootTestScope,
+    type TestScopeAssertContext as RootTestScopeAssertContext
+} from './test.entry-point.ts';
+
+declare const body: TestBody;
+declare const captureMetadata: CaptureAuthoringMetadata;
+declare const metadata: AuthoringMetadata;
+declare const node: TestNode;
+declare const outputRenderer: DefinedOutputRenderer;
+declare const reporter: DefinedReporter;
+
+describe('@overkill-dev/test capture and direct execution types', function () {
+    typeTest('types capture metadata by authored family', function () {
+        expect<typeof createTestFacade>().type.toBeCallableWith({
+            metadata: captureMetadata,
+            testFamily: 'integration'
+        });
+        expect<typeof createTestFacade>().type.not.toBeCallableWith({
+            metadata: { capture: 'live' },
+            testFamily: 'microtest'
+        });
+        expect(test).type.not.toBeCallableWith({
+            body,
+            metadata: { capture: 'live' },
+            title: 'passes'
+        });
+        expect(skippedTest).type.not.toBeCallableWith({
+            metadata: { capture: 'live' },
+            reason: 'unsupported platform',
+            title: 'skips'
+        });
+    });
+
+    typeTest('re-exports high-level authoring types from the engine', function () {
+        expect<RootRunIfMainOptions>().type.toBe<{
+            readonly outputRenderer?: DefinedOutputRenderer;
+            readonly reporters?: readonly DefinedReporter[];
+            readonly root?: RootRunIfMainRootOptions;
+        }>();
+        expect<RootRunIfMainRootOptions>().type.toBe<{
+            readonly metadata: AuthoringMetadata;
+            readonly title: string;
+        }>();
+        expect<RootSuite>().type.toBe<Suite>();
+        expect<RootTable>().type.toBe<Table>();
+        expect<RootTestBody>().type.toBe<TestBody>();
+        expect<RootTestCase>().type.toBe<TestCase>();
+        expect<RootTestNode>().type.toBe<TestNode>();
+        expect<RootTestScope>().type.toBe<TestScope>();
+        expect<RootTestScopeAssertContext>().type.toBe<TestScopeAssertContext>();
+    });
+
+    typeTest('runs direct entrypoints with runner-owned options', function () {
+        expect(runIfMain).type.toBeCallableWith(import.meta, node);
+        expect(runIfMain).type.toBeCallableWith(import.meta, node, {
+            outputRenderer,
+            reporters: [ reporter ],
+            root: {
+                metadata,
+                title: 'root'
+            }
+        });
+        expect(runIfMain).type.not.toBeCallableWith(import.meta, node, { runFacts: {} });
+        expect(runIfMain).type.not.toBeCallableWith(import.meta, node, { profile: 'microtest' });
+        expect(runIfMain).type.not.toBeCallableWith(import.meta, node, { cwd: 'project' });
+    });
+});

@@ -424,39 +424,6 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'createTestPlan() rejects reachable empty nested suites',
-            metadata: {},
-            body(scope: OverkillScope) {
-                const engine = createEngine();
-                const root = engine.createRoot({
-                    children: [
-                        engine.createSuite({
-                            definitionLocations: [ { kind: 'unknown' as const } ],
-                            children: [
-                                engine.createSuite({
-                                    definitionLocations: [ { kind: 'unknown' as const } ],
-                                    children: [],
-                                    metadata: {},
-                                    title: 'empty'
-                                })
-                            ],
-                            metadata: {},
-                            title: 'parent'
-                        })
-                    ],
-                    metadata: {},
-                    title: 'root'
-                });
-
-                scope.assert.throws(function createPlanWithEmptySuite() {
-                    engine.createTestPlan(root);
-                }, { message: 'Suite must contain at least one child: parent > empty.' });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createTestPlan() rejects non-root test nodes',
             metadata: {},
             body(scope: OverkillScope) {

@@ -19,6 +19,7 @@ import {
     type SinkDeclaration,
     type TestPlan,
     type TestPlanCase,
+    type TestPlanCaseExecution,
     type isOutputRenderer,
     type isReporter
 } from './engine.entry-point.ts';
@@ -148,5 +149,14 @@ describe('Reporter contract', function () {
     test('exposes non-empty planned case arrays', function () {
         expect<TestPlan['cases']>().type.toBe<NonEmptyReadonlyArray<TestPlanCase>>();
         expect<TestPlan['discoveredCases']>().type.toBe<NonEmptyReadonlyArray<TestPlanCase>>();
+        expect<TestPlanCase['execution']>().type.toBe<TestPlanCaseExecution>();
+        expect<TestPlanCaseExecution>().type.toBeAssignableFrom<{
+            readonly body: () => never;
+            readonly kind: 'body';
+        }>();
+        expect<TestPlanCaseExecution>().type.toBeAssignableFrom<{
+            readonly kind: 'skip';
+            readonly reason: 'unsupported platform';
+        }>();
     });
 });

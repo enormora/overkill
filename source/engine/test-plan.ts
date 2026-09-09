@@ -17,12 +17,14 @@ import {
     type TableCase,
     type TestBody,
     type TestCase,
+    type TestCaseExecution,
     type TestNode,
     type TestNodeOwner,
     type TestRoot
 } from './test-node.ts';
 
 export type TestPlanCaseBody = TestBody;
+export type TestPlanCaseExecution = TestCaseExecution;
 
 export type TestPlanSuitePathEntry = {
     readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
@@ -30,8 +32,8 @@ export type TestPlanSuitePathEntry = {
 };
 
 export type TestPlanCase = {
-    readonly body: TestPlanCaseBody;
     readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
+    readonly execution: TestPlanCaseExecution;
     readonly id: CaseId;
     readonly metadata: ResolvedMetadata;
     readonly suitePath: readonly TestPlanSuitePathEntry[];
@@ -126,8 +128,8 @@ function collectTestCase(
     return {
         cases: [
             {
-                body: testCase.body,
                 definitionLocations: testCase.definitionLocations,
+                execution: testCase.execution,
                 id: createCaseId(context.file, suiteTitles(context.suitePath), testCase.title, null),
                 metadata: resolvedMetadata,
                 suitePath: context.suitePath
@@ -160,8 +162,8 @@ function collectTable(
             const resolvedMetadata = resolveMetadata(tableMetadata, tableCase.metadata);
 
             return {
-                body: tableCase.body,
                 definitionLocations: table.definitionLocations,
+                execution: { body: tableCase.body, kind: 'body' },
                 id: createCaseId(
                     context.file,
                     suiteTitles(tablePath),

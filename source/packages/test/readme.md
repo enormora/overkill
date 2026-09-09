@@ -9,6 +9,7 @@ execution to `@overkill-dev/run/command-line`.
 Current root runtime exports:
 
 - `test`
+- `skippedTest`
 - `suite`
 - `table`
 - `defineHarness`
@@ -43,7 +44,7 @@ Standard subpaths:
 Implemented root authoring forms:
 
 ```ts
-import { doubleUsage, suite, table, test, testDouble } from '@overkill-dev/test';
+import { doubleUsage, skippedTest, suite, table, test, testDouble } from '@overkill-dev/test';
 
 export const testNode = suite('users', [
     test('loads user', (scope) => {
@@ -63,7 +64,8 @@ export const testNode = suite('users', [
             scope.assert.true(canLoadUser(scope.parameters));
             return scope.assert.collect();
         }
-    })
+    }),
+    skippedTest('loads platform user', 'requires linux')
 ]);
 ```
 
@@ -78,6 +80,10 @@ facade.
 
 Use the object form when attaching node metadata. Metadata on the exported
 top-level `testNode` applies to the whole module's test tree.
+
+`skippedTest(title, reason)` creates a visible leaf test with a mandatory
+reason. It is discovered, listed, reported as skipped, and never runs user
+code. Object form is `skippedTest({ title, metadata, reason })`.
 
 ```ts
 export const testNode = suite({
@@ -174,6 +180,7 @@ export const {
     defineMacro,
     defineParameterizedTestBody,
     runIfMain,
+    skippedTest,
     suite,
     table,
     test

@@ -1,4 +1,5 @@
 import type { CaptureMode, Metadata, TestFamily } from '../engine/engine.entry-point.ts';
+import { isAuthoringRecord, readAuthoringRecord } from './authoring-input.ts';
 
 export type AuthoringMetadata = {
     readonly baselines?: never;
@@ -67,18 +68,6 @@ const captureModeValues: readonly CaptureMode[] = [ 'buffered', 'live' ] as cons
 const knownTestFamilies: ReadonlySet<unknown> = new Set(testFamilyValues);
 const knownCaptureModes: ReadonlySet<unknown> = new Set(captureModeValues);
 
-function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function readRecord(value: unknown, message: string): Readonly<Record<string, unknown>> {
-    if (!isRecord(value)) {
-        throw new TypeError(message);
-    }
-
-    return value;
-}
-
 function isTestFamily(value: unknown): value is TestFamily {
     return typeof value === 'string' && knownTestFamilies.has(value);
 }
@@ -114,7 +103,7 @@ function readStringArray(value: unknown, field: string): readonly string[] {
 }
 
 function readExtra(value: unknown): Readonly<Record<string, unknown>> {
-    if (!isRecord(value)) {
+    if (!isAuthoringRecord(value)) {
         throw new TypeError('Metadata field "extra" must be an object.');
     }
 
@@ -142,7 +131,7 @@ function readCaptureMetadata(value: Readonly<Record<string, unknown>>): Pick<Met
 }
 
 export function readAuthoringMetadata(value: unknown): Metadata {
-    const metadata = readRecord(value, 'Test node metadata must be an object.');
+    const metadata = readAuthoringRecord(value, 'Test node metadata must be an object.');
 
     return {
         ...readCaptureMetadata(metadata),
@@ -214,7 +203,7 @@ export function createAuthoringMetadata(
 }
 
 export function readTestFacadeDefinition(definition: TestFacadeDefinition): ReadTestFacadeDefinitionResult {
-    const facadeDefinition = readRecord(definition, createTestFacadeArgumentsError);
+    const facadeDefinition = readAuthoringRecord(definition, createTestFacadeArgumentsError);
     const testFamily = readTestFamily(facadeDefinition.testFamily);
     const metadata = Object.hasOwn(facadeDefinition, 'metadata')
         ? readAuthoringMetadata(facadeDefinition.metadata)
