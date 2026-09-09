@@ -2,7 +2,9 @@ import { describe, expect, test } from 'tstyche';
 import type {
     DefinedOutputRenderer,
     DefinedReporter,
-    RealTimeReporter
+    RealTimeReporter,
+    TestBody,
+    TestScope
 } from '../engine/engine.entry-point.ts';
 import type {
     CompositeAssertionDefinition,
@@ -29,11 +31,17 @@ import type {
     LineReporterOptions
 } from './reporters.entry-point.ts';
 import {
+    composeRuntimeContext,
     defineResource,
     defineRuntime,
+    withRuntime,
+    type ResourceContext,
     type ResourceHandle,
-    type RuntimeContext
+    type RuntimeContext,
+    type RuntimeTestBody,
+    type RuntimeTestScope
 } from './resources.entry-point.ts';
+import type { ParameterizedTestScope, TableTestBody } from './test.entry-point.ts';
 
 type UnavailableStandardSubpathApi = (...parameters: readonly unknown[]) => never;
 type LineReporterFactory = (options?: LineReporterOptions) => DefinedReporter<RealTimeReporter>;
@@ -57,6 +65,15 @@ type ProjectProfileFileSets = {
 type Database = {
     readonly url: string;
 };
+type DatabaseContext = {
+    readonly database: Database;
+};
+type ExpectedComposedRuntimeScope = TestScope & {
+    readonly runtime: DatabaseContext;
+};
+type TableRow = {
+    readonly value: number;
+};
 
 const database = defineResource({
     name: 'database',
@@ -73,6 +90,7 @@ const runtime = defineRuntime({
     resources: { database },
     requirements: []
 });
+declare const testScope: TestScope;
 
 describe('@overkill-dev/test standard subpaths', function () {
     test('exposes config authoring types', function () {
@@ -106,10 +124,46 @@ describe('@overkill-dev/test standard subpaths', function () {
 
     test('exposes resource descriptor types through the standard distribution', function () {
         expect<ResourceHandle<typeof database>>().type.toBe<Database>();
+        expect<ResourceContext<typeof runtime.resources>>().type.toBe<DatabaseContext>();
         expect<RuntimeContext<typeof runtime>>().type.toBe<{
             readonly database: Database;
         }>();
+        expect(composeRuntimeContext(testScope, runtime, {
+            database: { url: 'postgres://localhost' }
+        }))
+            .type
+            .toBe<ExpectedComposedRuntimeScope>();
         expect(runtime.name).type.toBe<'api'>();
+    });
+
+    test('exposes runtime test context wrappers through the resources subpath', function () {
+        const runtimeBody = withRuntime(runtime, {
+            database: { url: 'postgres://localhost' }
+        }, function runWithDatabase(scope) {
+            expect(scope).type.toBe<RuntimeTestScope<typeof runtime>>();
+            expect(scope.runtime.database.url).type.toBe<string>();
+
+            return scope.assert.collect();
+        });
+        const tableRuntimeBody = withRuntime<typeof runtime, ParameterizedTestScope<TableRow>>(runtime, {
+            database: { url: 'postgres://localhost' }
+        }, function runTableWithDatabase(scope) {
+            expect(scope.parameters.value).type.toBe<number>();
+            expect(scope.runtime.database.url).type.toBe<string>();
+
+            return scope.assert.collect();
+        });
+
+        expect(runtimeBody).type.toBe<TestBody>();
+        expect(tableRuntimeBody).type.toBe<TableTestBody<TableRow>>();
+        expect<RuntimeTestBody<typeof runtime>>().type.toBe<
+            (scope: RuntimeTestScope<typeof runtime>) => ReturnType<TestBody>
+        >();
+        expect<typeof withRuntime>().type.not.toBeCallableWith(runtime, {
+            database: { port: 5432 }
+        }, function runInvalidRuntimeScope(scope: RuntimeTestScope<typeof runtime>) {
+            return scope.assert.collect();
+        });
     });
 
     test('exposes only unavailable sentinel types for reserved subpaths', function () {

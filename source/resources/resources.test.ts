@@ -1,8 +1,12 @@
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
-import { defineResource, defineRuntime } from './resources.ts';
+import { composeRuntimeContext, defineResource, defineRuntime } from './resources.ts';
 
 type Database = {
     readonly query: (sql: string) => readonly string[];
+};
+
+type Server = {
+    readonly results: readonly string[];
 };
 
 const disposalController = new AbortController();
@@ -45,7 +49,23 @@ const databaseResource = defineResource({
     }
 });
 
+const serverResource = defineResource({
+    name: 'server',
+    scope: 'per-case',
+    requirements: [],
+    dependencies: { database: databaseResource },
+    acquire(context): Server {
+        return {
+            results: context.resources.database.query('server started')
+        };
+    },
+    dispose(server, context) {
+        context.resources.database.query(server.results.join(','));
+    }
+});
+
 function assertDatabaseResourceDescriptor(scope: TestScope): void {
+    scope.assert.deepEqual(databaseResource.dependencies, {});
     scope.assert.equal(databaseResource.name, 'database');
     scope.assert.equal(databaseResource.scope, 'per-case');
     scope.assert.deepEqual(databaseResource.requirements, [
@@ -57,19 +77,37 @@ function assertDatabaseResourceDescriptor(scope: TestScope): void {
 }
 
 async function assertDatabaseResourceCallbacks(scope: TestScope): Promise<void> {
-    const database = await databaseResource.acquire({ signal: disposalSignal });
+    const database = await databaseResource.acquire({ resources: {}, signal: disposalSignal });
 
     scope.assert.deepEqual(database.query('select 1'), [ 'select 1' ]);
     if (databaseResource.dispose === null) {
         throw new Error('Expected resource disposal.');
     }
 
-    await databaseResource.dispose(database, { signal: disposalSignal });
+    await databaseResource.dispose(database, { resources: {}, signal: disposalSignal });
+}
+
+async function assertServerResourceCallbacks(scope: TestScope): Promise<void> {
+    const database = createDatabase();
+    const server = await serverResource.acquire({
+        resources: { database },
+        signal: disposalSignal
+    });
+
+    scope.assert.deepEqual(server.results, [ 'server started' ]);
+    if (serverResource.dispose === null) {
+        throw new Error('Expected resource disposal.');
+    }
+
+    await serverResource.dispose(server, {
+        resources: { database },
+        signal: disposalSignal
+    });
 }
 
 function assertRuntimeDescriptor(scope: TestScope): void {
     const dimensions = { browser: 'chromium', node: '26' } as const;
-    const resources = { database: databaseResource } as const;
+    const resources = { database: databaseResource, server: serverResource } as const;
     const runtime = defineRuntime({
         name: 'node-browser',
         dimensions,
@@ -77,7 +115,7 @@ function assertRuntimeDescriptor(scope: TestScope): void {
         requirements: [ { kind: 'single-worker' } ]
     });
 
-    scope.assert.deepEqual(Object.keys(runtime.resources), [ 'database' ]);
+    scope.assert.deepEqual(Object.keys(runtime.resources), [ 'database', 'server' ]);
     scope.assert.equal(runtime.resources, resources);
     scope.assert.equal(runtime.dimensions, dimensions);
     scope.assert.deepEqual(runtime.id, {
@@ -87,6 +125,23 @@ function assertRuntimeDescriptor(scope: TestScope): void {
     scope.assert.deepEqual(runtime.requirements, [ { kind: 'single-worker' } ]);
     scope.assert.deepEqual([ Object.isFrozen(runtime), Object.isFrozen(runtime.id) ], [ true, true ]);
     assertBrandedDescriptor(scope, runtime);
+}
+
+function assertRuntimeContextComposition(scope: TestScope): void {
+    const runtime = defineRuntime({
+        name: 'api',
+        dimensions: {},
+        resources: { database: databaseResource, server: serverResource },
+        requirements: []
+    });
+    const database = createDatabase();
+    const server = { results: [ 'ready' ] };
+    const context = composeRuntimeContext({ base: 'scope' }, runtime, { database, server });
+
+    scope.assert.equal(context.base, 'scope');
+    scope.assert.equal(context.runtime.database, database);
+    scope.assert.equal(context.runtime.server, server);
+    scope.assert.equal(Object.isFrozen(context), true);
 }
 
 export const testNode = createSuite({
@@ -101,6 +156,7 @@ export const testNode = createSuite({
             async body(scope: TestScope) {
                 assertDatabaseResourceDescriptor(scope);
                 await assertDatabaseResourceCallbacks(scope);
+                await assertServerResourceCallbacks(scope);
 
                 return scope.assert.collect();
             }
@@ -111,6 +167,7 @@ export const testNode = createSuite({
             metadata: {},
             body(scope: TestScope) {
                 assertRuntimeDescriptor(scope);
+                assertRuntimeContextComposition(scope);
 
                 return scope.assert.collect();
             }

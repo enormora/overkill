@@ -280,13 +280,21 @@ Related first-party ergonomics above the doubles layer may include:
 - explicit artifact attachment from resources or runtimes
 - deterministic service and browser runtime composition
 
-The first implementation slice is intentionally descriptor-only:
-`defineResource(...)` and `defineRuntime(...)` create typed inert values.
-Resources declare `scope`, `requirements`, `acquire`, and `dispose`, but
-runners do not execute those callbacks until lifecycle orchestration lands.
-Runtime context types are derived from the runtime's `resources` object keys,
-while resource `name` stays the stable identity for future scheduling,
-reporting, and artifact work.
+The first implementation slices are intentionally descriptor and composition
+only: `defineResource(...)` and `defineRuntime(...)` create typed inert
+values. Resources declare `scope`, `requirements`, dependency descriptors,
+`acquire`, and `dispose`, but runners do not execute those callbacks until
+lifecycle orchestration lands. Resource callbacks receive declared dependency
+handles through `context.resources`. Runtime context types are derived from
+the runtime's `resources` object keys, while resource `name` stays the stable
+identity for future scheduling, reporting, and artifact work.
+
+Before lifecycle orchestration exists, runtime handles are composed into test
+scope explicitly. `@overkill-dev/resources` owns the package-neutral context
+composition shape, and `@overkill-dev/test/resources` exposes `withRuntime(...)`
+for ordinary `test(...)` bodies. That wrapper adds `scope.runtime` only; it
+does not contribute runtime matrices, execution requirements, acquisition
+ordering, disposal, artifacts, or replay metadata.
 
 `@overkill-dev/resources` should be generic enough to serve multiple higher-level families:
 

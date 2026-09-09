@@ -99,8 +99,23 @@ function assertResourcesSubpath(scope: TestScope): void {
         resources: { database },
         requirements: [ { kind: 'startup-budget-milliseconds', minimumMilliseconds: 1000 } ]
     });
+    const body = resourcesSubpath.withRuntime(runtime, {
+        database: { url: 'postgres://localhost' }
+    }, function runWithDatabase(runtimeScope) {
+        runtimeScope.assert.equal(runtimeScope.runtime.database.url, 'postgres://localhost');
 
-    scope.assert.deepEqual(sortedKeys(resourcesSubpath), [ 'defineResource', 'defineRuntime' ]);
+        return runtimeScope.assert.collect();
+    });
+
+    const runtimeAssertions = body(scope);
+
+    scope.assert.equal(Array.isArray(runtimeAssertions), true);
+    scope.assert.deepEqual(sortedKeys(resourcesSubpath), [
+        'composeRuntimeContext',
+        'defineResource',
+        'defineRuntime',
+        'withRuntime'
+    ]);
     scope.assert.equal(database.name, 'database');
     scope.assert.equal(runtime.id.name, 'api');
     scope.assert.deepEqual(Object.keys(runtime.resources), [ 'database' ]);
