@@ -122,15 +122,36 @@ export type RuntimeContextComposition<BaseContext, Runtime extends RuntimeDefini
     readonly runtime: RuntimeContext<Runtime>;
 };
 
-export function defineResource<const Name extends string, Handle>(
+export type TemporaryDirectoryHandle = {
+    readonly path: string;
+};
+
+export type ResourcesModuleDependencies = {
+    readonly createTemporaryDirectory: (pathPrefix: string) => Awaitable<string>;
+    readonly removeDirectory: (path: string) => Awaitable<void>;
+    readonly temporaryDirectoryPathPrefix: string;
+};
+
+type CreateTemporaryDirectoryResource = <const Name extends string>(
+    name: Name
+) => ResourceDefinition<Name, TemporaryDirectoryHandle, EmptyResourceDependencies>;
+
+export type ResourcesModule = {
+    readonly composeRuntimeContext: typeof composeRuntimeContext;
+    readonly createTemporaryDirectoryResource: CreateTemporaryDirectoryResource;
+    readonly defineResource: typeof defineResource;
+    readonly defineRuntime: typeof defineRuntime;
+};
+
+function defineResource<const Name extends string, Handle>(
     definition: ResourceDefinitionInput<Name, Handle>
 ): ResourceDefinition<Name, Handle, EmptyResourceDependencies>;
-export function defineResource<const Name extends string, Handle, const Dependencies extends ResourceDependencies>(
+function defineResource<const Name extends string, Handle, const Dependencies extends ResourceDependencies>(
     definition: ResourceDefinitionInput<Name, Handle, Dependencies> & {
         readonly dependencies: Dependencies;
     }
 ): ResourceDefinition<Name, Handle, Dependencies>;
-export function defineResource<const Name extends string, Handle, const Dependencies extends ResourceDependencies>(
+function defineResource<const Name extends string, Handle, const Dependencies extends ResourceDependencies>(
     definition: ResourceDefinitionInput<Name, Handle, Dependencies>
 ): ResourceDefinition<Name, Handle, Dependencies | EmptyResourceDependencies> {
     if (definition.dependencies === undefined) {
@@ -148,7 +169,28 @@ export function defineResource<const Name extends string, Handle, const Dependen
     });
 }
 
-export function defineRuntime<
+function createTemporaryDirectoryResource<const Name extends string>(
+    dependencies: ResourcesModuleDependencies,
+    name: Name
+): ResourceDefinition<Name, TemporaryDirectoryHandle, EmptyResourceDependencies> {
+    return defineResource({
+        name,
+        scope: 'per-case',
+        requirements: [],
+        async acquire(context) {
+            context.signal.throwIfAborted();
+
+            return Object.freeze({
+                path: await dependencies.createTemporaryDirectory(dependencies.temporaryDirectoryPathPrefix)
+            });
+        },
+        async dispose(handle) {
+            await dependencies.removeDirectory(handle.path);
+        }
+    });
+}
+
+function defineRuntime<
     const Name extends string,
     const Dimensions extends RuntimeDimensions,
     const Resources extends RuntimeResourceMap
@@ -167,7 +209,7 @@ export function defineRuntime<
     });
 }
 
-export function composeRuntimeContext<
+function composeRuntimeContext<
     BaseContext extends Readonly<Record<string, unknown>>,
     Runtime extends RuntimeDefinition
 >(
@@ -178,5 +220,16 @@ export function composeRuntimeContext<
     return Object.freeze({
         ...context,
         runtime: resourceHandles
+    });
+}
+
+export function createResourcesModule(dependencies: ResourcesModuleDependencies): ResourcesModule {
+    return Object.freeze({
+        composeRuntimeContext,
+        createTemporaryDirectoryResource(name) {
+            return createTemporaryDirectoryResource(dependencies, name);
+        },
+        defineResource,
+        defineRuntime
     });
 }

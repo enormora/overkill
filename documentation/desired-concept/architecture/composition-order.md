@@ -77,9 +77,10 @@ execution are an error.
 For each test in the plan, the runner sets up nested wrappers around
 the body. Outermost first:
 
-1. **Worker / process boundary.** Capability profile applied via
-   Node `--permission` flags. This is process-level: the boundary
-   exists for the worker's lifetime, not per test. See
+1. **Worker / process boundary.** Families with a capability model apply
+   their process-level boundary here. Microtests use Node `--permission`
+   flags when the selected execution mode can enforce them. Integration
+   profiles do not use the microtest capability model. See
    [Microtests And Capabilities § Capability Defaults](../authoring/microtests-and-capabilities.md#capability-defaults).
 2. **Retry loop** (integration profiles only). Wraps the entire
    per-attempt sequence below. Decides after each attempt whether

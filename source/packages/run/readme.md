@@ -122,8 +122,8 @@ entries exactly. Behavior comes from the selected profile config, not from the
 name. Profile names must be non-empty and contain only letters, numbers, dots,
 underscores, and hyphens. The exact lowercase name `benchmark` is reserved for
 benchmark commands. Every configured runner profile must declare
-`testFamily: 'microtest'`; the selected profile's test family is recorded in
-`RunFacts.execution.testFamily`.
+`testFamily: 'microtest'` or `testFamily: 'integration'`; the selected
+profile's test family is recorded in `RunFacts.execution.testFamily`.
 
 Configured microtest profiles may set `files.include` and `files.exclude`.
 `include` is required when `files` is present; `exclude` defaults to `[]`.
@@ -131,6 +131,12 @@ With no run paths, the selected profile's files policy discovers test modules.
 Explicit file paths bypass the files policy. Directory paths require a files
 policy, filter the profile-discovered file set, and cannot be mixed with file
 paths.
+
+Configured integration profiles require a `files` policy and currently run
+through `execution.processModel: 'supervised-process'` with `serial` or
+`concurrent` scheduling. Integration tests are not governed by
+`RunRequest.capabilityRestrictions`; that request field is part of the
+microtest runtime model only.
 
 Microtest profile execution is modeled with two independent fields:
 `execution.processModel` is `in-process` or `supervised-process`, and

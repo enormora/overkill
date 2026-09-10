@@ -16,6 +16,10 @@ const consolePolicyFixturePath = 'source/integration-tests/run/fixtures/console-
 const envPolicyFixturePath = 'source/integration-tests/run/fixtures/env-policy.test.ts';
 const fsWritePolicyFixturePath = 'source/integration-tests/run/fixtures/fs-write-policy.test.ts';
 const fsWritePolicyOutputPath = 'source/integration-tests/run/fixtures/fs-write-policy-output.txt';
+const integrationUnrestrictedRuntimeFixturePath =
+    'source/integration-tests/run/fixtures/integration-unrestricted-runtime.test.ts';
+const integrationUnrestrictedRuntimeOutputPath =
+    'source/integration-tests/run/fixtures/integration-unrestricted-runtime-output.txt';
 const ipcPolicyFixturePath = 'source/integration-tests/run/fixtures/ipc-policy.test.ts';
 const processExitPolicyFixturePath = 'source/integration-tests/run/fixtures/process-exit-policy.test.ts';
 const timerPolicyFixturePath = 'source/integration-tests/run/fixtures/timer-policy.test.ts';
@@ -59,6 +63,13 @@ function createRunRequest(paths: readonly string[]): RunRequest {
     };
 }
 
+function createIntegrationRunRequest(): RunRequest {
+    return {
+        ...createRunRequest([ integrationUnrestrictedRuntimeFixturePath ]),
+        profile: 'integration'
+    };
+}
+
 function createRunConfig(
     processModel: RunProcessModel,
     scheduling: RunScheduling,
@@ -93,6 +104,50 @@ function createRunConfig(
                     collectionMilliseconds: 5000,
                     hardMilliseconds: 1000,
                     softMilliseconds: 500
+                }
+            }
+        },
+        reporters: [ reporter ],
+        runtimeStateDir: '.overkill'
+    };
+}
+
+function createIntegrationRunConfig(reporter: DefinedReporter): RunConfig {
+    return {
+        loader: { sourceMaps: false, stripMode: 'strip-only' },
+        outputRenderer: defineOutputRenderer(function createOutputRenderer() {
+            return {
+                render() {
+                    return '';
+                }
+            };
+        }),
+        profiles: {
+            integration: {
+                execution: {
+                    processModel: 'supervised-process',
+                    scheduling: 'concurrent'
+                },
+                files: {
+                    exclude: [],
+                    include: [ integrationUnrestrictedRuntimeFixturePath ]
+                },
+                reporters: null,
+                resourceUsage: {
+                    budgets: {
+                        activeResourceCount: null,
+                        javaScriptEngineHeapBytes: null,
+                        residentSetBytes: null,
+                        residentSetGrowthBytesPerSecond: null
+                    },
+                    measure: false,
+                    samplingIntervalMilliseconds: 100
+                },
+                testFamily: 'integration',
+                timeouts: {
+                    collectionMilliseconds: 5000,
+                    hardMilliseconds: 7000,
+                    softMilliseconds: 5000
                 }
             }
         },
@@ -239,37 +294,61 @@ export const testNode = createSuite({
     title: 'source/integration-tests/run/runner-capability-policy.test.ts',
     annotations: {},
     controls: {},
-    children: policyFixtures.flatMap(function createPolicyFixtureTests(fixture) {
-        return policyProcessModels.map(function createPolicyFixtureProcessTest(model) {
-            return createTestCase({
-                definitionLocations: [ { kind: 'unknown' } ],
-                title: `${model.processModel} microtest capability restrictions fail ${fixture.name}`,
-                annotations: {},
-                controls: {},
-                async body(scope: TestScope) {
-                    const result = await orchestrator.run(createRunCommand(
-                        [ fixture.path ],
-                        createRunConfig(model.processModel, model.scheduling, memoryReporter)
-                    ));
-                    const [ testResult ] = result.perTest;
-                    const capabilities = runnerErrorCapabilities(result);
+    children: [
+        ...policyFixtures.flatMap(function createPolicyFixtureTests(fixture) {
+            return policyProcessModels.map(function createPolicyFixtureProcessTest(model) {
+                return createTestCase({
+                    definitionLocations: [ { kind: 'unknown' } ],
+                    title: `${model.processModel} microtest capability restrictions fail ${fixture.name}`,
+                    annotations: {},
+                    controls: {},
+                    async body(scope: TestScope) {
+                        const result = await orchestrator.run(createRunCommand(
+                            [ fixture.path ],
+                            createRunConfig(model.processModel, model.scheduling, memoryReporter)
+                        ));
+                        const [ testResult ] = result.perTest;
+                        const capabilities = runnerErrorCapabilities(result);
 
-                    await cleanupPolicyFixture(fixture.path);
-                    scope.assert.equal(testResult?.verdict, 'runtime-policy');
-                    scope.assert.equal(result.summary.runtimePolicy, 1);
-                    scope.assert.equal(capabilities.includes(fixture.expectedCapability[model.processModel]), true);
-                    assertConsolidatedProcessEnvironmentErrors(
-                        scope,
-                        fixture,
-                        capabilities,
-                        model.processModel
-                    );
+                        await cleanupPolicyFixture(fixture.path);
+                        scope.assert.equal(testResult?.verdict, 'runtime-policy');
+                        scope.assert.equal(result.summary.runtimePolicy, 1);
+                        scope.assert.equal(capabilities.includes(fixture.expectedCapability[model.processModel]), true);
+                        assertConsolidatedProcessEnvironmentErrors(
+                            scope,
+                            fixture,
+                            capabilities,
+                            model.processModel
+                        );
 
-                    return scope.assert.collect();
-                }
+                        return scope.assert.collect();
+                    }
+                });
             });
-        });
-    })
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'integration profiles ignore microtest capability restrictions',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                const result = await orchestrator.run({
+                    config: createIntegrationRunConfig(memoryReporter),
+                    cwd: process.cwd(),
+                    engine: { kind: 'default' },
+                    request: createIntegrationRunRequest()
+                });
+                const [ testResult ] = result.perTest;
+
+                await rm(integrationUnrestrictedRuntimeOutputPath, { force: true });
+                scope.assert.equal(testResult?.verdict, 'pass');
+                scope.assert.equal(result.summary.runtimePolicy, 0);
+                scope.assert.equal(result.runnerErrors.length, 0);
+
+                return scope.assert.collect();
+            }
+        })
+    ]
 });
 
 await runIfMain(import.meta, testNode, [ createLineReporter() ]);

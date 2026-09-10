@@ -344,6 +344,12 @@ binding-tracing utility rather than matching one import string literally.
 Overkill should clearly position first-party higher-layer support around
 resource factories and runtime composition, not around hooks.
 
+Resources and runtimes are for higher test families, not microtests.
+Microtests keep their strict capability model and do not attach resource or
+runtime descriptors. Integration, browser-oriented, benchmark, property, and
+other higher families may use resources and runtimes when their family model
+allows them.
+
 The key authoring shape is:
 
 - define a resource/runtime once

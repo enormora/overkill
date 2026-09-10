@@ -7,6 +7,7 @@ import {
 
 export {
     composeRuntimeContext,
+    createTemporaryDirectoryResource,
     defineResource,
     defineRuntime
 } from '../resources/resources.entry-point.ts';
@@ -25,7 +26,8 @@ export type {
     RuntimeDefinition,
     RuntimeDefinitionInput,
     RuntimeDimensions,
-    RuntimeId
+    RuntimeId,
+    TemporaryDirectoryHandle
 } from '../resources/resources.entry-point.ts';
 
 export type RuntimeTestScope<

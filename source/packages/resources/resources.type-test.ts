@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'tstyche';
 import {
     composeRuntimeContext,
+    createTemporaryDirectoryResource,
     defineResource,
     defineRuntime,
     type ExecutionRequirement,
@@ -12,7 +13,8 @@ import {
     type ResourceScope,
     type RuntimeContext,
     type RuntimeDimensions,
-    type RuntimeId
+    type RuntimeId,
+    type TemporaryDirectoryHandle
 } from './resources.entry-point.ts';
 
 type ExpectedResourceDefinitionInput = {
@@ -89,6 +91,7 @@ const aliasedRuntime = defineRuntime({
     resources: { store: database, server },
     requirements: []
 });
+const temporaryDirectory = createTemporaryDirectoryResource('scratch');
 
 const databaseHandle = {
     async query(sql: string) {
@@ -119,6 +122,12 @@ describe('@overkill-dev/resources', function () {
         }>();
         expect(aliasedRuntime.name).type.toBe<'aliased-api'>();
         expect(runtime.name).type.toBe<'api'>();
+    });
+
+    test('infers built-in temporary directory resources', function () {
+        expect<ResourceHandle<typeof temporaryDirectory>>().type.toBe<TemporaryDirectoryHandle>();
+        expect(temporaryDirectory.name).type.toBe<'scratch'>();
+        expect<TemporaryDirectoryHandle>().type.toBe<{ readonly path: string; }>();
     });
 
     test('composes runtime handles into a typed context', function () {

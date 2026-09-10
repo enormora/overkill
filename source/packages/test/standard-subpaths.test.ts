@@ -106,12 +106,12 @@ function assertResourcesSubpath(scope: TestScope): void {
 
         return runtimeScope.assert.collect();
     });
+    const temporaryDirectory = resourcesSubpath.createTemporaryDirectoryResource('scratch');
 
-    const runtimeAssertions = body(scope);
-
-    scope.assert.equal(Array.isArray(runtimeAssertions), true);
+    scope.assert.equal(Array.isArray(body(scope)), true);
     scope.assert.deepEqual(sortedKeys(resourcesSubpath), [
         'composeRuntimeContext',
+        'createTemporaryDirectoryResource',
         'defineResource',
         'defineRuntime',
         'withRuntime'
@@ -119,6 +119,7 @@ function assertResourcesSubpath(scope: TestScope): void {
     scope.assert.equal(database.name, 'database');
     scope.assert.equal(runtime.id.name, 'api');
     scope.assert.deepEqual(Object.keys(runtime.resources), [ 'database' ]);
+    scope.assert.equal(temporaryDirectory.name, 'scratch');
 }
 
 function assertReservedSubpath(scope: TestScope, subpath: ReservedSubpathModule): void {
