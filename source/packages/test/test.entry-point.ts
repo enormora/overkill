@@ -29,6 +29,19 @@ export type {
     HarnessPartFactory,
     HarnessParts
 } from './harness-authoring.ts';
+export {
+    createTranscript,
+    recordAsyncSink,
+    recordSink,
+    transcriptUsage
+} from './interaction-transcript.ts';
+export type {
+    AsyncDisposableTranscript,
+    DisposableTranscript,
+    Transcript,
+    TranscriptEntry,
+    TranscriptUsageAssertions
+} from './interaction-transcript.ts';
 
 export {
     doubleUsage,

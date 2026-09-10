@@ -15,6 +15,10 @@ Current root runtime exports:
 - `defineHarness`
 - `defineMacro`
 - `defineParameterizedTestBody`
+- `createTranscript`
+- `recordSink`
+- `recordAsyncSink`
+- `transcriptUsage`
 - `doubleUsage`
 - `rule`
 - `testDouble`
@@ -136,6 +140,49 @@ const renderUser = defineHarness(async (overrides: {
         loadUser,
         rendered: await render(<UserPage loadUser={loadUser} />)
     };
+});
+```
+
+`createTranscript` records ordered interaction entries as tuple values:
+
+```ts
+const transcript = createTranscript<readonly [kind: 'state', value: number]>();
+
+transcript.record('state', 1);
+
+scope.assert(transcriptUsage.exactly, transcript, [
+    [ 'state', 1 ]
+]);
+```
+
+`transcript.sink(kind)` creates a void test double that records each call as
+`[kind, ...args]`. The double call history and transcript entries reset
+independently.
+
+```ts
+const transcript = createTranscript<readonly [kind: 'warn', message: string]>();
+const warn = transcript.sink<(message: string) => void>('warn');
+
+warn('retrying');
+
+scope.assert(transcriptUsage.contains, transcript, [ 'warn', 'retrying' ]);
+scope.assert(doubleUsage.calledOnceWith, warn, [ 'retrying' ]);
+```
+
+`recordSink` and `recordAsyncSink` subscribe immediately and return disposable
+transcripts for callback-based sources:
+
+```ts
+const states = recordSink<readonly [kind: 'state', value: number]>((record) => {
+    return store.subscribe((value) => {
+        record('state', value);
+    });
+});
+
+const events = recordAsyncSink<readonly [kind: 'event', value: Event]>((record) => {
+    return queue.listen((value) => {
+        record('event', value);
+    });
 });
 ```
 

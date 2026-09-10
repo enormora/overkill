@@ -136,65 +136,76 @@ tuples and asserting the resulting transcript.
 Overkill should support generic transcript recording rather than
 framework-specific emitter helpers only.
 
-### Function Recording
+### Manual Recording
 
 ```ts
-const log = recordCalls(writeLine);
+const log = createTranscript<readonly [kind: 'line', value: string]>();
+
+log.record('line', 'hello');
+log.record('line', 'world');
+
+scope.assert(transcriptUsage.exactly, log, [
+    [ 'line', 'hello' ],
+    [ 'line', 'world' ]
+]);
+```
+
+### Test-Double Recording
+
+```ts
+const log = createTranscript<readonly [kind: 'line', value: string]>();
+const writeLine = log.sink<(value: string) => void>('line');
 
 writeLine('hello');
 writeLine('world');
 
-scope.assert.deepEqual(log.entries, [
-    [ 'hello' ],
-    [ 'world' ]
+scope.assert(transcriptUsage.exactly, log, [
+    [ 'line', 'hello' ],
+    [ 'line', 'world' ]
 ]);
+scope.assert(doubleUsage.calledOnceWith, writeLine, [ 'hello' ]);
 ```
+
+The sink returned by `transcript.sink(...)` is still a test double. Its call
+history and the transcript entries are separate observations and reset
+independently.
 
 ### Generic Subscription Recording
 
 ```ts
-const states = recordSink((record) => {
+const states = recordSink<readonly [kind: 'state', value: State]>((record) => {
     return store.subscribe((state) => {
         record('state', state);
     });
 });
 ```
 
-### Node-Style Event Emitter
+`recordAsyncSink(...)` is the same shape for subscriptions whose cleanup is
+asynchronous. Sync and async cleanup are intentionally separate so a test does
+not accidentally skip a pending teardown.
+
+### Event Sources
 
 ```ts
-const events = recordEvents(emitter, {
-    subscribe(record) {
-        const onStart = () => record('start');
-        const onDone = (payload) => record('done', payload);
+const events = recordSink<readonly ['start'] | readonly ['done', Payload]>((record) => {
+    const onStart = () => record('start');
+    const onDone = (payload) => record('done', payload);
 
-        emitter.on('start', onStart);
-        emitter.on('done', onDone);
+    emitter.on('start', onStart);
+    emitter.on('done', onDone);
 
-        return () => {
-            emitter.off('start', onStart);
-            emitter.off('done', onDone);
-        };
-    }
-});
-```
-
-### DOM EventTarget
-
-```ts
-const events = recordEvents(button, {
-    subscribe(record) {
-        const onClick = (event) => record(event.type);
-        button.addEventListener('click', onClick);
-        return () => button.removeEventListener('click', onClick);
-    }
+    return () => {
+        emitter.off('start', onStart);
+        emitter.off('done', onDone);
+    };
 });
 ```
 
 The concept should be:
 
 - one transcript model
-- multiple adapters
+- typed tuple entries
+- manual recording, test-double recording, and generic subscription adapters
 - no assumption that every source is a Node `EventEmitter`
 
 ## Reusable Multi-Case Macros

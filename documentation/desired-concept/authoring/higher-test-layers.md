@@ -409,7 +409,8 @@ The transcript concept should be broad enough for higher layers.
 
 The first-party abstraction should be able to support:
 
-- direct call recording
+- direct transcript recording
+- test-double sink recording
 - callback/subscription recording
 - browser request recording
 - custom protocol event recording

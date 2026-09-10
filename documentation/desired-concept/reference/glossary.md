@@ -224,8 +224,8 @@ Source: [Test Ergonomics](../authoring/test-ergonomics.md).
 
 ## Interaction Transcript
 
-A recorded ordered log of interactions such as function calls, emitted
-events, subscription callbacks, or state notifications.
+A recorded ordered log of typed tuple entries such as test-double calls,
+subscription callbacks, emitted events, or state notifications.
 
 Source: [Test Ergonomics](../authoring/test-ergonomics.md).
 
