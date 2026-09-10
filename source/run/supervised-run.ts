@@ -5,9 +5,9 @@ import type {
 } from '../packages/engine/engine.entry-point.ts';
 import type {
     CollectedRunPlan,
-    ResolvedRun,
-    RunOrchestratorDependencies
+    ResolvedRun
 } from './run-types.ts';
+import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type {
     SupervisedChildMessage,
     SupervisedCollectCommand,
@@ -15,7 +15,6 @@ import type {
 } from './supervised-protocol.ts';
 import {
     observeSupervisedChildOutput,
-    startSupervisedChild,
     type SupervisedChildProcess
 } from './supervised-child-process.ts';
 import { RunCollectionError } from './run-errors.ts';
@@ -43,6 +42,9 @@ import {
     type StoredRunValue,
     type SupervisedRunState
 } from './supervised-run-state.ts';
+
+export type CollectSupervisedRunCommand = SupervisedCollectCommand;
+export type ExecuteSupervisedRunCommand = SupervisedRunCommand;
 
 type SupervisedCollectionResult = {
     readonly collectedPlan: CollectedRunPlan;
@@ -125,7 +127,7 @@ async function observeCollection(
         runtime.child.on('message', function receiveMessage(message: SupervisedChildMessage) {
             handleCollectionMessage(message, runtime);
         });
-        runtime.child.on('error', function recordChildError(error) {
+        runtime.child.on('error', function recordChildError(error: Error) {
             runtime.terminalFailure.write(true);
             runtime.state.recordRunnerError({
                 attributedTo: null,
@@ -146,10 +148,11 @@ async function createCollectionRuntime(
     dependencies: RunOrchestratorDependencies
 ): Promise<SupervisedCollectionRuntime<SupervisedCollectionResult | null>> {
     return {
-        child: await startSupervisedChild({
+        child: await dependencies.startSupervisedChild({
             capabilityRestrictions: command.capabilityRestrictions,
-            cwd: command.cwd
-        }, dependencies),
+            cwd: command.cwd,
+            environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment()
+        }),
         command,
         collected: createStoredRunValue<SupervisedCollectionResult | null>(null),
         dependencies,
@@ -201,10 +204,11 @@ async function createLiveRun(
     command: SupervisedRunCommand,
     dependencies: RunOrchestratorDependencies
 ): Promise<SupervisedLiveRun> {
-    const child = await startSupervisedChild({
+    const child = await dependencies.startSupervisedChild({
         capabilityRestrictions: command.capabilityRestrictions,
-        cwd: command.cwd
-    }, dependencies);
+        cwd: command.cwd,
+        environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment()
+    });
     const collectedSignal = createSignal();
     const state = createSupervisedRunState();
     const terminalFailure = createStoredRunValue(false);
@@ -286,7 +290,7 @@ function observeLiveRun(command: SupervisedRunCommand, liveRun: SupervisedLiveRu
     liveRun.child.on('message', function receiveMessage(message: SupervisedChildMessage) {
         handleLiveMessage(message, command, liveRun);
     });
-    liveRun.child.on('error', function recordChildError(error) {
+    liveRun.child.on('error', function recordChildError(error: Error) {
         liveRun.terminalFailure.write(true);
         liveRun.state.recordRunnerError({
             attributedTo: null,
@@ -412,10 +416,11 @@ async function createRuntime(
 ): Promise<SupervisedRunRuntime> {
     const collectedPlan = supervisedCollectedPlan(resolvedRun);
     const runtimeWithoutTimeout = {
-        child: await startSupervisedChild({
+        child: await dependencies.startSupervisedChild({
             capabilityRestrictions: effectiveSupervisedCapabilityRestrictions(resolvedRun),
-            cwd: resolvedRun.cwd
-        }, dependencies),
+            cwd: resolvedRun.cwd,
+            environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment()
+        }),
         collectedPlan: createStoredRunValue<CollectedRunPlan | null>(collectedPlan),
         completedResult: createStoredRunValue<RunResult | null>(null),
         dependencies,

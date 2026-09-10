@@ -39,12 +39,10 @@ import {
 import {
     collectSupervisedRun,
     executeSupervisedRun,
-    runSupervisedCommand
+    runSupervisedCommand,
+    type CollectSupervisedRunCommand,
+    type ExecuteSupervisedRunCommand
 } from './supervised-run.ts';
-import type {
-    SupervisedCollectCommand,
-    SupervisedRunCommand
-} from './supervised-protocol.ts';
 import type {
     CollectedRunPlan,
     ResolvedRun,
@@ -52,14 +50,16 @@ import type {
     RunConfig,
     RunMicrotestExecution,
     RunOrchestrator,
-    RunOrchestratorDependencies,
     RunProfileConfig,
     RunRequest,
     RunResourceUsagePolicy
 } from './run-types.ts';
+import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
 type RunResourceUsageTracker = ReturnType<RunOrchestratorDependencies['createResourceUsageTracker']>;
+type SupervisedCollectCommand = CollectSupervisedRunCommand;
+type SupervisedRunCommand = ExecuteSupervisedRunCommand;
 
 type SupervisedCommandBase = {
     readonly capabilityRestrictions: SupervisedRunCommand['capabilityRestrictions'];
@@ -341,7 +341,7 @@ async function createLocalRunOrEmptySelectionResult(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies
 ): Promise<ResolvedRun | RunResult> {
-    const input = await readResolvedRunInput(command);
+    const input = await readResolvedRunInput(command, dependencies);
 
     if (input.profile.execution.processModel !== 'in-process') {
         throw new Error('Expected in-process profile.');
@@ -381,7 +381,7 @@ async function createResolvedRun(
     dependencies: RunOrchestratorDependencies
 ): Promise<ResolvedRun> {
     const seededCommand = commandWithResolvedSeed(command, dependencies);
-    const input = await readResolvedRunInput(seededCommand);
+    const input = await readResolvedRunInput(seededCommand, dependencies);
 
     if (input.profile.execution.processModel === 'supervised-process') {
         return await createSupervisedResolvedRun(seededCommand, dependencies, input);
@@ -472,7 +472,7 @@ async function createSupervisedRunResult(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies
 ): Promise<RunResult> {
-    const input = await readResolvedRunInput(command);
+    const input = await readResolvedRunInput(command, dependencies);
 
     if (input.profile.execution.processModel !== 'supervised-process') {
         throw new Error('Expected supervised-process profile.');

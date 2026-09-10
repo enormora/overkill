@@ -1,33 +1,25 @@
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { loadRunConfig } from './run-config.ts';
+import {
+    configFixtureCwd,
+    createSingleConfigModuleLoader
+} from '../test-support/run-config-module-loader.ts';
+import type { LoadedRunConfig } from './run-config.ts';
 import type { RunProfileFiles } from './run-types.ts';
 
-type LoadedConfig = Awaited<ReturnType<typeof loadRunConfig>>;
+type LoadedConfig = LoadedRunConfig;
 type ExpectedProfileFiles = {
     readonly exclude: readonly string[];
     readonly include: readonly [string, ...readonly string[]];
 };
 
-async function createTempFolder(): Promise<string> {
-    return await fs.mkdtemp(path.join(os.tmpdir(), 'overkill-run-config-profile-files-'));
-}
+async function loadConfigValue(config: unknown): Promise<LoadedConfig> {
+    const loadRunConfig = createSingleConfigModuleLoader('overkill.config.js', { config });
 
-async function writeConfig(folder: string, source: string): Promise<void> {
-    await fs.writeFile(path.join(folder, 'overkill.config.js'), source, 'utf8');
-}
-
-async function loadConfigFromSource(source: string): Promise<LoadedConfig> {
-    const cwd = await createTempFolder();
-    await writeConfig(cwd, source);
-
-    return await loadRunConfig({ configPath: null, cwd });
+    return await loadRunConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
 function assertProfileFiles(
@@ -51,7 +43,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const config = await loadConfigFromSource(`export const config = {
+                const config = await loadConfigValue({
                     profiles: {
                         microtest: {
                             testFamily: 'microtest',
@@ -67,7 +59,7 @@ export const testNode = createOverkillSuite({
                             }
                         }
                     }
-                };`);
+                });
                 const microtestProfile = config.profiles.microtest;
                 const safeProfile = config.profiles.safe;
 
@@ -92,7 +84,7 @@ export const testNode = createOverkillSuite({
             controls: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function loadInvalidConfig() {
-                    await loadConfigFromSource(`export const config = {
+                    await loadConfigValue({
                         profiles: {
                             microtest: {
                                 testFamily: 'microtest',
@@ -102,7 +94,7 @@ export const testNode = createOverkillSuite({
                                 }
                             }
                         }
-                    };`);
+                    });
                 }, {
                     message: /negated glob patterns are not supported/
                 });
@@ -116,7 +108,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const config = await loadConfigFromSource(`export const config = {
+                const config = await loadConfigValue({
                     profiles: {
                         microtest: {
                             testFamily: 'microtest',
@@ -133,7 +125,7 @@ export const testNode = createOverkillSuite({
                             }
                         }
                     }
-                };`);
+                });
                 const microtestProfile = config.profiles.microtest;
 
                 scope.require.defined(microtestProfile);
@@ -161,7 +153,7 @@ export const testNode = createOverkillSuite({
             controls: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function loadMixedFilePolicy() {
-                    await loadConfigFromSource(`export const config = {
+                    await loadConfigValue({
                         profiles: {
                             microtest: {
                                 testFamily: 'microtest',
@@ -173,20 +165,20 @@ export const testNode = createOverkillSuite({
                                 }
                             }
                         }
-                    };`);
+                    });
                 }, { message: /invalid value: expected never/ });
                 await scope.assert.rejects(async function loadEmptyFileSets() {
-                    await loadConfigFromSource(`export const config = {
+                    await loadConfigValue({
                         profiles: {
                             microtest: {
                                 testFamily: 'microtest',
                                 files: { sets: {} }
                             }
                         }
-                    };`);
+                    });
                 }, { message: 'Invalid profile files.sets: at least one file set is required.' });
                 await scope.assert.rejects(async function loadInvalidFileSetName() {
-                    await loadConfigFromSource(`export const config = {
+                    await loadConfigValue({
                         profiles: {
                             microtest: {
                                 testFamily: 'microtest',
@@ -197,10 +189,10 @@ export const testNode = createOverkillSuite({
                                 }
                             }
                         }
-                    };`);
+                    });
                 }, { message: /Invalid profile file set name "unit tests"/ });
                 await scope.assert.rejects(async function loadInvalidFileSetGlob() {
-                    await loadConfigFromSource(`export const config = {
+                    await loadConfigValue({
                         profiles: {
                             microtest: {
                                 testFamily: 'microtest',
@@ -214,7 +206,7 @@ export const testNode = createOverkillSuite({
                                 }
                             }
                         }
-                    };`);
+                    });
                 }, { message: /files\.sets\.unit\.exclude negated glob patterns are not supported/ });
 
                 return scope.assert.collect();

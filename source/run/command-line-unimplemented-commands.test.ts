@@ -1,71 +1,100 @@
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
 import { createFactory } from '@enormora/objectory';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
+    defineReporter,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { commandLineRunner } from './command-line-runner.ts';
+import { defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
+import { runResultFactory } from '../test-support/run-result-factory.ts';
+import {
+    createCommandLineRunner,
+    type CommandLineRunner
+} from './command-line-runner.ts';
 import type { CommandLineCommandContext } from './command-line-command.ts';
 import {
     createUnimplementedCommand,
     loadUnimplementedBaselineCommands,
     loadUnimplementedBenchmarkCommands
 } from './command-line-unimplemented-commands.ts';
-import type { RunRequest } from './run-types.ts';
+import type { RunOrchestrator } from './run-types.ts';
+
+const fixtureCwd = '/project';
 
 const commandLineCommandContextFactory = createFactory<CommandLineCommandContext>(
     function createCommandLineCommandContext() {
         return {
             arguments: [],
             configPath: null,
-            cwd: process.cwd()
+            cwd: fixtureCwd
         };
     }
 );
 
-const singletonRunRequest: RunRequest = {
-    baselineUpdateMode: 'none',
+const singletonRunRequest = defaultRunRequest({
     capabilityRestrictions: { mode: 'disabled' },
-    capture: 'buffered',
-    debug: {
-        mode: 'off',
-        selectors: []
-    },
-    execution: { mode: 'profile-default' },
-    measureResourceUsage: null,
     order: 'plan',
     paths: [ 'source/integration-tests/run/fixtures/passing.test.ts' ],
-    profile: 'microtest',
-    resourceBudgetOverrides: null,
-    resourceUsageSamplingIntervalMilliseconds: null,
-    seed: { value: 42n },
-    selection: { kind: 'all' },
-    shard: { index: 0, total: 1 },
-    verbose: false
-};
+    seed: { value: 42n }
+});
 
-async function writeSingletonRunConfig(): Promise<string> {
-    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'overkill-command-line-runner-'));
-    const configPath = path.join(directory, 'overkill.config.js');
+const memoryReporter = defineReporter(function createMemoryReporter() {
+    return {
+        dispose: null,
+        kind: 'real-time',
+        name: 'memory',
+        onEvent() {
+            return undefined;
+        },
+        onFinish: null,
+        sinks: [ { kind: 'memory' } ]
+    };
+});
 
-    await fs.writeFile(
-        configPath,
-        `export const config = {
-    profiles: {
-        microtest: {
-            testFamily: 'microtest',
-            timeouts: { collectionMilliseconds: 5000 }
+function createPassingOrchestrator(): RunOrchestrator {
+    return {
+        async resolve() {
+            throw new Error('List resolution is not used.');
+        },
+        async run() {
+            return runResultFactory.build({
+                perTest: [ { outcome: { kind: 'pass' } } ],
+                summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }
+            });
+        },
+        async runWithReporterDelivery() {
+            return {
+                deliveredRunnerErrors: [],
+                result: runResultFactory.build({
+                    perTest: [ { outcome: { kind: 'pass' } } ],
+                    summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }
+                })
+            };
         }
-    }
-};
-`,
-        'utf8'
-    );
+    };
+}
 
-    return configPath;
+function createTestRunner(): CommandLineRunner {
+    const config = defaultRunConfig();
+
+    return createCommandLineRunner({
+        async createDefaultReporter() {
+            return memoryReporter;
+        },
+        loadBaselineCommands: loadUnimplementedBaselineCommands,
+        loadBenchmarkCommands: loadUnimplementedBenchmarkCommands,
+        async loadRunConfig() {
+            return {
+                configPath: null,
+                loader: config.loader,
+                outputRenderer: config.outputRenderer,
+                profiles: config.profiles,
+                reporters: null,
+                runtimeStateDir: config.runtimeStateDir
+            };
+        },
+        orchestrator: createPassingOrchestrator()
+    });
 }
 
 export const testNode = createOverkillSuite({
@@ -121,7 +150,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const result = await commandLineRunner.bench.listBenchmarks(commandLineCommandContextFactory.build());
+                const result = await createTestRunner().bench.listBenchmarks(commandLineCommandContextFactory.build());
 
                 scope.assert.deepEqual(result.fallbackDiagnostics, [
                     'Overkill argument error: Command "bench list" is not implemented yet.'
@@ -136,9 +165,9 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const result = await commandLineRunner.runTests({
-                    configPath: await writeSingletonRunConfig(),
-                    cwd: process.cwd(),
+                const result = await createTestRunner().runTests({
+                    configPath: null,
+                    cwd: fixtureCwd,
                     runRequest: singletonRunRequest
                 });
 

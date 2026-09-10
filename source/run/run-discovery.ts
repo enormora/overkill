@@ -1,4 +1,3 @@
-import { glob, realpath, stat } from 'node:fs/promises';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
@@ -11,19 +10,13 @@ import {
     type RunProfileFileSet,
     type RunProfileFiles
 } from './run-types.ts';
-
-export type RunDiscoveryRequest = {
-    readonly cwd: string;
-    readonly paths: readonly string[];
-    readonly profileFiles: RunProfileFiles | null;
-};
-
-export type DiscoveredRunFile = {
-    readonly fileSet: string | null;
-    readonly file: string;
-    readonly href: string;
-    readonly path: string;
-};
+import type {
+    DiscoveredRunFile,
+    DiscoveredRunFiles,
+    RunDiscovery,
+    RunDiscoveryDependencies,
+    RunDiscoveryRequest
+} from './run-discovery-types.ts';
 
 type DiscoveredProfileFileSet = {
     readonly files: NonEmptyReadonlyArray<DiscoveredRunFile>;
@@ -32,11 +25,6 @@ type DiscoveredProfileFileSet = {
 
 type RunProfileFileSets = {
     readonly sets: Readonly<Record<string, RunProfileFileSet>>;
-};
-
-export type DiscoveredRunFiles = {
-    readonly files: NonEmptyReadonlyArray<DiscoveredRunFile>;
-    readonly projectRoot: string;
 };
 
 type DiscoveredRunDirectory = {
@@ -66,9 +54,9 @@ function assertInsideCwd(realCwd: string, realPath: string, requestedPath: strin
     }
 }
 
-async function readRealCwd(cwd: string): Promise<string> {
+async function readRealCwd(cwd: string, dependencies: RunDiscoveryDependencies): Promise<string> {
     try {
-        return await realpath(cwd);
+        return await dependencies.realpath(cwd);
     } catch {
         return invalidRequest(`Run cwd does not exist: ${cwd}`);
     }
@@ -130,13 +118,17 @@ function assertValidProfileFileSets(profileFiles: RunProfileFiles): void {
     }
 }
 
-async function readRealFilePath(cwd: string, requestedPath: string): Promise<string> {
+async function readRealFilePath(
+    cwd: string,
+    requestedPath: string,
+    dependencies: RunDiscoveryDependencies
+): Promise<string> {
     if (requestedPath.trim().length === 0) {
         invalidRequest('Run path must not be empty.');
     }
 
     try {
-        return await realpath(resolve(cwd, requestedPath));
+        return await dependencies.realpath(resolve(cwd, requestedPath));
     } catch {
         return invalidRequest(`Run path does not exist: ${requestedPath}`);
     }
@@ -177,10 +169,11 @@ function createDiscoveredRunFile(
 
 async function discoverRunPath(
     realCwd: string,
-    requestedPath: string
+    requestedPath: string,
+    dependencies: RunDiscoveryDependencies
 ): Promise<DiscoveredRunPath> {
-    const realPath = await readRealFilePath(realCwd, requestedPath);
-    const pathStat = await stat(realPath);
+    const realPath = await readRealFilePath(realCwd, requestedPath, dependencies);
+    const pathStat = await dependencies.stat(realPath);
 
     if (pathStat.isFile()) {
         return {
@@ -237,10 +230,11 @@ function uniqueRunFiles(files: readonly DiscoveredRunFile[]): readonly Discovere
 async function maybeDiscoverProfileFile(
     realCwd: string,
     requestedPath: string,
-    fileSet: string | null
+    fileSet: string | null,
+    dependencies: RunDiscoveryDependencies
 ): Promise<DiscoveredRunFile | null> {
-    const realPath = await realpath(resolve(realCwd, requestedPath));
-    const pathStat = await stat(realPath);
+    const realPath = await dependencies.realpath(resolve(realCwd, requestedPath));
+    const pathStat = await dependencies.stat(realPath);
 
     if (!pathStat.isFile()) {
         return null;
@@ -252,17 +246,18 @@ async function maybeDiscoverProfileFile(
 async function discoverProfilePatternRunFiles(
     realCwd: string,
     profileFiles: RunProfileFileSet,
-    fileSet: string | null
+    fileSet: string | null,
+    dependencies: RunDiscoveryDependencies
 ): Promise<readonly DiscoveredRunFile[]> {
     const files: DiscoveredRunFile[] = [];
-    const discoveredPaths = glob(profileFiles.include, {
+    const discoveredPaths = dependencies.glob(profileFiles.include, {
         cwd: realCwd,
         exclude: profileFiles.exclude,
         followSymlinks: false
     });
 
     for await (const filePath of discoveredPaths) {
-        const file = await maybeDiscoverProfileFile(realCwd, filePath, fileSet);
+        const file = await maybeDiscoverProfileFile(realCwd, filePath, fileSet, dependencies);
 
         if (file !== null) {
             files.push(file);
@@ -275,9 +270,10 @@ async function discoverProfilePatternRunFiles(
 async function discoverProfileFileSet(
     realCwd: string,
     name: string,
-    profileFiles: RunProfileFileSet
+    profileFiles: RunProfileFileSet,
+    dependencies: RunDiscoveryDependencies
 ): Promise<DiscoveredProfileFileSet> {
-    const files = await discoverProfilePatternRunFiles(realCwd, profileFiles, name);
+    const files = await discoverProfilePatternRunFiles(realCwd, profileFiles, name, dependencies);
     assertNonEmptyArray(`Profile files.sets.${name} matched no test files.`, files);
 
     return {
@@ -308,15 +304,16 @@ function assertNonOverlappingProfileFileSets(fileSets: readonly DiscoveredProfil
 
 async function discoverProfileSetRunFiles(
     realCwd: string,
-    profileFiles: RunProfileFiles
+    profileFiles: RunProfileFiles,
+    dependencies: RunDiscoveryDependencies
 ): Promise<readonly DiscoveredRunFile[]> {
     if (!hasProfileFileSets(profileFiles)) {
-        return discoverProfilePatternRunFiles(realCwd, profileFiles, null);
+        return discoverProfilePatternRunFiles(realCwd, profileFiles, null, dependencies);
     }
 
     const fileSets = await Promise.all(
         Object.entries(profileFiles.sets).map(async function discoverSet([ name, set ]) {
-            return await discoverProfileFileSet(realCwd, name, set);
+            return await discoverProfileFileSet(realCwd, name, set, dependencies);
         })
     );
 
@@ -329,11 +326,12 @@ async function discoverProfileSetRunFiles(
 
 async function discoverProfileRunFiles(
     realCwd: string,
-    profileFiles: RunProfileFiles
+    profileFiles: RunProfileFiles,
+    dependencies: RunDiscoveryDependencies
 ): Promise<readonly DiscoveredRunFile[]> {
     assertValidProfileFileSets(profileFiles);
 
-    return await discoverProfileSetRunFiles(realCwd, profileFiles);
+    return await discoverProfileSetRunFiles(realCwd, profileFiles, dependencies);
 }
 
 function explicitRunFileWithProfileFileSet(
@@ -366,13 +364,14 @@ function profileFileSetEntry(file: DiscoveredRunFile): readonly [string, string]
 
 async function explicitFileSetByPath(
     realCwd: string,
-    profileFiles: RunProfileFiles | null
+    profileFiles: RunProfileFiles | null,
+    dependencies: RunDiscoveryDependencies
 ): Promise<ReadonlyMap<string, string> | null> {
     if (profileFiles === null || !hasProfileFileSets(profileFiles)) {
         return null;
     }
 
-    const profileRunFiles = await discoverProfileRunFiles(realCwd, profileFiles);
+    const profileRunFiles = await discoverProfileRunFiles(realCwd, profileFiles, dependencies);
 
     return new Map(profileRunFiles.map(profileFileSetEntry));
 }
@@ -390,11 +389,12 @@ function nonEmptyDiscoveredRunFiles(files: readonly DiscoveredRunFile[]): NonEmp
 async function discoverExplicitRunFiles(
     realCwd: string,
     files: NonEmptyReadonlyArray<DiscoveredRunFile>,
-    profileFiles: RunProfileFiles | null
+    profileFiles: RunProfileFiles | null,
+    dependencies: RunDiscoveryDependencies
 ): Promise<NonEmptyReadonlyArray<DiscoveredRunFile>> {
     const seenPaths = new Set<string>();
     const explicitFiles: DiscoveredRunFile[] = [];
-    const fileSetByPath = await explicitFileSetByPath(realCwd, profileFiles);
+    const fileSetByPath = await explicitFileSetByPath(realCwd, profileFiles, dependencies);
 
     for (const file of files) {
         assertUniqueRunFile(file, seenPaths);
@@ -467,14 +467,15 @@ function assertNoDuplicateDirectories(directories: readonly DiscoveredRunDirecto
 async function discoverDirectoryRunFiles(
     realCwd: string,
     profileFiles: RunProfileFiles | null,
-    directories: NonEmptyReadonlyArray<DiscoveredRunDirectory>
+    directories: NonEmptyReadonlyArray<DiscoveredRunDirectory>,
+    dependencies: RunDiscoveryDependencies
 ): Promise<NonEmptyReadonlyArray<DiscoveredRunFile>> {
     if (profileFiles === null) {
         invalidRequest('Directory run paths require selected profile file discovery.');
     }
 
     assertNoDuplicateDirectories(directories);
-    const files = await discoverProfileRunFiles(realCwd, profileFiles);
+    const files = await discoverProfileRunFiles(realCwd, profileFiles, dependencies);
     assertNonEmptyArray('Profile file discovery matched no test files.', files);
 
     return discoverDirectoryFilteredFiles(files, directories);
@@ -482,13 +483,14 @@ async function discoverDirectoryRunFiles(
 
 async function discoverProfileOnlyRunFiles(
     realCwd: string,
-    profileFiles: RunProfileFiles | null
+    profileFiles: RunProfileFiles | null,
+    dependencies: RunDiscoveryDependencies
 ): Promise<NonEmptyReadonlyArray<DiscoveredRunFile>> {
     if (profileFiles === null) {
         noTestsCollected('No run paths were provided and the selected profile has no file discovery policy.');
     }
 
-    const files = await discoverProfileRunFiles(realCwd, profileFiles);
+    const files = await discoverProfileRunFiles(realCwd, profileFiles, dependencies);
     assertNonEmptyArray('Profile file discovery matched no test files.', files);
 
     return [ files[0], ...files.slice(1) ];
@@ -521,10 +523,11 @@ function discoveredDirectories(paths: readonly DiscoveredRunPath[]): readonly Di
 
 async function discoverRequestedRunFiles(
     realCwd: string,
-    request: RunDiscoveryRequest
+    request: RunDiscoveryRequest,
+    dependencies: RunDiscoveryDependencies
 ): Promise<NonEmptyReadonlyArray<DiscoveredRunFile>> {
     const paths = await Promise.all(request.paths.map(async function discoverPath(requestedPath) {
-        return await discoverRunPath(realCwd, requestedPath);
+        return await discoverRunPath(realCwd, requestedPath, dependencies);
     }));
 
     assertConsistentRunPathKinds(paths);
@@ -533,7 +536,12 @@ async function discoverRequestedRunFiles(
     const firstFile = files[0];
 
     if (firstFile !== undefined) {
-        return await discoverExplicitRunFiles(realCwd, [ firstFile, ...files.slice(1) ], request.profileFiles);
+        return await discoverExplicitRunFiles(
+            realCwd,
+            [ firstFile, ...files.slice(1) ],
+            request.profileFiles,
+            dependencies
+        );
     }
 
     const directories = discoveredDirectories(paths);
@@ -545,26 +553,34 @@ async function discoverRequestedRunFiles(
     return await discoverDirectoryRunFiles(
         realCwd,
         request.profileFiles,
-        [ directories[0], ...directories.slice(1) ]
+        [ directories[0], ...directories.slice(1) ],
+        dependencies
     );
 }
 
-export async function discoverRunFilesWithProjectRoot(request: RunDiscoveryRequest): Promise<DiscoveredRunFiles> {
-    const realCwd = await readRealCwd(request.cwd);
-    const files = request.paths.length === 0
-        ? await discoverProfileOnlyRunFiles(realCwd, request.profileFiles)
-        : await discoverRequestedRunFiles(realCwd, request);
+export function createRunDiscovery(dependencies: RunDiscoveryDependencies): RunDiscovery {
+    async function discoverRunFilesWithProjectRoot(request: RunDiscoveryRequest): Promise<DiscoveredRunFiles> {
+        const realCwd = await readRealCwd(request.cwd, dependencies);
+        const files = request.paths.length === 0
+            ? await discoverProfileOnlyRunFiles(realCwd, request.profileFiles, dependencies)
+            : await discoverRequestedRunFiles(realCwd, request, dependencies);
+
+        return {
+            files,
+            projectRoot: realCwd
+        };
+    }
+
+    async function discoverRunFiles(
+        request: RunDiscoveryRequest
+    ): Promise<NonEmptyReadonlyArray<DiscoveredRunFile>> {
+        const discovered = await discoverRunFilesWithProjectRoot(request);
+
+        return discovered.files;
+    }
 
     return {
-        files,
-        projectRoot: realCwd
+        discoverRunFiles,
+        discoverRunFilesWithProjectRoot
     };
-}
-
-export async function discoverRunFiles(
-    request: RunDiscoveryRequest
-): Promise<NonEmptyReadonlyArray<DiscoveredRunFile>> {
-    const discovered = await discoverRunFilesWithProjectRoot(request);
-
-    return discovered.files;
 }

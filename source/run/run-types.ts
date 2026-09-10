@@ -1,13 +1,9 @@
-import type { WallClock } from '@enormora/wall-clock';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import type { SerializedValue as SerializedValueShape } from '../compare/serialized-value.ts';
 import type { Execute } from '../engine/execution.ts';
 import type { Engine } from '../engine/engine.ts';
-import type { ReporterDispatcher } from '../engine/reporter-dispatcher.ts';
-import type { OrphanedNode, RunResourceUsageTracker, RunResult } from '../engine/run-result.ts';
+import type { OrphanedNode, RunResult } from '../engine/run-result.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
-import type { RuntimeCapabilityPolicyDependencies } from './capability-policy.ts';
-import type { ResourceUsageTrackerOptions } from './resource-usage.ts';
 
 export type SerializedValue = SerializedValueShape;
 type RunExecuteOptions = NonNullable<Parameters<Execute>[1]>;
@@ -337,29 +333,6 @@ export type ResolvedRun = {
     readonly plan: ResolvedRunPlan;
     readonly reporters: RunReporters;
     readonly request: RunRequest;
-};
-
-export type RunOrchestratorDependencies = {
-    readonly createSeed: () => bigint;
-    readonly createResourceUsageTracker: (options: ResourceUsageTrackerOptions) => RunResourceUsageTracker;
-    readonly defaultEngine: Engine;
-    readonly execute: Execute;
-    readonly liveOutput: {
-        readonly stderr: {
-            readonly write: (chunk: Uint8Array) => void;
-        };
-        readonly stdout: {
-            readonly write: (chunk: Uint8Array) => void;
-        };
-    };
-    readonly runtimeCapabilityPolicy: RuntimeCapabilityPolicyDependencies;
-    readonly node: {
-        readonly arch: string;
-        readonly platform: string;
-        readonly version: string;
-    };
-    readonly reporterDispatcher: ReporterDispatcher;
-    readonly wallClock: WallClock;
 };
 
 export type RunOrchestrator = {

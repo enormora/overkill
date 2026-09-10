@@ -1,53 +1,52 @@
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { createReportingContext } from '../engine/reporting-context.ts';
-import { loadRunConfig, type LoadedRunConfig } from './run-config.ts';
+import {
+    defineFixedReporter,
+    type FixedDefinedReporter
+} from '../test-support/reporter-definition.ts';
+import {
+    configFixtureCwd,
+    createSingleConfigModuleLoader
+} from '../test-support/run-config-module-loader.ts';
+import type { LoadedRunConfig } from './run-config.ts';
 
-const reporterConfigSource = `const reporterBrand = Symbol.for('@overkill-dev/engine/reporter');
-
-function reporter(name) {
-    return Object.assign(function createReporter() {
-        return {
-            dispose: null,
-            kind: 'real-time',
-            name,
-            onEvent() {},
-            onFinish: null,
-            sinks: [ { kind: 'memory' } ]
-        };
-    }, { [reporterBrand]: true });
-}
-
-export const config = {
-    reporters: [ reporter('global') ],
-    profiles: {
-        microtest: {
-            testFamily: 'microtest',
-            reporters: [ reporter('profile') ]
-        }
-    }
-};`;
-
-async function createTempFolder(): Promise<string> {
-    return await fs.mkdtemp(path.join(os.tmpdir(), 'overkill-run-config-reporters-'));
-}
-
-async function writeConfig(folder: string, source: string): Promise<void> {
-    await fs.writeFile(path.join(folder, 'overkill.config.js'), source, 'utf8');
+function createReporter(name: string): FixedDefinedReporter {
+    return defineFixedReporter({
+        dispose: null,
+        kind: 'real-time',
+        name,
+        onEvent() {
+            return undefined;
+        },
+        onFinish: null,
+        sinks: [ { kind: 'memory' } ]
+    });
 }
 
 async function loadReporterConfig(): Promise<LoadedRunConfig> {
-    const cwd = await createTempFolder();
+    const loadRunConfig = createSingleConfigModuleLoader('overkill.config.js', {
+        config: {
+            reporters: [ createReporter('global') ],
+            profiles: {
+                microtest: {
+                    testFamily: 'microtest',
+                    reporters: [ createReporter('profile') ]
+                }
+            }
+        }
+    });
 
-    await writeConfig(cwd, reporterConfigSource);
+    return await loadRunConfig({ configPath: null, cwd: configFixtureCwd });
+}
 
-    return await loadRunConfig({ configPath: null, cwd });
+async function loadConfigValue(config: unknown): Promise<LoadedRunConfig> {
+    const loadRunConfig = createSingleConfigModuleLoader('overkill.config.js', { config });
+
+    return await loadRunConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
 function reporterNames(scope: OverkillScope, config: LoadedRunConfig): readonly [string, string] {
@@ -89,11 +88,8 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const cwd = await createTempFolder();
-                await writeConfig(cwd, 'export const config = { reporters: [] };');
-
                 await scope.assert.rejects(async function loadInvalidConfig() {
-                    await loadRunConfig({ configPath: null, cwd });
+                    await loadConfigValue({ reporters: [] });
                 }, {
                     message: /at reporters\[0\]/
                 });

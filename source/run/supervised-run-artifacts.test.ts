@@ -3,17 +3,25 @@ import {
     createTestCase as createOverkillTestCase,
     defineOutputRenderer,
     defineReporter,
+    type DefinedReporter,
+    type RunArtifact,
+    type TestPlan,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import type { DefinedReporter } from '../engine/reporter.ts';
-import type { RunArtifact } from '../engine/run-result.ts';
 import {
     defaultIntegrationProfile,
     defaultMicrotestProfile,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import { orchestrator } from './run-orchestrator.entry-point.ts';
-import type { RunCommand, RunConfig } from './run-types.ts';
+import {
+    createFakeSupervisedChildProcess,
+    type FakeSupervisedChildRunContext
+} from '../test-support/fake-supervised-child-process.ts';
+import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
+import { defaultRunEngine } from './default-run-engine.ts';
+import { createNodeRunOrchestrator } from './run-orchestrator.ts';
+import type { SupervisedChildProcess } from './supervised-child-process.ts';
+import type { RunCommand, RunConfig, RunOrchestrator } from './run-types.ts';
 
 const integrationOutputFixturePath = 'source/integration-tests/run/fixtures/integration-output.test.ts';
 const integrationCaptureControlsOutputFixturePath =
@@ -28,10 +36,87 @@ type ArtifactRecorder = {
 };
 
 type CapturedProcessOutput = {
-    readonly restore: () => void;
+    readonly appendStderr: (chunk: Uint8Array) => void;
+    readonly appendStdout: (chunk: Uint8Array) => void;
     readonly stderr: () => string;
     readonly stdout: () => string;
 };
+
+function integrationOutputTestPlan(file: string): TestPlan {
+    const testNode = defaultRunEngine.createTestCase({
+        definitionLocations: [ { kind: 'unknown' as const } ],
+        annotations: { tags: [ 'output' ] },
+        controls: file === integrationCaptureControlsOutputFixturePath ? { capture: 'live' } : {},
+        title: 'captures output',
+        body(scope) {
+            scope.assert.true(true);
+
+            return scope.assert.collect();
+        }
+    });
+
+    return defaultRunEngine.createTestPlanFromTestFiles({
+        files: [ { file, testNode } ],
+        root: {
+            annotations: { tags: [ 'output' ] },
+            controls: {},
+            title: process.cwd()
+        }
+    });
+}
+
+function runFakeIntegrationOutputChild(context: FakeSupervisedChildRunContext): void {
+    const [ testCase ] = context.assignment.assignedCases;
+
+    if (testCase === undefined) {
+        context.emitExit();
+
+        return;
+    }
+
+    context.emitMessage({
+        event: {
+            attempt: 1,
+            case: testCase,
+            definitionLocations: [ { kind: 'unknown' } ],
+            kind: 'test-start',
+            suitePath: []
+        },
+        kind: 'event'
+    });
+    context.stdout.emit('case stdout\n');
+    context.stderr.emit('case stderr\n');
+    context.emitMessage({
+        event: {
+            attempt: 1,
+            artifacts: [],
+            case: testCase,
+            definitionLocations: [ { kind: 'unknown' } ],
+            kind: 'test-end',
+            outcome: null,
+            suitePath: [],
+            verdict: 'pass',
+            wallTimeMs: 0
+        },
+        kind: 'event'
+    });
+    context.emitExit();
+}
+
+async function startFakeIntegrationOutputChild(): Promise<SupervisedChildProcess> {
+    return createFakeSupervisedChildProcess({
+        collect(input) {
+            return {
+                collectedPlan: collectedRunPlanFromTestPlan(integrationOutputTestPlan(input.file)),
+                runnerErrors: []
+            };
+        },
+        run(context) {
+            context.stdout.emit('collection stdout\n');
+            runFakeIntegrationOutputChild(context);
+        }
+    });
+}
 
 function createRunConfig(profileName: string, profile: RunConfig['profiles'][string]): RunConfig {
     return {
@@ -91,35 +176,94 @@ function createArtifactRecorder(): ArtifactRecorder {
     };
 }
 
-function captureProcessOutput(): CapturedProcessOutput {
-    const originalStdoutWrite = process.stdout.write.bind(process.stdout);
-    const originalStderrWrite = process.stderr.write.bind(process.stderr);
+function createCapturedOutput(): CapturedProcessOutput {
     let stdout = '';
     let stderr = '';
 
-    process.stdout.write = function writeCapturedStdout(chunk: Uint8Array | string): boolean {
-        stdout += typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8');
-
-        return true;
-    };
-    process.stderr.write = function writeCapturedStderr(chunk: Uint8Array | string): boolean {
-        stderr += typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8');
-
-        return true;
-    };
-
     return {
-        restore() {
-            process.stdout.write = originalStdoutWrite;
-            process.stderr.write = originalStderrWrite;
-        },
         stderr() {
             return stderr;
         },
         stdout() {
             return stdout;
+        },
+        appendStderr(chunk: Uint8Array) {
+            stderr += Buffer.from(chunk).toString('utf8');
+        },
+        appendStdout(chunk: Uint8Array) {
+            stdout += Buffer.from(chunk).toString('utf8');
         }
     };
+}
+
+function installNoPolicyRestriction(): () => void {
+    return function restoreNoPolicyRestriction(): void {
+        return undefined;
+    };
+}
+
+function createTestOrchestrator(output: CapturedProcessOutput): RunOrchestrator {
+    return createNodeRunOrchestrator({
+        defaultEngine: defaultRunEngine,
+        async discoverRunFilesWithProjectRoot(request) {
+            const files = request.paths.map(function discoverFile(file) {
+                const filePath = `${request.cwd}/${file}`;
+
+                return {
+                    file,
+                    fileSet: null,
+                    href: `file://${filePath}`,
+                    path: filePath
+                };
+            });
+            const [ firstFile ] = files;
+
+            if (firstFile === undefined) {
+                throw new Error('Fake supervised child discovery requires a test file.');
+            }
+
+            return {
+                files: [ firstFile, ...files.slice(1) ],
+                projectRoot: request.cwd
+            };
+        },
+        installIpcRestriction: installNoPolicyRestriction,
+        installProcessExecutionRestriction: installNoPolicyRestriction,
+        async loadRunEngineModule() {
+            throw new Error('Fake supervised child tests do not load engine modules.');
+        },
+        async loadRunTestModules() {
+            throw new Error('Fake supervised child tests do not load test modules.');
+        },
+        node: {
+            arch: 'x64',
+            platform: 'linux',
+            version: '26.1.1'
+        },
+        readEnvironment() {
+            return {};
+        },
+        readStorage() {
+            return null;
+        },
+        stderr: {
+            write(chunk) {
+                output.appendStderr(chunk);
+            },
+            writeLine(line) {
+                output.appendStderr(Buffer.from(`${line}\n`));
+            }
+        },
+        stdout: {
+            write(chunk) {
+                output.appendStdout(chunk);
+            },
+            writeLine(line) {
+                output.appendStdout(Buffer.from(`${line}\n`));
+            }
+        },
+        startSupervisedChild: startFakeIntegrationOutputChild
+    });
 }
 
 function integrationOutputRunCommand(
@@ -159,7 +303,7 @@ function assertIntegrationCaseArtifacts(scope: OverkillScope, artifacts: readonl
 
 function assertIntegrationOutputArtifacts(
     scope: OverkillScope,
-    result: Awaited<ReturnType<typeof orchestrator.run>>,
+    result: Awaited<ReturnType<RunOrchestrator['run']>>,
     eventArtifacts: readonly RunArtifact[]
 ): void {
     const caseArtifacts = result.artifacts.filter(function isCaseArtifact(artifact) {
@@ -188,7 +332,7 @@ async function assertLiveIntegrationOutput(
     artifactReporter: ArtifactRecorder,
     output: CapturedProcessOutput
 ): Promise<void> {
-    const result = await orchestrator.run(
+    const result = await createTestOrchestrator(output).run(
         integrationOutputRunCommand(artifactReporter.reporter, integrationOutputFixturePath, 'live')
     );
 
@@ -205,7 +349,7 @@ async function assertCaptureControlsOutput(
     artifactReporter: ArtifactRecorder,
     output: CapturedProcessOutput
 ): Promise<void> {
-    const result = await orchestrator.run(
+    const result = await createTestOrchestrator(output).run(
         integrationOutputRunCommand(
             artifactReporter.reporter,
             integrationCaptureControlsOutputFixturePath,
@@ -234,7 +378,8 @@ export const testNode = createOverkillSuite({
             controls: {},
             async body(scope: OverkillScope) {
                 const artifactRecorder = createArtifactRecorder();
-                const result = await orchestrator.run(
+                const output = createCapturedOutput();
+                const result = await createTestOrchestrator(output).run(
                     integrationOutputRunCommand(
                         artifactRecorder.reporter,
                         integrationOutputFixturePath,
@@ -254,13 +399,9 @@ export const testNode = createOverkillSuite({
             controls: {},
             async body(scope: OverkillScope) {
                 const artifactRecorder = createArtifactRecorder();
-                const output = captureProcessOutput();
+                const output = createCapturedOutput();
 
-                try {
-                    await assertLiveIntegrationOutput(scope, artifactRecorder, output);
-                } finally {
-                    output.restore();
-                }
+                await assertLiveIntegrationOutput(scope, artifactRecorder, output);
 
                 return scope.assert.collect();
             }
@@ -272,13 +413,9 @@ export const testNode = createOverkillSuite({
             controls: {},
             async body(scope: OverkillScope) {
                 const artifactRecorder = createArtifactRecorder();
-                const output = captureProcessOutput();
+                const output = createCapturedOutput();
 
-                try {
-                    await assertCaptureControlsOutput(scope, artifactRecorder, output);
-                } finally {
-                    output.restore();
-                }
+                await assertCaptureControlsOutput(scope, artifactRecorder, output);
 
                 return scope.assert.collect();
             }

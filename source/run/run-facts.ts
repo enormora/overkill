@@ -2,12 +2,12 @@ import { serializeValue } from '../compare/serialized-value.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { invalidRequest } from './run-errors.ts';
 import { copyResourceBudgets, runEngineFacts } from './run-support.ts';
+import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type {
     RunCaseFacts,
     RunCommand,
     RunConfig,
     RunFacts,
-    RunOrchestratorDependencies,
     RunProfileConfig,
     RunRequest,
     RunResourceBudgets,

@@ -1,5 +1,3 @@
-import diagnosticsChannel from 'node:diagnostics_channel';
-import { clearTimeout as clearNodeTimeout, setTimeout as setNodeTimeout } from 'node:timers';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -7,6 +5,7 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import type { RunnerError } from '../engine/run-result.ts';
+import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import {
     defaultMicrotestProfile,
     defaultRunConfig,
@@ -20,7 +19,6 @@ import {
     type WebStorageLike
 } from './capability-policy.ts';
 import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
-import { orchestrator } from './run-orchestrator.entry-point.ts';
 import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
 
 type RunCommandParts = {
@@ -70,14 +68,6 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
         engine: overrides.engine,
         request: overrides.request
     };
-}
-
-function deleteEnvironmentValue(name: string): void {
-    const environment: unknown = Reflect.get(process, 'env');
-
-    if (typeof environment === 'object' && environment !== null) {
-        Reflect.deleteProperty(environment, name);
-    }
 }
 
 function runnerErrorPhase(runnerError: RunnerError | undefined): unknown {
@@ -152,14 +142,6 @@ function createSparseStorage(): WebStorageLike {
     };
 }
 
-function publishPolicyDiagnostics(): void {
-    diagnosticsChannel.channel('node:permission-model:fs').publish({ permission: 'FileSystemRead' });
-    diagnosticsChannel.channel('node:permission-model:net').publish(null);
-    diagnosticsChannel.channel('node:permission-model:fs').publish({ permission: 'FileSystemWrite' });
-    diagnosticsChannel.channel('node:permission-model:net').publish({});
-    diagnosticsChannel.channel('console.log').publish({});
-}
-
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-capability-policy.test.ts',
@@ -172,7 +154,8 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const result = await orchestrator.run(createRunCommand({
+                const runOrchestrator = createDeterministicRunOrchestrator();
+                const result = await runOrchestrator.run(createRunCommand({
                     config: defaultRunConfig({
                         profiles: {
                             microtest: defaultMicrotestProfile({
@@ -189,7 +172,6 @@ export const testNode = createOverkillSuite({
                 }));
                 const [ runnerError ] = result.runnerErrors;
 
-                deleteEnvironmentValue('OVERKILL_LOAD_POLICY_FIXTURE');
                 scope.assert.equal(result.perTest[0]?.verdict, 'pass');
                 scope.assert.equal(runnerError?.subtype, 'runtime-policy');
                 scope.assert.equal(runnerError?.attributedTo, null);
@@ -222,6 +204,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
+                const runOrchestrator = createDeterministicRunOrchestrator();
                 const profileReporter: RunConfig['reporters'][number] = defineReporter(
                     function profileMemoryReporter() {
                         return {
@@ -236,7 +219,7 @@ export const testNode = createOverkillSuite({
                         };
                     }
                 );
-                const resolvedRun = await orchestrator.resolve(createRunCommand({
+                const resolvedRun = await runOrchestrator.resolve(createRunCommand({
                     config: defaultRunConfig({
                         profiles: {
                             microtest: defaultMicrotestProfile({
@@ -283,10 +266,11 @@ export const testNode = createOverkillSuite({
                     environment.AFTER = 'yes';
                     sessionStorageValues.set('after', 'yes');
                     localStorageValues.set('after', 'yes');
-                    const timer = setNodeTimeout(function unusedTimer() {
-                        return undefined;
-                    }, 1);
-                    clearNodeTimeout(timer);
+                    policy.recordViolation(
+                        'timer',
+                        'Runtime policy violation: setTimeout/setInterval created a timer.',
+                        'observed'
+                    );
                 });
                 const caseErrors = policy.takeCaseErrors(policyTestCase);
                 policy.takeRunErrors();
@@ -377,7 +361,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'runtime capability policy records diagnostic channel strictness and raw output',
+            title: 'runtime capability policy records injected strictness and raw output',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -398,9 +382,12 @@ export const testNode = createOverkillSuite({
                 });
 
                 await policy.runLoad(async function publishLoadDiagnostics() {
-                    publishPolicyDiagnostics();
+                    policy.recordViolation('net', 'Runtime policy violation: net.', 'blocked');
+                    policy.recordViolation('fs-write', 'Runtime policy violation: fs-write.', 'blocked');
+                    policy.recordViolation('net', 'Runtime policy violation: net.', 'blocked');
+                    policy.recordViolation('console', 'Runtime policy violation: console.', 'observed');
                 });
-                diagnosticsChannel.channel('console.warn').publish({});
+                policy.recordViolation('console', 'Runtime policy violation: console.', 'observed');
                 const runErrors = policy.takeRunErrors();
 
                 scope.assert.deepEqual(runErrors.map(errorCapabilityAndStrictness), [

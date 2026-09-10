@@ -1,4 +1,4 @@
-import { createWallClock } from '@enormora/wall-clock';
+import { createWallClock, type WallClock } from '@enormora/wall-clock';
 import { caseIdentityKey, type CaseId } from '../engine/identity.ts';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
@@ -22,7 +22,10 @@ import {
     type RuntimeCapabilityPolicy,
     type RuntimeCapabilityPolicyDependencies
 } from './capability-policy.ts';
-import { createSupervisedChildTestPlan } from './supervised-child-test-plan.ts';
+import {
+    createSupervisedChildTestPlan,
+    type SupervisedChildTestPlanDependencies
+} from './supervised-child-test-plan.ts';
 import type {
     SupervisedAssignmentCommand,
     SupervisedChildCommand,
@@ -43,12 +46,15 @@ type SupervisedAssignmentExecution = {
     readonly command: SupervisedRunCommand;
     readonly host: SupervisedChildHost;
     readonly startedAtMs: number;
-    readonly wallClock: ReturnType<typeof createWallClock>;
+    readonly wallClock: WallClock;
 };
 
 export type SupervisedChildHost = RuntimeCapabilityPolicyDependencies & {
     readonly disconnect: () => void;
+    readonly discoverRunFiles: SupervisedChildTestPlanDependencies['discoverRunFiles'];
     readonly dropBodyReadPermission: (command: SupervisedRunCommand) => void;
+    readonly loadRunEngineModule: SupervisedChildTestPlanDependencies['loadRunEngineModule'];
+    readonly loadRunTestModules: SupervisedChildTestPlanDependencies['loadRunTestModules'];
     readonly receiveAssignment: () => Promise<SupervisedAssignmentCommand>;
     readonly receiveCommand: () => Promise<SupervisedChildCommand>;
     readonly send: (message: SupervisedChildMessage) => void;
@@ -142,7 +148,7 @@ function executionMode(command: SupervisedRunCommand): ChildExecutionMode {
 
 function createEmptyAssignmentResult(
     testPlan: TestPlan,
-    wallClock: ReturnType<typeof createWallClock>,
+    wallClock: WallClock,
     startedAtMs: number
 ): RunResult {
     return createRunResultFromCollectedPlan(
@@ -177,10 +183,15 @@ function createRuntimePolicy(
 
 async function createPolicyCheckedTestPlan(
     command: SupervisedChildCommand,
+    host: SupervisedChildHost,
     runtimePolicy: RuntimeCapabilityPolicy | null
 ): Promise<TestPlan> {
     const createPlan = async function createTestPlanInsidePolicy(): Promise<TestPlan> {
-        return await createSupervisedChildTestPlan(command);
+        return await createSupervisedChildTestPlan(command, {
+            discoverRunFiles: host.discoverRunFiles,
+            loadRunEngineModule: host.loadRunEngineModule,
+            loadRunTestModules: host.loadRunTestModules
+        });
     };
 
     return runtimePolicy === null ? await createPlan() : await runtimePolicy.runLoad(createPlan);
@@ -205,9 +216,10 @@ function sendRuntimePolicyErrors(
 
 async function readCollectedTestPlan(
     command: SupervisedChildCommand,
+    host: SupervisedChildHost,
     runtimePolicy: RuntimeCapabilityPolicy | null
 ): Promise<CollectedTestPlan> {
-    const testPlan = await createPolicyCheckedTestPlan(command, runtimePolicy);
+    const testPlan = await createPolicyCheckedTestPlan(command, host, runtimePolicy);
     const runnerErrors = runtimePolicy?.takeRunErrors() ?? [];
 
     return { runnerErrors, testPlan };
@@ -219,7 +231,7 @@ async function createCollectedTestPlan(
     runtimePolicy: RuntimeCapabilityPolicy | null
 ): Promise<CollectedTestPlan> {
     try {
-        return await readCollectedTestPlan(command, runtimePolicy);
+        return await readCollectedTestPlan(command, host, runtimePolicy);
     } catch (error: unknown) {
         sendRuntimePolicyErrors(host, runtimePolicy);
         throw error;

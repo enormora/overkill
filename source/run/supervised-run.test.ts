@@ -1,4 +1,3 @@
-import { fork, type ChildProcess } from 'node:child_process';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -13,16 +12,15 @@ import {
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
 import type { RunnerError } from '../engine/run-result.ts';
-import { supervisedChildProcessEntryPointArgument } from './supervised-child-process.ts';
-import { orchestrator } from './run-orchestrator.entry-point.ts';
-import type { RunCommand, RunConfig, RunMicrotestProfileConfig, RunRequest } from './run-types.ts';
+import { loadDeterministicRunTestModules } from '../test-support/deterministic-run-fixtures.ts';
+import { createVirtualRunDiscovery } from '../test-support/virtual-run-discovery.ts';
+import { runSupervisedChild, type SupervisedChildHost } from './supervised-child.ts';
+import type { RunCommand, RunConfig, RunMicrotestProfileConfig, RunOrchestrator, RunRequest } from './run-types.ts';
 
 const delayedPassFixturePath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
 const endlessLoopFixturePath = 'source/integration-tests/run/fixtures/endless-loop.test.ts';
 const envPolicyFixturePath = 'source/integration-tests/run/fixtures/env-policy.test.ts';
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
-const childEntryPointExtension = import.meta.url.endsWith('.ts') ? 'ts' : 'js';
-const childEntryPoint = new URL(`./supervised-child-process.${childEntryPointExtension}`, import.meta.url);
 const failureExitCode = 1;
 const generousResourceBudget = Number.MAX_SAFE_INTEGER;
 const hardTimeoutMilliseconds = 50;
@@ -134,34 +132,6 @@ function isRecord(value: unknown): value is Readonly<Record<PropertyKey, unknown
     return typeof value === 'object' && value !== null;
 }
 
-function collectChildMessages(child: ChildProcess): readonly unknown[] {
-    const messages: unknown[] = [];
-
-    child.on('message', function recordMessage(message: unknown) {
-        messages.push(message);
-    });
-
-    return messages;
-}
-
-async function waitForCollectedMessage(child: ChildProcess): Promise<void> {
-    await new Promise<void>(function resolveCollected(resolve) {
-        child.on('message', function receiveMessage(message: unknown) {
-            if (isRecord(message) && message.kind === 'collected') {
-                resolve();
-            }
-        });
-    });
-}
-
-async function waitForExit(child: ChildProcess): Promise<number | null> {
-    return await new Promise(function resolveExit(resolve) {
-        child.on('exit', function exited(code) {
-            resolve(code);
-        });
-    });
-}
-
 function messageEvent(message: unknown): unknown {
     if (!isRecord(message) || message.kind !== 'event') {
         return null;
@@ -194,14 +164,6 @@ function firstRunnerErrorMessage(messages: readonly unknown[]): string | null {
     return null;
 }
 
-function deleteEnvironmentValue(name: string): void {
-    const environment: unknown = Reflect.get(process, 'env');
-
-    if (typeof environment === 'object' && environment !== null) {
-        Reflect.deleteProperty(environment, name);
-    }
-}
-
 function runnerErrorCapability(error: RunnerError): string | null {
     const { cause } = error;
 
@@ -212,13 +174,94 @@ function runnerErrorCapability(error: RunnerError): string | null {
     return cause.capability;
 }
 
-function runnerErrorCapabilityCount(result: Awaited<ReturnType<typeof orchestrator.run>>, capability: string): number {
+function runnerErrorCapabilityCount(result: Awaited<ReturnType<RunOrchestrator['run']>>, capability: string): number {
     return result
         .runnerErrors
         .filter(function hasCapability(error) {
             return runnerErrorCapability(error) === capability;
         })
         .length;
+}
+
+function installNoPolicyRestriction(): () => void {
+    return function restoreNoPolicyRestriction(): void {
+        return undefined;
+    };
+}
+
+type SupervisedMessageSink = {
+    readonly send: SupervisedChildHost['send'];
+};
+
+function createAssignmentMismatchHost(
+    messageSink: SupervisedMessageSink,
+    setExitCode: (exitCode: number) => void
+): SupervisedChildHost {
+    const discovery = createVirtualRunDiscovery({
+        cwd: process.cwd(),
+        directories: [],
+        files: [ delayedPassFixturePath ],
+        realpaths: {}
+    });
+
+    return {
+        disconnect() {
+            return undefined;
+        },
+        discoverRunFiles: discovery.discoverRunFiles,
+        dropBodyReadPermission() {
+            return undefined;
+        },
+        installIpcRestriction: installNoPolicyRestriction,
+        installProcessExecutionRestriction: installNoPolicyRestriction,
+        async loadRunEngineModule() {
+            throw new Error('Assignment mismatch test does not load engine modules.');
+        },
+        loadRunTestModules: loadDeterministicRunTestModules,
+        readEnvironment() {
+            return {};
+        },
+        readStorage() {
+            return null;
+        },
+        async receiveAssignment() {
+            return {
+                assignedCases: [
+                    {
+                        file: delayedPassFixturePath,
+                        title: 'missing-case',
+                        params: null,
+                        suite: []
+                    }
+                ],
+                kind: 'assign'
+            };
+        },
+        async receiveCommand() {
+            return {
+                capabilityRestrictions: { mode: 'disabled' },
+                capture: 'buffered',
+                collectionTimeoutMilliseconds: 1000,
+                cwd: process.cwd(),
+                engine: { kind: 'default' },
+                hardTimeoutMilliseconds,
+                kind: 'run',
+                paths: [ delayedPassFixturePath ],
+                resourceBudgets: microtestProfile.resourceUsage.budgets,
+                resourceUsageSamplingIntervalMilliseconds: samplingIntervalMilliseconds,
+                scheduling: 'concurrent',
+                testFamily: 'microtest',
+                timeoutMilliseconds: softTimeoutMilliseconds
+            };
+        },
+        send(message) {
+            messageSink.send(message);
+        },
+        setExitCode,
+        validatePermissionHost() {
+            return undefined;
+        }
+    };
 }
 
 export const testNode = createOverkillSuite({
@@ -342,7 +385,8 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const result = await orchestrator.run({
+                const runOrchestrator = createDeterministicRunOrchestrator();
+                const result = await runOrchestrator.run({
                     config: createRunConfigWithReporters(generousMeasuredProfile, [ failingEventReporter ]),
                     cwd: process.cwd(),
                     engine: { kind: 'default' },
@@ -363,14 +407,14 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const result = await orchestrator.run(
+                const runOrchestrator = createDeterministicRunOrchestrator();
+                const result = await runOrchestrator.run(
                     createRunCommand(envPolicyFixturePath, restrictedMicrotestProfile, {
                         ...createRunRequest(envPolicyFixturePath),
                         capabilityRestrictions: { mode: 'enabled' }
                     })
                 );
 
-                deleteEnvironmentValue('OVERKILL_CASE_POLICY_FIXTURE');
                 scope.assert.equal(result.summary.runtimePolicy, 1);
                 scope.assert.equal(runnerErrorCapabilityCount(result, 'process-env'), 1);
 
@@ -383,7 +427,8 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const result = await orchestrator.run({
+                const runOrchestrator = createDeterministicRunOrchestrator();
+                const result = await runOrchestrator.run({
                     config: createRunConfigWithReporters(restrictedMicrotestProfile, [ createConsoleReporter() ]),
                     cwd: process.cwd(),
                     engine: { kind: 'default' },
@@ -402,11 +447,12 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() covers default singleton resource tracking dependencies',
+            title: 'orchestrator.run() records supervised resource usage from injected dependencies',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const result = await orchestrator.run(createRunCommand(delayedPassFixturePath, microtestProfile, {
+                const runOrchestrator = createDeterministicRunOrchestrator();
+                const result = await runOrchestrator.run(createRunCommand(delayedPassFixturePath, microtestProfile, {
                     ...createRunRequest(delayedPassFixturePath),
                     measureResourceUsage: true,
                     profile: 'microtest',
@@ -426,38 +472,19 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const child = fork(childEntryPoint, [ supervisedChildProcessEntryPointArgument ], {
-                    cwd: process.cwd(),
-                    stdio: [ 'ignore', 'ignore', 'ignore', 'ipc' ]
-                });
-                const messages = collectChildMessages(child);
-                child.send({
-                    capabilityRestrictions: { mode: 'disabled' },
-                    collectionTimeoutMilliseconds: 1000,
-                    cwd: process.cwd(),
-                    engine: { kind: 'default' },
-                    hardTimeoutMilliseconds,
-                    kind: 'run',
-                    paths: [ delayedPassFixturePath ],
-                    resourceBudgets: microtestProfile.resourceUsage.budgets,
-                    resourceUsageSamplingIntervalMilliseconds: samplingIntervalMilliseconds,
-                    scheduling: 'concurrent',
-                    testFamily: 'microtest',
-                    timeoutMilliseconds: softTimeoutMilliseconds
-                });
-                await waitForCollectedMessage(child);
-                child.send({
-                    assignedCases: [
-                        {
-                            file: delayedPassFixturePath,
-                            title: 'missing-case',
-                            params: null,
-                            suite: []
+                const messages: unknown[] = [];
+                let exitCode: number | null = null;
+
+                await runSupervisedChild(createAssignmentMismatchHost(
+                    {
+                        send(message) {
+                            messages.push(message);
                         }
-                    ],
-                    kind: 'assign'
-                });
-                const exitCode = await waitForExit(child);
+                    },
+                    function recordExitCode(code) {
+                        exitCode = code;
+                    }
+                ));
 
                 scope.assert.equal(exitCode, failureExitCode);
                 scope.assert.equal(

@@ -11,7 +11,6 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import { orchestrator } from './run-orchestrator.entry-point.ts';
 import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
 
 type RunCommandParts = {
@@ -162,7 +161,8 @@ export const testNode = createOverkillSuite({
             controls: {},
             async body(scope: OverkillScope) {
                 const lifecycle = createReporterLifecycleRecorder();
-                const result = await orchestrator.run(createRunCommand({
+                const runOrchestrator = createDeterministicRunOrchestrator();
+                const result = await runOrchestrator.run(createRunCommand({
                     config: defaultRunConfig({
                         profiles: supervisedCollectionConfig.profiles,
                         reporters: [ lifecycle.reporter ]
@@ -194,7 +194,8 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const result = await orchestrator.runWithReporterDelivery(createRunCommand({
+                const runOrchestrator = createDeterministicRunOrchestrator();
+                const result = await runOrchestrator.runWithReporterDelivery(createRunCommand({
                     config: defaultRunConfig({
                         profiles: supervisedCollectionConfig.profiles,
                         reporters: [ createTerminalFinishReporter() ]

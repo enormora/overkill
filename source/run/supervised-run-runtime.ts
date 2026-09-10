@@ -8,9 +8,9 @@ import type { ReporterDelivery } from '../engine/reporter-dispatcher.ts';
 import { createRunResultFromCollectedPlan } from './collected-run-plan.ts';
 import type {
     CollectedRunPlan,
-    ResolvedRun,
-    RunOrchestratorDependencies
+    ResolvedRun
 } from './run-types.ts';
+import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type {
     SupervisedChildMessage,
     SupervisedCollectCommand,
@@ -390,7 +390,7 @@ export async function observeChild(runtime: SupervisedRunRuntime): Promise<void>
         runtime.child.on('message', function receiveMessage(message: SupervisedChildMessage) {
             handleChildMessage(message, runtime);
         });
-        runtime.child.on('error', function recordChildError(error) {
+        runtime.child.on('error', function recordChildError(error: Error) {
             if (!runtime.terminalFailure.read()) {
                 runtime.terminalFailure.write(true);
                 runtime.state.recordRunnerError(crashError(runtime.state, error.message));

@@ -4,6 +4,11 @@ import {
     installProcessExecutionRestriction as installNodeProcessExecutionRestriction
 } from './node-process-capability-restrictions.ts';
 import { runSupervisedChild, type SupervisedChildHost } from './supervised-child.ts';
+import {
+    loadRunEngineModule,
+    loadRunTestModules,
+    runDiscovery
+} from './node-run-dependencies.entry-point.ts';
 import type {
     SupervisedAssignmentCommand,
     SupervisedChildCommand,
@@ -83,6 +88,7 @@ function dropBodyReadPermission(command: SupervisedRunCommand): void {
 
 await runSupervisedChild({
     disconnect,
+    discoverRunFiles: runDiscovery.discoverRunFiles,
     dropBodyReadPermission,
     installIpcRestriction(record) {
         return installProcessIpcRestriction(process, record);
@@ -96,6 +102,8 @@ await runSupervisedChild({
     readStorage(name) {
         return readWebStorage(globalThis, name);
     },
+    loadRunEngineModule,
+    loadRunTestModules,
     receiveAssignment,
     receiveCommand,
     send,

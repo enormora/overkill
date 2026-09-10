@@ -10,7 +10,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import type { AssertionTestFailure, FailOutcome, RunResult, TestFailure, TestOutcome } from '../engine/run-result.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
-import { runIfMain } from './run-if-main.ts';
+import { createTestSupportRunIfMain, runIfMain } from './run-if-main.ts';
 import { defineFixedOutputRenderer, defineFixedReporter } from './reporter-definition.ts';
 import { runResultFactory } from './run-result-factory.ts';
 
@@ -18,6 +18,30 @@ type CapturedRoot = {
     readonly tags: readonly string[];
     readonly title: string;
 };
+
+type ExitCodeFixture = {
+    readonly exitCode: () => number | string | null | undefined;
+    readonly runIfMain: typeof runIfMain;
+};
+
+function createExitCodeFixture(initialExitCode: number | string | null | undefined): ExitCodeFixture {
+    let exitCode = initialExitCode;
+
+    return {
+        exitCode() {
+            return exitCode;
+        },
+        runIfMain: createTestSupportRunIfMain({
+            nodeVersion: '26.1.1',
+            readExitCode() {
+                return exitCode;
+            },
+            setExitCode(nextExitCode) {
+                exitCode = nextExitCode;
+            }
+        })
+    };
+}
 
 function defaultFailure(): unknown {
     return {
@@ -304,17 +328,10 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const originalExitCode = process.exitCode;
+                const fixture = createExitCodeFixture(undefined);
 
-                try {
-                    process.exitCode = undefined;
-
-                    await runIfMain(importMeta(false), supportTestCase(failingBody), { reporters: [] });
-
-                    scope.assert.equal(process.exitCode, undefined);
-                } finally {
-                    process.exitCode = originalExitCode;
-                }
+                await fixture.runIfMain(importMeta(false), supportTestCase(failingBody), { reporters: [] });
+                scope.assert.equal(fixture.exitCode(), undefined);
 
                 return scope.assert.collect();
             }
@@ -361,17 +378,10 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const originalExitCode = process.exitCode;
+                const fixture = createExitCodeFixture(undefined);
 
-                try {
-                    process.exitCode = undefined;
-
-                    await runIfMain(importMeta(true), supportTestCase(failingBody), { reporters: [] });
-
-                    scope.assert.equal(process.exitCode, 1);
-                } finally {
-                    process.exitCode = originalExitCode;
-                }
+                await fixture.runIfMain(importMeta(true), supportTestCase(failingBody), { reporters: [] });
+                scope.assert.equal(fixture.exitCode(), 1);
 
                 return scope.assert.collect();
             }

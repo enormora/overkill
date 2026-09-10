@@ -1,19 +1,70 @@
-import { fork, type ChildProcess } from 'node:child_process';
-import { realpath } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy.ts';
-import type { RunOrchestratorDependencies, RunRequest } from './run-types.ts';
+import type { RunRequest } from './run-types.ts';
+import type {
+    SupervisedAssignmentCommand,
+    SupervisedChildCommand,
+    SupervisedChildMessage
+} from './supervised-protocol.ts';
 import type { StoredRunValue, SupervisedRunState } from './supervised-run-state.ts';
 
-export type SupervisedChildProcess = ChildProcess;
+type SupervisedChildEventListener = {
+    readonly error: (error: Error) => void;
+    readonly exit: () => void;
+    readonly message: (message: SupervisedChildMessage) => void;
+};
 
-export type SupervisedChildStartOptions = {
+type SupervisedChildListenerRegistration = {
+    readonly [Event in keyof SupervisedChildEventListener]: readonly [
+        Event,
+        SupervisedChildEventListener[Event]
+    ];
+}[keyof SupervisedChildEventListener];
+
+type SupervisedChildProcessOutput = {
+    readonly on: (event: 'data', listener: (chunk: Uint8Array) => void) => unknown;
+};
+
+export type SupervisedChildProcess = {
+    readonly exitCode: number | null;
+    readonly kill: (signal: 'SIGKILL') => unknown;
+    readonly on: (...registration: SupervisedChildListenerRegistration) => unknown;
+    readonly pid: number | undefined;
+    readonly send: (message: SupervisedAssignmentCommand | SupervisedChildCommand) => unknown;
+    readonly signalCode: string | null;
+    readonly stderr: SupervisedChildProcessOutput | null;
+    readonly stdout: SupervisedChildProcessOutput | null;
+};
+
+type SupervisedChildStartOptions = {
     readonly capabilityRestrictions: {
         readonly mode: 'disabled' | 'enabled';
     };
     readonly cwd: string;
+    readonly environmentVariables: RuntimeCapabilityPolicyEnvironment;
 };
+
+type SupervisedChildForkOptions = {
+    readonly cwd: string;
+    readonly env: Readonly<Record<string, string>>;
+    readonly execArgv: readonly string[];
+    readonly stdio: readonly ['ignore', 'pipe', 'pipe', 'ipc'];
+};
+
+export type SupervisedChildProcessStarterDependencies = {
+    readonly childPackageRoot: string;
+    readonly childProcessEntryPoint: string;
+    readonly fork: (
+        modulePath: string,
+        childArguments: readonly string[],
+        options: SupervisedChildForkOptions
+    ) => SupervisedChildProcess;
+    readonly realpath: (path: string) => Promise<string>;
+};
+
+export type SupervisedChildProcessStarter = (
+    options: SupervisedChildStartOptions
+) => Promise<SupervisedChildProcess>;
 
 type TraceEnvMutation = {
     readonly capability: string;
@@ -26,15 +77,24 @@ export type SupervisedChildOutputRuntime = {
     };
     readonly capture: RunRequest['capture'];
     readonly child: SupervisedChildProcess;
-    readonly dependencies: Pick<RunOrchestratorDependencies, 'liveOutput' | 'wallClock'>;
+    readonly dependencies: {
+        readonly liveOutput: {
+            readonly stderr: {
+                readonly write: (chunk: Uint8Array) => void;
+            };
+            readonly stdout: {
+                readonly write: (chunk: Uint8Array) => void;
+            };
+        };
+        readonly wallClock: {
+            readonly currentTimestampInMilliseconds: number;
+        };
+    };
     readonly state: SupervisedRunState;
     readonly terminalFailure: StoredRunValue<boolean>;
 };
 
-const childProcessEntryPoint = fileURLToPath(import.meta.url);
-export const supervisedChildProcessEntryPointArgument = '--overkill-supervised-child';
-const childRuntimeRoot = dirname(childProcessEntryPoint);
-const childPackageRoot = dirname(childRuntimeRoot);
+const supervisedChildProcessEntryPointArgument = '--overkill-supervised-child';
 
 function sanitizedChildEnvironment(environmentVariables: RuntimeCapabilityPolicyEnvironment): Record<string, string> {
     const environment = Object.fromEntries(
@@ -68,19 +128,25 @@ function nodeModulesCandidates(startPath: string): readonly string[] {
     return [ ...candidates, join(currentPath, 'node_modules') ];
 }
 
-async function existingRealPath(path: string): Promise<string | null> {
+async function existingRealPath(
+    path: string,
+    dependencies: SupervisedChildProcessStarterDependencies
+): Promise<string | null> {
     try {
-        return await realpath(path);
+        return await dependencies.realpath(path);
     } catch {
         return null;
     }
 }
 
-async function existingPermissionRoots(paths: readonly string[]): Promise<readonly string[]> {
+async function existingPermissionRoots(
+    paths: readonly string[],
+    dependencies: SupervisedChildProcessStarterDependencies
+): Promise<readonly string[]> {
     const roots: string[] = [];
 
     for (const candidatePath of paths) {
-        const realPath = await existingRealPath(candidatePath);
+        const realPath = await existingRealPath(candidatePath, dependencies);
 
         if (realPath !== null) {
             roots.push(candidatePath, realPath);
@@ -90,25 +156,31 @@ async function existingPermissionRoots(paths: readonly string[]): Promise<readon
     return roots;
 }
 
-async function readPermissionRoots(options: SupervisedChildStartOptions): Promise<readonly string[]> {
+async function readPermissionRoots(
+    options: SupervisedChildStartOptions,
+    dependencies: SupervisedChildProcessStarterDependencies
+): Promise<readonly string[]> {
     return Array.from(
         new Set(
             await existingPermissionRoots([
                 options.cwd,
-                childPackageRoot,
+                dependencies.childPackageRoot,
                 ...nodeModulesCandidates(options.cwd),
-                ...nodeModulesCandidates(childPackageRoot)
-            ])
+                ...nodeModulesCandidates(dependencies.childPackageRoot)
+            ], dependencies)
         )
     );
 }
 
-async function supervisedChildExecArgv(options: SupervisedChildStartOptions): Promise<string[]> {
+async function supervisedChildExecArgv(
+    options: SupervisedChildStartOptions,
+    dependencies: SupervisedChildProcessStarterDependencies
+): Promise<string[]> {
     if (options.capabilityRestrictions.mode === 'disabled') {
         return [];
     }
 
-    const permissionRoots = await readPermissionRoots(options);
+    const permissionRoots = await readPermissionRoots(options, dependencies);
 
     return [
         '--permission',
@@ -120,20 +192,30 @@ async function supervisedChildExecArgv(options: SupervisedChildStartOptions): Pr
     ];
 }
 
-export async function startSupervisedChild(
-    options: SupervisedChildStartOptions,
-    dependencies: RunOrchestratorDependencies
-): Promise<SupervisedChildProcess> {
-    return fork(childProcessEntryPoint, [ supervisedChildProcessEntryPointArgument ], {
-        cwd: options.cwd,
-        env: sanitizedChildEnvironment(dependencies.runtimeCapabilityPolicy.readEnvironment()),
-        execArgv: await supervisedChildExecArgv(options),
-        stdio: [ 'ignore', 'pipe', 'pipe', 'ipc' ]
-    });
+export function createSupervisedChildProcessStarter(
+    dependencies: SupervisedChildProcessStarterDependencies
+): SupervisedChildProcessStarter {
+    return async function startSupervisedChild(options) {
+        return dependencies.fork(
+            dependencies.childProcessEntryPoint,
+            [ supervisedChildProcessEntryPointArgument ],
+            {
+                cwd: options.cwd,
+                env: sanitizedChildEnvironment(options.environmentVariables),
+                execArgv: await supervisedChildExecArgv(options, dependencies),
+                stdio: [ 'ignore', 'pipe', 'pipe', 'ipc' ]
+            }
+        );
+    };
 }
 
-if (process.argv.includes(supervisedChildProcessEntryPointArgument)) {
-    await import('./supervised-child.entry-point.ts');
+export async function runSupervisedChildProcessEntryPoint(
+    childArguments: readonly string[],
+    loadSupervisedChild: () => Promise<unknown>
+): Promise<void> {
+    if (childArguments.includes(supervisedChildProcessEntryPointArgument)) {
+        await loadSupervisedChild();
+    }
 }
 
 function activeCapture(runtime: SupervisedChildOutputRuntime): RunRequest['capture'] {
