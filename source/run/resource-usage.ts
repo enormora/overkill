@@ -117,7 +117,7 @@ export function createResourceUsageTracker(
     dependencies: ResourceUsageTrackerDependencies,
     options: ResourceUsageTrackerOptions
 ): RunResourceUsageTracker {
-    let intervalIdentifier: ReturnType<typeof globalThis.setInterval> | null = null;
+    let intervalIdentifier: ReturnType<WallClock['setInterval']> | null = null;
     let samples: readonly ResourceUsageSample[] = [];
     let startSnapshot: ResourceUsageSnapshot | null = null;
 

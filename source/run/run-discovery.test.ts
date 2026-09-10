@@ -129,6 +129,84 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'discoverRunFiles() annotates explicit files with profile file sets',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const discovery = createDiscovery([
+                    'source/unit/a.test.ts',
+                    'source/integration/b.test.ts'
+                ]);
+                const files = await discovery.discoverRunFiles({
+                    cwd,
+                    paths: [ 'source/unit/a.test.ts' ],
+                    profileFiles: profileFiles({
+                        sets: {
+                            unit: {
+                                exclude: [],
+                                include: [ 'source/unit/**/*.test.ts' ]
+                            }
+                        }
+                    })
+                });
+
+                scope.assert.deepEqual(files, [ discoveredFile('source/unit/a.test.ts', 'unit') ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'discoverRunFiles() rejects invalid profile file set shapes',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const discovery = createDiscovery([ 'source/unit/a.test.ts' ]);
+
+                await scope.assert.rejects(async function discoverEmptyFileSets() {
+                    await discovery.discoverRunFiles({
+                        cwd,
+                        paths: [],
+                        profileFiles: profileFiles({ sets: {} })
+                    });
+                }, { message: 'Invalid profile files.sets: at least one file set is required.' });
+                await scope.assert.rejects(async function discoverInvalidFileSetName() {
+                    await discovery.discoverRunFiles({
+                        cwd,
+                        paths: [],
+                        profileFiles: profileFiles({
+                            sets: {
+                                'bad name': {
+                                    exclude: [],
+                                    include: [ 'source/**/*.test.ts' ]
+                                }
+                            }
+                        })
+                    });
+                }, {
+                    message: 'Invalid profile file set name "bad name". ' +
+                        'Profile file set names may only contain letters, numbers, dots, underscores, and hyphens.'
+                });
+                await scope.assert.rejects(async function discoverUnmatchedExplicitFileSet() {
+                    await discovery.discoverRunFiles({
+                        cwd,
+                        paths: [ 'source/unit/a.test.ts' ],
+                        profileFiles: profileFiles({
+                            sets: {
+                                integration: {
+                                    exclude: [],
+                                    include: [ 'source/integration/**/*.test.ts' ]
+                                }
+                            }
+                        })
+                    });
+                }, { message: 'Profile files.sets.integration matched no test files.' });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() ignores profile glob matches that are not files',
             annotations: {},
             controls: {},

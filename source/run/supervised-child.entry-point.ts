@@ -1,9 +1,11 @@
+import { createWallClock } from '@enormora/wall-clock';
 import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
 import {
     installIpcRestriction as installProcessIpcRestriction,
     installProcessExecutionRestriction as installNodeProcessExecutionRestriction
 } from './node-process-capability-restrictions.ts';
 import { runSupervisedChild, type SupervisedChildHost } from './supervised-child.ts';
+import { createNodeResourceUsageTracker } from './resource-usage.ts';
 import {
     loadRunEngineModule,
     loadRunTestModules,
@@ -86,29 +88,35 @@ function dropBodyReadPermission(command: SupervisedRunCommand): void {
     }
 }
 
-await runSupervisedChild({
-    disconnect,
-    discoverRunFiles: runDiscovery.discoverRunFiles,
-    dropBodyReadPermission,
-    installIpcRestriction(record) {
-        return installProcessIpcRestriction(process, record);
+await runSupervisedChild(
+    {
+        disconnect,
+        discoverRunFiles: runDiscovery.discoverRunFiles,
+        dropBodyReadPermission,
+        installIpcRestriction(record) {
+            return installProcessIpcRestriction(process, record);
+        },
+        installProcessExecutionRestriction(record) {
+            return installNodeProcessExecutionRestriction(process, record);
+        },
+        readEnvironment() {
+            return readProcessEnvironment(process);
+        },
+        readStorage(name) {
+            return readWebStorage(globalThis, name);
+        },
+        loadRunEngineModule,
+        loadRunTestModules,
+        receiveAssignment,
+        receiveCommand,
+        send,
+        setExitCode(code) {
+            process.exitCode = code;
+        },
+        validatePermissionHost
     },
-    installProcessExecutionRestriction(record) {
-        return installNodeProcessExecutionRestriction(process, record);
-    },
-    readEnvironment() {
-        return readProcessEnvironment(process);
-    },
-    readStorage(name) {
-        return readWebStorage(globalThis, name);
-    },
-    loadRunEngineModule,
-    loadRunTestModules,
-    receiveAssignment,
-    receiveCommand,
-    send,
-    setExitCode(code) {
-        process.exitCode = code;
-    },
-    validatePermissionHost
-});
+    {
+        createResourceUsageTracker: createNodeResourceUsageTracker,
+        createWallClock
+    }
+);

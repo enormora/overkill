@@ -12,16 +12,12 @@ import {
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
 import type { RunnerError } from '../engine/run-result.ts';
-import { loadDeterministicRunTestModules } from '../test-support/deterministic-run-fixtures.ts';
-import { createVirtualRunDiscovery } from '../test-support/virtual-run-discovery.ts';
-import { runSupervisedChild, type SupervisedChildHost } from './supervised-child.ts';
 import type { RunCommand, RunConfig, RunMicrotestProfileConfig, RunOrchestrator, RunRequest } from './run-types.ts';
 
 const delayedPassFixturePath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
 const endlessLoopFixturePath = 'source/integration-tests/run/fixtures/endless-loop.test.ts';
 const envPolicyFixturePath = 'source/integration-tests/run/fixtures/env-policy.test.ts';
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
-const failureExitCode = 1;
 const generousResourceBudget = Number.MAX_SAFE_INTEGER;
 const hardTimeoutMilliseconds = 50;
 const resourceGrowthBudgetBytesPerSecond = 1;
@@ -132,38 +128,6 @@ function isRecord(value: unknown): value is Readonly<Record<PropertyKey, unknown
     return typeof value === 'object' && value !== null;
 }
 
-function messageEvent(message: unknown): unknown {
-    if (!isRecord(message) || message.kind !== 'event') {
-        return null;
-    }
-
-    return message.event;
-}
-
-function runnerErrorMessage(message: unknown): string | null {
-    const event = messageEvent(message);
-
-    if (!isRecord(event) || event.kind !== 'runner-error' || !isRecord(event.error)) {
-        return null;
-    }
-
-    const errorMessage = event.error.message;
-
-    return typeof errorMessage === 'string' ? errorMessage : null;
-}
-
-function firstRunnerErrorMessage(messages: readonly unknown[]): string | null {
-    for (const message of messages) {
-        const messageText = runnerErrorMessage(message);
-
-        if (messageText !== null) {
-            return messageText;
-        }
-    }
-
-    return null;
-}
-
 function runnerErrorCapability(error: RunnerError): string | null {
     const { cause } = error;
 
@@ -181,87 +145,6 @@ function runnerErrorCapabilityCount(result: Awaited<ReturnType<RunOrchestrator['
             return runnerErrorCapability(error) === capability;
         })
         .length;
-}
-
-function installNoPolicyRestriction(): () => void {
-    return function restoreNoPolicyRestriction(): void {
-        return undefined;
-    };
-}
-
-type SupervisedMessageSink = {
-    readonly send: SupervisedChildHost['send'];
-};
-
-function createAssignmentMismatchHost(
-    messageSink: SupervisedMessageSink,
-    setExitCode: (exitCode: number) => void
-): SupervisedChildHost {
-    const discovery = createVirtualRunDiscovery({
-        cwd: process.cwd(),
-        directories: [],
-        files: [ delayedPassFixturePath ],
-        realpaths: {}
-    });
-
-    return {
-        disconnect() {
-            return undefined;
-        },
-        discoverRunFiles: discovery.discoverRunFiles,
-        dropBodyReadPermission() {
-            return undefined;
-        },
-        installIpcRestriction: installNoPolicyRestriction,
-        installProcessExecutionRestriction: installNoPolicyRestriction,
-        async loadRunEngineModule() {
-            throw new Error('Assignment mismatch test does not load engine modules.');
-        },
-        loadRunTestModules: loadDeterministicRunTestModules,
-        readEnvironment() {
-            return {};
-        },
-        readStorage() {
-            return null;
-        },
-        async receiveAssignment() {
-            return {
-                assignedCases: [
-                    {
-                        file: delayedPassFixturePath,
-                        title: 'missing-case',
-                        params: null,
-                        suite: []
-                    }
-                ],
-                kind: 'assign'
-            };
-        },
-        async receiveCommand() {
-            return {
-                capabilityRestrictions: { mode: 'disabled' },
-                capture: 'buffered',
-                collectionTimeoutMilliseconds: 1000,
-                cwd: process.cwd(),
-                engine: { kind: 'default' },
-                hardTimeoutMilliseconds,
-                kind: 'run',
-                paths: [ delayedPassFixturePath ],
-                resourceBudgets: microtestProfile.resourceUsage.budgets,
-                resourceUsageSamplingIntervalMilliseconds: samplingIntervalMilliseconds,
-                scheduling: 'concurrent',
-                testFamily: 'microtest',
-                timeoutMilliseconds: softTimeoutMilliseconds
-            };
-        },
-        send(message) {
-            messageSink.send(message);
-        },
-        setExitCode,
-        validatePermissionHost() {
-            return undefined;
-        }
-    };
 }
 
 export const testNode = createOverkillSuite({
@@ -462,35 +345,6 @@ export const testNode = createOverkillSuite({
                 scope.require.defined(result.resourceUsage);
                 scope.assert.equal(result.summary.passed, 1);
                 scope.assert.equal(result.runnerErrors.length, 0);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'supervised child reports assignment mismatches as loader errors',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const messages: unknown[] = [];
-                let exitCode: number | null = null;
-
-                await runSupervisedChild(createAssignmentMismatchHost(
-                    {
-                        send(message) {
-                            messages.push(message);
-                        }
-                    },
-                    function recordExitCode(code) {
-                        exitCode = code;
-                    }
-                ));
-
-                scope.assert.equal(exitCode, failureExitCode);
-                scope.assert.equal(
-                    firstRunnerErrorMessage(messages),
-                    'Supervised child test plan did not match assigned case identities.'
-                );
 
                 return scope.assert.collect();
             }

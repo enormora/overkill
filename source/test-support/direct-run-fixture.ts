@@ -1,6 +1,6 @@
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import type { WallClock } from '@enormora/wall-clock';
+import { createDeterministicWallClock } from '@enormora/wall-clock';
 import type { RunResourceUsageTracker } from '../engine/run-result.ts';
 import { defaultRunEngine } from '../run/default-run-engine.ts';
 import { createRunIfMain, type RunIfMain } from '../run/run-if-main.ts';
@@ -38,25 +38,6 @@ function importMeta(file: string): Readonly<ImportMeta> {
             return import.meta.resolve(specifier);
         },
         url: pathToFileURL(file).href
-    };
-}
-
-function unavailableTimer(): never {
-    throw new Error('Direct run fixture does not provide timers.');
-}
-
-function createWallClockFixture(): WallClock {
-    return {
-        clearInterval() {
-            return undefined;
-        },
-        clearTimeout() {
-            return undefined;
-        },
-        currentDate: new Date(0),
-        currentTimestampInMilliseconds: 0,
-        setInterval: unavailableTimer,
-        setTimeout: unavailableTimer
     };
 }
 
@@ -212,7 +193,7 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
             createRuntimePolicy() {
                 return null;
             },
-            createWallClock: createWallClockFixture,
+            createWallClock: createDeterministicWallClock,
             currentWorkingDirectory() {
                 return cwd;
             },
