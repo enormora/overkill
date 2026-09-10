@@ -330,17 +330,24 @@ a ceiling.
 
 Detection:
 
-- on-process: `process._getActiveHandles()` and `_getActiveRequests()`
-  snapshot before and after each test (in supported profiles); reported
-  as resource-leak diagnostics
-- AsyncLocalStorage-instrumented Promise tracking flags Promises whose
-  parent test has completed but which are not yet settled
-- the diagnostic is a _warning_ by default and a _failure_ in strict
-  profiles
+- single-process execution can compare active resource type snapshots before
+  and after a test, using supported Node runtime introspection
+- AsyncLocalStorage-instrumented Promise tracking flags unconsumed pending
+  Promises whose parent test has completed
+- serial execution can attribute active-resource growth to the current case
+- concurrent execution can still attribute Promise leaks to a case, but
+  active-resource growth is reported at run level because multiple cases may
+  overlap
 
-This is the leak-vs-hang split named in [Microtests And Capabilities](../authoring/microtests-and-capabilities.md).
-The runner reports leaks as structured diagnostics, not as test failures
-unless policy elevates them.
+After the test body returns or throws, the runner aborts `scope.signal`, runs
+registered `scope.cleanup(...)` callbacks, drains one microtask checkpoint,
+and then validates declared in-flight tasks and observed leaks.
+
+Leak diagnostics are reported as runner errors with subtype `runtime-policy`.
+A case-attributed leak gives that case verdict `runtime-policy`; a run-level
+leak remains attached to the run. This is the leak-vs-hang split named in
+[Microtests And Capabilities](../authoring/microtests-and-capabilities.md):
+leaks complete and are diagnosable, while hangs require timeout policy.
 
 ## Timeouts
 

@@ -7,11 +7,17 @@ function ignoreOutputLine(): void {
     return undefined;
 }
 
+function readNoActiveResourceTypes(): readonly string[] {
+    return [];
+}
+
 export function createTestEngine(): Engine {
     const wallClock = createDeterministicWallClock();
 
     return createEngine({
         execute: createExecute({
+            asyncLeakDiagnostics: 'enabled',
+            readActiveResourceTypes: readNoActiveResourceTypes,
             reporterDispatcher: createReporterDispatcher({
                 stderr: { writeLine: ignoreOutputLine },
                 stdout: { writeLine: ignoreOutputLine },

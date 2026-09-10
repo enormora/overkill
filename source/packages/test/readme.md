@@ -263,6 +263,32 @@ integration.test(
 
 Microtest authoring rejects first-party resource and runtime attachments.
 
+Test bodies receive async-control methods on `scope`:
+
+| Method               | Purpose                                                   |
+| -------------------- | --------------------------------------------------------- |
+| `drainMicrotasks()`  | Wait for already-scheduled Promise and microtask work.    |
+| `yieldToNextTurn()`  | Yield through one Node event-loop turn.                   |
+| `settleAsyncWork()`  | Run a bounded set of microtask and next-turn checkpoints. |
+| `startInFlight(...)` | Start background Promise work now and observe it later.   |
+| `cleanup(...)`       | Register sync or async teardown for test-owned resources. |
+
+```ts
+test('logs background failures', async (scope) => {
+    const run = scope.startInFlight(() => worker.run());
+
+    await scope.yieldToNextTurn();
+
+    await run.rejects({ message: 'boom' });
+    scope.assert.equal(logger.error.interactionCount, 1);
+    return scope.assert.collect();
+});
+```
+
+`settleAsyncWork()` is intentionally bounded. Use it for finite queue
+cascades, not as proof that all background work is complete. Work started with
+`startInFlight(...)` must settle and be observed before the test ends.
+
 `createTestFacade` creates another narrow authoring surface for one test
 family:
 

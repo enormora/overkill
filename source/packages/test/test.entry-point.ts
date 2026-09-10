@@ -102,6 +102,7 @@ export type {
 } from './authoring-test-data.ts';
 
 export type {
+    InFlightTask,
     OutputRenderer,
     Reporter,
     Suite,

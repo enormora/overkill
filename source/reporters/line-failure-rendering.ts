@@ -273,7 +273,9 @@ function formatTestContractFailure(
     ];
 }
 
-function formatBodyErrorFailure(failure: Extract<TestFailure, { readonly kind: 'body-error'; }>): readonly string[] {
+function formatBodyErrorFailure(
+    failure: Extract<TestFailure, { readonly kind: 'body-error' | 'cleanup-error'; }>
+): readonly string[] {
     const stackLines = failure.error.stack === null
         ? []
         : truncateRenderedValue(failure.error.stack).split('\n').map(function dimStackLine(line) {
@@ -309,7 +311,7 @@ export function formatFailure(failure: TestFailure, context: ReportingContext): 
         return formatAssertionFailure(failure, context);
     }
 
-    if (failure.kind === 'body-error') {
+    if (failure.kind === 'body-error' || failure.kind === 'cleanup-error') {
         return formatBodyErrorFailure(failure);
     }
 

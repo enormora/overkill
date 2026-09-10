@@ -1,70 +1,52 @@
 import type { WallClock } from '@enormora/wall-clock';
-import { createRunResult } from './execution-result.ts';
-import { startResourceBudgetTracking } from './execution-resource-budget-tracking.ts';
+import {
+    caseWithAsyncLeakPolicy,
+    concurrentRunActiveResourceLeak,
+    createExecutionAsyncLeakMonitor,
+    type AsyncLeakDependencies,
+    type AsyncLeakDiagnostics
+} from './execution-async-leak-policy.ts';
+import {
+    executeOptionsWithDefaults,
+    type ExecuteExecution as ExecuteExecutionDefinition,
+    type ExecuteOptions as ExecuteOptionsDefinition,
+    type NormalizedExecuteOptions
+} from './execution-options.ts';
+import { appendRunnerErrors, createRunResult, throwWithCleanupErrors } from './execution-result.ts';
+import {
+    executeResourceTrackedCases,
+    type ResourceTrackedCaseResult
+} from './execution-resource-tracked-cases.ts';
 import {
     createExecutionSupervision,
     executeCaseBody,
     type ConcurrentCase,
-    type ExecuteResourceBudgets,
-    type ExecuteTimeoutPolicy,
     type ExecutionSupervision,
     type ExecutionSupervisionDependencies
 } from './execution-supervision.ts';
-import { createPlainOutputRenderer, type DefinedOutputRenderer } from './reporter-output.ts';
 import {
     createReporterDisposal,
     type ReporterDelivery,
     type ReporterDispatcher,
     type ReporterDisposal
 } from './reporter-dispatcher.ts';
-import type { DefinedReporter, RunFacts } from './reporter.ts';
 import { createReporterEventQueue, type ReporterEventQueue } from './reporter-event-queue.ts';
-import type {
-    PerTestResult,
-    RunResourceUsageTracker,
-    RunResult,
-    RunnerError
-} from './run-result.ts';
+import type { PerTestResult, RunResult, RunnerError } from './run-result.ts';
 import type { TestPlan, TestPlanCase } from './test-plan.ts';
 
-export type ExecuteExecution = {
-    readonly mode: 'concurrent-in-process' | 'serial-in-process';
-};
-
-export type ExecuteOptions = {
-    readonly execution: ExecuteExecution;
-    readonly outputRenderer?: DefinedOutputRenderer;
-    readonly reporters: readonly DefinedReporter[];
-    readonly resourceBudgets?: ExecuteResourceBudgets | null;
-    readonly resourceUsageTracker?: RunResourceUsageTracker | null;
-    readonly runtimePolicy?: RuntimePolicy | null;
-    readonly runFacts: RunFacts;
-    readonly startedAt: string;
-    readonly timeoutPolicy?: ExecuteTimeoutPolicy | null;
-};
-
-type NormalizedExecuteOptions = ExecuteOptions & {
-    readonly outputRenderer: DefinedOutputRenderer;
-    readonly runtimePolicy: RuntimePolicy | null;
-};
-
-type RuntimePolicy = NonNullable<ExecutionSupervisionDependencies['runtimePolicy']>;
+export type ExecuteExecution = ExecuteExecutionDefinition;
+export type ExecuteOptions = ExecuteOptionsDefinition;
 
 export type ExecuteDependencies = {
+    readonly asyncLeakDiagnostics: AsyncLeakDiagnostics;
+    readonly readActiveResourceTypes: () => readonly string[];
     readonly reporterDispatcher: ReporterDispatcher;
     readonly wallClock: WallClock;
 };
 
-const epoch = new Date(0);
-
 type ExecutedTestPlan = {
     readonly perTest: readonly PerTestResult[];
     readonly reporterErrors: readonly RunnerError[];
-};
-
-type ExecutedTestPlanWithResourceUsage = {
-    readonly executedTestPlan: ExecutedTestPlan;
-    readonly resourceUsage: RunResult['resourceUsage'];
 };
 
 type ReportedCase = {
@@ -115,11 +97,13 @@ type ExecuteRunInput = {
     readonly testPlan: TestPlan;
 };
 
-type ExecutionDependencies = {
+type ExecutionDependencies = AsyncLeakDependencies & {
     readonly runtimePolicy: RuntimePolicy | null;
     readonly reporterDispatcher: ReporterDispatcher;
     readonly wallClock: WallClock;
 };
+
+type RuntimePolicy = NonNullable<ExecutionSupervisionDependencies['runtimePolicy']>;
 
 type ExecutionReportingContext = {
     readonly dependencies: ExecutionDependencies;
@@ -159,25 +143,43 @@ async function reportTestEnd(
 
 async function executeCase(input: ExecuteCaseInput): Promise<ReportedCase> {
     const startErrors = await reportTestStart(input.testCase, input.attempt, input.context);
-    const executedCase = await executeCaseBody(
+    const activeResourceTypesBefore = input.context.dependencies.readActiveResourceTypes();
+    const executedCase = await input.context.dependencies.asyncLeakMonitor.runCase(
         input.testCase,
-        input.options.timeoutPolicy,
-        input.supervision,
-        input.context.dependencies
+        async function runCase() {
+            return await executeCaseBody(
+                input.testCase,
+                input.options.timeoutPolicy,
+                input.supervision,
+                input.context.dependencies
+            );
+        }
     );
+    const leakCheckedCase = await caseWithAsyncLeakPolicy({
+        activeResourceTypesBefore,
+        dependencies: input.context.dependencies,
+        executedCase,
+        includeActiveResourceLeaks: input.options.execution.mode === 'serial-in-process',
+        testCase: input.testCase
+    });
+
+    for (const runnerError of leakCheckedCase.runnerErrors) {
+        input.supervision.recordRunnerError(runnerError);
+    }
+
     const endErrors = await reportTestEnd(
         {
             attempt: input.attempt,
-            result: executedCase.result,
+            result: leakCheckedCase.executedCase.result,
             testCase: input.testCase,
-            wallTimeMs: executedCase.wallTimeMs
+            wallTimeMs: leakCheckedCase.executedCase.wallTimeMs
         },
         input.context
     );
 
     return {
         reporterErrors: [ ...startErrors, ...endErrors ],
-        result: executedCase.result
+        result: leakCheckedCase.executedCase.result
     };
 }
 
@@ -318,15 +320,34 @@ async function reportConcurrentCaseEnd(
 async function executeConcurrentCases(input: ExecuteConcurrentCasesInput): Promise<ConcurrentCaseExecution> {
     const endReporterErrors: RunnerError[] = [];
     const caseExecutions = input.testPlan.cases.map(async function executeCaseConcurrently(testCase) {
-        const executedCase = await executeCaseBody(
+        const executedCase = await input.context.dependencies.asyncLeakMonitor.runCase(
             testCase,
-            input.options.timeoutPolicy,
-            input.supervision,
-            input.context.dependencies
+            async function runCase() {
+                return await executeCaseBody(
+                    testCase,
+                    input.options.timeoutPolicy,
+                    input.supervision,
+                    input.context.dependencies
+                );
+            }
         );
-        endReporterErrors.push(...await reportConcurrentCaseEnd(testCase, executedCase, input.reportQueue));
+        const leakCheckedCase = await caseWithAsyncLeakPolicy({
+            activeResourceTypesBefore: [],
+            dependencies: input.context.dependencies,
+            executedCase,
+            includeActiveResourceLeaks: false,
+            testCase
+        });
 
-        return executedCase;
+        for (const runnerError of leakCheckedCase.runnerErrors) {
+            input.supervision.recordRunnerError(runnerError);
+        }
+
+        endReporterErrors.push(
+            ...await reportConcurrentCaseEnd(testCase, leakCheckedCase.executedCase, input.reportQueue)
+        );
+
+        return leakCheckedCase.executedCase;
     });
     const executedCases = await Promise.all(caseExecutions);
 
@@ -345,6 +366,7 @@ async function executeConcurrentTestPlanCases(input: ExecuteTestPlanCasesInput):
         input.context.reporterDelivery,
         input.context.dependencies
     );
+    const activeResourceTypesBefore = input.context.dependencies.readActiveResourceTypes();
     const concurrentCaseExecution = await executeConcurrentCases({
         context: input.context,
         options: input.options,
@@ -352,12 +374,19 @@ async function executeConcurrentTestPlanCases(input: ExecuteTestPlanCasesInput):
         supervision: input.supervision,
         testPlan: input.testPlan
     });
+    const activeLeakError = concurrentRunActiveResourceLeak(
+        input.context.dependencies,
+        activeResourceTypesBefore
+    );
+    const runnerErrors = activeLeakError === null
+        ? concurrentCaseExecution.runnerErrors
+        : [ ...concurrentCaseExecution.runnerErrors, activeLeakError ];
 
     return {
         perTest: concurrentCaseExecution.perTest,
         reporterErrors: [
             ...reporterErrors,
-            ...concurrentCaseExecution.runnerErrors,
+            ...runnerErrors,
             ...input.options.runtimePolicy?.takeRunErrors() ?? [],
             ...concurrentCaseExecution.endReporterErrors
         ]
@@ -372,52 +401,12 @@ async function executeTestPlanCasesWithMode(input: ExecuteTestPlanCasesInput): P
     return await executeTestPlanCases(input);
 }
 
-async function executeTestPlanCasesWithResourceBudgetTracking(
-    input: ExecuteTestPlanCasesInput
-): Promise<ExecutedTestPlanWithResourceUsage> {
-    const { resourceUsageTracker } = input.options;
-
-    if (resourceUsageTracker === null || resourceUsageTracker === undefined) {
-        return {
-            executedTestPlan: await executeTestPlanCasesWithMode(input),
-            resourceUsage: null
-        };
-    }
-
-    const resourceBudgetTracking = startResourceBudgetTracking({
-        dependencies: input.context.dependencies,
-        resourceBudgets: input.options.resourceBudgets ?? null,
-        resourceUsageTracker,
-        supervision: input.supervision
-    });
-
-    try {
-        const executedTestPlan = await executeTestPlanCasesWithMode(input);
-        const resourceBudgetResult = resourceBudgetTracking.finish();
-
-        return {
-            executedTestPlan: {
-                ...executedTestPlan,
-                reporterErrors: [
-                    ...executedTestPlan.reporterErrors,
-                    ...resourceBudgetResult.runnerErrors
-                ]
-            },
-            resourceUsage: resourceBudgetResult.resourceUsage
-        };
-    } catch (error: unknown) {
-        resourceBudgetTracking.stop();
-
-        throw error;
-    }
-}
-
 async function executeTestPlanCasesAndMeasureResourceUsage(
     testPlan: TestPlan,
     options: NormalizedExecuteOptions,
     dependencies: ExecutionDependencies,
     reporterDelivery: ReporterDelivery
-): Promise<ExecutedTestPlanWithResourceUsage> {
+): Promise<ResourceTrackedCaseResult<ExecutedTestPlan>> {
     const supervision = createExecutionSupervision();
     const input: ExecuteTestPlanCasesInput = {
         context: { dependencies, reporterDelivery },
@@ -426,42 +415,7 @@ async function executeTestPlanCasesAndMeasureResourceUsage(
         testPlan
     };
 
-    return await executeTestPlanCasesWithResourceBudgetTracking(input);
-}
-
-function appendRunnerErrors(result: RunResult, runnerErrors: readonly RunnerError[]): RunResult {
-    if (runnerErrors.length === 0) {
-        return result;
-    }
-
-    return {
-        ...result,
-        runnerErrors: [ ...result.runnerErrors, ...runnerErrors ]
-    };
-}
-
-function executeOptionsWithDefaults(options: ExecuteOptions | undefined): NormalizedExecuteOptions {
-    if (options !== undefined) {
-        return {
-            ...options,
-            outputRenderer: options.outputRenderer ?? createPlainOutputRenderer(),
-            resourceBudgets: options.resourceBudgets ?? null,
-            runtimePolicy: options.runtimePolicy ?? null,
-            timeoutPolicy: options.timeoutPolicy ?? null
-        };
-    }
-
-    return {
-        execution: { mode: 'serial-in-process' },
-        outputRenderer: createPlainOutputRenderer(),
-        reporters: [],
-        resourceBudgets: null,
-        resourceUsageTracker: null,
-        runtimePolicy: null,
-        runFacts: {},
-        startedAt: epoch.toISOString(),
-        timeoutPolicy: null
-    };
+    return await executeResourceTrackedCases(input, executeTestPlanCasesWithMode);
 }
 
 async function createRunResultBeforeRunEnd(
@@ -510,26 +464,14 @@ async function executeRun(input: ExecuteRunInput): Promise<RunResult> {
     return appendRunnerErrors(resultForFinalReporting, [ ...finalReporterErrors, ...disposeErrors ]);
 }
 
-async function throwWithCleanupErrors(error: unknown, reporterDisposal: ReporterDisposal): Promise<never> {
-    const disposeErrors = await reporterDisposal.disposeOnce();
-
-    if (disposeErrors.length > 0) {
-        throw new AggregateError(
-            [ error, ...disposeErrors ],
-            'Execution failed and reporter cleanup failed.',
-            { cause: error }
-        );
-    }
-
-    throw error;
-}
-
 export type Execute = (testPlan: TestPlan, options?: ExecuteOptions) => Promise<RunResult>;
 
 export function createExecute(dependencies: ExecuteDependencies): Execute {
     return async function execute(testPlan, options) {
         const executeOptions = executeOptionsWithDefaults(options);
+        const asyncLeakMonitor = createExecutionAsyncLeakMonitor(dependencies.asyncLeakDiagnostics);
         const executionDependencies: ExecutionDependencies = {
+            asyncLeakMonitor,
             ...dependencies,
             runtimePolicy: executeOptions.runtimePolicy
         };
@@ -550,7 +492,9 @@ export function createExecute(dependencies: ExecuteDependencies): Execute {
                 testPlan
             });
         } catch (error: unknown) {
-            return await throwWithCleanupErrors(error, reporterDisposal);
+            return await throwWithCleanupErrors(error, reporterDisposal.disposeOnce);
+        } finally {
+            asyncLeakMonitor.stop();
         }
     };
 }

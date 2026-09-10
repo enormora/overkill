@@ -4,6 +4,7 @@ import type {
 } from '../assertion-protocol/assertion-node.ts';
 import type { NonEmptyReadonlyArray, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { ensureValidSourceLocation } from '../assertion-protocol/source-location.ts';
+import type { InFlightTask } from './async-control.ts';
 import type { AssertAssertionFacade } from './assertion-facade.ts';
 import type { RequireAssertionFacade } from './require-assertion-facade.ts';
 import {
@@ -27,9 +28,14 @@ export type TestScopeAssertContext = AssertAssertionFacade & {
 
 export type TestScope = {
     readonly assert: TestScopeAssertContext;
+    readonly cleanup: (callback: () => Promise<void> | void) => void;
+    readonly drainMicrotasks: () => Promise<void>;
     readonly plan: (count: number) => void;
     readonly require: RequireAssertionFacade;
+    readonly settleAsyncWork: () => Promise<void>;
     readonly signal: AbortSignal;
+    readonly startInFlight: <Value>(operation: () => PromiseLike<Value>) => InFlightTask<Value>;
+    readonly yieldToNextTurn: () => Promise<void>;
 };
 
 export type TestBody = (scope: TestScope) => AssertionResult | Promise<AssertionResult>;

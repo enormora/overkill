@@ -2,6 +2,7 @@ import { describe, expect, test as typeTest } from 'tstyche';
 import type {
     DefinedOutputRenderer,
     DefinedReporter,
+    InFlightTask,
     Suite,
     Table,
     TestBody,
@@ -19,6 +20,7 @@ import {
     type RunIfMainRootOptions as RootRunIfMainRootOptions,
     skippedTest,
     type MicrotestAuthoringControls,
+    type InFlightTask as RootInFlightTask,
     type Suite as RootSuite,
     test,
     type Table as RootTable,
@@ -70,6 +72,7 @@ describe('@overkill-dev/test capture and direct execution types', function () {
             readonly controls?: MicrotestAuthoringControls;
             readonly title: string;
         }>();
+        expect<RootInFlightTask<string>>().type.toBe<InFlightTask<string>>();
         expect<RootSuite>().type.toBe<Suite>();
         expect<RootTable>().type.toBe<Table>();
         expect<RootTestBody>().type.toBe<TestBody>();

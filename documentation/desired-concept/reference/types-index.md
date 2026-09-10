@@ -245,6 +245,15 @@ type TestFailure =
         };
     }
     | {
+        readonly kind: 'cleanup-error';
+        readonly error: {
+            readonly message: string;
+            readonly name: string;
+            readonly stack: string | null;
+            readonly thrown: unknown;
+        };
+    }
+    | {
         readonly actual: unknown;
         readonly code:
             | 'invalid-assertion-reference'
@@ -253,7 +262,9 @@ type TestFailure =
             | 'invalid-require-reference'
             | 'no-assertions'
             | 'pending-async-assertion'
-            | 'plan-mismatch';
+            | 'pending-in-flight-task'
+            | 'plan-mismatch'
+            | 'unobserved-in-flight-task';
         readonly expected: string;
         readonly kind: 'test-contract';
         readonly summary: string;
@@ -526,6 +537,22 @@ type RequireAssertionFacade = {
 
 type TestScopeAssertContext = AssertAssertionFacade & {
     readonly collect: () => NonEmptyReadonlyArray<AssertAssertionNode>;
+};
+
+type InFlightTask<Value> = {
+    readonly rejects: (matcher: ThrownMatcher) => Promise<void>;
+    readonly wait: () => Promise<Value>;
+};
+
+type TestScope = {
+    readonly assert: TestScopeAssertContext;
+    readonly cleanup: (callback: () => Promise<void> | void) => void;
+    readonly drainMicrotasks: () => Promise<void>;
+    readonly settleAsyncWork: () => Promise<void>;
+    readonly signal: AbortSignal;
+    readonly startInFlight: <Value>(operation: () => PromiseLike<Value>) => InFlightTask<Value>;
+    readonly yieldToNextTurn: () => Promise<void>;
+    readonly require: RequireAssertionFacade;
 };
 
 type BuilderTestBody = (case: unknown) => AssertionResult | Promise<AssertionResult>;
@@ -1141,6 +1168,22 @@ type RunnerError = {
     readonly message: string;
     readonly cause?: unknown;
 };
+
+type AsyncLeakRunnerErrorCause =
+    | {
+        readonly capability: 'async-leak';
+        readonly leak: 'promise';
+        readonly pendingPromiseCount: number;
+        readonly phase: 'body';
+        readonly strictness: 'observed';
+    }
+    | {
+        readonly capability: 'async-leak';
+        readonly leak: 'active-resource';
+        readonly phase: 'body' | 'run';
+        readonly resourceTypes: readonly string[];
+        readonly strictness: 'observed';
+    };
 
 type RuntimePolicyViolation = {
     readonly attribution:

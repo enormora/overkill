@@ -188,9 +188,15 @@ function ignoreOutputLine(): void {
     return undefined;
 }
 
+function readNoActiveResourceTypes(): readonly string[] {
+    return [];
+}
+
 function createReporterDeliveryEngine(wallClock: ReturnType<typeof createDeterministicWallClock>): Engine {
     return createEngine({
         execute: createExecute({
+            asyncLeakDiagnostics: 'enabled',
+            readActiveResourceTypes: readNoActiveResourceTypes,
             reporterDispatcher: createReporterDispatcher({
                 stderr: { writeLine: ignoreOutputLine },
                 stdout: { writeLine: ignoreOutputLine },

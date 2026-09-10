@@ -266,8 +266,8 @@ async function runTestCaseWithPolicy(
     dependencies: ExecutionSupervisionDependencies
 ): Promise<ConcurrentCase> {
     const executedCase = await runTestCase(testCase, dependencies.wallClock, {
-        runtimePolicy: dependencies.runtimePolicy ?? null,
-        signal: controller.signal
+        controller,
+        runtimePolicy: dependencies.runtimePolicy ?? null
     });
 
     return policyCheckedCase(testCase, executedCase, supervision, dependencies);

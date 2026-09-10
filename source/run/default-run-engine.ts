@@ -13,11 +13,17 @@ function writeStderrLine(line: string): void {
     process.stderr.write(`${line}\n`);
 }
 
+function readActiveResourceTypes(): readonly string[] {
+    return process.getActiveResourcesInfo();
+}
+
 function createEngineDependencies(): EngineDependencies {
     const wallClock = createWallClock();
 
     return {
         execute: createExecute({
+            asyncLeakDiagnostics: 'enabled',
+            readActiveResourceTypes,
             reporterDispatcher: createReporterDispatcher({
                 stderr: { writeLine: writeStderrLine },
                 stdout: { writeLine: writeStdoutLine },

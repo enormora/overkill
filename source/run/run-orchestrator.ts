@@ -8,6 +8,10 @@ import { createRandomRunSeed } from './run-seed.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { RunOrchestrator } from './run-types.ts';
 
+function readActiveResourceTypes(): readonly string[] {
+    return process.getActiveResourcesInfo();
+}
+
 type RuntimeCapabilityPolicyInput = RunOrchestratorDependencies['runtimeCapabilityPolicy'];
 
 export type NodeRunOrchestratorInput = {
@@ -47,6 +51,8 @@ export function createNodeRunOrchestrator(input: NodeRunOrchestratorInput): RunO
         defaultEngine: input.defaultEngine,
         discoverRunFilesWithProjectRoot: input.discoverRunFilesWithProjectRoot,
         execute: createExecute({
+            asyncLeakDiagnostics: 'enabled',
+            readActiveResourceTypes,
             reporterDispatcher,
             wallClock
         }),

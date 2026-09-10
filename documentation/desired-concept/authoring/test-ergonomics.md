@@ -272,23 +272,32 @@ set of queue-control helpers.
 
 Recommended helpers:
 
-- `scope.flushAsync()`
-- `scope.microtasks()`
-- `scope.immediate()`
+| Helper                     | Use when                                                                                                    | Does not                                                            |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `scope.drainMicrotasks()`  | The code under test schedules already-resolved Promise continuations or `queueMicrotask` work.              | Advance timers, immediates, streams, or other event-loop turns.     |
+| `scope.yieldToNextTurn()`  | The code under test hands work to the next Node turn, such as `setImmediate` or a next-turn event dispatch. | Drain an open-ended async cascade.                                  |
+| `scope.settleAsyncWork()`  | A finite queue-driven cascade should reach its observable steady state before the assertion.                | Prove global quiescence or wait for declared background operations. |
+| `scope.startInFlight(...)` | A background operation must start now and be asserted later.                                                | Hide unobserved or still-pending work at test end.                  |
+| `scope.cleanup(...)`       | Test-owned resources need deterministic async teardown.                                                     | Register teardown after cleanup has started.                        |
 
-Suggested semantics:
+Semantics:
 
-- `scope.microtasks()` drains the current microtask queue once. Use it when
-  the code under test schedules follow-up work with `Promise.resolve()`,
-  `queueMicrotask`, or an already-resolved async continuation.
-- `scope.immediate()` yields one event-loop turn. Use it when the code under
-  test crosses a macrotask boundary (`setImmediate`, message channel,
-  stream callback, next-turn event dispatch) and a microtask flush is not
+- `scope.drainMicrotasks()` drains the current microtask queue once. Use it
+  when the code under test schedules follow-up work with
+  `Promise.resolve()`, `queueMicrotask`, or an already-resolved async
+  continuation.
+- `scope.yieldToNextTurn()` yields one event-loop turn. Use it when the
+  code under test crosses a macrotask boundary and a microtask flush is not
   enough.
-- `scope.flushAsync()` is the bounded "settle what is already in flight"
-  helper. It repeatedly yields through the relevant queue boundaries until
-  the currently scheduled async work has drained, or until a small safety
-  limit is hit so the helper cannot spin forever on a live loop.
+- `scope.settleAsyncWork()` is the bounded "settle the currently-triggered
+  cascade" helper. It alternates microtask and next-turn checkpoints a small
+  fixed number of times, then stops so a live loop cannot spin forever.
+- `scope.startInFlight(...)` starts a Promise-returning operation now and
+  returns a handle with `wait()` and `rejects(...)`. The task must settle and
+  must be observed before the test ends.
+- `scope.cleanup(...)` registers teardown callbacks. Registration is
+  synchronous; the callback itself may be async. Cleanups run after the test
+  body, after `scope.signal` is aborted, and in reverse registration order.
 
 These are useful because they do **not** require global time monkey
 patching or a mandatory production-side clock abstraction.
@@ -298,18 +307,59 @@ dance found in controller, state-machine, and lock tests.
 
 Typical use:
 
-- `microtasks()` for promise-chains and "one more await" state updates
-- `immediate()` for observer/event-loop handoff where work lands on the
-  next turn rather than the current microtask queue
-- `flushAsync()` for queue-driven components where the test wants the
+- `drainMicrotasks()` for promise chains and "one more await" state updates
+- `yieldToNextTurn()` for observer/event-loop handoff where work lands on
+  the next turn rather than the current microtask queue
+- `settleAsyncWork()` for queue-driven components where the test wants the
   currently-triggered cascade to settle before asserting
+
+Examples:
+
+```ts
+test('publishes a deferred state change', async (scope) => {
+    const store = createStore();
+
+    store.setName('Ada');
+    await scope.drainMicrotasks();
+
+    scope.assert.equal(store.snapshot().name, 'Ada');
+    return scope.assert.collect();
+});
+```
+
+```ts
+test('notifies subscribers on the next turn', async (scope) => {
+    const events: string[] = [];
+    const bus = createBus();
+
+    bus.subscribe((event) => events.push(event));
+    bus.publish('saved');
+
+    await scope.yieldToNextTurn();
+
+    scope.assert.deepEqual(events, [ 'saved' ]);
+    return scope.assert.collect();
+});
+```
+
+```ts
+test('settles a finite retry cascade', async (scope) => {
+    const worker = createRetryingWorker({ failuresBeforeSuccess: 2 });
+
+    worker.start();
+    await scope.settleAsyncWork();
+
+    scope.assert.equal(worker.status(), 'ready');
+    return scope.assert.collect();
+});
+```
 
 This should stay intentionally small. The first-party concept does not need
 an exhaustive scheduler DSL; it needs a few helpers that replace ad-hoc
 `await Promise.resolve()` and `await new Promise(setImmediate)` littered
 through otherwise straightforward tests.
 
-## `inFlight(...)`
+## `startInFlight(...)`
 
 The spawned-async pattern is real, but it should stay small and advanced.
 
@@ -317,7 +367,7 @@ Recommended direction:
 
 ```ts
 test('logs fire-and-forget rejection', async (scope) => {
-    const run = scope.inFlight(() => executor.execute(asyncFunction));
+    const run = scope.startInFlight(() => executor.execute(asyncFunction));
 
     await run.rejects({ message: 'error' });
 
@@ -333,6 +383,9 @@ The important promise:
 - avoid manual promise temp-variable choreography
 
 This helper should stay narrowly scoped and clearly documented as advanced.
+It should not merge with `settleAsyncWork()`: a test that starts background
+work has a different authoring obligation than a test that only needs to
+cross queue boundaries.
 
 ## What Overkill Should Not Add Here
 
@@ -353,7 +406,8 @@ The current concept should preserve room for:
 - `defineHarness(...)`
 - transcript recording with generic subscription adapters
 - reusable multi-case macros
-- `flushAsync()` / `microtasks()` / `immediate()`
-- `inFlight(...)`
+- `settleAsyncWork()` / `drainMicrotasks()` / `yieldToNextTurn()`
+- `startInFlight(...)`
+- `cleanup(...)`
 
 These are the ergonomics helpers that belong in the first-party concept.

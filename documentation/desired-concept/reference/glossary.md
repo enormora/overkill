@@ -453,7 +453,23 @@ Source: [Assertions And Results § Property Tests And The Assertion Boundary](..
 
 ## Microtask Flush
 
-The async-control helper that drains the microtask queue without advancing
-macrotasks.
+The `scope.drainMicrotasks()` async-control helper. It drains the current
+microtask queue once without advancing macrotasks.
+
+Source: [Test Ergonomics § Async-Control Helpers](../authoring/test-ergonomics.md#async-control-helpers).
+
+## In-Flight Task
+
+A background operation started through `scope.startInFlight(...)`. It starts
+immediately, returns a handle for later observation, and must settle and be
+observed before the test ends.
+
+Source: [Test Ergonomics § startInFlight(...)](../authoring/test-ergonomics.md#startinflight).
+
+## Scope Cleanup
+
+A teardown callback registered through `scope.cleanup(...)`. The registration
+is synchronous, the callback may be async, and callbacks run after the test
+body in reverse registration order.
 
 Source: [Test Ergonomics § Async-Control Helpers](../authoring/test-ergonomics.md#async-control-helpers).

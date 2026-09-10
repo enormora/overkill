@@ -13,8 +13,6 @@ import {
     TestContractSignalError,
     type AssertionRecorder
 } from './assertion-recorder.ts';
-import { createRecordingAssertFacade } from './assertion-facade.ts';
-import { createRecordingRequireFacade } from './require-assertion-facade.ts';
 import {
     type PerTestResult,
     type RunnerError,
@@ -24,14 +22,15 @@ import {
     invalidDeepAssertionOperandFailure,
     verdictFromOutcome
 } from './run-result.ts';
-import type { TestScope } from './test-node.ts';
+import { createTestScopeLifecycle } from './test-scope-lifecycle.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
 type BodyErrorRecord = ThrownErrorRecord;
 
 type ExecutedBody = {
     readonly bodyError: BodyErrorRecord | null;
-    readonly contractFailure: TestContractFailure | null;
+    readonly cleanupErrors: readonly BodyErrorRecord[];
+    readonly contractFailures: readonly TestContractFailure[];
     readonly requireFailed: boolean;
     readonly returnedAssertions: readonly AssertionNode[];
 };
@@ -42,8 +41,8 @@ type ExecutedCase = {
 };
 
 export type RunTestCaseOptions = {
+    readonly controller: AbortController;
     readonly runtimePolicy: TestRuntimePolicy | null;
-    readonly signal: AbortSignal;
 };
 
 export type TestRuntimePolicy = {
@@ -88,62 +87,24 @@ function assertionFailure(assertions: readonly AssertionNode[]): TestFailure | n
     return assertionContractFailure(assertions) ?? evaluatedAssertionFailure(assertions);
 }
 
-function createTestScope(recorder: AssertionRecorder, signal: AbortSignal): TestScope {
-    const assertContext = Object.assign(
-        createRecordingAssertFacade(
-            {
-                failContract(failure) {
-                    return recorder.failContract(failure);
-                },
-                recordAssert(assertion) {
-                    recorder.recordAssert(assertion);
-                },
-                recordPendingAssert() {
-                    return recorder.recordPendingAssert();
-                }
-            },
-            null
-        ),
-        {
-            collect() {
-                return recorder.collect();
-            }
-        }
-    );
-
-    return {
-        assert: assertContext,
-        plan(count) {
-            recorder.plan(count);
-        },
-        require: createRecordingRequireFacade(
-            {
-                failContract(failure) {
-                    return recorder.failContract(failure);
-                },
-                recordRequire(assertion) {
-                    recorder.recordRequire(assertion);
-                }
-            },
-            null
-        ),
-        signal
-    };
-}
-
 function requireFailedBody(recorder: AssertionRecorder): ExecutedBody {
     return {
         bodyError: null,
-        contractFailure: null,
+        cleanupErrors: [],
+        contractFailures: [],
         requireFailed: true,
         returnedAssertions: recorder.activeRecordedAssertions()
     };
 }
 
-function contractFailedBody(recorder: AssertionRecorder, contractFailure: TestContractFailure): ExecutedBody {
+function contractFailedBody(
+    recorder: AssertionRecorder,
+    contractFailures: readonly TestContractFailure[]
+): ExecutedBody {
     return {
         bodyError: null,
-        contractFailure,
+        cleanupErrors: [],
+        contractFailures,
         requireFailed: false,
         returnedAssertions: recorder.activeRecordedAssertions()
     };
@@ -152,37 +113,63 @@ function contractFailedBody(recorder: AssertionRecorder, contractFailure: TestCo
 function bodyErrorResult(recorder: AssertionRecorder, error: unknown): ExecutedBody {
     return {
         bodyError: createThrownErrorRecord(error),
-        contractFailure: null,
+        cleanupErrors: [],
+        contractFailures: [],
         requireFailed: false,
         returnedAssertions: recorder.activeRecordedAssertions()
     };
 }
 
-function completedBody(recorder: AssertionRecorder, assertionResult: AssertionResult): ExecutedBody {
+function completedBody(
+    recorder: AssertionRecorder,
+    assertionResult: AssertionResult,
+    lifecycleFailures: readonly TestContractFailure[],
+    cleanupErrors: readonly BodyErrorRecord[]
+): ExecutedBody {
     if (recorder.requireFailed()) {
-        return requireFailedBody(recorder);
+        return {
+            ...requireFailedBody(recorder),
+            cleanupErrors,
+            contractFailures: lifecycleFailures
+        };
     }
 
     const returnedAssertions = recorder.returnedAssertions(assertionResult);
+    const returnedContractFailures = isTestContractFailure(returnedAssertions) ? [ returnedAssertions ] : [];
+    const activeAssertions = isTestContractFailure(returnedAssertions)
+        ? recorder.activeRecordedAssertions()
+        : returnedAssertions;
 
-    return isTestContractFailure(returnedAssertions)
-        ? contractFailedBody(recorder, returnedAssertions)
-        : {
-            bodyError: null,
-            contractFailure: null,
-            requireFailed: false,
-            returnedAssertions
-        };
+    return {
+        bodyError: null,
+        cleanupErrors,
+        contractFailures: [ ...returnedContractFailures, ...lifecycleFailures ],
+        requireFailed: false,
+        returnedAssertions: activeAssertions
+    };
 }
 
-function failedBody(recorder: AssertionRecorder, error: unknown): ExecutedBody {
+function failedBody(
+    recorder: AssertionRecorder,
+    error: unknown,
+    lifecycleFailures: readonly TestContractFailure[],
+    cleanupErrors: readonly BodyErrorRecord[]
+): ExecutedBody {
     if (error instanceof RequireFailedSignalError) {
-        return requireFailedBody(recorder);
+        return {
+            ...requireFailedBody(recorder),
+            cleanupErrors,
+            contractFailures: lifecycleFailures
+        };
     }
 
     return error instanceof TestContractSignalError
-        ? contractFailedBody(recorder, error.failure())
-        : bodyErrorResult(recorder, error);
+        ? contractFailedBody(recorder, [ error.failure(), ...lifecycleFailures ])
+        : {
+            ...bodyErrorResult(recorder, error),
+            cleanupErrors,
+            contractFailures: lifecycleFailures
+        };
 }
 
 async function runCaseBody(
@@ -190,12 +177,13 @@ async function runCaseBody(
     recorder: AssertionRecorder,
     options: RunTestCaseOptions
 ): Promise<ExecutedBody> {
+    const lifecycle = createTestScopeLifecycle(recorder);
     const runBody = async function runUserBody(): Promise<AssertionResult> {
         if (testCase.execution.kind !== 'body') {
             throw new TypeError('Skipped test cases do not have executable bodies.');
         }
 
-        return await testCase.execution.body(createTestScope(recorder, options.signal));
+        return await lifecycle.runBody(options.controller.signal, testCase.execution.body);
     };
     const runPolicyCheckedBody = async function runPolicyCheckedUserBody(): Promise<AssertionResult> {
         return options.runtimePolicy === null
@@ -204,29 +192,54 @@ async function runCaseBody(
     };
 
     try {
-        return completedBody(recorder, await runPolicyCheckedBody());
+        const assertionResult = await runPolicyCheckedBody();
+        const finishedBody = await lifecycle.finish(options.controller);
+
+        return completedBody(
+            recorder,
+            assertionResult,
+            finishedBody.lifecycleFailures,
+            finishedBody.cleanupErrors.map(createThrownErrorRecord)
+        );
     } catch (error: unknown) {
-        return failedBody(recorder, error);
+        const finishedBody = await lifecycle.finish(options.controller);
+
+        return failedBody(
+            recorder,
+            error,
+            finishedBody.lifecycleFailures,
+            finishedBody.cleanupErrors.map(createThrownErrorRecord)
+        );
     }
 }
 
-function bodyFailure(executedBody: ExecutedBody): TestFailure | null {
-    if (executedBody.contractFailure !== null) {
-        return executedBody.contractFailure;
-    }
+function bodyFailures(executedBody: ExecutedBody): readonly TestFailure[] {
+    const failures: TestFailure[] = Array.from(executedBody.contractFailures);
 
     if (executedBody.bodyError !== null) {
-        return {
+        failures.push({
             error: executedBody.bodyError,
             kind: 'body-error'
-        };
+        });
     }
 
-    return null;
+    for (const cleanupError of executedBody.cleanupErrors) {
+        failures.push({
+            error: cleanupError,
+            kind: 'cleanup-error'
+        });
+    }
+
+    return failures;
 }
 
 function planFailure(recorder: AssertionRecorder, executedBody: ExecutedBody): TestFailure | null {
-    if (executedBody.requireFailed || executedBody.contractFailure !== null || executedBody.bodyError !== null) {
+    if (
+        executedBody.requireFailed ||
+        executedBody.contractFailures.length > 0 ||
+        executedBody.bodyError !== null ||
+        executedBody.cleanupErrors.length > 0
+    ) {
         return null;
     }
 
@@ -236,7 +249,7 @@ function planFailure(recorder: AssertionRecorder, executedBody: ExecutedBody): T
 function createOutcome(recorder: AssertionRecorder, executedBody: ExecutedBody): TestOutcome {
     const failures = [
         assertionFailure(executedBody.returnedAssertions),
-        bodyFailure(executedBody),
+        ...bodyFailures(executedBody),
         planFailure(recorder, executedBody)
     ]
         .filter(function isTestFailure(failure): failure is TestFailure {
@@ -259,8 +272,8 @@ function defaultRunTestCaseOptions(): RunTestCaseOptions {
     const controller = new AbortController();
 
     return {
-        runtimePolicy: null,
-        signal: controller.signal
+        controller,
+        runtimePolicy: null
     };
 }
 

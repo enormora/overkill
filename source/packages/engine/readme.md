@@ -22,7 +22,7 @@ Top-level API:
 - `CaseId`, `TestId`, `TestRoot`, `TestPlan`, `ExecuteOptions`, `NonEmptyReadonlyArray`, `DeepComparable`
 - `Reporter`, `DefinedReporter`, `ReporterEvent`, `RealTimeReporter`, `FinalResultReporter`, `RunFacts`, `SinkDeclaration`, `OutputLineIntent`, `OutputRenderer`, `DefinedOutputRenderer`, `ReportingContext`
 - `RunResult`, `TestOutcome`, `PassOutcome`, `FailOutcome`, `SkipOutcome`, `InconclusiveOutcome`
-- `AssertionNode`, `AssertionResult`, `AssertAssertionFacade`, `TestScopeAssertContext`
+- `AssertionNode`, `AssertionResult`, `AssertAssertionFacade`, `InFlightTask`, `TestScopeAssertContext`
 - `ThrownMatcher`, `ErrorMatcher`, `ExactThrownMatcher`
 - `RequireAssertionFacade`, `FailedCheck`, `TestFailure`, `RunnerError`
 - `Diff`, `DiffPathSegment`, `SerializedValue`, `SerializationBudget`
@@ -103,6 +103,18 @@ Annotations and controls are closed structured input. Unknown fields fail
 during test construction or collection. `TestPlanCase.annotations` and
 `TestPlanCase.controls` contain the resolved data after root, suite, table,
 and case propagation.
+
+Test scope lifecycle:
+
+- `scope.signal` is aborted after the body returns or throws and before
+  cleanup callbacks run.
+- `scope.cleanup(callback)` registers teardown callbacks. Callbacks run in
+  reverse registration order and may be async.
+- `scope.drainMicrotasks()`, `scope.yieldToNextTurn()`, and
+  `scope.settleAsyncWork()` replace ad-hoc queue waits in test bodies.
+- `scope.startInFlight(operation)` starts background Promise work now and
+  returns a handle with `wait()` and `rejects(...)`. The task must settle and
+  be observed before the test ends.
 
 Reporter lifecycle:
 

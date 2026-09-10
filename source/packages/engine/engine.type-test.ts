@@ -10,10 +10,8 @@ import type {
     AssertAssertionFacade,
     AssertAssertionNode,
     AssertionNode,
-    AssertionOptions,
     AssertionResult,
     AssertionSource,
-    TestScopeAssertContext,
     CaseId,
     captureSourceLocation,
     DeepComparable,
@@ -40,7 +38,6 @@ import type {
     TestAnnotationsInput,
     TestControls,
     TestControlsInput,
-    TestScope,
     TestFailure,
     TestFamily,
     TestOutcome,
@@ -130,62 +127,6 @@ type CaseIdFixture = {
 };
 type TestStartReporterEvent = Extract<ReporterEvent, { readonly kind: 'test-start'; }>;
 type SuiteStartReporterEvent = Extract<ReporterEvent, { readonly kind: 'suite-start'; }>;
-type ExpectedAssertFacadeKeys = keyof {
-    readonly annotated: true;
-    readonly array: true;
-    readonly arrayContainsPartial: true;
-    readonly between: true;
-    readonly boolean: true;
-    readonly deepEqual: true;
-    readonly defined: true;
-    readonly empty: true;
-    readonly endsWith: true;
-    readonly equal: true;
-    readonly fail: true;
-    readonly false: true;
-    readonly function: true;
-    readonly greaterThan: true;
-    readonly greaterThanOrEqual: true;
-    readonly hasProperty: true;
-    readonly includes: true;
-    readonly instanceOf: true;
-    readonly length: true;
-    readonly lessThan: true;
-    readonly lessThanOrEqual: true;
-    readonly match: true;
-    readonly membersPartialDeepEqual: true;
-    readonly notDeepEqual: true;
-    readonly notEmpty: true;
-    readonly notEqual: true;
-    readonly notMatch: true;
-    readonly notNull: true;
-    readonly null: true;
-    readonly number: true;
-    readonly object: true;
-    readonly partialDeepEqual: true;
-    readonly rejects: true;
-    readonly startsWith: true;
-    readonly string: true;
-    readonly throws: true;
-    readonly true: true;
-    readonly undefined: true;
-};
-type ExpectedTestScopeAssertContextKeys = ExpectedAssertFacadeKeys | 'collect';
-type ExpectedRequireFacadeKeys = keyof {
-    readonly annotated: true;
-    readonly array: true;
-    readonly boolean: true;
-    readonly defined: true;
-    readonly function: true;
-    readonly hasProperty: true;
-    readonly instanceOf: true;
-    readonly notNull: true;
-    readonly null: true;
-    readonly number: true;
-    readonly object: true;
-    readonly string: true;
-};
-
 describe('TestOutcome', function () {
     test('accepts public outcome shapes', function () {
         expect<TestOutcome>().type.toBeAssignableFrom<{ readonly kind: 'pass'; }>();
@@ -301,6 +242,15 @@ describe('TestOutcome', function () {
             readonly kind: 'test-contract';
             readonly summary: 'Assertion plan count did not match.';
         }>();
+        expect<TestFailure>().type.toBeAssignableFrom<{
+            readonly error: {
+                readonly message: 'cleanup failed';
+                readonly name: 'Error';
+                readonly stack: null;
+                readonly thrown: unknown;
+            };
+            readonly kind: 'cleanup-error';
+        }>();
     });
 });
 
@@ -361,25 +311,6 @@ describe('Assertion protocol', function () {
         expect<AssertAssertionNode>().type.toBeAssignableTo<{
             readonly sourceLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
         }>();
-    });
-
-    test('exposes the concept assert catalog without ok', function () {
-        expect<keyof AssertAssertionFacade>().type.toBe<ExpectedAssertFacadeKeys>();
-        expect<keyof AssertAssertionFacade>().type.not.toBeAssignableFrom<'collect'>();
-    });
-
-    test('keeps builder collection on the test scope assert context only', function () {
-        expect<keyof TestScopeAssertContext>().type.toBe<ExpectedTestScopeAssertContextKeys>();
-    });
-
-    test('exposes the narrow require catalog without equality or collect', function () {
-        expect<keyof RequireAssertionFacade>().type.toBe<ExpectedRequireFacadeKeys>();
-    });
-
-    test('uses explicit message options and facades on test scope', function () {
-        expect<AssertionOptions>().type.toBe<{ readonly message: string; }>();
-        expect<TestScope['assert']>().type.toBe<TestScopeAssertContext>();
-        expect<TestScope['require']>().type.toBe<RequireAssertionFacade>();
     });
 
     test('defines explicit thrown matcher shapes', function () {
