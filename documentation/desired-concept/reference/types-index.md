@@ -1469,6 +1469,8 @@ type RuntimeTestBody<
     Runtime extends RuntimeDefinition<Readonly<Record<string, ResourceDefinition<unknown>>>>,
     Scope extends TestScope = TestScope
 > = (scope: RuntimeTestScope<Runtime, Scope>) => ReturnType<TestBody>;
+
+type RuntimeWrappedTestBody<Scope extends TestScope = TestScope> = (scope: Scope) => ReturnType<TestBody>;
 ```
 
 Resource sessions acquire dependency branches when prerequisites are ready,
@@ -1476,6 +1478,11 @@ share one handle per descriptor in the session, and dispose once in reverse
 dependency order. The returned runtime context exposes only the runtime's
 top-level `resources` keys. Transitive dependencies remain internal unless
 the runtime lists them directly.
+
+Runtime-wrapped bodies carry first-party resource attachment metadata.
+Microtest authoring and microtest profile collection reject them before test
+body execution. Non-microtest facades may accept them when their family model
+allows resource and runtime attachment.
 
 Canonical: [Package Architecture](../architecture/package-architecture.md) for package ownership and
 [Higher Test Layers](../authoring/higher-test-layers.md) for intended resource usage.

@@ -8,6 +8,13 @@ import { defineConfig } from './config.entry-point.ts';
 import * as configSubpath from './config.entry-point.ts';
 import * as reportersSubpath from './reporters.entry-point.ts';
 import * as resourcesSubpath from './resources.entry-point.ts';
+import type { RuntimeWrappedTestBody } from './resources.entry-point.ts';
+import {
+    createTestFacade,
+    table,
+    test,
+    type ParameterizedTestScope
+} from './test.entry-point.ts';
 
 type ReservedSubpathModule = {
     readonly name: string;
@@ -20,6 +27,21 @@ const reservedSubpathModules: readonly ReservedSubpathModule[] = [
     { module: baselinesSubpath, name: 'baselines' },
     { module: benchSubpath, name: 'bench' }
 ];
+const invokeTable = table as (...parameters: readonly unknown[]) => unknown;
+const invokeTest = test as (...parameters: readonly unknown[]) => unknown;
+
+type BoundaryRow = {
+    readonly value: number;
+};
+type NamedResourceDescriptor = {
+    readonly name: string;
+};
+type NamedRuntimeDescriptor = {
+    readonly id: {
+        readonly name: string;
+    };
+    readonly resources: Readonly<Record<string, unknown>>;
+};
 
 function sortedKeys(value: Readonly<Record<string, unknown>>): readonly string[] {
     return Object.keys(value).toSorted(function compareExportNames(left, right) {
@@ -96,6 +118,44 @@ function assertResourcesSubpathExports(scope: TestScope): void {
     scope.assert.equal(typeof resourcesSubpath.startRuntime, 'function');
 }
 
+function assertRuntimeAuthoringBoundary(
+    scope: TestScope,
+    body: RuntimeWrappedTestBody,
+    tableBody: RuntimeWrappedTestBody<ParameterizedTestScope<BoundaryRow>>
+): void {
+    const integrationFacade = createTestFacade({ testFamily: 'integration' });
+    const runtimeTable = integrationFacade.table({
+        cases: [ { value: 1 }, { value: 2 } ],
+        test: tableBody,
+        title: 'rows'
+    });
+
+    scope.assert.equal(integrationFacade.test('uses database', body).kind, 'test');
+    scope.assert.equal(runtimeTable.kind, 'table');
+    scope.assert.throws(function createMicrotestRuntimeCase() {
+        invokeTest('uses database', body);
+    }, { message: 'Microtest authoring does not support resource or runtime attachments.' });
+    scope.assert.throws(function createMicrotestRuntimeTable() {
+        invokeTable({
+            cases: [ { value: 1 }, { value: 2 } ],
+            test: tableBody,
+            title: 'rows'
+        });
+    }, { message: 'Microtest authoring does not support resource or runtime attachments.' });
+}
+
+function assertResourceDescriptors(
+    scope: TestScope,
+    database: NamedResourceDescriptor,
+    runtime: NamedRuntimeDescriptor,
+    temporaryDirectory: NamedResourceDescriptor
+): void {
+    scope.assert.equal(database.name, 'database');
+    scope.assert.equal(runtime.id.name, 'api');
+    scope.assert.deepEqual(Object.keys(runtime.resources), [ 'database' ]);
+    scope.assert.equal(temporaryDirectory.name, 'scratch');
+}
+
 function assertResourcesSubpath(scope: TestScope): void {
     const database = resourcesSubpath.defineResource({
         name: 'database',
@@ -120,13 +180,23 @@ function assertResourcesSubpath(scope: TestScope): void {
         return runtimeScope.assert.collect();
     });
     const temporaryDirectory = resourcesSubpath.createTemporaryDirectoryResource('scratch');
+    const tableBody = resourcesSubpath.withRuntime<typeof runtime, ParameterizedTestScope<{ readonly value: number; }>>(
+        runtime,
+        {
+            database: { url: 'postgres://localhost' }
+        },
+        function runTableWithDatabase(runtimeScope) {
+            runtimeScope.assert.equal(runtimeScope.runtime.database.url, 'postgres://localhost');
+            runtimeScope.assert.true(runtimeScope.parameters.value > 0);
+
+            return runtimeScope.assert.collect();
+        }
+    );
 
     scope.assert.equal(Array.isArray(body(scope)), true);
+    assertRuntimeAuthoringBoundary(scope, body, tableBody);
     assertResourcesSubpathExports(scope);
-    scope.assert.equal(database.name, 'database');
-    scope.assert.equal(runtime.id.name, 'api');
-    scope.assert.deepEqual(Object.keys(runtime.resources), [ 'database' ]);
-    scope.assert.equal(temporaryDirectory.name, 'scratch');
+    assertResourceDescriptors(scope, database, runtime, temporaryDirectory);
 }
 
 function assertReservedSubpath(scope: TestScope, subpath: ReservedSubpathModule): void {

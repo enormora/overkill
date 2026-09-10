@@ -43,10 +43,17 @@ import {
     type RuntimeSession,
     type RuntimeContext,
     type RuntimeTestBody,
+    type RuntimeWrappedTestBody,
     type RuntimeTestScope,
     type TemporaryDirectoryHandle
 } from './resources.entry-point.ts';
-import type { ParameterizedTestScope, TableTestBody } from './test.entry-point.ts';
+import {
+    createTestFacade,
+    table as rootTable,
+    test as rootTest,
+    type ParameterizedTestScope,
+    type TableTestBody
+} from './test.entry-point.ts';
 
 type UnavailableStandardSubpathApi = (...parameters: readonly unknown[]) => never;
 type LineReporterFactory = (options?: LineReporterOptions) => DefinedReporter<RealTimeReporter>;
@@ -159,6 +166,20 @@ describe('@overkill-dev/test standard subpaths', function () {
 
             return scope.assert.collect();
         });
+
+        expect(runtimeBody).type.toBe<RuntimeWrappedTestBody>();
+        expect(runtimeBody).type.toBeAssignableTo<TestBody>();
+        expect<RuntimeTestBody<typeof runtime>>().type.toBe<
+            (scope: RuntimeTestScope<typeof runtime>) => ReturnType<TestBody>
+        >();
+        expect<typeof withRuntime>().type.not.toBeCallableWith(runtime, {
+            database: { port: 5432 }
+        }, function runInvalidRuntimeScope(scope: RuntimeTestScope<typeof runtime>) {
+            return scope.assert.collect();
+        });
+    });
+
+    test('types table runtime wrappers through the resources subpath', function () {
         const tableRuntimeBody = withRuntime<typeof runtime, ParameterizedTestScope<TableRow>>(runtime, {
             database: { url: 'postgres://localhost' }
         }, function runTableWithDatabase(scope) {
@@ -168,15 +189,56 @@ describe('@overkill-dev/test standard subpaths', function () {
             return scope.assert.collect();
         });
 
-        expect(runtimeBody).type.toBe<TestBody>();
-        expect(tableRuntimeBody).type.toBe<TableTestBody<TableRow>>();
-        expect<RuntimeTestBody<typeof runtime>>().type.toBe<
-            (scope: RuntimeTestScope<typeof runtime>) => ReturnType<TestBody>
-        >();
-        expect<typeof withRuntime>().type.not.toBeCallableWith(runtime, {
-            database: { port: 5432 }
-        }, function runInvalidRuntimeScope(scope: RuntimeTestScope<typeof runtime>) {
+        expect(tableRuntimeBody).type.toBe<RuntimeWrappedTestBody<ParameterizedTestScope<TableRow>>>();
+        expect(tableRuntimeBody).type.toBeAssignableTo<TableTestBody<TableRow>>();
+    });
+
+    test('rejects runtime wrappers from microtest authoring types', function () {
+        const runtimeBody = withRuntime(runtime, {
+            database: { url: 'postgres://localhost' }
+        }, function runWithDatabase(scope) {
             return scope.assert.collect();
+        });
+        const tableRuntimeBody = withRuntime<typeof runtime, ParameterizedTestScope<TableRow>>(runtime, {
+            database: { url: 'postgres://localhost' }
+        }, function runTableWithDatabase(scope) {
+            return scope.assert.collect();
+        });
+        const microtestFacade = createTestFacade({ testFamily: 'microtest' });
+
+        expect(rootTest).type.not.toBeCallableWith('uses database', runtimeBody);
+        expect(rootTest).type.not.toBeCallableWith({ body: runtimeBody, title: 'uses database' });
+        expect(microtestFacade.test).type.not.toBeCallableWith('uses database', runtimeBody);
+        expect(rootTable).type.not.toBeCallableWith({
+            cases: [ { value: 1 }, { value: 2 } ],
+            test: tableRuntimeBody,
+            title: 'rows'
+        });
+        expect(microtestFacade.table).type.not.toBeCallableWith({
+            cases: [ { value: 1 }, { value: 2 } ],
+            test: tableRuntimeBody,
+            title: 'rows'
+        });
+    });
+
+    test('accepts runtime wrappers from integration authoring types', function () {
+        const runtimeBody = withRuntime(runtime, {
+            database: { url: 'postgres://localhost' }
+        }, function runWithDatabase(scope) {
+            return scope.assert.collect();
+        });
+        const tableRuntimeBody = withRuntime<typeof runtime, ParameterizedTestScope<TableRow>>(runtime, {
+            database: { url: 'postgres://localhost' }
+        }, function runTableWithDatabase(scope) {
+            return scope.assert.collect();
+        });
+        const integrationFacade = createTestFacade({ testFamily: 'integration' });
+
+        expect(integrationFacade.test).type.toBeCallableWith('uses database', runtimeBody);
+        expect(integrationFacade.table).type.toBeCallableWith({
+            cases: [ { value: 1 }, { value: 2 } ],
+            test: tableRuntimeBody,
+            title: 'rows'
         });
     });
 

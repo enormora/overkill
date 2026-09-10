@@ -94,6 +94,10 @@ Strict `console.*` diagnostics use the same active case or
 runner cannot determine the test, it reports an attribution-drift runner error
 instead of blaming the nearest sibling case.
 
+First-party resource and runtime attachments are invalid for microtest
+authoring and microtest profiles. Plain user-injected capability handles,
+in-memory doubles, and ordinary function parameters remain valid.
+
 The first enforcement mechanism is Node's permission model (Node 20+):
 
 - `--permission`

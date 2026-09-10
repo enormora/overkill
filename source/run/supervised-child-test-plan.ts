@@ -4,6 +4,7 @@ import { defaultRunEngine } from './default-run-engine.ts';
 import { createRunTestPlan } from './run-test-plan.ts';
 import type { RunDiscovery } from './run-discovery-types.ts';
 import type { RunEngineModuleLoader } from './run-engine-selection.ts';
+import { assertTestPlanMatchesTestFamily } from './run-selection.ts';
 import type { RunTestModuleLoader } from './run-test-modules.ts';
 import type { SupervisedChildCommand } from './supervised-protocol.ts';
 
@@ -25,8 +26,7 @@ export async function createSupervisedChildTestPlan(
     dependencies: SupervisedChildTestPlanDependencies
 ): Promise<TestPlan> {
     const engine = await selectedEngine(command, dependencies);
-
-    return await createRunTestPlan({
+    const testPlan = await createRunTestPlan({
         cwd: command.cwd,
         discoverRunFiles: dependencies.discoverRunFiles,
         engine,
@@ -34,4 +34,8 @@ export async function createSupervisedChildTestPlan(
         paths: command.paths,
         testFamily: command.testFamily
     });
+
+    assertTestPlanMatchesTestFamily(testPlan, command.testFamily);
+
+    return testPlan;
 }

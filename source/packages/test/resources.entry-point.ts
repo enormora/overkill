@@ -1,4 +1,9 @@
-import type { TestBody, TestScope } from '../engine/engine.entry-point.ts';
+import {
+    markResourceAttachedTestBody,
+    type ResourceAttachedTestBody,
+    type TestBody,
+    type TestScope
+} from '../engine/engine.entry-point.ts';
 import {
     composeRuntimeContext,
     type RuntimeContext,
@@ -49,6 +54,10 @@ export type RuntimeTestBody<
     Scope extends TestScope = TestScope
 > = (scope: RuntimeTestScope<Runtime, Scope>) => ReturnType<TestBody>;
 
+export type RuntimeWrappedTestBody<Scope extends TestScope = TestScope> = ResourceAttachedTestBody<
+    (scope: Scope) => ReturnType<TestBody>
+>;
+
 export function withRuntime<
     Runtime extends RuntimeDefinition,
     Scope extends TestScope = TestScope
@@ -56,12 +65,12 @@ export function withRuntime<
     runtime: Runtime,
     resourceHandles: RuntimeContext<Runtime>,
     body: RuntimeTestBody<Runtime, Scope>
-): (scope: Scope) => ReturnType<TestBody> {
+): RuntimeWrappedTestBody<Scope> {
     if (typeof body !== 'function') {
         throw new TypeError('withRuntime() requires a body function.');
     }
 
-    return function runWithRuntime(scope): ReturnType<TestBody> {
+    return markResourceAttachedTestBody(function runWithRuntime(scope): ReturnType<TestBody> {
         return body(composeRuntimeContext(scope, runtime, resourceHandles));
-    };
+    });
 }

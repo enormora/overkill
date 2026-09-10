@@ -8,6 +8,9 @@ import {
     type TestBody,
     type TestControlsInput,
     type TestFamily,
+    isResourceAttachedTestBody,
+    markResourceAttachedTestBody,
+    type ResourceFreeTestBody,
     type TestScope
 } from '../engine/engine.entry-point.ts';
 import {
@@ -23,11 +26,8 @@ import {
     definitionLocationsForAuthoringCall,
     runWithForwardedSourceLocations
 } from './authoring-source-locations.ts';
-import {
-    readAuthoringRecord,
-    readAuthoringString,
-    readAuthoringTestBody
-} from './authoring-input.ts';
+import { readAuthoringRecord, readAuthoringString, readAuthoringTestBody } from './authoring-input.ts';
+import { assertMicrotestResourceFreeBody } from './resource-attachment-boundary.ts';
 
 function stampedTable(table: Table, testFamily: TestFamily): Table {
     stampTestNodeFamily(table, testFamily);
@@ -43,12 +43,20 @@ export type TableTestBody<Row> = (
     scope: ParameterizedTestScope<Row>
 ) => ReturnType<TestBody>;
 
-export type TableDefinition<Row, ControlsType extends TestControlsInput = MicrotestAuthoringControls> = {
+export type AuthoringTableBody<Family extends TestFamily, Row> = Family extends 'microtest'
+    ? ResourceFreeTestBody<TableTestBody<Row>>
+    : TableTestBody<Row>;
+
+export type TableDefinition<
+    Row,
+    ControlsType extends TestControlsInput = MicrotestAuthoringControls,
+    Body extends TableTestBody<Row> = TableTestBody<Row>
+> = {
     readonly annotations?: AuthoringAnnotations;
     readonly caseTitle?: (parameters: Row, index: number) => string;
     readonly cases: readonly Row[];
     readonly controls?: ControlsType;
-    readonly test: TableTestBody<Row>;
+    readonly test: Body;
     readonly title: string;
 };
 
@@ -88,11 +96,13 @@ function tableCaseBody<Row>(
     parameters: Row,
     sourceLocations: readonly SourceLocation[]
 ): TestBody {
-    return async function runTableCase(scope) {
+    const body: TestBody = async function runTableCase(scope: TestScope) {
         return await runWithForwardedSourceLocations(sourceLocations, async function runMacroGeneratedTableCase() {
             return await definition.test({ ...scope, parameters });
         });
     };
+
+    return isResourceAttachedTestBody(definition.test) ? markResourceAttachedTestBody(body) : body;
 }
 
 function ensureTableDefinitionShape(definition: Readonly<Record<string, unknown>>): void {
@@ -146,6 +156,7 @@ export function createAuthoredTable<Row, ControlsType extends TestControlsInput>
     definition: TableDefinition<Row, ControlsType>
 ): Table {
     const tableDefinition = readTableDefinition(definition);
+    assertMicrotestResourceFreeBody(testFamily, tableDefinition.test);
 
     return stampedTable(
         createTable({
