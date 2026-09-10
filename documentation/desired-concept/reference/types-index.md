@@ -606,6 +606,46 @@ declare function defineHarness<Factories extends HarnessPartFactories, CreatedHa
     partFactories: Factories,
     assemble: (parts: HarnessParts<Factories>) => CreatedHarness,
 ): DefinedHarness<HarnessOverrides<HarnessParts<Factories>>, CreatedHarness>;
+
+type TranscriptEntry = readonly [kind: string, ...values: readonly unknown[]];
+
+type TranscriptEntryForKind<Entry extends TranscriptEntry, Kind extends Entry[0]> =
+    Extract<Entry, readonly [Kind, ...readonly unknown[]]>;
+
+type TranscriptSinkSignature = (...parameters: readonly unknown[]) => undefined;
+
+type Transcript<Entry extends TranscriptEntry = TranscriptEntry> = {
+    readonly entryCount: number;
+    readonly entries: readonly Entry[];
+    readonly firstEntry: Entry | null;
+    readonly lastEntry: Entry | null;
+    readonly nthEntry: (index: number) => Entry | null;
+    readonly record: (...entry: Entry) => void;
+    readonly reset: () => void;
+    readonly sink: <Kind extends Entry[0]>(
+        kind: TranscriptEntryForKind<Entry, Kind>[0],
+    ) => TestDouble<TranscriptSinkSignature>;
+};
+
+type DisposableTranscript<Entry extends TranscriptEntry = TranscriptEntry> =
+    Disposable & Transcript<Entry> & {
+        readonly dispose: () => void;
+    };
+
+type AsyncDisposableTranscript<Entry extends TranscriptEntry = TranscriptEntry> =
+    AsyncDisposable & Transcript<Entry> & {
+        readonly asyncDispose: () => Promise<void>;
+    };
+
+declare function createTranscript<Entry extends TranscriptEntry = TranscriptEntry>(): Transcript<Entry>;
+
+declare function recordSink<Entry extends TranscriptEntry = TranscriptEntry>(
+    subscribe: (record: (...entry: Entry) => void) => () => unknown,
+): DisposableTranscript<Entry>;
+
+declare function recordAsyncSink<Entry extends TranscriptEntry = TranscriptEntry>(
+    subscribe: (record: (...entry: Entry) => void) => () => Promise<void>,
+): AsyncDisposableTranscript<Entry>;
 ```
 
 Canonical: [Assertions And Results](../authoring/assertions-and-results.md).

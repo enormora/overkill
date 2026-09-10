@@ -60,6 +60,10 @@ export const rootImportScript = [
     'console.log(String(testModule.createLineReporter));',
     'console.log(typeof testModule.testDouble);',
     'console.log(typeof testModule.doubleUsage.calledOnceWith);',
+    'console.log(typeof testModule.transcriptUsage.exactly);',
+    'console.log(typeof testModule.createTranscript);',
+    'console.log(typeof testModule.recordSink);',
+    'console.log(typeof testModule.recordAsyncSink);',
     'console.log(typeof testModule.rule.sequence);',
     'console.log(typeof testModule.testIterator);',
     "const loadValue = testModule.testDouble.returns('value');",
@@ -106,6 +110,9 @@ export const rootImportScript = [
     '});',
     'console.log(facadeNode.annotations.tags.join(","));',
     'console.log(facadeNode.children[0].annotations.tags.join(","));',
+    'const transcript = testModule.createTranscript();',
+    "transcript.record('state', 1);",
+    'console.log(JSON.stringify(transcript.entries));',
     'console.log(String(facade.doubleUsage));'
 ]
     .join('\n');
@@ -187,10 +194,13 @@ export const runConfigImportScript = [
 
 const expectedRootExportNames = [
     'createTestFacade',
+    'createTranscript',
     'defineHarness',
     'defineMacro',
     'defineParameterizedTestBody',
     'doubleUsage',
+    'recordAsyncSink',
+    'recordSink',
     'rule',
     'runIfMain',
     'skippedTest',
@@ -203,7 +213,8 @@ const expectedRootExportNames = [
     'testDisposable',
     'testDouble',
     'testIterable',
-    'testIterator'
+    'testIterator',
+    'transcriptUsage'
 ];
 
 export const expectedRootImportOutput = [
@@ -213,6 +224,10 @@ export const expectedRootImportOutput = [
     'undefined',
     'function',
     'object',
+    'object',
+    'function',
+    'function',
+    'function',
     'function',
     'function',
     'value',
@@ -227,6 +242,7 @@ export const expectedRootImportOutput = [
     '["defineMacro","defineParameterizedTestBody","runIfMain","skippedTest","suite","table","test"]',
     'facade,suite',
     'facade,case',
+    '[["state",1]]',
     'undefined',
     ''
 ]

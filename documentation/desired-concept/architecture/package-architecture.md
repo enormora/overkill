@@ -264,8 +264,11 @@ This keeps the creation of doubles separate from how tests assert on them.
 
 Related first-party ergonomics above the doubles layer may include:
 
-- generic interaction transcript recording
 - harness helpers for dependency-heavy units
+
+Generic interaction transcript recording belongs in `@overkill-dev/test`
+because it composes doubles, assertion extensions, and authoring ergonomics
+without changing package ownership of any one layer.
 
 ## Runtimes
 

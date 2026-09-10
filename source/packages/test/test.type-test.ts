@@ -62,10 +62,13 @@ import {
     type AuthoringAnnotations,
     type CaptureAuthoringControls,
     createTestFacade,
+    type createTranscript,
     type defineHarness,
     defineMacro,
     defineParameterizedTestBody,
     type doubleUsage,
+    type recordAsyncSink,
+    type recordSink,
     type AsyncDisposableConfiguration as RootAsyncDisposableConfiguration,
     type AsyncIterableConfiguration as RootAsyncIterableConfiguration,
     type AsyncIteratorConfiguration as RootAsyncIteratorConfiguration,
@@ -121,6 +124,7 @@ import {
     type testIterator,
     type TestIterator as RootTestIterator,
     type TestIteratorFactory as RootTestIteratorFactory,
+    type transcriptUsage,
     suite,
     test
 } from './test.entry-point.ts';
@@ -134,10 +138,13 @@ declare const node: TestNode;
 declare const tableBody: TableTestBody<{ readonly value: number; }>;
 type RootRuntimeExport = keyof {
     readonly createTestFacade: typeof createTestFacade;
+    readonly createTranscript: typeof createTranscript;
     readonly defineHarness: typeof defineHarness;
     readonly defineMacro: typeof defineMacro;
     readonly defineParameterizedTestBody: typeof defineParameterizedTestBody;
     readonly doubleUsage: typeof doubleUsage;
+    readonly recordAsyncSink: typeof recordAsyncSink;
+    readonly recordSink: typeof recordSink;
     readonly rule: typeof rule;
     readonly runIfMain: typeof runIfMain;
     readonly skippedTest: typeof skippedTest;
@@ -151,6 +158,7 @@ type RootRuntimeExport = keyof {
     readonly testDouble: typeof testDouble;
     readonly testIterable: typeof testIterable;
     readonly testIterator: typeof testIterator;
+    readonly transcriptUsage: typeof transcriptUsage;
 };
 type RootDoublesTypes = {
     readonly asyncDisposableConfiguration: RootAsyncDisposableConfiguration;
@@ -236,10 +244,13 @@ describe('@overkill-dev/test', function () {
         expect<RootRuntimeExport>().type.toBe<
             keyof {
                 readonly createTestFacade: true;
+                readonly createTranscript: true;
                 readonly defineHarness: true;
                 readonly defineMacro: true;
                 readonly defineParameterizedTestBody: true;
                 readonly doubleUsage: true;
+                readonly recordAsyncSink: true;
+                readonly recordSink: true;
                 readonly rule: true;
                 readonly runIfMain: true;
                 readonly skippedTest: true;
@@ -253,6 +264,7 @@ describe('@overkill-dev/test', function () {
                 readonly testDouble: true;
                 readonly testIterable: true;
                 readonly testIterator: true;
+                readonly transcriptUsage: true;
             }
         >();
         expect<typeof createTestFacade>().type.toBeCallableWith({ testFamily: 'microtest' });
