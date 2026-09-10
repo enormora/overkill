@@ -73,6 +73,18 @@ const invalidMicrotestProfileFields: readonly SchemaValidationFailure[] = [
         schema: microtestProfileSchema
     },
     {
+        data: { testFamily: 'microtest', resource: { name: 'database' } },
+        expectedIssues: [ 'unexpected additional property: "resource"' ],
+        name: 'resource',
+        schema: microtestProfileSchema
+    },
+    {
+        data: { testFamily: 'microtest', resources: [ 'database' ] },
+        expectedIssues: [ 'unexpected additional property: "resources"' ],
+        name: 'resources',
+        schema: microtestProfileSchema
+    },
+    {
         data: { testFamily: 'microtest', capabilities: { fs: false } },
         expectedIssues: [ 'unexpected additional property: "capabilities"' ],
         name: 'capabilities',

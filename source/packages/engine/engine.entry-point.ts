@@ -289,6 +289,14 @@ export type {
     TestNode
 } from '../../engine/test-node.ts';
 export { stampTestNodeFamily, testNodeFamily } from '../../engine/test-node.ts';
+export {
+    isResourceAttachedTestBody,
+    markResourceAttachedTestBody
+} from '../../engine/test-body-resource-attachment.ts';
+export type {
+    ResourceAttachedTestBody,
+    ResourceFreeTestBody
+} from '../../engine/test-body-resource-attachment.ts';
 export type {
     CaptureMode,
     TestAnnotations,

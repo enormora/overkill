@@ -295,10 +295,11 @@ while resource `name` stays the stable identity for future scheduling,
 reporting, and artifact work.
 
 `@overkill-dev/resources` owns the package-neutral context composition shape,
-and `@overkill-dev/test/resources` exposes `withRuntime(...)` for ordinary
-`test(...)` bodies. That wrapper adds `scope.runtime` only. Runner-managed
-lifecycle scopes, runtime matrices, execution requirements, artifacts, and
-replay metadata remain separate orchestration work.
+and `@overkill-dev/test/resources` exposes `withRuntime(...)` for
+non-microtest authoring facades. That wrapper adds `scope.runtime` only.
+Microtest authoring rejects first-party resource and runtime attachments.
+Runner-managed lifecycle scopes, runtime matrices, execution requirements,
+artifacts, and replay metadata remain separate orchestration work.
 
 `@overkill-dev/resources` should be generic enough to serve multiple higher-level families:
 

@@ -195,7 +195,7 @@ entrypoint that turns those lower-level pieces into ordinary test authoring.
 In-process style:
 
 ```ts
-test(
+integration.test(
     'queue stays consistent under the deterministic runtime',
     withSimulation(myAppSim, { seed: 42n, scenario: 'default' }, async (scope) => {
         scope.assert.collect();
@@ -206,7 +206,7 @@ test(
 Local-service style:
 
 ```ts
-test(
+integration.test(
     'checkout handles upstream 500s',
     withSimulation(deterministicApi, { scenario: 'payments-500' }, async (scope) => {
         const runtime = scope.runtime;
@@ -221,7 +221,7 @@ The important point is that the public shape stays:
 
 - runtime wrapper first
 - adapter/seed/scenario explicit in the wrapper call
-- ordinary `test(...)` body inside that wrapper
+- non-microtest `test(...)` body inside that wrapper
 
 That gives Overkill enough metadata to plan, report, and replay the run
 without inventing a second test primitive just for simulation.

@@ -221,6 +221,7 @@ export const testNode = suite('users', [
 Runtime handles stay behind the resources subpath:
 
 ```ts
+import { createTestFacade } from '@overkill-dev/test';
 import {
     createTemporaryDirectoryResource,
     defineResource,
@@ -229,6 +230,7 @@ import {
     withRuntime
 } from '@overkill-dev/test/resources';
 
+const integration = createTestFacade({ testFamily: 'integration' });
 const scratch = createTemporaryDirectoryResource('scratch');
 const database = defineResource({
     name: 'database',
@@ -249,7 +251,7 @@ const runtime = defineRuntime({
 });
 await using session = await startRuntime({ runtime, signal });
 
-test(
+integration.test(
     'loads user',
     withRuntime(runtime, session.context, (scope) => {
         scope.assert.true(scope.runtime.scratch.path.length > 0);
@@ -258,6 +260,8 @@ test(
     })
 );
 ```
+
+Microtest authoring rejects first-party resource and runtime attachments.
 
 `createTestFacade` creates another narrow authoring surface for one test
 family:

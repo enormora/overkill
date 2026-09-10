@@ -8,6 +8,7 @@ import {
     type TestScope as DirectScope,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import { markResourceAttachedTestBody } from '../engine/test-body-resource-attachment.ts';
 import type {
     DefinedReporter,
     ReporterEvent
@@ -60,6 +61,16 @@ function integrationCase(): DirectTestNode {
     stampTestNodeFamily(testCase, 'integration');
 
     return testCase;
+}
+
+function resourceAttachedCase(): DirectTestNode {
+    return createDirectTestCase({
+        annotations: {},
+        body: markResourceAttachedTestBody(passingBody),
+        controls: {},
+        definitionLocations: [ { kind: 'unknown' as const } ],
+        title: 'uses runtime'
+    });
 }
 
 function createCapturingReporter(recordRun: (capturedRun: CapturedRun) => void): DefinedReporter {
@@ -404,6 +415,28 @@ export const testNode = createOverkillSuite({
                     await fixture.runIfMain(fixture.project.meta, integrationCase(), { reporters: [] });
                 }, {
                     message: /authored for "integration"/u,
+                    name: 'RunCollectionError'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'runIfMain() rejects resource-attached microtest cases',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const fixture = createDirectRunFixture({
+                    config: null,
+                    fileName: 'direct.test.ts',
+                    files: []
+                });
+
+                await scope.assert.rejects(async function runResourceAttachedCase() {
+                    await fixture.runIfMain(fixture.project.meta, resourceAttachedCase(), { reporters: [] });
+                }, {
+                    message: 'Run profile "microtest" cannot run test cases with resource or runtime attachments.',
                     name: 'RunCollectionError'
                 });
 
