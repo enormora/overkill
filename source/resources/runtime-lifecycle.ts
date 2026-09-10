@@ -253,16 +253,10 @@ function acquireResourceHandle(
 }
 
 function disposeResourceHandle(
-    resource: AnyResourceDefinition,
+    dispose: ResourceDisposeCallback,
     handle: unknown,
     context: ResourceDisposalContext<ResourceDependencies>
 ): Awaitable<void> {
-    const { dispose } = callableResourceDefinition(resource);
-
-    if (dispose === null) {
-        return undefined;
-    }
-
     return dispose(handle, context);
 }
 
@@ -272,13 +266,14 @@ async function disposeResource(
     signal: AbortSignal
 ): Promise<ResourceLifecycleFailure | null> {
     const handle = handles.get(node.descriptor);
+    const { dispose } = callableResourceDefinition(node.descriptor);
 
-    if (handle === undefined || callableResourceDefinition(node.descriptor).dispose === null) {
+    if (handle === undefined || dispose === null) {
         return null;
     }
 
     try {
-        await disposeResourceHandle(node.descriptor, handle, {
+        await disposeResourceHandle(dispose, handle, {
             dependencies: acquiredDependencyHandles(node.descriptor.dependencies, handles),
             signal
         });
