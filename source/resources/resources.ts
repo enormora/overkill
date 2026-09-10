@@ -1,7 +1,7 @@
 const resourceDefinitionBrand: unique symbol = Symbol('overkill.resourceDefinition');
 const runtimeDefinitionBrand: unique symbol = Symbol('overkill.runtimeDefinition');
 
-type Awaitable<Value> = Promise<Value> | Value;
+export type Awaitable<Value> = Promise<Value> | Value;
 type ExclusiveResource = { readonly kind: 'exclusive-resource'; readonly name: string; };
 type SerialExecution = { readonly kind: 'serial'; };
 type SingleWorkerExecution = { readonly kind: 'single-worker'; };
@@ -9,31 +9,19 @@ type StartupBudget = {
     readonly kind: 'startup-budget-milliseconds';
     readonly minimumMilliseconds: number;
 };
-type AnyResourceDefinition = {
-    readonly dependencies: Readonly<Record<string, unknown>>;
-    readonly name: string;
-    readonly scope: ResourceScope;
-    readonly requirements: readonly ExecutionRequirement[];
+
+export type AnyResourceDefinition = {
     readonly acquire: (context: never) => Awaitable<unknown>;
+    readonly dependencies: ResourceDependencies;
     readonly dispose: ((handle: never, context: never) => Awaitable<void>) | null;
+    readonly name: string;
+    readonly requirements: readonly ExecutionRequirement[];
+    readonly scope: ResourceScope;
     readonly [resourceDefinitionBrand]: true;
 };
-type RuntimeResourceMap = Readonly<Record<string, AnyResourceDefinition>>;
-type EmptyResourceDependencies = Readonly<Record<PropertyKey, never>>;
-type RuntimeResourceName<Resources extends RuntimeResourceMap> = Resources[keyof Resources]['name'];
-type ResourceDependency = ResourceDependencies[keyof ResourceDependencies];
-type ResourceDependencyName<Resource extends AnyResourceDefinition> =
-    Resource['dependencies'][keyof Resource['dependencies']] extends ResourceDependency
-        ? Resource['dependencies'][keyof Resource['dependencies']]['name']
-        : never;
-type RuntimeResourceDependency<
-    Resources extends RuntimeResourceMap,
-    Resource extends AnyResourceDefinition
-> = Exclude<ResourceDependencyName<Resource>, RuntimeResourceName<Resources>> extends never ? Resource
-    : never;
-type RuntimeResourcesInput<Resources extends RuntimeResourceMap> = {
-    readonly [Key in keyof Resources]: RuntimeResourceDependency<Resources, Resources[Key]>;
-};
+
+export type RuntimeResourceMap = Readonly<Record<string, AnyResourceDefinition>>;
+export type EmptyResourceDependencies = Readonly<Record<PropertyKey, never>>;
 
 export type RuntimeDimensions = Readonly<Record<string, string>>;
 
@@ -51,17 +39,19 @@ export type ResourceScope = 'per-case' | 'per-file' | 'per-run' | 'per-suite' | 
 
 export type ResourceDependencies = Readonly<Record<string, AnyResourceDefinition>>;
 
+export type ResourceHandle<Resource extends AnyResourceDefinition> = Awaited<ReturnType<Resource['acquire']>>;
+
 export type ResourceContext<Resources extends ResourceDependencies> = {
     readonly [Key in keyof Resources]: ResourceHandle<Resources[Key]>;
 };
 
 export type ResourceCreationContext<Dependencies extends ResourceDependencies = EmptyResourceDependencies> = {
-    readonly resources: ResourceContext<Dependencies>;
+    readonly dependencies: ResourceContext<Dependencies>;
     readonly signal: AbortSignal;
 };
 
 export type ResourceDisposalContext<Dependencies extends ResourceDependencies = EmptyResourceDependencies> = {
-    readonly resources: ResourceContext<Dependencies>;
+    readonly dependencies: ResourceContext<Dependencies>;
     readonly signal: AbortSignal;
 };
 
@@ -70,12 +60,12 @@ export type ResourceDefinitionInput<
     Handle,
     Dependencies extends ResourceDependencies = EmptyResourceDependencies
 > = {
-    readonly dependencies?: Dependencies;
-    readonly name: Name;
-    readonly scope: ResourceScope;
-    readonly requirements: readonly ExecutionRequirement[];
     readonly acquire: (context: ResourceCreationContext<Dependencies>) => Awaitable<Handle>;
+    readonly dependencies?: Dependencies;
     readonly dispose: ((handle: Handle, context: ResourceDisposalContext<Dependencies>) => Awaitable<void>) | null;
+    readonly name: Name;
+    readonly requirements: readonly ExecutionRequirement[];
+    readonly scope: ResourceScope;
 };
 
 export type ResourceDefinition<
@@ -83,26 +73,24 @@ export type ResourceDefinition<
     Handle = unknown,
     Dependencies extends ResourceDependencies = ResourceDependencies
 > = {
-    readonly dependencies: Dependencies;
-    readonly name: Name;
-    readonly scope: ResourceScope;
-    readonly requirements: readonly ExecutionRequirement[];
     readonly acquire: (context: ResourceCreationContext<Dependencies>) => Awaitable<Handle>;
+    readonly dependencies: Dependencies;
     readonly dispose: ((handle: Handle, context: ResourceDisposalContext<Dependencies>) => Awaitable<void>) | null;
+    readonly name: Name;
+    readonly requirements: readonly ExecutionRequirement[];
+    readonly scope: ResourceScope;
     readonly [resourceDefinitionBrand]: true;
 };
-
-export type ResourceHandle<Resource extends AnyResourceDefinition> = Awaited<ReturnType<Resource['acquire']>>;
 
 export type RuntimeDefinitionInput<
     Name extends string,
     Dimensions extends RuntimeDimensions,
     Resources extends RuntimeResourceMap
 > = {
-    readonly name: Name;
     readonly dimensions: Dimensions;
-    readonly resources: Resources;
+    readonly name: Name;
     readonly requirements: readonly ExecutionRequirement[];
+    readonly resources: Resources;
 };
 
 export type RuntimeDefinition<
@@ -143,28 +131,30 @@ export type ResourcesModule = {
     readonly defineRuntime: typeof defineRuntime;
 };
 
-function defineResource<const Name extends string, Handle>(
+export function defineResource<const Name extends string, Handle>(
     definition: ResourceDefinitionInput<Name, Handle>
 ): ResourceDefinition<Name, Handle, EmptyResourceDependencies>;
-function defineResource<const Name extends string, Handle, const Dependencies extends ResourceDependencies>(
+export function defineResource<const Name extends string, Handle, const Dependencies extends ResourceDependencies>(
     definition: ResourceDefinitionInput<Name, Handle, Dependencies> & {
         readonly dependencies: Dependencies;
     }
 ): ResourceDefinition<Name, Handle, Dependencies>;
-function defineResource<const Name extends string, Handle, const Dependencies extends ResourceDependencies>(
+export function defineResource<const Name extends string, Handle, const Dependencies extends ResourceDependencies>(
     definition: ResourceDefinitionInput<Name, Handle, Dependencies>
 ): ResourceDefinition<Name, Handle, Dependencies | EmptyResourceDependencies> {
     if (definition.dependencies === undefined) {
+        const dependencies = Object.freeze({});
+
         return Object.freeze({
             ...definition,
-            dependencies: {},
+            dependencies,
             [resourceDefinitionBrand]: true as const
         });
     }
 
     return Object.freeze({
         ...definition,
-        dependencies: definition.dependencies,
+        dependencies: Object.freeze(definition.dependencies),
         [resourceDefinitionBrand]: true as const
     });
 }
@@ -190,14 +180,12 @@ function createTemporaryDirectoryResource<const Name extends string>(
     });
 }
 
-function defineRuntime<
+export function defineRuntime<
     const Name extends string,
     const Dimensions extends RuntimeDimensions,
     const Resources extends RuntimeResourceMap
 >(
-    definition: RuntimeDefinitionInput<Name, Dimensions, Resources> & {
-        readonly resources: RuntimeResourcesInput<Resources>;
-    }
+    definition: RuntimeDefinitionInput<Name, Dimensions, Resources>
 ): RuntimeDefinition<Name, Dimensions, Resources> {
     return Object.freeze({
         ...definition,
@@ -232,4 +220,16 @@ export function createResourcesModule(dependencies: ResourcesModuleDependencies)
         defineResource,
         defineRuntime
     });
+}
+
+export function isDefinedResource(resource: unknown): resource is AnyResourceDefinition {
+    return typeof resource === 'object' &&
+        resource !== null &&
+        Reflect.get(resource, resourceDefinitionBrand) === true;
+}
+
+export function isDefinedRuntime(runtime: unknown): runtime is RuntimeDefinition {
+    return typeof runtime === 'object' &&
+        runtime !== null &&
+        Reflect.get(runtime, runtimeDefinitionBrand) === true;
 }

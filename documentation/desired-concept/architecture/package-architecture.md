@@ -283,21 +283,22 @@ without changing package ownership of any one layer.
 - explicit artifact attachment from resources or runtimes
 - deterministic service and browser runtime composition
 
-The first implementation slices are intentionally descriptor and composition
-only: `defineResource(...)` and `defineRuntime(...)` create typed inert
-values. Resources declare `scope`, `requirements`, dependency descriptors,
-`acquire`, and `dispose`, but runners do not execute those callbacks until
-lifecycle orchestration lands. Resource callbacks receive declared dependency
-handles through `context.resources`. Runtime context types are derived from
-the runtime's `resources` object keys, while resource `name` stays the stable
-identity for future scheduling, reporting, and artifact work.
+The first implementation slices cover descriptors, context composition, and
+explicit runtime sessions. `defineResource(...)` and `defineRuntime(...)`
+create typed values. Resources declare `scope`, `requirements`, dependency
+descriptors, `acquire`, and `dispose`. `startRuntime(...)` acquires declared
+dependencies before dependents, shares one handle per descriptor in a session,
+and disposes acquired resources once in reverse dependency order. Resource
+callbacks receive declared dependency handles through `context.dependencies`.
+Runtime context types are derived from the runtime's `resources` object keys,
+while resource `name` stays the stable identity for future scheduling,
+reporting, and artifact work.
 
-Before lifecycle orchestration exists, runtime handles are composed into test
-scope explicitly. `@overkill-dev/resources` owns the package-neutral context
-composition shape, and `@overkill-dev/test/resources` exposes `withRuntime(...)`
-for ordinary `test(...)` bodies. That wrapper adds `scope.runtime` only; it
-does not contribute runtime matrices, execution requirements, acquisition
-ordering, disposal, artifacts, or replay metadata.
+`@overkill-dev/resources` owns the package-neutral context composition shape,
+and `@overkill-dev/test/resources` exposes `withRuntime(...)` for ordinary
+`test(...)` bodies. That wrapper adds `scope.runtime` only. Runner-managed
+lifecycle scopes, runtime matrices, execution requirements, artifacts, and
+replay metadata remain separate orchestration work.
 
 `@overkill-dev/resources` should be generic enough to serve multiple higher-level families:
 

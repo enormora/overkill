@@ -1389,12 +1389,12 @@ type ResourceContext<Resources extends ResourceDependencies> = {
 };
 
 type ResourceCreationContext<Dependencies extends ResourceDependencies = Readonly<Record<never, never>>> = {
-    readonly resources: ResourceContext<Dependencies>;
+    readonly dependencies: ResourceContext<Dependencies>;
     readonly signal: AbortSignal;
 };
 
 type ResourceDisposalContext<Dependencies extends ResourceDependencies = Readonly<Record<never, never>>> = {
-    readonly resources: ResourceContext<Dependencies>;
+    readonly dependencies: ResourceContext<Dependencies>;
     readonly signal: AbortSignal;
 };
 
@@ -1432,6 +1432,32 @@ type RuntimeContextComposition<
     readonly runtime: RuntimeContext<Runtime>;
 };
 
+type StartRuntimeRequest<Runtime extends RuntimeDefinition<Readonly<Record<string, ResourceDefinition<unknown>>>>> = {
+    readonly runtime: Runtime;
+    readonly signal: AbortSignal;
+};
+
+type RuntimeSessionDisposalContext = {
+    readonly signal: AbortSignal;
+};
+
+type RuntimeSession<Runtime extends RuntimeDefinition<Readonly<Record<string, ResourceDefinition<unknown>>>>> =
+    & AsyncDisposable
+    & {
+        readonly context: RuntimeContext<Runtime>;
+        readonly disposeOnce: (context: RuntimeSessionDisposalContext) => Promise<void>;
+    };
+
+type ResourceLifecycleFailure = {
+    readonly cause: unknown;
+    readonly phase: 'acquire' | 'dispose' | 'graph';
+    readonly resourceName: string;
+};
+
+declare class ResourceLifecycleError extends Error {
+    public failures(): readonly ResourceLifecycleFailure[];
+}
+
 type RuntimeTestScope<
     Runtime extends RuntimeDefinition<Readonly<Record<string, ResourceDefinition<unknown>>>>,
     Scope extends TestScope = TestScope
@@ -1444,6 +1470,12 @@ type RuntimeTestBody<
     Scope extends TestScope = TestScope
 > = (scope: RuntimeTestScope<Runtime, Scope>) => ReturnType<TestBody>;
 ```
+
+Resource sessions acquire dependency branches when prerequisites are ready,
+share one handle per descriptor in the session, and dispose once in reverse
+dependency order. The returned runtime context exposes only the runtime's
+top-level `resources` keys. Transitive dependencies remain internal unless
+the runtime lists them directly.
 
 Canonical: [Package Architecture](../architecture/package-architecture.md) for package ownership and
 [Higher Test Layers](../authoring/higher-test-layers.md) for intended resource usage.

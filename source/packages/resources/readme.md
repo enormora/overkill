@@ -1,10 +1,11 @@
 # `@overkill-dev/resources`
 
-Typed resource and runtime descriptors for Overkill.
+Typed resource and runtime lifecycle composition for Overkill.
 
-This package defines resources as typed descriptors. A resource declares its
-stable name, lifecycle scope, execution requirements, dependencies,
-acquisition callback, and disposal callback.
+This package defines resources as values and can start an explicit runtime
+session from them. A resource declares its stable name, lifecycle scope,
+execution requirements, dependencies, acquisition callback, and disposal
+callback.
 
 ```ts
 import {
@@ -12,6 +13,7 @@ import {
     createTemporaryDirectoryResource,
     defineResource,
     defineRuntime,
+    startRuntime,
     type RuntimeContext
 } from '@overkill-dev/resources';
 
@@ -36,37 +38,26 @@ const server = defineResource({
     requirements: [],
     dependencies: { database },
     async acquire(context) {
-        return await startServer(context.resources.database);
+        return await startServer(context.dependencies.database);
     },
     async dispose(server, context) {
-        await server.stop(context.resources.database);
+        await server.stop(context.dependencies.database);
     }
 });
 
+const scratch = createTemporaryDirectoryResource('scratch');
 const runtime = defineRuntime({
     name: 'api',
     dimensions: {},
-    resources: { database, server },
+    resources: { database, server, scratch },
     requirements: [ { kind: 'startup-budget-milliseconds', minimumMilliseconds: 1000 } ]
 });
 
 type ApiContext = RuntimeContext<typeof runtime>;
 
-const scratch = createTemporaryDirectoryResource('scratch');
-const databaseHandle = await database.acquire({ resources: {}, signal });
-const serverHandle = await server.acquire({
-    resources: { database: databaseHandle },
-    signal
-});
-const scratchHandle = await scratch.acquire({ resources: {}, signal });
-const scopeWithRuntime = composeRuntimeContext(testScope, runtime, {
-    database: databaseHandle,
-    server: serverHandle
-});
+await using session = await startRuntime({ runtime, signal });
 
-if (scratch.dispose !== null) {
-    await scratch.dispose(scratchHandle, { resources: {}, signal });
-}
+const scopeWithRuntime = composeRuntimeContext(testScope, runtime, session.context);
 ```
 
 `RuntimeContext` uses the keys from the runtime's `resources` object. Resource
@@ -80,3 +71,11 @@ Omitting `dependencies` is accepted for compatibility and produces
 `createTemporaryDirectoryResource(name)` returns a per-case resource descriptor
 whose handle is `{ readonly path: string }`. Each acquisition creates a unique
 directory with an Overkill prefix. Disposal removes that directory recursively.
+
+`startRuntime(...)` acquires dependencies before dependents, shares one handle
+per descriptor inside the session, and disposes acquired resources once in
+reverse dependency order. Independent ready resources may acquire concurrently.
+
+`scope` and `requirements` are metadata in this package-level session API.
+Runner-managed per-run, per-file, per-suite, per-case, and shared-per-worker
+lifetimes are planned separately.

@@ -45,7 +45,7 @@ function close(server: Server): Promise<void> {
 }
 
 async function exerciseTemporaryDirectoryResource(scope: TestScope): Promise<void> {
-    const temporaryDirectory = await temporaryDirectoryResource.acquire({ resources: {}, signal: resourceSignal });
+    const temporaryDirectory = await temporaryDirectoryResource.acquire({ dependencies: {}, signal: resourceSignal });
 
     if (temporaryDirectoryResource.dispose === null) {
         throw new Error('Expected temporary directory disposal.');
@@ -55,7 +55,7 @@ async function exerciseTemporaryDirectoryResource(scope: TestScope): Promise<voi
         await writeFile(join(temporaryDirectory.path, 'artifact.txt'), 'temporary');
         scope.assert.equal(temporaryDirectory.path.includes('overkill-temporary-directory-'), true);
     } finally {
-        await temporaryDirectoryResource.dispose(temporaryDirectory, { resources: {}, signal: resourceSignal });
+        await temporaryDirectoryResource.dispose(temporaryDirectory, { dependencies: {}, signal: resourceSignal });
     }
 }
 
