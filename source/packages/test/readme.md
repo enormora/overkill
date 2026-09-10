@@ -225,6 +225,7 @@ import {
     createTemporaryDirectoryResource,
     defineResource,
     defineRuntime,
+    startRuntime,
     withRuntime
 } from '@overkill-dev/test/resources';
 
@@ -246,10 +247,11 @@ const runtime = defineRuntime({
     resources: { database, scratch },
     requirements: []
 });
+await using session = await startRuntime({ runtime, signal });
 
 test(
     'loads user',
-    withRuntime(runtime, { database: databaseHandle, scratch: scratchHandle }, (scope) => {
+    withRuntime(runtime, session.context, (scope) => {
         scope.assert.true(scope.runtime.scratch.path.length > 0);
         scope.assert.equal(scope.runtime.database.loadUser('42').id, '42');
         return scope.assert.collect();

@@ -19,6 +19,10 @@ export const createTemporaryDirectoryResource: ResourcesModule['createTemporaryD
 export const defineResource: ResourcesModule['defineResource'] = resourcesModule.defineResource;
 export const defineRuntime: ResourcesModule['defineRuntime'] = resourcesModule.defineRuntime;
 
+export {
+    ResourceLifecycleError,
+    startRuntime
+} from '../../resources/runtime-lifecycle.ts';
 export type {
     ExecutionRequirement,
     ResourceContext,
@@ -37,3 +41,10 @@ export type {
     RuntimeId,
     TemporaryDirectoryHandle
 } from '../../resources/resources.ts';
+export type {
+    ResourceLifecycleFailure,
+    ResourceLifecyclePhase,
+    RuntimeSession,
+    RuntimeSessionDisposalContext,
+    StartRuntimeRequest
+} from '../../resources/runtime-lifecycle.ts';

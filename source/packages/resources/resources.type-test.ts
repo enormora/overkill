@@ -4,16 +4,20 @@ import {
     createTemporaryDirectoryResource,
     defineResource,
     defineRuntime,
+    type ResourceLifecycleError,
+    startRuntime,
     type ExecutionRequirement,
     type ResourceContext,
     type ResourceCreationContext,
     type ResourceDefinitionInput,
     type ResourceDisposalContext,
     type ResourceHandle,
+    type ResourceLifecycleFailure,
     type ResourceScope,
     type RuntimeContext,
     type RuntimeDimensions,
     type RuntimeId,
+    type RuntimeSession,
     type TemporaryDirectoryHandle
 } from './resources.entry-point.ts';
 
@@ -68,14 +72,14 @@ const server = defineResource({
     requirements: [ { kind: 'single-worker' } ],
     dependencies: { database },
     async acquire(context): Promise<Server> {
-        expect(context.resources.database).type.toBe<Database>();
-        expect(context.resources.database.query).type.toBe<(sql: string) => Promise<readonly string[]>>();
-        const queryResult = await context.resources.database.query('url');
+        expect(context.dependencies.database).type.toBe<Database>();
+        expect(context.dependencies.database.query).type.toBe<(sql: string) => Promise<readonly string[]>>();
+        const queryResult = await context.dependencies.database.query('url');
 
         return { url: String(queryResult[0]) };
     },
     dispose(_server, context) {
-        expect(context.resources.database).type.toBe<Database>();
+        expect(context.dependencies.database).type.toBe<Database>();
     }
 });
 
@@ -92,6 +96,13 @@ const aliasedRuntime = defineRuntime({
     requirements: []
 });
 const temporaryDirectory = createTemporaryDirectoryResource('scratch');
+const hiddenDependencyRuntime = defineRuntime({
+    name: 'hidden-dependency-api',
+    dimensions: {},
+    resources: { server },
+    requirements: []
+});
+const typeTestController = new AbortController();
 
 const databaseHandle = {
     async query(sql: string) {
@@ -113,15 +124,36 @@ describe('@overkill-dev/resources', function () {
         expect<ResourceHandle<typeof database>>().type.toBe<Database>();
         expect<ResourceHandle<typeof server>>().type.toBe<Server>();
         expect<ResourceContext<typeof server.dependencies>>().type.toBe<ExpectedDatabaseResourceContext>();
+        expect(server.dependencies.database).type.toBe<typeof database>();
+        expect(database.dependencies).type.toBe<Readonly<Record<PropertyKey, never>>>();
         expect<RuntimeContext<typeof runtime>>().type.toBe<ExpectedRuntimeContext>();
         expect<RuntimeContext<typeof runtime>['database']>().type.toBe<Database>();
         expect<RuntimeContext<typeof runtime>['server']>().type.toBe<Server>();
+        expect(runtime.name).type.toBe<'api'>();
+    });
+
+    test('infers aliased and hidden dependency runtime contexts', function () {
         expect<RuntimeContext<typeof aliasedRuntime>>().type.toBe<{
             readonly server: Server;
             readonly store: Database;
         }>();
         expect(aliasedRuntime.name).type.toBe<'aliased-api'>();
-        expect(runtime.name).type.toBe<'api'>();
+        expect<RuntimeContext<typeof hiddenDependencyRuntime>>().type.toBe<{
+            readonly server: Server;
+        }>();
+        expect(hiddenDependencyRuntime.name).type.toBe<'hidden-dependency-api'>();
+    });
+
+    test('exposes runtime lifecycle session types', function () {
+        const session = startRuntime({ runtime, signal: typeTestController.signal });
+
+        expect(session).type.toBe<Promise<RuntimeSession<typeof runtime>>>();
+        expect<ResourceLifecycleFailure>().type.toBe<{
+            readonly cause: unknown;
+            readonly phase: 'acquire' | 'dispose' | 'graph';
+            readonly resourceName: string;
+        }>();
+        expect<ResourceLifecycleError>().type.toBeAssignableTo<Error>();
     });
 
     test('infers built-in temporary directory resources', function () {
@@ -180,11 +212,13 @@ describe('@overkill-dev/resources', function () {
             resources: { database },
             requirements: []
         });
-        expect<typeof defineRuntime>().type.not.toBeCallableWith({
-            name: 'api',
-            dimensions: {},
-            resources: { server },
-            requirements: []
+        expect<typeof defineResource>().type.not.toBeCallableWith({
+            name: 'server',
+            scope: 'per-case',
+            requirements: [],
+            dependencies: { database: createInvalidDatabase() },
+            acquire: createInvalidDatabase,
+            dispose: null
         });
     });
 });

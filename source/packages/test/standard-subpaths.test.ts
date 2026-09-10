@@ -114,8 +114,11 @@ function assertResourcesSubpath(scope: TestScope): void {
         'createTemporaryDirectoryResource',
         'defineResource',
         'defineRuntime',
+        'ResourceLifecycleError',
+        'startRuntime',
         'withRuntime'
     ]);
+    scope.assert.equal(typeof resourcesSubpath.startRuntime, 'function');
     scope.assert.equal(database.name, 'database');
     scope.assert.equal(runtime.id.name, 'api');
     scope.assert.deepEqual(Object.keys(runtime.resources), [ 'database' ]);

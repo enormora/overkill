@@ -35,9 +35,12 @@ import {
     createTemporaryDirectoryResource,
     defineResource,
     defineRuntime,
+    type ResourceLifecycleError,
+    startRuntime,
     withRuntime,
     type ResourceContext,
     type ResourceHandle,
+    type RuntimeSession,
     type RuntimeContext,
     type RuntimeTestBody,
     type RuntimeTestScope,
@@ -93,6 +96,7 @@ const runtime = defineRuntime({
     requirements: []
 });
 const temporaryDirectory = createTemporaryDirectoryResource('scratch');
+const typeTestController = new AbortController();
 declare const testScope: TestScope;
 
 describe('@overkill-dev/test standard subpaths', function () {
@@ -132,6 +136,10 @@ describe('@overkill-dev/test standard subpaths', function () {
         expect<RuntimeContext<typeof runtime>>().type.toBe<{
             readonly database: Database;
         }>();
+        expect(startRuntime({ runtime, signal: typeTestController.signal })).type.toBe<
+            Promise<RuntimeSession<typeof runtime>>
+        >();
+        expect<ResourceLifecycleError>().type.toBeAssignableTo<Error>();
         expect(composeRuntimeContext(testScope, runtime, {
             database: { url: 'postgres://localhost' }
         }))

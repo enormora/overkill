@@ -9,7 +9,9 @@ export {
     composeRuntimeContext,
     createTemporaryDirectoryResource,
     defineResource,
-    defineRuntime
+    defineRuntime,
+    ResourceLifecycleError,
+    startRuntime
 } from '../resources/resources.entry-point.ts';
 export type {
     ExecutionRequirement,
@@ -20,6 +22,8 @@ export type {
     ResourceDefinitionInput,
     ResourceDisposalContext,
     ResourceHandle,
+    ResourceLifecycleFailure,
+    ResourceLifecyclePhase,
     ResourceScope,
     RuntimeContext,
     RuntimeContextComposition,
@@ -27,6 +31,9 @@ export type {
     RuntimeDefinitionInput,
     RuntimeDimensions,
     RuntimeId,
+    RuntimeSession,
+    RuntimeSessionDisposalContext,
+    StartRuntimeRequest,
     TemporaryDirectoryHandle
 } from '../resources/resources.entry-point.ts';
 
