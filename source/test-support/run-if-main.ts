@@ -19,11 +19,23 @@ type TestSupportRunIfMainRootOptions = {
     readonly title: string;
 };
 
-export type TestSupportRunIfMainOptions = {
+type TestSupportRunIfMainOptions = {
     readonly outputRenderer?: DefinedOutputRenderer;
     readonly reporters?: readonly DefinedReporter[];
     readonly root?: TestSupportRunIfMainRootOptions;
 };
+
+type TestSupportRunIfMainDependencies = {
+    readonly nodeVersion: string;
+    readonly readExitCode: () => number | string | null | undefined;
+    readonly setExitCode: (exitCode: number) => void;
+};
+
+export type TestSupportRunIfMain = (
+    meta: Readonly<ImportMeta>,
+    testNode: TestNode,
+    options?: TestSupportRunIfMainOptions
+) => Promise<void>;
 
 const successfulExitCodes = new Set<number | string | null | undefined>([
     undefined,
@@ -78,26 +90,34 @@ function testPlan(
     }));
 }
 
-export async function runIfMain(
-    meta: Readonly<ImportMeta>,
-    testNode: TestNode,
-    options?: TestSupportRunIfMainOptions
-): Promise<void> {
-    if (!meta.main) {
-        return;
-    }
+export function createTestSupportRunIfMain(dependencies: TestSupportRunIfMainDependencies): TestSupportRunIfMain {
+    return async function runIfMain(meta, testNode, options) {
+        if (!meta.main) {
+            return;
+        }
 
-    const result = await execute(testPlan(meta, testNode, options), {
-        execution: { mode: 'serial-in-process' },
-        outputRenderer: selectedOutputRenderer(options),
-        reporters: selectedReporters(options),
-        runFacts: {
-            nodeVersion: process.versions.node
-        },
-        startedAt: startedAt()
-    });
+        const result = await execute(testPlan(meta, testNode, options), {
+            execution: { mode: 'serial-in-process' },
+            outputRenderer: selectedOutputRenderer(options),
+            reporters: selectedReporters(options),
+            runFacts: {
+                nodeVersion: dependencies.nodeVersion
+            },
+            startedAt: startedAt()
+        });
 
-    if (hasFailure(result) && shouldSetFailureExitCode(process.exitCode)) {
-        process.exitCode = 1;
-    }
+        if (hasFailure(result) && shouldSetFailureExitCode(dependencies.readExitCode())) {
+            dependencies.setExitCode(1);
+        }
+    };
 }
+
+export const runIfMain = createTestSupportRunIfMain({
+    nodeVersion: process.versions.node,
+    readExitCode() {
+        return process.exitCode;
+    },
+    setExitCode(exitCode) {
+        process.exitCode = exitCode;
+    }
+});

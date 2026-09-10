@@ -1,17 +1,22 @@
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
 import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { loadRunConfig, RunConfigError } from './run-config.ts';
+import {
+    createRunConfigLoader,
+    RunConfigError
+} from './run-config.ts';
 
-async function createTempFolder(): Promise<string> {
-    return await fs.mkdtemp(path.join(os.tmpdir(), 'overkill-run-config-'));
-}
+const loadRunConfig = createRunConfigLoader({
+    async fileExists() {
+        return false;
+    },
+    async importModule() {
+        throw new Error('Cannot import config.');
+    }
+});
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
@@ -25,10 +30,8 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const cwd = await createTempFolder();
-
                 await scope.assert.rejects(async function loadMissingConfig() {
-                    await loadRunConfig({ configPath: 'missing.config.js', cwd });
+                    await loadRunConfig({ configPath: 'missing.config.js', cwd: '/project' });
                 }, {
                     type: RunConfigError,
                     message: /Failed to load config file/

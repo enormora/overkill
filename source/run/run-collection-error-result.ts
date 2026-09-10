@@ -3,7 +3,8 @@ import type { RunResult } from '../engine/run-result.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { selectedProfile } from './run-facts.ts';
 import { resolveRunReporters, type RunRuntimePolicy } from './run-support.ts';
-import type { RunCommand, RunOrchestratorDependencies } from './run-types.ts';
+import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
+import type { RunCommand } from './run-types.ts';
 
 function createCollectionErrorRunResult(
     error: RunCollectionError,

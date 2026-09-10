@@ -113,6 +113,11 @@ export const testNode = createOverkillSuite({
                     kind: 'contains',
                     value: "root ' branch"
                 });
+                scope.assert.deepEqual(parseRunFilterExpression('tag=fast   '), {
+                    field: 'tag',
+                    kind: 'equals',
+                    value: 'fast'
+                });
 
                 return scope.assert.collect();
             }
@@ -161,7 +166,8 @@ export const testNode = createOverkillSuite({
                     [ 'tag fast', 'Expected one of =, ~, or : after run filter dimension.' ],
                     [ 'title~"unterminated', 'Unterminated double quote string.' ],
                     [ 'title~"unterminated\\', 'Unterminated double quote string.' ],
-                    [ "suite~'unterminated", 'Unterminated single quote string.' ]
+                    [ "suite~'unterminated", 'Unterminated single quote string.' ],
+                    [ '()', 'Expected a run filter dimension.' ]
                 ];
 
                 for (const [ expression, expectedMessage ] of malformedExpressions) {

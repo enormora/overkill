@@ -8,7 +8,7 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import { orchestrator } from './run-orchestrator.entry-point.ts';
+import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import type { RunCommand, RunConfig } from './run-types.ts';
 
 function createRunCommand(config: RunConfig, profileName: string): RunCommand {
@@ -35,6 +35,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
+                const orchestrator = createDeterministicRunOrchestrator();
                 const profile: Record<string, unknown> = { ...defaultMicrotestProfile() };
 
                 delete profile.testFamily;
@@ -61,6 +62,8 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
+                const orchestrator = createDeterministicRunOrchestrator();
+
                 await scope.assert.rejects(async function resolveInvalidProfile() {
                     await orchestrator.resolve(createRunCommand(
                         defaultRunConfig({

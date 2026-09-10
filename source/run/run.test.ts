@@ -13,7 +13,6 @@ import {
 } from '../test-support/run-command-factory.ts';
 import { testNode as runCollectionErrorReportingTestNode } from './run-collection-error-reporting.test.ts';
 import { RunResolutionError } from './run-errors.ts';
-import { orchestrator } from './run-orchestrator.entry-point.ts';
 import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
 
 type RunCommandParts = {
@@ -221,8 +220,10 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
+                const runOrchestrator = createDeterministicRunOrchestrator();
+
                 await scope.assert.rejects(async function resolveEmptyPaths() {
-                    await orchestrator.resolve(createRunCommand({
+                    await runOrchestrator.resolve(createRunCommand({
                         config: defaultConfig,
                         cwd: process.cwd(),
                         engine: { kind: 'default' },
@@ -244,8 +245,10 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
+                const runOrchestrator = createDeterministicRunOrchestrator();
+
                 await scope.assert.rejects(async function resolveInvalidSeed() {
-                    await orchestrator.resolve(createRunCommand({
+                    await runOrchestrator.resolve(createRunCommand({
                         config: defaultConfig,
                         cwd: process.cwd(),
                         engine: { kind: 'default' },
@@ -267,8 +270,10 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
+                const runOrchestrator = createDeterministicRunOrchestrator();
+
                 await scope.assert.rejects(async function resolveUnsupportedShard() {
-                    await orchestrator.resolve(createRunCommand({
+                    await runOrchestrator.resolve(createRunCommand({
                         config: defaultConfig,
                         cwd: process.cwd(),
                         engine: { kind: 'default' },
@@ -290,8 +295,10 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
+                const runOrchestrator = createDeterministicRunOrchestrator();
+
                 await scope.assert.rejects(async function resolveUnknownProfile() {
-                    await orchestrator.resolve(createRunCommand({
+                    await runOrchestrator.resolve(createRunCommand({
                         config: defaultConfig,
                         cwd: process.cwd(),
                         engine: { kind: 'default' },
@@ -313,8 +320,10 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
+                const runOrchestrator = createDeterministicRunOrchestrator();
+
                 await scope.assert.rejects(async function resolveInvalidResourceUsage() {
-                    await orchestrator.resolve(createRunCommand({
+                    await runOrchestrator.resolve(createRunCommand({
                         config: defaultConfig,
                         cwd: process.cwd(),
                         engine: { kind: 'default' },

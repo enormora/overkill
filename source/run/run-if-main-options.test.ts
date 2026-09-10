@@ -32,7 +32,9 @@ import type { RunMicrotestProfileConfig } from './run-types.ts';
 
 type StderrCapture = {
     readonly read: () => string;
-    readonly restore: () => void;
+    readonly stderr: {
+        readonly write: (chunk: string) => void;
+    };
 };
 
 const outputRenderer = defineFixedOutputRenderer({
@@ -124,21 +126,16 @@ function directTestPlan(): TestPlan {
 }
 
 function captureStderr(): StderrCapture {
-    const originalWrite = process.stderr.write.bind(process.stderr);
     let captured = '';
-
-    process.stderr.write = function writeCapturedStderr(chunk: Uint8Array | string): boolean {
-        captured += typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8');
-
-        return true;
-    };
 
     return {
         read() {
             return captured;
         },
-        restore() {
-            process.stderr.write = originalWrite;
+        stderr: {
+            write(chunk) {
+                captured += chunk;
+            }
         }
     };
 }
@@ -198,7 +195,7 @@ function assertOutputAndRootOptions(scope: OverkillScope): void {
                 controls: {},
                 title: 'root'
             }
-        }),
+        }, '/project'),
         'root'
     );
 }
@@ -218,11 +215,7 @@ export const testNode = createOverkillSuite({
                 const profile = directProfile(null, 'serial');
                 const stderr = captureStderr();
 
-                try {
-                    warnOnSupervisedDowngrade(directProfile(null, 'concurrent'));
-                } finally {
-                    stderr.restore();
-                }
+                warnOnSupervisedDowngrade(directProfile(null, 'concurrent'), stderr.stderr);
 
                 await assertReporterSelection(scope);
                 assertOutputAndRootOptions(scope);
@@ -243,7 +236,7 @@ export const testNode = createOverkillSuite({
                         config: runConfig(loadedConfig(null), []),
                         fileSet: null,
                         profileName: 'missing',
-                        projectRoot: process.cwd(),
+                        projectRoot: '/project',
                         seed: { value: 42n },
                         testPlan: directTestPlan()
                     });

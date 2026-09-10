@@ -1,19 +1,17 @@
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { loadRunConfig } from './run-config.ts';
+import {
+    configFixtureCwd,
+    createSingleConfigModuleLoader
+} from '../test-support/run-config-module-loader.ts';
 
-async function createTempFolder(): Promise<string> {
-    return await fs.mkdtemp(path.join(os.tmpdir(), 'overkill-run-config-timeouts-'));
-}
+async function loadConfigValue(config: unknown): Promise<unknown> {
+    const loadRunConfig = createSingleConfigModuleLoader('overkill.config.js', { config });
 
-async function writeConfig(folder: string, source: string): Promise<void> {
-    await fs.writeFile(path.join(folder, 'overkill.config.js'), source, 'utf8');
+    return await loadRunConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
 export const testNode = createOverkillSuite({
@@ -28,10 +26,8 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const cwd = await createTempFolder();
-                await writeConfig(
-                    cwd,
-                    `export const config = {
+                await scope.assert.rejects(async function loadInvalidConfig() {
+                    await loadConfigValue({
                         profiles: {
                             microtest: {
                                 testFamily: 'microtest',
@@ -41,11 +37,7 @@ export const testNode = createOverkillSuite({
                                 }
                             }
                         }
-                    };`
-                );
-
-                await scope.assert.rejects(async function loadInvalidConfig() {
-                    await loadRunConfig({ configPath: null, cwd });
+                    });
                 }, {
                     message: /softMilliseconds must be less than or equal to hardMilliseconds/
                 });

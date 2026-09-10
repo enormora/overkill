@@ -4,8 +4,18 @@ import {
     installProcessExecutionRestriction as installNodeProcessExecutionRestriction
 } from './node-process-capability-restrictions.ts';
 import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
-import { createNodeRunOrchestrator } from './run-orchestrator.ts';
+import {
+    createNodeRunOrchestrator,
+    type NodeRunOrchestratorInput
+} from './run-orchestrator.ts';
 import type { RunOrchestrator } from './run-types.ts';
+
+export type CurrentProcessRunOrchestratorDependencies = {
+    readonly discoverRunFilesWithProjectRoot: NodeRunOrchestratorInput['discoverRunFilesWithProjectRoot'];
+    readonly loadRunEngineModule: NodeRunOrchestratorInput['loadRunEngineModule'];
+    readonly loadRunTestModules: NodeRunOrchestratorInput['loadRunTestModules'];
+    readonly startSupervisedChild: NodeRunOrchestratorInput['startSupervisedChild'];
+};
 
 function writeStdoutLine(line: string): void {
     process.stdout.write(`${line}\n`);
@@ -23,9 +33,16 @@ function writeStderr(chunk: Uint8Array): void {
     process.stderr.write(chunk);
 }
 
-export function createCurrentProcessRunOrchestrator(defaultEngine: Engine): RunOrchestrator {
+export function createCurrentProcessRunOrchestrator(
+    defaultEngine: Engine,
+    dependencies: CurrentProcessRunOrchestratorDependencies
+): RunOrchestrator {
     return createNodeRunOrchestrator({
         defaultEngine,
+        discoverRunFilesWithProjectRoot: dependencies.discoverRunFilesWithProjectRoot,
+        loadRunEngineModule: dependencies.loadRunEngineModule,
+        loadRunTestModules: dependencies.loadRunTestModules,
+        startSupervisedChild: dependencies.startSupervisedChild,
         installIpcRestriction(record) {
             return installProcessIpcRestriction(process, record);
         },

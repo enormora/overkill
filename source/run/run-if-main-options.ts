@@ -20,14 +20,18 @@ export type RunIfMainOptions = {
     readonly root?: RunIfMainRootOptions;
 };
 
+export type RunIfMainWarningSink = {
+    readonly write: (chunk: string) => unknown;
+};
+
 const supervisedDowngradeWarning = [
     'Overkill warning: runIfMain() executes in the current process;',
     'supervised-process isolation is unavailable for direct Node execution.'
 ]
     .join(' ');
 
-function stderrWarning(message: string): void {
-    process.stderr.write(`${message}\n`);
+function stderrWarning(stderr: RunIfMainWarningSink, message: string): void {
+    stderr.write(`${message}\n`);
 }
 
 export async function selectedReporters(
@@ -65,16 +69,16 @@ export function rootControls(options: RunIfMainOptions | undefined): TestControl
     return options?.root?.controls ?? {};
 }
 
-export function rootTitle(options: RunIfMainOptions | undefined): string {
-    return options?.root?.title ?? process.cwd();
+export function rootTitle(options: RunIfMainOptions | undefined, cwd: string): string {
+    return options?.root?.title ?? cwd;
 }
 
 export function executionMode(profile: RunProfileConfig): 'concurrent-in-process' | 'serial-in-process' {
     return profile.execution.scheduling === 'concurrent' ? 'concurrent-in-process' : 'serial-in-process';
 }
 
-export function warnOnSupervisedDowngrade(profile: RunProfileConfig): void {
+export function warnOnSupervisedDowngrade(profile: RunProfileConfig, stderr: RunIfMainWarningSink): void {
     if (profile.execution.processModel === 'supervised-process') {
-        stderrWarning(supervisedDowngradeWarning);
+        stderrWarning(stderr, supervisedDowngradeWarning);
     }
 }

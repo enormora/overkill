@@ -1,4 +1,3 @@
-import { setTimeout as scheduleTimeout } from 'node:timers';
 import { createDeterministicWallClock } from '@enormora/wall-clock';
 import {
     createSuite as createOverkillSuite,
@@ -11,7 +10,7 @@ import {
     createExecutionSupervision,
     recordResourceUsageSample
 } from './execution-supervision.ts';
-import type { RunResourceUsageTracker } from './run-result.ts';
+import type { ResourceUsageSnapshot, RunResourceUsageTracker } from './run-result.ts';
 
 const sample = {
     activeResourceCount: 1,
@@ -27,6 +26,11 @@ const previousSample = {
     capturedAtMilliseconds: 1,
     javaScriptEngineHeapBytes: 20,
     residentSetBytes: 30
+};
+
+type BreachingResourceUsageTracker = {
+    readonly emitSamples: () => void;
+    readonly tracker: RunResourceUsageTracker;
 };
 
 function plainDataShape(value: unknown): unknown {
@@ -68,39 +72,42 @@ function createFinishedResourceUsageTracker(): RunResourceUsageTracker {
     };
 }
 
-function createBreachingResourceUsageTracker(): RunResourceUsageTracker {
-    return {
-        finish() {
-            return {
-                activeResourceTypes: [ 'Timeout' ],
-                end: {
-                    activeResourceCount: 1,
-                    activeResourceTypes: [ 'Timeout' ],
-                    capturedAtMilliseconds: 2,
-                    javaScriptEngineHeapBytes: 30,
-                    residentSetBytes: 40
-                },
-                peakActiveResourceCount: 1,
-                peakJavaScriptEngineHeapBytes: 30,
-                peakResidentSetBytes: 40,
-                peakResidentSetGrowthBytesPerSecond: 0,
-                sampleCount: 1,
-                start: {
-                    activeResourceCount: 1,
-                    activeResourceTypes: [ 'Timeout' ],
-                    capturedAtMilliseconds: 2,
-                    javaScriptEngineHeapBytes: 30,
-                    residentSetBytes: 40
-                }
-            };
-        },
-        start(onSample) {
-            function sendSample(): void {
-                onSample?.(sample);
-            }
+function createBreachingResourceUsageTracker(): BreachingResourceUsageTracker {
+    let recordSample: ((resourceSample: ResourceUsageSnapshot) => void) | null = null;
 
-            scheduleTimeout(sendSample, 0);
-            scheduleTimeout(sendSample, 0);
+    return {
+        emitSamples() {
+            recordSample?.(sample);
+            recordSample?.(sample);
+        },
+        tracker: {
+            finish() {
+                return {
+                    activeResourceTypes: [ 'Timeout' ],
+                    end: {
+                        activeResourceCount: 1,
+                        activeResourceTypes: [ 'Timeout' ],
+                        capturedAtMilliseconds: 2,
+                        javaScriptEngineHeapBytes: 30,
+                        residentSetBytes: 40
+                    },
+                    peakActiveResourceCount: 1,
+                    peakJavaScriptEngineHeapBytes: 30,
+                    peakResidentSetBytes: 40,
+                    peakResidentSetGrowthBytesPerSecond: 0,
+                    sampleCount: 1,
+                    start: {
+                        activeResourceCount: 1,
+                        activeResourceTypes: [ 'Timeout' ],
+                        capturedAtMilliseconds: 2,
+                        javaScriptEngineHeapBytes: 30,
+                        residentSetBytes: 40
+                    }
+                };
+            },
+            start(onSample) {
+                recordSample = onSample ?? null;
+            }
         }
     };
 }
@@ -184,15 +191,14 @@ export const testNode = createOverkillSuite({
             controls: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
+                const resourceUsageTracker = createBreachingResourceUsageTracker();
                 const testPlan = engine.createTestPlan(
                     engine.createRoot({
                         children: [
                             engine.createTestCase({
                                 definitionLocations: [ { kind: 'unknown' as const } ],
-                                async body(testScope) {
-                                    await new Promise(function wait(resolve) {
-                                        scheduleTimeout(resolve, 10);
-                                    });
+                                body(testScope) {
+                                    resourceUsageTracker.emitSamples();
                                     testScope.assert.true(true);
                                     return testScope.assert.collect();
                                 },
@@ -215,15 +221,13 @@ export const testNode = createOverkillSuite({
                         residentSetBytes: 1,
                         residentSetGrowthBytesPerSecond: null
                     },
-                    resourceUsageTracker: createBreachingResourceUsageTracker(),
+                    resourceUsageTracker: resourceUsageTracker.tracker,
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
-                const error = result.runnerErrors[0];
 
-                scope.require.defined(error);
-                scope.assert.equal(error.subtype, 'resource-exhaustion');
-                scope.assert.deepEqual(plainDataShape(error.attributedTo), {
+                scope.assert.equal(result.runnerErrors[0]?.subtype, 'resource-exhaustion');
+                scope.assert.deepEqual(plainDataShape(result.runnerErrors[0]?.attributedTo ?? null), {
                     file: null,
                     title: 'waits',
                     params: null,

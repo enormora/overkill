@@ -11,7 +11,6 @@ import type {
     RunMicrotestExecution,
     RunProfileConfig,
     RunProfileFiles,
-    RunOrchestratorDependencies,
     RunProfilesConfig,
     RunRequest,
     RunResourceBudgets,
@@ -19,6 +18,7 @@ import type {
     RunShard,
     RunTimeoutPolicy
 } from './run-types.ts';
+import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import { copyRunSelection } from './run-selection-filters.ts';
 import { validateRunResourceUsagePolicy } from './run-validation.ts';
 

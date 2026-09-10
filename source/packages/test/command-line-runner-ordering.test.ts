@@ -4,9 +4,9 @@ import type {
     CommandLineExitCode,
     CommandLineListTestsRequest,
     CommandLineRunTestsRequest,
-    CommandLineRunner,
     CommandLineRunnerResult
-} from '../run/command-line.entry-point.ts';
+} from '../../run/command-line-command.ts';
+import type { CommandLineRunner } from '../../run/command-line-runner.ts';
 import { runOverkillCommandLine } from './command-line-runner.ts';
 
 type CapturedOutput = {

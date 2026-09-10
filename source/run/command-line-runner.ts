@@ -1,9 +1,8 @@
 import type { DefinedReporter } from '../engine/reporter.ts';
 import type { RunCommand, RunConfig, RunOrchestrator } from './run-types.ts';
-import {
-    loadRunConfig,
-    type LoadedRunConfig,
-    type RunConfigLoadRequest
+import type {
+    LoadedRunConfig,
+    RunConfigLoadRequest
 } from './run-config.ts';
 import {
     createCommandLineErrorResultFromUnknown,
@@ -22,11 +21,7 @@ import {
     createCommandLineCommandNamespace,
     type CommandLineCommandLoaders
 } from './command-line-command-namespace.ts';
-import {
-    createUnimplementedCommand,
-    loadUnimplementedBaselineCommands,
-    loadUnimplementedBenchmarkCommands
-} from './command-line-unimplemented-commands.ts';
+import { createUnimplementedCommand } from './command-line-unimplemented-commands.ts';
 import {
     selectCommandLineReporterFallback,
     type CommandLineReporterFallback
@@ -216,42 +211,3 @@ export function createCommandLineRunner(dependencies: CommandLineRunnerDependenc
 export async function loadDefaultLineReporter(): Promise<DefinedReporter> {
     return await createDefaultDirectReporter();
 }
-
-const commandLoaders = {
-    loadBaselineCommands: loadUnimplementedBaselineCommands,
-    loadBenchmarkCommands: loadUnimplementedBenchmarkCommands
-};
-
-function createRunner(orchestrator: RunOrchestrator): CommandLineRunner {
-    return createCommandLineRunner({
-        createDefaultReporter: loadDefaultLineReporter,
-        ...commandLoaders,
-        loadRunConfig,
-        orchestrator
-    });
-}
-
-async function loadDefaultRunner(): Promise<CommandLineRunner> {
-    const module = await import('./run-orchestrator.entry-point.ts');
-
-    return createRunner(module.orchestrator);
-}
-
-const commandNamespace = createCommandLineCommandNamespace(commandLoaders);
-
-export const commandLineRunner: CommandLineRunner = {
-    baseline: commandNamespace.baseline,
-    bench: commandNamespace.bench,
-    replayRun: createUnimplementedCommand('replay'),
-    replayWitness: createUnimplementedCommand('replay-witness'),
-    async listTests(request) {
-        const runner = await loadDefaultRunner();
-
-        return await runner.listTests(request);
-    },
-    async runTests(request) {
-        const runner = await loadDefaultRunner();
-
-        return await runner.runTests(request);
-    }
-};

@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-import fs from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import {
     createSuite as createOverkillSuite,
@@ -11,9 +9,12 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
+import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
-import { loadRunEngineModule } from './run-engine-selection.ts';
-import { orchestrator } from './run-orchestrator.entry-point.ts';
+import {
+    createRunEngineModuleLoader,
+    type RunEngineModuleLoader
+} from './run-engine-selection.ts';
 import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
 
 type RunCommandParts = {
@@ -44,14 +45,18 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
     };
 }
 
-async function writeCustomEngineModule(source: string): Promise<string> {
-    const directory = `${process.cwd()}/target/custom-engine-modules`;
-    const modulePath = `${directory}/custom-engine-${randomUUID()}.js`;
+function createModuleLoader(
+    modules: Readonly<Record<string, unknown>>
+): RunEngineModuleLoader {
+    return createRunEngineModuleLoader({
+        async importModule(moduleUrl) {
+            if (!Object.hasOwn(modules, moduleUrl)) {
+                throw new Error(`Missing engine module fixture: ${moduleUrl}`);
+            }
 
-    await fs.mkdir(directory, { recursive: true });
-    await fs.writeFile(modulePath, source, 'utf8');
-
-    return pathToFileURL(modulePath).href;
+            return modules[moduleUrl];
+        }
+    });
 }
 
 function customEngineCommand(
@@ -105,6 +110,8 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
+                const orchestrator = createDeterministicRunOrchestrator();
+
                 await scope.assert.rejects(async function runWithCustomSupervisedEngine() {
                     await orchestrator.run(createRunCommand({
                         config: defaultRunConfig(),
@@ -126,6 +133,8 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
+                const orchestrator = createDeterministicRunOrchestrator();
+
                 await scope.assert.rejects(async function runWithEmptyModuleUrl() {
                     await orchestrator.run(invalidCustomEngineCommand({
                         exportKind: 'value',
@@ -168,23 +177,15 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const moduleUrl = await writeCustomEngineModule(`
-                    const method = () => undefined;
-                    export const engine = {
-                        createRoot: method,
-                        createSuite: method,
-                        createTable: method,
-                        createTestCase: method,
-                        createTestPlan: method,
-                        createTestPlanFromTestFiles: method,
-                        execute: method,
-                        formatCaseId: method,
-                        ownsTestNode: method
-                    };
-                    export function getEngine() {
-                        return engine;
+                const moduleUrl = 'file:///project/custom-engine.js';
+                const loadRunEngineModule = createModuleLoader({
+                    [moduleUrl]: {
+                        engine: defaultRunEngine,
+                        getEngine() {
+                            return defaultRunEngine;
+                        }
                     }
-                `);
+                });
 
                 const valueEngine = await loadRunEngineModule(moduleEngine(moduleUrl, 'engine', 'value'));
                 const getterEngine = await loadRunEngineModule(moduleEngine(moduleUrl, 'getEngine', 'getter'));
@@ -201,10 +202,13 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const moduleUrl = await writeCustomEngineModule(`
-                    export const invalidEngine = {};
-                    export const getEngine = {};
-                `);
+                const moduleUrl = 'file:///project/invalid-custom-engine.js';
+                const loadRunEngineModule = createModuleLoader({
+                    [moduleUrl]: {
+                        getEngine: {},
+                        invalidEngine: {}
+                    }
+                });
 
                 await scope.assert.rejects(async function loadMissingEngineExport() {
                     await loadRunEngineModule(moduleEngine(moduleUrl, 'engine', 'value'));
@@ -230,6 +234,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
+                const orchestrator = createDeterministicRunOrchestrator();
                 const result = await orchestrator.run(customEngineCommand('engine', 'value'));
 
                 scope.assert.equal(result.summary.passed, 1);
@@ -244,6 +249,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
+                const orchestrator = createDeterministicRunOrchestrator();
                 const resolvedRun = await orchestrator.resolve(customEngineCommand('getEngine', 'getter'));
                 const firstCase = resolvedRun.facts.cases[0];
 
@@ -265,6 +271,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
+                const orchestrator = createDeterministicRunOrchestrator();
                 const invalidValueResult = await orchestrator.run(customEngineCommand('invalidEngine', 'value'));
                 const asyncGetterResult = await orchestrator.run(customEngineCommand('getAsyncEngine', 'getter'));
 
@@ -286,6 +293,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
+                const orchestrator = createDeterministicRunOrchestrator();
                 const result = await orchestrator.run(customEngineCommand('engine', 'value', [ passingFixturePath ]));
 
                 scope.assert.equal(

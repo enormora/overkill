@@ -1,6 +1,4 @@
-import fs from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { parse } from '@schema-hub/zod-error-formatter';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import { createPlainOutputRenderer, type DefinedOutputRenderer } from '../engine/reporter-output.ts';
@@ -78,6 +76,13 @@ export type RunConfigLoadRequest = {
     readonly cwd: string;
 };
 
+export type RunConfigLoaderDependencies = {
+    readonly fileExists: (filePath: string) => Promise<boolean>;
+    readonly importModule: (configPath: string) => Promise<unknown>;
+};
+
+export type RunConfigLoader = (request: RunConfigLoadRequest) => Promise<LoadedRunConfig>;
+
 export class RunConfigError extends Error {
     public constructor(message: string, options?: Readonly<ErrorOptions>) {
         super(message, options);
@@ -136,21 +141,14 @@ export function defineConfig(config: RunProjectConfig): RunProjectConfig {
     return config;
 }
 
-async function fileExists(filePath: string): Promise<boolean> {
-    try {
-        await fs.access(filePath);
-
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-async function discoverConfigPath(cwd: string): Promise<string | null> {
+async function discoverConfigPath(
+    cwd: string,
+    dependencies: RunConfigLoaderDependencies
+): Promise<string | null> {
     for (const configFileName of defaultConfigFileNames) {
         const candidate = path.resolve(cwd, configFileName);
 
-        if (await fileExists(candidate)) {
+        if (await dependencies.fileExists(candidate)) {
             return candidate;
         }
     }
@@ -158,17 +156,23 @@ async function discoverConfigPath(cwd: string): Promise<string | null> {
     return null;
 }
 
-async function resolveConfigPath(request: RunConfigLoadRequest): Promise<string | null> {
+async function resolveConfigPath(
+    request: RunConfigLoadRequest,
+    dependencies: RunConfigLoaderDependencies
+): Promise<string | null> {
     if (request.configPath !== null) {
         return path.resolve(request.cwd, request.configPath);
     }
 
-    return await discoverConfigPath(request.cwd);
+    return await discoverConfigPath(request.cwd, dependencies);
 }
 
-async function importConfigModule(configPath: string): Promise<unknown> {
+async function importConfigModule(
+    configPath: string,
+    dependencies: RunConfigLoaderDependencies
+): Promise<unknown> {
     try {
-        return await import(pathToFileURL(configPath).href);
+        return await dependencies.importModule(configPath);
     } catch (error: unknown) {
         throw new RunConfigError(`Failed to load config file "${configPath}".`, { cause: error });
     }
@@ -498,15 +502,17 @@ function parseConfig(configValue: unknown, configPath: string): RunProjectConfig
     }
 }
 
-export async function loadRunConfig(request: RunConfigLoadRequest): Promise<LoadedRunConfig> {
-    const configPath = await resolveConfigPath(request);
+export function createRunConfigLoader(dependencies: RunConfigLoaderDependencies): RunConfigLoader {
+    return async function loadRunConfig(request) {
+        const configPath = await resolveConfigPath(request, dependencies);
 
-    if (configPath === null) {
-        return normalizeConfig({}, null);
-    }
+        if (configPath === null) {
+            return normalizeConfig({}, null);
+        }
 
-    const configModule = await importConfigModule(configPath);
-    const configValue = readNamedConfigExport(configModule, configPath);
+        const configModule = await importConfigModule(configPath, dependencies);
+        const configValue = readNamedConfigExport(configModule, configPath);
 
-    return normalizeConfig(parseConfig(configValue, configPath), configPath);
+        return normalizeConfig(parseConfig(configValue, configPath), configPath);
+    };
 }

@@ -101,6 +101,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(matchesRunFilter(all([ tag('FAST'), owner('@PAYMENTS') ]), candidate), true);
                 scope.assert.equal(matchesRunFilter(any([ tag('slow'), owner('@PAYMENTS') ]), candidate), true);
                 scope.assert.equal(matchesRunFilter(tag('slow'), candidate), false);
+                scope.assert.equal(matchesRunFilter({ kind: 'unknown' } as unknown as RunFilter, candidate), false);
 
                 return scope.assert.collect();
             }
@@ -193,9 +194,20 @@ export const testNode = createOverkillSuite({
                     [ { kind: 'all' }, null ],
                     [ { filter: null, kind: 'filter' }, 'Run filter must be an object.' ],
                     [ { filter: { kind: 'selected' }, kind: 'filter' }, 'Run filter kind is unknown.' ],
+                    [ { filter: { kind: 1 }, kind: 'filter' }, 'Run filter kind is unknown.' ],
                     [
                         { filter: { filters: [], kind: 'any' }, kind: 'filter' },
                         'Composite run filters must contain at least one child filter.'
+                    ],
+                    [
+                        {
+                            filter: {
+                                filter: { field: 'tag', kind: 'equals', value: 'fast' },
+                                kind: 'not'
+                            },
+                            kind: 'filter'
+                        },
+                        null
                     ],
                     [ { filter: { filter: null, kind: 'not' }, kind: 'filter' }, 'Run filter must be an object.' ],
                     [

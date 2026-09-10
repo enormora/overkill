@@ -1,7 +1,3 @@
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import {
     createTestCase as createDirectTestCase,
     createSuite as createOverkillSuite,
@@ -12,14 +8,11 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import type { DefinedReporter } from '../engine/reporter.ts';
+import {
+    createDirectRunFixture,
+    type DirectRunFixture
+} from '../test-support/direct-run-fixture.ts';
 import { defineFixedReporter } from '../test-support/reporter-definition.ts';
-import { runIfMain } from './run-if-main.ts';
-
-type DirectProject = {
-    readonly cwd: string;
-    readonly file: string;
-    readonly meta: Readonly<ImportMeta>;
-};
 
 type CapturedExecution = {
     readonly profile: string;
@@ -29,47 +22,6 @@ type CapturedExecution = {
 type CapturedRun = {
     readonly execution: CapturedExecution;
 };
-
-function importMeta(file: string): Readonly<ImportMeta> {
-    return {
-        dirname: path.dirname(file),
-        filename: file,
-        main: true,
-        resolve(specifier: string) {
-            return import.meta.resolve(specifier);
-        },
-        url: pathToFileURL(file).href
-    };
-}
-
-async function createDirectProject(fileName: string): Promise<DirectProject> {
-    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'overkill-run-if-main-selection-'));
-    const file = path.join(cwd, fileName);
-
-    await fs.writeFile(file, '', 'utf8');
-
-    return {
-        cwd,
-        file,
-        meta: importMeta(file)
-    };
-}
-
-async function writeConfig(project: DirectProject, source: string): Promise<void> {
-    await fs.writeFile(path.join(project.cwd, 'overkill.config.js'), source, 'utf8');
-}
-
-async function withCwd<Value>(cwd: string, work: () => Promise<Value>): Promise<Value> {
-    const originalCwd = process.cwd();
-
-    process.chdir(cwd);
-
-    try {
-        return await work();
-    } finally {
-        process.chdir(originalCwd);
-    }
-}
 
 function passingBody(scope: DirectScope): ReturnType<DirectTestBody> {
     scope.assert.true(true);
@@ -120,17 +72,15 @@ function createCapturingReporter(recordRun: (capturedRun: CapturedRun) => void):
     });
 }
 
-async function runDirect(project: DirectProject, testNode: DirectTestNode): Promise<CapturedRun> {
+async function runDirect(fixture: DirectRunFixture, testNode: DirectTestNode): Promise<CapturedRun> {
     const capturedRuns: CapturedRun[] = [];
 
-    await withCwd(project.cwd, async function runInProject() {
-        await runIfMain(project.meta, testNode, {
-            reporters: [
-                createCapturingReporter(function recordRun(capturedRun) {
-                    capturedRuns.push(capturedRun);
-                })
-            ]
-        });
+    await fixture.runIfMain(fixture.project.meta, testNode, {
+        reporters: [
+            createCapturingReporter(function recordRun(capturedRun) {
+                capturedRuns.push(capturedRun);
+            })
+        ]
     });
 
     const [ capturedRun ] = capturedRuns;
@@ -154,29 +104,27 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const project = await createDirectProject('direct.test.ts');
-
-                await writeConfig(
-                    project,
-                    `export const config = {
-                    profiles: {
-                        microtest: {
-                            testFamily: 'microtest',
-                            execution: { processModel: 'in-process', scheduling: 'serial' }
-                        },
-                        focused: {
-                            testFamily: 'microtest',
-                            files: {
-                                include: [ 'direct.test.ts' ],
-                                exclude: [ 'direct.test.ts' ]
+                const fixture = createDirectRunFixture({
+                    config: {
+                        profiles: {
+                            microtest: {
+                                testFamily: 'microtest',
+                                execution: { processModel: 'in-process', scheduling: 'serial' }
                             },
-                            execution: { processModel: 'in-process', scheduling: 'concurrent' }
+                            focused: {
+                                testFamily: 'microtest',
+                                files: {
+                                    include: [ 'direct.test.ts' ],
+                                    exclude: [ 'direct.test.ts' ]
+                                },
+                                execution: { processModel: 'in-process', scheduling: 'concurrent' }
+                            }
                         }
-                    }
-                };`
-                );
-
-                const capturedRun = await runDirect(project, passingCase());
+                    },
+                    fileName: 'direct.test.ts',
+                    files: []
+                });
+                const capturedRun = await runDirect(fixture, passingCase());
 
                 scope.assert.equal(capturedRun.execution.profile, 'microtest');
                 scope.assert.equal(capturedRun.execution.scheduling, 'serial');
@@ -190,19 +138,21 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const project = await createDirectProject('direct.test.ts');
+                const fixture = createDirectRunFixture({
+                    config: null,
+                    fileName: 'direct.test.ts',
+                    files: []
+                });
 
                 await scope.assert.rejects(async function runWithoutFileUrl() {
-                    await withCwd(project.cwd, async function runInProject() {
-                        await runIfMain(
-                            {
-                                ...project.meta,
-                                url: 'data:text/javascript,export{}'
-                            },
-                            passingCase(),
-                            { reporters: [] }
-                        );
-                    });
+                    await fixture.runIfMain(
+                        {
+                            ...fixture.project.meta,
+                            url: 'data:text/javascript,export{}'
+                        },
+                        passingCase(),
+                        { reporters: [] }
+                    );
                 }, {
                     message: 'runIfMain() requires a file: import.meta.url.'
                 });
@@ -216,32 +166,24 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const project = await createDirectProject('direct.test.ts');
-                const previousExitCode = process.exitCode;
-
-                process.exitCode = undefined;
-
-                try {
-                    await writeConfig(
-                        project,
-                        `export const config = {
-                    profiles: {
-                        microtest: {
-                            testFamily: 'microtest',
-                            execution: { processModel: 'in-process', scheduling: 'concurrent' },
-                            resourceUsage: { measure: true }
+                const fixture = createDirectRunFixture({
+                    config: {
+                        profiles: {
+                            microtest: {
+                                testFamily: 'microtest',
+                                execution: { processModel: 'in-process', scheduling: 'concurrent' },
+                                resourceUsage: { measure: true }
+                            }
                         }
-                    }
-                };`
-                    );
-                    await withCwd(project.cwd, async function runInProject() {
-                        await runIfMain(project.meta, failingCase(), { reporters: [] });
-                    });
+                    },
+                    fileName: 'direct.test.ts',
+                    files: []
+                });
 
-                    scope.assert.equal(process.exitCode, 1);
-                } finally {
-                    process.exitCode = previousExitCode;
-                }
+                fixture.setExitCode(undefined);
+                await fixture.runIfMain(fixture.project.meta, failingCase(), { reporters: [] });
+
+                scope.assert.equal(fixture.exitCode(), 1);
 
                 return scope.assert.collect();
             }

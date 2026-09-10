@@ -3,8 +3,9 @@ import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node
 import { RunCollectionError } from './run-errors.ts';
 import { resolveRunEngine } from './run-engine-selection.ts';
 import { createRunTestPlanFromFiles } from './run-test-plan.ts';
-import type { DiscoveredRunFile } from './run-discovery.ts';
-import type { RunCommand, RunOrchestratorDependencies, RunProfileConfig } from './run-types.ts';
+import type { DiscoveredRunFile } from './run-discovery-types.ts';
+import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
+import type { RunCommand, RunProfileConfig } from './run-types.ts';
 
 async function createTestPlan(
     command: RunCommand,
@@ -14,7 +15,13 @@ async function createTestPlan(
 ): Promise<TestPlan> {
     const engine = await resolveRunEngine(command.engine, dependencies);
 
-    return await createRunTestPlanFromFiles({ cwd: command.cwd, engine, files, testFamily: profile.testFamily });
+    return await createRunTestPlanFromFiles({
+        cwd: command.cwd,
+        engine,
+        files,
+        loadRunTestModules: dependencies.loadRunTestModules,
+        testFamily: profile.testFamily
+    });
 }
 
 export async function createLocalTestPlan(

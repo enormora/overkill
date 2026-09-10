@@ -1,20 +1,19 @@
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
-import { loadRunConfig } from './run-config.ts';
+import {
+    configFixtureCwd,
+    createSingleConfigModuleLoader
+} from '../test-support/run-config-module-loader.ts';
+import type { LoadedRunConfig } from './run-config.ts';
 
-async function createTempFolder(): Promise<string> {
-    return await fs.mkdtemp(path.join(os.tmpdir(), 'overkill-run-config-'));
-}
+async function loadConfigValue(config: unknown): Promise<LoadedRunConfig> {
+    const loadRunConfig = createSingleConfigModuleLoader('overkill.config.js', { config });
 
-async function writeConfig(folder: string, source: string): Promise<void> {
-    await fs.writeFile(path.join(folder, 'overkill.config.js'), source, 'utf8');
+    return await loadRunConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
 export const testNode = createOverkillSuite({
@@ -29,19 +28,14 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const cwd = await createTempFolder();
-                await writeConfig(
-                    cwd,
-                    `export const config = {
-                        profiles: {
-                            service: {
-                                testFamily: 'integration',
-                                files: { include: [ 'source/**/*.integration.test.ts' ] }
-                            }
+                const config = await loadConfigValue({
+                    profiles: {
+                        service: {
+                            testFamily: 'integration',
+                            files: { include: [ 'source/**/*.integration.test.ts' ] }
                         }
-                    };`
-                );
-                const config = await loadRunConfig({ configPath: null, cwd });
+                    }
+                });
                 const profile = config.profiles.service;
                 const microtestProfile = config.profiles.microtest;
 
@@ -76,23 +70,18 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const cwd = await createTempFolder();
-                await writeConfig(
-                    cwd,
-                    `export const config = {
-                        profiles: {
-                            service: {
-                                testFamily: 'integration',
-                                files: { include: [ 'source/**/*.integration.test.ts' ] },
-                                execution: {
-                                    processModel: 'supervised-process',
-                                    scheduling: 'serial'
-                                }
+                const config = await loadConfigValue({
+                    profiles: {
+                        service: {
+                            testFamily: 'integration',
+                            files: { include: [ 'source/**/*.integration.test.ts' ] },
+                            execution: {
+                                processModel: 'supervised-process',
+                                scheduling: 'serial'
                             }
                         }
-                    };`
-                );
-                const config = await loadRunConfig({ configPath: null, cwd });
+                    }
+                });
                 const profile = config.profiles.service;
 
                 scope.require.defined(profile);

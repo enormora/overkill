@@ -1,4 +1,4 @@
-import { createWallClock } from '@enormora/wall-clock';
+import type { WallClock } from '@enormora/wall-clock';
 import { caseIdentityKey, type CaseId } from '../engine/identity.ts';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
@@ -11,7 +11,6 @@ import {
     type RunResourceUsageTracker,
     type TestPlan
 } from '../packages/engine/engine.entry-point.ts';
-import { createNodeResourceUsageTracker } from './resource-usage.ts';
 import {
     collectedRunPlanFromTestPlan,
     collectedRunPlanFromTestPlanCases,
@@ -22,7 +21,10 @@ import {
     type RuntimeCapabilityPolicy,
     type RuntimeCapabilityPolicyDependencies
 } from './capability-policy.ts';
-import { createSupervisedChildTestPlan } from './supervised-child-test-plan.ts';
+import {
+    createSupervisedChildTestPlan,
+    type SupervisedChildTestPlanDependencies
+} from './supervised-child-test-plan.ts';
 import type {
     SupervisedAssignmentCommand,
     SupervisedChildCommand,
@@ -41,19 +43,35 @@ type SupervisedAssignmentExecution = {
     readonly assignment: SupervisedAssignmentCommand;
     readonly collectedPlan: CollectedTestPlan;
     readonly command: SupervisedRunCommand;
+    readonly dependencies: SupervisedChildDependencies;
     readonly host: SupervisedChildHost;
     readonly startedAtMs: number;
-    readonly wallClock: ReturnType<typeof createWallClock>;
+    readonly wallClock: WallClock;
 };
 
 export type SupervisedChildHost = RuntimeCapabilityPolicyDependencies & {
     readonly disconnect: () => void;
+    readonly discoverRunFiles: SupervisedChildTestPlanDependencies['discoverRunFiles'];
     readonly dropBodyReadPermission: (command: SupervisedRunCommand) => void;
+    readonly loadRunEngineModule: SupervisedChildTestPlanDependencies['loadRunEngineModule'];
+    readonly loadRunTestModules: SupervisedChildTestPlanDependencies['loadRunTestModules'];
     readonly receiveAssignment: () => Promise<SupervisedAssignmentCommand>;
     readonly receiveCommand: () => Promise<SupervisedChildCommand>;
     readonly send: (message: SupervisedChildMessage) => void;
     readonly setExitCode: (code: number) => void;
     readonly validatePermissionHost: (command: SupervisedChildCommand) => void;
+};
+
+type SupervisedChildResourceUsageOptions = {
+    readonly samplingIntervalMilliseconds: number;
+};
+
+export type SupervisedChildDependencies = {
+    readonly createResourceUsageTracker: (
+        wallClock: WallClock,
+        options: SupervisedChildResourceUsageOptions
+    ) => RunResourceUsageTracker;
+    readonly createWallClock: () => WallClock;
 };
 
 function ignoreLine(): void {
@@ -117,11 +135,13 @@ function selectAssignedCases(
     };
 }
 
-function createResourceUsageTracker(
+function createForwardingResourceUsageTracker(
     command: SupervisedRunCommand,
-    host: SupervisedChildHost
+    host: SupervisedChildHost,
+    dependencies: SupervisedChildDependencies,
+    wallClock: WallClock
 ): RunResourceUsageTracker {
-    const tracker = createNodeResourceUsageTracker(createWallClock(), {
+    const tracker = dependencies.createResourceUsageTracker(wallClock, {
         samplingIntervalMilliseconds: command.resourceUsageSamplingIntervalMilliseconds
     });
 
@@ -142,7 +162,7 @@ function executionMode(command: SupervisedRunCommand): ChildExecutionMode {
 
 function createEmptyAssignmentResult(
     testPlan: TestPlan,
-    wallClock: ReturnType<typeof createWallClock>,
+    wallClock: WallClock,
     startedAtMs: number
 ): RunResult {
     return createRunResultFromCollectedPlan(
@@ -177,10 +197,15 @@ function createRuntimePolicy(
 
 async function createPolicyCheckedTestPlan(
     command: SupervisedChildCommand,
+    host: SupervisedChildHost,
     runtimePolicy: RuntimeCapabilityPolicy | null
 ): Promise<TestPlan> {
     const createPlan = async function createTestPlanInsidePolicy(): Promise<TestPlan> {
-        return await createSupervisedChildTestPlan(command);
+        return await createSupervisedChildTestPlan(command, {
+            discoverRunFiles: host.discoverRunFiles,
+            loadRunEngineModule: host.loadRunEngineModule,
+            loadRunTestModules: host.loadRunTestModules
+        });
     };
 
     return runtimePolicy === null ? await createPlan() : await runtimePolicy.runLoad(createPlan);
@@ -205,9 +230,10 @@ function sendRuntimePolicyErrors(
 
 async function readCollectedTestPlan(
     command: SupervisedChildCommand,
+    host: SupervisedChildHost,
     runtimePolicy: RuntimeCapabilityPolicy | null
 ): Promise<CollectedTestPlan> {
-    const testPlan = await createPolicyCheckedTestPlan(command, runtimePolicy);
+    const testPlan = await createPolicyCheckedTestPlan(command, host, runtimePolicy);
     const runnerErrors = runtimePolicy?.takeRunErrors() ?? [];
 
     return { runnerErrors, testPlan };
@@ -219,7 +245,7 @@ async function createCollectedTestPlan(
     runtimePolicy: RuntimeCapabilityPolicy | null
 ): Promise<CollectedTestPlan> {
     try {
-        return await readCollectedTestPlan(command, runtimePolicy);
+        return await readCollectedTestPlan(command, host, runtimePolicy);
     } catch (error: unknown) {
         sendRuntimePolicyErrors(host, runtimePolicy);
         throw error;
@@ -274,7 +300,12 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
         outputRenderer: createPlainOutputRenderer(),
         reporters: [ createIpcReporter(input.host) ],
         resourceBudgets: input.command.resourceBudgets,
-        resourceUsageTracker: createResourceUsageTracker(input.command, input.host),
+        resourceUsageTracker: createForwardingResourceUsageTracker(
+            input.command,
+            input.host,
+            input.dependencies,
+            input.wallClock
+        ),
         runtimePolicy,
         runFacts: {},
         startedAt: startedAtIso(input.startedAtMs),
@@ -285,8 +316,12 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
     });
 }
 
-async function run(command: SupervisedRunCommand, host: SupervisedChildHost): Promise<void> {
-    const wallClock = createWallClock();
+async function run(
+    command: SupervisedRunCommand,
+    host: SupervisedChildHost,
+    dependencies: SupervisedChildDependencies
+): Promise<void> {
+    const wallClock = dependencies.createWallClock();
     const startedAtMs = wallClock.currentTimestampInMilliseconds;
     const collectedPlan = await collect(command, host);
     const assignment = await host.receiveAssignment();
@@ -302,6 +337,7 @@ async function run(command: SupervisedRunCommand, host: SupervisedChildHost): Pr
             assignment,
             collectedPlan,
             command,
+            dependencies,
             host,
             startedAtMs,
             wallClock
@@ -324,19 +360,27 @@ function sendFailure(error: unknown, host: SupervisedChildHost): void {
     });
 }
 
-async function completeReceivedCommand(command: SupervisedChildCommand, host: SupervisedChildHost): Promise<void> {
+async function completeReceivedCommand(
+    command: SupervisedChildCommand,
+    host: SupervisedChildHost,
+    dependencies: SupervisedChildDependencies
+): Promise<void> {
     if (command.kind === 'collect') {
         await collect(command, host);
     } else {
-        await run(command, host);
+        await run(command, host, dependencies);
     }
 
     host.setExitCode(0);
 }
 
-async function runReceivedCommand(command: SupervisedChildCommand, host: SupervisedChildHost): Promise<void> {
+async function runReceivedCommand(
+    command: SupervisedChildCommand,
+    host: SupervisedChildHost,
+    dependencies: SupervisedChildDependencies
+): Promise<void> {
     try {
-        await completeReceivedCommand(command, host);
+        await completeReceivedCommand(command, host, dependencies);
     } catch (error: unknown) {
         sendFailure(error, host);
         host.setExitCode(1);
@@ -345,6 +389,9 @@ async function runReceivedCommand(command: SupervisedChildCommand, host: Supervi
     }
 }
 
-export async function runSupervisedChild(host: SupervisedChildHost): Promise<void> {
-    await runReceivedCommand(await host.receiveCommand(), host);
+export async function runSupervisedChild(
+    host: SupervisedChildHost,
+    dependencies: SupervisedChildDependencies
+): Promise<void> {
+    await runReceivedCommand(await host.receiveCommand(), host, dependencies);
 }

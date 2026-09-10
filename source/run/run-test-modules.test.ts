@@ -1,15 +1,14 @@
-import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
+    type TestNode,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
-import type { DiscoveredRunFile } from './run-discovery.ts';
+import type { DiscoveredRunFile } from './run-discovery-types.ts';
 import { RunCollectionError } from './run-errors.ts';
-import { loadRunTestModules } from './run-test-modules.ts';
+import { createRunTestModuleLoader, type RunTestModuleLoader } from './run-test-modules.ts';
 
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const duplicateFixturePath = 'source/integration-tests/run/fixtures/duplicate-a.test.ts';
@@ -18,14 +17,42 @@ const plainTestNodeFixturePath = 'source/integration-tests/run/fixtures/plain-te
 const throwsOnImportFixturePath = 'source/integration-tests/run/fixtures/throws-on-import.test.ts';
 
 function discoveredFile(file: string): DiscoveredRunFile {
-    const path = resolve(process.cwd(), file);
-
     return {
         fileSet: null,
         file,
-        href: pathToFileURL(path).href,
-        path
+        href: `virtual:${file}`,
+        path: `/project/${file}`
     };
+}
+
+function createPassingTestNode(title: string): TestNode {
+    return defaultRunEngine.createTestCase({
+        definitionLocations: [ { kind: 'unknown' as const } ],
+        annotations: {},
+        controls: {},
+        title,
+        body(scope) {
+            scope.assert.true(true);
+
+            return scope.assert.collect();
+        }
+    });
+}
+
+function createVirtualRunTestModuleLoader(modules: Readonly<Record<string, unknown>>): RunTestModuleLoader {
+    return createRunTestModuleLoader({
+        async importModule(href) {
+            if (href === `virtual:${throwsOnImportFixturePath}`) {
+                throw new Error('fixture import failed');
+            }
+
+            if (!Object.hasOwn(modules, href)) {
+                throw new Error(`Missing virtual test module: ${href}`);
+            }
+
+            return modules[href];
+        }
+    });
 }
 
 export const testNode = createOverkillSuite({
@@ -40,6 +67,10 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
+                const loadRunTestModules = createVirtualRunTestModuleLoader({
+                    [`virtual:${passingFixturePath}`]: { testNode: createPassingTestNode('passes') },
+                    [`virtual:${duplicateFixturePath}`]: { testNode: createPassingTestNode('duplicate') }
+                });
                 const testFiles = await loadRunTestModules([
                     discoveredFile(passingFixturePath),
                     discoveredFile(duplicateFixturePath)
@@ -67,6 +98,12 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
+                const loadRunTestModules = createVirtualRunTestModuleLoader({
+                    [`virtual:${missingTestNodeFixturePath}`]: {},
+                    [`virtual:${plainTestNodeFixturePath}`]: { testNode: {} },
+                    [`virtual:${passingFixturePath}`]: { testNode: createPassingTestNode('passes') }
+                });
+
                 await scope.assert.rejects(async function loadMissingExport() {
                     await loadRunTestModules([ discoveredFile(missingTestNodeFixturePath) ], defaultRunEngine);
                 }, { message: `Test module must export testNode: ${missingTestNodeFixturePath}` });
@@ -88,6 +125,8 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
+                const loadRunTestModules = createVirtualRunTestModuleLoader({});
+
                 try {
                     await loadRunTestModules([ discoveredFile(throwsOnImportFixturePath) ], defaultRunEngine);
                     scope.assert.fail({ message: 'Expected module import to fail.' });

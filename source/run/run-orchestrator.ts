@@ -5,17 +5,22 @@ import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { createNodeResourceUsageTracker } from './resource-usage.ts';
 import { createRunOrchestrator } from './run.ts';
 import { createRandomRunSeed } from './run-seed.ts';
-import type { RunOrchestrator, RunOrchestratorDependencies } from './run-types.ts';
+import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
+import type { RunOrchestrator } from './run-types.ts';
 
 type RuntimeCapabilityPolicyInput = RunOrchestratorDependencies['runtimeCapabilityPolicy'];
 
-type NodeRunOrchestratorInput = {
+export type NodeRunOrchestratorInput = {
     readonly defaultEngine: Engine;
+    readonly discoverRunFilesWithProjectRoot: RunOrchestratorDependencies['discoverRunFilesWithProjectRoot'];
     readonly installIpcRestriction: RuntimeCapabilityPolicyInput['installIpcRestriction'];
     readonly installProcessExecutionRestriction: RuntimeCapabilityPolicyInput['installProcessExecutionRestriction'];
     readonly node: RunOrchestratorDependencies['node'];
     readonly readEnvironment: RuntimeCapabilityPolicyInput['readEnvironment'];
     readonly readStorage: RuntimeCapabilityPolicyInput['readStorage'];
+    readonly loadRunEngineModule: RunOrchestratorDependencies['loadRunEngineModule'];
+    readonly loadRunTestModules: RunOrchestratorDependencies['loadRunTestModules'];
+    readonly startSupervisedChild: RunOrchestratorDependencies['startSupervisedChild'];
     readonly stderr: {
         readonly write: (chunk: Uint8Array) => void;
         readonly writeLine: (line: string) => void;
@@ -40,16 +45,20 @@ export function createNodeRunOrchestrator(input: NodeRunOrchestratorInput): RunO
             return createNodeResourceUsageTracker(wallClock, options);
         },
         defaultEngine: input.defaultEngine,
+        discoverRunFilesWithProjectRoot: input.discoverRunFilesWithProjectRoot,
         execute: createExecute({
             reporterDispatcher,
             wallClock
         }),
+        loadRunEngineModule: input.loadRunEngineModule,
+        loadRunTestModules: input.loadRunTestModules,
         liveOutput: {
             stderr: { write: input.stderr.write },
             stdout: { write: input.stdout.write }
         },
         node: input.node,
         reporterDispatcher,
+        startSupervisedChild: input.startSupervisedChild,
         runtimeCapabilityPolicy: {
             installIpcRestriction: input.installIpcRestriction,
             installProcessExecutionRestriction: input.installProcessExecutionRestriction,

@@ -1,21 +1,16 @@
-import { createWallClock } from '@enormora/wall-clock';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     defineOutputRenderer,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
-import type { RunResourceUsageTracker } from '../engine/run-result.ts';
-import { createTestEngine } from '../test-support/create-test-engine.ts';
+import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import {
     defaultMicrotestProfile,
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import { defaultRunEngine } from './default-run-engine.ts';
-import { createRunOrchestrator } from './run.ts';
-import type { RunCommand, RunConfig, RunOrchestrator, RunRequest } from './run-types.ts';
+import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
 
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 
@@ -40,101 +35,6 @@ const defaultRequest: RunRequest = defaultRunRequest({ paths: [ passingFixturePa
 
 function plainData(value: unknown): unknown {
     return structuredClone(value);
-}
-
-function createFinishedResourceUsageTracker(): RunResourceUsageTracker {
-    return {
-        finish() {
-            return {
-                activeResourceTypes: [],
-                end: {
-                    activeResourceCount: 0,
-                    activeResourceTypes: [],
-                    capturedAtMilliseconds: 1,
-                    javaScriptEngineHeapBytes: 2,
-                    residentSetBytes: 3
-                },
-                peakActiveResourceCount: 0,
-                peakJavaScriptEngineHeapBytes: 2,
-                peakResidentSetBytes: 3,
-                peakResidentSetGrowthBytesPerSecond: 0,
-                sampleCount: 2,
-                start: {
-                    activeResourceCount: 0,
-                    activeResourceTypes: [],
-                    capturedAtMilliseconds: 0,
-                    javaScriptEngineHeapBytes: 1,
-                    residentSetBytes: 2
-                }
-            };
-        },
-        start() {
-            return undefined;
-        }
-    };
-}
-
-function installNoPolicyRestriction(): () => void {
-    return function restoreNoPolicyRestriction(): void {
-        return undefined;
-    };
-}
-
-function createDeterministicRunOrchestrator(): RunOrchestrator {
-    const engine = createTestEngine();
-    const wallClock = createWallClock();
-    const environment = {};
-    const reporterDispatcher = createReporterDispatcher({
-        stderr: {
-            writeLine() {
-                return undefined;
-            }
-        },
-        stdout: {
-            writeLine() {
-                return undefined;
-            }
-        },
-        wallClock
-    });
-
-    return createRunOrchestrator({
-        createResourceUsageTracker: createFinishedResourceUsageTracker,
-        createSeed() {
-            return 99n;
-        },
-        defaultEngine: defaultRunEngine,
-        execute: engine.execute,
-        liveOutput: {
-            stderr: {
-                write() {
-                    return undefined;
-                }
-            },
-            stdout: {
-                write() {
-                    return undefined;
-                }
-            }
-        },
-        runtimeCapabilityPolicy: {
-            installIpcRestriction: installNoPolicyRestriction,
-            installProcessExecutionRestriction: installNoPolicyRestriction,
-            readEnvironment() {
-                return environment;
-            },
-            readStorage() {
-                return null;
-            }
-        },
-        node: {
-            arch: 'x64',
-            platform: 'linux',
-            version: '26.1.1'
-        },
-        reporterDispatcher,
-        wallClock
-    });
 }
 
 function createRunCommand(config: RunConfig, request: RunRequest): RunCommand {
