@@ -7,9 +7,10 @@ import type { SourceLocation } from '../assertion-protocol/assertion-node-shape.
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
 import { createReportingContext } from '../engine/reporting-context.ts';
 import type { OutputLineIntent, ReporterOutput } from '../engine/reporter-output.ts';
-import type { RealTimeReporter, ReporterEvent } from '../engine/reporter.ts';
+import type { RealTimeReporter, ReporterEvent, RunFacts } from '../engine/reporter.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createBriefReporter, type BriefReporterSinks } from './brief-reporter.ts';
+import { formatRunFactSummary } from './run-fact-summary.ts';
 
 const caseId = {
     file: 'source/users.test.ts',
@@ -20,6 +21,13 @@ const caseId = {
 const definitionLocation = { column: null, file: 'source/users.test.ts', kind: 'known' as const, line: null };
 const suitePath = [ { definitionLocations: [ definitionLocation ], title: 'users' } ] as const;
 const reportingContext = createReportingContext({ projectRoot: null });
+
+function runFacts(execution: unknown, reproducibility: unknown): RunFacts {
+    return {
+        execution,
+        reproducibility
+    };
+}
 
 function createBriefRuntimeReporter(): RealTimeReporter<BriefReporterSinks> {
     return createBriefReporter()(reportingContext);
@@ -238,6 +246,14 @@ export const testNode = createOverkillSuite({
                     root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
                     startedAt: '2026-07-15T00:00:00.000Z'
                 }));
+                const missingOrderingFacts = await readOutput(reporter.onEvent({
+                    facts: {
+                        cases: [ { annotations: {}, controls: {}, id: caseId } ]
+                    },
+                    kind: 'run-start',
+                    root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
+                    startedAt: '2026-07-15T00:00:00.000Z'
+                }));
 
                 scope.assert.deepEqual(
                     missingSeed.map(function toText(intent) {
@@ -251,6 +267,26 @@ export const testNode = createOverkillSuite({
                     }),
                     [ 'run source' ]
                 );
+                scope.assert.deepEqual(
+                    missingOrderingFacts.map(function toText(intent) {
+                        return intent.text;
+                    }),
+                    [ 'run source' ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'brief run fact summary rejects malformed ordering facts',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                scope.assert.equal(formatRunFactSummary(runFacts(null, { seed: '123' })), null);
+                scope.assert.equal(formatRunFactSummary(runFacts({ order: 'seeded' }, null)), null);
+                scope.assert.equal(formatRunFactSummary(runFacts({}, { seed: '123' })), null);
+                scope.assert.equal(formatRunFactSummary(runFacts({ order: 'seeded' }, {})), null);
 
                 return scope.assert.collect();
             }
