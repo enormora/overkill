@@ -32,6 +32,7 @@ import type {
 } from './reporters.entry-point.ts';
 import {
     composeRuntimeContext,
+    createTemporaryDirectoryResource,
     defineResource,
     defineRuntime,
     withRuntime,
@@ -39,7 +40,8 @@ import {
     type ResourceHandle,
     type RuntimeContext,
     type RuntimeTestBody,
-    type RuntimeTestScope
+    type RuntimeTestScope,
+    type TemporaryDirectoryHandle
 } from './resources.entry-point.ts';
 import type { ParameterizedTestScope, TableTestBody } from './test.entry-point.ts';
 
@@ -90,6 +92,7 @@ const runtime = defineRuntime({
     resources: { database },
     requirements: []
 });
+const temporaryDirectory = createTemporaryDirectoryResource('scratch');
 declare const testScope: TestScope;
 
 describe('@overkill-dev/test standard subpaths', function () {
@@ -124,6 +127,7 @@ describe('@overkill-dev/test standard subpaths', function () {
 
     test('exposes resource descriptor types through the standard distribution', function () {
         expect<ResourceHandle<typeof database>>().type.toBe<Database>();
+        expect<ResourceHandle<typeof temporaryDirectory>>().type.toBe<TemporaryDirectoryHandle>();
         expect<ResourceContext<typeof runtime.resources>>().type.toBe<DatabaseContext>();
         expect<RuntimeContext<typeof runtime>>().type.toBe<{
             readonly database: Database;
@@ -134,6 +138,8 @@ describe('@overkill-dev/test standard subpaths', function () {
             .type
             .toBe<ExpectedComposedRuntimeScope>();
         expect(runtime.name).type.toBe<'api'>();
+        expect(temporaryDirectory.name).type.toBe<'scratch'>();
+        expect<TemporaryDirectoryHandle>().type.toBe<{ readonly path: string; }>();
     });
 
     test('exposes runtime test context wrappers through the resources subpath', function () {

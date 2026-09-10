@@ -1,5 +1,9 @@
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
-import { composeRuntimeContext, defineResource, defineRuntime } from './resources.ts';
+import {
+    createResourcesModule,
+    type TemporaryDirectoryHandle,
+    type ResourcesModuleDependencies
+} from './resources.ts';
 
 type Database = {
     readonly query: (sql: string) => readonly string[];
@@ -7,6 +11,11 @@ type Database = {
 
 type Server = {
     readonly results: readonly string[];
+};
+
+type RecordedTemporaryDirectoryDependencies = ResourcesModuleDependencies & {
+    readonly createdPathPrefixes: readonly string[];
+    readonly removedPaths: readonly string[];
 };
 
 const disposalController = new AbortController();
@@ -36,6 +45,34 @@ function assertBrandedDescriptor(scope: TestScope, descriptor: unknown): void {
     scope.assert.equal(Reflect.get(descriptor, brandSymbol), true);
 }
 
+function createRecordedTemporaryDirectoryDependencies(): RecordedTemporaryDirectoryDependencies {
+    const createdPathPrefixes: string[] = [];
+    const removedPaths: string[] = [];
+
+    return {
+        createdPathPrefixes,
+        removedPaths,
+        temporaryDirectoryPathPrefix: '/virtual/overkill-temporary-directory-',
+        createTemporaryDirectory(pathPrefix) {
+            createdPathPrefixes.push(pathPrefix);
+
+            return `${pathPrefix}created`;
+        },
+        removeDirectory(path) {
+            removedPaths.push(path);
+        }
+    };
+}
+
+const recordedTemporaryDirectoryDependencies = createRecordedTemporaryDirectoryDependencies();
+const resourcesModule = createResourcesModule(recordedTemporaryDirectoryDependencies);
+const {
+    composeRuntimeContext,
+    createTemporaryDirectoryResource,
+    defineResource,
+    defineRuntime
+} = resourcesModule;
+
 const databaseResource = defineResource({
     name: 'database',
     scope: 'per-case',
@@ -63,6 +100,7 @@ const serverResource = defineResource({
         context.resources.database.query(server.results.join(','));
     }
 });
+const temporaryDirectoryResource = createTemporaryDirectoryResource('scratch');
 
 function assertDatabaseResourceDescriptor(scope: TestScope): void {
     scope.assert.deepEqual(databaseResource.dependencies, {});
@@ -144,6 +182,56 @@ function assertRuntimeContextComposition(scope: TestScope): void {
     scope.assert.equal(Object.isFrozen(context), true);
 }
 
+type TemporaryDirectoryResource = typeof temporaryDirectoryResource;
+
+function assertTemporaryDirectoryDescriptor(scope: TestScope, resource: TemporaryDirectoryResource): void {
+    scope.assert.deepEqual(resource.dependencies, {});
+    scope.assert.equal(resource.name, 'scratch');
+    scope.assert.equal(resource.scope, 'per-case');
+    scope.assert.deepEqual(resource.requirements, []);
+    scope.assert.equal(Object.isFrozen(resource), true);
+    assertBrandedDescriptor(scope, resource);
+}
+
+function assertTemporaryDirectoryHandle(scope: TestScope, handle: TemporaryDirectoryHandle): void {
+    scope.assert.equal(Object.isFrozen(handle), true);
+    scope.assert.equal(handle.path.includes('overkill-temporary-directory-'), true);
+}
+
+async function assertTemporaryDirectoryLifecycle(
+    scope: TestScope,
+    resource: TemporaryDirectoryResource
+): Promise<void> {
+    if (resource.dispose === null) {
+        throw new Error('Expected temporary directory disposal.');
+    }
+
+    const handle = await resource.acquire({ resources: {}, signal: disposalSignal });
+
+    assertTemporaryDirectoryHandle(scope, handle);
+    await resource.dispose(handle, { resources: {}, signal: disposalSignal });
+    scope.assert.deepEqual(recordedTemporaryDirectoryDependencies.createdPathPrefixes, [
+        '/virtual/overkill-temporary-directory-'
+    ]);
+    scope.assert.deepEqual(recordedTemporaryDirectoryDependencies.removedPaths, [
+        '/virtual/overkill-temporary-directory-created'
+    ]);
+}
+
+async function assertTemporaryDirectoryAcquireAbort(
+    scope: TestScope,
+    resource: TemporaryDirectoryResource
+): Promise<void> {
+    const controller = new AbortController();
+
+    controller.abort();
+    await scope.assert.rejects(async function acquireAfterAbort() {
+        await resource.acquire({ resources: {}, signal: controller.signal });
+    }, {
+        name: 'AbortError'
+    });
+}
+
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/resources/resources.test.ts',
@@ -171,6 +259,19 @@ export const testNode = createSuite({
             body(scope: TestScope) {
                 assertRuntimeDescriptor(scope);
                 assertRuntimeContextComposition(scope);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'createTemporaryDirectoryResource uses host operations',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                assertTemporaryDirectoryDescriptor(scope, temporaryDirectoryResource);
+                await assertTemporaryDirectoryLifecycle(scope, temporaryDirectoryResource);
+                await assertTemporaryDirectoryAcquireAbort(scope, temporaryDirectoryResource);
 
                 return scope.assert.collect();
             }

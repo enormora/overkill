@@ -2,13 +2,14 @@
 
 Typed resource and runtime descriptors for Overkill.
 
-This package defines resources as inert values. A resource declares its stable
-name, lifecycle scope, execution requirements, dependencies, acquisition
-callback, and disposal callback. Runners do not execute these descriptors yet.
+This package defines resources as typed descriptors. A resource declares its
+stable name, lifecycle scope, execution requirements, dependencies,
+acquisition callback, and disposal callback.
 
 ```ts
 import {
     composeRuntimeContext,
+    createTemporaryDirectoryResource,
     defineResource,
     defineRuntime,
     type RuntimeContext
@@ -51,15 +52,21 @@ const runtime = defineRuntime({
 
 type ApiContext = RuntimeContext<typeof runtime>;
 
+const scratch = createTemporaryDirectoryResource('scratch');
 const databaseHandle = await database.acquire({ resources: {}, signal });
 const serverHandle = await server.acquire({
     resources: { database: databaseHandle },
     signal
 });
+const scratchHandle = await scratch.acquire({ resources: {}, signal });
 const scopeWithRuntime = composeRuntimeContext(testScope, runtime, {
     database: databaseHandle,
     server: serverHandle
 });
+
+if (scratch.dispose !== null) {
+    await scratch.dispose(scratchHandle, { resources: {}, signal });
+}
 ```
 
 `RuntimeContext` uses the keys from the runtime's `resources` object. Resource
@@ -69,3 +76,7 @@ scheduling work.
 Dependency context uses the keys from the resource's `dependencies` object.
 Omitting `dependencies` is accepted for compatibility and produces
 `dependencies: {}` on the returned descriptor.
+
+`createTemporaryDirectoryResource(name)` returns a per-case resource descriptor
+whose handle is `{ readonly path: string }`. Each acquisition creates a unique
+directory with an Overkill prefix. Disposal removes that directory recursively.

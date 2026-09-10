@@ -762,18 +762,22 @@ affected. Test output is captured as bytes; rendering decodes as UTF-8.
 
 ## Network And Filesystem Defaults
 
+Microtest profiles own the strict capability model. That model is not a
+general runner abstraction and does not apply to integration profiles.
+
 By profile ([Microtests And Capabilities](../authoring/microtests-and-capabilities.md) enumerates):
 
 - microtest: deny FS write, deny net, deny child process, deny worker
-- integration: allow FS write within a per-test temporary directory, allow
-  loopback net, allow child process
-- benchmark: allow as integration but with single-worker
-  serialization
+- integration: no microtest capability restrictions; filesystem, process, and
+  local service use are modeled through explicit resources and runtimes
+- benchmark: no microtest capability restrictions, with single-worker
+  serialization where the benchmark profile requires it
 
-The temporary-directory convention is `os.tmpdir() + /overkill-<run-id>/<test-id>/`,
-created lazily per test, removed on test completion (or run completion in
-debug mode). This is one of the runner-owned escape hatches named in
-[Microtests And Capabilities](../authoring/microtests-and-capabilities.md).
+Temporary directories are explicit resources, not automatic integration
+defaults. A test or runtime that needs scratch space attaches a temporary
+directory resource with a stable role name; each acquired handle receives a
+unique directory path. Resource disposal owns normal cleanup. Debug retention
+and failure artifact retention are separate runner policies.
 
 ## Cross-References
 
