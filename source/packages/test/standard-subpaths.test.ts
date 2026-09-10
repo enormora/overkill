@@ -83,6 +83,19 @@ function assertAssertSubpath(scope: TestScope): void {
     scope.assert.equal(typeof defineCompositeAssertion, 'function');
 }
 
+function assertResourcesSubpathExports(scope: TestScope): void {
+    scope.assert.deepEqual(sortedKeys(resourcesSubpath), [
+        'composeRuntimeContext',
+        'createTemporaryDirectoryResource',
+        'defineResource',
+        'defineRuntime',
+        'ResourceLifecycleError',
+        'startRuntime',
+        'withRuntime'
+    ]);
+    scope.assert.equal(typeof resourcesSubpath.startRuntime, 'function');
+}
+
 function assertResourcesSubpath(scope: TestScope): void {
     const database = resourcesSubpath.defineResource({
         name: 'database',
@@ -109,16 +122,7 @@ function assertResourcesSubpath(scope: TestScope): void {
     const temporaryDirectory = resourcesSubpath.createTemporaryDirectoryResource('scratch');
 
     scope.assert.equal(Array.isArray(body(scope)), true);
-    scope.assert.deepEqual(sortedKeys(resourcesSubpath), [
-        'composeRuntimeContext',
-        'createTemporaryDirectoryResource',
-        'defineResource',
-        'defineRuntime',
-        'ResourceLifecycleError',
-        'startRuntime',
-        'withRuntime'
-    ]);
-    scope.assert.equal(typeof resourcesSubpath.startRuntime, 'function');
+    assertResourcesSubpathExports(scope);
     scope.assert.equal(database.name, 'database');
     scope.assert.equal(runtime.id.name, 'api');
     scope.assert.deepEqual(Object.keys(runtime.resources), [ 'database' ]);

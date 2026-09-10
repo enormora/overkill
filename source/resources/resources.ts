@@ -197,7 +197,7 @@ export function defineRuntime<
     });
 }
 
-export function composeRuntimeContext<
+function composeRuntimeContext<
     BaseContext extends Readonly<Record<string, unknown>>,
     Runtime extends RuntimeDefinition
 >(
