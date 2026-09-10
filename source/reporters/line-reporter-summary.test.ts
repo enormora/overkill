@@ -39,12 +39,14 @@ function requireFinish(reporter: RealTimeReporter): NonNullable<RealTimeReporter
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/line-reporter-summary.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter prints the run count summary once the run finishes',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = lineReporterWithLog(log);
@@ -75,7 +77,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter prints nonzero resource, inconclusive, and crash counts in the run summary',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = lineReporterWithLog(log);

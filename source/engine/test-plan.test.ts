@@ -15,24 +15,6 @@ function plainDataShape(value: unknown): unknown {
     return parse(stringify(value));
 }
 
-function metadataShape(fields: Readonly<Record<string, unknown>>): unknown {
-    return {
-        baselines: [],
-        capabilities: [],
-        capture: null,
-        debug: false,
-        extra: {},
-        kind: null,
-        ownership: [],
-        priority: 'standard',
-        runtimes: [],
-        stability: 'stable',
-        tags: [],
-        timeoutMilliseconds: null,
-        ...fields
-    };
-}
-
 function sourceLocationShape(fields: Readonly<Record<string, unknown>>): unknown {
     return {
         kind: 'unknown',
@@ -47,12 +29,14 @@ function parameterIdentity(parameters: Readonly<Record<string, unknown>>): strin
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/test-plan.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createTestPlan() expands suites and tables into executable cases',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
                 const root = engine.createRoot({
@@ -63,7 +47,8 @@ export const testNode = createOverkillSuite({
                                 testScope.assert.true(true, { message: 'passes' });
                                 return testScope.assert.collect();
                             },
-                            metadata: { tags: [ 'local' ] },
+                            annotations: { tags: [ 'local' ] },
+                            controls: {},
                             title: 'first'
                         }),
                         engine.createTable({
@@ -74,7 +59,8 @@ export const testNode = createOverkillSuite({
                                         testScope.assert.true(true, { message: 'row passes' });
                                         return testScope.assert.collect();
                                     },
-                                    metadata: { extra: { row: 1 } },
+                                    annotations: {},
+                                    controls: {},
                                     title: 'row 1',
                                     parameters: { value: 1 }
                                 },
@@ -83,16 +69,19 @@ export const testNode = createOverkillSuite({
                                         testScope.assert.true(true, { message: 'row passes' });
                                         return testScope.assert.collect();
                                     },
-                                    metadata: { extra: { row: 2 } },
+                                    annotations: {},
+                                    controls: {},
                                     title: 'row 2',
                                     parameters: { value: 2 }
                                 }
                             ],
-                            metadata: { tags: [ 'table' ] },
+                            annotations: { tags: [ 'table' ] },
+                            controls: {},
                             title: 'rows'
                         })
                     ],
-                    metadata: { tags: [ 'inherited' ] },
+                    annotations: { tags: [ 'inherited' ] },
+                    controls: {},
                     title: 'root'
                 });
 
@@ -100,9 +89,10 @@ export const testNode = createOverkillSuite({
 
                 const comparableTestCases = testPlan.cases.map(function toComparableTestCase(testCase) {
                     return {
+                        annotations: testCase.annotations,
+                        controls: testCase.controls,
                         definitionLocations: testCase.definitionLocations,
                         id: testCase.id,
-                        metadata: testCase.metadata,
                         suitePath: testCase.suitePath
                     };
                 });
@@ -112,12 +102,15 @@ export const testNode = createOverkillSuite({
                     testCaseShape,
                     [
                         {
+                            annotations: { ownership: [], tags: [ 'inherited', 'local' ] },
+                            controls: { capture: null, timeoutMilliseconds: null },
                             definitionLocations: [ sourceLocationShape({}) ],
                             id: { file: null, title: 'first', params: null, suite: [] },
-                            metadata: metadataShape({ tags: [ 'inherited', 'local' ] }),
                             suitePath: []
                         },
                         {
+                            annotations: { ownership: [], tags: [ 'inherited', 'table' ] },
+                            controls: { capture: null, timeoutMilliseconds: null },
                             definitionLocations: [ sourceLocationShape({}) ],
                             id: {
                                 file: null,
@@ -125,12 +118,13 @@ export const testNode = createOverkillSuite({
                                 params: parameterIdentity({ value: 1 }),
                                 suite: [ 'rows' ]
                             },
-                            metadata: metadataShape({ extra: { row: 1 }, tags: [ 'inherited', 'table' ] }),
                             suitePath: [
                                 { definitionLocations: [ sourceLocationShape({}) ], title: 'rows' }
                             ]
                         },
                         {
+                            annotations: { ownership: [], tags: [ 'inherited', 'table' ] },
+                            controls: { capture: null, timeoutMilliseconds: null },
                             definitionLocations: [ sourceLocationShape({}) ],
                             id: {
                                 file: null,
@@ -138,7 +132,6 @@ export const testNode = createOverkillSuite({
                                 params: parameterIdentity({ value: 2 }),
                                 suite: [ 'rows' ]
                             },
-                            metadata: metadataShape({ extra: { row: 2 }, tags: [ 'inherited', 'table' ] }),
                             suitePath: [
                                 { definitionLocations: [ sourceLocationShape({}) ], title: 'rows' }
                             ]
@@ -154,8 +147,9 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'createTestPlanFromTestFiles() assigns file identity and resolves metadata without file nesting',
-            metadata: {},
+            title: 'createTestPlanFromTestFiles() assigns file identity and resolves test data without file nesting',
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
                 const usersSuite = engine.createSuite({
@@ -167,30 +161,13 @@ export const testNode = createOverkillSuite({
                                 testScope.assert.true(true);
                                 return testScope.assert.collect();
                             },
-                            metadata: {
-                                debug: false,
-                                extra: { case: true },
-                                ownership: [ 'case-team' ],
-                                tags: [ 'case' ],
-                                timeoutMilliseconds: 20
-                            },
+                            annotations: { ownership: [ 'case-team' ], tags: [ 'case' ] },
+                            controls: { timeoutMilliseconds: 20 },
                             title: 'login'
                         })
                     ],
-                    metadata: {
-                        baselines: [ 'terminal-snapshot' ],
-                        capabilities: [ 'fs-read' ],
-                        capture: 'live',
-                        debug: true,
-                        extra: { suite: true },
-                        kind: 'integration',
-                        ownership: [ 'suite-team' ],
-                        priority: 'standard',
-                        runtimes: { mode: 'replace', values: [ 'node' ] },
-                        stability: 'stable',
-                        tags: [ 'suite' ],
-                        timeoutMilliseconds: 15
-                    },
+                    annotations: { ownership: [ 'suite-team' ], tags: [ 'suite' ] },
+                    controls: { capture: 'live', timeoutMilliseconds: 15 },
                     title: 'users'
                 });
                 const testPlan = engine.createTestPlanFromTestFiles({
@@ -201,20 +178,8 @@ export const testNode = createOverkillSuite({
                         }
                     ],
                     root: {
-                        metadata: {
-                            baselines: [ 'content-snapshot' ],
-                            capabilities: [ 'fs-read', 'net' ],
-                            capture: 'live',
-                            debug: true,
-                            extra: { root: true },
-                            kind: 'microtest',
-                            ownership: [ 'root-team' ],
-                            priority: 'critical',
-                            runtimes: [ 'node' ],
-                            stability: 'flaky',
-                            tags: [ 'root' ],
-                            timeoutMilliseconds: 5
-                        },
+                        annotations: { ownership: [ 'root-team' ], tags: [ 'root' ] },
+                        controls: { capture: 'buffered', timeoutMilliseconds: 5 },
                         title: 'root'
                     }
                 });
@@ -223,26 +188,18 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.deepEqual(
                     plainDataShape({
+                        annotations: testCase.annotations,
+                        controls: testCase.controls,
                         id: testCase.id,
-                        metadata: testCase.metadata,
                         suitePath: testCase.suitePath
                     }),
                     {
-                        id: { file: 'source/users.test.ts', title: 'login', params: null, suite: [ 'users' ] },
-                        metadata: {
-                            baselines: [ 'content-snapshot', 'terminal-snapshot' ],
-                            capabilities: [ 'fs-read' ],
-                            capture: 'live',
-                            debug: false,
-                            extra: { case: true, root: true, suite: true },
-                            kind: 'integration',
+                        annotations: {
                             ownership: [ 'root-team', 'suite-team', 'case-team' ],
-                            priority: 'standard',
-                            runtimes: [ 'node' ],
-                            stability: 'stable',
-                            tags: [ 'root', 'suite', 'case' ],
-                            timeoutMilliseconds: 20
+                            tags: [ 'root', 'suite', 'case' ]
                         },
+                        controls: { capture: 'live', timeoutMilliseconds: 20 },
+                        id: { file: 'source/users.test.ts', title: 'login', params: null, suite: [ 'users' ] },
                         suitePath: [
                             { definitionLocations: [ { kind: 'unknown' as const } ], title: 'users' }
                         ]
@@ -255,7 +212,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createTestPlanFromTestFiles() rejects file metadata fields',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
                 const caseNode = engine.createTestCase({
@@ -264,7 +222,8 @@ export const testNode = createOverkillSuite({
                         testScope.assert.true(true);
                         return testScope.assert.collect();
                     },
-                    metadata: {},
+                    annotations: {},
+                    controls: {},
                     title: 'passes'
                 });
                 const fileInput = {
@@ -277,7 +236,8 @@ export const testNode = createOverkillSuite({
                     engine.createTestPlanFromTestFiles({
                         files: [ fileInput ],
                         root: {
-                            metadata: { kind: 'microtest' },
+                            annotations: {},
+                            controls: {},
                             title: 'root'
                         }
                     });
@@ -286,7 +246,8 @@ export const testNode = createOverkillSuite({
                     engine.createTestPlanFromTestFiles({
                         files: [ null as unknown as TestPlanFromTestFilesOptions['files'][number] ],
                         root: {
-                            metadata: { kind: 'microtest' },
+                            annotations: {},
+                            controls: {},
                             title: 'root'
                         }
                     });
@@ -295,86 +256,84 @@ export const testNode = createOverkillSuite({
                     engine.createTestPlanFromTestFiles({
                         files: [ { file: '', testNode: caseNode } ],
                         root: {
-                            metadata: { kind: 'microtest' },
+                            annotations: {},
+                            controls: {},
                             title: 'root'
                         }
                     });
                 }, { message: 'Test file identity must not be empty.' });
+                scope.assert.throws(function createPlanWithForeignFileTestNode() {
+                    const foreignEngine = createEngine();
+                    const foreignTestNode = foreignEngine.createTestCase({
+                        annotations: {},
+                        controls: {},
+                        definitionLocations: [ { kind: 'unknown' as const } ],
+                        body(testScope) {
+                            testScope.assert.true(true);
+                            return testScope.assert.collect();
+                        },
+                        title: 'foreign'
+                    });
+
+                    engine.createTestPlanFromTestFiles({
+                        files: [ {
+                            file: 'source/users.test.ts',
+                            testNode: foreignTestNode
+                        } ],
+                        root: {
+                            annotations: {},
+                            controls: {},
+                            title: 'root'
+                        }
+                    });
+                }, { message: 'Test file must provide a TestNode created by the selected engine.' });
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'createTestPlan() rejects metadata that widens parent capabilities',
-            metadata: {},
+            title: 'createTestCase() rejects invalid test data field values',
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
-                const root = engine.createRoot({
-                    children: [
-                        engine.createTestCase({
-                            definitionLocations: [ { kind: 'unknown' as const } ],
-                            body(testScope) {
-                                testScope.assert.true(true);
-                                return testScope.assert.collect();
-                            },
-                            metadata: { capabilities: [ 'net' ] },
-                            title: 'widens'
-                        })
-                    ],
-                    metadata: { capabilities: [ 'fs-read' ] },
-                    title: 'root'
-                });
-
-                scope.assert.throws(function createPlanWithWidenedCapabilities() {
-                    engine.createTestPlan(root);
-                }, { message: 'Metadata capabilities cannot widen parent capability: net.' });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'createTestCase() rejects invalid metadata field values',
-            metadata: {},
-            body(scope: OverkillScope) {
-                const engine = createEngine();
-                const invalidMetadataCases = [
-                    { field: 'tags', message: 'Metadata field "tags" must be an array.', value: 'fast' },
-                    { field: 'tags', message: 'Metadata field "tags" must contain non-empty strings.', value: [ '' ] },
-                    { field: 'kind', message: 'Metadata field "kind" contains an unknown value.', value: 'unit' },
-                    { field: 'capabilities', message: 'Metadata field "capabilities" must be an array.', value: 'net' },
-                    { field: 'extra', message: 'Metadata field "extra" must be an object.', value: [] },
-                    { field: 'debug', message: 'Metadata field "debug" must be a boolean.', value: 'true' },
+                const invalidTestDataCases = [
                     {
-                        field: 'timeoutMilliseconds',
-                        message: 'Metadata field "timeoutMilliseconds" must be a finite number.',
-                        value: Number.POSITIVE_INFINITY
+                        controls: {},
+                        annotations: { tags: 'fast' },
+                        message: 'Annotation field "tags" must be an array.'
                     },
                     {
-                        field: 'runtimes',
-                        message: 'Metadata field "runtimes" must be an array or runtime metadata object.',
-                        value: 'node'
+                        controls: {},
+                        annotations: { tags: [ '' ] },
+                        message: 'Annotation field "tags" must contain non-empty strings.'
                     },
                     {
-                        field: 'runtimes',
-                        message: 'Unknown runtime metadata field: source.',
-                        value: { mode: 'append', source: 'local', values: [] }
+                        controls: { capture: 'raw' },
+                        annotations: {},
+                        message: 'Control field "capture" contains an unknown value.'
+                    },
+                    {
+                        controls: { timeoutMilliseconds: Number.POSITIVE_INFINITY },
+                        annotations: {},
+                        message: 'Control field "timeoutMilliseconds" must be a finite number.'
                     }
                 ];
 
-                for (const invalidMetadata of invalidMetadataCases) {
-                    scope.assert.throws(function createCaseWithInvalidMetadata() {
+                for (const invalidTestData of invalidTestDataCases) {
+                    scope.assert.throws(function createCaseWithInvalidTestData() {
                         engine.createTestCase({
+                            annotations: invalidTestData.annotations as never,
+                            controls: invalidTestData.controls as never,
                             definitionLocations: [ { kind: 'unknown' as const } ],
                             body(testScope) {
                                 testScope.assert.true(true);
                                 return testScope.assert.collect();
                             },
-                            metadata: Object.fromEntries([ [ invalidMetadata.field, invalidMetadata.value ] ]),
                             title: 'invalid'
                         });
-                    }, { message: invalidMetadata.message });
+                    }, { message: invalidTestData.message });
                 }
 
                 return scope.assert.collect();
@@ -382,8 +341,9 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'createTestCase() rejects unknown metadata fields',
-            metadata: {},
+            title: 'createTestCase() rejects unknown test data fields',
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
                 const invalidOptions: TestCaseOptions = {
@@ -391,14 +351,15 @@ export const testNode = createOverkillSuite({
                         testScope.assert.true(true);
                         return testScope.assert.collect();
                     },
+                    annotations: Object.fromEntries([ [ 'tag', 'fast' ] ]),
+                    controls: {},
                     definitionLocations: [ { kind: 'unknown' as const } ],
-                    metadata: Object.fromEntries([ [ 'tag', 'fast' ] ]),
                     title: 'invalid'
                 };
 
-                scope.assert.throws(function createTestCaseWithUnknownMetadata() {
+                scope.assert.throws(function createTestCaseWithUnknownTestData() {
                     engine.createTestCase(invalidOptions);
-                }, { message: 'Unknown metadata field: tag.' });
+                }, { message: 'Unknown annotation field: tag.' });
 
                 return scope.assert.collect();
             }
@@ -406,12 +367,14 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createTestPlan() rejects reachable empty suites',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
                 const root = engine.createRoot({
                     children: [],
-                    metadata: {},
+                    annotations: {},
+                    controls: {},
                     title: 'root'
                 });
 
@@ -424,8 +387,46 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'createTestPlan() rejects reachable empty nested suites',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const engine = createEngine();
+                const root = engine.createRoot({
+                    children: [
+                        engine.createSuite({
+                            definitionLocations: [ { kind: 'unknown' as const } ],
+                            children: [
+                                engine.createSuite({
+                                    definitionLocations: [ { kind: 'unknown' as const } ],
+                                    children: [],
+                                    annotations: {},
+                                    controls: {},
+                                    title: 'empty'
+                                })
+                            ],
+                            annotations: {},
+                            controls: {},
+                            title: 'parent'
+                        })
+                    ],
+                    annotations: {},
+                    controls: {},
+                    title: 'root'
+                });
+
+                scope.assert.throws(function createPlanWithEmptySuite() {
+                    engine.createTestPlan(root);
+                }, { message: 'Suite must contain at least one child: parent > empty.' });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createTestPlan() rejects non-root test nodes',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
                 const testCase = engine.createTestCase({
@@ -434,7 +435,8 @@ export const testNode = createOverkillSuite({
                         testScope.assert.true(true, { message: 'passes' });
                         return testScope.assert.collect();
                     },
-                    metadata: {},
+                    annotations: {},
+                    controls: {},
                     title: 'passes'
                 });
 
@@ -448,13 +450,15 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createTestPlan() rejects roots from another engine instance',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const firstEngine = createEngine();
                 const secondEngine = createEngine();
                 const root = firstEngine.createRoot({
                     children: [],
-                    metadata: {},
+                    annotations: {},
+                    controls: {},
                     title: 'root'
                 });
 

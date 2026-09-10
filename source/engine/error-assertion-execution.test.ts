@@ -18,11 +18,13 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
                     engine.createTestCase({
                         definitionLocations: [ { kind: 'unknown' as const } ],
                         body,
-                        metadata: {},
+                        annotations: {},
+                        controls: {},
                         title: 'case'
                     })
                 ],
-                metadata: {},
+                annotations: {},
+                controls: {},
                 title: 'root'
             })
         )
@@ -66,12 +68,14 @@ function firstBodyError(outcome: FailOutcome): BodyErrorTestFailure | null {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/error-assertion-execution.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() counts throws and awaited rejects as assertion boundaries',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(async function testBody(testScope: TestScope) {
                     testScope.plan(2);
@@ -93,7 +97,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() rejects unawaited async rejects assertions at collect',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
                     const pendingAssertions = [
@@ -124,7 +129,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() treats sync throws from rejects thunks as body errors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 function throwBeforePromise(): never {
                     throw new TypeError('sync boom');
@@ -148,7 +154,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() reports throws matcher field failures under one composite boundary',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
                     testScope.assert.throws(

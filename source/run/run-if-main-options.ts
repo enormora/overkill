@@ -1,18 +1,16 @@
 import type {
-    Metadata,
-    TestFamily
-} from '../engine/metadata.ts';
+    TestAnnotationsInput,
+    TestControlsInput
+} from '../engine/test-data.ts';
 import type { DefinedReporter } from '../engine/reporter.ts';
 import type { DefinedOutputRenderer } from '../engine/reporter-output.ts';
 import { createDefaultDirectReporter } from './default-direct-reporter.ts';
 import type { LoadedRunConfig } from './run-config.ts';
-import type {
-    RunProfileConfig,
-    RunTestFamily
-} from './run-types.ts';
+import type { RunProfileConfig } from './run-types.ts';
 
 export type RunIfMainRootOptions = {
-    readonly metadata: Metadata;
+    readonly annotations?: TestAnnotationsInput;
+    readonly controls?: TestControlsInput;
     readonly title: string;
 };
 
@@ -59,15 +57,12 @@ export function selectedOutputRenderer(
     return options?.outputRenderer ?? config.outputRenderer;
 }
 
-export function rootMetadata(testFamily: RunTestFamily, options: RunIfMainOptions | undefined): Metadata {
-    const metadata = options?.root?.metadata ?? {};
-    const kind: TestFamily = metadata.kind ?? testFamily;
+export function rootAnnotations(options: RunIfMainOptions | undefined): TestAnnotationsInput {
+    return options?.root?.annotations ?? {};
+}
 
-    if (kind !== testFamily) {
-        throw new TypeError(`runIfMain() root metadata.kind must be "${testFamily}".`);
-    }
-
-    return { ...metadata, kind };
+export function rootControls(options: RunIfMainOptions | undefined): TestControlsInput {
+    return options?.root?.controls ?? {};
 }
 
 export function rootTitle(options: RunIfMainOptions | undefined): string {

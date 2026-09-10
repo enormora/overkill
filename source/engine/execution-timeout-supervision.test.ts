@@ -32,11 +32,13 @@ function createPlannedCase(title: string, body: TestCaseBody): TestPlanCase {
                 engine.createTestCase({
                     definitionLocations: [ { kind: 'unknown' as const } ],
                     body,
-                    metadata: {},
+                    annotations: {},
+                    controls: {},
                     title
                 })
             ],
-            metadata: {},
+            annotations: {},
+            controls: {},
             title: 'root'
         })
     );
@@ -112,12 +114,14 @@ function assertHardTimeoutResult(
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/execution-timeout-supervision.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'executeCaseBody() completes active cases after the hard timeout',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const wallClock = createDeterministicWallClock();
                 const supervision = createExecutionSupervision();
@@ -135,7 +139,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'executeCaseBody() appends a soft timeout failure to body failures',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const bodyGate = Promise.withResolvers<undefined>();
                 const testCase = createPlannedCase(
@@ -163,7 +168,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'executeCaseBody() converts a passing body into a soft timeout failure',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const bodyGate = Promise.withResolvers<undefined>();
                 const testCase = createPlannedCase(

@@ -43,7 +43,7 @@ type TestContractFailureCodeByName = {
     readonly invalidCompositeResult: 'invalid-composite-result';
     readonly invalidDeepAssertionOperand: 'invalid-deep-assertion-operand';
     readonly invalidPlan: 'invalid-plan';
-    readonly invalidTimeoutMetadata: 'invalid-timeout-metadata';
+    readonly invalidTimeoutControl: 'invalid-timeout-control';
     readonly invalidRequireReference: 'invalid-require-reference';
     readonly noAssertions: 'no-assertions';
     readonly pendingAsyncAssertion: 'pending-async-assertion';

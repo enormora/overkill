@@ -14,7 +14,7 @@ import {
     runCaseFactsFromTestPlan
 } from './run-facts.ts';
 import {
-    assertMicrotestMetadataCaptureSupported,
+    assertMicrotestControlCaptureSupported,
     readResolvedRunInput,
     type ResolvedRunInput
 } from './run-input-resolution.ts';
@@ -192,7 +192,7 @@ function createSupervisedRunCommand(
 
 function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): ResolvedRun {
     assertCollectedRunPlanMatchesTestFamily(input.collectedPlan, input.profile.testFamily);
-    assertMicrotestMetadataCaptureSupported(input.profile, input.collectedPlan);
+    assertMicrotestControlCaptureSupported(input.profile, input.collectedPlan);
 
     if (!input.allowEmptySelection) {
         assertCollectedRunPlanHasCases(input.collectedPlan);
@@ -274,7 +274,7 @@ function createLocalResolvedRunFromTestPlan(
     plannedTestPlan: Awaited<ReturnType<typeof createLocalTestPlan>>
 ): ResolvedRun {
     assertTestPlanMatchesTestFamily(plannedTestPlan, input.profile.testFamily);
-    assertMicrotestMetadataCaptureSupported(
+    assertMicrotestControlCaptureSupported(
         input.profile,
         collectedRunPlanFromTestPlanCases(plannedTestPlan, plannedTestPlan.cases)
     );

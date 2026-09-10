@@ -2,8 +2,10 @@ import { describe, expect, test } from 'tstyche';
 import {
     createTestPlanFromTestFiles,
     type Engine,
-    type Metadata,
-    type ResolvedMetadata,
+    type TestAnnotations,
+    type TestAnnotationsInput,
+    type TestControls,
+    type TestControlsInput,
     type TestNode,
     type TestPlan,
     type TestPlanFromTestFilesOptions,
@@ -17,7 +19,8 @@ describe('TestRoot', function () {
         expect<TestRoot['kind']>().type.toBe<'root'>();
         expect<TestRoot>().type.not.toBeAssignableTo<TestNode>();
         expect<TestPlan['root']>().type.toBe<{
-            readonly metadata: ResolvedMetadata;
+            readonly annotations: TestAnnotations;
+            readonly controls: TestControls;
             readonly title: string;
         }>();
     });
@@ -35,7 +38,8 @@ describe('TestRoot', function () {
                 }[])
             ];
             readonly root: {
-                readonly metadata: Metadata;
+                readonly annotations: TestAnnotationsInput;
+                readonly controls: TestControlsInput;
                 readonly title: string;
             };
         }>();
@@ -49,7 +53,8 @@ describe('TestRoot', function () {
         expect(createTestPlanFromTestFiles).type.not.toBeCallableWith({
             files: [ { file: 'source/users.test.ts', metadata: {}, testNode } ],
             root: {
-                metadata: {},
+                annotations: {},
+                controls: {},
                 title: 'root'
             }
         });

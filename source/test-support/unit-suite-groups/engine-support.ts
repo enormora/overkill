@@ -12,7 +12,8 @@ import { testNode as enginePlanningTestNode } from './engine-planning.ts';
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/test-support/unit-suite-groups/engine-support.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         identityTestNode,
         reporterDeliveryCleanupTestNode,

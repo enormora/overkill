@@ -2,7 +2,9 @@ import { describe, expect, test } from 'tstyche';
 import type {
     DefinedOutputRenderer,
     DefinedReporter,
-    RunResult
+    RunResult,
+    TestAnnotationsInput,
+    TestControlsInput
 } from '../engine/engine.entry-point.ts';
 import {
     RunConfigError,
@@ -112,7 +114,8 @@ describe('@overkill-dev/run', function () {
             readonly root?: RunIfMainRootOptions;
         }>();
         expect<RunIfMainRootOptions>().type.toBe<{
-            readonly metadata: Parameters<RunIfMain>[1]['metadata'];
+            readonly annotations?: TestAnnotationsInput;
+            readonly controls?: TestControlsInput;
             readonly title: string;
         }>();
         expect<typeof runIfMain>().type.toBeCallableWith(import.meta, testNode);
@@ -120,7 +123,8 @@ describe('@overkill-dev/run', function () {
             outputRenderer,
             reporters: [ reporter ],
             root: {
-                metadata: {},
+                annotations: {},
+                controls: {},
                 title: 'root'
             }
         });
@@ -144,24 +148,26 @@ describe('@overkill-dev/run', function () {
         expect<RunRequest['selection']>().type.toBe<RunSelection>();
     });
 
-    test('exposes serializable run facts with case metadata', function () {
+    test('exposes serializable run facts with case annotations and controls', function () {
         expect<keyof RunFacts>().type.toBe<'cases' | 'environment' | 'execution' | 'loader' | 'reproducibility'>();
         expect<RunExecutionFacts['engine']['kind']>().type.toBe<'default' | 'instance' | 'module'>();
-        expect<Pick<RunExecutionFacts, 'capture' | 'processModel'>>().type.toBe<{
-            readonly capture: 'buffered' | 'live';
-            readonly processModel: RunProcessModel;
-        }>();
+        expect<RunExecutionFacts['capture']>().type.toBe<'buffered' | 'live'>();
+        expect<RunExecutionFacts['processModel']>().type.toBe<RunProcessModel>();
         expect<RunExecutionFacts['profile']>().type.toBe<string>();
         expect<RunExecutionFacts['resourceUsagePolicy']>().type.toBe<RunResourceUsagePolicy>();
-        expect<RunExecutionFacts['scheduling']>().type.toBe<RunScheduling>();
-        expect<RunExecutionFacts['testFamily']>().type.toBe<RunTestFamily>();
-        expect<RunFacts['cases'][number]['metadata']>().type.toBe<SerializedValue>();
+        expect<RunFacts['cases'][number]['annotations']>().type.toBe<SerializedValue>();
+        expect<RunFacts['cases'][number]['controls']>().type.toBe<SerializedValue>();
         expect<RunFacts['reproducibility']['selection']>().type.toBe<RunSelection>();
         expect<RunFacts>().type.toBeAssignableTo<Readonly<Record<string, unknown>>>();
     });
 
     test('exposes case file set facts', function () {
         expect<RunFacts['cases'][number]['fileSet']>().type.toBe<string | null>();
+    });
+
+    test('exposes run scheduling and family facts', function () {
+        expect<RunExecutionFacts['scheduling']>().type.toBe<RunScheduling>();
+        expect<RunExecutionFacts['testFamily']>().type.toBe<RunTestFamily>();
     });
 
     test('exposes collection, soft, and hard timeout facts', function () {

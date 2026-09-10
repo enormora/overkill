@@ -1,3 +1,6 @@
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { createFactory } from '@enormora/objectory';
 import {
     createSuite as createOverkillSuite,
@@ -44,15 +47,38 @@ const singletonRunRequest: RunRequest = {
     verbose: false
 };
 
+async function writeSingletonRunConfig(): Promise<string> {
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'overkill-command-line-runner-'));
+    const configPath = path.join(directory, 'overkill.config.js');
+
+    await fs.writeFile(
+        configPath,
+        `export const config = {
+    profiles: {
+        microtest: {
+            testFamily: 'microtest',
+            timeouts: { collectionMilliseconds: 5000 }
+        }
+    }
+};
+`,
+        'utf8'
+    );
+
+    return configPath;
+}
+
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/command-line-unimplemented-commands.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'unimplemented direct commands return argument errors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const command = createUnimplementedCommand('replay');
                 const result = await command(commandLineCommandContextFactory.build({
@@ -70,7 +96,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'unimplemented command families return argument errors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const baseline = await loadUnimplementedBaselineCommands();
                 const benchmark = await loadUnimplementedBenchmarkCommands();
@@ -91,7 +118,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner singleton uses unimplemented command families',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await commandLineRunner.bench.listBenchmarks(commandLineCommandContextFactory.build());
 
@@ -105,10 +133,11 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner singleton runs tests with the default reporter',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await commandLineRunner.runTests({
-                    configPath: null,
+                    configPath: await writeSingletonRunConfig(),
                     cwd: process.cwd(),
                     runRequest: singletonRunRequest
                 });

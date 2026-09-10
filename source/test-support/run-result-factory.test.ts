@@ -110,7 +110,8 @@ function supportTestCase(body: TestBody): TestNode {
     return createOverkillTestCase({
         body,
         definitionLocations: [ { kind: 'unknown' as const } ],
-        metadata: {},
+        annotations: {},
+        controls: {},
         title: 'case'
     });
 }
@@ -123,7 +124,7 @@ function captureRoot(recordRoot: (root: CapturedRoot) => void): DefinedReporter 
         onEvent(event: ReporterEvent) {
             if (event.kind === 'run-start') {
                 recordRoot({
-                    tags: event.root.metadata.tags,
+                    tags: event.root.annotations.tags,
                     title: event.root.title
                 });
             }
@@ -136,12 +137,14 @@ function captureRoot(recordRoot: (root: CapturedRoot) => void): DefinedReporter 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/test-support/run-result-factory.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runResultFactory builds nested result data',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const runResult = runResultFactory.build({
                     orphans: [ {} ],
@@ -184,7 +187,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runResultFactory builds non-failing outcome variants',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const runResult = runResultFactory.build({
                     perTest: [
@@ -211,7 +215,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runResultFactory builds default and empty failure fallbacks',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const runResult = runResultFactory.build({
                     perTest: [
@@ -250,7 +255,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runResultFactory builds body-error and default contract failures',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const runResult = runResultFactory.build({
                     perTest: [
@@ -268,7 +274,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runResultFactory preserves explicit failure and verdict fields',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const runResult = runResultFactory.build({
                     perTest: [
@@ -294,7 +301,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'test support runIfMain() returns without running imported modules',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const originalExitCode = process.exitCode;
 
@@ -314,7 +322,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'test support runIfMain() runs direct files with explicit root options',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const roots: CapturedRoot[] = [];
 
@@ -330,7 +339,8 @@ export const testNode = createOverkillSuite({
                         })
                     ],
                     root: {
-                        metadata: { tags: [ 'support' ] },
+                        annotations: { tags: [ 'support' ] },
+                        controls: {},
                         title: 'support-root'
                     }
                 });
@@ -348,7 +358,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'test support runIfMain() sets a failure exit code for failing direct files',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const originalExitCode = process.exitCode;
 

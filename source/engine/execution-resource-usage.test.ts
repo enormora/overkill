@@ -108,12 +108,14 @@ function createBreachingResourceUsageTracker(): RunResourceUsageTracker {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/execution-resource-usage.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() includes resource usage in the returned result and final reporter result',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const reporter = createInMemoryFinalResultReporter();
@@ -126,11 +128,13 @@ export const testNode = createOverkillSuite({
                                     testScope.assert.true(true);
                                     return testScope.assert.collect();
                                 },
-                                metadata: {},
+                                annotations: {},
+                                controls: {},
                                 title: 'passes'
                             })
                         ],
-                        metadata: {},
+                        annotations: {},
+                        controls: {},
                         title: 'root'
                     })
                 );
@@ -176,7 +180,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() records sampled resource exhaustion against the active case',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const testPlan = engine.createTestPlan(
@@ -191,11 +196,13 @@ export const testNode = createOverkillSuite({
                                     testScope.assert.true(true);
                                     return testScope.assert.collect();
                                 },
-                                metadata: {},
+                                annotations: {},
+                                controls: {},
                                 title: 'waits'
                             })
                         ],
-                        metadata: {},
+                        annotations: {},
+                        controls: {},
                         title: 'root'
                     })
                 );
@@ -246,8 +253,9 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() applies valid timeout metadata before the default timeout',
-            metadata: {},
+            title: 'execute() applies valid timeout controls before the default timeout',
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const testPlan = engine.createTestPlan(
@@ -259,11 +267,13 @@ export const testNode = createOverkillSuite({
                                     testScope.assert.true(true);
                                     return testScope.assert.collect();
                                 },
-                                metadata: { timeoutMilliseconds: 5 },
-                                title: 'uses metadata timeout'
+                                annotations: {},
+                                controls: { timeoutMilliseconds: 5 },
+                                title: 'uses control timeout'
                             })
                         ],
-                        metadata: {},
+                        annotations: {},
+                        controls: {},
                         title: 'root'
                     })
                 );
@@ -285,8 +295,9 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() rejects timeout metadata beyond the hard timeout',
-            metadata: {},
+            title: 'execute() rejects timeout controls beyond the soft timeout',
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const testPlan = engine.createTestPlan(
@@ -298,11 +309,13 @@ export const testNode = createOverkillSuite({
                                     testScope.assert.true(true);
                                     return testScope.assert.collect();
                                 },
-                                metadata: { timeoutMilliseconds: 100 },
-                                title: 'invalid timeout metadata'
+                                annotations: {},
+                                controls: { timeoutMilliseconds: 45 },
+                                title: 'invalid timeout controls'
                             })
                         ],
-                        metadata: {},
+                        annotations: {},
+                        controls: {},
                         title: 'root'
                     })
                 );
@@ -326,7 +339,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'recordResourceUsageSample() reports post-test resource diagnostics',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const supervision = createExecutionSupervision();
                 const breached = recordResourceUsageSample({
@@ -362,7 +376,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'recordResourceUsageSample() ignores omitted budgets',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const supervision = createExecutionSupervision();
                 const dependencies = { wallClock: createDeterministicWallClock() };

@@ -11,7 +11,8 @@ import { testNode as resourcesTestNode } from './test-support/unit-suite-groups/
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/overkill.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         assertAndRunTestNode,
         compareTestNode,

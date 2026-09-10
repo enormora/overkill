@@ -7,7 +7,7 @@ import {
 import { serializedValueDiff } from '../compare/comparison.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import type { CaseId } from '../engine/identity.ts';
-import { resolveRootMetadata } from '../engine/metadata.ts';
+import { resolveRootTestAnnotations } from '../engine/test-data.ts';
 import type { FinalResultReporter, RealTimeReporter } from '../engine/reporter.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import {
@@ -58,7 +58,7 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
     await reporter.onEvent({
         facts: {},
         kind: 'run-start',
-        root: { metadata: resolveRootMetadata({}), title: 'root' },
+        root: { annotations: resolveRootTestAnnotations({}), title: 'root' },
         startedAt: '2026-07-15T00:00:00.000Z'
     });
     await reporter.onEvent({
@@ -109,12 +109,14 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/tap-console-reporter.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'reports the final result without any test cases formatted as TAP',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = tapConsoleReporterWithLog(log);
@@ -143,7 +145,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'reports the final result with passed and failed test cases formatted as TAP',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = tapConsoleReporterWithLog(log);
@@ -187,7 +190,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'reports a failed TAP test point with a fallback diagnostic reason',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = tapConsoleReporterWithLog(log);
@@ -235,7 +239,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'reports skip and inconclusive outcomes as TAP directives and diagnostics',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = tapConsoleReporterWithLog(log);
@@ -287,7 +292,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'real-time TAP reporter streams test points before the final plan',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = tapConsoleRealTimeReporterWithLog(log);
@@ -308,7 +314,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'real-time TAP reporter writes runner errors as comments',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const log = testDouble<LogFunction>();
                 const reporter = tapConsoleRealTimeReporterWithLog(log);

@@ -13,10 +13,12 @@ export const testNode = createSuite({
 
                 return scope.assert.collect();
             },
-            metadata: {},
+            annotations: {},
+            controls: {},
             title: 'creates a timer'
         })
     ],
-    metadata: {},
+    annotations: {},
+    controls: {},
     title: 'fixture'
 });

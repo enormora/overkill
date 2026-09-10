@@ -1,6 +1,7 @@
 export const testNode = {
     children: [],
     kind: 'suite',
-    metadata: {},
+    annotations: {},
+    controls: {},
     name: 'plain'
 };

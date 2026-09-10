@@ -5,7 +5,7 @@
 Every Overkill run surfaces two numbers in its summary: how many test
 cases the runner discovered, and how many it actually executed. The gap
 between them is the first question an author asks when a run does not
-look the way they expected — "did all my tests run?" — and the answer
+look the way they expected - "did all my tests run?" - and the answer
 belongs in the standard summary, not behind a debug flag.
 
 The data is informational, not judgmental. A run where `discovered`
@@ -15,7 +15,7 @@ situation; the runner makes no claim about whether the gap is good or
 bad.
 
 Run counts also surface a third fact: which test nodes were
-_constructed_ during collection but reach no run root — _orphans_. A
+_constructed_ during collection but reach no run root - _orphans_. A
 test defined and never wired into a `testNode`, or a suite fragment
 imported and never used, was built but runs nowhere. The runner
 reports those nodes; the developer interprets.
@@ -23,7 +23,7 @@ reports those nodes; the developer interprets.
 ## Position
 
 This is an `@overkill-dev/engine` concept. The new fields extend engine's
-structured-results contract — `RunResult` and `RunSummary` — and the
+structured-results contract - `RunResult` and `RunSummary` - and the
 engine owns the bookkeeping needed to produce them:
 
 - the `Constructed` set
@@ -44,7 +44,7 @@ per-test telemetry overhead (heap snapshots, module-load hooks,
 active-handle deltas). The counts here are cheap: `discovered` and the
 per-outcome counts are integers the engine already produces during
 plan freeze and run completion, and orphan detection is a set
-difference between two collections the engine already holds — an
+difference between two collections the engine already holds - an
 `O(1)` record per node construction, then one pass at collection end.
 None of it carries per-test telemetry overhead, so it all belongs in
 the standard run summary, not behind a debug flag.
@@ -53,16 +53,16 @@ the standard run summary, not behind a debug flag.
 
 Run counts cover two related questions:
 
-- **Reachability-bounded counts** — how many cases are reachable
+- **Reachability-bounded counts** - how many cases are reachable
   from the exported test roots, and how many of those the runner
   attempted.
-- **Orphan detection** — which test nodes were constructed during
+- **Orphan detection** - which test nodes were constructed during
   collection but reach no run root. See
   [Orphan Detection](#orphan-detection).
 
 Orphan detection is **exact** for everything constructed during
 collection, and it reports node identities, not just a count. It does
-**not** see nodes in modules that collection never evaluates — a
+**not** see nodes in modules that collection never evaluates - a
 `test(...)` in a module imported lazily, conditionally, or not at all
 is never constructed, so there is no runtime node to detect. That is
 not a gap in the count: a node that never came into existence is not a
@@ -127,7 +127,7 @@ pattern.
 ### `summary.defined`
 
 Count of `TestNode`s the constructors built while the runner evaluated
-test modules for collection — see
+test modules for collection - see
 [Definition Of "Defined"](#definition-of-defined). It is a node count,
 not an expanded-case count: a `table(...)` is one defined node
 regardless of how many rows it carries. `defined` is stored because it
@@ -138,7 +138,7 @@ is not derivable from the other summary fields.
 The list of constructed nodes that reach no run root. Each entry names
 the source `file`, the node `name`, and its `kind`. `file` is `null`
 when the engine has no file origin for the node. `orphaned` at run
-scope is not stored — like `executed`, it is derived, here as
+scope is not stored - like `executed`, it is derived, here as
 `orphans.length`. The list carries identities because "you have 3
 orphans" is only actionable together with "...and here they are"; the
 mechanism is described in [Orphan Detection](#orphan-detection).
@@ -147,7 +147,7 @@ mechanism is described in [Orphan Detection](#orphan-detection).
 
 Flat map keyed by suite path. Every visible named grouping below the
 execution root gets an entry: intermediate suites, leaf suites, and tables.
-The execution root is run metadata, not a suite, so it does not appear in
+The execution root is run-level data, not a suite, so it does not appear in
 `bySuite`. Tables are included because they are named groupings that
 expand to multiple cases; "did all my round-trip cases run?" is the
 same shape of question as "did all my CRUD tests run?".
@@ -161,11 +161,11 @@ joins the path with a stable separator for readability:
 
 Each entry has three integers:
 
-- `discovered` — count of `WorkId`s reachable from this suite
+- `discovered` - count of `WorkId`s reachable from this suite
   (pre-filter, pre-shard, post-expansion).
 - `planned`: count of those work ids selected into this run's executable
   plan.
-- `executed` — count of those cases that received any `TestOutcome`
+- `executed` - count of those cases that received any `TestOutcome`
   or crashed mid-run, on this record's scope (this shard's slice in
   sharded runs).
 
@@ -246,9 +246,9 @@ run's values forward unchanged.
 Orphan detection is a set difference between two collections of
 authored nodes the runner already has:
 
-- **`Constructed`** — every node the constructors built during collection, as
+- **`Constructed`** - every node the constructors built during collection, as
   defined in [Definition Of "Defined"](#definition-of-defined).
-- **`Reached`** — every node reachable from the exported run roots.
+- **`Reached`** - every node reachable from the exported run roots.
   The runner already performs this walk; it is the basis of
   `discovered`.
 
@@ -287,16 +287,16 @@ a bare construction _counter_ is not:
   touches, so it cannot distort the result.
 - **Imported-but-unused fragments.** A suite or case imported from a
   helper module and never wired into a root is in `Constructed` but not
-  `Reached`, so it is reported as an orphan — correctly. This is real
+  `Reached`, so it is reported as an orphan - correctly. This is real
   information, not noise: "you imported this and used it nowhere" is
   a true fact worth surfacing. The `file` field on each entry says
   where the node was constructed, so an unused import and a
   forgotten local test are distinguishable in the report without
   either being suppressed.
 - **Uncalled macros.** A macro that is defined but never applied
-  constructs nothing, so it contributes to neither set — correct,
+  constructs nothing, so it contributes to neither set - correct,
   there is no node. A macro that is applied but whose result is
-  never wired in contributes orphaned nodes — also correct.
+  never wired in contributes orphaned nodes - also correct.
 
 Every entry in `Constructed - Reached` is a node that genuinely exists and
 genuinely reaches no root. There is no case where the figure is
@@ -308,7 +308,7 @@ confidently wrong.
 define-by-side-effect: a runner where calling `test(...)` mutates a
 hidden registry, and the runner then _reads that registry_ to learn
 what tests exist. The poison there is that the registry is
-**load-bearing for discovery** — test definitions are not addressable
+**load-bearing for discovery** - test definitions are not addressable
 until every module has been evaluated, call order becomes
 significant, and parallel collection races over shared state.
 
@@ -324,8 +324,8 @@ significant, and parallel collection races over shared state.
 - Collection runs once, single-threaded, in the orchestrator, so
   nothing races over it.
 
-`Constructed` is runtime-internal engine bookkeeping — recording which
-engine-branded nodes were built — used only for diagnostics. It is
+`Constructed` is runtime-internal engine bookkeeping - recording which
+engine-branded nodes were built - used only for diagnostics. It is
 the same category as a construction-time call counter: the two differ
 only in payload, a set of node identities rather than an integer, not
 in kind. If a construction-time count is acceptable, a
@@ -346,8 +346,8 @@ single-threaded orchestrator collection.
   when a plan is created. A `test(...)` call made from inside a running test
   body is not reachable from the collected root and does not become
   a discovered or planned case.
-- **Retention.** `Constructed` holds references to constructed nodes —
-  including ones that would otherwise be unreachable garbage — for
+- **Retention.** `Constructed` holds references to constructed nodes -
+  including ones that would otherwise be unreachable garbage - for
   the duration of the engine instance. The cost is bounded by the size of the
   authored test set for that instance.
 
@@ -387,7 +387,7 @@ with the orphan count appended when `orphans` is non-empty:
 `discovered`, `planned`, `executed`, and the per-outcome counts render unconditionally, even
 when zero, matching the existing summary precedent. The orphan figure
 is shown only when non-zero, and when shown the reporter lists the
-orphaned nodes (`file`, `name`, `kind`) below the summary line — the
+orphaned nodes (`file`, `name`, `kind`) below the summary line - the
 identities are the actionable part, the bare count is not.
 `inconclusive` and `crash` counts are included in the parenthesized outcome
 breakdown only when non-zero.
@@ -402,17 +402,17 @@ plan because TAP test points represent the cases planned for this record.
 Examples of situations the counts make visible:
 
 - A CI selection filter that accidentally matched a smaller set than
-  intended — `discovered` shows the project's full count, `executed`
+  intended - `discovered` shows the project's full count, `executed`
   shows the smaller actual.
-- A sharded CI run on the wrong shard count — per-shard records show
+- A sharded CI run on the wrong shard count - per-shard records show
   the expected division, merged record shows the total.
 - A suite with conditional `skippedTest` where the condition
-  accidentally elided more cases than expected — `bySuite[suite]`
+  accidentally elided more cases than expected - `bySuite[suite]`
   shows the gap localised to one subtree.
 - A test defined but never added to a `testNode`: the refactor that
   split one suite into two left a case wired to neither; it appears
   in `orphans` with its file and name.
-- A reusable suite fragment imported but never used — `orphans`
+- A reusable suite fragment imported but never used - `orphans`
   shows it, with the helper file as its origin, so "how much of this
   catalog is this project actually consuming?" is legible at a
   glance.
@@ -423,20 +423,20 @@ numbers and identities, and the developer or CI gate interprets.
 ## Cross-References
 
 - [Reproducibility § Run Record Shape](./reproducibility.md#run-record-shape)
-  — where `RunResult` lives, persistence policy
-- [Tests As Values](../authoring/tests-as-values.md) — the
+  - where `RunResult` lives, persistence policy
+- [Tests As Values](../authoring/tests-as-values.md) - the
   reachability rule `Reached` is built on, and the no-side-effects
   rule `Constructed` is reconciled against
-- [Composition Order](./composition-order.md) — the pipeline that
+- [Composition Order](./composition-order.md) - the pipeline that
   produces filter and shard narrowing
-- [Runtime Behavior § Sharding](./runtime-behavior.md#sharding) —
+- [Runtime Behavior § Sharding](./runtime-behavior.md#sharding) -
   how `discovered` behaves under `--shard`
-- [Reporters](./reporters.md) — reporter contract and event scope
+- [Reporters](./reporters.md) - reporter contract and event scope
   precedent
-- [Coverage](./coverage.md) — precedent for per-case data in
+- [Coverage](./coverage.md) - precedent for per-case data in
   `RunRecord`
-- [Higher Test Layers § Static Authoring Rules](../authoring/higher-test-layers.md#static-authoring-rules)
-  — the `no-orphan-test-nodes` lint rule, the static-source
+- [Higher Test Layers § Static Authoring Rules](../authoring/higher-test-layers.md#static-authoring-rules):
+  the `no-orphan-test-nodes` lint rule, the static-source
   counterpart to runtime orphan detection
-- [Test Debug Mode](../authoring/debug-mode.md) — explicitly _not_
+- [Test Debug Mode](../authoring/debug-mode.md) - explicitly _not_
   the home for this concept

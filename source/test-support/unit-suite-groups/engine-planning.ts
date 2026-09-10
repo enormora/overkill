@@ -7,7 +7,8 @@ import { testNode as skippedTestPlanTestNode } from '../../engine/skipped-test-p
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/test-support/unit-suite-groups/engine-planning.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         testPlanAuthoringRulesTestNode,
         testPlanLocationTestNode,

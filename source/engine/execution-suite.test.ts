@@ -9,7 +9,8 @@ import { testNode as skippedTestExecutionTestNode } from './skipped-test-executi
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/execution-suite.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         executionConcurrentReportingTestNode,
         executionReportingTestNode,

@@ -23,7 +23,7 @@ const otherRowParameterIdentity = [
     '"value":{"kind":"number","value":2}}],"kind":"object","truncation":null}'
 ]
     .join('');
-const emptySerializedMetadata = { constructorName: 'Object', entries: [], kind: 'object', truncation: null } as const;
+const emptySerializedTestData = { constructorName: 'Object', entries: [], kind: 'object', truncation: null } as const;
 
 function createLocationVariantPlan(): TestPlan {
     const engine = createTestEngine();
@@ -36,7 +36,8 @@ function createLocationVariantPlan(): TestPlan {
                     return scope.assert.collect();
                 },
                 definitionLocations: [ { kind: 'unknown' as const } ],
-                metadata: {},
+                annotations: {},
+                controls: {},
                 title: 'no location'
             }),
             engine.createTestCase({
@@ -50,7 +51,8 @@ function createLocationVariantPlan(): TestPlan {
                     { column: null, file: 'macro.test.ts', kind: 'known' as const, line: 5 },
                     { column: null, file: 'constructed.test.ts', kind: 'known' as const, line: null }
                 ],
-                metadata: {},
+                annotations: {},
+                controls: {},
                 title: 'line only'
             }),
             engine.createTable({
@@ -60,7 +62,8 @@ function createLocationVariantPlan(): TestPlan {
                             scope.assert.true(true);
                             return scope.assert.collect();
                         },
-                        metadata: {},
+                        annotations: {},
+                        controls: {},
                         title: 'row',
                         parameters: { value: 1 }
                     },
@@ -69,7 +72,8 @@ function createLocationVariantPlan(): TestPlan {
                             scope.assert.true(true);
                             return scope.assert.collect();
                         },
-                        metadata: {},
+                        annotations: {},
+                        controls: {},
                         title: 'other row',
                         parameters: { value: 2 }
                     }
@@ -80,17 +84,19 @@ function createLocationVariantPlan(): TestPlan {
                     kind: 'known' as const,
                     line: null
                 } ],
-                metadata: {},
+                annotations: {},
+                controls: {},
                 title: 'rows'
             })
         ],
-        metadata: {},
+        annotations: {},
+        controls: {},
         title: 'suite'
     });
 
     return engine.createTestPlanFromTestFiles({
         files: [ { file: 'source/location-variants.test.ts', testNode } ],
-        root: { metadata: {}, title: 'root' }
+        root: { annotations: {}, controls: {}, title: 'root' }
     });
 }
 
@@ -114,9 +120,10 @@ function createResolvedRun(testPlan: TestPlan): ResolvedRun {
         facts: {
             cases: testPlan.cases.map(function toCaseFacts(testCase) {
                 return {
+                    annotations: emptySerializedTestData,
+                    controls: emptySerializedTestData,
                     fileSet: null,
-                    id: testCase.id,
-                    metadata: emptySerializedMetadata
+                    id: testCase.id
                 };
             }),
             environment: {
@@ -154,12 +161,14 @@ function createResolvedRun(testPlan: TestPlan): ResolvedRun {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-list-renderer.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'renderResolvedRunList() renders location variants',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const testPlan = createLocationVariantPlan();
                 const result = renderResolvedRunList(

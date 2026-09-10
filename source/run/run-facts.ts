@@ -115,11 +115,12 @@ function resolvedSeed(request: RunRequest, dependencies: RunOrchestratorDependen
 }
 
 function runCaseFacts(
-    metadata: RunCaseFacts['metadata'],
+    annotations: RunCaseFacts['annotations'],
+    controls: RunCaseFacts['controls'],
     id: RunCaseFacts['id'],
     fileSet: string | null
 ): RunCaseFacts {
-    return { fileSet, id, metadata };
+    return { annotations, controls, fileSet, id };
 }
 
 export function runCaseFactsFromTestPlan(
@@ -128,7 +129,8 @@ export function runCaseFactsFromTestPlan(
 ): readonly RunCaseFacts[] {
     return testPlan.cases.map(function toRunCaseFacts(testCase) {
         return runCaseFacts(
-            serializeValue(testCase.metadata),
+            serializeValue(testCase.annotations),
+            serializeValue(testCase.controls),
             testCase.id,
             fileSetForCase(testCase.id.file)
         );

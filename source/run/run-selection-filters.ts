@@ -1,13 +1,12 @@
 import { posix as path } from 'node:path';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import { caseIdentityKey, type CaseId } from '../engine/identity.ts';
-import type { Stability } from '../engine/metadata.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
 import type { RunFilter, RunSelection, RunStringFilterField } from './run-types.ts';
 
 type RunFilterCandidate = {
+    readonly annotations: TestPlanCase['annotations'];
     readonly id: CaseId;
-    readonly metadata: TestPlanCase['metadata'];
 };
 
 type CandidateFieldReaders = Readonly<
@@ -21,8 +20,6 @@ const filterFields: ReadonlySet<string> = new Set([
     'file',
     'owner',
     'params',
-    'runtime',
-    'stability',
     'suite',
     'tag',
     'title'
@@ -114,14 +111,6 @@ export function owner(value: string): RunFilter {
 
 export function params(value: string): RunFilter {
     return contains('params', value);
-}
-
-export function runtime(value: string): RunFilter {
-    return equals('runtime', value);
-}
-
-export function stability(value: Stability): RunFilter {
-    return equals('stability', value);
 }
 
 export function suite(value: string): RunFilter {
@@ -366,22 +355,16 @@ const candidateFieldReaders: CandidateFieldReaders = {
         return candidate.id.file === null ? [] : [ candidate.id.file ];
     },
     owner(candidate) {
-        return candidate.metadata.ownership;
+        return candidate.annotations.ownership;
     },
     params(candidate) {
         return candidate.id.params === null ? [] : [ candidate.id.params ];
-    },
-    runtime(candidate) {
-        return candidate.metadata.runtimes;
-    },
-    stability(candidate) {
-        return [ candidate.metadata.stability ];
     },
     suite(candidate) {
         return suitePath(candidate.id.suite);
     },
     tag(candidate) {
-        return candidate.metadata.tags;
+        return candidate.annotations.tags;
     },
     title(candidate) {
         return [ candidate.id.title ];

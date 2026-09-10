@@ -11,13 +11,15 @@ function createSkippedPlan(engine: Engine): TestPlan {
     const root = engine.createRoot({
         children: [
             engine.createSkippedTestCase({
+                annotations: { tags: [ 'conditional' ] },
+                controls: {},
                 definitionLocations: [ { kind: 'unknown' as const } ],
-                metadata: { tags: [ 'conditional' ] },
                 reason: 'unsupported platform',
                 title: 'conditional'
             })
         ],
-        metadata: { tags: [ 'inherited' ] },
+        annotations: { tags: [ 'inherited' ] },
+        controls: {},
         title: 'root'
     });
 
@@ -38,7 +40,7 @@ function assertSkippedPlan(scope: OverkillScope, testPlan: TestPlan): void {
         kind: 'skip',
         reason: 'unsupported platform'
     });
-    scope.assert.deepEqual(plannedCase.metadata.tags, [ 'inherited', 'conditional' ]);
+    scope.assert.deepEqual(plannedCase.annotations.tags, [ 'inherited', 'conditional' ]);
     scope.assert.equal(testPlan.defined, 1);
     scope.assert.deepEqual(testPlan.discoveredCases, testPlan.cases);
 }
@@ -46,12 +48,14 @@ function assertSkippedPlan(scope: OverkillScope, testPlan: TestPlan): void {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/skipped-test-plan.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createTestPlan() expands skipped test cases as leaf cases',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
 
@@ -63,7 +67,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createTestPlan() rejects duplicate body and skipped case titles',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
                 const root = engine.createRoot({
@@ -74,17 +79,20 @@ export const testNode = createOverkillSuite({
                                 testScope.assert.true(true, { message: 'passes' });
                                 return testScope.assert.collect();
                             },
-                            metadata: {},
+                            annotations: {},
+                            controls: {},
                             title: 'same'
                         }),
                         engine.createSkippedTestCase({
+                            annotations: {},
+                            controls: {},
                             definitionLocations: [ { kind: 'unknown' as const } ],
-                            metadata: {},
                             reason: 'not needed',
                             title: 'same'
                         })
                     ],
-                    metadata: {},
+                    annotations: {},
+                    controls: {},
                     title: 'root'
                 });
 

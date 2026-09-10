@@ -12,7 +12,8 @@ import { testNode as runResultFactoryTestNode } from '../run-result-factory.test
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'assertion protocol, assert, run, and test support',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         assertionExtensionTestNode,
         assertionNodeShapeTestNode,

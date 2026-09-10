@@ -100,7 +100,7 @@ type CapturedOutputArtifact = {
 
 Canonical: [Artifact Identity](../architecture/artifact-identity.md).
 
-## Test Tree And Metadata
+## Test Tree And Test Data
 
 ```ts
 declare const testNodeBrand: unique symbol;
@@ -112,14 +112,16 @@ type TestNode = (TestCase | Suite | Table) & {
 type TestRoot = {
     readonly kind: 'root';
     readonly title: string;
-    readonly metadata?: Metadata;
+    readonly annotations?: TestAnnotationsInput;
+    readonly controls?: TestControlsInput;
     readonly children: ReadonlyArray<TestNode>;
 };
 
 type TestCase = {
     readonly kind: 'test';
     readonly title: string;
-    readonly metadata?: Metadata;
+    readonly annotations?: TestAnnotationsInput;
+    readonly controls?: TestControlsInput;
     readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
     readonly execution:
         | { readonly kind: 'body'; readonly body: TestBody; }
@@ -129,7 +131,8 @@ type TestCase = {
 type Suite = {
     readonly kind: 'suite';
     readonly title: string;
-    readonly metadata?: Metadata;
+    readonly annotations?: TestAnnotationsInput;
+    readonly controls?: TestControlsInput;
     readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
     readonly children: ReadonlyArray<TestNode>;
 };
@@ -137,82 +140,58 @@ type Suite = {
 type Table = {
     readonly kind: 'table';
     readonly title: string;
-    readonly metadata?: Metadata;
+    readonly annotations?: TestAnnotationsInput;
+    readonly controls?: TestControlsInput;
     readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
     readonly cases: ReadonlyArray<TableCase>;
 };
 
 type TableCase = {
     readonly title: string;
-    readonly metadata?: Metadata;
+    readonly annotations?: TestAnnotationsInput;
+    readonly controls?: TestControlsInput;
     readonly parameters: unknown;
     readonly body: TestBody;
 };
 
-type Metadata = {
+type TestAnnotationsInput = {
+    readonly ownership?: readonly string[];
     readonly tags?: readonly string[];
-    readonly kind?: TestFamily;
-    readonly runtimes?: readonly string[] | {
-        readonly mode: 'append' | 'replace';
-        readonly values: readonly string[];
-    };
-    readonly capabilities?: ReadonlyArray<Capability>;
-    readonly baselines?: ReadonlyArray<BaselineSubtype>;
-    readonly ownership?: ReadonlyArray<string>;
-    readonly stability?: 'stable' | 'flaky' | 'experimental';
-    readonly priority?: 'critical' | 'standard' | 'optional';
-    readonly debug?: boolean;
-    readonly capture?: 'buffered' | 'live';
-    readonly timeoutMilliseconds?: number;
-    readonly extra?: Readonly<Record<string, unknown>>;
 };
 
-type AuthoringMetadata = {
-    readonly tags?: readonly string[];
-    readonly extra?: Readonly<Record<string, unknown>>;
-    readonly kind?: never;
-    readonly runtimes?: never;
-    readonly capabilities?: never;
-    readonly baselines?: never;
-    readonly ownership?: never;
-    readonly stability?: never;
-    readonly priority?: never;
-    readonly debug?: never;
-    readonly capture?: never;
-    readonly timeoutMilliseconds?: never;
-};
-
-type CaptureAuthoringMetadata = {
-    readonly tags?: readonly string[];
-    readonly extra?: Readonly<Record<string, unknown>>;
-    readonly capture?: 'buffered' | 'live';
-    readonly kind?: never;
-    readonly runtimes?: never;
-    readonly capabilities?: never;
-    readonly baselines?: never;
-    readonly ownership?: never;
-    readonly stability?: never;
-    readonly priority?: never;
-    readonly debug?: never;
-    readonly timeoutMilliseconds?: never;
-};
-
-type ResolvedMetadata = {
-    readonly tags: readonly string[];
-    readonly kind: TestFamily | null;
-    readonly runtimes: readonly string[];
-    readonly capabilities: readonly Capability[];
-    readonly baselines: readonly BaselineSubtype[];
+type TestAnnotations = {
     readonly ownership: readonly string[];
-    readonly stability: 'stable' | 'flaky' | 'experimental';
-    readonly priority: 'critical' | 'standard' | 'optional';
-    readonly debug: boolean;
-    readonly capture: 'buffered' | 'live' | null;
+    readonly tags: readonly string[];
+};
+
+type TestControlsInput = {
+    readonly capture?: CaptureMode;
+    readonly timeoutMilliseconds?: number;
+};
+
+type TestControls = {
+    readonly capture: CaptureMode | null;
     readonly timeoutMilliseconds: number | null;
-    readonly extra: Readonly<Record<string, unknown>>;
+};
+
+type AuthoringAnnotations = {
+    readonly ownership?: readonly string[];
+    readonly tags?: readonly string[];
+};
+
+type MicrotestAuthoringControls = {
+    readonly capture?: never;
+    readonly timeoutMilliseconds?: number;
+};
+
+type CaptureAuthoringControls = {
+    readonly capture?: CaptureMode;
+    readonly timeoutMilliseconds?: number;
 };
 
 type TestFamily = 'microtest' | 'integration' | 'property' | 'benchmark' | 'type-test';
+
+type CaptureMode = 'buffered' | 'live';
 
 type ProfileName = string;
 
@@ -225,7 +204,7 @@ type Capability = 'fs-read' | 'fs-write' | 'net' | 'child-process' | 'worker' | 
 ```
 
 Canonical: [Tests As Values](../authoring/tests-as-values.md) for `TestNode`/`TestCase`/`Suite`/`Table`,
-[Metadata And Selection](../architecture/metadata-and-selection.md) for `Metadata`, [Glossary](./glossary.md) for the
+[Test Data And Selection](../architecture/test-data-and-selection.md) for test data, [Glossary](./glossary.md) for the
 enumerations.
 
 `TestNode` is engine-branded. Shape-compatible plain objects are not valid
@@ -390,7 +369,7 @@ type ResolvableSourceLocation = SourceLocation | SourceLocationProvider;
 
 Canonical: [Assertions And Results § The Protocol Shape](../authoring/assertions-and-results.md#the-protocol-shape) for `TestOutcome`,
 [Assertions And Results](../authoring/assertions-and-results.md) for `TestFailure`/`FailedCheck`/`Diff`/`DiffOperation`/`Hunk`. The
-`TestVerdict` reporter category is derived from outcome + metadata; see
+`TestVerdict` reporter category is derived from outcome plus runner error state; see
 [Glossary § Test Verdict](./glossary.md#test-verdict).
 
 ## Assertion Extensions And Error Matching
@@ -557,7 +536,8 @@ type RunIfMainOptions = {
     readonly outputRenderer?: DefinedOutputRenderer;
     readonly reporters?: ReadonlyArray<DefinedReporter>;
     readonly root?: {
-        readonly metadata: AuthoringMetadata;
+        readonly annotations: AuthoringAnnotations;
+        readonly controls: MicrotestAuthoringControls;
         readonly name: string;
     };
 };
@@ -565,7 +545,8 @@ type RunIfMainOptions = {
 type TestFacadeDefinition =
     | {
         readonly testFamily: TestFamily;
-        readonly metadata: AuthoringMetadata;
+        readonly annotations: AuthoringAnnotations;
+        readonly controls: MicrotestAuthoringControls | CaptureAuthoringControls;
     }
     | {
         readonly testFamily: TestFamily;
@@ -578,7 +559,8 @@ type TestFacade = {
     readonly table: (options: {
         title: string;
         cases: ReadonlyArray<unknown>;
-        metadata?: AuthoringMetadata;
+        annotations?: AuthoringAnnotations;
+        controls?: MicrotestAuthoringControls | CaptureAuthoringControls;
         caseTitle?: (parameters: unknown, index: number) => string;
         test: TestBody;
     }) => Table;
@@ -704,8 +686,8 @@ Direct engine consumers can create body-backed `TestCase` values with
 `createSkippedTestCase`. They attach those values to a `TestRoot` with
 `createRoot`, build the executable `TestPlan` with `createTestPlan(root)`,
 then pass it to `execute(testPlan): Promise<RunResult>`. `TestRoot` carries
-run-level title and metadata. It is not a `TestNode` and does not contribute
-to `CaseId.suite`, `suitePath`, or `RunResult.bySuite`.
+run-level title, annotations, and controls. It is not a `TestNode` and does not
+contribute to `CaseId.suite`, `suitePath`, or `RunResult.bySuite`.
 
 ```ts
 type RunConfig = {
@@ -851,8 +833,6 @@ type RunStringFilterField =
     | 'file'
     | 'owner'
     | 'params'
-    | 'runtime'
-    | 'stability'
     | 'suite'
     | 'tag'
     | 'title';
@@ -918,7 +898,9 @@ type TestPlanSuitePathEntry = {
 type TestPlanCase = {
     readonly id: CaseId;
     readonly suitePath: ReadonlyArray<TestPlanSuitePathEntry>;
-    readonly metadata: ResolvedMetadata;
+    readonly annotations: TestAnnotations;
+    readonly controls: TestControls;
+    readonly testFamily: TestFamily | null;
     readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
     readonly body: TestBody;
 };
@@ -933,7 +915,7 @@ type TestPlan = {
         kind: 'test' | 'suite' | 'table';
         definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
     }>;
-    readonly root: { readonly title: string; readonly metadata: ResolvedMetadata; };
+    readonly root: { readonly title: string; readonly annotations: TestAnnotations; readonly controls: TestControls; };
 };
 
 type RunFacts = {
@@ -965,9 +947,10 @@ type RunFacts = {
 };
 
 type RunCaseFacts = {
+    readonly annotations: SerializedValue;
+    readonly controls: SerializedValue;
     readonly fileSet: string | null;
     readonly id: CaseId;
-    readonly metadata: SerializedValue;
 };
 
 type WorkUnit = {
@@ -1027,10 +1010,12 @@ type PlacementTraceEntry =
     | { readonly kind: 'hedged-duplicate-discarded'; readonly unit: WorkUnitId; readonly workerId: string; };
 
 type CollectedRunCase = {
+    readonly annotations: SerializedValue;
+    readonly controls: SerializedValue;
     readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
-    readonly metadata: SerializedValue;
     readonly params: string | null;
     readonly suitePath: ReadonlyArray<TestPlanSuitePathEntry>;
+    readonly testFamily: TestFamily | null;
     readonly title: string;
 };
 
@@ -1040,7 +1025,7 @@ type CollectedRunFile = {
 };
 
 type CollectedRunPlan = {
-    readonly root: { readonly title: string; readonly metadata: ResolvedMetadata; };
+    readonly root: { readonly title: string; readonly annotations: TestAnnotations; readonly controls: TestControls; };
     readonly defined: number;
     readonly files: ReadonlyArray<CollectedRunFile>;
     readonly orphans: ReadonlyArray<OrphanedNode>;

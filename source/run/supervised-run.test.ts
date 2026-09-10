@@ -30,7 +30,9 @@ const resourceGrowthBudgetBytesPerSecond = 1;
 const samplingIntervalMilliseconds = 1;
 const softTimeoutMilliseconds = 10;
 
-const microtestProfile = defaultMicrotestProfile();
+const microtestProfile = defaultMicrotestProfile({
+    timeouts: { collectionMilliseconds: 5000 }
+});
 const restrictedMicrotestProfile = defaultMicrotestProfile({
     timeouts: { collectionMilliseconds: 5000 }
 });
@@ -44,7 +46,8 @@ const generousMeasuredProfile = defaultMicrotestProfile({
         },
         measure: true,
         samplingIntervalMilliseconds
-    }
+    },
+    timeouts: { collectionMilliseconds: 5000 }
 });
 
 const failingEventReporter = defineReporter(function createFailingEventReporter() {
@@ -221,18 +224,20 @@ function runnerErrorCapabilityCount(result: Awaited<ReturnType<typeof orchestrat
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/supervised-run.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() reports hard-timeout crashes from the supervised child',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand(endlessLoopFixturePath, {
                     ...microtestProfile,
                     timeouts: {
-                        collectionMilliseconds: 1000,
+                        collectionMilliseconds: 5000,
                         hardMilliseconds: hardTimeoutMilliseconds,
                         softMilliseconds: softTimeoutMilliseconds
                     }
@@ -252,7 +257,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() reports sampled resource exhaustion from the supervised child',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand(delayedPassFixturePath, {
@@ -283,7 +289,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() reports supervised active resource count exhaustion',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand(delayedPassFixturePath, {
@@ -313,7 +320,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() accepts measured supervised execution within budgets',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand(
@@ -331,7 +339,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() records supervised reporter event failures',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await orchestrator.run({
                     config: createRunConfigWithReporters(generousMeasuredProfile, [ failingEventReporter ]),
@@ -351,7 +360,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() consolidates supervised process.env policy errors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await orchestrator.run(
                     createRunCommand(envPolicyFixturePath, restrictedMicrotestProfile, {
@@ -370,7 +380,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() does not report supervised parent orchestration as runtime policy',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await orchestrator.run({
                     config: createRunConfigWithReporters(restrictedMicrotestProfile, [ createConsoleReporter() ]),
@@ -392,7 +403,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() covers default singleton resource tracking dependencies',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await orchestrator.run(createRunCommand(delayedPassFixturePath, microtestProfile, {
                     ...createRunRequest(delayedPassFixturePath),
@@ -411,7 +423,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'supervised child reports assignment mismatches as loader errors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const child = fork(childEntryPoint, [ supervisedChildProcessEntryPointArgument ], {
                     cwd: process.cwd(),

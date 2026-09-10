@@ -237,13 +237,15 @@ const policyProcessModels: readonly {
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/integration-tests/run/runner-capability-policy.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: policyFixtures.flatMap(function createPolicyFixtureTests(fixture) {
         return policyProcessModels.map(function createPolicyFixtureProcessTest(model) {
             return createTestCase({
                 definitionLocations: [ { kind: 'unknown' } ],
                 title: `${model.processModel} microtest capability restrictions fail ${fixture.name}`,
-                metadata: {},
+                annotations: {},
+                controls: {},
                 async body(scope: TestScope) {
                     const result = await orchestrator.run(createRunCommand(
                         [ fixture.path ],

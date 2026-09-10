@@ -8,7 +8,8 @@ import { testNode as lineReporterTestNode } from './line-reporter.test.ts';
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/line-reporter-suite.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         lineReporterTestNode,
         lineReporterArtifactsTestNode,

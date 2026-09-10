@@ -13,12 +13,14 @@ import {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/reporting-context.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'relativizeSourceLocationPath() renders files below project root as relative paths',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.equal(
                     relativizeSourceLocationPath({
@@ -36,7 +38,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'relativizeSourceLocationPath() renders Windows files below project root as relative paths',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.equal(
                     relativizeSourceLocationPath({
@@ -54,7 +57,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'formatSourceLocation() updates when the reporting context project root changes',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 let projectRoot: string | null = null;
                 const context = createReportingContext({
@@ -79,7 +83,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'formatSourceLocation() hides unknown source locations',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const context = createReportingContext({ projectRoot: '/repo' });
 
@@ -91,7 +96,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'formatAssertionSourceLocations() renders forwarded assertion locations with shared paths',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const context = createReportingContext({ projectRoot: '/repo' });
 

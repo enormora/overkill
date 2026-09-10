@@ -66,15 +66,17 @@ function behaviorRuntime(entries: readonly unknown[]): BehaviorRuntime {
     };
 }
 
+const emptyTestData = { annotations: {}, controls: {} } as const;
+
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/doubles/test-double.test.ts',
-    metadata: {},
+    ...emptyTestData,
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testDouble() creates an untyped callable double',
-            metadata: {},
+            ...emptyTestData,
             body: function body(scope: OverkillScope) {
                 const anyValue = testDouble();
 
@@ -86,7 +88,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testDouble.returns() creates a fixed-return double',
-            metadata: {},
+            ...emptyTestData,
             body: function body(scope: OverkillScope) {
                 const loadValue = testDouble.returns(42);
 
@@ -98,7 +100,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testDouble.resolves() creates a fixed-resolution double',
-            metadata: {},
+            ...emptyTestData,
             body: async function body(scope: OverkillScope) {
                 const loadValue = testDouble.resolves('value');
 
@@ -110,7 +112,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testDouble.rejects() creates a fixed-rejection double',
-            metadata: {},
+            ...emptyTestData,
             body: async function body(scope: OverkillScope) {
                 const error = new Error('expected');
                 const loadValue = testDouble.rejects(error);
@@ -125,7 +127,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testDouble.throws() creates a fixed-throw double',
-            metadata: {},
+            ...emptyTestData,
             body: function body(scope: OverkillScope) {
                 const error = new Error('expected');
                 const loadValue = testDouble.throws(error);
@@ -140,7 +142,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testDouble.constructs() creates a fixed-construction double',
-            metadata: {},
+            ...emptyTestData,
             body: function body(scope: OverkillScope) {
                 type ClientInstance = {
                     readonly id: string;
@@ -157,7 +159,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'answerFromBehavior() handles modes and sequence fallthrough',
-            metadata: {},
+            ...emptyTestData,
             body(scope: OverkillScope) {
                 const call = callInvocation([ 'match' ], 0);
                 const construction = constructionInvocation([], 0);
@@ -186,7 +188,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'ruleMatches() handles invocation kind, argument, and index criteria',
-            metadata: {},
+            ...emptyTestData,
             body(scope: OverkillScope) {
                 const argumentRule = rule.when({ id: 'expected' }).returns('value');
                 const indexRule = rule.onCall(1).returns('value');
@@ -206,7 +208,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'fallbackForInvocation() selects direct and invocation-specific fallbacks',
-            metadata: {},
+            ...emptyTestData,
             body(scope: OverkillScope) {
                 const directFallback = rule.returns('direct');
                 const callFallback = rule.returns('call');
@@ -221,7 +223,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'rule fixed behavior markers expose direct results',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const error = new Error('expected');
                 const client = { id: 'client' };
@@ -242,7 +244,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'rule generator markers expose result iterators and guarded markers',
-            metadata: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const values = rule.yields([ 'a', 'b' ], 'done').result();
                 const asyncValues = rule.yieldsAsync([ 'c', 'd' ], 'done').result();
@@ -280,7 +282,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'created doubles reject wrong invocation modes',
-            metadata: {},
+            ...emptyTestData,
             body: function body(scope: OverkillScope) {
                 const loadValue = testDouble.returns('value');
                 const Client = testDouble.constructs({ id: 'client' });
@@ -299,7 +301,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testDouble.constructs() rejects primitive instances at runtime',
-            metadata: {},
+            ...emptyTestData,
             body: function body(scope: OverkillScope) {
                 const createConstructorDouble = testDouble.constructs as unknown as PrimitiveConstructionFactory;
 
@@ -313,7 +315,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'rule.when() matches partial-deep argument prefixes',
-            metadata: {},
+            ...emptyTestData,
             body: function body(scope: OverkillScope) {
                 type LoadUser = (query: UserQuery, scope: string) => User;
 
@@ -335,7 +337,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'rule.whenConstructedWith() matches partial-deep constructor argument prefixes',
-            metadata: {},
+            ...emptyTestData,
             body: function body(scope: OverkillScope) {
                 type ClientConstructor = new (options: ClientOptions, retries: number) => ClientWithId;
 
@@ -357,7 +359,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'ordered call rules use zero-based indexes',
-            metadata: {},
+            ...emptyTestData,
             body(scope: OverkillScope) {
                 type LoadValue = () => string;
 
@@ -377,7 +379,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'ordered construction rules use zero-based indexes',
-            metadata: {},
+            ...emptyTestData,
             body: function body(scope: OverkillScope) {
                 type ClientConstructor = new () => ClientWithId;
 
@@ -399,7 +401,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'rules are evaluated in order and exhausted sequences fall through',
-            metadata: {},
+            ...emptyTestData,
             body: function body(scope: OverkillScope) {
                 type LoadValue = (id: string) => string;
 
@@ -423,7 +425,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'rule.sequence() treats raw array values as returns entries',
-            metadata: {},
+            ...emptyTestData,
             body: function body(scope: OverkillScope) {
                 type LoadValue = () => string;
 
@@ -440,7 +442,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'rule.sequence() supports async behavior entries',
-            metadata: {},
+            ...emptyTestData,
             body: async function body(scope: OverkillScope) {
                 type LoadValue = () => Promise<string>;
 
@@ -460,7 +462,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'fallback can configure call and construction defaults together',
-            metadata: {},
+            ...emptyTestData,
             body: function body(scope: OverkillScope) {
                 type ClientFactory = {
                     (baseUrl: string): ClientWithId;
@@ -485,7 +487,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'answer receives invocation arguments, index, and kind',
-            metadata: {},
+            ...emptyTestData,
             body: function body(scope: OverkillScope) {
                 type ClientFactory = {
                     (id: string): string;
@@ -519,7 +521,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'ordered rules reject invalid indexes at runtime',
-            metadata: {},
+            ...emptyTestData,
             body: function body(scope: OverkillScope) {
                 scope.assert.throws(function createNegativeCallRule() {
                     rule.onCall(-1);
@@ -534,7 +536,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'configured doubles throw TypeError when no behavior can answer',
-            metadata: {},
+            ...emptyTestData,
             body: function body(scope: OverkillScope) {
                 type LoadValue = (id: string) => string;
 

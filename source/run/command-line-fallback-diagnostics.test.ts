@@ -162,12 +162,14 @@ async function runTests(
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/command-line-fallback-diagnostics.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() maps resource exhaustion to exit code 5',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await runTests(memoryReporter, async function runCommand() {
                     return runResultFactory.build({
@@ -186,7 +188,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() maps resource exhaustion before generic runner errors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await runTests(memoryReporter, async function runCommand() {
                     return runResultFactory.build({
@@ -206,7 +209,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() omits terminal-delivered runner error fallback diagnostics',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const deliveredError = runnerError('Loader failed.', 'loader');
                 const result = await runTests(terminalEventReporter, async function runCommand() {
@@ -224,7 +228,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() omits terminal-finished runner error fallback diagnostics',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const deliveredError = runnerError('Loader failed.', 'loader');
                 const result = await runTests(
@@ -244,7 +249,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() omits terminal final-result runner error fallback diagnostics',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const deliveredError = runnerError('Loader failed.', 'loader');
                 const result = await runTests(
@@ -264,7 +270,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() falls back to runner errors not delivered to terminal reporters',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await runTests(terminalEventReporter, async function runCommand() {
                     return createRunResult([

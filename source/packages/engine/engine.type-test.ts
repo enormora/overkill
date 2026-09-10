@@ -25,8 +25,6 @@ import type {
     FailedCompositeCheck,
     FailedForeignCheck,
     FailedLeafCheck,
-    Metadata,
-    ResolvedMetadata,
     NonEmptyReadonlyArray,
     PerTestResult,
     ReporterEvent,
@@ -38,6 +36,10 @@ import type {
     SerializedValue,
     SourceLocation,
     SourceLocationProvider,
+    TestAnnotations,
+    TestAnnotationsInput,
+    TestControls,
+    TestControlsInput,
     TestScope,
     TestFailure,
     TestFamily,
@@ -302,24 +304,25 @@ describe('TestOutcome', function () {
     });
 });
 
-describe('Metadata', function () {
-    test('exposes authored and resolved metadata shapes', function () {
-        expect<Metadata>().type.toBeAssignableFrom<{
-            readonly baselines: readonly ['content-snapshot'];
-            readonly capabilities: readonly ['fs-read'];
-            readonly capture: 'buffered';
-            readonly debug: true;
-            readonly extra: { readonly owner: 'team'; };
-            readonly kind: 'microtest';
+describe('Test Data', function () {
+    test('exposes authored and resolved test data shapes', function () {
+        expect<TestAnnotationsInput>().type.toBeAssignableFrom<{
             readonly ownership: readonly ['@team'];
-            readonly priority: 'critical';
-            readonly runtimes: { readonly mode: 'replace'; readonly values: readonly ['node']; };
-            readonly stability: 'flaky';
             readonly tags: readonly ['fast'];
+        }>();
+        expect<TestControlsInput>().type.toBeAssignableFrom<{
+            readonly capture: 'buffered';
             readonly timeoutMilliseconds: number;
         }>();
-        expect<ResolvedMetadata['kind']>().type.toBe<TestFamily | null>();
-        expect<ResolvedMetadata['stability']>().type.toBe<'experimental' | 'flaky' | 'stable'>();
+        expect<TestAnnotations>().type.toBe<{
+            readonly ownership: readonly string[];
+            readonly tags: readonly string[];
+        }>();
+        expect<TestControls>().type.toBe<{
+            readonly capture: 'buffered' | 'live' | null;
+            readonly timeoutMilliseconds: number | null;
+        }>();
+        expect<TestFamily>().type.toBe<'benchmark' | 'integration' | 'microtest' | 'property' | 'type-test'>();
     });
 });
 

@@ -16,9 +16,11 @@ import { orchestrator } from './run-orchestrator.entry-point.ts';
 import type { RunCommand, RunConfig } from './run-types.ts';
 
 const integrationOutputFixturePath = 'source/integration-tests/run/fixtures/integration-output.test.ts';
-const integrationCaptureMetadataOutputFixturePath =
-    'source/integration-tests/run/fixtures/integration-capture-metadata-output.test.ts';
-const microtestProfile = defaultMicrotestProfile();
+const integrationCaptureControlsOutputFixturePath =
+    'source/integration-tests/run/fixtures/integration-capture-controls-output.test.ts';
+const microtestProfile = defaultMicrotestProfile({
+    timeouts: { collectionMilliseconds: 5000 }
+});
 
 type ArtifactRecorder = {
     readonly artifacts: () => readonly RunArtifact[];
@@ -198,7 +200,7 @@ async function assertLiveIntegrationOutput(
     scope.assert.equal(output.stderr(), 'case stderr\n');
 }
 
-async function assertCaptureMetadataOutput(
+async function assertCaptureControlsOutput(
     scope: OverkillScope,
     artifactReporter: ArtifactRecorder,
     output: CapturedProcessOutput
@@ -206,7 +208,7 @@ async function assertCaptureMetadataOutput(
     const result = await orchestrator.run(
         integrationOutputRunCommand(
             artifactReporter.reporter,
-            integrationCaptureMetadataOutputFixturePath,
+            integrationCaptureControlsOutputFixturePath,
             'buffered'
         )
     );
@@ -222,12 +224,14 @@ async function assertCaptureMetadataOutput(
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/supervised-run-artifacts.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() captures unrestricted integration child output as artifacts',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const artifactRecorder = createArtifactRecorder();
                 const result = await orchestrator.run(
@@ -246,7 +250,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() writes unrestricted integration child output live',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const artifactRecorder = createArtifactRecorder();
                 const output = captureProcessOutput();
@@ -262,14 +267,15 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() honors integration case capture metadata',
-            metadata: {},
+            title: 'orchestrator.run() honors integration case capture controls',
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const artifactRecorder = createArtifactRecorder();
                 const output = captureProcessOutput();
 
                 try {
-                    await assertCaptureMetadataOutput(scope, artifactRecorder, output);
+                    await assertCaptureControlsOutput(scope, artifactRecorder, output);
                 } finally {
                     output.restore();
                 }

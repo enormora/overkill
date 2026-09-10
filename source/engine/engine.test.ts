@@ -14,12 +14,14 @@ import type { RunResult } from './run-result.ts';
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/engine.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'engine.execute() invokes the injected execute dependency',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const expectedResult = runResultFactory.build({ wallTimeMs: 42 });
                 const execute = testDouble<Execute>({
@@ -41,11 +43,13 @@ export const testNode = createOverkillSuite({
                                     testScope.assert.true(true, { message: 'passes' });
                                     return testScope.assert.collect();
                                 },
-                                metadata: {},
+                                annotations: {},
+                                controls: {},
                                 title: 'passes'
                             })
                         ],
-                        metadata: {},
+                        annotations: {},
+                        controls: {},
                         title: 'root'
                     })
                 );

@@ -6,7 +6,8 @@ import {
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/test-support/unit-suite-groups/output-renderers.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         githubActionsOutputRendererTestNode
     ]

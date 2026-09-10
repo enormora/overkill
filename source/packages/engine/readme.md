@@ -26,7 +26,8 @@ Top-level API:
 - `ThrownMatcher`, `ErrorMatcher`, `ExactThrownMatcher`
 - `RequireAssertionFacade`, `FailedCheck`, `TestFailure`, `RunnerError`
 - `Diff`, `DiffPathSegment`, `SerializedValue`, `SerializationBudget`
-- `Metadata`, `ResolvedMetadata`, `TestFamily`, `Capability`, `BaselineSubtype`
+- `TestAnnotations`, `TestAnnotationsInput`, `TestControls`, `TestControlsInput`
+- `TestFamily`, `CaptureMode`
 
 The top-level constructors share one default engine instance. Use
 `createEngine()` when a collection needs isolated construction state for
@@ -42,20 +43,23 @@ export const testNode = createTestCase({
         scope.assert.true(true, { message: 'passes' });
         return scope.assert.collect();
     },
-    metadata: {},
+    annotations: {},
+    controls: {},
     title: 'passes'
 });
 
 const skippedNode = createSkippedTestCase({
+    annotations: {},
+    controls: {},
     definitionLocations: [ { kind: 'unknown' } ],
-    metadata: {},
     reason: 'unsupported platform',
     title: 'platform-specific'
 });
 
 const root = createRoot({
     children: [ testNode, skippedNode ],
-    metadata: { kind: 'microtest' },
+    annotations: {},
+    controls: {},
     title: 'direct'
 });
 
@@ -76,13 +80,15 @@ import { testNode as users } from './users.test.ts';
 
 export const testNode = createSuite({
     children: [ users, orders ],
-    metadata: {},
+    annotations: {},
+    controls: {},
     name: 'all'
 });
 
 const root = createRoot({
     children: [ testNode ],
-    metadata: { kind: 'microtest' },
+    annotations: {},
+    controls: {},
     name: 'all'
 });
 
@@ -90,13 +96,13 @@ await execute(createTestPlan(root));
 ```
 
 Direct `createTestPlan(...)` calls require an explicit `createRoot(...)`.
-The root carries run-level name and metadata, but it does not contribute to
+The root carries run-level name, annotations, and controls, but it does not contribute to
 case suite paths or `RunResult.bySuite`.
 
-Metadata is closed structured input. Unknown first-party metadata fields
-fail during test construction or collection. `TestPlanCase.metadata` is the
-resolved metadata after root, suite, table, and case propagation. Use
-`extra` for package-owned extension data.
+Annotations and controls are closed structured input. Unknown fields fail
+during test construction or collection. `TestPlanCase.annotations` and
+`TestPlanCase.controls` contain the resolved data after root, suite, table,
+and case propagation.
 
 Reporter lifecycle:
 

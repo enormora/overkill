@@ -154,12 +154,14 @@ const failingAssertions: readonly EvaluationCase[] = [
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/assertion-protocol/evaluation.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'evaluateAssertion() passes built-in catalog assertions with strict semantics',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(
                     passingAssertions.map(function toEvaluation(testCase) {
@@ -176,7 +178,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'evaluateAssertion() fails built-in catalog assertions with source-aware checks',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(
                     failingAssertions.map(function toEvaluation(testCase) {
@@ -193,7 +196,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'evaluateAssertion() preserves custom messages and assertion source',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const failedCheck = evaluateAssertion({
                     actual: 1,
@@ -223,7 +227,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'evaluateAssertion() reports unsupported collection operands',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const failedChecks = [
                     evaluateAssertion(check.empty(42), 1),
@@ -248,7 +253,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'evaluateAssertion() passes thrown matcher composites',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const exactAssertion = createThrownMatcherAssertion({
                     kind: 'rejects',
@@ -280,7 +286,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'evaluateAssertion() reports thrown matcher field failures',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const group = check.throws(function throwMismatchedError() {
                     throw Object.assign(new TypeError('actual'), { code: 'ACTUAL' });
@@ -310,7 +317,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'evaluateAssertion() reports missing and non-error thrown values',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const missingGroup = check.throws(function returnNormally() {
                     return 'value';
@@ -343,7 +351,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'invalidDeepAssertionOperand() accepts structural and reference operands',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.equal(invalidDeepAssertionOperand(check.deepEqual({ id: 1 }, { id: 1 })), null);
                 scope.assert.equal(invalidDeepAssertionOperand(check.deepEqual(values, values)), null);
@@ -364,7 +373,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'invalidDeepAssertionOperand() reports primitive exact deep operands',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const nullOperand = invalidDeepAssertionOperand(deepAssertion('deep-equal', null, {}));
                 const undefinedOperand = invalidDeepAssertionOperand(deepAssertion('not-deep-equal', {}, undefined));
@@ -400,7 +410,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'invalidDeepAssertionOperand() reports primitive partial member operands',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const actualOperand = invalidDeepAssertionOperand(
                     deepAssertion('array-contains-partial', 1, { id: 1 })
@@ -440,7 +451,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'invalidDeepAssertionOperand() reports primitive composite child operands',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const operand = invalidDeepAssertionOperand(compositeAssertion([
                     check.true(true),

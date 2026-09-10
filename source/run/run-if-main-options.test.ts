@@ -21,7 +21,8 @@ import {
 } from './run-if-main-facts.ts';
 import {
     executionMode,
-    rootMetadata,
+    rootAnnotations,
+    rootControls,
     rootTitle,
     selectedOutputRenderer,
     selectedReporters,
@@ -111,11 +112,13 @@ function directTestPlan(): TestPlan {
             createDirectTestCase({
                 body: passingBody,
                 definitionLocations: [ { kind: 'unknown' as const } ],
-                metadata: {},
+                annotations: {},
+                controls: {},
                 title: 'passes'
             })
         ],
-        metadata: { kind: 'microtest' },
+        annotations: {},
+        controls: {},
         title: 'root'
     }));
 }
@@ -168,20 +171,31 @@ async function assertReporterSelection(scope: OverkillScope): Promise<void> {
 function assertOutputAndRootOptions(scope: OverkillScope): void {
     scope.assert.equal(selectedOutputRenderer(loadedConfig(null), undefined), outputRenderer);
     scope.assert.equal(selectedOutputRenderer(loadedConfig(null), { outputRenderer, reporters: [] }), outputRenderer);
-    scope.assert.deepEqual(rootMetadata('microtest', undefined), { kind: 'microtest' });
+    scope.assert.deepEqual(rootAnnotations(undefined), {});
+    scope.assert.deepEqual(rootControls(undefined), {});
     scope.assert.deepEqual(
-        rootMetadata('microtest', {
+        rootAnnotations({
             root: {
-                metadata: { kind: 'microtest', tags: [ 'direct' ] },
+                annotations: { tags: [ 'direct' ] },
                 title: 'root'
             }
         }),
-        { kind: 'microtest', tags: [ 'direct' ] }
+        { tags: [ 'direct' ] }
+    );
+    scope.assert.deepEqual(
+        rootControls({
+            root: {
+                controls: { timeoutMilliseconds: 50 },
+                title: 'root'
+            }
+        }),
+        { timeoutMilliseconds: 50 }
     );
     scope.assert.equal(
         rootTitle({
             root: {
-                metadata: {},
+                annotations: {},
+                controls: {},
                 title: 'root'
             }
         }),
@@ -192,12 +206,14 @@ function assertOutputAndRootOptions(scope: OverkillScope): void {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-if-main-options.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() resolves direct execution options',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const profile = directProfile(null, 'serial');
                 const stderr = captureStderr();
@@ -219,7 +235,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'directRunFacts() rejects unknown direct profiles',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.throws(function readMissingDirectProfileFacts() {
                     directRunFacts({

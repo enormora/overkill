@@ -31,12 +31,14 @@ function discoveredFile(file: string): DiscoveredRunFile {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-test-modules.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunTestModules() imports named testNode exports for the selected engine',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const testFiles = await loadRunTestModules([
                     discoveredFile(passingFixturePath),
@@ -62,7 +64,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunTestModules() rejects missing and foreign testNode exports',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function loadMissingExport() {
                     await loadRunTestModules([ discoveredFile(missingTestNodeFixturePath) ], defaultRunEngine);
@@ -82,7 +85,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunTestModules() reports module import failures as collection errors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 try {
                     await loadRunTestModules([ discoveredFile(throwsOnImportFixturePath) ], defaultRunEngine);

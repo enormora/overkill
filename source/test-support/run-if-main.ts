@@ -5,15 +5,17 @@ import {
     execute,
     type DefinedOutputRenderer,
     type DefinedReporter,
-    type Metadata,
     type RunResult,
+    type TestAnnotationsInput,
+    type TestControlsInput,
     type TestNode,
     type TestPlan
 } from '../packages/engine/engine.entry-point.ts';
 import { createLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 
 type TestSupportRunIfMainRootOptions = {
-    readonly metadata: Metadata;
+    readonly annotations?: TestAnnotationsInput;
+    readonly controls?: TestControlsInput;
     readonly title: string;
 };
 
@@ -51,7 +53,6 @@ function selectedRoot(
     options: TestSupportRunIfMainOptions | undefined
 ): TestSupportRunIfMainRootOptions {
     return options?.root ?? {
-        metadata: {},
         title: meta.url
     };
 }
@@ -70,8 +71,9 @@ function testPlan(
     const root = selectedRoot(meta, options);
 
     return createTestPlan(createRoot({
+        annotations: root.annotations ?? {},
         children: [ testNode ],
-        metadata: root.metadata,
+        controls: root.controls ?? {},
         title: root.title
     }));
 }

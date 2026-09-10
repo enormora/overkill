@@ -11,7 +11,7 @@ import {
 } from '../reporters/in-memory-reporter.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { Engine } from './engine.ts';
-import { resolveRootMetadata } from './metadata.ts';
+import { resolveRootTestAnnotations, resolveRootTestControls } from './test-data.ts';
 import { defineReporter, type DefinedReporter, type RealTimeReporter, type ReporterEvent } from './reporter.ts';
 import type {
     BodyErrorTestFailure,
@@ -110,11 +110,13 @@ function createReporterConflictPlan(
                         testScope.assert.true(true, { message: 'passes' });
                         return testScope.assert.collect();
                     },
-                    metadata: {},
+                    annotations: {},
+                    controls: {},
                     title: 'passes'
                 })
             ],
-            metadata: {},
+            annotations: {},
+            controls: {},
             title: 'root'
         })
     );
@@ -141,12 +143,14 @@ function firstOutcome(result: RunResult): TestOutcome | undefined {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/execution-reporting.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() records thrown test body errors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const testPlan = engine.createTestPlan(
@@ -157,11 +161,13 @@ export const testNode = createOverkillSuite({
                                 body() {
                                     throw new Error('boom');
                                 },
-                                metadata: {},
+                                annotations: {},
+                                controls: {},
                                 title: 'throws error'
                             })
                         ],
-                        metadata: {},
+                        annotations: {},
+                        controls: {},
                         title: 'root'
                     })
                 );
@@ -196,7 +202,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() preserves assertions recorded before a thrown body error',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const testPlan = engine.createTestPlan(
@@ -208,11 +215,13 @@ export const testNode = createOverkillSuite({
                                     testScope.assert.equal(1, 2, { message: 'numbers differ' });
                                     throw new Error('boom');
                                 },
-                                metadata: {},
+                                annotations: {},
+                                controls: {},
                                 title: 'asserts then throws'
                             })
                         ],
-                        metadata: {},
+                        annotations: {},
+                        controls: {},
                         title: 'root'
                     })
                 );
@@ -235,7 +244,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() records rejected test body promises as body errors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const testPlan = engine.createTestPlan(
@@ -247,11 +257,13 @@ export const testNode = createOverkillSuite({
                                     await Promise.resolve();
                                     throw new Error('rejects');
                                 },
-                                metadata: {},
+                                annotations: {},
+                                controls: {},
                                 title: 'rejects'
                             })
                         ],
-                        metadata: {},
+                        annotations: {},
+                        controls: {},
                         title: 'root'
                     })
                 );
@@ -271,7 +283,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() delivers events and final results to reporters',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const realTimeReporter = createInMemoryRealTimeReporter();
@@ -285,11 +298,13 @@ export const testNode = createOverkillSuite({
                                     testScope.assert.true(true, { message: 'passes' });
                                     return testScope.assert.collect();
                                 },
-                                metadata: {},
+                                annotations: {},
+                                controls: {},
                                 title: 'passes'
                             })
                         ],
-                        metadata: {},
+                        annotations: {},
+                        controls: {},
                         title: 'root'
                     })
                 );
@@ -309,7 +324,11 @@ export const testNode = createOverkillSuite({
                         {
                             facts: { seed: 42 },
                             kind: 'run-start',
-                            root: { metadata: resolveRootMetadata({}), title: 'root' },
+                            root: {
+                                annotations: resolveRootTestAnnotations({}),
+                                controls: resolveRootTestControls({}),
+                                title: 'root'
+                            },
                             startedAt: '2026-07-15T00:00:00.000Z'
                         },
                         {
@@ -344,7 +363,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() emits suite events for table path segments',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const realTimeReporter = createInMemoryRealTimeReporter();
@@ -357,7 +377,8 @@ export const testNode = createOverkillSuite({
                                     testScope.assert.true(true, { message: 'passes' });
                                     return testScope.assert.collect();
                                 },
-                                metadata: {},
+                                annotations: {},
+                                controls: {},
                                 title: 'first'
                             }),
                             engine.createTable({
@@ -368,7 +389,8 @@ export const testNode = createOverkillSuite({
                                             testScope.assert.true(true, { message: 'row passes' });
                                             return testScope.assert.collect();
                                         },
-                                        metadata: {},
+                                        annotations: {},
+                                        controls: {},
                                         title: 'row 1',
                                         parameters: {}
                                     },
@@ -377,16 +399,19 @@ export const testNode = createOverkillSuite({
                                             testScope.assert.true(true, { message: 'row passes' });
                                             return testScope.assert.collect();
                                         },
-                                        metadata: {},
+                                        annotations: {},
+                                        controls: {},
                                         title: 'row 2',
                                         parameters: {}
                                     }
                                 ],
-                                metadata: {},
+                                annotations: {},
+                                controls: {},
                                 title: 'rows'
                             })
                         ],
-                        metadata: {},
+                        annotations: {},
+                        controls: {},
                         title: 'root'
                     })
                 );
@@ -429,7 +454,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() rejects reporter sink conflicts before starting the run',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const executionState = createReporterConflictExecutionState();

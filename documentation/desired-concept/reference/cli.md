@@ -153,14 +153,14 @@ configuration domain and benchmark execution uses `overkill bench`.
 
 ## Selection And Iteration
 
-| Flag                | Behavior                                               | Reference                                                                                                                 |
-| ------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| `--filter '<expr>'` | Filter by tags, runtime, owner, and related metadata.  | [Metadata And Selection § Filter Expression Grammar](../architecture/metadata-and-selection.md#filter-expression-grammar) |
-| `--title '<text>'`  | Title substring match.                                 | [Metadata And Selection § Local Iteration Workflow](../architecture/metadata-and-selection.md#local-iteration-workflow)   |
-| `--file <path>`     | Restrict the run to a single file.                     | same                                                                                                                      |
-| `--last-failed`     | Run only tests that failed in the previous run.        | same                                                                                                                      |
-| `--watch`           | Rerun the selected suite with Node's built-in watcher. | [Runtime Behavior § Watch-Mode Targeting](../architecture/runtime-behavior.md#watch-mode-targeting)                       |
-| `--shard <i>/<n>`   | Select shard `i` of `n` from the filtered set.         | [Runtime Behavior § Sharding](../architecture/runtime-behavior.md#sharding)                                               |
+| Flag                | Behavior                                               | Reference                                                                                                                   |
+| ------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `--filter '<expr>'` | Filter by annotations, identity, and file path.        | [Test Data And Selection § Filter Expression Grammar](../architecture/test-data-and-selection.md#filter-expression-grammar) |
+| `--title '<text>'`  | Title substring match.                                 | [Test Data And Selection § Local Iteration Workflow](../architecture/test-data-and-selection.md#local-iteration-workflow)   |
+| `--file <path>`     | Restrict the run to a single file.                     | same                                                                                                                        |
+| `--last-failed`     | Run only tests that failed in the previous run.        | same                                                                                                                        |
+| `--watch`           | Rerun the selected suite with Node's built-in watcher. | [Runtime Behavior § Watch-Mode Targeting](../architecture/runtime-behavior.md#watch-mode-targeting)                         |
+| `--shard <i>/<n>`   | Select shard `i` of `n` from the filtered set.         | [Runtime Behavior § Sharding](../architecture/runtime-behavior.md#sharding)                                                 |
 
 Exact `CaseId` selection is programmatic API-only.
 

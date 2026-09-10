@@ -27,12 +27,14 @@ function profileFiles(files: RunProfileFiles): RunProfileFiles {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-profile-file-sets.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() discovers profile file sets',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 await withTemporaryDirectory(async function testTemporaryDirectory(directory) {
                     await mkdir(join(directory, 'source', 'integration'), { recursive: true });
@@ -88,7 +90,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() rejects empty and overlapping profile file sets',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 await withTemporaryDirectory(async function testTemporaryDirectory(directory) {
                     await mkdir(join(directory, 'source', 'unit'), { recursive: true });
@@ -136,7 +139,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() filters profile file sets by directory operands',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 await withTemporaryDirectory(async function testTemporaryDirectory(directory) {
                     await mkdir(join(directory, 'source', 'integration'), { recursive: true });
@@ -181,7 +185,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'discoverRunFiles() validates explicit files against profile file sets',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 await withTemporaryDirectory(async function testTemporaryDirectory(directory) {
                     await mkdir(join(directory, 'source', 'other'), { recursive: true });

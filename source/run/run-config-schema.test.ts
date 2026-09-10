@@ -122,12 +122,14 @@ const invalidNestedFields: readonly SchemaValidationFailure[] = [
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-config-schema.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'microtest profile schema accepts the minimal profile',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 assertValidationSuccess(scope, microtestProfileSchema, { testFamily: 'microtest' });
 
@@ -137,7 +139,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'microtest profile schema accepts every current profile field',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const reporter = createInMemoryRealTimeReporter();
 
@@ -174,7 +177,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'microtest profile schema accepts profile file sets',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 assertValidationSuccess(scope, microtestProfileSchema, {
                     files: {
@@ -197,7 +201,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'microtest execution schema accepts process model and scheduling variants',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 for (const processModel of [ 'in-process', 'supervised-process' ] as const) {
                     for (const scheduling of [ 'concurrent', 'serial' ] as const) {
@@ -211,7 +216,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'integration profile schema accepts supervised profiles with files',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const reporter = createInMemoryRealTimeReporter();
 
@@ -240,7 +246,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'integration execution schema rejects in-process profiles',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const result = safeParse(integrationExecutionSchema, {
                     processModel: 'in-process',
@@ -255,7 +262,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'integration profile schema rejects missing files',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const result = safeParse(integrationProfileSchema, { testFamily: 'integration' });
 
@@ -267,7 +275,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'microtest resource usage schema accepts measured and unmeasured policies',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 assertValidationSuccess(scope, resourceUsageSchema, { measure: false });
                 assertValidationSuccess(scope, resourceUsageSchema, {
@@ -287,7 +296,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'microtest timeout schema accepts soft and hard timeouts',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 assertValidationSuccess(scope, timeoutSchema, {
                     hardMilliseconds: 2,
@@ -301,7 +311,8 @@ export const testNode = createOverkillSuite({
             return createOverkillTestCase({
                 definitionLocations: [ { kind: 'unknown' as const } ],
                 title: `microtest profile schema rejects ${testCase.name}`,
-                metadata: {},
+                annotations: {},
+                controls: {},
                 body(scope: OverkillScope) {
                     assertValidationFailure(scope, testCase);
 
@@ -313,7 +324,8 @@ export const testNode = createOverkillSuite({
             return createOverkillTestCase({
                 definitionLocations: [ { kind: 'unknown' as const } ],
                 title: `microtest profile nested schema ${testCase.name}`,
-                metadata: {},
+                annotations: {},
+                controls: {},
                 body(scope: OverkillScope) {
                     assertValidationFailure(scope, testCase);
 

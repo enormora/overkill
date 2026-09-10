@@ -9,12 +9,14 @@ import { RunCollectionError, RunResolutionError } from './run-errors.ts';
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/command-line-command.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createCommandLineErrorResultFromUnknown() maps no tests collected errors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const result = createCommandLineErrorResultFromUnknown(
                     new RunResolutionError('No explicit run paths were provided.', undefined, 'no-tests-collected')
@@ -31,7 +33,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createCommandLineErrorResultFromUnknown() maps collection errors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const result = createCommandLineErrorResultFromUnknown(
                     new RunCollectionError('Collection failed.', { cause: null }, 'loader')
@@ -49,7 +52,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createCommandLineErrorResultFromUnknown() formats supplemental aggregate errors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const primaryError = new Error('primary failure');
                 const result = createCommandLineErrorResultFromUnknown(
@@ -68,7 +72,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createCommandLineErrorResultFromUnknown() formats supplemental runner errors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const primaryError = new Error('primary failure');
                 const result = createCommandLineErrorResultFromUnknown(
@@ -95,7 +100,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createCommandLineErrorResultFromUnknown() keeps malformed supplemental errors internal',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const primaryError = new Error('primary failure');
                 const result = createCommandLineErrorResultFromUnknown(
@@ -127,7 +133,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createCommandLineErrorResultFromUnknown() falls back to the aggregate message',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const aggregateError = new AggregateError([], 'aggregate failure');
                 Object.defineProperty(aggregateError, 'errors', { value: 'not-an-array' });

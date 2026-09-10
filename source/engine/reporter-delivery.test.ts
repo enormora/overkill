@@ -27,11 +27,13 @@ function createPassingPlan(engine: Engine): TestPlan {
                         testScope.assert.true(true, { message: 'passes' });
                         return testScope.assert.collect();
                     },
-                    metadata: {},
+                    annotations: {},
+                    controls: {},
                     title: 'passes'
                 })
             ],
-            metadata: {},
+            annotations: {},
+            controls: {},
             title: 'root'
         })
     );
@@ -207,12 +209,14 @@ function createDefaultReporterDeliveryEngine(): Engine {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/reporter-delivery.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() records reporter callback failures and notifies other real-time reporters',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const engine = createDefaultReporterDeliveryEngine();
                 const observer = createInMemoryRealTimeReporter();
@@ -250,7 +254,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() does not recurse when a reporter fails while handling runner-error',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const engine = createDefaultReporterDeliveryEngine();
                 const observer = createInMemoryRealTimeReporter();
@@ -308,7 +313,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() isolates reporter callback timeouts',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const testStartSignal = createReporterSignal();
                 const wallClock = createDeterministicWallClock();
@@ -350,7 +356,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() records final reporter errors and emits them after real-time finish',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const engine = createDefaultReporterDeliveryEngine();
                 const observer = createInMemoryRealTimeReporter();
@@ -385,7 +392,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() returns final-phase reporter errors without changing sibling callback input',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const engine = createDefaultReporterDeliveryEngine();
                 const fixture = createFinalPhaseReporterFixture();
@@ -405,7 +413,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() disposes reporters once after final reporting',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const engine = createDefaultReporterDeliveryEngine();
                 const calls: string[] = [];
@@ -443,7 +452,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() records dispose failures in the returned result',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const engine = createDefaultReporterDeliveryEngine();
                 const failingReporter: RealTimeReporter = {

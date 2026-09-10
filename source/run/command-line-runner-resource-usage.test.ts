@@ -74,11 +74,13 @@ function createPassingPlan(): TestPlan {
                         scope.assert.true(true);
                         return scope.assert.collect();
                     },
-                    metadata: {},
+                    annotations: {},
+                    controls: {},
                     title: 'passes'
                 })
             ],
-            metadata: {},
+            annotations: {},
+            controls: {},
             title: 'root'
         })
     );
@@ -237,12 +239,14 @@ function assertResourceUsageCommand(scope: OverkillScope, command: RunCommand): 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/command-line-runner-resource-usage.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() carries resource usage config and request values',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const recordedCommands = createRecordedRunCommands();
                 const runner = createCommandLineRunner(createRunnerDependencies(recordedCommands));

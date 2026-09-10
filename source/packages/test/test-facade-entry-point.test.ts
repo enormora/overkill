@@ -58,22 +58,26 @@ function assertPassingSummary(scope: OverkillScope, summary: unknown): void {
 
 async function executeFacadeAuthoredNode(): Promise<FacadeAuthoringExecution> {
     const integration = createTestFacade({
-        metadata: { capture: 'buffered', extra: { layer: 'integration' }, tags: [ 'facade' ] },
+        annotations: { tags: [ 'facade' ] },
+        controls: { capture: 'buffered' },
         testFamily: 'integration'
     });
     const testCase = integration.test({
+        annotations: { tags: [ 'case' ] },
         body: passingBody,
-        metadata: { capture: 'buffered', extra: { case: 'passes' }, tags: [ 'case' ] },
+        controls: { capture: 'buffered' },
         title: 'passes'
     });
     const testNode = integration.suite({
+        annotations: { tags: [ 'suite' ] },
         children: [ testCase ],
-        metadata: { capture: 'live', extra: { suite: 'runtime' }, tags: [ 'suite' ] },
+        controls: { capture: 'live' },
         title: 'runtime'
     });
     const plan = createTestPlan(createRoot({
+        annotations: {},
         children: [ testNode ],
-        metadata: { kind: 'integration' },
+        controls: {},
         title: 'root'
     }));
 
@@ -88,7 +92,8 @@ async function executeFacadeAuthoredNode(): Promise<FacadeAuthoringExecution> {
 async function executeAuthoredNode(testCase: TestCase): Promise<Awaited<ReturnType<typeof execute>>> {
     return await execute(createTestPlan(createRoot({
         children: [ testCase ],
-        metadata: {},
+        annotations: {},
+        controls: {},
         title: 'root'
     })));
 }
@@ -172,25 +177,21 @@ function assertFacadeAuthoredCase(scope: OverkillScope, plannedCase: FacadeAutho
         params: null,
         suite: [ 'runtime' ]
     });
-    scope.assert.equal(plannedCase.metadata.kind, 'integration');
-    scope.assert.equal(plannedCase.metadata.capture, 'buffered');
-    scope.assert.deepEqual(plannedCase.metadata.tags, [ 'facade', 'suite', 'case' ]);
-    scope.assert.deepEqual(plannedCase.metadata.extra, {
-        case: 'passes',
-        layer: 'integration',
-        suite: 'runtime'
-    });
+    scope.assert.equal(plannedCase.controls.capture, 'buffered');
+    scope.assert.deepEqual(plannedCase.annotations.tags, [ 'facade', 'suite', 'case' ]);
 }
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/packages/test/test-facade-entry-point.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test createTestFacade() returns a narrow authoring surface',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const facade = createTestFacade({ testFamily: 'microtest' });
 
@@ -209,13 +210,14 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(Object.hasOwn(facade, 'defineCompositeAssertion'), false);
                 scope.assert.throws(function createFacadeWithoutDefinition() {
                     invokeCreateTestFacade();
-                }, { message: 'createTestFacade() requires ({ testFamily, metadata? }).' });
+                }, { message: 'createTestFacade() requires ({ testFamily, annotations?, controls? }).' });
                 scope.assert.throws(function createMicrotestFacadeWithCapture() {
                     invokeCreateTestFacade({
-                        metadata: { capture: 'live' },
+                        annotations: {},
+                        controls: { capture: 'live' },
                         testFamily: 'microtest'
                     });
-                }, { message: 'Microtest authoring metadata does not support capture mode.' });
+                }, { message: 'Microtest authoring controls do not support capture mode.' });
 
                 return scope.assert.collect();
             }
@@ -223,7 +225,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test createTestFacade() composes family-specific authoring helpers',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const execution = await executeFacadeAuthoredNode();
 
@@ -238,7 +241,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test facade helpers forward definition and assertion source locations',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const facade = createTestFacade({ testFamily: 'microtest' });
                 const checkMissingName = facade.defineMacro(function createFacadeMissingNameTest(title: string) {

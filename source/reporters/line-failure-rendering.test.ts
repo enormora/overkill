@@ -43,12 +43,14 @@ function assertionFailure(checks: readonly [FailedLeafCheck, ...FailedLeafCheck[
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/line-failure-rendering.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders serialized scalar values and locations',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const lines = formatFailure(assertionFailure([
                     failedCheck({
@@ -102,7 +104,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'source location rendering labels empty and multi-hop chains',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(formatDefinitionLocations([], reportingContext), { details: [], primary: null });
                 scope.assert.deepEqual(
@@ -155,7 +158,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders structured string hunks',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const comparison = compareStringEquality('Ada', 'Grace');
                 const lines = formatFailure(assertionFailure([
@@ -180,7 +184,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders object, array, map, and set diffs',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const objectComparison = compareDeepValues({ id: 1, name: 'Grace' }, { id: 1, name: 'Ada' });
                 const arrayComparison = compareDeepValues([ 1, 3 ], [ 1, 2 ]);
@@ -226,7 +231,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders binary diff summaries',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const actualBytes = new Uint8Array(101);
                 const expectedBytes = new Uint8Array(101);
@@ -253,7 +259,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders composite children',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const child = failedCheck({
                     actual: serializeValue(false),
@@ -290,7 +297,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders body errors and test-contract failures',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const failure: TestFailure = {
                     error: {
@@ -322,7 +330,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter truncates oversized rendered values',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const diff: Diff = {
                     actual: serializeValue('x'.repeat(9000)),

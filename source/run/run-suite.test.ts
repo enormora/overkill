@@ -11,7 +11,8 @@ import { testNode as supervisedRunTestNode } from './supervised-run-suite.test.t
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-suite.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         commandLineRunnerTestNode,
         resourceUsageTestNode,

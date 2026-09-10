@@ -272,13 +272,13 @@ export function timeoutFailure(deadlineMilliseconds: number, elapsedMilliseconds
     };
 }
 
-export function invalidTimeoutMetadataFailure(actual: unknown, expected: string): TestContractFailure {
+export function invalidTimeoutControlFailure(actual: unknown, expected: string): TestContractFailure {
     return {
         actual,
-        code: 'invalid-timeout-metadata',
+        code: 'invalid-timeout-control',
         expected,
         kind: 'test-contract',
-        summary: 'Timeout metadata must be a positive safe integer within the hard timeout.'
+        summary: 'Timeout control must be a positive safe integer within the profile soft timeout.'
     };
 }
 

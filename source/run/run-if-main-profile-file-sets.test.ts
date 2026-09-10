@@ -70,7 +70,8 @@ function passingCase(): DirectTestNode {
     return createDirectTestCase({
         body: passingBody,
         definitionLocations: [ { kind: 'unknown' as const } ],
-        metadata: {},
+        annotations: {},
+        controls: {},
         title: 'passes'
     });
 }
@@ -78,12 +79,14 @@ function passingCase(): DirectTestNode {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-if-main-profile-file-sets.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() rejects empty file sets while selecting direct profiles',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const project = await createDirectProject('direct.test.ts');
 
@@ -120,7 +123,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runIfMain() rejects a non-microtest fallback profile named microtest',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const project = await createDirectProject('direct.test.ts');
 

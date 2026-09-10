@@ -9,10 +9,10 @@ topic.
 
 Two categories live here:
 
-- **Settled rejections** — directions Overkill has decided against. Each
+- **Settled rejections** - directions Overkill has decided against. Each
   entry names what is rejected, why, where the rejection lives in the
   canonical documentation, and the accepted alternative.
-- **Deferred with research** (see the section near the end) — directions
+- **Deferred with research** (see the section near the end) - directions
   rejected for the _current_ concept but with a preserved record of the
   research already done and the conditions under which the decision
   would be revisited. `@overkill-dev/world` and in-source tests live here.
@@ -41,7 +41,7 @@ dangerous when accidentally committed: a focused test can make CI run
 only one test while still appearing green. Many existing frameworks
 need custom lint rules just to contain that footgun.
 
-Where: [Metadata And Selection § Local Iteration Workflow](../architecture/metadata-and-selection.md#local-iteration-workflow),
+Where: [Test Data And Selection § Local Iteration Workflow](../architecture/test-data-and-selection.md#local-iteration-workflow),
 [Tests As Values § Recommendation](../authoring/tests-as-values.md#recommendation).
 
 Alternative: CLI selection (`--title`, `--file`, `--id`, `--last-failed`).
@@ -94,7 +94,7 @@ Overkill does not ship a long-lived `overkill daemon` socket-based
 runner.
 
 Why: warm reuse adds long-lived state, socket protocol, and lifecycle
-management — and the optimization target is cold start, not warm
+management - and the optimization target is cold start, not warm
 steady-state (see [Principles § Cold Start Is The Budget](./principles.md#cold-start-is-the-budget)).
 
 Where: [Fast Feedback Loops § 11. Out-of-the-box ideas for fast startup](../architecture/fast-feedback-loops.md#11-out-of-the-box-ideas-for-fast-startup).
@@ -135,7 +135,7 @@ Overkill does not ship its own strip cache or bytecode cache.
 
 Why: Node's module compile cache covers bytecode reuse, and the strip
 cost is single-digit milliseconds per file. A custom warm cache would
-need to clear [Principles § Cold Start Is The Budget](./principles.md#cold-start-is-the-budget) — it cannot
+need to clear [Principles § Cold Start Is The Budget](./principles.md#cold-start-is-the-budget) - it cannot
 penalize the cold path.
 
 Where: [Fast Feedback Loops § 4. Sharing parsed sources between tests in the same process](../architecture/fast-feedback-loops.md#4-sharing-parsed-sources-between-tests-in-the-same-process).
@@ -216,7 +216,7 @@ microtests keeps the API surface small.
 
 Where: [Coverage § Position](../architecture/coverage.md#position).
 
-Alternative: per-profile coverage stories handled outside Overkill —
+Alternative: per-profile coverage stories handled outside Overkill -
 browser instrumentation in the browser test rig, integration coverage
 via external tooling if a team genuinely wants it.
 
@@ -224,10 +224,10 @@ via external tooling if a team genuinely wants it.
 
 ### No allowEmpty escape hatch for zero-assertion tests
 
-Overkill rejects `{ allowEmpty: true }` per-test metadata and any
+Overkill rejects `{ allowEmpty: true }` per-test control data and any
 global override that lets a zero-assertion test pass.
 
-Why: an "exit ramp" from the contract — see [Principles § The Suite Is A Contract](./principles.md#the-suite-is-a-contract).
+Why: an "exit ramp" from the contract - see [Principles § The Suite Is A Contract](./principles.md#the-suite-is-a-contract).
 
 Where: [Assertions And Results § Zero-Assertion Detection As Default Failure](../authoring/assertions-and-results.md#zero-assertion-detection-as-default-failure).
 
@@ -276,9 +276,9 @@ any non-zero exit as failure themselves.
 
 Overkill does not retry microtests as a normal mode.
 
-Why: an "exit ramp" from the contract — see [Principles § The Suite Is A Contract](./principles.md#the-suite-is-a-contract).
+Why: an "exit ramp" from the contract - see [Principles § The Suite Is A Contract](./principles.md#the-suite-is-a-contract).
 
-Where: [Metadata And Selection § Stability Markers](../architecture/metadata-and-selection.md#stability-markers),
+Where: [Test Data And Selection § Future Work](../architecture/test-data-and-selection.md#future-work),
 [Microtests And Capabilities](../authoring/microtests-and-capabilities.md).
 
 Alternative: integration-style profiles may opt into retries with
@@ -289,12 +289,12 @@ attribution-preserving artifacts. Microtests do not.
 Overkill does not ship a "known-flaky, allow to fail without gating"
 mode.
 
-Why: an "exit ramp" from the contract — see [Principles § The Suite Is A Contract](./principles.md#the-suite-is-a-contract).
+Why: an "exit ramp" from the contract - see [Principles § The Suite Is A Contract](./principles.md#the-suite-is-a-contract).
 
-Where: [Metadata And Selection § Stability Markers](../architecture/metadata-and-selection.md#stability-markers) (Quarantine
+Where: [Test Data And Selection § Future Work](../architecture/test-data-and-selection.md#future-work) (Quarantine
 glossary entry was removed in the same direction).
 
-Alternative: stability markers as reporting metadata only; CI gates use
+Alternative: stability markers as derived facts only; CI gates use
 verdict, not quarantine. A flaky test is fixed or deleted, not parked.
 
 ## Plugin And Extension Surface
@@ -331,7 +331,7 @@ Status: rejected for the current concept; revisit if the production-code
 boundary changes.
 
 What it would have been: a first-class package for declaring application
-capabilities — explicit boundaries, typed recording handles, deterministic
+capabilities - explicit boundaries, typed recording handles, deterministic
 helpers for effectful collaborators, reusable recorder and snapshot
 helpers.
 
@@ -382,5 +382,5 @@ Where: [Tests As Values § Recommendation](../authoring/tests-as-values.md#recom
 ## What This Doc Is Not
 
 This file does not list every feature deferred to a later release. It
-lists _decided-against_ directions — both settled rejections and the
+lists _decided-against_ directions - both settled rejections and the
 deferred-with-research entries above.

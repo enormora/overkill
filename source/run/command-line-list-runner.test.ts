@@ -77,19 +77,22 @@ function createPassingPlan(): TestPlan {
                     return scope.assert.collect();
                 },
                 definitionLocations: [ testLocation ],
-                metadata: {},
+                annotations: {},
+                controls: {},
                 title: 'passes'
             })
         ],
         definitionLocations: [ suiteLocation ],
-        metadata: {},
+        annotations: {},
+        controls: {},
         title: 'suite'
     });
 
     return engine.createTestPlanFromTestFiles({
         files: [ { file: 'source/a.test.ts', testNode } ],
         root: {
-            metadata: {},
+            annotations: {},
+            controls: {},
             title: 'root'
         }
     });
@@ -108,9 +111,10 @@ function selectedProfile(command: RunCommand): RunProfileConfig {
 function caseFactsFromPlan(testPlan: TestPlan): ResolvedRun['facts']['cases'] {
     return testPlan.cases.map(function toRunCaseFacts(testCase) {
         return {
+            annotations: { constructorName: 'Object', entries: [], kind: 'object', truncation: null },
+            controls: { constructorName: 'Object', entries: [], kind: 'object', truncation: null },
             fileSet: null,
-            id: testCase.id,
-            metadata: { constructorName: 'Object', entries: [], kind: 'object', truncation: null }
+            id: testCase.id
         };
     });
 }
@@ -252,12 +256,14 @@ async function listTests(
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/command-line-list-runner.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.listTests() renders the resolved plan tree without loading reporters',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 let defaultReporterLoadCount = 0;
                 const receivedCommands: RunCommand[] = [];
@@ -292,7 +298,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.listTests() preserves list selection',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const receivedCommands: RunCommand[] = [];
                 const selection: RunSelection = {
@@ -333,7 +340,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.listTests() renders definition locations when requested',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await listTests(
                     createDependencies(
@@ -361,7 +369,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.listTests() renders explicit orphan diagnostics',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await listTests(
                     createDependencies(
@@ -391,7 +400,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.listTests() renders orphan definition locations when requested',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await listTests(
                     createDependencies(
@@ -416,7 +426,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.listTests() maps collection runner errors without printing the plan',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await listTests(
                     createDependencies(
@@ -450,7 +461,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.listTests() maps config load errors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const runner = createCommandLineRunner({
                     ...createDependencies(
@@ -491,7 +503,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.listTests() maps thrown collection errors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await listTests(
                     createDependencies(

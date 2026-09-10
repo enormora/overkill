@@ -9,10 +9,12 @@ export const testNode = createSuite({
                 scope.assert.true(true, { message: 'b' });
                 return scope.assert.collect();
             },
-            metadata: {},
+            annotations: {},
+            controls: {},
             title: 'same case'
         })
     ],
-    metadata: {},
+    annotations: {},
+    controls: {},
     title: 'same suite'
 });

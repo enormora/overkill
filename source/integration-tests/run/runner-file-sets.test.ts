@@ -118,12 +118,14 @@ function createRunCommand(): RunCommand {
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/integration-tests/run/runner-file-sets.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'runner records profile file sets in run facts',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 const resolvedRun = await orchestrator.resolve(createRunCommand());
 

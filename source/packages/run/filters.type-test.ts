@@ -15,8 +15,6 @@ type FilterPackageValueExport = keyof {
     readonly owner: true;
     readonly params: true;
     readonly parseRunFilterExpression: true;
-    readonly runtime: true;
-    readonly stability: true;
     readonly suite: true;
     readonly tag: true;
     readonly title: true;
@@ -26,7 +24,7 @@ describe('@overkill-dev/run/filters', function () {
     test('exposes the typed filter helper surface without test-family matching', function () {
         expect<keyof typeof filters>().type.toBe<FilterPackageValueExport>();
         expect<RunStringFilterField>().type.toBe<
-            'file' | 'owner' | 'params' | 'runtime' | 'stability' | 'suite' | 'tag' | 'title'
+            'file' | 'owner' | 'params' | 'suite' | 'tag' | 'title'
         >();
     });
 
@@ -42,8 +40,6 @@ describe('@overkill-dev/run/filters', function () {
             filters.not(filters.tag('flaky')),
             filters.any([ filters.file('source/**'), filters.title('user') ]),
             filters.owner('@users'),
-            filters.runtime('node'),
-            filters.stability('stable'),
             filters.suite('users'),
             filters.params('primary'),
             filters.caseId(id)
@@ -78,8 +74,6 @@ describe('@overkill-dev/run/filters', function () {
         expect<typeof filters.file>().type.toBe<(pattern: string) => RunFilter>();
         expect<typeof filters.owner>().type.toBe<(value: string) => RunFilter>();
         expect<typeof filters.params>().type.toBe<(value: string) => RunFilter>();
-        expect<typeof filters.runtime>().type.toBe<(value: string) => RunFilter>();
-        expect<typeof filters.stability>().type.toBe<(value: 'experimental' | 'flaky' | 'stable') => RunFilter>();
         expect<typeof filters.suite>().type.toBe<(value: string) => RunFilter>();
         expect<typeof filters.tag>().type.toBe<(value: string) => RunFilter>();
         expect<typeof filters.title>().type.toBe<(value: string) => RunFilter>();
@@ -87,8 +81,11 @@ describe('@overkill-dev/run/filters', function () {
 
     test('keeps invalid fields and stability markers out of helper calls', function () {
         expect<RunStringFilterField>().type.not.toBeAssignableFrom<'kind'>();
+        expect<RunStringFilterField>().type.not.toBeAssignableFrom<'runtime'>();
+        expect<RunStringFilterField>().type.not.toBeAssignableFrom<'stability'>();
         expect<keyof typeof filters>().type.not.toBeAssignableFrom<'kind'>();
-        expect<typeof filters.stability>().type.not.toBeCallableWith('quarantined');
+        expect<keyof typeof filters>().type.not.toBeAssignableFrom<'runtime'>();
+        expect<keyof typeof filters>().type.not.toBeAssignableFrom<'stability'>();
         expect<typeof filters.equals>().type.not.toBeCallableWith('kind', 'microtest');
     });
 });

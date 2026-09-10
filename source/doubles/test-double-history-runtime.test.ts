@@ -86,12 +86,14 @@ function createRejectedResultRecord(error: Error): RejectedResultRecord {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/doubles/test-double-history-runtime.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubles expose aggregate counts for returned calls',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: function body(scope: OverkillScope) {
                 const { loadValue } = createRecordedScopedLoadValue();
 
@@ -106,7 +108,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubles expose aggregate call history for returned calls',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: function body(scope: OverkillScope) {
                 const { actual, loadValue, receiver } = createRecordedScopedLoadValue();
                 const { firstInteraction, firstCall } = loadValue;
@@ -142,7 +145,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubles expose returned call result history',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: function body(scope: OverkillScope) {
                 const { actual, loadValue } = createRecordedScopedLoadValue();
                 const { lastResult } = loadValue;
@@ -157,7 +161,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubles expose construction counts for returned constructions',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: function body(scope: OverkillScope) {
                 const { Client } = createRecordedClientConstructor();
 
@@ -171,7 +176,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubles expose construction history for returned constructions',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: function body(scope: OverkillScope) {
                 const { Client, actual, client } = createRecordedClientConstructor();
                 const { firstConstruction, firstInteraction } = Client;
@@ -190,7 +196,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'aggregate history counts calls and constructions together',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: function body(scope: OverkillScope) {
                 const { calledClient, calledResult, clientFactoryDouble, constructedClient, constructedResult } =
                     createRecordedClientFactory();
@@ -207,7 +214,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'aggregate history preserves chronological call and construction order',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: function body(scope: OverkillScope) {
                 const { calledClient, calledResult, clientFactoryDouble, constructedClient, constructedResult } =
                     createRecordedClientFactory();
@@ -250,7 +258,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'history records thrown calls',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 type LoadValue = (id: string) => string;
 
@@ -269,7 +278,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'history records missing behavior',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 type LoadValue = (id: string) => string;
 
@@ -289,7 +299,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'history records unsupported invocation modes',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: function body(scope: OverkillScope) {
                 const Client = testDouble.constructs({ id: 'client' });
 
@@ -306,7 +317,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'history records thrown constructions with null instances',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: function body(scope: OverkillScope) {
                 type ClientConstructor = new () => ClientWithId;
 
@@ -331,7 +343,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'promise results are recorded immediately without awaiting settlement',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const error = new Error('expected');
                 const { firstResult, loadValue, promise } = createRejectedResultRecord(error);

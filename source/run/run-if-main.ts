@@ -11,7 +11,8 @@ import {
 } from './run-if-main-facts.ts';
 import {
     executionMode,
-    rootMetadata,
+    rootAnnotations,
+    rootControls,
     rootTitle,
     selectedOutputRenderer,
     selectedReporters,
@@ -55,8 +56,9 @@ async function createDirectRunContext(
 
 function directTestPlan(context: DirectRunContext): TestPlan {
     return defaultRunEngine.createTestPlan(defaultRunEngine.createRoot({
+        annotations: rootAnnotations(context.options),
         children: [ context.testNode ],
-        metadata: rootMetadata(context.profile.testFamily, context.options),
+        controls: rootControls(context.options),
         title: rootTitle(context.options)
     }));
 }

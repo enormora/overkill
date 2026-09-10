@@ -35,11 +35,13 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
                     engine.createTestCase({
                         definitionLocations: [ { kind: 'unknown' as const } ],
                         body,
-                        metadata: {},
+                        annotations: {},
+                        controls: {},
                         title: 'case'
                     })
                 ],
-                metadata: {},
+                annotations: {},
+                controls: {},
                 title: 'root'
             })
         )
@@ -78,12 +80,14 @@ function firstFailedCheck(outcome: FailOutcome): FailedCheck | null {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/assertion-execution.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() counts successful requirements once a returned assertion result exists',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
                     testScope.plan(2);
@@ -100,7 +104,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() rejects successful require-only builder collection',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
                     testScope.require.string('value');
@@ -125,7 +130,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() skips plan mismatch when a requirement fails',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
                     testScope.plan(2);
@@ -164,7 +170,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() treats caught failed requirements as fatal and ignores later assertions',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
                     try {
@@ -207,7 +214,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() rejects returned results that drop recorded builder assertions',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope) {
                     const replacement: AssertAssertionNode = {
@@ -241,7 +249,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() accepts appended direct assertions around builder assertions',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope) {
                     const leading: AssertAssertionNode = {
@@ -273,7 +282,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() merges successful requirements by timeline for counts and check ids',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
                     testScope.plan(3);

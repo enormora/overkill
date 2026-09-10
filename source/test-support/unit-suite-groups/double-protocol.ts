@@ -7,7 +7,8 @@ import { testNode as protocolDoubleTestNode } from '../../doubles/protocol-doubl
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/test-support/unit-suite-groups/double-protocol.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         doubleUsageOrderTestNode,
         doubleUsageTestNode,

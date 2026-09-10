@@ -883,7 +883,7 @@ The engine treats structured outcomes as canonical:
 
 ```ts
 // engine-level outcome; reporter-facing verdicts (for example
-// `crashed`) are derived from outcome + metadata + runner-error state
+// `crashed`) are derived from outcome plus runner-error state
 // - see Glossary § Test Outcome / Test Verdict.
 type TestOutcome = Pass | Fail | Skip | Inconclusive;
 

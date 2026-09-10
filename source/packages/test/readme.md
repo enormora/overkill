@@ -74,13 +74,11 @@ The root doubles exports are the current lightweight public surface from
 `@overkill-dev/doubles`. Import the leaf package directly when documenting or
 testing doubles package ownership.
 
-Nodes created through this root facade derive `metadata.kind: 'microtest'`.
-High-level authoring metadata accepts `tags` and `extra`; engine-owned fields
-such as `kind`, `runtimes`, `ownership`, and `capture` stay outside the root
-facade.
+Nodes created through this root facade are microtests. The engine records that
+as internal family data, not as authored test data.
 
-Use the object form when attaching node metadata. Metadata on the exported
-top-level `testNode` applies to the whole module's test tree.
+Use the object form when attaching annotations or controls. Annotations on the
+exported top-level `testNode` apply to the whole module's test tree.
 
 `skippedTest(title, reason)` creates a visible leaf test with a mandatory
 reason. It is discovered, listed, reported as skipped, and never runs user
@@ -89,11 +87,12 @@ code. Object form is `skippedTest({ title, metadata, reason })`.
 ```ts
 export const testNode = suite({
     title: 'users',
-    metadata: { tags: [ 'auth' ] },
+    annotations: { tags: [ 'auth' ] },
     children: [
         test({
             title: 'loads user',
-            metadata: { tags: [ 'critical' ] },
+            annotations: { tags: [ 'critical' ] },
+            controls: { timeoutMilliseconds: 1_000 },
             body(scope) {
                 scope.assert.equal(loadUser('42').name, 'Ada');
                 return scope.assert.collect();
@@ -218,15 +217,16 @@ export const {
     table,
     test
 } = createTestFacade({
-    metadata: { tags: [ 'integration' ] },
+    annotations: { tags: [ 'integration' ] },
+    controls: { capture: 'live' },
     testFamily: 'integration'
 });
 ```
 
 The returned facade contains authoring helpers only. Assertions and doubles
 are imported alongside it instead of being registered into the facade.
-Non-microtest facades also accept `metadata.capture` as a capture preference
-for tests, suites, tables, and facade-wide metadata.
+Non-microtest facades also accept `controls.capture` as a capture preference
+for tests, suites, tables, and facade-wide controls.
 
 Direct Node execution:
 

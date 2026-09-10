@@ -110,7 +110,7 @@ type ReporterEvent =
     | {
         kind: 'run-start';
         facts: RunFacts;
-        root: { name: string; metadata: ResolvedMetadata; };
+        root: { name: string; annotations: TestAnnotations; };
         startedAt: string;
     }
     | { kind: 'suite-start'; suitePath: ReadonlyArray<string>; }
@@ -133,7 +133,7 @@ Each event carries enough structured data that a reporter never has
 to parse another reporter's output. Event identity is via `kind`;
 new event variants are an additive change.
 
-`run-start.root` carries the execution root name and resolved metadata for display.
+`run-start.root` carries the execution root name and resolved annotations for display.
 The root is not a suite path segment. `suite-start` and `suite-end` identify
 visible groupings by `suitePath`. Tables contribute path segments because
 they are named groupings in the resolved plan and in `RunResult.bySuite`.

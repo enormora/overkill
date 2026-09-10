@@ -14,12 +14,14 @@ import {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/compare/comparison-edge.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareStringEquality() returns no diff for equal strings',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(compareStringEquality('same', 'same'), {
                     actual: { kind: 'string', truncation: null, value: 'same' },
@@ -35,7 +37,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() rejects mismatched container kinds',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.equal(compareDeepValues([ 1 ], { 0: 1 }).passed, false);
                 scope.assert.equal(compareDeepValues(new Map(), new Set()).passed, false);
@@ -50,7 +53,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() treats unavailable object introspection as a mismatch',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const ownKeysProxy = new Proxy({}, {
                     ownKeys() {
@@ -72,7 +76,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() emits object remove and add operations',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const missing = compareDeepValues({ id: 1 }, { id: 1, name: 'Ada' });
                 const extra = compareDeepValues({ id: 1, name: 'Ada' }, { id: 1 });
@@ -108,7 +113,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() emits array removal for missing actual indexes',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const result = compareDeepValues([ 1 ], [ 1, 2 ]);
                 const { diff } = result;
@@ -131,7 +137,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() handles ArrayBuffer and byte length mismatches',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const changed = compareDeepValues(Uint8Array.from([ 1 ]).buffer, Uint8Array.from([ 2 ]).buffer);
                 const longer = compareDeepValues(Uint8Array.from([ 1, 2 ]), Uint8Array.from([ 1 ]));
@@ -159,7 +166,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareDeepValues() reports Error name and enumerable data differences',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const actual = new Error('same');
                 const expected = new Error('same');
@@ -185,7 +193,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'comparePartialValue() handles primitive, array, built-in, and opaque failures',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.equal(comparePartialValue(1, 2).passed, false);
                 scope.assert.equal(comparePartialValue({}, [ 1 ]).passed, false);
@@ -202,7 +211,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'comparePartialValue() preserves repeated reference topology',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const shared = { value: 1 };
                 const actual = { left: shared, right: shared };
@@ -219,7 +229,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'comparePartialValue() handles Map, Set, Error, and binary subsets',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(
                     [
@@ -258,7 +269,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'array membership comparisons report pass and invalid operand cases',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.equal(compareArrayContainsPartial([ { id: 1 } ], { id: 1 }).passed, true);
                 scope.assert.equal(compareArrayContainsPartial({ id: 1 }, { id: 1 }).passed, false);

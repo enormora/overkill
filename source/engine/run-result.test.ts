@@ -36,12 +36,14 @@ function createFailedCheck(): FailedCheckFixture {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/run-result.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'verdictFromOutcome() returns the outcome kind as the verdict',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const outcome: TestOutcome = {
                     failures: [ { checks: [ createFailedCheck() ], kind: 'assertion' } ],

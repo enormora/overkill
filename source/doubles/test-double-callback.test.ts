@@ -28,12 +28,14 @@ const unusedBehaviorRuntime: BehaviorRuntime = {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/doubles/test-double-callback.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'rule.callsCallback() invokes a callback argument synchronously',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const seen: unknown[] = [];
                 const readValue = testDouble<ReadValue>({
@@ -52,7 +54,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'rule.callsCallbackAsync() invokes a callback argument in a microtask',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const seen: string[] = [];
                 const readValue = testDouble<ReadValue>({
@@ -76,7 +79,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'callback rule factories expose their configured return values',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.equal(rule.callsCallback(0, [], 'sync').result(), 'sync');
                 scope.assert.equal(rule.callsCallbackAsync(0, [], 'async').result(), 'async');
@@ -87,7 +91,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'rule.callsCallback() binds a callback receiver',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const receiver = { scope: 'test' };
                 const callback = publishedTestDouble<(value: string) => undefined>();
@@ -109,7 +114,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'rule.callsCallbackAsync() supports argument rules and receiver binding',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const receiver = { scope: 'async' };
                 const callback = publishedTestDouble<(value: string) => undefined>();
@@ -141,7 +147,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'rule.callsCallback() supports argument rules and ordered rules',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const seen: string[] = [];
                 const readValue = testDouble<ReadValue>({
@@ -168,7 +175,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'rule.callsCallback() validates callback behavior at runtime',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.throws(function createNegativeCallbackRule() {
                     rule.callsCallback(-1, [], undefined);
@@ -188,7 +196,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'rule.callsCallback() rejects construction invocations',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const constructionInvocation: Invocation = {
                     arguments: [],
@@ -207,7 +216,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'rule.callsCallback() snapshots callback arguments',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const values: [string] = [ 'first' ];
                 const seen: string[] = [];
@@ -228,7 +238,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'rule.sequence() supports callback behavior entries',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const seen: string[] = [];
                 const readValue = testDouble<ReadValue>({

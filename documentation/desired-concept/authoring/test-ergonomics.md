@@ -246,7 +246,7 @@ ergonomic justification for using macros to remove repeated local
 choreography.
 
 - generated tests must have strong explicit names
-- helper failures and definition-site metadata should point back to the
+- helper failures and definition-site data should point back to the
   user-authored macro application callsite where practical
 - the first-party concept should care about stack quality, not only about
   case expansion

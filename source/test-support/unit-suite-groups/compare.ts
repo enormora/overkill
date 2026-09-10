@@ -8,7 +8,8 @@ import { testNode as serializedValueTestNode } from '../../compare/serialized-va
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/test-support/unit-suite-groups/compare.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         comparisonCollectionsTestNode,
         comparisonEdgeTestNode,

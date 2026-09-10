@@ -11,7 +11,8 @@ import { testNode as testDoubleTestNode } from '../../doubles/test-double.test.t
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/test-support/unit-suite-groups/test-double-runtime.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         doubleHistoryEmptyTestNode,
         testDoubleCallbackTestNode,

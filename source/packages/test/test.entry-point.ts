@@ -8,12 +8,12 @@ export {
     table,
     test
 } from './test-authoring.ts';
+export type { TestFacade } from './test-authoring.ts';
 export type {
     RunIfMain,
     RunIfMainOptions,
-    RunIfMainRootOptions,
-    TestFacade
-} from './test-authoring.ts';
+    RunIfMainRootOptions
+} from './authoring-test-data.ts';
 export type {
     ParameterizedTestScope,
     TableDefinition,
@@ -82,10 +82,11 @@ export type {
 } from '../doubles/doubles.entry-point.ts';
 
 export type {
-    AuthoringMetadata,
-    CaptureAuthoringMetadata,
+    AuthoringAnnotations,
+    CaptureAuthoringControls,
+    MicrotestAuthoringControls,
     TestFacadeDefinition
-} from './authoring-metadata.ts';
+} from './authoring-test-data.ts';
 
 export type {
     OutputRenderer,

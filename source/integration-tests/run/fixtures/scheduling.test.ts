@@ -14,7 +14,8 @@ export const testNode = createSuite({
 
                 return scope.assert.collect();
             },
-            metadata: {},
+            annotations: {},
+            controls: {},
             title: 'delayed'
         }),
         createTestCase({
@@ -24,10 +25,12 @@ export const testNode = createSuite({
 
                 return scope.assert.collect();
             },
-            metadata: {},
+            annotations: {},
+            controls: {},
             title: 'immediate'
         })
     ],
-    metadata: {},
+    annotations: {},
+    controls: {},
     title: 'scheduling fixture'
 });

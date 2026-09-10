@@ -43,11 +43,13 @@ async function executeSingleBody(body: TestBody): Promise<RunResult> {
                     engine.createTestCase({
                         definitionLocations: [ { kind: 'unknown' as const } ],
                         body,
-                        metadata: {},
+                        annotations: {},
+                        controls: {},
                         title: 'case'
                     })
                 ],
-                metadata: {},
+                annotations: {},
+                controls: {},
                 title: 'root'
             })
         )
@@ -110,12 +112,14 @@ function failureSummaries(result: RunResult): readonly string[] | null {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/doubles/double-usage.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage call count and mode assertions pass through scope.assert()',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
@@ -139,7 +143,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage construction count and mode assertions pass through scope.assert()',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const Client = testDouble.constructs<ClientConstructor>({ id: 'client' });
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
@@ -164,7 +169,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage negative mode assertions produce domain summaries',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
@@ -199,7 +205,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage argument assertions support partial, prefix, and exact matching',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const user = { id: '42', name: 'Ada' };
                 const loadUser = testDouble.returns<LoadUser>(user);
@@ -228,7 +235,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage iterator assertions pass through scope.assert()',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const loadEvents = testDouble.yields([ 'created', 'updated' ]);
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
@@ -253,7 +261,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage iterator assertions report protocol history failures',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const loadEvents = testDouble.yields([ 'created' ]);
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
@@ -282,7 +291,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage prefix assertions reject empty prefixes',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const ping = testDouble.returns<Ping>('pong');
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
@@ -313,7 +323,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage argument assertions distinguish exact arity from prefix arity',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
@@ -334,7 +345,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage once, last, and nth argument assertions use the relevant mode history',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
@@ -355,7 +367,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage argument assertion failures explain the matched position',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
                 const ping = testDouble.returns<Ping>('pong');
@@ -395,7 +408,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage calledOnceWith requires one total call in that mode',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {

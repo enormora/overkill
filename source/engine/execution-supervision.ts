@@ -1,6 +1,6 @@
 import type { WallClock } from '@enormora/wall-clock';
 import {
-    invalidTimeoutMetadataFailure,
+    invalidTimeoutControlFailure,
     runTestCase,
     timeoutFailure,
     type TestRuntimePolicy
@@ -171,8 +171,8 @@ function failCase(id: TestPlanCase['id'], failures: readonly [TestFailure, ...Te
     };
 }
 
-function timeoutMetadataValue(testCase: TestPlanCase): unknown {
-    return testCase.metadata.timeoutMilliseconds;
+function timeoutControlValue(testCase: TestPlanCase): unknown {
+    return testCase.controls.timeoutMilliseconds;
 }
 
 function isPositiveSafeInteger(value: unknown): value is number {
@@ -187,20 +187,20 @@ function resolveSoftTimeout(
         return { kind: 'milliseconds', milliseconds: null };
     }
 
-    const metadataTimeout = timeoutMetadataValue(testCase);
+    const controlTimeout = timeoutControlValue(testCase);
 
-    if (metadataTimeout === null) {
+    if (controlTimeout === null) {
         return { kind: 'milliseconds', milliseconds: policy.timeoutMilliseconds };
     }
 
-    if (isPositiveSafeInteger(metadataTimeout) && metadataTimeout <= policy.hardTimeoutMilliseconds) {
-        return { kind: 'milliseconds', milliseconds: metadataTimeout };
+    if (isPositiveSafeInteger(controlTimeout) && controlTimeout <= policy.timeoutMilliseconds) {
+        return { kind: 'milliseconds', milliseconds: controlTimeout };
     }
 
     return {
-        failure: invalidTimeoutMetadataFailure(
-            metadataTimeout,
-            `positive safe integer <= ${policy.hardTimeoutMilliseconds}`
+        failure: invalidTimeoutControlFailure(
+            controlTimeout,
+            `positive safe integer <= ${policy.timeoutMilliseconds}`
         ),
         kind: 'failure'
     };

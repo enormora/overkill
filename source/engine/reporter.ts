@@ -1,8 +1,8 @@
 import type { CaseId } from './identity.ts';
-import type { ResolvedMetadata } from './metadata.ts';
 import type { OptionalReporterOutput, OutputIntentRole } from './reporter-output.ts';
 import type { ReportingContext } from './reporting-context.ts';
 import type { RunArtifact, RunResult, RunnerError, TestOutcome, TestVerdict } from './run-result.ts';
+import type { TestAnnotations } from './test-data.ts';
 import type { TestPlanCase, TestPlanSuitePathEntry } from './test-plan.ts';
 
 const reporterBrand = Symbol.for('@overkill-dev/engine/reporter');
@@ -104,7 +104,7 @@ type RunStartReporterEvent = {
     readonly facts: RunFacts;
     readonly kind: 'run-start';
     readonly root: {
-        readonly metadata: ResolvedMetadata;
+        readonly annotations: TestAnnotations;
         readonly title: string;
     };
     readonly startedAt: string;

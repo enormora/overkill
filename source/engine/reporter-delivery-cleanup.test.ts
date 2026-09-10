@@ -27,11 +27,13 @@ function createPassingPlan(engine: Engine): TestPlan {
                         testScope.assert.true(true, { message: 'passes' });
                         return testScope.assert.collect();
                     },
-                    metadata: {},
+                    annotations: {},
+                    controls: {},
                     title: 'passes'
                 })
             ],
-            metadata: {},
+            annotations: {},
+            controls: {},
             title: 'root'
         })
     );
@@ -219,12 +221,14 @@ function createConcurrentFinishFixture(): ConcurrentFinishFixture {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/reporter-delivery-cleanup.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() times out reporter disposal',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const { disposeSignal, engine, wallClock } = createReporterDeliveryFixture();
                 const hangingReporter: RealTimeReporter = {
@@ -266,7 +270,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() disposes reporters after validation failure',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const engine = createDefaultReporterDeliveryEngine();
                 let disposed = false;
@@ -309,7 +314,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() throws AggregateError when execution and cleanup both fail',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const engine = createDefaultReporterDeliveryEngine();
                 const firstReporter: RealTimeReporter = {
@@ -361,7 +367,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() does not retry disposal after disposal throws',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const engine = createDefaultReporterDeliveryEngine();
                 const wallClock = createDeterministicWallClock();
@@ -407,7 +414,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() includes run-end reporter errors before final reporting',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const engine = createDefaultReporterDeliveryEngine();
                 const finalReporter = createInMemoryFinalResultReporter();
@@ -429,7 +437,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() records dispose failures without reporter re-entry',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const engine = createDefaultReporterDeliveryEngine();
                 const observer = createInMemoryRealTimeReporter();
@@ -467,7 +476,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() preserves concurrent final-result and real-time finish callbacks',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body: async function body(scope: OverkillScope) {
                 const fixture = createConcurrentFinishFixture();
 

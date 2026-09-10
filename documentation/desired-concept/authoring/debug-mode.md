@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Any test — passing or failing — can be hard to reason about. A
+Any test - passing or failing - can be hard to reason about. A
 passing test that runs slowly, imports modules its peers don't, or
 just barely beats the soft deadline is suspicious. A failing test,
 especially one that hit the timeout, is even harder: the test failed,
@@ -13,7 +13,7 @@ per-test and discards it unless explicitly asked to keep it.
 **Debug mode is the opt-in switch that keeps the data and emits it
 as a structured artifact**, regardless of outcome. For a soft-timeout
 failure the timeline turns "this test took too long" into "this
-specific awaited handle call took 480 ms of the 500 ms budget" —
+specific awaited handle call took 480 ms of the 500 ms budget" -
 which is the difference between a guess and a fix.
 
 The mode is data, not advice. The runner does not annotate, score, or
@@ -27,14 +27,15 @@ Activation is always explicit:
 - `--debug-scope <selector>` debugs the tests matching the selector
   (using the same selector grammar as `--filter`) without pulling
   unrelated tests into debug mode and without narrowing what runs.
-  It is standalone — it does not require `--debug` — and it is
+  It is standalone - it does not require `--debug` - and it is
   mutually exclusive with `--debug`: the two are CLI spellings of one
   underlying setting (`RunFacts.debugMode` `'selected'` versus
   `'all'`), so passing both is a usage error.
 - `--debug` debugs every test in the resolved set; pair with
   `--filter`, `--title`, `--id`, or `--file` to scope
-- per-test metadata `{ debug: true }` debugs that one test on every
-  run, regardless of CLI flags
+  Per-test debug authoring is not part of the current concept. If it returns
+  later, it should be a run selection or debug policy feature, not a general
+  annotation field.
 
 `--debug-scope` is the typical interactive form: "I want to know what
 this _one_ test is doing" while the rest of the run still executes
@@ -84,7 +85,7 @@ type DebugStats = {
     readonly softTimeoutHeadroomMs: number; // softTimeout - wallTime; negative on timeout failures
 };
 
-// Discriminated union — same pattern as RecordedEvent in
+// Discriminated union - same pattern as RecordedEvent in
 // capability-handles.md. `at` is monotonic nanoseconds since the
 // test body started; every variant carries it.
 type TimelineEntry =
@@ -101,7 +102,7 @@ Both types are sketched in [Types Index](../reference/types-index.md).
 The timeline records discrete events the runner already observes:
 body start, each `assert.*` / `require.*` call, `plan()`, body
 end or rejection. It deliberately does not record every `await`
-boundary — that would require source instrumentation incompatible
+boundary - that would require source instrumentation incompatible
 with Node's strip-only path. The gaps between timeline entries are
 themselves the diagnostic for "where time went": a 480 ms gap
 between two adjacent entries is a 480 ms awaited operation. When
@@ -195,49 +196,49 @@ recovered cleanly or limped.
 artifacts for the replayed run. The original artifacts already exist
 in the source run's directory; replay reads them rather than
 regenerating them. To debug a replayed run from scratch, pass
-`--debug` (or `--debug-scope`) explicitly on the replay command —
+`--debug` (or `--debug-scope`) explicitly on the replay command -
 that produces a fresh set in the new run's directory.
 
 ## Issues The Artifact Surfaces
 
 Debug mode does not classify tests as good or bad. The artifact is
-factual; the _patterns_ below are interpretation guidance — what
+factual; the _patterns_ below are interpretation guidance - what
 specific values _can_ signal, not judgments the runner emits. CI
 post-processors, custom reporters, and reviewers turn these signals
 into action; the runner stays neutral.
 
-- `stats.assertCount === 0 && stats.requireCount === 0` — the test
+- `stats.assertCount === 0 && stats.requireCount === 0` - the test
   produced no assertions. The engine already fails this case (see
   [Assertions And Results § Zero-Assertion Detection As Default Failure](./assertions-and-results.md#zero-assertion-detection-as-default-failure)); the
   artifact makes the absence visible across runs.
-- `stats.handleCallCount === 0` in a profile that expects effects
-  — the test exercised no recorded effects. Often intentional for
+- `stats.handleCallCount === 0` in a profile that expects effects:
+  the test exercised no recorded effects. Often intentional for
   pure-logic tests; suspicious when the test title implies I/O.
-- `stats.unaccountedGapMs / wallTimeMs > 0.5` — more than half of
+- `stats.unaccountedGapMs / wallTimeMs > 0.5` - more than half of
   the wall time was not captured by handle calls or assertion
   activity. Suggests external I/O bypassing the handle layer, or
   a slow synchronous block worth profiling.
-- `stats.uncachedModuleLoadCount` high — the test pulled in many
+- `stats.uncachedModuleLoadCount` high - the test pulled in many
   modules from cold; first-run cost may dominate. Look for imports
   inside the body that should move to the file scope.
-- `stats.heapGrowthBytes > 0` — the test grew the heap and did not
+- `stats.heapGrowthBytes > 0` - the test grew the heap and did not
   return it. Not necessarily a leak (V8 GC is lazy), but worth
   inspection when the value is large or grows across runs.
-- `stats.handleLeakCount > 0` — unfinished active handles after
+- `stats.handleLeakCount > 0` - unfinished active handles after
   the body returned. Same data the leak diagnostics in
   [Runtime Behavior § Leaked Promises, Timers, And Handles](../architecture/runtime-behavior.md#leaked-promises-timers-and-handles)
   use, surfaced for any test rather than only on failure.
-- `stats.softTimeoutHeadroomMs` close to zero or negative — the
+- `stats.softTimeoutHeadroomMs` close to zero or negative - the
   test is fragile against slower machines or noisy CI hosts. A
   test with 30 ms headroom against a 500 ms soft deadline will
   flake on a busy laptop. Either profile a faster path or
   re-categorise the test.
-- Large gaps between adjacent timeline entries — a single awaited
+- Large gaps between adjacent timeline entries - a single awaited
   operation took the time. `handleEvents` near that gap pin it to
   a specific handle call; absence of `handleEvents` says the
   operation went through code the runner does not see (raw
   `fetch`, raw `fs`, etc.).
-- `plan.declared !== plan.recorded` — `plan(n)` mismatch. The
+- `plan.declared !== plan.recorded` - `plan(n)` mismatch. The
   engine fails the test for the same reason; the artifact makes
   the count visible at a glance.
 

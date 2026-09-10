@@ -288,13 +288,15 @@ Installing an optional package does not mutate the CLI. Optional packages
 integrate through explicit imports, typed profiles, resource factories,
 reporters, baseline adapters, or authoring helpers.
 
-## Metadata And Identity
+## Test Data And Identity
 
-Overkill should treat metadata and identity as shared concepts rather than ad-hoc strings.
+Overkill should treat test data and identity as shared concepts rather than ad-hoc strings.
 
 That includes:
 
-- tags and traits for selection
+- annotations for selection and reporting
+- controls for execution knobs
+- facts and observed results from execution
 - stable test and case identities
 - runtime and workload identities
 - artifact identities derived from those parts
@@ -327,7 +329,7 @@ The concept currently assumes:
   process boundaries
 - seeded randomized order by default, with lexical order as an explicit
   opt-out
-- stable identity and selection metadata as first-class concepts
+- stable identity and selection annotations as first-class concepts
 - coverage is off by default, but should be easy to enable through explicit tooling
 - watch mode should lean on Node's built-in `--watch` behavior by default
 - no hooks in the default microtest story

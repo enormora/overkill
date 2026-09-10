@@ -4,7 +4,7 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { createCaseId } from '../engine/identity.ts';
-import { resolveRootMetadata } from '../engine/metadata.ts';
+import { resolveRootTestAnnotations } from '../engine/test-data.ts';
 import {
     all,
     any,
@@ -19,8 +19,6 @@ import {
     not,
     owner,
     params,
-    runtime,
-    stability,
     suite,
     tag,
     title
@@ -28,32 +26,32 @@ import {
 import type { RunFilter } from './run-types.ts';
 
 const candidate = {
-    id: createCaseId('source/Payments/Card.test.ts', [ 'payments', 'card' ], 'Charges Card', 'currency=EUR'),
-    metadata: resolveRootMetadata({
+    annotations: resolveRootTestAnnotations({
         ownership: [ '@Payments' ],
-        runtimes: [ 'Node' ],
-        stability: 'stable',
         tags: [ 'Fast' ]
-    })
+    }),
+    id: createCaseId('source/Payments/Card.test.ts', [ 'payments', 'card' ], 'Charges Card', 'currency=EUR')
 };
 
 const anonymousCandidate = {
-    id: createCaseId(null, [], 'Anonymous Case', null),
-    metadata: resolveRootMetadata({})
+    annotations: resolveRootTestAnnotations({}),
+    id: createCaseId(null, [], 'Anonymous Case', null)
 };
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-selection-filters.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'filter helpers create serializable filter expressions',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.deepEqual(
-                    all([ tag('fast'), not(file('source/**')), any([ title('charge'), stability('stable') ]) ]),
+                    all([ tag('fast'), not(file('source/**')), any([ title('charge'), owner('@payments') ]) ]),
                     {
                         filters: [
                             { field: 'tag', kind: 'equals', value: 'fast' },
@@ -61,7 +59,7 @@ export const testNode = createOverkillSuite({
                             {
                                 filters: [
                                     { field: 'title', kind: 'contains', value: 'charge' },
-                                    { field: 'stability', kind: 'equals', value: 'stable' }
+                                    { field: 'owner', kind: 'equals', value: '@payments' }
                                 ],
                                 kind: 'any'
                             }
@@ -71,7 +69,6 @@ export const testNode = createOverkillSuite({
                 );
                 scope.assert.deepEqual(caseId(candidate.id), { id: candidate.id, kind: 'case-id' });
                 scope.assert.deepEqual(params('EUR'), { field: 'params', kind: 'contains', value: 'EUR' });
-                scope.assert.deepEqual(runtime('node'), { field: 'runtime', kind: 'equals', value: 'node' });
                 scope.assert.deepEqual(owner('@payments'), { field: 'owner', kind: 'equals', value: '@payments' });
                 scope.assert.deepEqual(suite('payments'), { field: 'suite', kind: 'contains', value: 'payments' });
 
@@ -81,7 +78,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'matchesRunFilter() matches supported dimensions case-insensitively',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const matchingFilters: readonly RunFilter[] = [
                     caseId(candidate.id),
@@ -90,9 +88,7 @@ export const testNode = createOverkillSuite({
                     suite('PAYMENTS > CARD'),
                     params('eur'),
                     tag('fast'),
-                    runtime('node'),
                     owner('@payments'),
-                    stability('stable'),
                     contains('file', 'card.test'),
                     glob('tag', 'fa*')
                 ];
@@ -102,7 +98,7 @@ export const testNode = createOverkillSuite({
                 }
 
                 scope.assert.equal(matchesRunFilter(not(tag('slow')), candidate), true);
-                scope.assert.equal(matchesRunFilter(all([ tag('FAST'), runtime('NODE') ]), candidate), true);
+                scope.assert.equal(matchesRunFilter(all([ tag('FAST'), owner('@PAYMENTS') ]), candidate), true);
                 scope.assert.equal(matchesRunFilter(any([ tag('slow'), owner('@PAYMENTS') ]), candidate), true);
                 scope.assert.equal(matchesRunFilter(tag('slow'), candidate), false);
 
@@ -112,7 +108,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'matchesRunFilter() treats absent identity dimensions as non-matches',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.equal(matchesRunFilter(file('source/**/*.test.ts'), anonymousCandidate), false);
                 scope.assert.equal(matchesRunFilter(params('currency'), anonymousCandidate), false);
@@ -125,13 +122,14 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'copyRunSelection() deep-copies serializable filter trees',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const selection = {
                     filter: all([
                         not(caseId(candidate.id)),
                         glob('file', 'source/**'),
-                        any([ tag('fast'), equals('runtime', 'node') ])
+                        any([ tag('fast'), equals('owner', '@payments') ])
                     ]),
                     kind: 'filter' as const
                 };
@@ -150,7 +148,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'run filter helpers reject empty text operands',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.throws(function createEmptyContainsFilter() {
                     contains('title', ' ');
@@ -165,7 +164,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'run filter validation rejects malformed filter trees',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.throws(function createEmptyComposite() {
                     all([] as unknown as readonly [RunFilter, ...RunFilter[]]);

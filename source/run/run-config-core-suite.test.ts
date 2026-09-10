@@ -6,7 +6,8 @@ import { testNode as runConfigTimeoutsTestNode } from './run-config-timeouts.tes
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-config-core-suite.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         runConfigTestNode,
         runConfigIntegrationProfileTestNode,

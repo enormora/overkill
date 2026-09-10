@@ -33,21 +33,17 @@ type PolicyTestCase = Parameters<RuntimeCapabilityPolicy['runCase']>[0];
 
 const loadEnvPolicyFixturePath = 'source/integration-tests/run/fixtures/load-env-policy.test.ts';
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
-const policyMetadata: PolicyTestCase['metadata'] = {
-    baselines: [],
-    capabilities: [],
-    capture: null,
-    debug: false,
-    extra: {},
-    kind: null,
+const policyAnnotations: PolicyTestCase['annotations'] = {
     ownership: [],
-    priority: 'standard',
-    runtimes: [],
-    stability: 'stable',
-    tags: [],
+    tags: []
+};
+const policyControls: PolicyTestCase['controls'] = {
+    capture: null,
     timeoutMilliseconds: null
 };
 const policyTestCase: PolicyTestCase = {
+    annotations: policyAnnotations,
+    controls: policyControls,
     execution: {
         body: async function unusedPolicyTestBody() {
             throw new Error('Policy test body should not run.');
@@ -61,10 +57,10 @@ const policyTestCase: PolicyTestCase = {
         params: null,
         suite: [ 'runtime policy' ]
     },
-    metadata: policyMetadata,
     suitePath: [
         { definitionLocations: [ { kind: 'unknown' as const } ], title: 'runtime policy' }
-    ]
+    ],
+    testFamily: null
 };
 
 function createRunCommand(overrides: RunCommandParts): RunCommand {
@@ -167,12 +163,14 @@ function publishPolicyDiagnostics(): void {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-capability-policy.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() reports load-time capability restrictions outside a test case',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const result = await orchestrator.run(createRunCommand({
                     config: defaultRunConfig({
@@ -204,7 +202,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runtime capability policy host readers reject invalid host values',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const invalidProcess = { env: { NUMBER: 1 } };
                 const invalidHost = { sessionStorage: { length: '1' } };
@@ -220,7 +219,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() preserves profile-level reporter lists',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const profileReporter: RunConfig['reporters'][number] = defineReporter(
                     function profileMemoryReporter() {
@@ -258,7 +258,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runtime capability policy attributes observed case side effects',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const environment: Record<string, string | undefined> = { BEFORE: 'yes' };
                 const sessionStorageValues = new Map([ [ 'before', 'yes' ] ]);
@@ -309,7 +310,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runtime capability policy accepts sparse unchanged storage snapshots',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const environment: RuntimeCapabilityPolicyEnvironment = {};
                 const sparseStorage = createSparseStorage();
@@ -343,7 +345,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runtime capability policy reports process.env identity drift',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 let environment: RuntimeCapabilityPolicyEnvironment = {};
                 const policy = createRuntimeCapabilityPolicy({
@@ -375,7 +378,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runtime capability policy records diagnostic channel strictness and raw output',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const environment: RuntimeCapabilityPolicyEnvironment = {};
                 const policy = createRuntimeCapabilityPolicy({

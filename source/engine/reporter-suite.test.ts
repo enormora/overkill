@@ -5,7 +5,8 @@ import { testNode as reporterTestNode } from './reporter.test.ts';
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/reporter-suite.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         reporterTestNode,
         reporterManagedOutputTestNode

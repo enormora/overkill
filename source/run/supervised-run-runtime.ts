@@ -115,7 +115,7 @@ function caseByKey(collectedPlan: CollectedRunPlan): ReadonlyMap<string, Supervi
                 title: testCase.title
             };
 
-            entries.push([ caseIdentityKey(id), { capture: testCase.metadata.capture, id } ]);
+            entries.push([ caseIdentityKey(id), { capture: testCase.controls.capture, id } ]);
         }
     }
 
@@ -413,7 +413,7 @@ export async function reportRunStart(
             facts: runtime.resolvedRun.facts,
             kind: 'run-start',
             root: {
-                metadata: collectedPlan.root.metadata,
+                annotations: collectedPlan.root.annotations,
                 title: collectedPlan.root.title
             },
             startedAt: runStartTimeFromMilliseconds(startedAtMs)

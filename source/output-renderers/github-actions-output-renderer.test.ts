@@ -25,12 +25,14 @@ function createRenderer(): OutputRenderer {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/output-renderers/github-actions-output-renderer.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'GitHub Actions output renderer renders located diagnostics as workflow commands',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const renderer = createRenderer();
                 const renderedDiagnostic = [
@@ -50,7 +52,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'GitHub Actions output renderer passes unlocated output through',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const renderer = createRenderer();
 
@@ -70,7 +73,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'GitHub Actions output renderer handles optional annotation properties',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const renderer = createRenderer();
 

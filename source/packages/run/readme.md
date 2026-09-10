@@ -66,8 +66,6 @@ Programmatic selection helpers are exposed through `@overkill-dev/run/filters`:
 - `owner(value)`
 - `params(value)`
 - `parseRunFilterExpression(expression)`
-- `runtime(value)`
-- `stability(value)`
 - `suite(value)`
 - `tag(value)`
 - `title(value)`
@@ -80,7 +78,7 @@ non-overlapping. Explicit files bypass top-level discovery, but when the
 selected profile uses `sets`, each explicit file must match exactly one set.
 Each discovered or explicit file is imported as a native Node ESM module and
 must export a named `testNode` value created by the selected engine.
-Attach broad module metadata to that exported top-level node.
+Attach broad module annotations to that exported top-level node.
 `commandLineRunner.listTests(...)` resolves those modules and prints a plain
 plan tree without executing tests or loading fallback reporters.
 `RunCommand.engine` may be `{ kind: 'default' }` to use the shared public engine,
@@ -91,8 +89,8 @@ child process to load the engine without parent-side user-module execution.
 
 Programmatic selection filters are supported through `RunRequest.selection`.
 The current helpers select by stable case id, file, title, suite, table params,
-tag, runtime, ownership, and stability. Test family matching is intentionally
-absent because one run is already bound to one profile test family.
+tag, and ownership. Test family matching is intentionally absent because one
+run is already bound to one profile test family.
 `parseRunFilterExpression(expression)` parses the CLI filter grammar into the
 same `RunFilter` tree. Runs use seeded ordering by default. Pass
 `RunRequest.order: 'lexical'` for deterministic source-stable order, or
@@ -112,10 +110,11 @@ individual thresholds for one run. The `@overkill-dev/test` binary parses
 `--measure-resource-usage` and `--resource-budget <name=value>` into those
 typed request fields.
 
-Output capture is run-level intent. `RunRequest.capture` is `buffered` by
-default; `live` passes capture-capable stdout and stderr through without
-creating `log-capture` artifacts. Microtest profiles reject live capture.
-There is no project config field for capture mode.
+Output capture is run-level intent by default. `RunRequest.capture` is
+`buffered` by default; `live` passes capture-capable stdout and stderr through
+without creating `log-capture` artifacts. Non-microtest test controls may
+override capture per test. Microtest profiles reject live capture and per-test
+capture controls. There is no project config field for capture mode.
 
 Runner profile names are project-owned. Names such as `microtest`,
 `backend-http`, `ui-browser`, `ui.browser`, and `unit_fast` select profile

@@ -54,12 +54,14 @@ function assertCapturedOutputCap(
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/supervised-run-state.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createSupervisedRunState() duplicates captured output across concurrent active cases',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const state = createSupervisedRunState();
                 const firstCase = caseId('first');
@@ -80,7 +82,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createSupervisedRunState() records out-of-test output as run artifacts',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const state = createSupervisedRunState();
                 const testCase = caseId('unrelated');
@@ -100,7 +103,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createSupervisedRunState() applies one captured-output cap per active case',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const state = createSupervisedRunState();
                 const testCase = caseId('capped');

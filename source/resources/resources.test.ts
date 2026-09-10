@@ -147,12 +147,14 @@ function assertRuntimeContextComposition(scope: TestScope): void {
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/resources/resources.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'defineResource returns an inert frozen descriptor',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 assertDatabaseResourceDescriptor(scope);
                 await assertDatabaseResourceCallbacks(scope);
@@ -164,7 +166,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'defineRuntime preserves resource keys and freezes runtime identity',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: TestScope) {
                 assertRuntimeDescriptor(scope);
                 assertRuntimeContextComposition(scope);

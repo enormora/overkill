@@ -17,7 +17,8 @@ function createPassingCase(engine: Engine, title: string): TestCase {
             testScope.assert.true(true, { message: 'passes' });
             return testScope.assert.collect();
         },
-        metadata: {},
+        annotations: {},
+        controls: {},
         title
     });
 }
@@ -29,7 +30,8 @@ function createLocatedPassingCase(engine: Engine, title: string, definitionLocat
             testScope.assert.true(true);
             return testScope.assert.collect();
         },
-        metadata: {},
+        annotations: {},
+        controls: {},
         title
     });
 }
@@ -44,11 +46,13 @@ function createLocatedPlan(
             engine.createSuite({
                 children: [ createLocatedPassingCase(engine, 'located test', testLocation) ],
                 definitionLocations: [ suiteLocation ],
-                metadata: {},
+                annotations: {},
+                controls: {},
                 title: 'located suite'
             })
         ],
-        metadata: {},
+        annotations: {},
+        controls: {},
         title: 'root'
     }));
 }
@@ -63,13 +67,15 @@ function createPlanWithOrphans(
     engine.createSuite({
         children: [],
         definitionLocations: [ unusedSuiteLocation ],
-        metadata: {},
+        annotations: {},
+        controls: {},
         title: 'unused suite'
     });
 
     return engine.createTestPlan(engine.createRoot({
         children: [ reached ],
-        metadata: {},
+        annotations: {},
+        controls: {},
         title: 'root'
     }));
 }
@@ -77,12 +83,14 @@ function createPlanWithOrphans(
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/test-plan-location.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createTestPlan() preserves supplied definition locations',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
                 const suiteLocation = { column: 5, file: 'source/suite.test.ts', kind: 'known' as const, line: 10 };
@@ -100,7 +108,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createTestPlan() reports constructed nodes that do not reach the root as orphans',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const engine = createEngine();
                 const unusedSuiteLocation = {

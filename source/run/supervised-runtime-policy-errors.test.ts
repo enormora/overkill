@@ -35,13 +35,15 @@ function reporterError(): RunnerError {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/supervised-runtime-policy-errors.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title:
                 'deduplicatedChildRuntimePolicyErrors() drops child process.env errors already observed by the supervisor',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const childError = runtimePolicyError(
                     'Runtime policy violation: process.env changed.',
@@ -65,7 +67,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'deduplicatedChildRuntimePolicyErrors() preserves process.env errors for another boundary',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const childError = runtimePolicyError(
                     'Runtime policy violation: process.env changed.',
@@ -89,7 +92,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'deduplicatedChildRuntimePolicyErrors() preserves non-env errors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const childError = runtimePolicyError('Runtime policy violation: timer.', caseId, 'timer');
                 const childReporterError = reporterError();

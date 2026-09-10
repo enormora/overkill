@@ -177,7 +177,7 @@ import { testNode as users } from './users.test.ts';
 export const testNode = suite('all', [ users, orders ]);
 
 await runIfMain(import.meta, testNode, {
-    root: { title: 'all', metadata: {} },
+    root: { title: 'all', annotations: {}, controls: {} },
     reporters: [ createDotReporter() ]
 });
 ```
@@ -307,8 +307,8 @@ type TestNode = (TestCase | Suite | Table) & {
 type TestCase = {
     readonly kind: 'test';
     readonly title: string;
-    readonly metadata: Metadata;
-    readonly capabilities: ReadonlyArray<Capability>;
+    readonly annotations: TestAnnotations;
+    readonly controls: TestControls;
     readonly execution:
         | { readonly kind: 'body'; readonly body: TestBody; }
         | { readonly kind: 'skip'; readonly reason: string; };
@@ -321,21 +321,23 @@ type ParameterizedTestScope<TParameters> = TestScope & {
 type Suite = {
     readonly kind: 'suite';
     readonly title: string;
-    readonly metadata: Metadata;
+    readonly annotations: TestAnnotations;
+    readonly controls: TestControls;
     readonly children: ReadonlyArray<TestNode>;
 };
 
 type Table = {
     readonly kind: 'table';
     readonly title: string;
-    readonly metadata: Metadata;
+    readonly annotations: TestAnnotations;
+    readonly controls: TestControls;
     readonly cases: ReadonlyArray<TableCase>;
     readonly run: (case_: TableCase, scope: ParameterizedTestScope<TableCase>) => Promise<TestOutcome> | TestOutcome;
 };
 ```
 
-`Metadata` and `Capability` are the structures defined in
-[Metadata And Selection](../architecture/metadata-and-selection.md) and [Microtests And Capabilities](./microtests-and-capabilities.md). The runner
+`TestAnnotations` and `TestControls` are the structures defined in
+[Test Data And Selection](../architecture/test-data-and-selection.md). The runner
 walks the tree. The detailed collection-to-plan pipeline lives in
 [Composition Order](../architecture/composition-order.md).
 
@@ -530,7 +532,7 @@ Three properties for free, no boilerplate, fully typed. This is borrowed
 directly from cats-laws / scalacheck-laws / `Test.QuickCheck.Classes`. A
 single law bundle replaces dozens of example tests.
 
-## Macro Callsite Metadata
+## Macro Callsite Data
 
 Because macros are plain functions, Overkill has to preserve the authored
 callsite deliberately rather than assuming the JavaScript stack will make it
@@ -538,28 +540,27 @@ obvious later.
 
 The concept should therefore commit to this rule:
 
-- node-construction metadata is captured at macro application time
+- node-construction data is captured at macro application time
 - listings, failures, and tooling should prefer the macro application site
   over the macro implementation site where practical
 - a generated subtree may have many internal test nodes, but the user-
   authored application call remains the meaningful definition location for
   the bundle as a whole
 
-This is a metadata-capture rule on `test(...)`, `suite(...)`, `table(...)`,
+This is a callsite-capture rule on `test(...)`, `suite(...)`, `table(...)`,
 and related helpers, not a reason to invent a second macro runtime type.
 
 ## Filters Become Tree Walks
 
-[Metadata And Selection](../architecture/metadata-and-selection.md) describes filtering by tags, file paths, identity,
-and metadata. Tests-as-values makes the implementation trivial:
+[Test Data And Selection](../architecture/test-data-and-selection.md) describes filtering by tags, ownership, file paths, and identity. Tests-as-values makes the implementation trivial:
 
 ```ts
 function selected(node: TestNode, filter: Filter): TestNode | null {
     if (node.kind === 'test') {
-        return filter.allows(node.metadata) ? node : null;
+        return filter.allows(node.annotations) ? node : null;
     }
     if (node.kind === 'table') {
-        return filter.allowsAny(node.metadata) ? node : null;
+        return filter.allowsAny(node.annotations) ? node : null;
     }
     const kept = node.children.map((c) => selected(c, filter)).filter(Boolean);
     return kept.length === 0 ? null : { ...node, children: kept };

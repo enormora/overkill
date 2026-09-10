@@ -140,12 +140,14 @@ function recordRequireNodes(facade: RequireAssertionFacade): void {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/require-assertion-facade.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createRecordingRequireFacade() records every built-in requirement node',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const recording = createRequireRecording();
 
@@ -212,7 +214,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createRecordingRequireFacade() applies annotated messages',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const recording = createRequireRecording();
                 const requiredValue: RequireAssertionFacade = recording.facade.annotated('required value');

@@ -26,12 +26,14 @@ function createRunCommand(config: RunConfig, profileName: string): RunCommand {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-profile-discriminator.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() rejects profiles without a test family',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const profile: Record<string, unknown> = { ...defaultMicrotestProfile() };
 
@@ -56,7 +58,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() rejects unsupported profile test families',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function resolveInvalidProfile() {
                     await orchestrator.resolve(createRunCommand(

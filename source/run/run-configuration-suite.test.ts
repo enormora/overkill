@@ -10,7 +10,8 @@ import { testNode as runProfileNameTestNode } from './run-profile-name.test.ts';
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-configuration-suite.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         runConfigCoreTestNode,
         runConfigExportsTestNode,

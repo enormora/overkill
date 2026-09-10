@@ -194,13 +194,15 @@ async function runWithRunnerErrors(): ReturnType<RunOrchestrator['run']> {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/command-line-runner-reporter-resolution.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title:
                 'commandLineRunner.runTests() keeps global reporters as fallback when profile reporters override them',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const defaultReporter = createDefaultReporterLoader(memoryReporter);
                 const scenario = await runScenario(
@@ -221,7 +223,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() skips the default reporter when profile reporters exist',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const defaultReporter = createDefaultReporterLoader(terminalReporter);
                 const scenario = await runScenario(
@@ -241,7 +244,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() skips the default reporter when global non-terminal reporters exist',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const defaultReporter = createDefaultReporterLoader(terminalReporter);
                 const scenario = await runScenario(
@@ -260,7 +264,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() skips the default reporter for unknown profiles',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const defaultReporter = createDefaultReporterLoader(memoryReporter);
                 const scenario = await runScenario(
@@ -283,7 +288,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() falls back when profile terminal reporters did not receive errors',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const defaultReporter = createDefaultReporterLoader(memoryReporter);
                 const scenario = await runScenario(

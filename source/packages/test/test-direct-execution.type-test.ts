@@ -11,13 +11,14 @@ import type {
     TestScopeAssertContext
 } from '../engine/engine.entry-point.ts';
 import {
-    type AuthoringMetadata,
-    type CaptureAuthoringMetadata,
+    type AuthoringAnnotations,
+    type CaptureAuthoringControls,
     type createTestFacade,
     runIfMain,
     type RunIfMainOptions as RootRunIfMainOptions,
     type RunIfMainRootOptions as RootRunIfMainRootOptions,
     skippedTest,
+    type MicrotestAuthoringControls,
     type Suite as RootSuite,
     test,
     type Table as RootTable,
@@ -29,29 +30,30 @@ import {
 } from './test.entry-point.ts';
 
 declare const body: TestBody;
-declare const captureMetadata: CaptureAuthoringMetadata;
-declare const metadata: AuthoringMetadata;
+declare const annotations: AuthoringAnnotations;
+declare const captureControls: CaptureAuthoringControls;
+declare const microtestControls: MicrotestAuthoringControls;
 declare const node: TestNode;
 declare const outputRenderer: DefinedOutputRenderer;
 declare const reporter: DefinedReporter;
 
 describe('@overkill-dev/test capture and direct execution types', function () {
-    typeTest('types capture metadata by authored family', function () {
+    typeTest('types capture controls by authored family', function () {
         expect<typeof createTestFacade>().type.toBeCallableWith({
-            metadata: captureMetadata,
+            controls: captureControls,
             testFamily: 'integration'
         });
         expect<typeof createTestFacade>().type.not.toBeCallableWith({
-            metadata: { capture: 'live' },
+            controls: { capture: 'live' },
             testFamily: 'microtest'
         });
         expect(test).type.not.toBeCallableWith({
             body,
-            metadata: { capture: 'live' },
+            controls: { capture: 'live' },
             title: 'passes'
         });
         expect(skippedTest).type.not.toBeCallableWith({
-            metadata: { capture: 'live' },
+            controls: { capture: 'live' },
             reason: 'unsupported platform',
             title: 'skips'
         });
@@ -64,7 +66,8 @@ describe('@overkill-dev/test capture and direct execution types', function () {
             readonly root?: RootRunIfMainRootOptions;
         }>();
         expect<RootRunIfMainRootOptions>().type.toBe<{
-            readonly metadata: AuthoringMetadata;
+            readonly annotations?: AuthoringAnnotations;
+            readonly controls?: MicrotestAuthoringControls;
             readonly title: string;
         }>();
         expect<RootSuite>().type.toBe<Suite>();
@@ -82,7 +85,8 @@ describe('@overkill-dev/test capture and direct execution types', function () {
             outputRenderer,
             reporters: [ reporter ],
             root: {
-                metadata,
+                annotations,
+                controls: microtestControls,
                 title: 'root'
             }
         });

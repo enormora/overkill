@@ -127,12 +127,14 @@ async function runCommandLine(args: readonly string[]): Promise<{
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/packages/test/command-line-runner-capture.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper parses no-capture for run',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine([ 'run', '--no-capture', 'source/a.test.ts' ]);
                 const [ commandLineRequest ] = result.runRequests;
@@ -148,7 +150,8 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper maps no-capture on list to an argument error',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: TestScope) {
                 const result = await runCommandLine([ 'list', '--no-capture', 'source/a.test.ts' ]);
 

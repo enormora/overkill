@@ -8,12 +8,14 @@ import { formatCaseId, type CaseId } from './identity.ts';
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/identity.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'formatCaseId() renders direct engine identities for display',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const caseId: CaseId = {
                     file: null,
@@ -30,7 +32,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'formatCaseId() renders origin and parameter slots when present',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const caseId: CaseId = {
                     file: 'source/users.test.ts',

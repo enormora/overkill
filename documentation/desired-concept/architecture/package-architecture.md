@@ -161,7 +161,7 @@ The preferred DX should be:
 When projects need different authoring surfaces for different suite
 families, the preferred pattern is a Playwright-style **test facade**:
 
-- `createTestFacade({ testFamily, metadata })` in project code composes one
+- `createTestFacade({ testFamily, annotations, controls })` in project code composes one
   typed authoring surface
 - custom assertion vocabulary is normally imported as assertion reference
   values, not registered into that facade
@@ -182,8 +182,8 @@ The facade surface itself should stay narrow and settled:
   `defineParameterizedTestBody`, and `runIfMain`
 - engine-agnostic helpers such as `defineHarness` stay as ordinary root
   imports and are not injected into `createTestFacade(...)`
-- `testFamily` derives authored node `metadata.kind`; facade metadata is
-  limited to `tags` and `extra`
+- `testFamily` stamps authored nodes with an engine-owned family marker;
+  facade annotations and controls stay separate
 - higher-layer helpers such as `property`, `browserBenchmark`, or
   `eslintRuleSuite` should be imported and re-exported alongside the
   facade from the project's stable alias, not injected into
@@ -337,7 +337,7 @@ code should not need Overkill dependencies.
 - remote work-unit planning and coordinator-side execution placement
 - resolution of execution strategy from package-provided constraints
 - supervision policies for isolated workers or subprocesses
-- selection and metadata-aware run planning
+- selection and test-data-aware run planning
 - watch-mode orchestration where explicit runner behavior is needed beyond raw Node `--watch`
 
 It should also expose the canonical programmatic mirror of CLI run intent.
@@ -503,9 +503,11 @@ Lifecycle, sink, delivery, and backpressure semantics live in
 
 It should support subtype-specific adapters rather than forcing all baselines into plain string equality.
 
-## Metadata, Identity, And Extensions
+## Test Data, Identity, And Extensions
 
-Cross-cutting concepts such as metadata, stable identity, and extension contracts should be shared across the package family rather than reinvented independently in each layer.
+Cross-cutting concepts such as annotations, controls, facts, observed results,
+stable identity, and extension contracts should be shared across the package
+family rather than reinvented independently in each layer.
 
 This is especially important for:
 
@@ -658,7 +660,7 @@ or extend the contract but do not redefine it.
 | Standard user-facing distribution                                 | `@overkill-dev/test`                                                   | Normal install package; composes the standard stack without taking over semantic ownership.                                                                    |
 | Public `overkill` binary packaging                                | `@overkill-dev/test`                                                   | Thin wrapper that delegates command behavior to `@overkill-dev/run`.                                                                                           |
 | `TestOutcome` ADT (engine result protocol)                        | `@overkill-dev/engine`                                                 | `Pass`/`Fail`/`Skip`/`Inconclusive`; see [Assertions And Results § Protocol Layer](../authoring/assertions-and-results.md#protocol-layer-structured-outcomes). |
-| Test verdict derivation (crashed, presentation mapping, …)        | `@overkill-dev/run`                                                    | Verdicts derived from `(outcome, metadata, runner-error?)`.                                                                                                    |
+| Test verdict derivation (crashed, presentation mapping, ...)      | `@overkill-dev/run`                                                    | Verdicts derived from `(outcome, runner-error?)`.                                                                                                              |
 | `RunRequest`, `RunFacts`, `ResolvedRun`, and `RunRecord`          | `@overkill-dev/run`                                                    | `RunFacts` shape sketched in [Reproducibility](./reproducibility.md).                                                                                          |
 | `TestPlan`                                                        | `@overkill-dev/engine`                                                 | Executable in-process case plan consumed by `execute(testPlan)`.                                                                                               |
 | `AssertionNode`, `TestFailure`, `FailedCheck`, `Diff`             | `@overkill-dev/engine`                                                 | Engine owns assertion-node evaluation, failure schema, and the first-party assertion behavior on top.                                                          |
@@ -668,7 +670,7 @@ or extend the contract but do not redefine it.
 | Typed runtime / resource composition                              | `@overkill-dev/resources`                                              | Lifecycle scopes, execution requirements.                                                                                                                      |
 | Discovery, filtering, runner profiles                             | `@overkill-dev/run`                                                    | Reads configuration, freezes `RunFacts`, and produces `ResolvedRun`.                                                                                           |
 | Direct-file `runIfMain(...)` execution                            | `@overkill-dev/run`                                                    | `@overkill-dev/test` lazily re-exports it; engine consumers use `createTestPlan(root)` and `execute(testPlan)` directly.                                       |
-| Selection filter grammar                                          | `@overkill-dev/run`                                                    | Specification in [Metadata And Selection](./metadata-and-selection.md).                                                                                        |
+| Selection filter grammar                                          | `@overkill-dev/run`                                                    | Specification in [Test Data And Selection](./test-data-and-selection.md).                                                                                      |
 | Sharding                                                          | `@overkill-dev/run`                                                    | Stable identity-hash partitioning.                                                                                                                             |
 | Reporter event stream contract                                    | `@overkill-dev/engine`                                                 | The `ReporterEvent` ADT.                                                                                                                                       |
 | Reporter rendering                                                | `@overkill-dev/reporter-*`                                             | Each presentation choice is its own package.                                                                                                                   |
@@ -681,7 +683,7 @@ or extend the contract but do not redefine it.
 | Coverage instrumentation                                          | `@overkill-dev/run`                                                    | V8 native; microtest-only; opt-in.                                                                                                                             |
 | Witness file format                                               | `@overkill-dev/engine`                                                 | Schema in engine; producers/consumers across families.                                                                                                         |
 | Failure artifacts (storage + schema)                              | `@overkill-dev/engine` (schema) + `@overkill-dev/run` (storage policy) | Storage layout owned by orchestration.                                                                                                                         |
-| Metadata propagation rules                                        | `@overkill-dev/engine`                                                 | Set merge, array replace-flag, capabilities intersect.                                                                                                         |
+| Test data propagation rules                                       | `@overkill-dev/engine`                                                 | Annotation set merge and control replacement.                                                                                                                  |
 | Configuration loading                                             | `@overkill-dev/run`                                                    | Reads root `overkill.config.ts`; engine has no configuration.                                                                                                  |
 | Standard configuration helper re-export                           | `@overkill-dev/test/config`                                            | User-facing import path for `defineConfig(...)`; custom orchestrators may import from `@overkill-dev/run`.                                                     |
 | Test facade creation                                              | project code + `@overkill-dev/test`                                    | `@overkill-dev/test` owns facade creation for authoring ergonomics only.                                                                                       |
@@ -689,7 +691,7 @@ or extend the contract but do not redefine it.
 | Assertion reference execution                                     | `@overkill-dev/engine`                                                 | Engine owns callable assertion references, counting, `require` behavior, and result normalization.                                                             |
 | CLI command semantics, terminal capability detection              | `@overkill-dev/run`                                                    | Owns typed command behavior behind the `@overkill-dev/test` argv parser and binary wrapper.                                                                    |
 | Test debug mode artifact                                          | `@overkill-dev/run`                                                    | Activation, storage, retention; see [Test Debug Mode](../authoring/debug-mode.md).                                                                             |
-| Reporter packages (`@overkill-dev/reporter-line`, …)              | `@overkill-dev/reporter-*`                                             | Stable contract from `@overkill-dev/engine`; presentation owned per-package.                                                                                   |
+| Reporter packages (`@overkill-dev/reporter-line`, ...)            | `@overkill-dev/reporter-*`                                             | Stable contract from `@overkill-dev/engine`; presentation owned per-package.                                                                                   |
 
 ## Standard Distribution
 

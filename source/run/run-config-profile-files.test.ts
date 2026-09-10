@@ -42,12 +42,14 @@ function assertProfileFiles(
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-config-profile-files.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() normalizes profile file discovery',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const config = await loadConfigFromSource(`export const config = {
                     profiles: {
@@ -86,7 +88,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects invalid profile file globs',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function loadInvalidConfig() {
                     await loadConfigFromSource(`export const config = {
@@ -110,7 +113,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() normalizes profile file sets',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 const config = await loadConfigFromSource(`export const config = {
                     profiles: {
@@ -153,7 +157,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadRunConfig() rejects invalid profile file sets',
-            metadata: {},
+            annotations: {},
+            controls: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function loadMixedFilePolicy() {
                     await loadConfigFromSource(`export const config = {

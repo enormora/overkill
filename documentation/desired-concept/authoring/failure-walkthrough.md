@@ -6,7 +6,7 @@ Most concept documents describe one segment of the failure path: how
 assertions are recorded, how outcomes are typed, how artifacts are
 named, how reporters render. This doc threads them.
 
-A single failing test is followed end to end — from the line of
+A single failing test is followed end to end - from the line of
 source that produces a `FailedCheck` to the artifact a developer
 opens hours later in another machine. Every domain doc is the
 canonical authority for its segment; this walkthrough only shows
@@ -44,7 +44,7 @@ value, the case body returns a `scope.forall(...)` invocation that uses a
 nested injected assertion context, and the failure still enters the
 pipeline as a recorded `FailedCheck`.
 
-## Stage 1 — `scope.forall` Shrinks And Records
+## Stage 1 - `scope.forall` Shrinks And Records
 
 `scope.forall(generator, body)` evaluates the body for each generated
 input, giving that body a nested assertion context for the sampled input.
@@ -100,7 +100,7 @@ this shape. Truncation, colorisation, and ANSI escapes happen later.
 
 Canonical: [Assertions And Results](./assertions-and-results.md).
 
-## Stage 2 — Test Body Returns; Outcome Constructed
+## Stage 2 - Test Body Returns; Outcome Constructed
 
 `scope.forall` returns the test body's terminal value (the
 property-test analogue of `scope.assert.collect()`). The engine reads
@@ -127,20 +127,20 @@ on success, or one `FailedCheck` for the shrunk counterexample on
 failure. The walkthrough does not write `scope.plan(1)` because the
 boundary rule already satisfies zero-assertion detection; the
 canonical statement of the rule lives in
-[Assertions And Results § Property Tests And The Assertion Boundary](./assertions-and-results.md#property-tests-and-the-assertion-boundary). `plan(n)` remains available — it counts boundary
-assertions, so `scope.plan(1)` would still pass — but it is not
+[Assertions And Results § Property Tests And The Assertion Boundary](./assertions-and-results.md#property-tests-and-the-assertion-boundary). `plan(n)` remains available - it counts boundary
+assertions, so `scope.plan(1)` would still pass - but it is not
 load-bearing for property tests.
 
 The engine is at this point done with the test. Whatever happens
-next — verdict derivation, identity attachment, artifact paths,
-reporter dispatch — is orchestration.
+next - verdict derivation, identity attachment, artifact paths,
+reporter dispatch - is orchestration.
 
 Canonical: [Assertions And Results](./assertions-and-results.md), specifically [§ Protocol Layer](./assertions-and-results.md#protocol-layer-structured-outcomes).
 
-## Stage 3 — Verdict Derivation
+## Stage 3 - Verdict Derivation
 
-The orchestration layer combines the engine outcome with metadata
-and runner-error state to derive a reporter-facing **verdict** (see
+The orchestration layer combines the engine outcome with runner-error state
+to derive a reporter-facing **verdict** (see
 [Glossary § Test Verdict](../reference/glossary.md#test-verdict)).
 
 For this test:
@@ -153,7 +153,7 @@ For this test:
 
 Canonical: [Glossary § Test Outcome](../reference/glossary.md#test-outcome) / Test Verdict.
 
-## Stage 4 — Identity And Artifact Path
+## Stage 4 - Identity And Artifact Path
 
 The test's stable identity is computed once at collection (see
 [Artifact Identity](../architecture/artifact-identity.md)):
@@ -167,8 +167,8 @@ const caseId: CaseId = {
 };
 ```
 
-Property tests produce a witness — a replayable artifact recording
-seed and shrunk counterexample — alongside the failure. Its
+Property tests produce a witness - a replayable artifact recording
+seed and shrunk counterexample - alongside the failure. Its
 `ArtifactId` (see [Artifact Identity § Concrete Type Sketch](../architecture/artifact-identity.md#concrete-type-sketch)):
 
 ```ts
@@ -186,7 +186,7 @@ Path derivation (canonical rule in [Artifact Identity § Path Derivation](../arc
 
 Canonical: [Artifact Identity](../architecture/artifact-identity.md).
 
-## Stage 5 — Witness File Written
+## Stage 5 - Witness File Written
 
 Per [Failure Artifacts § Witnesses And Replay Artifacts](./failure-artifacts.md#witnesses-and-replay-artifacts),
 the property runner writes the canonical `WitnessFile` schema to the
@@ -194,7 +194,7 @@ path above. This is the artifact that survives the run.
 
 Canonical: [Failure Artifacts](./failure-artifacts.md).
 
-## Stage 6 — Run Record
+## Stage 6 - Run Record
 
 When the active workflow persists a run record (see [Reproducibility § Run Record Shape](../architecture/reproducibility.md#run-record-shape), also [Types Index](../reference/types-index.md)), run completion writes it to
 `.overkill/runs/<run-id>.json`. The relevant per-test entry:
@@ -220,8 +220,8 @@ same `ArtifactId`. Replay (`overkill replay <run-id>`) reads the
 record; replay-witness (`overkill replay-witness <path>`) reads the
 witness directly.
 
-If the user had explicitly enabled debug for this case — typically via
-`--debug-scope <selector>` or a narrowly filtered `--debug` run — a
+If the user had explicitly enabled debug for this case - typically via
+`--debug-scope <selector>` or a narrowly filtered `--debug` run - a
 `TestDebugArtifact` (see [Test Debug Mode](./debug-mode.md))
 would also exist at
 `.overkill/runs/<run-id>/debug/<case-id>.debug.json`, with the
@@ -231,7 +231,7 @@ timeline showing `forall` iteration counts up to the failure. The
 Canonical: [Reproducibility](../architecture/reproducibility.md), [Failure Artifacts](./failure-artifacts.md),
 [Runtime Behavior](../architecture/runtime-behavior.md).
 
-## Stage 7 — Reporter Renders
+## Stage 7 - Reporter Renders
 
 The default reporter receives the run events as they happen and
 prints the failure inline:
@@ -256,7 +256,7 @@ event consumable by IDEs and MCP servers.
 Canonical: [Package Architecture § Reporters](../architecture/package-architecture.md#reporters),
 [Failure Artifacts](./failure-artifacts.md).
 
-## Stage 8 — Replay The Witness
+## Stage 8 - Replay The Witness
 
 The next morning, on a different machine, the developer runs:
 
@@ -296,11 +296,11 @@ visible first.
 
 This document is a reading aid; the canonical specifications live in:
 
-- [Assertions And Results](./assertions-and-results.md) — assertion API, `FailedCheck`,
+- [Assertions And Results](./assertions-and-results.md) - assertion API, `FailedCheck`,
   diff shape, plan, `TestOutcome` ADT
-- [Glossary](../reference/glossary.md) — outcome / verdict layering
-- [Artifact Identity](../architecture/artifact-identity.md) — identity types, path derivation
-- [Failure Artifacts](./failure-artifacts.md) — witnesses, run-record artifact list
-- [Reproducibility](../architecture/reproducibility.md) — `RunRecord`, replay
-- [Runtime Behavior](../architecture/runtime-behavior.md) — exit codes, debug mode
-- [Types Index](../reference/types-index.md) — every TS type used above
+- [Glossary](../reference/glossary.md) - outcome / verdict layering
+- [Artifact Identity](../architecture/artifact-identity.md) - identity types, path derivation
+- [Failure Artifacts](./failure-artifacts.md) - witnesses, run-record artifact list
+- [Reproducibility](../architecture/reproducibility.md) - `RunRecord`, replay
+- [Runtime Behavior](../architecture/runtime-behavior.md) - exit codes, debug mode
+- [Types Index](../reference/types-index.md) - every TS type used above

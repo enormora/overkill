@@ -9,12 +9,14 @@ import { isPlainObject, ownKeys, partialDeepEqual } from './partial-matching.ts'
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/assertion-protocol/partial-matching.test.ts',
-    metadata: {},
+    annotations: {},
+    controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'partialDeepEqual() matches nested partial arrays, maps, sets, and objects',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const symbolKey = Symbol('id');
 
@@ -35,7 +37,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'partialDeepEqual() rejects mismatched partial collection shapes',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.equal(partialDeepEqual({ 0: 'value' }, [ 'value' ]), false);
                 scope.assert.equal(partialDeepEqual({ id: 1 }, new Map([ [ 'id', 1 ] ])), false);
@@ -48,7 +51,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'collectionCount() reports known, iterable, and unsupported collection counts',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 function* values(): Generator<number> {
                     yield 1;
@@ -83,7 +87,8 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'isPlainObject() and ownKeys() expose plain-object identity and keys',
-            metadata: {},
+            annotations: {},
+            controls: {},
             body(scope: OverkillScope) {
                 const symbolKey = Symbol('id');
                 const plainObject = Object.create(null) as Record<PropertyKey, unknown>;
