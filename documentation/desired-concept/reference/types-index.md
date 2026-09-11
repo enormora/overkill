@@ -1515,6 +1515,11 @@ type RuntimeWrappedTestBody<
     readonly runtime: Runtime;
 };
 
+type TestBodyResourceAttachments = {
+    readonly resources: ReadonlyArray<ResourceDefinition<unknown>>;
+    readonly runtimes: ReadonlyArray<RuntimeDefinition<Readonly<Record<string, ResourceDefinition<unknown>>>>>;
+};
+
 type ResourceTestScope<
     Resource extends ResourceDefinition<unknown>,
     Scope extends TestScope = TestScope
@@ -1557,7 +1562,9 @@ acquired handles. Collection reads the descriptors before scheduling,
 planning lowers scopes and requirements into placement constraints, and
 execution injects acquired handles into `scope.runtime` or `scope.resource`
 when handles exist. Microtest profiles reject resource descriptors and
-resource-bearing runtime descriptors before body execution.
+resource-bearing runtime descriptors before body execution. Rejection is based
+on the collected attachment descriptors, not on which authoring helper or
+facade attached them.
 
 Canonical: [Package Architecture](../architecture/package-architecture.md) for package ownership and
 [Higher Test Layers](../authoring/higher-test-layers.md) for intended resource usage.

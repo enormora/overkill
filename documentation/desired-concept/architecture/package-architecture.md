@@ -185,6 +185,13 @@ the descriptor before scheduling, lowers resource scopes and execution
 requirements into the run plan, and execution injects acquired handles into
 `scope.runtime` when the runtime declares resources.
 
+Microtest rejection is runner-owned and descriptor-based. The runner should
+reject microtest cases when collected body metadata contains resource
+descriptors, regardless of whether those descriptors came from
+`withResource(...)`, a resource-bearing `withRuntime(...)`, an adapter facade,
+or a future helper. A pure runtime descriptor with no resources is not rejected
+for the resource-side-effect reason.
+
 For the common one-resource case, `withResource(resource, body)` is useful
 syntax sugar over a one-resource runtime:
 
@@ -354,7 +361,7 @@ to authored tests; they do not acquire handles at module load. Collection
 reads the attached descriptors before scheduling. The runner then owns
 lifetime selection, worker/process placement, acquisition, injection, teardown,
 artifact attribution, and replay metadata. Microtest profiles reject
-first-party resource attachments before body execution.
+collected resource descriptors before body execution.
 
 `@overkill-dev/resources` should be generic enough to serve multiple higher-level families:
 
