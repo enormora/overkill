@@ -17,19 +17,7 @@ import {
     type TestScope,
     type TestScope as OverkillScope
 } from '../engine/engine.entry-point.ts';
-import {
-    defineMacro,
-    defineParameterizedTestBody,
-    doubleUsage,
-    rule,
-    suite,
-    table,
-    test,
-    type TestDouble,
-    type TestIterator,
-    testDouble,
-    testIterator
-} from './test.entry-point.ts';
+import * as testRoot from './test.entry-point.ts';
 
 type RootAuthoringExecution = {
     readonly plannedCase: TestPlan['discoveredCases'][number] | undefined;
@@ -46,9 +34,9 @@ type NameData = {
     readonly name: string;
 };
 type LoadValue = (id: string) => string;
-type RootLoadValue = TestDouble<LoadValue>;
-type RootSequencedValue = TestDouble<(...parameters: readonly unknown[]) => unknown>;
-type RootEvents = TestIterator<string, undefined>;
+type RootLoadValue = testRoot.TestDouble<LoadValue>;
+type RootSequencedValue = testRoot.TestDouble<(...parameters: readonly unknown[]) => unknown>;
+type RootEvents = testRoot.TestIterator<string, undefined>;
 
 type TableAuthoringExecution = {
     readonly bodyRows: readonly TableRow[];
@@ -59,8 +47,53 @@ type TableAuthoringExecution = {
     readonly testNode: Table;
 };
 
+const {
+    defineMacro,
+    defineParameterizedTestBody,
+    doubleUsage,
+    rule,
+    suite,
+    table,
+    test,
+    testDouble,
+    testIterator
+} = testRoot;
 const invokeTest = test as (...parameters: readonly unknown[]) => unknown;
 const invokeSuite = suite as (...parameters: readonly unknown[]) => unknown;
+const rootAuthoringExportNames = [
+    'createTestFacade',
+    'createTranscript',
+    'defineHarness',
+    'defineMacro',
+    'defineParameterizedTestBody',
+    'doubleUsage',
+    'recordAsyncSink',
+    'recordSink',
+    'rule',
+    'runIfMain',
+    'skippedTest',
+    'suite',
+    'table',
+    'test',
+    'testAsyncDisposable',
+    'testAsyncIterable',
+    'testAsyncIterator',
+    'testDisposable',
+    'testDouble',
+    'testIterable',
+    'testIterator',
+    'transcriptUsage'
+] as const;
+
+function sortedKeys(value: Readonly<Record<string, unknown>>): readonly string[] {
+    return Object.keys(value).toSorted(function compareExportNames(left, right) {
+        return left.localeCompare(right);
+    });
+}
+
+function assertRootAuthoringBoundary(scope: OverkillScope): void {
+    scope.assert.deepEqual(sortedKeys(testRoot), rootAuthoringExportNames);
+}
 
 function passingBody(scope: TestScope): ReturnType<TestBody> {
     scope.assert.true(true);
@@ -347,6 +380,17 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: '@overkill-dev/test root exposes authoring boundary only',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                assertRootAuthoringBoundary(scope);
+
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test test() and suite() create executable engine nodes',
