@@ -101,6 +101,12 @@ they do not request side-effectful execution capabilities. Plain
 user-injected capability handles, in-memory doubles, and ordinary function
 parameters remain valid.
 
+The runner is the source of truth for this rule. Authoring helpers and
+facades may reject earlier for clearer local errors, but planning must reject
+any collected microtest body that carries attached resource descriptors. The
+check must not depend on whether the descriptor came from `withResource(...)`,
+`withRuntime(...)`, a domain preset, or another future wrapper.
+
 The first enforcement mechanism is Node's permission model (Node 20+):
 
 - `--permission`
