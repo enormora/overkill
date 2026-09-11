@@ -693,6 +693,7 @@ or extend the contract but do not redefine it.
 | Standard configuration helper re-export                           | `@overkill-dev/test/config`                                            | User-facing import path for `defineConfig(...)`; custom orchestrators may import from `@overkill-dev/run`.                                                     |
 | Test facade creation                                              | project code + `@overkill-dev/test`                                    | `@overkill-dev/test` owns facade creation for authoring ergonomics only.                                                                                       |
 | Root test authoring import                                        | `@overkill-dev/test`                                                   | `test`, `skippedTest`, `suite`, `table`, `defineMacro`, `createTestFacade`, `runIfMain`, and explicitly reviewed lightweight doubles only.                     |
+| Throwable compatibility authoring                                 | `@overkill-dev/test/compatibility`                                     | Explicit alternate authoring import for `throwingTest`; excluded from the root hot path.                                                                       |
 | Assertion reference execution                                     | `@overkill-dev/engine`                                                 | Engine owns callable assertion references, counting, `require` behavior, and result normalization.                                                             |
 | CLI command semantics, terminal capability detection              | `@overkill-dev/run`                                                    | Owns typed command behavior behind the `@overkill-dev/test` argv parser and binary wrapper.                                                                    |
 | Test debug mode artifact                                          | `@overkill-dev/run`                                                    | Activation, storage, retention; see [Test Debug Mode](../authoring/debug-mode.md).                                                                             |
@@ -739,6 +740,7 @@ Everything outside the authoring hot path uses an explicit subpath:
 import { defineConfig } from '@overkill-dev/test/config';
 import { createLineReporter } from '@overkill-dev/test/reporters';
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { throwingTest } from '@overkill-dev/test/compatibility';
 ```
 
 Subpaths may re-export standard-stack packages for user ergonomics. They do

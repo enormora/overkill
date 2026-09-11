@@ -27,6 +27,7 @@ type PendingRecordedAssert = {
 export type AssertionRecorder = {
     readonly activeRecordedAssertions: () => readonly AssertionNode[];
     readonly collect: () => NonEmptyReadonlyArray<AssertAssertionNode>;
+    readonly completedThrowingAssertions: () => TestContractFailure | readonly AssertionNode[];
     readonly failContract: (failure: TestContractFailure) => never;
     readonly plan: (count: number) => void;
     readonly recordAssert: (assertion: AssertAssertionNode) => void;
@@ -240,6 +241,12 @@ function mergeRecordedRequires(
     return mergedAssertions;
 }
 
+function recordedAssertionNodes(records: readonly RecordedAssertion[]): readonly AssertionNode[] {
+    return records.flatMap(function toAssertion(recorded) {
+        return recorded.assertion === null ? [] : [ recorded.assertion ];
+    });
+}
+
 export function createAssertionRecorder(): AssertionRecorder {
     const builderAssertions: (AssertAssertionNode | null)[] = [];
     const recordedAssertions: RecordedAssertion[] = [];
@@ -304,12 +311,18 @@ export function createAssertionRecorder(): AssertionRecorder {
 
     return {
         activeRecordedAssertions() {
-            return activeRecords().flatMap(function toAssertion(recorded) {
-                return recorded.assertion === null ? [] : [ recorded.assertion ];
-            });
+            return recordedAssertionNodes(activeRecords());
         },
 
         collect,
+
+        completedThrowingAssertions() {
+            if (pendingAssertionExists()) {
+                return createPendingAsyncAssertionFailure();
+            }
+
+            return recordedAssertionNodes(activeRecords());
+        },
 
         failContract(failure) {
             throw new TestContractSignalError(failure, undefined);

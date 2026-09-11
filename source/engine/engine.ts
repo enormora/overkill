@@ -15,7 +15,8 @@ import {
     type TestCase,
     type TestCaseOptions,
     type TestNode,
-    type TestRoot
+    type TestRoot,
+    type ThrowingTestCaseOptions
 } from './test-node.ts';
 import {
     createTestPlanFactory,
@@ -30,6 +31,7 @@ export type Engine = {
     readonly createSkippedTestCase: (options: SkippedTestCaseOptions) => TestCase;
     readonly createTable: (options: TableOptions) => Table;
     readonly createTestCase: (options: TestCaseOptions) => TestCase;
+    readonly createThrowingTestCase: (options: ThrowingTestCaseOptions) => TestCase;
     readonly createTestPlan: TestPlanFactory;
     readonly createTestPlanFromTestFiles: TestPlanFromTestFilesFactory;
     readonly execute: Execute;
@@ -60,6 +62,7 @@ export function createEngineWithOwner(dependencies: EngineDependencies, owner: T
         createSkippedTestCase: nodeFactory.createSkippedTestCase,
         createTable: nodeFactory.createTable,
         createTestCase: nodeFactory.createTestCase,
+        createThrowingTestCase: nodeFactory.createThrowingTestCase,
         createTestPlan,
         createTestPlanFromTestFiles,
         execute,

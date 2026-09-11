@@ -13,6 +13,7 @@ import {
     TestContractSignalError,
     type AssertionRecorder
 } from './assertion-recorder.ts';
+import { isNodeAssertionError, nodeAssertionErrorFailure } from './node-assertion-error.ts';
 import {
     type PerTestResult,
     type RunnerError,
@@ -23,6 +24,7 @@ import {
     verdictFromOutcome
 } from './run-result.ts';
 import { createTestScopeLifecycle } from './test-scope-lifecycle.ts';
+import { createThrowingTestScope } from './throwing-test-scope.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
 type BodyErrorRecord = ThrownErrorRecord;
@@ -38,6 +40,14 @@ type ExecutedBody = {
 type ExecutedCase = {
     readonly result: PerTestResult;
     readonly wallTimeMs: number;
+};
+
+type FailedBodyInput = {
+    readonly cleanupErrors: readonly BodyErrorRecord[];
+    readonly error: unknown;
+    readonly lifecycleFailures: readonly TestContractFailure[];
+    readonly recorder: AssertionRecorder;
+    readonly testCase: TestPlanCase;
 };
 
 export type RunTestCaseOptions = {
@@ -87,11 +97,15 @@ function assertionFailure(assertions: readonly AssertionNode[]): TestFailure | n
     return assertionContractFailure(assertions) ?? evaluatedAssertionFailure(assertions);
 }
 
-function requireFailedBody(recorder: AssertionRecorder): ExecutedBody {
+function requireFailedBody(
+    recorder: AssertionRecorder,
+    contractFailures: readonly TestContractFailure[],
+    cleanupErrors: readonly BodyErrorRecord[]
+): ExecutedBody {
     return {
         bodyError: null,
-        cleanupErrors: [],
-        contractFailures: [],
+        cleanupErrors,
+        contractFailures,
         requireFailed: true,
         returnedAssertions: recorder.activeRecordedAssertions()
     };
@@ -99,24 +113,49 @@ function requireFailedBody(recorder: AssertionRecorder): ExecutedBody {
 
 function contractFailedBody(
     recorder: AssertionRecorder,
-    contractFailures: readonly TestContractFailure[]
+    contractFailures: readonly TestContractFailure[],
+    cleanupErrors: readonly BodyErrorRecord[]
 ): ExecutedBody {
     return {
         bodyError: null,
-        cleanupErrors: [],
+        cleanupErrors,
         contractFailures,
         requireFailed: false,
         returnedAssertions: recorder.activeRecordedAssertions()
     };
 }
 
-function bodyErrorResult(recorder: AssertionRecorder, error: unknown): ExecutedBody {
+function bodyErrorResult(
+    recorder: AssertionRecorder,
+    error: unknown,
+    contractFailures: readonly TestContractFailure[],
+    cleanupErrors: readonly BodyErrorRecord[]
+): ExecutedBody {
     return {
         bodyError: createThrownErrorRecord(error),
+        cleanupErrors,
+        contractFailures,
+        requireFailed: false,
+        returnedAssertions: recorder.activeRecordedAssertions()
+    };
+}
+
+function nodeAssertionFailedBody(
+    testCase: TestPlanCase,
+    recorder: AssertionRecorder,
+    error: unknown
+): ExecutedBody {
+    const fallbackLocation = testCase.definitionLocations[0];
+
+    return {
+        bodyError: null,
         cleanupErrors: [],
         contractFailures: [],
         requireFailed: false,
-        returnedAssertions: recorder.activeRecordedAssertions()
+        returnedAssertions: [
+            ...recorder.activeRecordedAssertions(),
+            nodeAssertionErrorFailure(error, fallbackLocation)
+        ]
     };
 }
 
@@ -127,60 +166,73 @@ function completedBody(
     cleanupErrors: readonly BodyErrorRecord[]
 ): ExecutedBody {
     if (recorder.requireFailed()) {
-        return {
-            ...requireFailedBody(recorder),
-            cleanupErrors,
-            contractFailures: lifecycleFailures
-        };
+        return requireFailedBody(recorder, lifecycleFailures, cleanupErrors);
     }
 
     const returnedAssertions = recorder.returnedAssertions(assertionResult);
-    const returnedContractFailures = isTestContractFailure(returnedAssertions) ? [ returnedAssertions ] : [];
-    const activeAssertions = isTestContractFailure(returnedAssertions)
-        ? recorder.activeRecordedAssertions()
-        : returnedAssertions;
+
+    if (isTestContractFailure(returnedAssertions)) {
+        return contractFailedBody(recorder, [ returnedAssertions, ...lifecycleFailures ], cleanupErrors);
+    }
 
     return {
         bodyError: null,
         cleanupErrors,
-        contractFailures: [ ...returnedContractFailures, ...lifecycleFailures ],
+        contractFailures: lifecycleFailures,
         requireFailed: false,
-        returnedAssertions: activeAssertions
+        returnedAssertions
     };
 }
 
-function failedBody(
-    recorder: AssertionRecorder,
-    error: unknown,
-    lifecycleFailures: readonly TestContractFailure[],
-    cleanupErrors: readonly BodyErrorRecord[]
-): ExecutedBody {
-    if (error instanceof RequireFailedSignalError) {
-        return {
-            ...requireFailedBody(recorder),
-            cleanupErrors,
-            contractFailures: lifecycleFailures
-        };
+function completedThrowingBody(recorder: AssertionRecorder): ExecutedBody {
+    if (recorder.requireFailed()) {
+        return requireFailedBody(recorder, [], []);
     }
 
-    return error instanceof TestContractSignalError
-        ? contractFailedBody(recorder, [ error.failure(), ...lifecycleFailures ])
+    const returnedAssertions = recorder.completedThrowingAssertions();
+
+    return isTestContractFailure(returnedAssertions)
+        ? contractFailedBody(recorder, [ returnedAssertions ], [])
         : {
-            ...bodyErrorResult(recorder, error),
-            cleanupErrors,
-            contractFailures: lifecycleFailures
+            bodyError: null,
+            cleanupErrors: [],
+            contractFailures: [],
+            requireFailed: false,
+            returnedAssertions
         };
 }
 
-async function runCaseBody(
+function failedBody(input: FailedBodyInput): ExecutedBody {
+    const { cleanupErrors, error, lifecycleFailures, recorder, testCase } = input;
+
+    if (error instanceof RequireFailedSignalError) {
+        return requireFailedBody(recorder, lifecycleFailures, cleanupErrors);
+    }
+
+    if (error instanceof TestContractSignalError) {
+        return contractFailedBody(recorder, [ error.failure(), ...lifecycleFailures ], cleanupErrors);
+    }
+
+    if (
+        testCase.execution.kind === 'body' &&
+        testCase.execution.bodyMode === 'throwing' &&
+        isNodeAssertionError(error)
+    ) {
+        return nodeAssertionFailedBody(testCase, recorder, error);
+    }
+
+    return bodyErrorResult(recorder, error, lifecycleFailures, cleanupErrors);
+}
+
+async function runBuilderCaseBody(
     testCase: TestPlanCase,
     recorder: AssertionRecorder,
     options: RunTestCaseOptions
 ): Promise<ExecutedBody> {
     const lifecycle = createTestScopeLifecycle(recorder);
     const runBody = async function runUserBody(): Promise<AssertionResult> {
-        if (testCase.execution.kind !== 'body') {
-            throw new TypeError('Skipped test cases do not have executable bodies.');
+        if (testCase.execution.kind !== 'body' || testCase.execution.bodyMode !== 'builder') {
+            throw new TypeError('Non-builder test cases do not have builder bodies.');
         }
 
         return await lifecycle.runBody(options.controller.signal, testCase.execution.body);
@@ -204,13 +256,65 @@ async function runCaseBody(
     } catch (error: unknown) {
         const finishedBody = await lifecycle.finish(options.controller);
 
-        return failedBody(
-            recorder,
+        return failedBody({
+            cleanupErrors: finishedBody.cleanupErrors.map(createThrownErrorRecord),
             error,
-            finishedBody.lifecycleFailures,
-            finishedBody.cleanupErrors.map(createThrownErrorRecord)
-        );
+            lifecycleFailures: finishedBody.lifecycleFailures,
+            recorder,
+            testCase
+        });
     }
+}
+
+async function runThrowingCaseBody(
+    testCase: TestPlanCase,
+    recorder: AssertionRecorder,
+    options: RunTestCaseOptions
+): Promise<ExecutedBody> {
+    const runBody = async function runUserBody(): Promise<void> {
+        if (testCase.execution.kind !== 'body' || testCase.execution.bodyMode !== 'throwing') {
+            throw new TypeError('Non-throwing test cases do not have throwing bodies.');
+        }
+
+        await testCase.execution.body(createThrowingTestScope(recorder, options.controller.signal));
+    };
+    const runPolicyCheckedBody = async function runPolicyCheckedUserBody(): Promise<void> {
+        if (options.runtimePolicy === null) {
+            await runBody();
+
+            return;
+        }
+
+        await options.runtimePolicy.runCase(testCase, runBody);
+    };
+
+    try {
+        await runPolicyCheckedBody();
+
+        return completedThrowingBody(recorder);
+    } catch (error: unknown) {
+        return failedBody({
+            cleanupErrors: [],
+            error,
+            lifecycleFailures: [],
+            recorder,
+            testCase
+        });
+    }
+}
+
+async function runCaseBody(
+    testCase: TestPlanCase,
+    recorder: AssertionRecorder,
+    options: RunTestCaseOptions
+): Promise<ExecutedBody> {
+    if (testCase.execution.kind !== 'body') {
+        throw new TypeError('Skipped test cases do not have executable bodies.');
+    }
+
+    return testCase.execution.bodyMode === 'builder'
+        ? await runBuilderCaseBody(testCase, recorder, options)
+        : await runThrowingCaseBody(testCase, recorder, options);
 }
 
 function bodyFailures(executedBody: ExecutedBody): readonly TestFailure[] {

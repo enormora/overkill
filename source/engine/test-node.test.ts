@@ -163,6 +163,37 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(isTestNode(testCase), true);
                 scope.assert.equal(testCase.kind, 'test');
                 scope.assert.equal(testCase.execution.kind, 'body');
+                if (testCase.execution.kind === 'body') {
+                    scope.assert.equal(testCase.execution.bodyMode, 'builder');
+                }
+                scope.assert.equal(testCase.title, 'passes');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'createThrowingTestCase() creates a branded test node',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const engine = createEngine();
+                const testCase = engine.createThrowingTestCase({
+                    definitionLocations: [ { kind: 'unknown' as const } ],
+                    body(testScope) {
+                        testScope.assert.true(true, { message: 'passes' });
+                    },
+                    annotations: {},
+                    controls: { timeoutMilliseconds: 50 },
+                    title: 'passes'
+                });
+
+                scope.assert.equal(isTestNode(testCase), true);
+                scope.assert.equal(testCase.kind, 'test');
+                scope.assert.equal(testCase.execution.kind, 'body');
+                if (testCase.execution.kind === 'body') {
+                    scope.assert.equal(testCase.execution.bodyMode, 'throwing');
+                }
                 scope.assert.equal(testCase.title, 'passes');
 
                 return scope.assert.collect();

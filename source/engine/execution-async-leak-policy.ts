@@ -6,7 +6,7 @@ import {
 } from './async-leak-diagnostics.ts';
 import { settleAsyncWork } from './async-control.ts';
 import type { ConcurrentCase } from './execution-supervision.ts';
-import type { RunnerError } from './run-result.ts';
+import type { RunnerError, TestContractFailure } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
 export type AsyncLeakDiagnostics = 'disabled' | 'enabled';
@@ -29,6 +29,12 @@ export type CaseAsyncLeakPolicyInput = {
     readonly testCase: TestPlanCase;
 };
 
+const promiseTrackingContractFailureCodes = new Set<TestContractFailure['code']>([
+    'pending-async-assertion',
+    'pending-in-flight-task',
+    'unobserved-in-flight-task'
+]);
+
 export function createExecutionAsyncLeakMonitor(diagnostics: AsyncLeakDiagnostics): AsyncLeakMonitor {
     return diagnostics === 'enabled'
         ? createAsyncLeakMonitor()
@@ -46,15 +52,11 @@ function runtimePolicyCase(testCase: TestPlanCase, executedCase: ConcurrentCase)
     };
 }
 
-function hasInFlightContractFailure(executedCase: ConcurrentCase): boolean {
+function hasPromiseTrackingContractFailure(executedCase: ConcurrentCase): boolean {
     const { outcome } = executedCase.result;
 
-    return outcome?.kind === 'fail' && outcome.failures.some(function inFlightFailure(failure) {
-        return failure.kind === 'test-contract' &&
-            (
-                failure.code === 'pending-in-flight-task' ||
-                failure.code === 'unobserved-in-flight-task'
-            );
+    return outcome?.kind === 'fail' && outcome.failures.some(function promiseTrackingFailure(failure) {
+        return failure.kind === 'test-contract' && promiseTrackingContractFailureCodes.has(failure.code);
     });
 }
 
@@ -68,7 +70,7 @@ export async function caseWithAsyncLeakPolicy(input: CaseAsyncLeakPolicyInput): 
 
     await settleAsyncWork();
 
-    const promiseLeakError = hasInFlightContractFailure(input.executedCase)
+    const promiseLeakError = hasPromiseTrackingContractFailure(input.executedCase)
         ? null
         : input.dependencies.asyncLeakMonitor.casePromiseLeakError(input.testCase);
     const activeLeakError = input.includeActiveResourceLeaks

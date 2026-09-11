@@ -15,7 +15,8 @@ import {
     type TableOptions,
     type TestCaseOptions,
     type TestNode,
-    type TestRoot
+    type TestRoot,
+    type ThrowingTestCaseOptions
 } from '../../engine/test-node.ts';
 
 function writeStdoutLine(line: string): void {
@@ -72,6 +73,10 @@ export function createTable(options: TableOptions): ReturnType<Engine['createTab
 
 export function createTestCase(options: TestCaseOptions): ReturnType<Engine['createTestCase']> {
     return defaultEngine.createTestCase(options);
+}
+
+export function createThrowingTestCase(options: ThrowingTestCaseOptions): ReturnType<Engine['createThrowingTestCase']> {
+    return defaultEngine.createThrowingTestCase(options);
 }
 
 export function createTestPlan(root: TestRoot): ReturnType<Engine['createTestPlan']> {
@@ -275,6 +280,7 @@ export type {
     RequireAssertionNode
 } from '../../assertion-protocol/assertion-node.ts';
 export type {
+    BuilderTestCaseExecution,
     TestScopeAssertContext,
     RootOptions,
     BodyTestCaseExecution,
@@ -293,7 +299,11 @@ export type {
     DefinitionLocations,
     TestRoot,
     TestScope,
-    TestNode
+    TestNode,
+    ThrowingTestBody,
+    ThrowingTestCaseExecution,
+    ThrowingTestCaseOptions,
+    ThrowingTestScope
 } from '../../engine/test-node.ts';
 export { stampTestNodeFamily, testNodeFamily } from '../../engine/test-node.ts';
 export {

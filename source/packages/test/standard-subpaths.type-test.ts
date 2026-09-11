@@ -1,9 +1,12 @@
 import { describe, expect, test } from 'tstyche';
 import type {
+    AssertAssertionFacade,
     DefinedOutputRenderer,
     DefinedReporter,
     RealTimeReporter,
+    RequireAssertionFacade,
     TestBody,
+    TestCase,
     TestScope
 } from '../engine/engine.entry-point.ts';
 import type {
@@ -13,6 +16,13 @@ import type {
 } from './assert.entry-point.ts';
 import type { unavailable as baselinesUnavailable } from './baselines.entry-point.ts';
 import type { unavailable as benchUnavailable } from './bench.entry-point.ts';
+import {
+    throwingTest,
+    type ThrowingTestAuthor,
+    type ThrowingTestBody,
+    type ThrowingTestDefinition,
+    type ThrowingTestScope
+} from './compatibility.entry-point.ts';
 import type {
     defineConfig,
     RunProjectConfig,
@@ -134,6 +144,43 @@ describe('@overkill-dev/test standard subpaths', function () {
         expect<CompositeCheckBuilder<'assert'>['true']>().type.toBe<
             (actual: unknown) => ReturnType<CompositeCheckBuilder<'assert'>['true']>
         >();
+    });
+
+    test('exposes throwing test authoring through the compatibility subpath', function () {
+        expect<typeof throwingTest>().type.toBe<ThrowingTestAuthor>();
+        expect<ThrowingTestBody>().type.toBe<(scope: ThrowingTestScope) => Promise<void> | void>();
+        expect<ThrowingTestScope>().type.toBe<{
+            readonly assert: AssertAssertionFacade;
+            readonly require: RequireAssertionFacade;
+            readonly signal: AbortSignal;
+        }>();
+        expect<ThrowingTestScope>().type.not.toHaveProperty('plan');
+        expect<ThrowingTestScope['assert']>().type.not.toHaveProperty('collect');
+        expect(throwingTest('passes', function body() {
+            return undefined;
+        }))
+            .type
+            .toBe<TestCase>();
+        expect(throwingTest({
+            body() {
+                return undefined;
+            },
+            controls: { timeoutMilliseconds: 50 },
+            title: 'passes'
+        }))
+            .type
+            .toBe<TestCase>();
+        expect<ThrowingTestDefinition>().type.toBeAssignableFrom<{
+            readonly body: ThrowingTestBody;
+            readonly title: string;
+        }>();
+        expect(throwingTest).type.not.toBeCallableWith({
+            body() {
+                return undefined;
+            },
+            controls: { capture: 'live' },
+            title: 'captures'
+        });
     });
 
     test('exposes resource descriptor types through the standard distribution', function () {

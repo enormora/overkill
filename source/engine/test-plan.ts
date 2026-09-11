@@ -181,7 +181,7 @@ function collectTable(
                 annotations,
                 controls,
                 definitionLocations: table.definitionLocations,
-                execution: { body: tableCase.body, kind: 'body' },
+                execution: { body: tableCase.body, bodyMode: 'builder', kind: 'body' },
                 id: createCaseId(
                     context.file,
                     suiteTitles(tablePath),

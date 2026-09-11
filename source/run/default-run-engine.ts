@@ -43,6 +43,7 @@ export const defaultRunEngine: Engine = {
     createSkippedTestCase: engine.createSkippedTestCase,
     createTable: engine.createTable,
     createTestCase: engine.createTestCase,
+    createThrowingTestCase: engine.createThrowingTestCase,
     createTestPlan: engine.createTestPlan,
     createTestPlanFromTestFiles: engine.createTestPlanFromTestFiles,
     execute: engine.execute,

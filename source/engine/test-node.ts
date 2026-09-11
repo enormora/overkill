@@ -40,10 +40,25 @@ export type TestScope = {
 
 export type TestBody = (scope: TestScope) => AssertionResult | Promise<AssertionResult>;
 
+export type ThrowingTestScope = {
+    readonly assert: AssertAssertionFacade;
+    readonly require: RequireAssertionFacade;
+    readonly signal: AbortSignal;
+};
+
+export type ThrowingTestBody = (scope: ThrowingTestScope) => Promise<void> | void;
+
 export type DefinitionLocations = NonEmptyReadonlyArray<SourceLocation>;
 
-export type BodyTestCaseExecution = {
+export type BuilderTestCaseExecution = {
     readonly body: TestBody;
+    readonly bodyMode: 'builder';
+    readonly kind: 'body';
+};
+
+export type ThrowingTestCaseExecution = {
+    readonly body: ThrowingTestBody;
+    readonly bodyMode: 'throwing';
     readonly kind: 'body';
 };
 
@@ -51,6 +66,8 @@ export type SkippedTestCaseExecution = {
     readonly kind: 'skip';
     readonly reason: string;
 };
+
+export type BodyTestCaseExecution = BuilderTestCaseExecution | ThrowingTestCaseExecution;
 
 export type TestCaseExecution = BodyTestCaseExecution | SkippedTestCaseExecution;
 
@@ -121,6 +138,7 @@ export type TestNodeFactory = {
     readonly createSkippedTestCase: (options: SkippedTestCaseOptions) => TestCase;
     readonly createTable: (options: TableOptions) => Table;
     readonly createTestCase: (options: TestCaseOptions) => TestCase;
+    readonly createThrowingTestCase: (options: ThrowingTestCaseOptions) => TestCase;
 };
 
 export type TestNodeFactoryOptions = {
@@ -131,6 +149,14 @@ export type TestNodeFactoryOptions = {
 export type TestCaseOptions = {
     readonly annotations: TestAnnotationsInput;
     readonly body: TestBody;
+    readonly controls: TestControlsInput;
+    readonly definitionLocations: DefinitionLocations;
+    readonly title: string;
+};
+
+export type ThrowingTestCaseOptions = {
+    readonly annotations: TestAnnotationsInput;
+    readonly body: ThrowingTestBody;
     readonly controls: TestControlsInput;
     readonly definitionLocations: DefinitionLocations;
     readonly title: string;
@@ -209,7 +235,7 @@ function ensureTitleValue(title: unknown): asserts title is string {
     }
 }
 
-function ensureTestBody(body: TestBody): void {
+function ensureTestBody(body: unknown): void {
     if (typeof body !== 'function') {
         throw new TypeError('Test case body must be a function.');
     }
@@ -354,7 +380,32 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
             annotations: options.annotations,
             controls: options.controls,
             definitionLocations: options.definitionLocations,
-            execution: { body: options.body, kind: 'body' },
+            execution: { body: options.body, bodyMode: 'builder', kind: 'body' },
+            kind: 'test',
+            title: options.title
+        };
+
+        recordConstructedNode(testCase);
+
+        return testCase;
+    }
+
+    function createThrowingTestCase(options: ThrowingTestCaseOptions): TestCase {
+        ensureTitleValue(options.title);
+        ensureTitle(options.title);
+        normalizeTestAnnotations(options.annotations);
+        normalizeTestControls(options.controls);
+        ensureTestBody(options.body);
+        ensureDefinitionLocations(options.definitionLocations);
+
+        const testCase: TestCase = {
+            [testNodeBrand]: true,
+            [testNodeFamilyBrand]: null,
+            [testNodeOwnerBrand]: owner,
+            annotations: options.annotations,
+            controls: options.controls,
+            definitionLocations: options.definitionLocations,
+            execution: { body: options.body, bodyMode: 'throwing', kind: 'body' },
             kind: 'test',
             title: options.title
         };
@@ -487,6 +538,7 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
         createSuite,
         createSkippedTestCase,
         createTable,
-        createTestCase
+        createTestCase,
+        createThrowingTestCase
     };
 }

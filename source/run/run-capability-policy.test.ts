@@ -46,6 +46,7 @@ const policyTestCase: PolicyTestCase = {
         body: async function unusedPolicyTestBody() {
             throw new Error('Policy test body should not run.');
         },
+        bodyMode: 'builder',
         kind: 'body'
     },
     definitionLocations: [ { kind: 'unknown' as const } ],

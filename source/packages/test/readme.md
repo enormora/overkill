@@ -40,6 +40,8 @@ Standard subpaths:
   `createGithubActionsOutputRenderer`.
 - `@overkill-dev/test/assert` re-exports assertion-extension helpers from
   `@overkill-dev/assert`.
+- `@overkill-dev/test/compatibility` exports `throwingTest` for explicit
+  throwable-style test authoring.
 - `@overkill-dev/test/resources` re-exports typed resource and runtime
   descriptors from `@overkill-dev/resources`, including
   `createTemporaryDirectoryResource(...)`, and adds `withRuntime(...)` for
@@ -87,7 +89,21 @@ exported top-level `testNode` apply to the whole module's test tree.
 
 `skippedTest(title, reason)` creates a visible leaf test with a mandatory
 reason. It is discovered, listed, reported as skipped, and never runs user
-code. Object form is `skippedTest({ title, metadata, reason })`.
+code. Object form is `skippedTest({ title, annotations, controls, reason })`.
+
+`throwingTest` is available from the compatibility subpath when a test should
+pass by completing normally instead of returning `scope.assert.collect()`:
+
+```ts
+import { throwingTest } from '@overkill-dev/test/compatibility';
+
+export const testNode = throwingTest('legacy assertion', (scope) => {
+    scope.assert.equal(add(2, 3), 5);
+});
+```
+
+The throwing body receives `scope.assert`, `scope.require`, and `scope.signal`.
+It does not expose `scope.plan` or `scope.assert.collect`.
 
 ```ts
 export const testNode = suite({
