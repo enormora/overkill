@@ -235,6 +235,48 @@ function workerPoolResolvedRunWithLifecycle(workerLifecycle: RunWorkerLifecycle)
     };
 }
 
+function supervisedExecutionFacts(): ResolvedRun['facts']['execution'] {
+    return {
+        baselineUpdateMode: 'none',
+        capture: 'buffered',
+        debug: { mode: 'off', selectors: [] },
+        engine: { kind: 'default' },
+        order: 'seeded',
+        processModel: 'supervised-process',
+        profile: 'integration',
+        resourceUsagePolicy: {
+            budgets: {
+                activeResourceCount: null,
+                javaScriptEngineHeapBytes: null,
+                residentSetBytes: null,
+                residentSetGrowthBytesPerSecond: null
+            },
+            measure: false,
+            samplingIntervalMilliseconds: 100
+        },
+        scheduling: 'serial',
+        testFamily: 'integration',
+        timeoutPolicy: {
+            collectionMilliseconds: 1000,
+            hardMilliseconds: 1000,
+            softMilliseconds: 500
+        },
+        verbose: false
+    };
+}
+
+function workerPoolPlanWithSupervisedFacts(): ResolvedRun {
+    const resolvedRun = workerPoolResolvedRun(createCollectedPlan());
+
+    return {
+        ...resolvedRun,
+        facts: {
+            ...resolvedRun.facts,
+            execution: supervisedExecutionFacts()
+        }
+    };
+}
+
 async function workerPoolRuntimeCreation(): Promise<{
     readonly createdWorkerPools: readonly WorkerPoolCreationOptions[];
     readonly measuredSamplingInterval: number;
@@ -320,6 +362,26 @@ export const testNode = createOverkillSuite({
                     { workerCount: 1, workerLifecycle: 'reuse' },
                     { workerCount: 1, workerLifecycle: 'fresh-worker-per-unit' }
                 ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'worker-pool runtime creation rejects non-worker-pool facts',
+            async body(scope: OverkillScope) {
+                await scope.assert.rejects(async function createMismatchedRuntime() {
+                    await createWorkerPoolRuntime(
+                        workerPoolPlanWithSupervisedFacts(),
+                        fakeDependencies(),
+                        [],
+                        createSupervisedRunState()
+                    );
+                }, {
+                    message: 'Worker-pool execution requires worker-pool execution facts.'
+                });
 
                 return scope.assert.collect();
             }

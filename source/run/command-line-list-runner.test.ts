@@ -9,6 +9,7 @@ import type { DefinedReporter } from '../engine/reporter.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import {
+    defaultIntegrationProfile,
     defaultMicrotestProfile,
     testRunExecutionFacts
 } from '../test-support/run-command-factory.ts';
@@ -292,11 +293,12 @@ export const testNode = createOverkillSuite({
             controls: {},
             async body(scope: OverkillScope) {
                 const receivedCommands: RunCommand[] = [];
+                const integrationProfile = defaultIntegrationProfile({});
                 const selection: RunSelection = {
                     filter: { field: 'tag', kind: 'equals', value: 'fast' },
                     kind: 'filter'
                 };
-                const runner = createCommandLineRunner(createDependencies(
+                const dependencies = createDependencies(
                     createListOnlyOrchestrator(async function resolveCommand(command) {
                         receivedCommands.push(command);
 
@@ -305,15 +307,29 @@ export const testNode = createOverkillSuite({
                     async function createDefaultReporter() {
                         return terminalReporter;
                     }
-                ));
+                );
+                const runner = createCommandLineRunner({
+                    ...dependencies,
+                    async loadRunConfig() {
+                        const config = await loadDefaultConfig();
+
+                        return {
+                            ...config,
+                            profiles: {
+                                ...config.profiles,
+                                integration: integrationProfile
+                            }
+                        };
+                    }
+                });
 
                 await runner.listTests({
                     configPath: null,
                     cwd: process.cwd(),
                     listRequest: {
                         order: 'seeded',
-                        paths: [ 'source/a.test.ts' ],
-                        profile: 'microtest',
+                        paths: [ 'source/integration.test.ts' ],
+                        profile: 'integration',
                         seed: { value: 42n },
                         selection,
                         withLocations: false,

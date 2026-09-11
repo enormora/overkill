@@ -73,6 +73,14 @@ export const testNode = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const config = await loadConfigValue({
                     profiles: {
+                        defaultedService: {
+                            testFamily: 'integration',
+                            files: { include: [ 'source/**/*.integration.test.ts' ] },
+                            execution: {
+                                processModel: 'worker-pool',
+                                scheduling: 'serial'
+                            }
+                        },
                         service: {
                             testFamily: 'integration',
                             files: { include: [ 'source/**/*.integration.test.ts' ] },
@@ -84,9 +92,16 @@ export const testNode = createOverkillSuite({
                         }
                     }
                 });
+                const defaultedProfile = config.profiles.defaultedService;
                 const profile = config.profiles.service;
 
+                scope.require.defined(defaultedProfile);
                 scope.require.defined(profile);
+                scope.assert.deepEqual(defaultedProfile.execution, {
+                    processModel: 'worker-pool',
+                    scheduling: 'serial',
+                    workerLifecycle: 'reuse'
+                });
                 scope.assert.deepEqual(profile.execution, {
                     processModel: 'worker-pool',
                     scheduling: 'serial',
