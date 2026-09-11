@@ -1555,8 +1555,9 @@ the runtime lists them directly.
 first-party descriptor attachment metadata. They do not receive already
 acquired handles. Collection reads the descriptors before scheduling,
 planning lowers scopes and requirements into placement constraints, and
-execution injects acquired handles into `scope.runtime` or `scope.resource`.
-Microtest profiles reject these attachments before body execution.
+execution injects acquired handles into `scope.runtime` or `scope.resource`
+when handles exist. Microtest profiles reject resource descriptors and
+resource-bearing runtime descriptors before body execution.
 
 Canonical: [Package Architecture](../architecture/package-architecture.md) for package ownership and
 [Higher Test Layers](../authoring/higher-test-layers.md) for intended resource usage.

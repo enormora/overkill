@@ -183,8 +183,7 @@ export const testNode = test(
 test body. It does not receive already-acquired handles. Collection reads
 the descriptor before scheduling, lowers resource scopes and execution
 requirements into the run plan, and execution injects acquired handles into
-`scope.runtime`. Microtest profiles reject runtime-attached tests during
-planning.
+`scope.runtime` when the runtime declares resources.
 
 For the common one-resource case, `withResource(resource, body)` is useful
 syntax sugar over a one-resource runtime:
@@ -209,11 +208,25 @@ references. They are worthwhile only when they add domain value beyond the
 root package import. They should not be required only to select a runner
 profile.
 
-Generic facade creation is not the primary extension model. A future facade
-API should only exist for a concrete typed authoring preset that cannot be
+Generic facade creation is not the primary extension model. A facade API
+should only exist for a concrete typed authoring preset that cannot be
 expressed cleanly with imported assertion references, macros, resources, and
-runtime wrappers. It should not become a registration container for hidden
-fixtures, global assertion methods, or profile selection.
+runtime wrappers.
+
+Valid facade use cases are narrow:
+
+- compatibility adapters that intentionally expose a familiar test surface
+  while lowering to Overkill nodes, such as a Vitest-like or Playwright-like
+  migration package
+- domain presets that give a named import a consistent typed surface, such as
+  an ESLint rule-test preset that bundles rule-case helpers, parser-service
+  resources, and rule-specific assertions
+- adapter-owned auto behavior where the import itself is the policy boundary,
+  such as `apiTest` always attaching an HTTP transcript recorder and rollback
+  transaction resource
+
+Facades should not become the profile-selection mechanism, a global assertion
+method registry, or a general hidden-fixture container.
 
 ## Assertions
 
@@ -317,6 +330,23 @@ Runtime context types are derived from the runtime's `resources` object keys,
 while resource `name` stays the stable identity for future scheduling,
 reporting, and artifact work.
 
+A runtime is a named execution context descriptor. Most runtimes are a typed
+collection of resources plus requirements and dimensions, but resources are
+not mandatory. A resource-free runtime can still be useful when the runner
+needs a named variant before scheduling:
+
+- `node-runtime` with dimensions such as `{ node: '26', module: 'esm' }`
+- `browser-engine` with `{ engine: 'chromium', headless: 'true' }` before a
+  later browser resource is attached by a package
+- `contract-target` with `{ provider: 'payments', version: 'v2' }` to feed
+  identity, selection, baselines, and replay metadata
+- `benchmark-workload` with `{ workload: 'cold-start' }` plus a
+  `single-worker` requirement but no acquired handle
+
+In that shape, the runtime contributes identity and planning data. It does
+not itself imply side effects. Side effects enter through resources and their
+acquisition/disposal callbacks.
+
 `@overkill-dev/resources` owns the package-neutral context composition shape,
 and `@overkill-dev/test/resources` exposes authoring wrappers such as
 `withRuntime(...)` and `withResource(...)`. These wrappers attach descriptors
@@ -324,7 +354,7 @@ to authored tests; they do not acquire handles at module load. Collection
 reads the attached descriptors before scheduling. The runner then owns
 lifetime selection, worker/process placement, acquisition, injection, teardown,
 artifact attribution, and replay metadata. Microtest profiles reject
-first-party resource and runtime attachments before body execution.
+first-party resource attachments before body execution.
 
 `@overkill-dev/resources` should be generic enough to serve multiple higher-level families:
 

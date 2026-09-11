@@ -39,6 +39,10 @@ root `@overkill-dev/test` import. Typed runtime context uses explicit
 `withRuntime(...)` or `withResource(...)` descriptor attachment. Custom
 assertions use imported assertion references.
 
+Valid facade use cases include compatibility adapters and named domain
+presets, such as an ESLint rule-test preset that lowers a familiar rule-test
+surface to ordinary Overkill nodes.
+
 Source: [Package Architecture](../architecture/package-architecture.md).
 
 ## Standard Distribution
