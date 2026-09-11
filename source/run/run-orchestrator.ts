@@ -7,6 +7,7 @@ import { createRunOrchestrator } from './run.ts';
 import { createRandomRunSeed } from './run-seed.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { RunOrchestrator } from './run-types.ts';
+import { createPool } from './worker-pool-runtime.ts';
 
 function readActiveResourceTypes(): readonly string[] {
     return process.getActiveResourcesInfo();
@@ -49,6 +50,7 @@ export function createNodeRunOrchestrator(input: NodeRunOrchestratorInput): RunO
             return createNodeResourceUsageTracker(wallClock, options);
         },
         defaultEngine: input.defaultEngine,
+        createWorkerPool: createPool,
         discoverRunFilesWithProjectRoot: input.discoverRunFilesWithProjectRoot,
         execute: createExecute({
             asyncLeakDiagnostics: 'enabled',

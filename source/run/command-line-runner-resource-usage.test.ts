@@ -8,7 +8,8 @@ import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { defineFixedOutputRenderer, defineFixedReporter } from '../test-support/reporter-definition.ts';
 import {
     defaultMicrotestProfile,
-    defaultRunRequest
+    defaultRunRequest,
+    testRunExecutionFacts
 } from '../test-support/run-command-factory.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createCommandLineRunner, type CommandLineRunnerDependencies } from './command-line-runner.ts';
@@ -114,20 +115,7 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
                         projectRoot: command.cwd,
                         runtimeStateDir: command.config.runtimeStateDir
                     },
-                    execution: {
-                        baselineUpdateMode: command.request.baselineUpdateMode,
-                        capture: command.request.capture,
-                        debug: command.request.debug,
-                        engine: { kind: 'default' },
-                        order: command.request.order,
-                        processModel: profile.execution.processModel,
-                        profile: command.request.profile,
-                        resourceUsagePolicy: profile.resourceUsage,
-                        scheduling: profile.execution.scheduling,
-                        testFamily: profile.testFamily,
-                        timeoutPolicy: profile.timeouts,
-                        verbose: command.request.verbose
-                    },
+                    execution: testRunExecutionFacts(command, profile),
                     loader: command.config.loader,
                     reproducibility: {
                         selection: command.request.selection,

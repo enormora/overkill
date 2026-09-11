@@ -42,6 +42,7 @@ import {
     type RunRequest,
     type RunScheduling,
     type RunTestFamily,
+    type RunWorkerLifecycle,
     type SerializedValue
 } from './run.entry-point.ts';
 
@@ -168,6 +169,11 @@ describe('@overkill-dev/run', function () {
     test('exposes run scheduling and family facts', function () {
         expect<RunExecutionFacts['scheduling']>().type.toBe<RunScheduling>();
         expect<RunExecutionFacts['testFamily']>().type.toBe<RunTestFamily>();
+        expect<
+            Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['workerLifecycle']
+        >()
+            .type
+            .toBe<RunWorkerLifecycle>();
     });
 
     test('exposes collection, soft, and hard timeout facts', function () {

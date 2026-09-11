@@ -1,8 +1,10 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as supervisedRunTestNode } from './supervised-run-suite.test.ts';
 import { testNode as workerPoolExecutionStateTestNode } from './worker-pool-execution-state.test.ts';
+import { testNode as workerPoolLifecycleTestNode } from './worker-pool-lifecycle.test.ts';
 import { testNode as workerPoolPlanningTestNode } from './worker-pool-planning.test.ts';
 import { testNode as workerPoolRunTestNode } from './worker-pool-run.test.ts';
+import { testNode as workerPoolRuntimeTestNode } from './worker-pool-runtime.test.ts';
 
 export const testNode = createOverkillSuite({
     annotations: {},
@@ -12,8 +14,10 @@ export const testNode = createOverkillSuite({
     children: [
         supervisedRunTestNode,
         workerPoolExecutionStateTestNode,
+        workerPoolLifecycleTestNode,
         workerPoolPlanningTestNode,
-        workerPoolRunTestNode
+        workerPoolRunTestNode,
+        workerPoolRuntimeTestNode
     ]
 });
 

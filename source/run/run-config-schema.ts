@@ -95,6 +95,11 @@ export const microtestExecutionSchema = z.discriminatedUnion('processModel', [
         .readonly()
 ]);
 
+const workerLifecycleSchema = z.union([
+    z.literal('fresh-worker-per-unit'),
+    z.literal('reuse')
+]);
+
 export const integrationExecutionSchema = z.discriminatedUnion('processModel', [
     z
         .strictObject({
@@ -105,7 +110,8 @@ export const integrationExecutionSchema = z.discriminatedUnion('processModel', [
     z
         .strictObject({
             processModel: z.literal('worker-pool'),
-            scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ]))
+            scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ])),
+            workerLifecycle: z.optional(workerLifecycleSchema)
         })
         .readonly()
 ]);

@@ -44,7 +44,8 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(profile, {
                     execution: {
                         processModel: 'worker-pool',
-                        scheduling: 'concurrent'
+                        scheduling: 'concurrent',
+                        workerLifecycle: 'reuse'
                     },
                     files: {
                         exclude: [],
@@ -60,6 +61,52 @@ export const testNode = createOverkillSuite({
                     }
                 });
                 scope.assert.deepEqual(microtestProfile, defaultMicrotestProfile());
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'loadRunConfig() normalizes worker-pool lifecycle overrides',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const config = await loadConfigValue({
+                    profiles: {
+                        defaultedService: {
+                            testFamily: 'integration',
+                            files: { include: [ 'source/**/*.integration.test.ts' ] },
+                            execution: {
+                                processModel: 'worker-pool',
+                                scheduling: 'serial'
+                            }
+                        },
+                        service: {
+                            testFamily: 'integration',
+                            files: { include: [ 'source/**/*.integration.test.ts' ] },
+                            execution: {
+                                processModel: 'worker-pool',
+                                scheduling: 'serial',
+                                workerLifecycle: 'fresh-worker-per-unit'
+                            }
+                        }
+                    }
+                });
+                const defaultedProfile = config.profiles.defaultedService;
+                const profile = config.profiles.service;
+
+                scope.require.defined(defaultedProfile);
+                scope.require.defined(profile);
+                scope.assert.deepEqual(defaultedProfile.execution, {
+                    processModel: 'worker-pool',
+                    scheduling: 'serial',
+                    workerLifecycle: 'reuse'
+                });
+                scope.assert.deepEqual(profile.execution, {
+                    processModel: 'worker-pool',
+                    scheduling: 'serial',
+                    workerLifecycle: 'fresh-worker-per-unit'
+                });
 
                 return scope.assert.collect();
             }

@@ -980,6 +980,31 @@ type TestPlan = {
     readonly root: { readonly title: string; readonly annotations: TestAnnotations; readonly controls: TestControls; };
 };
 
+type RunExecutionBaseFacts = {
+    readonly baselineUpdateMode: 'none' | 'update' | 'apply' | 'bootstrap' | 'diff';
+    readonly capture: 'buffered' | 'live';
+    readonly debug: { readonly mode: 'off' | 'all' | 'selected'; readonly selectors: ReadonlyArray<string>; };
+    readonly order: 'plan' | 'seeded' | 'lexical';
+    readonly placementPlan: PlacementPlan | null;
+    readonly profile: ProfileName;
+    readonly resourceUsagePolicy: ResourceUsagePolicy;
+    readonly scheduling: 'serial' | 'concurrent';
+    readonly testFamily: TestFamily;
+    readonly timeoutPolicy: TimeoutPolicy;
+    readonly verbose: boolean;
+};
+
+type RunWorkerPoolExecutionFacts = RunExecutionBaseFacts & {
+    readonly processModel: 'worker-pool';
+    readonly workerLifecycle: 'reuse' | 'fresh-worker-per-unit';
+};
+
+type RunSingleProcessExecutionFacts = RunExecutionBaseFacts & {
+    readonly processModel: 'in-process' | 'supervised-process';
+};
+
+type RunExecutionFacts = RunSingleProcessExecutionFacts | RunWorkerPoolExecutionFacts;
+
 type RunFacts = {
     readonly cases: ReadonlyArray<RunCaseFacts>;
     readonly environment: {
@@ -987,20 +1012,7 @@ type RunFacts = {
         readonly projectRoot: string;
         readonly runtimeStateDir: string;
     };
-    readonly execution: {
-        readonly baselineUpdateMode: 'none' | 'update' | 'apply' | 'bootstrap' | 'diff';
-        readonly capture: 'buffered' | 'live';
-        readonly debug: { readonly mode: 'off' | 'all' | 'selected'; readonly selectors: ReadonlyArray<string>; };
-        readonly order: 'plan' | 'seeded' | 'lexical';
-        readonly placementPlan: PlacementPlan | null;
-        readonly processModel: string;
-        readonly profile: ProfileName;
-        readonly resourceUsagePolicy: ResourceUsagePolicy;
-        readonly scheduling: 'serial' | 'concurrent';
-        readonly testFamily: TestFamily;
-        readonly timeoutPolicy: TimeoutPolicy;
-        readonly verbose: boolean;
-    };
+    readonly execution: RunExecutionFacts;
     readonly loader: { readonly stripMode: 'strip-only'; readonly sourceMaps: boolean; };
     readonly reproducibility: {
         readonly seed: string;

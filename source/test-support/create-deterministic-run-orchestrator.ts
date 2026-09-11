@@ -47,6 +47,10 @@ function installNoPolicyRestriction(): () => void {
     };
 }
 
+function createMissingWorkerPool(): never {
+    throw new Error('Deterministic worker-pool execution is not configured.');
+}
+
 function resourceUsageSample(
     activeResourceCount: number,
     capturedAtMilliseconds: number,
@@ -282,6 +286,7 @@ export function createDeterministicRunOrchestratorWithSeed(createSeed: () => big
             };
         },
         createSeed,
+        createWorkerPool: createMissingWorkerPool,
         defaultEngine: deterministicRunEngine(),
         async discoverRunFilesWithProjectRoot(request) {
             if (request.paths.length === 0 && request.profileFiles === null) {
