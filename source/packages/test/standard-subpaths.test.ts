@@ -1,14 +1,11 @@
 import { createSuite, createTestCase, type TestScope } from '../engine/engine.entry-point.ts';
 import { createReportingContext } from '../../engine/reporting-context.ts';
-import { defineCompositeAssertion } from './assert.entry-point.ts';
 import * as assertSubpath from './assert.entry-point.ts';
 import * as baselinesSubpath from './baselines.entry-point.ts';
 import * as benchSubpath from './bench.entry-point.ts';
-import { defineConfig } from './config.entry-point.ts';
 import * as configSubpath from './config.entry-point.ts';
 import * as reportersSubpath from './reporters.entry-point.ts';
 import * as resourcesSubpath from './resources.entry-point.ts';
-import type { RuntimeWrappedTestBody } from './resources.entry-point.ts';
 import {
     createTestFacade,
     table,
@@ -62,7 +59,7 @@ function assertConfigSubpath(scope: TestScope): void {
     } as const;
 
     scope.assert.deepEqual(sortedKeys(configSubpath), [ 'defineConfig' ]);
-    scope.assert.equal(defineConfig(config), config);
+    scope.assert.equal(configSubpath.defineConfig(config), config);
     scope.assert.equal(Object.hasOwn(configSubpath, 'orchestrator'), false);
     scope.assert.equal(Object.hasOwn(configSubpath, 'loadRunConfig'), false);
 }
@@ -102,7 +99,7 @@ function assertAssertSubpath(scope: TestScope): void {
         'defineCompositeAssertion',
         'defineNarrowingCompositeAssertion'
     ]);
-    scope.assert.equal(typeof defineCompositeAssertion, 'function');
+    scope.assert.equal(typeof assertSubpath.defineCompositeAssertion, 'function');
 }
 
 function assertResourcesSubpathExports(scope: TestScope): void {
@@ -120,8 +117,8 @@ function assertResourcesSubpathExports(scope: TestScope): void {
 
 function assertRuntimeAuthoringBoundary(
     scope: TestScope,
-    body: RuntimeWrappedTestBody,
-    tableBody: RuntimeWrappedTestBody<ParameterizedTestScope<BoundaryRow>>
+    body: resourcesSubpath.RuntimeWrappedTestBody,
+    tableBody: resourcesSubpath.RuntimeWrappedTestBody<ParameterizedTestScope<BoundaryRow>>
 ): void {
     const integrationFacade = createTestFacade({ testFamily: 'integration' });
     const runtimeTable = integrationFacade.table({

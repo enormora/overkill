@@ -233,6 +233,10 @@ export const config = {
                     js: 'packages/test/bench.entry-point.js',
                     declarationFile: 'packages/test/bench.entry-point.d.ts'
                 },
+                compatibility: {
+                    js: 'packages/test/compatibility.entry-point.js',
+                    declarationFile: 'packages/test/compatibility.entry-point.d.ts'
+                },
                 config: {
                     js: 'packages/test/config.entry-point.js',
                     declarationFile: 'packages/test/config.entry-point.d.ts'
@@ -270,6 +274,10 @@ export const config = {
                     {
                         export: './bench',
                         root: 'bench'
+                    },
+                    {
+                        export: './compatibility',
+                        root: 'compatibility'
                     },
                     {
                         export: './config',

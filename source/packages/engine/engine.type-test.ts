@@ -14,6 +14,7 @@ import type {
     AssertionSource,
     CaseId,
     captureSourceLocation,
+    createThrowingTestCase,
     DeepComparable,
     Diff,
     DiffPathSegment,
@@ -41,6 +42,8 @@ import type {
     TestFailure,
     TestFamily,
     TestOutcome,
+    ThrowingTestBody,
+    ThrowingTestScope,
     ThrownMatcher,
     unknownSourceLocation
 } from './engine.entry-point.ts';
@@ -114,6 +117,7 @@ declare const requireFacade: RequireAssertionFacade;
 declare const assertFacade: AssertAssertionFacade;
 declare const compositeCheckBuilder: CompositeCheckBuilder<'assert'>;
 declare const functionValue: () => number;
+declare const throwingBody: ThrowingTestBody;
 declare const mixedDeepValue: string | { readonly id: string; };
 declare const objectValues: readonly { readonly id: number; }[];
 declare const unknownValue: unknown;
@@ -311,6 +315,24 @@ describe('Assertion protocol', function () {
         expect<AssertAssertionNode>().type.toBeAssignableTo<{
             readonly sourceLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
         }>();
+    });
+
+    test('exposes first-class throwing test body types', function () {
+        expect<ThrowingTestScope>().type.toBe<{
+            readonly assert: AssertAssertionFacade;
+            readonly require: RequireAssertionFacade;
+            readonly signal: AbortSignal;
+        }>();
+        expect<ThrowingTestScope>().type.not.toHaveProperty('plan');
+        expect<ThrowingTestScope['assert']>().type.not.toHaveProperty('collect');
+        expect<ThrowingTestBody>().type.toBe<(scope: ThrowingTestScope) => Promise<void> | void>();
+        expect<typeof createThrowingTestCase>().type.toBeCallableWith({
+            annotations: {},
+            body: throwingBody,
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'case'
+        });
     });
 
     test('defines explicit thrown matcher shapes', function () {

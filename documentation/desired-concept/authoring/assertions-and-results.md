@@ -17,7 +17,8 @@ The core accepts two first-party styles:
   `scope.assert`, `scope.require`, and `scope.plan`; most tests return
   `scope.assert.collect()` to hand recorded assertions to the engine
 - **throwing mode** - an explicit alternate test API such as
-  `throwingTest`; tests may return `void`
+  `throwingTest` from `@overkill-dev/test/compatibility`; tests may return
+  `void`
 
 Both produce the same internal `TestOutcome` value.
 
@@ -949,9 +950,9 @@ test('user shape', (scope) => {
 
 Builder mode does not invalidate the underlying result-oriented
 protocol - it is simply a friendlier way to produce it. `throwingTest`
-remains a supported alternate authoring style, but the engine
-normalizes its result into the same structured `TestOutcome` shape so
-reporters consume one failure model.
+remains a supported compatibility authoring style, but it lives outside
+the root hot-path facade. The engine normalizes its result into the same
+structured `TestOutcome` shape so reporters consume one failure model.
 
 ### Low-Level Protocol Versus Day-To-Day API
 
@@ -1122,12 +1123,17 @@ Key points:
 Throwing mode is still supported, but explicitly in the test API shape:
 
 ```ts
-import { throwingTest as test } from '@overkill-dev/test';
+import { throwingTest as test } from '@overkill-dev/test/compatibility';
 
 test('legacy flow', (scope) => {
     scope.assert.equal(add(2, 3), 5);
 });
 ```
+
+Throwing test scope exposes `assert`, `require`, and `signal`, but not
+`plan` or `assert.collect`. Normal completion is a pass. Node
+`AssertionError` values are normalized as assertion failures; other thrown
+values remain body errors.
 
 ## Custom Assertions
 

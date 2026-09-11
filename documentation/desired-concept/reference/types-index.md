@@ -124,7 +124,8 @@ type TestCase = {
     readonly controls?: TestControlsInput;
     readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
     readonly execution:
-        | { readonly kind: 'body'; readonly body: TestBody; }
+        | { readonly body: TestBody; readonly bodyMode: 'builder'; readonly kind: 'body'; }
+        | { readonly body: ThrowingTestBody; readonly bodyMode: 'throwing'; readonly kind: 'body'; }
         | { readonly kind: 'skip'; readonly reason: string; };
 };
 
@@ -408,13 +409,14 @@ type ExactThrownMatcher = {
 };
 
 type ErrorMatcher =
-    RequireAtLeastOne<{
+    & RequireAtLeastOne<{
         readonly type: abstract new (...args: never[]) => Error;
         readonly message: string | RegExp;
         readonly code: string;
         readonly name: string;
         readonly cause: ThrownMatcher;
-    }> & {
+    }>
+    & {
         readonly exact?: never;
     };
 
@@ -493,7 +495,8 @@ type DeepComparableUnknownValue<Value> = unknown extends Value ? unknown : DeepC
 type DeepComparable<Value = unknown> = IsAny<Value> extends true ? never : DeepComparableUnknownValue<Value>;
 
 type CompositeAssertionReference<Arguments extends readonly unknown[]> = unknown;
-type NarrowingCompositeAssertionReference<Actual, Narrowed extends Actual, Arguments extends readonly unknown[]> = unknown;
+type NarrowingCompositeAssertionReference<Actual, Narrowed extends Actual, Arguments extends readonly unknown[]> =
+    unknown;
 
 type AssertAssertionFacade = {
     <Reference extends CompositeAssertionReference<readonly unknown[]>>(
@@ -548,16 +551,25 @@ type TestScope = {
     readonly assert: TestScopeAssertContext;
     readonly cleanup: (callback: () => Promise<void> | void) => void;
     readonly drainMicrotasks: () => Promise<void>;
+    readonly plan: (count: number) => void;
+    readonly require: RequireAssertionFacade;
     readonly settleAsyncWork: () => Promise<void>;
     readonly signal: AbortSignal;
     readonly startInFlight: <Value>(operation: () => PromiseLike<Value>) => InFlightTask<Value>;
     readonly yieldToNextTurn: () => Promise<void>;
-    readonly require: RequireAssertionFacade;
 };
 
-type BuilderTestBody = (case: unknown) => AssertionResult | Promise<AssertionResult>;
-type ThrowingTestBody = (case: unknown) => void | Promise<void>;
-type TestBody = BuilderTestBody | ThrowingTestBody;
+type BuilderTestBody = (scope: TestScope) => AssertionResult | Promise<AssertionResult>;
+
+type ThrowingTestScope = {
+    readonly assert: AssertAssertionFacade;
+    readonly require: RequireAssertionFacade;
+    readonly signal: AbortSignal;
+};
+
+type ThrowingTestBody = (scope: ThrowingTestScope) => void | Promise<void>;
+
+type TestBody = BuilderTestBody;
 
 type RunIfMainOptions = {
     readonly outputRenderer?: DefinedOutputRenderer;
@@ -592,15 +604,25 @@ type TestFacade = {
         test: TestBody;
     }) => Table;
     readonly defineMacro: <Args extends ReadonlyArray<unknown>>(
-        factory: (...args: Args) => TestNode,
+        factory: (...args: Args) => TestNode
     ) => (...args: Args) => TestNode;
     readonly defineParameterizedTestBody: <Data>(
-        body: (scope: TestScope, data: Data) => ReturnType<TestBody>,
+        body: (scope: TestScope, data: Data) => ReturnType<TestBody>
     ) => (data: Data) => TestBody;
     readonly runIfMain: (meta: ImportMeta, testNode: TestNode, options?: RunIfMainOptions) => Promise<void>;
 };
 
 declare function createTestFacade(definition: TestFacadeDefinition): TestFacade;
+
+type ThrowingTestDefinition = {
+    readonly title: string;
+    readonly annotations?: AuthoringAnnotations;
+    readonly controls?: MicrotestAuthoringControls;
+    readonly body: ThrowingTestBody;
+};
+
+declare function throwingTest(title: string, body: ThrowingTestBody): TestCase;
+declare function throwingTest(definition: ThrowingTestDefinition): TestCase;
 
 type HarnessPartFactory<Part> = () => Part;
 
@@ -614,9 +636,11 @@ type HarnessOverrides<Parts extends object> = {
     readonly [PartName in keyof Parts]?: Parts[PartName];
 };
 
-type ExactHarnessOverrides<Candidate extends object, Shape extends object> = Candidate & {
-    readonly [PartName in Exclude<keyof Candidate, keyof Shape>]: never;
-};
+type ExactHarnessOverrides<Candidate extends object, Shape extends object> =
+    & Candidate
+    & {
+        readonly [PartName in Exclude<keyof Candidate, keyof Shape>]: never;
+    };
 
 type DefinedHarness<OverrideShape extends object, CreatedHarness> = {
     readonly create: {
@@ -626,18 +650,20 @@ type DefinedHarness<OverrideShape extends object, CreatedHarness> = {
 };
 
 declare function defineHarness<OverrideShape extends object, CreatedHarness>(
-    factory: (overrides: OverrideShape) => CreatedHarness,
+    factory: (overrides: OverrideShape) => CreatedHarness
 ): DefinedHarness<OverrideShape, CreatedHarness>;
 
 declare function defineHarness<Factories extends HarnessPartFactories, CreatedHarness>(
     partFactories: Factories,
-    assemble: (parts: HarnessParts<Factories>) => CreatedHarness,
+    assemble: (parts: HarnessParts<Factories>) => CreatedHarness
 ): DefinedHarness<HarnessOverrides<HarnessParts<Factories>>, CreatedHarness>;
 
 type TranscriptEntry = readonly [kind: string, ...values: readonly unknown[]];
 
-type TranscriptEntryForKind<Entry extends TranscriptEntry, Kind extends Entry[0]> =
-    Extract<Entry, readonly [Kind, ...readonly unknown[]]>;
+type TranscriptEntryForKind<Entry extends TranscriptEntry, Kind extends Entry[0]> = Extract<
+    Entry,
+    readonly [Kind, ...readonly unknown[]]
+>;
 
 type TranscriptSinkSignature = (...parameters: readonly unknown[]) => undefined;
 
@@ -650,28 +676,29 @@ type Transcript<Entry extends TranscriptEntry = TranscriptEntry> = {
     readonly record: (...entry: Entry) => void;
     readonly reset: () => void;
     readonly sink: <Kind extends Entry[0]>(
-        kind: TranscriptEntryForKind<Entry, Kind>[0],
+        kind: TranscriptEntryForKind<Entry, Kind>[0]
     ) => TestDouble<TranscriptSinkSignature>;
 };
 
-type DisposableTranscript<Entry extends TranscriptEntry = TranscriptEntry> =
-    Disposable & Transcript<Entry> & {
-        readonly dispose: () => void;
-    };
+type DisposableTranscript<Entry extends TranscriptEntry = TranscriptEntry> = Disposable & Transcript<Entry> & {
+    readonly dispose: () => void;
+};
 
 type AsyncDisposableTranscript<Entry extends TranscriptEntry = TranscriptEntry> =
-    AsyncDisposable & Transcript<Entry> & {
+    & AsyncDisposable
+    & Transcript<Entry>
+    & {
         readonly asyncDispose: () => Promise<void>;
     };
 
 declare function createTranscript<Entry extends TranscriptEntry = TranscriptEntry>(): Transcript<Entry>;
 
 declare function recordSink<Entry extends TranscriptEntry = TranscriptEntry>(
-    subscribe: (record: (...entry: Entry) => void) => () => unknown,
+    subscribe: (record: (...entry: Entry) => void) => () => unknown
 ): DisposableTranscript<Entry>;
 
 declare function recordAsyncSink<Entry extends TranscriptEntry = TranscriptEntry>(
-    subscribe: (record: (...entry: Entry) => void) => () => Promise<void>,
+    subscribe: (record: (...entry: Entry) => void) => () => Promise<void>
 ): AsyncDisposableTranscript<Entry>;
 ```
 
@@ -748,13 +775,14 @@ Canonical: [Reporters](../architecture/reporters.md).
 
 ## Run Request, Resolution, And Record
 
-Direct engine consumers can create body-backed `TestCase` values with
-`createTestCase` and visible skipped `TestCase` values with
-`createSkippedTestCase`. They attach those values to a `TestRoot` with
-`createRoot`, build the executable `TestPlan` with `createTestPlan(root)`,
-then pass it to `execute(testPlan): Promise<RunResult>`. `TestRoot` carries
-run-level title, annotations, and controls. It is not a `TestNode` and does not
-contribute to `CaseId.suite`, `suitePath`, or `RunResult.bySuite`.
+Direct engine consumers can create builder body-backed `TestCase` values with
+`createTestCase`, throwing body-backed values with `createThrowingTestCase`,
+and visible skipped `TestCase` values with `createSkippedTestCase`. They attach
+those values to a `TestRoot` with `createRoot`, build the executable `TestPlan`
+with `createTestPlan(root)`, then pass it to
+`execute(testPlan): Promise<RunResult>`. `TestRoot` carries run-level title,
+annotations, and controls. It is not a `TestNode` and does not contribute to
+`CaseId.suite`, `suitePath`, or `RunResult.bySuite`.
 
 ```ts
 type RunConfig = {

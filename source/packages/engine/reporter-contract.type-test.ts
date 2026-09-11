@@ -152,6 +152,12 @@ describe('Reporter contract', function () {
         expect<TestPlanCase['execution']>().type.toBe<TestPlanCaseExecution>();
         expect<TestPlanCaseExecution>().type.toBeAssignableFrom<{
             readonly body: () => never;
+            readonly bodyMode: 'builder';
+            readonly kind: 'body';
+        }>();
+        expect<TestPlanCaseExecution>().type.toBeAssignableFrom<{
+            readonly body: () => undefined;
+            readonly bodyMode: 'throwing';
             readonly kind: 'body';
         }>();
         expect<TestPlanCaseExecution>().type.toBeAssignableFrom<{

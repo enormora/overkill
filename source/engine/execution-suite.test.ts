@@ -5,6 +5,7 @@ import { testNode as executionResourceUsageTestNode } from './execution-resource
 import { testNode as executionTestNode } from './execution.test.ts';
 import { testNode as executionTimeoutSupervisionTestNode } from './execution-timeout-supervision.test.ts';
 import { testNode as skippedTestExecutionTestNode } from './skipped-test-execution.test.ts';
+import { testNode as throwingTestExecutionTestNode } from './throwing-test-execution.test.ts';
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
@@ -16,6 +17,7 @@ export const testNode = createOverkillSuite({
         executionReportingTestNode,
         executionResourceUsageTestNode,
         skippedTestExecutionTestNode,
+        throwingTestExecutionTestNode,
         executionTimeoutSupervisionTestNode,
         executionTestNode
     ]

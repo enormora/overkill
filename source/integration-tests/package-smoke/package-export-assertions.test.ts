@@ -40,6 +40,10 @@ export function assertTestStandardSubpathExports(
         import: './packages/test/bench.entry-point.js',
         types: './packages/test/bench.entry-point.d.ts'
     });
+    scope.assert.deepEqual(packageExports['./compatibility'], {
+        import: './packages/test/compatibility.entry-point.js',
+        types: './packages/test/compatibility.entry-point.d.ts'
+    });
     scope.assert.deepEqual(packageExports['./resources'], {
         import: './packages/test/resources.entry-point.js',
         types: './packages/test/resources.entry-point.d.ts'

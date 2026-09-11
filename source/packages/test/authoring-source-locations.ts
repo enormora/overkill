@@ -5,7 +5,8 @@ import {
     type ResolvableSourceLocation,
     type SourceLocation,
     type TestBody,
-    type TestScope
+    type TestScope,
+    type ThrowingTestBody
 } from '../engine/engine.entry-point.ts';
 
 type ParameterizedTestBody<Data> = (
@@ -62,6 +63,20 @@ export function assertionBodyForActiveMacro(body: TestBody): TestBody {
     return async function runMacroGeneratedTestBody(scope) {
         return await runWithForwardedSourceLocations(sourceLocations, async function runBody() {
             return await body(scope);
+        });
+    };
+}
+
+export function throwingBodyForActiveMacro(body: ThrowingTestBody): ThrowingTestBody {
+    const sourceLocations = activeMacroSourceLocations();
+
+    if (sourceLocations.length === 0) {
+        return body;
+    }
+
+    return async function runMacroGeneratedThrowingTestBody(scope) {
+        await runWithForwardedSourceLocations(sourceLocations, async function runBody() {
+            await body(scope);
         });
     };
 }
