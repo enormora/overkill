@@ -36,7 +36,7 @@ the high-level authoring layer, not as a discarded side experiment.
 ## What It Looks Like
 
 ```ts
-import { suite, table, test } from '#tests/micro';
+import { suite, table, test } from '@overkill-dev/test';
 
 export const testNode = suite('users', [
     test('build', (scope) => {
@@ -87,21 +87,21 @@ report orphaned nodes; that collection never feeds discovery and leaves
 the exported `testNode` unchanged. See
 [Run Counts § Orphan Detection](../architecture/run-counts.md#orphan-detection).
 
-For projects that need different authoring surfaces for different suite
-families, the preferred import story is a stable alias backed by
-`package.json#imports`, for example:
+For projects with shared domain test code, stable aliases backed by
+`package.json#imports` are still useful:
 
 ```json
 {
     "imports": {
-        "#tests/micro": "./testing/micro.ts",
-        "#tests/integration": "./testing/integration.ts"
+        "#tests/assertions": "./testing/assertions.ts",
+        "#tests/runtimes/api": "./testing/runtimes/api.ts"
     }
 }
 ```
 
-That keeps test-file imports stable even when different facades expose
-different assertion sets or helpers.
+That keeps domain imports stable without making aliases responsible for
+profile selection. The ordinary authoring helpers still come from
+`@overkill-dev/test`.
 
 An important consequence of this model is that `test(...)`, `table(...)`,
 and `suite(...)` are ordinary value constructors. A node may be created
@@ -149,7 +149,7 @@ per-file boilerplate. The second path is fully supported through an explicit
 authoring helper:
 
 ```ts
-import { runIfMain, suite, test } from '#tests/micro';
+import { runIfMain, suite, test } from '@overkill-dev/test';
 
 export const testNode = suite('users', [
     test('build', (scope) => {
@@ -170,7 +170,7 @@ conventional exported suite value without that explicit helper.
 For multi-file bare-`node` runs, use an aggregate suite entrypoint:
 
 ```ts
-import { runIfMain, suite } from '#tests/micro';
+import { runIfMain, suite } from '@overkill-dev/test';
 import { testNode as orders } from './orders.test.ts';
 import { testNode as users } from './users.test.ts';
 
@@ -258,7 +258,7 @@ structure. Compare with the imperative version where an `if` around `test()`
 silently elides the test from the registry, invisible to listings.
 
 `skippedTest(title, reason)` is the first-party visible skip primitive for
-every facade, including microtests. It creates a leaf `TestCase` with a
+every test family. It creates a leaf `TestCase` with a
 mandatory non-empty reason. It is not `.skip`, xfail, fixme, quarantine, retry,
 or selection; it records that the runner saw the case and deliberately did not
 execute user code.

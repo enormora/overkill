@@ -33,12 +33,13 @@ Source: [Assertions And Results](../authoring/assertions-and-results.md), [Test 
 
 ## Test Facade
 
-A project-local typed authoring entrypoint built with
-`createTestFacade(...)` and re-exported through a stable alias such as
-`#tests/micro`. A facade owns the authoring surface for one suite family;
-root runner configuration still owns orchestration.
+A possible project-local or adapter-owned authoring preset. Facades are not
+the primary extension model in the current concept. Ordinary tests use the
+root `@overkill-dev/test` import. Typed runtime context uses explicit
+`withRuntime(...)` or `withResource(...)` descriptor attachment. Custom
+assertions use imported assertion references.
 
-Source: [Package Architecture](../architecture/package-architecture.md), [Assertions And Results](../authoring/assertions-and-results.md).
+Source: [Package Architecture](../architecture/package-architecture.md).
 
 ## Standard Distribution
 

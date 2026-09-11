@@ -287,11 +287,11 @@ Default capability stance:
 
 - string-only rule tests should be microtest-friendly where possible
 - parser-heavy, type-aware, fixture-heavy, or processor-heavy rule tests
-  may need a richer facade/profile
+  may need a richer profile or helper preset
 
-So the package should be allowed to expose more than one facade or helper
-preset, but the default authoring story should still be the macro-style
-suite builder above.
+So the package should be allowed to expose more than one helper preset, but
+the default authoring story should still be the macro-style suite builder
+above.
 
 ### Static Authoring Rules
 
@@ -321,9 +321,6 @@ Recommended first rules:
 - `no-duplicate-sibling-titles`
   - catches statically obvious duplicate sibling test titles before
     runtime planning fails
-- `require-test-facade-import`
-  - enforces project use of stable facade aliases such as `#tests/micro`
-    / `#tests/integration` where the project has adopted that pattern
 - `consistent-run-if-main`
   - enforces `always` / `never` policy for explicit `runIfMain(...)`
     fallback usage
@@ -333,9 +330,10 @@ duplicating them in lint rules. For example, explicit matcher requirements
 for `throws` / `rejects` should come from the assertion signatures rather
 than from a dedicated lint rule.
 
-To make these rules work across `@overkill-dev/test`, facades, `@overkill-dev/bench`,
-engine-level usage, and re-exports, the plugin should use a real
-binding-tracing utility rather than matching one import string literally.
+To make these rules work across `@overkill-dev/test`, helper presets,
+`@overkill-dev/bench`, engine-level usage, and re-exports, the plugin should
+use a real binding-tracing utility rather than matching one import string
+literally.
 
 ## What Overkill Should Add Or Emphasize
 
@@ -353,7 +351,9 @@ allows them.
 The key authoring shape is:
 
 - define a resource/runtime once
-- yield a typed handle
+- attach the descriptor to tests with `withRuntime(...)` or `withResource(...)`
+- let the runner acquire typed handles at the right lifecycle boundary
+- inject handles into the test scope
 - let the runner own cleanup
 
 That should cover:
@@ -381,8 +381,50 @@ mutable state, fixture lifetime, and cleanup responsibility. Runtime
 composition is clearer when setup is attached to an explicit runtime
 factory or wrapper rather than ambient lifecycle callbacks. The
 important pattern is not "before/after hooks". It is: create a runtime,
-yield a typed handle, let the runtime own teardown and optional
-post-test validation.
+attach its descriptor to the test, let the runner plan around its
+requirements, then inject a typed handle at execution time. The runtime owns
+teardown and optional post-test validation.
+
+Canonical authoring should use the ordinary root test import. The selected
+runner profile owns the family and runtime policy:
+
+```ts
+import { test } from '@overkill-dev/test';
+import { withRuntime } from '@overkill-dev/test/resources';
+import { apiRuntime } from '#tests/runtimes/api';
+
+export const testNode = test(
+    'loads user',
+    withRuntime(apiRuntime, (scope) => {
+        scope.assert.equal(scope.runtime.database.loadUser('42').id, '42');
+        return scope.assert.collect();
+    })
+);
+```
+
+For a single resource, `withResource(resource, body)` is syntax sugar that
+keeps the common case small while preserving the same runner-visible
+descriptor model:
+
+```ts
+import { test } from '@overkill-dev/test';
+import { withResource } from '@overkill-dev/test/resources';
+import { scratch } from '#tests/resources/scratch';
+
+export const testNode = test(
+    'writes output',
+    withResource(scratch, (scope) => {
+        scope.assert.match(scope.resource.path, /overkill/);
+        return scope.assert.collect();
+    })
+);
+```
+
+Both wrappers attach descriptors, not already acquired handles. Collection
+must happen before scheduling. The runner lowers resource scopes and
+requirements into placement constraints, starts resources inside the selected
+worker or process, injects handles into `scope.runtime` or `scope.resource`,
+and disposes them according to their declared scope.
 
 Execution requirements. Runtimes should be able to contribute execution
 requirements without owning the final scheduling decision. Examples:

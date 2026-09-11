@@ -581,39 +581,6 @@ type RunIfMainOptions = {
     };
 };
 
-type TestFacadeDefinition =
-    | {
-        readonly testFamily: TestFamily;
-        readonly annotations: AuthoringAnnotations;
-        readonly controls: MicrotestAuthoringControls | CaptureAuthoringControls;
-    }
-    | {
-        readonly testFamily: TestFamily;
-    };
-
-type TestFacade = {
-    readonly test: (title: string, body: TestBody) => TestCase;
-    readonly skippedTest: (title: string, reason: string) => TestCase;
-    readonly suite: (title: string, children: ReadonlyArray<TestNode>) => Suite;
-    readonly table: (options: {
-        title: string;
-        cases: ReadonlyArray<unknown>;
-        annotations?: AuthoringAnnotations;
-        controls?: MicrotestAuthoringControls | CaptureAuthoringControls;
-        caseTitle?: (parameters: unknown, index: number) => string;
-        test: TestBody;
-    }) => Table;
-    readonly defineMacro: <Args extends ReadonlyArray<unknown>>(
-        factory: (...args: Args) => TestNode
-    ) => (...args: Args) => TestNode;
-    readonly defineParameterizedTestBody: <Data>(
-        body: (scope: TestScope, data: Data) => ReturnType<TestBody>
-    ) => (data: Data) => TestBody;
-    readonly runIfMain: (meta: ImportMeta, testNode: TestNode, options?: RunIfMainOptions) => Promise<void>;
-};
-
-declare function createTestFacade(definition: TestFacadeDefinition): TestFacade;
-
 type ThrowingTestDefinition = {
     readonly title: string;
     readonly annotations?: AuthoringAnnotations;
@@ -1541,7 +1508,41 @@ type RuntimeTestBody<
     Scope extends TestScope = TestScope
 > = (scope: RuntimeTestScope<Runtime, Scope>) => ReturnType<TestBody>;
 
-type RuntimeWrappedTestBody<Scope extends TestScope = TestScope> = (scope: Scope) => ReturnType<TestBody>;
+type RuntimeWrappedTestBody<
+    Runtime extends RuntimeDefinition<Readonly<Record<string, ResourceDefinition<unknown>>>>,
+    Scope extends TestScope = TestScope
+> = ((scope: Scope) => ReturnType<TestBody>) & {
+    readonly runtime: Runtime;
+};
+
+type ResourceTestScope<
+    Resource extends ResourceDefinition<unknown>,
+    Scope extends TestScope = TestScope
+> = Scope & {
+    readonly resource: ResourceHandle<Resource>;
+};
+
+type ResourceTestBody<
+    Resource extends ResourceDefinition<unknown>,
+    Scope extends TestScope = TestScope
+> = (scope: ResourceTestScope<Resource, Scope>) => ReturnType<TestBody>;
+
+type ResourceWrappedTestBody<
+    Resource extends ResourceDefinition<unknown>,
+    Scope extends TestScope = TestScope
+> = ((scope: Scope) => ReturnType<TestBody>) & {
+    readonly resource: Resource;
+};
+
+declare function withRuntime<
+    Runtime extends RuntimeDefinition<Readonly<Record<string, ResourceDefinition<unknown>>>>,
+    Scope extends TestScope = TestScope
+>(runtime: Runtime, body: RuntimeTestBody<Runtime, Scope>): RuntimeWrappedTestBody<Runtime, Scope>;
+
+declare function withResource<
+    Resource extends ResourceDefinition<unknown>,
+    Scope extends TestScope = TestScope
+>(resource: Resource, body: ResourceTestBody<Resource, Scope>): ResourceWrappedTestBody<Resource, Scope>;
 ```
 
 Resource sessions acquire dependency branches when prerequisites are ready,
@@ -1550,10 +1551,12 @@ dependency order. The returned runtime context exposes only the runtime's
 top-level `resources` keys. Transitive dependencies remain internal unless
 the runtime lists them directly.
 
-Runtime-wrapped bodies carry first-party resource attachment metadata.
-Microtest authoring and microtest profile collection reject them before test
-body execution. Non-microtest facades may accept them when their family model
-allows resource and runtime attachment.
+`withRuntime(runtime, body)` and `withResource(resource, body)` carry
+first-party descriptor attachment metadata. They do not receive already
+acquired handles. Collection reads the descriptors before scheduling,
+planning lowers scopes and requirements into placement constraints, and
+execution injects acquired handles into `scope.runtime` or `scope.resource`.
+Microtest profiles reject these attachments before body execution.
 
 Canonical: [Package Architecture](../architecture/package-architecture.md) for package ownership and
 [Higher Test Layers](../authoring/higher-test-layers.md) for intended resource usage.

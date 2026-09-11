@@ -62,7 +62,7 @@ still lives directly in `@overkill-dev/engine`. The engine is the home for:
 - assertion-count and plan tracking
 - diffing and serializer logic
 - public low-level assertion-protocol values used between authoring and engine
-- implementation shared between default test facades and direct
+- implementation shared between the default test authoring layer and direct
   engine-level consumers
 
 `@overkill-dev/assert` owns reusable assertion-extension helpers such as
@@ -807,8 +807,8 @@ The built-in first-party surface should **not** center:
 - weak "anything throws" forms
 - giant call-assertion catalogs tied to one doubles package
 
-If a concept is package-specific, it should extend the assertion surface
-through a typed test facade rather than being forced into every default test
+If a concept is package-specific, it should expose imported assertion
+references rather than forcing that vocabulary into every default test
 bundle.
 
 ## Property Tests And The Assertion Boundary
