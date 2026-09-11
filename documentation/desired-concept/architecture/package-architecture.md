@@ -114,8 +114,8 @@ authoring layer and the standard package most users install. It should favor:
 - no hook-centric lifecycle model
 - a small advanced ergonomics layer for harnesses, interaction recording,
   reusable multi-case macros, and async queue helpers
-- explicit facade creation for suite families that need an extended
-  helper surface
+- explicit resource and runtime wrappers for tests that need typed context
+  beyond the base test scope
 
 The root import is the ordinary test-file hot path:
 
@@ -132,7 +132,6 @@ It should expose authoring helpers plus lightweight doubles:
 - `defineHarness`
 - `defineMacro`
 - `defineParameterizedTestBody`
-- `createTestFacade`
 - `runIfMain`
 - current lightweight doubles APIs and doubles assertion references:
   `testDouble`, `rule`, protocol double factories, `doubleUsage`, and their
@@ -158,39 +157,63 @@ The preferred DX should be:
   Overkill deliberately adopts a loader or import-hook mechanism, which
   the current concept rejects
 
-When projects need different authoring surfaces for different suite
-families, the preferred pattern is a Playwright-style **test facade**:
+The root authoring helpers should not bake in a suite family. Runner
+profiles own family selection, capability policy, process model, capture
+support, and profile-scoped validation. Ordinary test files should import
+`test`, `suite`, `table`, and related helpers from `@overkill-dev/test`.
 
-- `createTestFacade({ testFamily, annotations, controls })` in project code composes one
-  typed authoring surface
-- custom assertion vocabulary is normally imported as assertion reference
-  values, not registered into that facade
-- the project re-exports that facade through a stable alias such as
-  `#tests/micro` or `#tests/integration`
-- test files import from that stable alias rather than from varying
-  relative paths
+When a test needs typed runtime context, the preferred shape is explicit
+descriptor attachment:
 
-This keeps types exact without global augmentation, configuration-time typing
-magic, or noisy per-assertion local opt-in.
+```ts
+import { test } from '@overkill-dev/test';
+import { withRuntime } from '@overkill-dev/test/resources';
+import { apiRuntime } from '#tests/runtimes/api';
 
-The facade surface itself should stay narrow and settled:
+export const testNode = test(
+    'loads user',
+    withRuntime(apiRuntime, (scope) => {
+        scope.assert.equal(scope.runtime.database.loadUser('42').id, '42');
+        return scope.assert.collect();
+    })
+);
+```
 
-- `createTestFacade(...)` configures authoring ergonomics only; it should
-  not own assertion vocabulary registration
-- the returned facade re-exports the core authoring helpers:
-  `test`, `skippedTest`, `suite`, `table`, `defineMacro`,
-  `defineParameterizedTestBody`, and `runIfMain`
-- engine-agnostic helpers such as `defineHarness` stay as ordinary root
-  imports and are not injected into `createTestFacade(...)`
-- `testFamily` stamps authored nodes with an engine-owned family marker;
-  facade annotations and controls stay separate
-- higher-layer helpers such as `property`, `browserBenchmark`, or
-  `eslintRuleSuite` should be imported and re-exported alongside the
-  facade from the project's stable alias, not injected into
-  `createTestFacade(...)`
+`withRuntime(runtime, body)` attaches the runtime descriptor to the authored
+test body. It does not receive already-acquired handles. Collection reads
+the descriptor before scheduling, lowers resource scopes and execution
+requirements into the run plan, and execution injects acquired handles into
+`scope.runtime`. Microtest profiles reject runtime-attached tests during
+planning.
 
-This keeps facade creation focused on the typed test surface rather than
-turning it into a second plugin runtime.
+For the common one-resource case, `withResource(resource, body)` is useful
+syntax sugar over a one-resource runtime:
+
+```ts
+import { test } from '@overkill-dev/test';
+import { withResource } from '@overkill-dev/test/resources';
+import { scratch } from '#tests/resources/scratch';
+
+export const testNode = test(
+    'writes the export file',
+    withResource(scratch, (scope) => {
+        scope.assert.match(scope.resource.path, /overkill/);
+        return scope.assert.collect();
+    })
+);
+```
+
+Project-local aliases such as `#tests/api` or `#tests/browser` may still
+re-export ordinary helpers, runtimes, resources, macros, and assertion
+references. They are worthwhile only when they add domain value beyond the
+root package import. They should not be required only to select a runner
+profile.
+
+Generic facade creation is not the primary extension model. A future facade
+API should only exist for a concrete typed authoring preset that cannot be
+expressed cleanly with imported assertion references, macros, resources, and
+runtime wrappers. It should not become a registration container for hidden
+fixtures, global assertion methods, or profile selection.
 
 ## Assertions
 
@@ -214,8 +237,8 @@ into `scope.assert`” surface. The extension boundary should stay narrower:
 - `@overkill-dev/assert` owns reusable helpers for defining assertion
   extensions, such as composite-assertion builders and foreign-assertion
   bridges
-- `@overkill-dev/test` may provide a higher-level authoring facade, but it does
-  not own assertion semantics or custom assertion availability
+- `@overkill-dev/test` may re-export selected assertion references, but it
+  does not own assertion semantics or custom assertion availability
 - adapter packages may wrap foreign throwable-style assertion libraries
   through the normalized bridge described in
   [Assertions And Results](../authoring/assertions-and-results.md)
@@ -224,9 +247,9 @@ This is the right place for focused adapter packages such as:
 
 - `@overkill-dev/aws-cdk`
 
-That package should bridge `@aws-cdk/assertions` into facade-ready Overkill
-assertions without making generic third-party assertion interop part of the
-core model.
+That package should bridge `@aws-cdk/assertions` into imported Overkill
+assertion references without making generic third-party assertion interop part
+of the core model.
 
 ## Doubles
 
@@ -256,7 +279,7 @@ The conceptual split is:
 - `@overkill-dev/assert` owns reusable assertion-extension helpers
 - `@overkill-dev/doubles` owns doubles-specific assertion references under
   `doubleUsage`
-- `@overkill-dev/test` owns default authoring/facade composition only
+- `@overkill-dev/test` owns default authoring composition only
 - doubles-specific assertions may be contributed by `@overkill-dev/doubles`
   when an engine-backed assertion context explicitly opts into them
 
@@ -295,11 +318,13 @@ while resource `name` stays the stable identity for future scheduling,
 reporting, and artifact work.
 
 `@overkill-dev/resources` owns the package-neutral context composition shape,
-and `@overkill-dev/test/resources` exposes `withRuntime(...)` for
-non-microtest authoring facades. That wrapper adds `scope.runtime` only.
-Microtest authoring rejects first-party resource and runtime attachments.
-Runner-managed lifecycle scopes, runtime matrices, execution requirements,
-artifacts, and replay metadata remain separate orchestration work.
+and `@overkill-dev/test/resources` exposes authoring wrappers such as
+`withRuntime(...)` and `withResource(...)`. These wrappers attach descriptors
+to authored tests; they do not acquire handles at module load. Collection
+reads the attached descriptors before scheduling. The runner then owns
+lifetime selection, worker/process placement, acquisition, injection, teardown,
+artifact attribution, and replay metadata. Microtest profiles reject
+first-party resource and runtime attachments before body execution.
 
 `@overkill-dev/resources` should be generic enough to serve multiple higher-level families:
 
@@ -622,8 +647,8 @@ What this means conceptually:
   ordinary Overkill suites and cases rather than forcing those DSLs into
   the engine or default authoring surface
 - static tooling packages should be able to trace Overkill bindings across
-  facades, re-exports, and package families rather than only matching one
-  hard-coded import form
+  re-exports, helper presets, and package families rather than only matching
+  one hard-coded import form
 - Node's built-in watch behavior should be reused instead of reinvented by default
 - machine-consumable APIs should be stable enough for editors, MCP servers, and remote workers
 - remote workers should consume frozen work units rather than recollecting
@@ -670,7 +695,7 @@ or extend the contract but do not redefine it.
 | `TestPlan`                                                        | `@overkill-dev/engine`                                                 | Executable in-process case plan consumed by `execute(testPlan)`.                                                                                               |
 | `AssertionNode`, `TestFailure`, `FailedCheck`, `Diff`             | `@overkill-dev/engine`                                                 | Engine owns assertion-node evaluation, failure schema, and the first-party assertion behavior on top.                                                          |
 | Injected `assert` / `require` builder API                         | `@overkill-dev/engine`                                                 | The engine owns the injected assertion surface directly.                                                                                                       |
-| Assertion reference helpers (`defineCompositeAssertion`, bridges) | `@overkill-dev/assert`                                                 | Reusable helpers create imported assertion reference values consumed by engine-owned facades.                                                                  |
+| Assertion reference helpers (`defineCompositeAssertion`, bridges) | `@overkill-dev/assert`                                                 | Reusable helpers create imported assertion reference values consumed by the engine-owned assertion context.                                                    |
 | Test doubles (`testDouble`, `when`, helpers)                      | `@overkill-dev/doubles`                                                | See [Doubles](../authoring/doubles.md).                                                                                                                        |
 | Typed runtime / resource composition                              | `@overkill-dev/resources`                                              | Lifecycle scopes, execution requirements.                                                                                                                      |
 | Discovery, filtering, runner profiles                             | `@overkill-dev/run`                                                    | Reads configuration, freezes `RunFacts`, and produces `ResolvedRun`.                                                                                           |
@@ -691,8 +716,8 @@ or extend the contract but do not redefine it.
 | Test data propagation rules                                       | `@overkill-dev/engine`                                                 | Annotation set merge and control replacement.                                                                                                                  |
 | Configuration loading                                             | `@overkill-dev/run`                                                    | Reads root `overkill.config.ts`; engine has no configuration.                                                                                                  |
 | Standard configuration helper re-export                           | `@overkill-dev/test/config`                                            | User-facing import path for `defineConfig(...)`; custom orchestrators may import from `@overkill-dev/run`.                                                     |
-| Test facade creation                                              | project code + `@overkill-dev/test`                                    | `@overkill-dev/test` owns facade creation for authoring ergonomics only.                                                                                       |
-| Root test authoring import                                        | `@overkill-dev/test`                                                   | `test`, `skippedTest`, `suite`, `table`, `defineMacro`, `createTestFacade`, `runIfMain`, and explicitly reviewed lightweight doubles only.                     |
+| Runtime/resource authoring wrappers                               | `@overkill-dev/test/resources`                                         | `withRuntime(...)` and `withResource(...)` attach descriptors for runner-aware lifecycle and scheduling.                                                       |
+| Root test authoring import                                        | `@overkill-dev/test`                                                   | `test`, `skippedTest`, `suite`, `table`, `defineMacro`, `runIfMain`, and explicitly reviewed lightweight doubles only.                                         |
 | Throwable compatibility authoring                                 | `@overkill-dev/test/compatibility`                                     | Explicit alternate authoring import for `throwingTest`; excluded from the root hot path.                                                                       |
 | Assertion reference execution                                     | `@overkill-dev/engine`                                                 | Engine owns callable assertion references, counting, `require` behavior, and result normalization.                                                             |
 | CLI command semantics, terminal capability detection              | `@overkill-dev/run`                                                    | Owns typed command behavior behind the `@overkill-dev/test` argv parser and binary wrapper.                                                                    |
