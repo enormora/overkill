@@ -1,9 +1,11 @@
 import { pathToFileURL } from 'node:url';
+import { createDeterministicWallClock } from '@enormora/wall-clock';
+import { createExecute } from '../engine/execution.ts';
+import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import {
     createPlainOutputRenderer,
     createRoot,
     createTestPlan,
-    execute,
     type DefinedReporter,
     type RunResult,
     type TestNode
@@ -27,6 +29,18 @@ function setFailureExitCode(result: RunResult): void {
     }
 }
 
+function writeStdoutLine(line: string): void {
+    process.stdout.write(`${line}\n`);
+}
+
+function writeStderrLine(line: string): void {
+    process.stderr.write(`${line}\n`);
+}
+
+function readNoActiveResourceTypes(): readonly string[] {
+    return [];
+}
+
 export async function runIfMain(
     meta: Readonly<ImportMeta>,
     testNode: TestNode,
@@ -37,6 +51,17 @@ export async function runIfMain(
     }
 
     const startedAt = new Date(0);
+    const wallClock = createDeterministicWallClock();
+    const execute = createExecute({
+        asyncLeakDiagnostics: 'disabled',
+        readActiveResourceTypes: readNoActiveResourceTypes,
+        reporterDispatcher: createReporterDispatcher({
+            stderr: { writeLine: writeStderrLine },
+            stdout: { writeLine: writeStdoutLine },
+            wallClock
+        }),
+        wallClock
+    });
     const result = await execute(
         createTestPlan(createRoot({
             children: [ testNode ],

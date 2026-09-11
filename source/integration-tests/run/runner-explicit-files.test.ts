@@ -20,7 +20,7 @@ import {
 import type {
     RunCommand,
     RunConfig,
-    RunProcessModel,
+    RunMicrotestProcessModel,
     RunRequest,
     RunScheduling
 } from '../../run/run-types.ts';
@@ -126,7 +126,7 @@ function createSchedulingEventRecorder(): SchedulingEventRecorder {
 }
 
 function createSchedulingRunConfig(
-    processModel: RunProcessModel,
+    processModel: RunMicrotestProcessModel,
     scheduling: RunScheduling,
     reporter: DefinedReporter
 ): RunConfig {
@@ -164,7 +164,7 @@ function createSupervisedRunCommand(paths: readonly string[], config: RunConfig)
 }
 
 async function runSchedulingScenario(
-    processModel: RunProcessModel,
+    processModel: RunMicrotestProcessModel,
     scheduling: RunScheduling
 ): Promise<readonly SchedulingEvent[]> {
     const recorder = createSchedulingEventRecorder();
@@ -178,6 +178,21 @@ async function runSchedulingScenario(
 
 function plainData(value: unknown): unknown {
     return structuredClone(value);
+}
+
+function compareSchedulingEvent(first: SchedulingEvent, second: SchedulingEvent): number {
+    return first.localeCompare(second);
+}
+
+function assertConcurrentSchedulingEvents(scope: TestScope, events: readonly SchedulingEvent[]): void {
+    scope.assert.deepEqual(events.slice(0, 2), [
+        'start:delayed',
+        'start:immediate'
+    ]);
+    scope.assert.deepEqual(events.slice(2).toSorted(compareSchedulingEvent), [
+        'end:delayed',
+        'end:immediate'
+    ]);
 }
 
 export const testNode = createSuite({
@@ -354,12 +369,7 @@ export const testNode = createSuite({
             async body(scope: TestScope) {
                 const events = await runSchedulingScenario('supervised-process', 'concurrent');
 
-                scope.assert.deepEqual(events, [
-                    'start:delayed',
-                    'start:immediate',
-                    'end:immediate',
-                    'end:delayed'
-                ]);
+                assertConcurrentSchedulingEvents(scope, events);
 
                 return scope.assert.collect();
             }

@@ -257,6 +257,44 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'integration profile schema accepts worker-pool profiles with files',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                assertValidationSuccess(scope, integrationProfileSchema, {
+                    execution: {
+                        processModel: 'worker-pool',
+                        scheduling: 'serial'
+                    },
+                    files: {
+                        exclude: [],
+                        include: [ 'source/**/*.integration.test.ts' ]
+                    },
+                    testFamily: 'integration'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'integration execution schema rejects worker lifecycle fields',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const result = safeParse(integrationExecutionSchema, {
+                    processModel: 'worker-pool',
+                    scheduling: 'serial',
+                    workerLifecycle: 'fresh-worker-per-unit'
+                });
+
+                scope.assert.equal(result.success, false);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'integration execution schema rejects in-process profiles',
             annotations: {},
             controls: {},

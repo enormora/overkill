@@ -144,6 +144,11 @@ Microtest profile execution is modeled with two independent fields:
 profile uses supervised concurrent execution. The selected values are recorded
 in `RunFacts.execution` and drive runner planning.
 
+Integration profiles default to `worker-pool` with concurrent scheduling.
+`worker-pool` uses bounded Node worker threads, collects once in a worker,
+then executes selected file units in isolated worker tasks. `supervised-process`
+remains available when a single process-isolated child boundary is preferred.
+
 `RunRequest.capabilityRestrictions.mode` controls the current microtest
 restriction policy. The programmatic default is `enabled`; the command-line
 runner also sets `enabled` explicitly. `supervised-process` microtests are
@@ -173,10 +178,11 @@ limitations; current examples include sync bootstrap reads inside the cwd grant,
 `Date`, `Math.random()`, sync crypto randomness, and SQLite execution.
 
 Live instance engines are supported for `in-process` runs. They are rejected
-for `supervised-process` runs because an object with executable functions
-cannot cross the process boundary. Supervised custom engines must use a module
-selection whose file URL is inside the run cwd and whose export is either an
-engine value or a synchronous getter returning an engine.
+for `supervised-process` and `worker-pool` runs because an object with
+executable functions cannot cross the execution boundary. Custom engines for
+those process models must use a module selection whose file URL is inside the
+run cwd and whose export is either an engine value or a synchronous getter
+returning an engine.
 
 Config loading is common runner infrastructure, not plugin discovery.
 The command-line runner loads native Node config files, selects the default

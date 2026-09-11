@@ -43,7 +43,7 @@ export const testNode = createOverkillSuite({
                 scope.require.defined(microtestProfile);
                 scope.assert.deepEqual(profile, {
                     execution: {
-                        processModel: 'supervised-process',
+                        processModel: 'worker-pool',
                         scheduling: 'concurrent'
                     },
                     files: {

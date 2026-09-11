@@ -1,106 +1,63 @@
 import {
-    collectedRunCaseEntries,
-    collectedRunCaseFactsFromEntries,
-    collectedRunPlanFromTestPlanCases,
-    createRunResultFromCollectedPlan
-} from './collected-run-plan.ts';
-import {
     createResultFromResolutionError,
     reportCollectionErrorResult
 } from './run-collection-error-result.ts';
 import {
-    createRunFacts,
-    resolveResourceUsagePolicy,
-    runCaseFactsFromTestPlan
-} from './run-facts.ts';
+    createResolvedRunFromCollection
+} from './run-collected-resolution.ts';
 import {
-    assertMicrotestControlCaptureSupported,
     readResolvedRunInput,
     type ResolvedRunInput
 } from './run-input-resolution.ts';
-import { createLocalTestPlan } from './run-local-test-plan.ts';
-import {
-    assertCollectedRunPlanMatchesTestFamily,
-    assertCollectedRunPlanHasCases,
-    orderedRunCases,
-    orderedTestPlan,
-    assertTestPlanMatchesTestFamily,
-    selectedCollectedRunPlan,
-    selectedNonEmptyTestPlanCases,
-    selectedTestPlan
-} from './run-selection.ts';
 import {
     assertRunnableResourceUsagePolicy,
     createRunRuntimePolicy,
-    freezeValue,
-    resolveRunReporters,
     type RunRuntimePolicy
 } from './run-support.ts';
 import {
     collectSupervisedRun,
     executeSupervisedRun,
-    runSupervisedCommand,
-    type CollectSupervisedRunCommand,
-    type ExecuteSupervisedRunCommand
+    runSupervisedCommand
 } from './supervised-run.ts';
+import {
+    collectWorkerPoolRun,
+    executeWorkerPoolRun,
+    runWorkerPoolCommand
+} from './worker-pool-run.ts';
+import {
+    createLocalResolvedRun,
+    createLocalRunOrEmptySelectionResult
+} from './run-local-resolution.ts';
+import {
+    createSupervisedCollectCommand,
+    createSupervisedRunCommand,
+    createWorkerPoolCommand
+} from './run-isolated-command.ts';
 import type {
     CollectedRunPlan,
     ResolvedRun,
     RunCommand,
-    RunConfig,
-    RunMicrotestExecution,
     RunOrchestrator,
-    RunProfileConfig,
-    RunRequest,
-    RunResourceUsagePolicy
+    RunResourceUsagePolicy,
+    RunScheduling
 } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
 type RunResourceUsageTracker = ReturnType<RunOrchestratorDependencies['createResourceUsageTracker']>;
-type SupervisedCollectCommand = CollectSupervisedRunCommand;
-type SupervisedRunCommand = ExecuteSupervisedRunCommand;
 
-type SupervisedCommandBase = {
-    readonly capabilityRestrictions: SupervisedRunCommand['capabilityRestrictions'];
-    readonly capture: SupervisedRunCommand['capture'];
-    readonly collectionTimeoutMilliseconds: number;
-    readonly cwd: string;
-    readonly engine: SupervisedRunCommand['engine'];
-    readonly hardTimeoutMilliseconds: number;
-    readonly paths: readonly string[];
-    readonly resourceBudgets: SupervisedRunCommand['resourceBudgets'];
-    readonly resourceUsageSamplingIntervalMilliseconds: number;
-    readonly scheduling: SupervisedRunCommand['scheduling'];
-    readonly testFamily: SupervisedRunCommand['testFamily'];
-    readonly timeoutMilliseconds: number;
-};
-
-type CollectedResolvedRunInput = {
-    readonly allowEmptySelection: boolean;
-    readonly collectionRunnerErrors: readonly RunResult['runnerErrors'][number][];
-    readonly collectedPlan: CollectedRunPlan;
-    readonly command: RunCommand;
-    readonly config: RunConfig;
-    readonly dependencies: RunOrchestratorDependencies;
-    readonly engine: RunCommand['engine'];
-    readonly files: ResolvedRunInput['files'];
-    readonly profile: RunProfileConfig;
-    readonly projectRoot: string;
-    readonly request: RunRequest;
-};
-
-type SupervisedCollection = {
+type CollectedExecution = {
     readonly collectedPlan: CollectedRunPlan;
     readonly runnerErrors: readonly RunResult['runnerErrors'][number][];
 };
 
-type SupervisedResolutionFromCollectionInput = {
+type ExecutionResolutionInput = {
     readonly allowEmptySelection: boolean;
-    readonly collection: SupervisedCollection;
+    readonly collection: CollectedExecution;
     readonly command: RunCommand;
     readonly dependencies: RunOrchestratorDependencies;
     readonly input: ResolvedRunInput;
+    readonly planKind: 'supervised' | 'worker-pool';
 };
 
 function currentRunStartTime(dependencies: RunOrchestratorDependencies): string {
@@ -109,142 +66,42 @@ function currentRunStartTime(dependencies: RunOrchestratorDependencies): string 
     return startedAt.toISOString();
 }
 
-function resolveEngineExecutionMode(execution: RunMicrotestExecution): 'concurrent-in-process' | 'serial-in-process' {
-    return execution.scheduling === 'concurrent' ? 'concurrent-in-process' : 'serial-in-process';
+function resolveEngineExecutionMode(scheduling: RunScheduling): 'concurrent-in-process' | 'serial-in-process' {
+    return scheduling === 'concurrent' ? 'concurrent-in-process' : 'serial-in-process';
 }
 
-function fileSetForDiscoveredFiles(files: ResolvedRunInput['files']): (file: string | null) => string | null {
-    const fileSets = new Map(files.map(function toFileSetEntry(file) {
-        return [ file.file, file.fileSet ];
-    }));
-
-    return function fileSetForFile(file) {
-        return file === null ? null : fileSets.get(file) ?? null;
-    };
-}
-
-function supervisedEngine(command: RunCommand): Exclude<RunCommand['engine'], { readonly kind: 'instance'; }> {
-    if (command.engine.kind === 'instance') {
-        throw new Error('Instance engines cannot run in supervised children.');
-    }
-
-    return command.engine;
-}
-
-function supervisedCapabilityRestrictions(
-    profile: RunProfileConfig,
-    command: RunCommand
-): SupervisedCommandBase['capabilityRestrictions'] {
-    if (profile.testFamily === 'integration') {
-        return { mode: 'disabled' };
-    }
-
-    return command.request.capabilityRestrictions;
-}
-
-function createSupervisedCommandBase(
-    command: RunCommand,
-    profile: RunProfileConfig,
-    files: ResolvedRunInput['files'],
-    capture: RunRequest['capture']
-): SupervisedCommandBase {
-    const resourceUsagePolicy = resolveResourceUsagePolicy(command.request, profile);
-
-    return {
-        capabilityRestrictions: supervisedCapabilityRestrictions(profile, command),
-        capture,
-        collectionTimeoutMilliseconds: profile.timeouts.collectionMilliseconds,
-        cwd: command.cwd,
-        engine: supervisedEngine(command),
-        hardTimeoutMilliseconds: profile.timeouts.hardMilliseconds,
-        paths: files.map(function toFilePath(file) {
-            return file.file;
-        }),
-        resourceBudgets: resourceUsagePolicy.budgets,
-        resourceUsageSamplingIntervalMilliseconds: resourceUsagePolicy.samplingIntervalMilliseconds,
-        scheduling: profile.execution.scheduling,
-        testFamily: profile.testFamily,
-        timeoutMilliseconds: profile.timeouts.softMilliseconds
-    };
-}
-
-function createSupervisedCollectCommand(
-    command: RunCommand,
-    profile: RunProfileConfig,
-    files: ResolvedRunInput['files']
-): SupervisedCollectCommand {
-    return {
-        ...createSupervisedCommandBase(command, profile, files, 'buffered'),
-        kind: 'collect' as const
-    };
-}
-
-function createSupervisedRunCommand(
-    command: RunCommand,
-    profile: RunProfileConfig,
-    files: ResolvedRunInput['files']
-): SupervisedRunCommand {
-    return {
-        ...createSupervisedCommandBase(command, profile, files, command.request.capture),
-        kind: 'run' as const
-    };
-}
-
-function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): ResolvedRun {
-    assertCollectedRunPlanMatchesTestFamily(input.collectedPlan, input.profile.testFamily);
-    assertMicrotestControlCaptureSupported(input.profile, input.collectedPlan);
-
-    if (!input.allowEmptySelection) {
-        assertCollectedRunPlanHasCases(input.collectedPlan);
-    }
-
-    const orderedCases = orderedRunCases(
-        collectedRunCaseEntries(input.collectedPlan),
-        input.request.order,
-        input.request.seed
-    );
-    const facts = freezeValue(createRunFacts({
-        cases: collectedRunCaseFactsFromEntries(orderedCases, fileSetForDiscoveredFiles(input.files)),
-        config: input.config,
-        dependencies: input.dependencies,
-        engine: input.engine,
-        projectRoot: input.projectRoot,
-        request: input.request
-    }));
-
-    return freezeValue({
-        collectionRunnerErrors: input.collectionRunnerErrors,
-        config: input.config,
-        cwd: input.command.cwd,
-        engine: input.engine,
-        facts,
-        plan: {
-            collectedPlan: input.collectedPlan,
-            kind: 'supervised' as const
-        },
-        reporters: resolveRunReporters(input.profile, input.config.reporters),
-        request: input.request
-    });
-}
-
-function createResolvedRunFromSupervisedCollection(resolution: SupervisedResolutionFromCollectionInput): ResolvedRun {
-    const collectedPlan = selectedCollectedRunPlan(
-        resolution.collection.collectedPlan,
-        resolution.input.request.selection
-    );
-
-    return createResolvedRunFromCollectedPlan({
+function createResolvedExecutionRun(resolution: ExecutionResolutionInput): ResolvedRun {
+    return createResolvedRunFromCollection({
         allowEmptySelection: resolution.allowEmptySelection,
-        collectionRunnerErrors: freezeValue(Array.from(resolution.collection.runnerErrors)),
-        collectedPlan: freezeValue(collectedPlan),
+        collection: resolution.collection,
         command: resolution.command,
         config: resolution.input.config,
         dependencies: resolution.dependencies,
         engine: resolution.input.engine,
         files: resolution.input.files,
+        planKind: resolution.planKind,
         profile: resolution.input.profile,
         projectRoot: resolution.input.projectRoot,
         request: resolution.input.request
+    });
+}
+
+async function createWorkerPoolResolvedRun(
+    command: RunCommand,
+    dependencies: RunOrchestratorDependencies,
+    input: ResolvedRunInput
+): Promise<ResolvedRun> {
+    const collection = await collectWorkerPoolRun(
+        createWorkerPoolCommand(command, input.profile, input.files),
+        dependencies
+    );
+    return createResolvedExecutionRun({
+        allowEmptySelection: false,
+        collection,
+        command,
+        dependencies,
+        input,
+        planKind: 'worker-pool'
     });
 }
 
@@ -258,107 +115,13 @@ async function createSupervisedResolvedRun(
         dependencies
     );
 
-    return createResolvedRunFromSupervisedCollection({
+    return createResolvedExecutionRun({
         allowEmptySelection: false,
         collection,
         command,
         dependencies,
-        input
-    });
-}
-
-function createLocalResolvedRunFromTestPlan(
-    command: RunCommand,
-    dependencies: RunOrchestratorDependencies,
-    input: ResolvedRunInput,
-    plannedTestPlan: Awaited<ReturnType<typeof createLocalTestPlan>>
-): ResolvedRun {
-    assertTestPlanMatchesTestFamily(plannedTestPlan, input.profile.testFamily);
-    assertMicrotestControlCaptureSupported(
-        input.profile,
-        collectedRunPlanFromTestPlanCases(plannedTestPlan, plannedTestPlan.cases)
-    );
-
-    const facts = freezeValue(createRunFacts({
-        cases: runCaseFactsFromTestPlan(plannedTestPlan, fileSetForDiscoveredFiles(input.files)),
-        config: input.config,
-        dependencies,
-        engine: input.engine,
-        projectRoot: input.projectRoot,
-        request: input.request
-    }));
-
-    return freezeValue({
-        collectionRunnerErrors: [],
-        config: input.config,
-        cwd: command.cwd,
-        engine: input.engine,
-        facts,
-        plan: {
-            kind: 'local',
-            testPlan: plannedTestPlan
-        },
-        reporters: resolveRunReporters(input.profile, input.config.reporters),
-        request: input.request
-    });
-}
-
-async function createLocalResolvedRun(
-    command: RunCommand,
-    dependencies: RunOrchestratorDependencies,
-    input: ResolvedRunInput
-): Promise<ResolvedRun> {
-    const testPlan = await createLocalTestPlan(command, input.profile, input.files, dependencies);
-    const selectedPlan = selectedTestPlan(testPlan, input.request.selection);
-
-    return createLocalResolvedRunFromTestPlan(
-        command,
-        dependencies,
         input,
-        orderedTestPlan(selectedPlan, input.request.order, input.request.seed)
-    );
-}
-
-function createEmptySelectionResult(
-    testPlan: Awaited<ReturnType<typeof createLocalTestPlan>>,
-    dependencies: RunOrchestratorDependencies
-): RunResult {
-    const startedAtMs = dependencies.wallClock.currentTimestampInMilliseconds;
-
-    return freezeValue(createRunResultFromCollectedPlan(
-        collectedRunPlanFromTestPlanCases(testPlan, []),
-        [],
-        [],
-        {
-            resourceUsage: null,
-            startedAtMs,
-            wallClock: dependencies.wallClock
-        }
-    ));
-}
-
-async function createLocalRunOrEmptySelectionResult(
-    command: RunCommand,
-    dependencies: RunOrchestratorDependencies
-): Promise<ResolvedRun | RunResult> {
-    const input = await readResolvedRunInput(command, dependencies);
-
-    if (input.profile.execution.processModel !== 'in-process') {
-        throw new Error('Expected in-process profile.');
-    }
-
-    const testPlan = await createLocalTestPlan(command, input.profile, input.files, dependencies);
-    const plannedCases = selectedNonEmptyTestPlanCases(testPlan, input.request.selection);
-
-    if (plannedCases === null) {
-        return createEmptySelectionResult(testPlan, dependencies);
-    }
-
-    const cases = orderedRunCases(plannedCases, input.request.order, input.request.seed);
-
-    return createLocalResolvedRunFromTestPlan(command, dependencies, input, {
-        ...testPlan,
-        cases
+        planKind: 'supervised'
     });
 }
 
@@ -385,6 +148,10 @@ async function createResolvedRun(
 
     if (input.profile.execution.processModel === 'supervised-process') {
         return await createSupervisedResolvedRun(seededCommand, dependencies, input);
+    }
+
+    if (input.profile.execution.processModel === 'worker-pool') {
+        return await createWorkerPoolResolvedRun(seededCommand, dependencies, input);
     }
 
     return await createLocalResolvedRun(seededCommand, dependencies, input);
@@ -455,12 +222,13 @@ async function runSupervisedAndAttachPolicyErrors(
         createSupervisedRunCommand(command, input.profile, input.files),
         dependencies,
         function createResolvedRunAfterCollection(collection): ResolvedRun {
-            return createResolvedRunFromSupervisedCollection({
+            return createResolvedExecutionRun({
                 allowEmptySelection: true,
                 collection,
                 command,
                 dependencies,
-                input
+                input,
+                planKind: 'supervised'
             });
         }
     );
@@ -489,6 +257,57 @@ async function createSupervisedRunResult(
     }
 }
 
+async function createWorkerPoolRunResult(
+    command: RunCommand,
+    dependencies: RunOrchestratorDependencies
+): Promise<RunResult> {
+    const input = await readResolvedRunInput(command, dependencies);
+
+    if (input.profile.execution.processModel !== 'worker-pool') {
+        throw new Error('Expected worker-pool profile.');
+    }
+
+    try {
+        return await runWorkerPoolCommand(
+            createWorkerPoolCommand(command, input.profile, input.files),
+            dependencies,
+            function createResolvedRunAfterCollection(collection): ResolvedRun {
+                return createResolvedExecutionRun({
+                    allowEmptySelection: true,
+                    collection,
+                    command,
+                    dependencies,
+                    input,
+                    planKind: 'worker-pool'
+                });
+            }
+        );
+    } catch (error: unknown) {
+        return await reportCollectionErrorResult(
+            command,
+            dependencies,
+            createResultFromResolutionError(error, null)
+        );
+    }
+}
+
+function runIsolatedProcessCommand(
+    command: RunCommand,
+    dependencies: RunOrchestratorDependencies
+): Promise<RunResult> | null {
+    const processModel = command.config.profiles[command.request.profile]?.execution.processModel;
+
+    if (processModel === 'supervised-process') {
+        return createSupervisedRunResult(command, dependencies);
+    }
+
+    if (processModel === 'worker-pool') {
+        return createWorkerPoolRunResult(command, dependencies);
+    }
+
+    return null;
+}
+
 async function executeResolvedRun(
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies,
@@ -504,12 +323,16 @@ async function executeResolvedRun(
         return addRunnerErrors(result, runtimePolicy?.takeRunErrors() ?? []);
     }
 
+    if (resolvedRun.facts.execution.processModel === 'worker-pool') {
+        return await executeWorkerPoolRun(resolvedRun, dependencies);
+    }
+
     if (resolvedRun.plan.kind !== 'local') {
         throw new Error('In-process execution requires a local test plan.');
     }
 
     return await dependencies.execute(resolvedRun.plan.testPlan, {
-        execution: { mode: resolveEngineExecutionMode(resolvedRun.facts.execution) },
+        execution: { mode: resolveEngineExecutionMode(resolvedRun.facts.execution.scheduling) },
         outputRenderer: resolvedRun.config.outputRenderer,
         reporters: resolvedRun.reporters,
         resourceBudgets: resourceUsagePolicy.budgets,
@@ -526,10 +349,10 @@ async function executeResolvedRun(
 
 async function runCommand(command: RunCommand, dependencies: RunOrchestratorDependencies): Promise<RunResult> {
     const seededCommand = commandWithResolvedSeed(command, dependencies);
-    const profile = seededCommand.config.profiles[seededCommand.request.profile];
+    const isolatedResult = runIsolatedProcessCommand(seededCommand, dependencies);
 
-    if (profile?.execution.processModel === 'supervised-process') {
-        return await createSupervisedRunResult(seededCommand, dependencies);
+    if (isolatedResult !== null) {
+        return await isolatedResult;
     }
 
     const runtimePolicy = createRunRuntimePolicy(seededCommand.request, dependencies);

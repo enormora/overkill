@@ -15,7 +15,12 @@ import {
 } from '../../run/command-line-runner.ts';
 import type { LoadedRunConfig } from '../../run/run-config.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
-import type { RunConfig, RunMicrotestProfileConfig, RunProcessModel, RunRequest } from '../../run/run-types.ts';
+import type {
+    RunConfig,
+    RunMicrotestProcessModel,
+    RunMicrotestProfileConfig,
+    RunRequest
+} from '../../run/run-types.ts';
 
 const emptySuiteFixturePath = 'source/integration-tests/run/fixtures/empty-suite.test.ts';
 const missingTestNodeFixturePath = 'source/integration-tests/run/fixtures/missing-test-node.test.ts';
@@ -129,7 +134,7 @@ function createRunnerDependencies(config: RunConfig): CommandLineRunnerDependenc
     };
 }
 
-function createDiscoveryConfig(processModel: RunProcessModel): RunConfig {
+function createDiscoveryConfig(processModel: RunMicrotestProcessModel): RunConfig {
     return {
         ...defaultConfig,
         profiles: {
@@ -158,7 +163,7 @@ async function runCommandLine(paths: readonly string[]): Promise<CommandLineRunn
     });
 }
 
-async function runDiscoveryCommandLine(processModel: RunProcessModel): Promise<CommandLineRunnerResult> {
+async function runDiscoveryCommandLine(processModel: RunMicrotestProcessModel): Promise<CommandLineRunnerResult> {
     const runner = createCommandLineRunner(createRunnerDependencies(createDiscoveryConfig(processModel)));
 
     return await runner.runTests({
@@ -168,7 +173,7 @@ async function runDiscoveryCommandLine(processModel: RunProcessModel): Promise<C
     });
 }
 
-function listConfig(processModel: RunProcessModel): RunConfig {
+function listConfig(processModel: RunMicrotestProcessModel): RunConfig {
     return {
         ...defaultConfig,
         profiles: {
@@ -185,7 +190,7 @@ function listConfig(processModel: RunProcessModel): RunConfig {
 
 async function listCommandLine(
     paths: readonly string[],
-    processModel: RunProcessModel,
+    processModel: RunMicrotestProcessModel,
     withOrphans: boolean
 ): Promise<CommandLineRunnerResult> {
     const runner = createCommandLineRunner(createRunnerDependencies(listConfig(processModel)));
@@ -205,7 +210,7 @@ async function listCommandLine(
     });
 }
 
-async function listDiscoveryCommandLine(processModel: RunProcessModel): Promise<CommandLineRunnerResult> {
+async function listDiscoveryCommandLine(processModel: RunMicrotestProcessModel): Promise<CommandLineRunnerResult> {
     const runner = createCommandLineRunner(createRunnerDependencies(createDiscoveryConfig(processModel)));
 
     return await runner.listTests({

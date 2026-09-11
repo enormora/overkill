@@ -9,8 +9,12 @@ const integration = createTestFacade({
 });
 
 export const testNode = integration.test('captures output', function testOutput(scope) {
-    process.stdout.write('case stdout\n');
-    process.stderr.write('case stderr\n');
+    process.stdout.write('case stdout\n', function ignoreWriteResult() {
+        return undefined;
+    });
+    process.stderr.write('case stderr\n', 'utf8', function ignoreErrorWriteResult() {
+        return undefined;
+    });
     scope.assert.true(true);
 
     return scope.assert.collect();

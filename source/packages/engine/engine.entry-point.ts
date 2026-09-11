@@ -1,6 +1,5 @@
 import { createWallClock } from '@enormora/wall-clock';
 import {
-    createEngine as createEngineInstance,
     createEngineWithOwner,
     type Engine,
     type EngineDependencies
@@ -8,6 +7,7 @@ import {
 import { createExecute } from '../../engine/execution.ts';
 import { createReporterDispatcher } from '../../engine/reporter-dispatcher.ts';
 import {
+    createTestNodeOwner,
     defaultTestNodeOwner,
     type RootOptions,
     type SkippedTestCaseOptions,
@@ -49,7 +49,7 @@ function createEngineDependencies(): EngineDependencies {
 }
 
 export function createEngine(): Engine {
-    return createEngineInstance(createEngineDependencies());
+    return createEngineWithOwner(createEngineDependencies(), createTestNodeOwner());
 }
 
 const defaultEngine = createEngineWithOwner(createEngineDependencies(), defaultTestNodeOwner());

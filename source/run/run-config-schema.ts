@@ -95,12 +95,20 @@ export const microtestExecutionSchema = z.discriminatedUnion('processModel', [
         .readonly()
 ]);
 
-export const integrationExecutionSchema = z
-    .strictObject({
-        processModel: z.literal('supervised-process'),
-        scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ]))
-    })
-    .readonly();
+export const integrationExecutionSchema = z.discriminatedUnion('processModel', [
+    z
+        .strictObject({
+            processModel: z.literal('supervised-process'),
+            scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ]))
+        })
+        .readonly(),
+    z
+        .strictObject({
+            processModel: z.literal('worker-pool'),
+            scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ]))
+        })
+        .readonly()
+]);
 
 export const microtestProfileSchema = z
     .strictObject({
