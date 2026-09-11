@@ -22,6 +22,34 @@ const commandLineLazyModuleBoundaries = [
     '^source/.*/benchmark',
     '^source/.*/coverage'
 ];
+const testRootAuthoringFiles = [
+    '^source/packages/test/authoring-input\\.ts$',
+    '^source/packages/test/authoring-source-locations\\.ts$',
+    '^source/packages/test/authoring-test-data\\.ts$',
+    '^source/packages/test/harness-authoring\\.ts$',
+    '^source/packages/test/interaction-transcript\\.ts$',
+    '^source/packages/test/resource-attachment-boundary\\.ts$',
+    '^source/packages/test/table-authoring\\.ts$',
+    '^source/packages/test/test-authoring\\.ts$',
+    '^source/packages/test/test\\.entry-point\\.ts$'
+];
+const testRootLazyModuleBoundaries = [
+    '^source/packages/test/(baselines|bench|config|overkill|reporters|resources)\\.entry-point\\.ts$',
+    '^source/packages/test/command-line-runner\\.ts$',
+    '^source/packages/reporter-',
+    '^source/packages/resources/',
+    '^source/packages/run/(command-line|config|run)\\.entry-point\\.ts$',
+    '^source/reporters/',
+    '^source/resources/',
+    '^source/run/(command-line|command-line-command|command-line-runner|config)',
+    '^source/run/(current-process-run-orchestrator|default-direct-reporter|default-run-engine|node-)',
+    '^source/run/(resource-usage|run-config|run-discovery|run-input|run-orchestrator|run-process-engine)',
+    '^source/run/(run-selection|run-support|run-test|supervised)',
+    '^source/.*/baseline',
+    '^source/.*/bench',
+    '^source/.*/benchmark',
+    '^source/.*/coverage'
+];
 
 const ignoreFromOrphans = [ ...configFiles, ...entryPointFiles, ...testFiles, ...testSupportFiles ];
 
@@ -142,6 +170,18 @@ export default {
                 dependencyTypesNot: [ 'type-only' ],
                 dynamic: false,
                 path: commandLineLazyModuleBoundaries
+            }
+        },
+        {
+            name: 'test-root-keeps-authoring-import-boundary',
+            severity: 'error',
+            from: {
+                path: testRootAuthoringFiles
+            },
+            to: {
+                dependencyTypesNot: [ 'type-only' ],
+                dynamic: false,
+                path: testRootLazyModuleBoundaries
             }
         }
     ],
