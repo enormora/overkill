@@ -1,4 +1,5 @@
 import { createSuite } from '../../packages/engine/engine.entry-point.ts';
+import { testNode as asyncControlTestNode } from '../../engine/async-control.test.ts';
 import { testNode as assertionExecutionCompositeTestNode } from '../../engine/assertion-execution-composite.test.ts';
 import { testNode as assertionExecutionTestNode } from '../../engine/assertion-execution.test.ts';
 import { testNode as assertionFacadeTestNode } from '../../engine/assertion-facade.test.ts';
@@ -14,6 +15,7 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     children: [
+        asyncControlTestNode,
         assertionExecutionCompositeTestNode,
         assertionExecutionTestNode,
         assertionFacadeTestNode,

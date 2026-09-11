@@ -26,11 +26,17 @@ function writeStderrLine(line: string): void {
     process.stderr.write(`${line}\n`);
 }
 
+function readActiveResourceTypes(): readonly string[] {
+    return process.getActiveResourcesInfo();
+}
+
 function createEngineDependencies(): EngineDependencies {
     const wallClock = createWallClock();
 
     return {
         execute: createExecute({
+            asyncLeakDiagnostics: 'enabled',
+            readActiveResourceTypes,
             reporterDispatcher: createReporterDispatcher({
                 stderr: { writeLine: writeStderrLine },
                 stdout: { writeLine: writeStdoutLine },
@@ -143,6 +149,7 @@ export type {
     ReporterOutput
 } from '../../engine/reporter-output.ts';
 export type { AssertAssertionFacade } from '../../engine/assertion-facade.ts';
+export type { InFlightTask } from '../../engine/async-control.ts';
 export type { RequireAssertionFacade } from '../../engine/require-assertion-facade.ts';
 export type {
     AssertionOptions,

@@ -282,9 +282,15 @@ function startedAtIso(startedAtMs: number): string {
     return startedAt.toISOString();
 }
 
+function readActiveResourceTypes(): readonly string[] {
+    return process.getActiveResourcesInfo();
+}
+
 async function executeAssignment(input: SupervisedAssignmentExecution): Promise<RunResult> {
     const runtimePolicy = createRuntimePolicy(input.command, input.host);
     const execute = createExecute({
+        asyncLeakDiagnostics: 'enabled',
+        readActiveResourceTypes,
         reporterDispatcher: createReporterDispatcher({
             stderr: { writeLine: ignoreLine },
             stdout: { writeLine: ignoreLine },

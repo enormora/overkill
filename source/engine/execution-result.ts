@@ -14,6 +14,34 @@ type RunResultTiming = {
     readonly wallClock: WallClock;
 };
 
+export function appendRunnerErrors(result: RunResult, runnerErrors: readonly RunnerError[]): RunResult {
+    if (runnerErrors.length === 0) {
+        return result;
+    }
+
+    return {
+        ...result,
+        runnerErrors: [ ...result.runnerErrors, ...runnerErrors ]
+    };
+}
+
+export async function throwWithCleanupErrors(
+    error: unknown,
+    cleanup: () => Promise<readonly unknown[]>
+): Promise<never> {
+    const cleanupErrors = await cleanup();
+
+    if (cleanupErrors.length > 0) {
+        throw new AggregateError(
+            [ error, ...cleanupErrors ],
+            'Execution failed and reporter cleanup failed.',
+            { cause: error }
+        );
+    }
+
+    throw error;
+}
+
 function hasFailed(testResult: PerTestResult): boolean {
     return testResult.verdict === 'fail';
 }

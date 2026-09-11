@@ -46,8 +46,10 @@ type TestContractFailureCodeByName = {
     readonly invalidTimeoutControl: 'invalid-timeout-control';
     readonly invalidRequireReference: 'invalid-require-reference';
     readonly noAssertions: 'no-assertions';
+    readonly pendingInFlightTask: 'pending-in-flight-task';
     readonly pendingAsyncAssertion: 'pending-async-assertion';
     readonly planMismatch: 'plan-mismatch';
+    readonly unobservedInFlightTask: 'unobserved-in-flight-task';
 };
 
 export type TestContractFailureCode = TestContractFailureCodeByName[keyof TestContractFailureCodeByName];
@@ -66,7 +68,25 @@ type TimeoutTestFailure = {
     readonly kind: 'timeout';
 };
 
-export type TestFailure = AssertionTestFailure | BodyErrorTestFailure | TestContractFailure | TimeoutTestFailure;
+type CleanupErrorTestFailure = {
+    readonly error: {
+        readonly message: string;
+        readonly name: string;
+        readonly stack: string | null;
+        readonly thrown: unknown;
+    };
+    readonly kind: 'cleanup-error';
+};
+
+type TestFailureTypes = readonly [
+    AssertionTestFailure,
+    BodyErrorTestFailure,
+    CleanupErrorTestFailure,
+    TestContractFailure,
+    TimeoutTestFailure
+];
+
+export type TestFailure = TestFailureTypes[number];
 
 export function invalidDeepAssertionOperandFailure(actual: InvalidDeepAssertionOperand): TestContractFailure {
     return {

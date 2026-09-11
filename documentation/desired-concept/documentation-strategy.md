@@ -60,8 +60,8 @@ This is where the rarer mechanics belong:
 - `defineHarness(...)`
 - transcript recording
 - reusable multi-case macros
-- `inFlight(...)`
-- queue-flush helpers
+- `startInFlight(...)`
+- queue-control and cleanup helpers
 - benchmark workloads and policies
 - browser metrics backends
 
@@ -135,16 +135,16 @@ Overkill should feel smaller than its internal architecture.
 Internal concept documentation in `documentation/concept/` follows a
 canonical section order:
 
-1. `# Title` — matches the filename closely
-2. `## Purpose` — what the document is for and what decision it owns
-3. `## Position` — where the document fits inside a larger system flow
+1. `# Title` - matches the filename closely
+2. `## Purpose` - what the document is for and what decision it owns
+3. `## Position` - where the document fits inside a larger system flow
 4. Body sections in title case
-5. `## Cross-References` — relative links to sibling concept
+5. `## Cross-References` - relative links to sibling concept
    documents, grouped under one H2 with H3 subsections when several
    are needed
-6. `## Influences` — prior art whose ideas informed the design;
+6. `## Influences` - prior art whose ideas informed the design;
    always plural
-7. `## Sources` — external references cited inline; always last
+7. `## Sources` - external references cited inline; always last
 
 Every section except the title is optional.
 
@@ -154,5 +154,5 @@ Every section except the title is optional.
   "For", "With", "Of".
 - Filenames are lowercase-hyphenated and should match the H1
   closely.
-- Do not embed markdown links in heading text — keep headings plain
+- Do not embed markdown links in heading text; keep headings plain
   and link in the body.

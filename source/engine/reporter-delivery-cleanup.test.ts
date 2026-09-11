@@ -155,9 +155,15 @@ function ignoreOutputLine(): void {
     return undefined;
 }
 
+function readNoActiveResourceTypes(): readonly string[] {
+    return [];
+}
+
 function createReporterDeliveryEngine(wallClock: ReturnType<typeof createDeterministicWallClock>): Engine {
     return createEngine({
         execute: createExecute({
+            asyncLeakDiagnostics: 'enabled',
+            readActiveResourceTypes: readNoActiveResourceTypes,
             reporterDispatcher: createReporterDispatcher({
                 stderr: { writeLine: ignoreOutputLine },
                 stdout: { writeLine: ignoreOutputLine },
@@ -396,7 +402,12 @@ export const testNode = createOverkillSuite({
                         };
                     }
                 };
-                const execute = createExecute({ reporterDispatcher, wallClock });
+                const execute = createExecute({
+                    asyncLeakDiagnostics: 'enabled',
+                    readActiveResourceTypes: readNoActiveResourceTypes,
+                    reporterDispatcher,
+                    wallClock
+                });
 
                 await scope.assert.rejects(async function executeWithThrowingDisposal() {
                     await execute(createPassingPlan(engine), {
