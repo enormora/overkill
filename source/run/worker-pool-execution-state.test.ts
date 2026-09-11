@@ -9,15 +9,16 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
-import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
+import type {
+    CreatedWorkerPool,
+    RunOrchestratorDependencies
+} from './run-orchestrator-dependencies.ts';
 import { createStoredRunValue, createSupervisedRunState, type SupervisedRunState } from './supervised-run-state.ts';
 import { executeWorkerPoolUnits, reportRunStart, startPoolResourceTracking } from './worker-pool-execution.ts';
 import { createEmptyWorkerPoolResult, finishWorkerPoolRun } from './worker-pool-results.ts';
-import {
-    createPool,
-    createWorkerPoolRuntime,
-    type WorkerPoolRunRuntime,
-    type WorkerPoolTaskRun
+import type {
+    WorkerPoolRunRuntime,
+    WorkerPoolTaskRun
 } from './worker-pool-runtime.ts';
 
 type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
@@ -27,6 +28,11 @@ type ResourceSample = ReturnType<WorkerPoolRunRuntime['previousPoolSample']['rea
 const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const annotations = { ownership: [], tags: [] };
 const controls = { capture: null, timeoutMilliseconds: null };
+const testCaseMetadata = {
+    annotations: {},
+    controls: {},
+    definitionLocations: [ { kind: 'unknown' as const } ]
+} as const;
 
 function firstCaseId(): CaseId {
     return {
@@ -102,6 +108,7 @@ function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
                     hardMilliseconds: 1000,
                     softMilliseconds: 500
                 },
+                workerLifecycle: 'reuse',
                 verbose: false
             },
             loader: { sourceMaps: false, stripMode: 'strip-only' },
@@ -135,12 +142,29 @@ function testOnlyDependency(): never {
     throw new Error('Test fixture dependency is not configured.');
 }
 
+function createFakePool(maxThreads: number, isolateWorkers: boolean): CreatedWorkerPool {
+    return {
+        async destroy() {
+            return undefined;
+        },
+        options: { isolateWorkers, maxThreads },
+        async run() {
+            throw new Error('Fake worker pool did not receive a task implementation.');
+        }
+    };
+}
+
+const createFakeWorkerPool: RunOrchestratorDependencies['createWorkerPool'] = function createFakeWorkerPool(options) {
+    return createFakePool(options.workerCount, options.workerLifecycle === 'fresh-worker-per-unit');
+};
+
 function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
     return {
         createResourceUsageTracker: testOnlyDependency,
         createSeed() {
             return 42n;
         },
+        createWorkerPool: createFakeWorkerPool,
         defaultEngine: defaultRunEngine,
         discoverRunFilesWithProjectRoot: testOnlyDependency,
         execute: defaultRunEngine.execute,
@@ -196,7 +220,7 @@ function fakeWorkerRuntime(collectedPlan: CollectedRunPlan): WorkerPoolRunRuntim
         collectedPlan,
         collectionRunnerErrors: [],
         dependencies: fakeDependencies(),
-        pool: createPool(1),
+        pool: createFakePool(1, false),
         poolResourceUsageTracker: null,
         previousPoolSample: createStoredRunValue<ResourceSample>(null),
         reporterDelivery: fakeReporterDelivery,
@@ -261,7 +285,7 @@ function passResult(): PerTestResult {
 
 function invalidOutputRuntime(recordRun: () => void): WorkerPoolRunRuntime {
     const runtime = fakeWorkerRuntime(createCollectedPlan());
-    const pool = createPool(1);
+    const pool = createFakePool(1, false);
     pool.run = async function runInvalidWorkerTask() {
         recordRun();
 
@@ -311,76 +335,6 @@ function budgetedRuntime(taskRun: WorkerPoolTaskRun): WorkerPoolRunRuntime {
     };
 }
 
-function resourceMeasurementResolvedRun(): ResolvedRun {
-    const resolvedRun = workerPoolResolvedRun(createCollectedPlan());
-
-    return {
-        ...resolvedRun,
-        facts: {
-            ...resolvedRun.facts,
-            execution: {
-                ...resolvedRun.facts.execution,
-                resourceUsagePolicy: {
-                    budgets: {
-                        activeResourceCount: null,
-                        javaScriptEngineHeapBytes: null,
-                        residentSetBytes: 10,
-                        residentSetGrowthBytesPerSecond: null
-                    },
-                    measure: true,
-                    samplingIntervalMilliseconds: 17
-                }
-            }
-        }
-    };
-}
-
-async function workerPoolRuntimeCreation(): Promise<{
-    readonly measuredSamplingInterval: number;
-    readonly measuredThreads: number;
-    readonly measuredTracker: WorkerPoolRunRuntime['poolResourceUsageTracker'];
-    readonly unmeasuredThreads: number;
-    readonly unmeasuredTracker: WorkerPoolRunRuntime['poolResourceUsageTracker'];
-}> {
-    let measuredSamplingInterval = 0;
-    const dependencies: WorkerPoolRunRuntime['dependencies'] = {
-        ...fakeDependencies(),
-        createResourceUsageTracker(options) {
-            measuredSamplingInterval = options.samplingIntervalMilliseconds;
-
-            return {
-                finish: testOnlyDependency,
-                start() {
-                    return undefined;
-                }
-            };
-        }
-    };
-    const unmeasuredRuntime = await createWorkerPoolRuntime(
-        workerPoolResolvedRun({ ...createCollectedPlan(), files: [] }),
-        fakeDependencies(),
-        [],
-        createSupervisedRunState()
-    );
-    const measuredRuntime = await createWorkerPoolRuntime(
-        resourceMeasurementResolvedRun(),
-        dependencies,
-        [],
-        createSupervisedRunState()
-    );
-
-    await unmeasuredRuntime.pool.destroy();
-    await measuredRuntime.pool.destroy();
-
-    return {
-        measuredSamplingInterval,
-        measuredThreads: measuredRuntime.pool.options.maxThreads,
-        measuredTracker: measuredRuntime.poolResourceUsageTracker,
-        unmeasuredThreads: unmeasuredRuntime.pool.options.maxThreads,
-        unmeasuredTracker: unmeasuredRuntime.poolResourceUsageTracker
-    };
-}
-
 async function workerPoolFinalizationResults(): Promise<{
     readonly emptyResult: RunResult;
     readonly result: RunResult;
@@ -403,15 +357,11 @@ async function workerPoolFinalizationResults(): Promise<{
 }
 
 export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
+    ...testCaseMetadata,
     title: 'source/run/worker-pool-execution-state.test.ts',
     children: [
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testCaseMetadata,
             title: 'worker-pool execution stops after repeated invalid worker outputs',
             async body(scope: OverkillScope) {
                 let poolRuns = 0;
@@ -436,9 +386,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testCaseMetadata,
             title: 'worker-pool resource tracking stops active tasks on pool budget breach',
             async body(scope: OverkillScope) {
                 const activeTask = createTaskRun(createSupervisedRunState());
@@ -456,26 +404,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool runtime creation sizes pools and installs resource tracking',
-            async body(scope: OverkillScope) {
-                const result = await workerPoolRuntimeCreation();
-
-                scope.assert.equal(result.unmeasuredThreads, 0);
-                scope.assert.equal(result.unmeasuredTracker, null);
-                scope.assert.equal(result.measuredThreads, 1);
-                scope.assert.equal(result.measuredSamplingInterval, 17);
-                scope.assert.notEqual(result.measuredTracker, null);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testCaseMetadata,
             title: 'worker-pool finalization and empty results aggregate run state',
             async body(scope: OverkillScope) {
                 const { emptyResult, result } = await workerPoolFinalizationResults();

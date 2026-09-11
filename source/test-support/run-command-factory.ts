@@ -1,17 +1,25 @@
 import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import type { DefinedReporter } from '../engine/reporter.ts';
 import type {
+    RunCommand,
     RunConfig,
+    RunExecutionFacts,
     RunIntegrationExecution,
     RunIntegrationProfileConfig,
     RunMicrotestExecution,
     RunMicrotestProfileConfig,
     RunProfileFiles,
+    RunProfileConfig,
     RunRequest,
     RunResourceBudgets,
     RunResourceUsagePolicy,
-    RunTimeoutPolicy
+    RunTimeoutPolicy,
+    RunWorkerLifecycle
 } from '../run/run-types.ts';
+
+type WorkerPoolExecutionOverrides = Partial<
+    Extract<RunIntegrationExecution, { readonly processModel: 'worker-pool'; }>
+>;
 
 type ResourceUsageOverrides = {
     readonly budgets?: Partial<RunResourceBudgets>;
@@ -83,13 +91,60 @@ function defaultMicrotestExecution(overrides: Partial<RunMicrotestExecution> = {
     };
 }
 
-function defaultIntegrationExecution(overrides: Partial<RunIntegrationExecution> = {}): RunIntegrationExecution {
-    const processModel = overrides.processModel ?? 'worker-pool';
+export function testRunExecutionFacts(command: RunCommand, profile: RunProfileConfig): RunExecutionFacts {
+    const facts = {
+        baselineUpdateMode: command.request.baselineUpdateMode,
+        capture: command.request.capture,
+        debug: command.request.debug,
+        engine: { kind: 'default' as const },
+        order: command.request.order,
+        profile: command.request.profile,
+        resourceUsagePolicy: profile.resourceUsage,
+        scheduling: profile.execution.scheduling,
+        testFamily: profile.testFamily,
+        timeoutPolicy: profile.timeouts,
+        verbose: command.request.verbose
+    };
+
+    if (profile.execution.processModel === 'worker-pool') {
+        return {
+            ...facts,
+            processModel: profile.execution.processModel,
+            workerLifecycle: profile.execution.workerLifecycle
+        };
+    }
 
     return {
-        processModel,
-        scheduling: overrides.scheduling ?? 'concurrent'
+        ...facts,
+        processModel: profile.execution.processModel
     };
+}
+
+function hasWorkerLifecycleOverride(
+    overrides: Partial<RunIntegrationExecution>
+): overrides is WorkerPoolExecutionOverrides {
+    return Object.hasOwn(overrides, 'workerLifecycle');
+}
+
+function defaultWorkerLifecycle(overrides: Partial<RunIntegrationExecution>): RunWorkerLifecycle {
+    return hasWorkerLifecycleOverride(overrides)
+        ? overrides.workerLifecycle ?? 'reuse'
+        : 'reuse';
+}
+
+function defaultIntegrationExecution(overrides: Partial<RunIntegrationExecution> = {}): RunIntegrationExecution {
+    const processModel = overrides.processModel ?? 'worker-pool';
+    const scheduling = overrides.scheduling ?? 'concurrent';
+
+    if (processModel === 'worker-pool') {
+        return {
+            processModel,
+            scheduling,
+            workerLifecycle: defaultWorkerLifecycle(overrides)
+        };
+    }
+
+    return { processModel, scheduling };
 }
 
 export function defaultMicrotestProfile(

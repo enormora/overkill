@@ -8,9 +8,13 @@ import type {
 import type {
     CollectedRunFile,
     CollectedRunPlan,
+    RunExecutionFacts,
     ResolvedRun
 } from './run-types.ts';
-import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
+import type {
+    RunOrchestratorDependencies,
+    WorkerPoolCreationOptions
+} from './run-orchestrator-dependencies.ts';
 import {
     createReporterDelivery,
     createReporterEventQueue,
@@ -117,14 +121,31 @@ function defaultWorkerCount(unitCount: number): number {
     return Math.min(Math.max(os.availableParallelism() - 1, 1), maximumWorkerCount, unitCount);
 }
 
-export function createPool(workerCount: number): TinypoolInstance {
+type TinypoolWorkerPoolOptions = WorkerPoolCreationOptions & {
+    readonly filename: string;
+};
+
+type WorkerPoolExecutionFacts = Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>;
+
+function isolateWorkers(options: TinypoolWorkerPoolOptions): boolean {
+    return options.workerLifecycle === 'fresh-worker-per-unit';
+}
+
+export function createTinypoolWorkerPool(options: TinypoolWorkerPoolOptions): TinypoolInstance {
     return new Tinypool({
         concurrentTasksPerWorker: 1,
-        filename: workerPoolEntryPoint,
-        isolateWorkers: true,
-        maxThreads: workerCount,
-        minThreads: workerCount,
+        filename: options.filename,
+        isolateWorkers: isolateWorkers(options),
+        maxThreads: options.workerCount,
+        minThreads: options.workerCount,
         runtime: 'worker_threads'
+    });
+}
+
+export function createPool(options: WorkerPoolCreationOptions): TinypoolInstance {
+    return createTinypoolWorkerPool({
+        ...options,
+        filename: workerPoolEntryPoint
     });
 }
 
@@ -171,6 +192,14 @@ function createPoolResourceUsageTracker(
     });
 }
 
+function workerPoolExecutionFacts(resolvedRun: ResolvedRun): WorkerPoolExecutionFacts {
+    if (resolvedRun.facts.execution.processModel !== 'worker-pool') {
+        throw new Error('Worker-pool execution requires worker-pool execution facts.');
+    }
+
+    return resolvedRun.facts.execution;
+}
+
 export async function createWorkerPoolRuntime(
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies,
@@ -179,6 +208,7 @@ export async function createWorkerPoolRuntime(
 ): Promise<WorkerPoolRunRuntime> {
     const units = fileUnits(workerPoolCollectedPlan(resolvedRun));
     const workerCount = defaultWorkerCount(units.length);
+    const execution = workerPoolExecutionFacts(resolvedRun);
     const taskResults: RunResult[] = [];
 
     return {
@@ -186,7 +216,10 @@ export async function createWorkerPoolRuntime(
         collectedPlan: workerPoolCollectedPlan(resolvedRun),
         collectionRunnerErrors,
         dependencies,
-        pool: createPool(workerCount),
+        pool: dependencies.createWorkerPool({
+            workerCount,
+            workerLifecycle: execution.workerLifecycle
+        }),
         poolResourceUsageTracker: createPoolResourceUsageTracker(resolvedRun, dependencies),
         previousPoolSample: createStoredRunValue<ResourceUsageSnapshot | null>(null),
         reporterDelivery: await createReporterDelivery(resolvedRun, dependencies),

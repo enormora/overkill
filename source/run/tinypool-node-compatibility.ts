@@ -1,17 +1,15 @@
 import { createRequire } from 'node:module';
-import type {
-    MessagePort as NodeMessagePort,
-    Worker as NodeWorker
-} from 'node:worker_threads';
+import type { Worker as NodeWorker } from 'node:worker_threads';
 
 type TinypoolFilledOptions = {
+    readonly isolateWorkers: boolean;
     readonly maxThreads: number;
 };
 
 type TinypoolRunOptions = {
     readonly name: string;
     readonly signal: AbortSignal;
-    readonly transferList: readonly NodeMessagePort[];
+    readonly transferList: readonly unknown[];
 };
 
 type TinypoolOptions = {

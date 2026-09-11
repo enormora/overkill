@@ -8,7 +8,10 @@ import {
 import type { DefinedReporter } from '../engine/reporter.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
-import { defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
+import {
+    defaultMicrotestProfile,
+    testRunExecutionFacts
+} from '../test-support/run-command-factory.ts';
 import {
     createCommandLineRunner,
     type CommandLineRunnerDependencies,
@@ -138,20 +141,7 @@ function createResolvedRun(
                 projectRoot: command.cwd,
                 runtimeStateDir: command.config.runtimeStateDir
             },
-            execution: {
-                baselineUpdateMode: command.request.baselineUpdateMode,
-                capture: command.request.capture,
-                debug: command.request.debug,
-                engine: { kind: 'default' },
-                order: command.request.order,
-                processModel: profile.execution.processModel,
-                profile: command.request.profile,
-                resourceUsagePolicy: profile.resourceUsage,
-                scheduling: profile.execution.scheduling,
-                testFamily: profile.testFamily,
-                timeoutPolicy: profile.timeouts,
-                verbose: command.request.verbose
-            },
+            execution: testRunExecutionFacts(command, profile),
             loader: command.config.loader,
             reproducibility: {
                 selection: command.request.selection,

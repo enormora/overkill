@@ -33,7 +33,8 @@ import {
     type RunProfilesConfig,
     type RunResourceBudgets,
     type RunResourceUsagePolicy,
-    type RunTimeoutPolicy
+    type RunTimeoutPolicy,
+    type RunWorkerLifecycle
 } from './run-types.ts';
 import {
     invalidProfileFileGlobConfigMessage
@@ -125,8 +126,11 @@ const defaultMicrotestExecution: RunMicrotestExecution = {
 
 const defaultIntegrationExecution: RunIntegrationExecution = {
     processModel: 'worker-pool',
-    scheduling: 'concurrent'
+    scheduling: 'concurrent',
+    workerLifecycle: 'reuse'
 };
+
+const defaultWorkerLifecycle = defaultIntegrationExecution.workerLifecycle;
 
 type ProjectProfileFilePatterns = {
     readonly exclude?: readonly string[] | undefined;
@@ -406,12 +410,38 @@ function normalizeMicrotestExecution(execution: RunProjectMicrotestExecution | u
     };
 }
 
+function normalizeWorkerLifecycle(execution: RunProjectIntegrationExecution | undefined): RunWorkerLifecycle {
+    if (execution?.processModel !== 'worker-pool') {
+        return defaultWorkerLifecycle;
+    }
+
+    return execution.workerLifecycle ?? defaultWorkerLifecycle;
+}
+
+function normalizeWorkerPoolExecution(
+    execution: RunProjectIntegrationExecution | undefined,
+    scheduling: RunIntegrationExecution['scheduling']
+): RunIntegrationExecution {
+    return {
+        processModel: 'worker-pool',
+        scheduling,
+        workerLifecycle: normalizeWorkerLifecycle(execution)
+    };
+}
+
 function normalizeIntegrationExecution(
     execution: RunProjectIntegrationExecution | undefined
 ): RunIntegrationExecution {
+    const processModel = execution?.processModel ?? defaultIntegrationExecution.processModel;
+    const scheduling = execution?.scheduling ?? defaultIntegrationExecution.scheduling;
+
+    if (processModel === 'worker-pool') {
+        return normalizeWorkerPoolExecution(execution, scheduling);
+    }
+
     return {
-        processModel: execution?.processModel ?? defaultIntegrationExecution.processModel,
-        scheduling: execution?.scheduling ?? defaultIntegrationExecution.scheduling
+        processModel,
+        scheduling
     };
 }
 

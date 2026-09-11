@@ -8,6 +8,7 @@ import type {
     RunCommand,
     RunConfig,
     RunFacts,
+    RunExecutionFacts,
     RunProfileConfig,
     RunRequest,
     RunResourceBudgets,
@@ -114,6 +115,38 @@ function resolvedSeed(request: RunRequest, dependencies: RunOrchestratorDependen
     return request.seed.value ?? dependencies.createSeed();
 }
 
+function createRunExecutionFacts(
+    input: RunFactsInput,
+    profile: RunProfileConfig
+): RunExecutionFacts {
+    const facts = {
+        baselineUpdateMode: input.request.baselineUpdateMode,
+        capture: input.request.capture,
+        debug: input.request.debug,
+        engine: runEngineFacts(input.engine),
+        order: input.request.order,
+        profile: input.request.profile,
+        resourceUsagePolicy: resolveResourceUsagePolicy(input.request, profile),
+        scheduling: profile.execution.scheduling,
+        testFamily: profile.testFamily,
+        timeoutPolicy: profile.timeouts,
+        verbose: input.request.verbose
+    };
+
+    if (profile.execution.processModel === 'worker-pool') {
+        return {
+            ...facts,
+            processModel: profile.execution.processModel,
+            workerLifecycle: profile.execution.workerLifecycle
+        };
+    }
+
+    return {
+        ...facts,
+        processModel: profile.execution.processModel
+    };
+}
+
 function runCaseFacts(
     annotations: RunCaseFacts['annotations'],
     controls: RunCaseFacts['controls'],
@@ -151,20 +184,7 @@ export function createRunFacts(input: RunFactsInput): RunFacts {
             projectRoot: input.projectRoot,
             runtimeStateDir: input.config.runtimeStateDir
         },
-        execution: {
-            baselineUpdateMode: input.request.baselineUpdateMode,
-            capture: input.request.capture,
-            debug: input.request.debug,
-            engine: runEngineFacts(input.engine),
-            order: input.request.order,
-            processModel: profile.execution.processModel,
-            profile: input.request.profile,
-            resourceUsagePolicy: resolveResourceUsagePolicy(input.request, profile),
-            scheduling: profile.execution.scheduling,
-            testFamily: profile.testFamily,
-            timeoutPolicy: profile.timeouts,
-            verbose: input.request.verbose
-        },
+        execution: createRunExecutionFacts(input, profile),
         loader: input.config.loader,
         reproducibility: {
             selection: input.request.selection,

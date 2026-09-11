@@ -278,12 +278,50 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'integration execution schema rejects worker lifecycle fields',
+            title: 'integration execution schema accepts worker-pool lifecycle fields',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                assertValidationSuccess(scope, integrationExecutionSchema, {
+                    processModel: 'worker-pool',
+                    scheduling: 'serial',
+                    workerLifecycle: 'fresh-worker-per-unit'
+                });
+
+                assertValidationSuccess(scope, integrationExecutionSchema, {
+                    processModel: 'worker-pool',
+                    scheduling: 'serial',
+                    workerLifecycle: 'reuse'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'integration execution schema rejects invalid worker lifecycle fields',
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
                 const result = safeParse(integrationExecutionSchema, {
                     processModel: 'worker-pool',
+                    scheduling: 'serial',
+                    workerLifecycle: 'per-file'
+                });
+
+                scope.assert.equal(result.success, false);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'integration execution schema rejects worker lifecycle fields on supervised profiles',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const result = safeParse(integrationExecutionSchema, {
+                    processModel: 'supervised-process',
                     scheduling: 'serial',
                     workerLifecycle: 'fresh-worker-per-unit'
                 });

@@ -126,7 +126,7 @@ function createCollectionRuntime(
 
     return {
         controller,
-        pool: createPool(1),
+        pool: createPool({ workerCount: 1, workerLifecycle: 'fresh-worker-per-unit' }),
         port1,
         port2,
         terminalFailure,

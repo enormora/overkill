@@ -123,8 +123,42 @@ export const testNode = createOverkillSuite({
                     passingFixturePath
                 ));
 
-                scope.assert.equal(resolvedRun.facts.execution.processModel, 'worker-pool');
+                if (resolvedRun.facts.execution.processModel !== 'worker-pool') {
+                    throw new Error('Expected worker-pool execution facts.');
+                }
+
+                scope.assert.equal(resolvedRun.facts.execution.workerLifecycle, 'reuse');
                 scope.assert.equal(resolvedRun.plan.kind, 'worker-pool');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'orchestrator.resolve() preserves explicit worker-pool lifecycle',
+            async body(scope: OverkillScope) {
+                const resolvedRun = await orchestrator.resolve(integrationCommand(
+                    defaultIntegrationProfile({
+                        execution: {
+                            processModel: 'worker-pool',
+                            scheduling: 'serial',
+                            workerLifecycle: 'fresh-worker-per-unit'
+                        },
+                        files: {
+                            exclude: [],
+                            include: [ passingFixturePath ]
+                        }
+                    }),
+                    passingFixturePath
+                ));
+
+                if (resolvedRun.facts.execution.processModel !== 'worker-pool') {
+                    throw new Error('Expected worker-pool execution facts.');
+                }
+
+                scope.assert.equal(resolvedRun.facts.execution.workerLifecycle, 'fresh-worker-per-unit');
 
                 return scope.assert.collect();
             }

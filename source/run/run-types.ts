@@ -138,15 +138,25 @@ export type RunMicrotestProcessModel = Exclude<RunProcessModel, 'worker-pool'>;
 
 export type RunScheduling = 'concurrent' | 'serial';
 
+export type RunWorkerLifecycle = 'fresh-worker-per-unit' | 'reuse';
+
 export type RunMicrotestExecution = {
     readonly processModel: RunMicrotestProcessModel;
     readonly scheduling: RunScheduling;
 };
 
-export type RunIntegrationExecution = {
-    readonly processModel: 'supervised-process' | 'worker-pool';
+type RunSupervisedIntegrationExecution = {
+    readonly processModel: 'supervised-process';
     readonly scheduling: RunScheduling;
 };
+
+type RunWorkerPoolExecution = {
+    readonly processModel: 'worker-pool';
+    readonly scheduling: RunScheduling;
+    readonly workerLifecycle: RunWorkerLifecycle;
+};
+
+export type RunIntegrationExecution = RunSupervisedIntegrationExecution | RunWorkerPoolExecution;
 
 export type RunResourceUsagePolicy = {
     readonly budgets: RunResourceBudgets;
@@ -259,13 +269,12 @@ export type RunEnvironmentFacts = {
     readonly runtimeStateDir: string;
 };
 
-export type RunExecutionFacts = {
+type RunExecutionBaseFacts = {
     readonly baselineUpdateMode: 'none';
     readonly capture: 'buffered' | 'live';
     readonly debug: RunDebugRequest;
     readonly engine: RunEngineFacts;
     readonly order: RunOrder;
-    readonly processModel: RunProcessModel;
     readonly profile: string;
     readonly resourceUsagePolicy: RunResourceUsagePolicy;
     readonly scheduling: RunScheduling;
@@ -273,6 +282,17 @@ export type RunExecutionFacts = {
     readonly timeoutPolicy: RunTimeoutPolicy;
     readonly verbose: false;
 };
+
+type RunWorkerPoolExecutionFacts = RunExecutionBaseFacts & {
+    readonly processModel: 'worker-pool';
+    readonly workerLifecycle: RunWorkerLifecycle;
+};
+
+type RunSingleProcessExecutionFacts = RunExecutionBaseFacts & {
+    readonly processModel: RunMicrotestProcessModel | 'supervised-process';
+};
+
+export type RunExecutionFacts = RunSingleProcessExecutionFacts | RunWorkerPoolExecutionFacts;
 
 export type RunReproducibilityFacts = {
     readonly selection: RunSelection;

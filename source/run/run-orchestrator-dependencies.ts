@@ -13,9 +13,30 @@ type ResourceUsageTrackerOptions = {
     readonly samplingIntervalMilliseconds: number;
 };
 
+export type WorkerPoolCreationOptions = {
+    readonly workerCount: number;
+    readonly workerLifecycle: 'fresh-worker-per-unit' | 'reuse';
+};
+
+type WorkerPoolRunOptions = {
+    readonly name: string;
+    readonly signal: AbortSignal;
+    readonly transferList: readonly unknown[];
+};
+
+export type CreatedWorkerPool = {
+    readonly destroy: () => Promise<void>;
+    readonly options: {
+        readonly isolateWorkers: boolean;
+        readonly maxThreads: number;
+    };
+    run: (task: unknown, options: WorkerPoolRunOptions) => Promise<unknown>;
+};
+
 export type RunOrchestratorDependencies = {
     readonly createSeed: () => bigint;
     readonly createResourceUsageTracker: (options: ResourceUsageTrackerOptions) => RunResourceUsageTracker;
+    readonly createWorkerPool: (options: WorkerPoolCreationOptions) => CreatedWorkerPool;
     readonly defaultEngine: Engine;
     readonly discoverRunFilesWithProjectRoot: RunDiscovery['discoverRunFilesWithProjectRoot'];
     readonly execute: Execute;

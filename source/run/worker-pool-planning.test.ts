@@ -184,6 +184,7 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
                     hardMilliseconds: 1000,
                     softMilliseconds: 500
                 },
+                workerLifecycle: 'reuse',
                 verbose: false
             },
             loader: { sourceMaps: false, stripMode: 'strip-only' },
