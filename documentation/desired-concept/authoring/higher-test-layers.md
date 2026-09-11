@@ -293,6 +293,13 @@ So the package should be allowed to expose more than one helper preset, but
 the default authoring story should still be the macro-style suite builder
 above.
 
+`@overkill-dev/eslint-rule-test` may use `createTestFacade(...)` when it
+needs a named domain preset rather than only a builder function. Useful cases
+include compatibility with familiar `RuleTester`-style imports, a typed
+`ruleTest` surface that always attaches parser-service resources, or a preset
+that records ESLint diagnostics as domain-specific assertion output. The
+facade remains adapter-owned and lowers to ordinary Overkill nodes.
+
 ### Static Authoring Rules
 
 The ESLint rule-test adapter should be complemented by a separate
@@ -342,11 +349,11 @@ literally.
 Overkill should clearly position first-party higher-layer support around
 resource factories and runtime composition, not around hooks.
 
-Resources and runtimes are for higher test families, not microtests.
-Microtests keep their strict capability model and do not attach resource or
-runtime descriptors. Integration, browser-oriented, benchmark, property, and
-other higher families may use resources and runtimes when their family model
-allows them.
+Resources are for higher test families, not microtests. Microtests keep
+their strict capability model and do not attach resource descriptors or
+resource-bearing runtime descriptors. Integration, browser-oriented,
+benchmark, property, and other higher families may use resources and runtimes
+when their family model allows them.
 
 The key authoring shape is:
 
@@ -375,6 +382,19 @@ context composition layer, not merely a fixture helper for
 - per-run, per-file, per-suite, or per-case lifecycle scopes
 - runtime matrices
 - execution requirements that affect scheduling or isolation
+
+A runtime is a named execution context descriptor. It is commonly a typed
+resource bundle, but it can be resource-free when the runner only needs
+identity, matrix, or placement data. Real examples:
+
+- a Node runtime dimension such as `{ node: '26', module: 'esm' }`
+- a browser-engine dimension such as `{ engine: 'chromium' }`
+- a contract target such as `{ provider: 'payments', version: 'v2' }`
+- a benchmark workload that requires `single-worker` execution without a
+  test-visible handle
+
+Those runtimes do not acquire handles by themselves. Side effects come from
+resources and resource acquisition.
 
 Why this over hooks. Hooks tend to hide ordering assumptions, local
 mutable state, fixture lifetime, and cleanup responsibility. Runtime
@@ -423,8 +443,8 @@ export const testNode = test(
 Both wrappers attach descriptors, not already acquired handles. Collection
 must happen before scheduling. The runner lowers resource scopes and
 requirements into placement constraints, starts resources inside the selected
-worker or process, injects handles into `scope.runtime` or `scope.resource`,
-and disposes them according to their declared scope.
+worker or process, injects handles into `scope.runtime` or `scope.resource`
+when handles exist, and disposes them according to their declared scope.
 
 Execution requirements. Runtimes should be able to contribute execution
 requirements without owning the final scheduling decision. Examples:
