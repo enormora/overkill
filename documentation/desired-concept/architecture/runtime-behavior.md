@@ -448,6 +448,23 @@ The same mechanism can express process-per-case or process-per-group by
 changing the work distribution. `worker-pool` means Overkill owns bounded
 executor capacity. It does not imply that a worker is reused.
 
+For the Node substrate, `worker-pool` uses worker threads. The coordinator
+stays in the runner process, collection happens once in a worker thread, and
+execution workers re-import assigned files to recover executable test bodies.
+Collection output belongs to the authoritative collection worker; bootstrap
+output from execution re-imports is suppressed so collection logs are not
+duplicated.
+
+Worker-thread pools can account for per-worker JavaScript heap and active
+resource samples, but resident set size is process-wide in Node. RSS budgets
+therefore apply to the aggregate pool process and are attributed to all active
+cases when the sample cannot identify a single owner.
+
+Worker-thread failures, termination, and hard timeouts are recoverable at the
+worker-task boundary. Process-fatal failures such as native aborts or whole
+process OOMs are not recoverable inside a parent-hosted worker-thread pool;
+use `supervised-process` when process-fatal containment is required.
+
 `workerLifecycle` describes what happens after a worker finishes one
 assigned work unit:
 
@@ -553,8 +570,9 @@ Override surfaces:
 - runner profiles may choose stricter scheduling only where the test
   family actually requires it (for example benchmarks)
 
-Default worker count is `Math.min(cpus().length - 1, 8)` for worker-pool
-modes, capped to keep the host responsive. Override via `--workers N`.
+Default worker count is `Math.min(Math.max(availableParallelism() - 1, 1), 8)`
+for worker-pool modes, capped to keep the host responsive and never above the
+available work-unit count. Override via `--workers N`.
 Worker-pool placement defaults to case-count balancing: the planner places
 larger work units first, uses selected case count as weight, and uses seeded
 order as a deterministic tie-breaker and lane-local execution order.

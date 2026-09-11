@@ -10,7 +10,13 @@ import { createLineReporter } from '../../packages/reporter-line/reporter-line.e
 import type { DefinedReporter, Reporter } from '../../engine/reporter.ts';
 import { runIfMain } from '../direct-launcher.test.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
-import type { RunCommand, RunConfig, RunProcessModel, RunRequest, RunScheduling } from '../../run/run-types.ts';
+import type {
+    RunCommand,
+    RunConfig,
+    RunMicrotestProcessModel,
+    RunRequest,
+    RunScheduling
+} from '../../run/run-types.ts';
 
 const consolePolicyFixturePath = 'source/integration-tests/run/fixtures/console-policy.test.ts';
 const envPolicyFixturePath = 'source/integration-tests/run/fixtures/env-policy.test.ts';
@@ -25,7 +31,7 @@ const processExitPolicyFixturePath = 'source/integration-tests/run/fixtures/proc
 const timerPolicyFixturePath = 'source/integration-tests/run/fixtures/timer-policy.test.ts';
 
 type PolicyFixture = {
-    readonly expectedCapability: Readonly<Record<RunProcessModel, string>>;
+    readonly expectedCapability: Readonly<Record<RunMicrotestProcessModel, string>>;
     readonly name: string;
     readonly path: string;
 };
@@ -71,7 +77,7 @@ function createIntegrationRunRequest(): RunRequest {
 }
 
 function createRunConfig(
-    processModel: RunProcessModel,
+    processModel: RunMicrotestProcessModel,
     scheduling: RunScheduling,
     reporter: DefinedReporter
 ): RunConfig {
@@ -217,7 +223,7 @@ function assertConsolidatedProcessEnvironmentErrors(
     scope: TestScope,
     fixture: PolicyFixture,
     capabilities: readonly string[],
-    model: RunProcessModel
+    model: RunMicrotestProcessModel
 ): void {
     if (fixture.path === envPolicyFixturePath) {
         scope.assert.equal(capabilityCount(capabilities, fixture.expectedCapability[model]), 1);
@@ -276,7 +282,7 @@ const policyFixtures: readonly PolicyFixture[] = [
 ];
 
 const policyProcessModels: readonly {
-    readonly processModel: RunProcessModel;
+    readonly processModel: RunMicrotestProcessModel;
     readonly scheduling: RunScheduling;
 }[] = [
     {

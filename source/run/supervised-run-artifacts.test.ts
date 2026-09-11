@@ -272,6 +272,7 @@ function integrationOutputRunCommand(
     capture: RunCommand['request']['capture']
 ): RunCommand {
     const profile = defaultIntegrationProfile({
+        execution: { processModel: 'supervised-process' },
         files: {
             exclude: [],
             include: [ fixturePath ]

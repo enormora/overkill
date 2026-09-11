@@ -6,7 +6,6 @@ import type {
     RunConfig,
     RunEngineFacts,
     RunEngineSelection,
-    RunIntegrationExecution,
     RunLoaderConfig,
     RunMicrotestExecution,
     RunProfileConfig,
@@ -101,13 +100,6 @@ function copyMicrotestExecution(execution: RunMicrotestExecution): RunMicrotestE
     };
 }
 
-function copyIntegrationExecution(execution: RunIntegrationExecution): RunIntegrationExecution {
-    return {
-        processModel: 'supervised-process',
-        scheduling: execution.scheduling
-    };
-}
-
 function hasProfileFileSets(files: RunProfileFiles): files is RunProfileFileSets {
     return files.sets !== undefined;
 }
@@ -148,7 +140,10 @@ function copyProfileConfig(profile: RunProfileConfig): RunProfileConfig {
         }
 
         return {
-            execution: copyIntegrationExecution(profile.execution),
+            execution: {
+                processModel: profile.execution.processModel,
+                scheduling: profile.execution.scheduling
+            },
             files,
             reporters: profile.reporters === null ? null : Array.from(profile.reporters),
             resourceUsage: copyResourceUsagePolicy(profile.resourceUsage),

@@ -33,7 +33,7 @@ import {
     type SupervisedRunState
 } from './supervised-run-state.ts';
 
-type ReporterEventQueue = {
+export type ReporterEventQueue = {
     readonly add: (eventReport: Promise<void>) => void;
     readonly wait: () => Promise<void>;
 };

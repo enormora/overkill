@@ -727,8 +727,10 @@ Source:
 
 Recommended direction:
 
-- prototype against `tinypool`
-- keep `piscina` as the upgrade path
+- use `tinypool` for the first Node worker-thread substrate because
+  `isolateWorkers` supports fresh workers without wave-scoped pools
+- keep `piscina` as the upgrade path if richer pool instrumentation becomes
+  more valuable than built-in worker recycling
 
 ## Subprocesses And PTYs
 

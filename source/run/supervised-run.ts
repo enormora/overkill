@@ -43,9 +43,6 @@ import {
     type SupervisedRunState
 } from './supervised-run-state.ts';
 
-export type CollectSupervisedRunCommand = SupervisedCollectCommand;
-export type ExecuteSupervisedRunCommand = SupervisedRunCommand;
-
 type SupervisedCollectionResult = {
     readonly collectedPlan: CollectedRunPlan;
     readonly runnerErrors: readonly RunnerError[];

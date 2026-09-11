@@ -84,7 +84,7 @@ function defaultMicrotestExecution(overrides: Partial<RunMicrotestExecution> = {
 }
 
 function defaultIntegrationExecution(overrides: Partial<RunIntegrationExecution> = {}): RunIntegrationExecution {
-    const processModel = overrides.processModel ?? 'supervised-process';
+    const processModel = overrides.processModel ?? 'worker-pool';
 
     return {
         processModel,

@@ -3,13 +3,23 @@ import { fileURLToPath } from 'node:url';
 import { invalidRequest } from './run-errors.ts';
 import type { RunCommand, RunProfileConfig } from './run-types.ts';
 
-function supervisedProcess(profile: RunProfileConfig): boolean {
-    return profile.execution.processModel === 'supervised-process';
+function separateRuntime(profile: RunProfileConfig): boolean {
+    return profile.execution.processModel !== 'in-process';
 }
 
-function assertSupportedSupervisedEngine(command: RunCommand): void {
+function processModelLabel(profile: RunProfileConfig): string {
+    return profile.execution.processModel;
+}
+
+function customEngineLabel(profile: RunProfileConfig): string {
+    return profile.execution.processModel === 'supervised-process' ? 'Supervised' : profile.execution.processModel;
+}
+
+function assertSupportedSeparateRuntimeEngine(command: RunCommand, profile: RunProfileConfig): void {
     if (command.engine.kind === 'instance') {
-        invalidRequest('Instance engines are not supported with supervised-process execution. Use a module engine.');
+        invalidRequest(
+            `Instance engines are not supported with ${processModelLabel(profile)} execution. Use a module engine.`
+        );
     }
 }
 
@@ -29,21 +39,21 @@ function insideCwd(cwd: string, filePath: string): boolean {
     return !relativeModulePath.startsWith('..') && !path.isAbsolute(relativeModulePath);
 }
 
-function assertSupportedSupervisedModule(command: RunCommand): void {
+function assertSupportedSeparateRuntimeModule(command: RunCommand, profile: RunProfileConfig): void {
     if (command.engine.kind !== 'module') {
         return;
     }
 
     if (!insideCwd(command.cwd, modulePath(command.engine.moduleUrl))) {
-        invalidRequest('Supervised custom engine moduleUrl must be under cwd.');
+        invalidRequest(`${customEngineLabel(profile)} custom engine moduleUrl must be under cwd.`);
     }
 }
 
 export function assertSupportedProcessEngine(command: RunCommand, profile: RunProfileConfig): void {
-    if (!supervisedProcess(profile)) {
+    if (!separateRuntime(profile)) {
         return;
     }
 
-    assertSupportedSupervisedEngine(command);
-    assertSupportedSupervisedModule(command);
+    assertSupportedSeparateRuntimeEngine(command, profile);
+    assertSupportedSeparateRuntimeModule(command, profile);
 }

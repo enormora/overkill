@@ -596,10 +596,10 @@ function serializeAny(value: unknown, state: SerializationState, depth: number):
     return accountValue(state, { kind: 'unavailable', reason: `unsupported value type: ${typeof value}` });
 }
 
-export function serializeValue(value: unknown): SerializedValue {
-    return serializeAny(value, createState(defaultSerializationBudget), 0);
-}
-
 export function serializeValueWithBudget(value: unknown, budget: SerializationBudget): SerializedValue {
     return serializeAny(value, createState(budget), 0);
+}
+
+export function serializeValue(value: unknown): SerializedValue {
+    return serializeValueWithBudget(value, defaultSerializationBudget);
 }

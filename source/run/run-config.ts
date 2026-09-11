@@ -124,7 +124,7 @@ const defaultMicrotestExecution: RunMicrotestExecution = {
 };
 
 const defaultIntegrationExecution: RunIntegrationExecution = {
-    processModel: 'supervised-process',
+    processModel: 'worker-pool',
     scheduling: 'concurrent'
 };
 

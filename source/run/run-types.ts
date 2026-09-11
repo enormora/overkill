@@ -132,17 +132,19 @@ const reservedBenchmarkProfileName = 'benchmark';
 
 export type RunTestFamily = 'integration' | 'microtest';
 
-export type RunProcessModel = 'in-process' | 'supervised-process';
+export type RunProcessModel = 'in-process' | 'supervised-process' | 'worker-pool';
+
+export type RunMicrotestProcessModel = Exclude<RunProcessModel, 'worker-pool'>;
 
 export type RunScheduling = 'concurrent' | 'serial';
 
 export type RunMicrotestExecution = {
-    readonly processModel: RunProcessModel;
+    readonly processModel: RunMicrotestProcessModel;
     readonly scheduling: RunScheduling;
 };
 
 export type RunIntegrationExecution = {
-    readonly processModel: 'supervised-process';
+    readonly processModel: 'supervised-process' | 'worker-pool';
     readonly scheduling: RunScheduling;
 };
 
@@ -319,6 +321,9 @@ export type CollectedRunPlan = {
 export type ResolvedRunPlan = {
     readonly collectedPlan: CollectedRunPlan;
     readonly kind: 'supervised';
+} | {
+    readonly collectedPlan: CollectedRunPlan;
+    readonly kind: 'worker-pool';
 } | {
     readonly kind: 'local';
     readonly testPlan: TestPlan;
