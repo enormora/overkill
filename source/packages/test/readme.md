@@ -331,6 +331,34 @@ are imported alongside it instead of being registered into the facade.
 Non-microtest facades also accept `controls.capture` as a capture preference
 for tests, suites, tables, and facade-wide controls.
 
+Default tests should keep importing from `@overkill-dev/test`. When a project
+has a custom facade, it can re-export that facade through a stable local alias:
+
+```json
+{
+    "imports": {
+        "#tests/custom-authoring": "./testing/custom-authoring.ts"
+    }
+}
+```
+
+```ts
+import { createTestFacade } from '@overkill-dev/test';
+
+export const { suite, test } = createTestFacade({
+    annotations: { tags: [ 'custom-authoring' ] },
+    testFamily: 'microtest'
+});
+```
+
+```ts
+import { suite, test } from '#tests/custom-authoring';
+```
+
+Native Node `package.json#imports` aliases must start with `#`. A project can
+use an alias such as `@tests/my-facade` only when its TypeScript or bundler
+tooling owns that resolution.
+
 Direct Node execution:
 
 ```ts

@@ -52,6 +52,60 @@ export const authoringSmokeScript = [
 ]
     .join('\n');
 
+export const packageSmokePackageJsonScript = [
+    '{',
+    '    "type": "module",',
+    '    "imports": {',
+    '        "#tests/custom-authoring": "./testing/custom-authoring.mjs"',
+    '    }',
+    '}',
+    ''
+]
+    .join('\n');
+
+export const customAuthoringFacadeScript = [
+    "import { createTestFacade } from '@overkill-dev/test';",
+    '',
+    'export const {',
+    '    defineMacro,',
+    '    defineParameterizedTestBody,',
+    '    runIfMain,',
+    '    skippedTest,',
+    '    suite,',
+    '    table,',
+    '    test',
+    '} = createTestFacade({',
+    "    annotations: { tags: [ 'custom-authoring' ] },",
+    "    testFamily: 'microtest'",
+    '});',
+    ''
+]
+    .join('\n');
+
+export const customAuthoringSmokeScript = [
+    "import { suite as defaultSuite, test as defaultTest } from '@overkill-dev/test';",
+    "import { test } from '#tests/custom-authoring';",
+    '',
+    "export const testNode = defaultSuite('consumer custom authoring', [",
+    '    test({',
+    "        title: 'custom facade passes',",
+    '        body(scope) {',
+    '            scope.assert.equal(1, 1);',
+    '            return scope.assert.collect();',
+    '        }',
+    '    }),',
+    '    defaultTest({',
+    "        title: 'default sibling is filtered out',",
+    '        body(scope) {',
+    '            scope.assert.equal(1, 2);',
+    '            return scope.assert.collect();',
+    '        }',
+    '    })',
+    ']);',
+    ''
+]
+    .join('\n');
+
 export const rootImportScript = [
     "const testModule = await import('@overkill-dev/test');",
     'console.log(JSON.stringify(Object.keys(testModule)));',
