@@ -220,6 +220,11 @@ should only exist for a concrete typed authoring preset that cannot be
 expressed cleanly with imported assertion references, macros, resources, and
 runtime wrappers.
 
+When a project does define a custom facade, it may publish that surface through
+a stable project-local alias such as `#tests/custom-authoring`. The alias names
+the custom authoring surface. It does not replace the root `@overkill-dev/test`
+import for ordinary tests and does not select a runner profile.
+
 Valid facade use cases are narrow:
 
 - compatibility adapters that intentionally expose a familiar test surface

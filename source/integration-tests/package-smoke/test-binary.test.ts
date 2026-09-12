@@ -13,9 +13,12 @@ import {
 import { runIfMain } from './direct-launcher.test.ts';
 import {
     authoringSmokeScript,
+    customAuthoringFacadeScript,
+    customAuthoringSmokeScript,
     expectedRootImportOutput,
     expectedRunConfigImportOutput,
     expectedStandardSubpathImportOutput,
+    packageSmokePackageJsonScript,
     packageSmokeConfigScript,
     rootImportScript,
     runConfigImportScript,
@@ -47,8 +50,12 @@ const packageSmokeNodeModules = path.join(packageSmokeFolder, 'node_modules');
 const testPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/test');
 const runPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/run');
 const resourcesPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/resources');
+const packageSmokePackageJsonFile = 'package.json';
 const packageSmokeConfigFile = 'overkill.config.js';
 const authoringSmokeFile = 'authoring-smoke.test.mjs';
+const customAuthoringFolder = 'testing';
+const customAuthoringFacadeFile = path.join(customAuthoringFolder, 'custom-authoring.mjs');
+const customAuthoringSmokeFile = 'custom-authoring-smoke.test.mjs';
 async function readPackageJson(packageFolder: string): Promise<PackageJson> {
     return JSON.parse(await fs.readFile(path.join(packageFolder, 'package.json'), 'utf8')) as PackageJson;
 }
@@ -162,10 +169,20 @@ async function writeAuthoringSmokeFile(): Promise<void> {
     await fs.writeFile(path.join(packageSmokeFolder, authoringSmokeFile), authoringSmokeScript);
 }
 
+async function writeCustomAuthoringSmokeFiles(): Promise<void> {
+    await fs.mkdir(path.join(packageSmokeFolder, customAuthoringFolder), { recursive: true });
+    await Promise.all([
+        fs.writeFile(path.join(packageSmokeFolder, packageSmokePackageJsonFile), packageSmokePackageJsonScript),
+        fs.writeFile(path.join(packageSmokeFolder, customAuthoringFacadeFile), customAuthoringFacadeScript),
+        fs.writeFile(path.join(packageSmokeFolder, customAuthoringSmokeFile), customAuthoringSmokeScript)
+    ]);
+}
+
 async function writePackageSmokeProject(): Promise<void> {
     await Promise.all([
         fs.writeFile(path.join(packageSmokeFolder, packageSmokeConfigFile), packageSmokeConfigScript),
-        writeAuthoringSmokeFile()
+        writeAuthoringSmokeFile(),
+        writeCustomAuthoringSmokeFiles()
     ]);
 }
 
@@ -302,6 +319,29 @@ export const testNode = createSuite({
                 scope.assert.equal(result.stderr, '');
                 scope.assert.includes(result.stdout, `nested (${authoringSmokeFile}:`);
                 scope.assert.includes(result.stdout, `passes (${authoringSmokeFile}:`);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'consumer custom facade alias creates filtered runnable testNode exports',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                await writePackageSmokeProject();
+
+                const result = await spawnNode([
+                    path.join(testPackageFolder, 'packages/test/overkill.entry-point.js'),
+                    'run',
+                    '--filter',
+                    'tag=custom-authoring',
+                    customAuthoringSmokeFile
+                ]);
+
+                scope.assert.equal(result.code, 0);
+                scope.assert.equal(result.stderr, '');
+                scope.assert.equal(result.stdout, '');
 
                 return scope.assert.collect();
             }
