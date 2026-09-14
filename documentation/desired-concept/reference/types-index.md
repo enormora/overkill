@@ -1291,7 +1291,7 @@ type RecordedEvent =
     | { kind: 'log.info'; msg: string; fields?: Fields; }
     | { kind: 'http.request'; method: string; url: string; bodyHash?: string; };
 
-type RuntimeSnapshot = unknown; // adapter-specific replay payload
+type RuntimeSnapshot = unknown; // simulation-specific replay payload
 ```
 
 Source: [Capability Handles](../authoring/capability-handles.md). These are
@@ -1383,7 +1383,8 @@ type WitnessFile = {
     readonly seed: bigint;
     readonly shrinkPath?: ReadonlyArray<unknown>;
     readonly counterexample?: unknown;
-    readonly adapter?: { name: string; payload: unknown; };
+    readonly simulation?: { name: string; payload: unknown; };
+    readonly resource?: { name: string; };
     readonly scenario?: string;
     readonly runtimeSnapshot?: RuntimeSnapshot;
     readonly faultConfiguration?: unknown;
@@ -1392,31 +1393,35 @@ type WitnessFile = {
 
 Canonical: [Failure Artifacts](../authoring/failure-artifacts.md).
 
-## Simulation Adapters
+## Simulation Definitions
 
 ```ts
-type SimulationAdapter = {
+type SimulationScenario = {
+    readonly title: string;
+};
+
+type SimulationDefinition<Scenario extends string> = {
     readonly name: string;
-    readonly executionRequirements?: ReadonlyArray<ExecutionRequirement>;
-    start(options: { seed?: bigint; scenario?: string; signal: AbortSignal; }): Promise<SimulationSession>;
+    readonly scenarios: Readonly<Record<Scenario, SimulationScenario>>;
 };
 
-type SimulationSession = {
-    readonly runtimeMetadata: {
-        seed?: bigint;
-        scenario?: string;
-        endpoint?: URL;
-    };
-    witness?(): Promise<unknown>;
-    stop(): Promise<void>;
+type ScenarioKeyOf<Simulation> = Simulation extends SimulationDefinition<infer Scenario>
+    ? Scenario
+    : never;
+
+type SimulatedHttpServerDefinition<Scenario extends string> = {
+    readonly name: string;
+    readonly scenarios: Readonly<Record<Scenario, SimulationScenario>>;
+    readonly handle: (
+        request: Request,
+        scenario: { readonly key: Scenario; }
+    ) => Response | Promise<Response>;
 };
 
-type SimulationOptions = {
-    readonly seed?: bigint;
-    readonly scenario?: string;
+type SimulatedHttpServerHandle<Scenario extends string> = {
+    readonly baseUrl: string;
+    readonly scenarioUrl: (scenario: Scenario, path: string) => string;
 };
-
-type WithSimulation = (adapter: SimulationAdapter, options: SimulationOptions, body: TestBody) => TestBody;
 
 type ExecutionRequirement =
     | { kind: 'serial'; }
@@ -1464,25 +1469,80 @@ type ResourceHandle<Resource extends ResourceDefinition<unknown>> = Resource ext
     ? Handle
     : never;
 
-type RuntimeDefinition<Resources extends Readonly<Record<string, ResourceDefinition<unknown>>>> = {
+type RuntimeDefinition<
+    Name extends string,
+    Resources extends Readonly<Record<string, ResourceDefinition<unknown>>>,
+    Scenarios extends Readonly<Record<string, readonly string[]>> = {}
+> = {
+    readonly kind: 'runtime';
+    readonly name: Name;
+    readonly dimensions: RuntimeDimensions;
+    readonly resources: Resources;
+    readonly requirements: ReadonlyArray<ExecutionRequirement>;
+    readonly scenarios: Scenarios;
+};
+
+type RuntimeVariantBody<
+    Resources extends Readonly<Record<string, ResourceDefinition<unknown>>>,
+    Scenarios extends Readonly<Record<string, readonly string[]>>
+> = {
     readonly name: string;
     readonly dimensions: RuntimeDimensions;
     readonly resources: Resources;
     readonly requirements: ReadonlyArray<ExecutionRequirement>;
+    readonly scenarios: Scenarios;
 };
 
-type RuntimeContext<Runtime extends RuntimeDefinition<Readonly<Record<string, ResourceDefinition<unknown>>>>> = {
+type RuntimeMatrix<
+    Name extends string,
+    Variants extends Readonly<Record<string, RuntimeVariantBody<
+        Readonly<Record<string, ResourceDefinition<unknown>>>,
+        Readonly<Record<string, readonly string[]>>
+    >>>
+> = {
+    readonly kind: 'runtime-matrix';
+    readonly name: Name;
+    readonly variants: Variants;
+};
+
+type RuntimeGraph = RuntimeDefinition<
+    string,
+    Readonly<Record<string, ResourceDefinition<unknown>>>,
+    Readonly<Record<string, readonly string[]>>
+> | RuntimeMatrix<string, Readonly<Record<string, RuntimeVariantBody<
+    Readonly<Record<string, ResourceDefinition<unknown>>>,
+    Readonly<Record<string, readonly string[]>>
+>>>> | ComposedRuntimes<ReadonlyArray<RuntimeGraph>>;
+
+type ComposedRuntimes<Runtimes extends ReadonlyArray<RuntimeGraph>> = {
+    readonly kind: 'composed-runtimes';
+    readonly runtimes: Runtimes;
+};
+
+type PublicRuntimeNames<Graph extends RuntimeGraph> = string;
+
+type PublicRuntimeContext<
+    Graph extends RuntimeGraph,
+    RuntimeName extends PublicRuntimeNames<Graph>
+> = Readonly<Record<string, unknown>>;
+
+type RuntimeContext<
+    Runtime extends RuntimeDefinition<string, Readonly<Record<string, ResourceDefinition<unknown>>>>
+> = {
     readonly [Key in keyof Runtime['resources']]: ResourceHandle<Runtime['resources'][Key]>;
 };
 
-type RuntimeContextComposition<
-    BaseContext,
-    Runtime extends RuntimeDefinition<Readonly<Record<string, ResourceDefinition<unknown>>>>
-> = BaseContext & {
-    readonly runtime: RuntimeContext<Runtime>;
+type RuntimeGraphContext<Graph extends RuntimeGraph> = {
+    readonly [RuntimeName in PublicRuntimeNames<Graph>]: PublicRuntimeContext<Graph, RuntimeName>;
 };
 
-type StartRuntimeRequest<Runtime extends RuntimeDefinition<Readonly<Record<string, ResourceDefinition<unknown>>>>> = {
+type RuntimeContextComposition<BaseContext, Graph extends RuntimeGraph> = BaseContext & {
+    readonly runtimes: RuntimeGraphContext<Graph>;
+};
+
+type StartRuntimeRequest<
+    Runtime extends RuntimeDefinition<string, Readonly<Record<string, ResourceDefinition<unknown>>>>
+> = {
     readonly runtime: Runtime;
     readonly signal: AbortSignal;
 };
@@ -1491,7 +1551,9 @@ type RuntimeSessionDisposalContext = {
     readonly signal: AbortSignal;
 };
 
-type RuntimeSession<Runtime extends RuntimeDefinition<Readonly<Record<string, ResourceDefinition<unknown>>>>> =
+type RuntimeSession<
+    Runtime extends RuntimeDefinition<string, Readonly<Record<string, ResourceDefinition<unknown>>>>
+> =
     & AsyncDisposable
     & {
         readonly context: RuntimeContext<Runtime>;
@@ -1508,75 +1570,106 @@ declare class ResourceLifecycleError extends Error {
     public failures(): readonly ResourceLifecycleFailure[];
 }
 
-type RuntimeTestScope<
-    Runtime extends RuntimeDefinition<Readonly<Record<string, ResourceDefinition<unknown>>>>,
-    Scope extends TestScope = TestScope
-> = Scope & {
-    readonly runtime: RuntimeContext<Runtime>;
+type RuntimeTestScope<Graph extends RuntimeGraph, Scope extends TestScope = TestScope> = Scope & {
+    readonly runtimes: RuntimeGraphContext<Graph>;
 };
 
-type RuntimeTestBody<
-    Runtime extends RuntimeDefinition<Readonly<Record<string, ResourceDefinition<unknown>>>>,
-    Scope extends TestScope = TestScope
-> = (scope: RuntimeTestScope<Runtime, Scope>) => ReturnType<TestBody>;
+type RuntimeTestBody<Graph extends RuntimeGraph, Scope extends TestScope = TestScope> =
+    (scope: RuntimeTestScope<Graph, Scope>) => ReturnType<TestBody>;
 
-type RuntimeWrappedTestBody<
-    Runtime extends RuntimeDefinition<Readonly<Record<string, ResourceDefinition<unknown>>>>,
-    Scope extends TestScope = TestScope
-> = ((scope: Scope) => ReturnType<TestBody>) & {
-    readonly runtime: Runtime;
+type RuntimeWrappedTestBody<Graph extends RuntimeGraph, Scope extends TestScope = TestScope> =
+    ((scope: Scope) => ReturnType<TestBody>) & {
+    readonly runtimeGraph: Graph;
 };
 
 type TestBodyResourceAttachments = {
-    readonly resources: ReadonlyArray<ResourceDefinition<unknown>>;
-    readonly runtimes: ReadonlyArray<RuntimeDefinition<Readonly<Record<string, ResourceDefinition<unknown>>>>>;
+    readonly resources: Readonly<Record<string, ResourceDefinition<unknown>>>;
+    readonly runtimeGraphs: ReadonlyArray<RuntimeGraph>;
 };
 
-type ResourceTestScope<
-    Resource extends ResourceDefinition<unknown>,
-    Scope extends TestScope = TestScope
-> = Scope & {
-    readonly resource: ResourceHandle<Resource>;
+type ResourceMap = Readonly<Record<string, ResourceDefinition<unknown>>>;
+
+type ResourceScopeContext<Resources extends ResourceMap> = {
+    readonly [Key in keyof Resources]: ResourceHandle<Resources[Key]>;
 };
 
-type ResourceTestBody<
-    Resource extends ResourceDefinition<unknown>,
-    Scope extends TestScope = TestScope
-> = (scope: ResourceTestScope<Resource, Scope>) => ReturnType<TestBody>;
+type ResourceTestScope<Resources extends ResourceMap, Scope extends TestScope = TestScope> = Scope & {
+    readonly resources: ResourceScopeContext<Resources>;
+};
+
+type ResourceTestBody<Resources extends ResourceMap, Scope extends TestScope = TestScope> =
+    (scope: ResourceTestScope<Resources, Scope>) => ReturnType<TestBody>;
 
 type ResourceWrappedTestBody<
-    Resource extends ResourceDefinition<unknown>,
+    Resources extends ResourceMap,
     Scope extends TestScope = TestScope
 > = ((scope: Scope) => ReturnType<TestBody>) & {
-    readonly resource: Resource;
+    readonly resources: Resources;
 };
 
-declare function withRuntime<
-    Runtime extends RuntimeDefinition<Readonly<Record<string, ResourceDefinition<unknown>>>>,
-    Scope extends TestScope = TestScope
->(runtime: Runtime, body: RuntimeTestBody<Runtime, Scope>): RuntimeWrappedTestBody<Runtime, Scope>;
+type RuntimeMatrixDefinition<Name extends string, Variants extends RuntimeVariantMap> = {
+    readonly name: Name;
+    readonly shared: unknown;
+    readonly variants: Variants;
+};
+
+type RuntimeVariantMap = Readonly<Record<string, RuntimeVariantBody<
+    Readonly<Record<string, ResourceDefinition<unknown>>>,
+    Readonly<Record<string, readonly string[]>>
+>>>;
+
+declare function defineRuntimeMatrix<
+    const Name extends string,
+    const Variants extends RuntimeVariantMap
+>(definition: RuntimeMatrixDefinition<Name, Variants>): RuntimeMatrix<Name, Variants>;
+
+declare function composeRuntimes<const Runtimes extends ReadonlyArray<RuntimeGraph>>(
+    runtimes: Runtimes
+): ComposedRuntimes<Runtimes>;
+
+declare function withRuntime<Graph extends RuntimeGraph, Scope extends TestScope = TestScope>(
+    runtime: Graph,
+    body: RuntimeTestBody<Graph, Scope>
+): RuntimeWrappedTestBody<Graph, Scope>;
 
 declare function withResource<
     Resource extends ResourceDefinition<unknown>,
     Scope extends TestScope = TestScope
->(resource: Resource, body: ResourceTestBody<Resource, Scope>): ResourceWrappedTestBody<Resource, Scope>;
+>(
+    resource: Resource,
+    body: ResourceTestBody<Record<Resource['name'], Resource>, Scope>
+): ResourceWrappedTestBody<Record<Resource['name'], Resource>, Scope>;
+
+declare function withResources<Resources extends ResourceMap, Scope extends TestScope = TestScope>(
+    resources: Resources,
+    body: ResourceTestBody<Resources, Scope>
+): ResourceWrappedTestBody<Resources, Scope>;
+
+declare function defineSimulatedHttpServer<const Scenario extends string>(
+    definition: SimulatedHttpServerDefinition<Scenario>
+): SimulationDefinition<Scenario>;
+
+declare function createSimulatedHttpServerResource<const Scenario extends string>(
+    simulation: SimulationDefinition<Scenario>
+): ResourceDefinition<SimulatedHttpServerHandle<Scenario>>;
 ```
 
 Resource sessions acquire dependency branches when prerequisites are ready,
 share one handle per descriptor in the session, and dispose once in reverse
-dependency order. The returned runtime context exposes only the runtime's
-top-level `resources` keys. Transitive dependencies remain internal unless
-the runtime lists them directly.
+dependency order. Runtime scopes expose `scope.runtimes.<runtimeName>`.
+Direct resources expose `scope.resources.<resourceKey>`. Transitive
+dependencies remain internal unless the runtime or resource map lists them
+directly.
 
-`withRuntime(runtime, body)` and `withResource(resource, body)` carry
-first-party descriptor attachment metadata. They do not receive already
-acquired handles. Collection reads the descriptors before scheduling,
-planning lowers scopes and requirements into placement constraints, and
-execution injects acquired handles into `scope.runtime` or `scope.resource`
-when handles exist. Microtest profiles reject resource descriptors and
-resource-bearing runtime descriptors before body execution. Rejection is based
-on the collected attachment descriptors, not on which authoring helper or
-facade attached them.
+`withRuntime(runtime, body)`, `withResource(resource, body)`, and
+`withResources(resources, body)` carry first-party descriptor attachment
+metadata. They do not receive already acquired handles. Collection reads the
+descriptors before scheduling, planning lowers scopes and requirements into
+placement constraints, expands runtime matrices, and execution injects acquired
+handles into `scope.runtimes` and `scope.resources` when handles exist.
+Microtest profiles reject resource descriptors before body execution.
+Rejection is based on the collected attachment descriptors, not on which
+authoring wrapper or facade attached them.
 
 Canonical: [Package Architecture](../architecture/package-architecture.md) for package ownership and
 [Higher Test Layers](../authoring/higher-test-layers.md) for intended resource usage.

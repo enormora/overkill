@@ -156,13 +156,23 @@ configuration domain and benchmark execution uses `overkill bench`.
 | Flag                | Behavior                                               | Reference                                                                                                                   |
 | ------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
 | `--filter '<expr>'` | Filter by annotations, identity, and file path.        | [Test Data And Selection § Filter Expression Grammar](../architecture/test-data-and-selection.md#filter-expression-grammar) |
+| `--runtime <expr>`  | Filter by public runtime key, variant, or dimension.   | [Runtime Behavior § Runtime Selection](../architecture/runtime-behavior.md#runtime-selection)                               |
 | `--title '<text>'`  | Title substring match.                                 | [Test Data And Selection § Local Iteration Workflow](../architecture/test-data-and-selection.md#local-iteration-workflow)   |
 | `--file <path>`     | Restrict the run to a single file.                     | same                                                                                                                        |
 | `--last-failed`     | Run only tests that failed in the previous run.        | same                                                                                                                        |
 | `--watch`           | Rerun the selected suite with Node's built-in watcher. | [Runtime Behavior § Watch-Mode Targeting](../architecture/runtime-behavior.md#watch-mode-targeting)                         |
 | `--shard <i>/<n>`   | Select shard `i` of `n` from the filtered set.         | [Runtime Behavior § Sharding](../architecture/runtime-behavior.md#sharding)                                                 |
 
-Exact `CaseId` selection is programmatic API-only.
+Repeated `--runtime` flags combine with AND and compose with `--filter`:
+
+```sh
+overkill run --runtime browser
+overkill run --runtime browser:chromium
+overkill run --runtime browser.engine=chromium --runtime app
+```
+
+Runtime selectors match public runtime keys, not inner runtime names reused
+inside a matrix. Exact `CaseId` selection is programmatic API-only.
 
 ## Capability And Execution
 

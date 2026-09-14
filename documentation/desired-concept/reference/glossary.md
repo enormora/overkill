@@ -33,15 +33,17 @@ Source: [Assertions And Results](../authoring/assertions-and-results.md), [Test 
 
 ## Test Facade
 
-A possible project-local or adapter-owned authoring preset. Facades are not
-the primary extension model in the current concept. Ordinary tests use the
-root `@overkill-dev/test` import. Typed runtime context uses explicit
-`withRuntime(...)` or `withResource(...)` descriptor attachment. Custom
-assertions use imported assertion references.
+A project-local or adapter-owned authoring preset. Facades are not the primary
+extension model, but they are valid for compatibility adapters, domain
+presets, and large-suite ergonomics. Ordinary tests use the root
+`@overkill-dev/test` import. Typed runtime context uses explicit
+`withRuntime(...)`, `withResource(...)`, or `withResources(...)` descriptor
+attachment. Custom assertions use imported assertion references.
 
 Valid facade use cases include compatibility adapters and named domain
 presets, such as an ESLint rule-test preset that lowers a familiar rule-test
-surface to ordinary Overkill nodes.
+surface to ordinary Overkill nodes. A facade must not select the test family.
+Runner profiles own family selection.
 
 Source: [Package Architecture](../architecture/package-architecture.md).
 
@@ -359,7 +361,9 @@ Source: [Capability Handles](../authoring/capability-handles.md).
 ## Scenario
 
 A stable, speaking preset of simulation or runtime behavior, such as
-`default`, `logged-in`, or `payments-500`.
+`default`, `logged-in`, or `payments-500`. Scenario-aware resources expose
+finite typed scenario catalogs when the runner needs planning-visible binding,
+cache identity, filtering, reporting, or replay metadata.
 
 Source: [Deterministic Simulation Testing](../authoring/deterministic-simulation.md).
 

@@ -168,42 +168,54 @@ descriptor attachment:
 ```ts
 import { test } from '@overkill-dev/test';
 import { withRuntime } from '@overkill-dev/test/resources';
-import { apiRuntime } from '#tests/runtimes/api';
+import { apiRuntime } from '#tests/api-runtime';
 
 export const testNode = test(
     'loads user',
     withRuntime(apiRuntime, (scope) => {
-        scope.assert.equal(scope.runtime.database.loadUser('42').id, '42');
+        scope.assert.equal(scope.runtimes.api.database.loadUser('42').id, '42');
         return scope.assert.collect();
     })
 );
 ```
 
 `withRuntime(runtime, body)` attaches the runtime descriptor to the authored
-test body. It does not receive already-acquired handles. Collection reads
-the descriptor before scheduling, lowers resource scopes and execution
-requirements into the run plan, and execution injects acquired handles into
-`scope.runtime` when the runtime declares resources.
+test body. The runtime may be a leaf runtime, a runtime matrix, or a graph
+returned by `composeRuntimes(...)`. It does not receive already-acquired
+handles. Collection reads the descriptor before scheduling, lowers resource
+scopes and execution requirements into the run plan, expands matrices, and
+execution injects acquired handles into `scope.runtimes.<runtimeName>` when
+the runtime declares resources.
 
 Microtest rejection is runner-owned and descriptor-based. The runner should
 reject microtest cases when collected body metadata contains resource
 descriptors, regardless of whether those descriptors came from
-`withResource(...)`, a resource-bearing `withRuntime(...)`, an adapter facade,
-or a future helper. A pure runtime descriptor with no resources is not rejected
-for the resource-side-effect reason.
+`withResource(...)`, `withResources(...)`, a resource-bearing
+`withRuntime(...)`, an adapter facade, or a future wrapper. A pure runtime
+descriptor with no resources is not rejected for the resource-side-effect
+reason.
 
-For the common one-resource case, `withResource(resource, body)` is useful
-syntax sugar over a one-resource runtime:
+For direct resources, `withResource(resource, body)` keeps the common
+single-resource case small, while `withResources(resources, body)` gives
+multiple resources explicit public keys:
 
 ```ts
 import { test } from '@overkill-dev/test';
-import { withResource } from '@overkill-dev/test/resources';
+import { withResource, withResources } from '@overkill-dev/test/resources';
 import { scratch } from '#tests/resources/scratch';
 
 export const testNode = test(
     'writes the export file',
     withResource(scratch, (scope) => {
-        scope.assert.match(scope.resource.path, /overkill/);
+        scope.assert.match(scope.resources.scratch.path, /overkill/);
+        return scope.assert.collect();
+    })
+);
+
+export const secondTestNode = test(
+    'writes the report file',
+    withResources({ dir: scratch }, (scope) => {
+        scope.assert.match(scope.resources.dir.path, /overkill/);
         return scope.assert.collect();
     })
 );
@@ -215,17 +227,19 @@ references. They are worthwhile only when they add domain value beyond the
 root package import. They should not be required only to select a runner
 profile.
 
-Generic facade creation is not the primary extension model. A facade API
-should only exist for a concrete typed authoring preset that cannot be
-expressed cleanly with imported assertion references, macros, resources, and
-runtime wrappers.
+Generic facade creation is not the primary extension model, but
+`createTestFacade(...)` remains useful for typed ergonomic presets and
+compatibility adapters. A facade may bind one runtime graph, bind direct
+resources, and map the final scope into project-owned convenience properties.
+It must not select a test family. Runner profiles own family selection,
+capability policy, process model, and capture validation.
 
 When a project does define a custom facade, it may publish that surface through
 a stable project-local alias such as `#tests/custom-authoring`. The alias names
 the custom authoring surface. It does not replace the root `@overkill-dev/test`
 import for ordinary tests and does not select a runner profile.
 
-Valid facade use cases are narrow:
+Valid facade use cases are concrete:
 
 - compatibility adapters that intentionally expose a familiar test surface
   while lowering to Overkill nodes, such as a Vitest-like or Playwright-like
@@ -238,7 +252,42 @@ Valid facade use cases are narrow:
   transaction resource
 
 Facades should not become the profile-selection mechanism, a global assertion
-method registry, or a general hidden-fixture container.
+method registry, or a general hidden-fixture container. They exist to package a
+settled authoring surface.
+
+Example facade shape:
+
+```ts
+import { createTestFacade } from '@overkill-dev/test';
+import { browserAppRuntime } from '#tests/browser-app-runtime';
+import { scratch } from '#tests/resources/scratch';
+
+export const { test } = createTestFacade({
+    runtime: browserAppRuntime,
+    resources: { dir: scratch },
+    mapScope(scope) {
+        return {
+            dir: scope.resources.dir.path,
+            frontendUrl: scope.runtimes.app.frontendServer.url,
+            page: scope.runtimes.browser.page
+        };
+    }
+});
+
+export const testNode = test('loads the page', (scope) => {
+    scope.assert.equal(scope.page.url(), scope.frontendUrl);
+    return scope.assert.collect();
+});
+```
+
+`mapScope(...)` runs after all facade-level and per-test descriptor wrappers
+are normalized and after the execution scope is built. It may add convenience
+properties, but it must not overwrite core scope keys such as `assert`,
+`require`, `plan`, `collect`, `cleanup`, `signal`, `runtimes`, `resources`,
+or `parameters`. Facade-bound resources attach descriptors to every authored
+test that uses the facade, but acquisition happens only for selected
+executable planned cases. Skipped, filtered, or excluded cases do not start
+resources.
 
 ## Assertions
 
@@ -359,14 +408,58 @@ In that shape, the runtime contributes identity and planning data. It does
 not itself imply side effects. Side effects enter through resources and their
 acquisition/disposal callbacks.
 
-`@overkill-dev/resources` owns the package-neutral context composition shape,
-and `@overkill-dev/test/resources` exposes authoring wrappers such as
-`withRuntime(...)` and `withResource(...)`. These wrappers attach descriptors
-to authored tests; they do not acquire handles at module load. Collection
-reads the attached descriptors before scheduling. The runner then owns
-lifetime selection, worker/process placement, acquisition, injection, teardown,
-artifact attribution, and replay metadata. Microtest profiles reject
-collected resource descriptors before body execution.
+Runtime matrices are code-first descriptors. `defineRuntimeMatrix(...)`
+declares one public runtime name and a closed set of variant ids:
+
+```ts
+const browserRuntime = defineRuntimeMatrix({
+    name: 'browser',
+    shared: { ignoreSSLErrors: true },
+    variants: {
+        chromium: chromeRuntime,
+        firefox: firefoxRuntime
+    }
+});
+```
+
+The matrix name owns the public scope key, so every variant above exposes
+`scope.runtimes.browser`. Variant object keys are stable ids for reporting and
+runtime selection. Existing runtimes may be reused as variants when their
+exposed resource, scenario, requirement, and dimension shapes match. Variant
+factories may consume `shared` config, but `shared` is not injected into test
+scope unless a runtime or resource exposes it.
+
+`composeRuntimes([appRuntime, browserRuntime])` combines runtimes into one
+runtime graph. It has no own name and no direct resources argument. Public
+runtime keys come from child runtime or matrix names. Duplicate runtime names
+fail. If more than one matrix appears in the graph, planning expands their
+variants as a Cartesian product.
+
+Scenario slot names are lifted through composed runtime graphs in the same
+public-name model. Duplicate scenario slot names fail. The runner keeps the
+owner path internally so a public scenario binding such as
+`runtime.scenario({ api: 'payments-500' })` can still reach the resource that
+declared the `api` scenario slot inside a nested graph.
+
+Runtime and resource wrappers are composable values:
+
+```ts
+withRuntime(appRuntime, withResources({ dir }, withRuntime(browserRuntime, body)));
+```
+
+Nested wrappers are normalized before planning. Duplicate public runtime or
+resource keys fail during collection or planning.
+
+`@overkill-dev/resources` owns the package-neutral resource and runtime model:
+resources, runtime descriptors, runtime matrices, runtime composition, scenario
+metadata, and simulation resource adapters. `@overkill-dev/test/resources`
+exposes authoring wrappers such as `withRuntime(...)`, `withResource(...)`, and
+`withResources(...)`. These wrappers attach descriptors to authored tests; they
+do not acquire handles at module load. Collection reads the attached
+descriptors before scheduling. The runner then owns lifetime selection,
+worker/process placement, acquisition, injection, teardown, artifact
+attribution, and replay metadata. Microtest profiles reject collected resource
+descriptors before body execution.
 
 `@overkill-dev/resources` should be generic enough to serve multiple higher-level families:
 
@@ -383,6 +476,8 @@ This package family is the main place for supporting:
   shape
 - accessibility or compliance helpers that attach artifacts
 - runtime scenarios and dimensions
+- simulated HTTP server resources created from `@overkill-dev/simulation`
+  definitions
 
 This should not be read as a commitment to build a first-party replacement
 for Playwright. The broader browser-automation shapes belong behind browser
@@ -739,7 +834,7 @@ or extend the contract but do not redefine it.
 | Injected `assert` / `require` builder API                         | `@overkill-dev/engine`                                                 | The engine owns the injected assertion surface directly.                                                                                                       |
 | Assertion reference helpers (`defineCompositeAssertion`, bridges) | `@overkill-dev/assert`                                                 | Reusable helpers create imported assertion reference values consumed by the engine-owned assertion context.                                                    |
 | Test doubles (`testDouble`, `when`, helpers)                      | `@overkill-dev/doubles`                                                | See [Doubles](../authoring/doubles.md).                                                                                                                        |
-| Typed runtime / resource composition                              | `@overkill-dev/resources`                                              | Lifecycle scopes, execution requirements.                                                                                                                      |
+| Typed runtime / resource composition                              | `@overkill-dev/resources`                                              | Lifecycle scopes, execution requirements, runtime matrices, runtime composition, scenario metadata, and simulation resource adapters.                            |
 | Discovery, filtering, runner profiles                             | `@overkill-dev/run`                                                    | Reads configuration, freezes `RunFacts`, and produces `ResolvedRun`.                                                                                           |
 | Direct-file `runIfMain(...)` execution                            | `@overkill-dev/run`                                                    | `@overkill-dev/test` lazily re-exports it; engine consumers use `createTestPlan(root)` and `execute(testPlan)` directly.                                       |
 | Selection filter grammar                                          | `@overkill-dev/run`                                                    | Specification in [Test Data And Selection](./test-data-and-selection.md).                                                                                      |
@@ -758,7 +853,7 @@ or extend the contract but do not redefine it.
 | Test data propagation rules                                       | `@overkill-dev/engine`                                                 | Annotation set merge and control replacement.                                                                                                                  |
 | Configuration loading                                             | `@overkill-dev/run`                                                    | Reads root `overkill.config.ts`; engine has no configuration.                                                                                                  |
 | Standard configuration helper re-export                           | `@overkill-dev/test/config`                                            | User-facing import path for `defineConfig(...)`; custom orchestrators may import from `@overkill-dev/run`.                                                     |
-| Runtime/resource authoring wrappers                               | `@overkill-dev/test/resources`                                         | `withRuntime(...)` and `withResource(...)` attach descriptors for runner-aware lifecycle and scheduling.                                                       |
+| Runtime/resource authoring wrappers                               | `@overkill-dev/test/resources`                                         | `withRuntime(...)`, `withResource(...)`, and `withResources(...)` attach descriptors for runner-aware lifecycle and scheduling.                                  |
 | Root test authoring import                                        | `@overkill-dev/test`                                                   | `test`, `skippedTest`, `suite`, `table`, `defineMacro`, `runIfMain`, and explicitly reviewed lightweight doubles only.                                         |
 | Throwable compatibility authoring                                 | `@overkill-dev/test/compatibility`                                     | Explicit alternate authoring import for `throwingTest`; excluded from the root hot path.                                                                       |
 | Assertion reference execution                                     | `@overkill-dev/engine`                                                 | Engine owns callable assertion references, counting, `require` behavior, and result normalization.                                                             |
