@@ -9,7 +9,7 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import { orderedRunCases } from './run-selection.ts';
+import { orderedRunItems } from './run-selection.ts';
 import type { ResolvedRun, RunCommand, RunConfig, RunRequest } from './run-types.ts';
 
 const selectionFixturePath = 'source/integration-tests/run/fixtures/selection.test.ts';
@@ -141,13 +141,13 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orderedRunCases() rejects seeded order without a resolved seed',
+            title: 'orderedRunItems() rejects seeded order without a resolved seed',
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
                 scope.assert.throws(
                     function orderWithUnresolvedSeed() {
-                        orderedRunCases([ singleCase ], 'seeded', { value: null });
+                        orderedRunItems([ singleCase ], 'seeded', { value: null });
                     },
                     { message: 'Seeded ordering requires a resolved run seed.' }
                 );
@@ -157,7 +157,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orderedRunCases() rejects sparse seeded case arrays',
+            title: 'orderedRunItems() rejects sparse seeded case arrays',
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
@@ -166,7 +166,7 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.throws(
                     function orderSparseCases() {
-                        orderedRunCases(sparseCases, 'seeded', { value: 1n });
+                        orderedRunItems(sparseCases, 'seeded', { value: 1n });
                     },
                     { message: 'Seeded ordering selected an invalid case index.' }
                 );

@@ -22,9 +22,6 @@ type SelectedRunCases<Case> = {
     readonly plannedCases: readonly Case[];
 };
 
-type OrderedCase = {
-    readonly id: CaseId;
-};
 type OrderedSeededTestPlan = {
     readonly seed: {
         readonly value: bigint;
@@ -80,26 +77,36 @@ function seededOrder<Value>(values: readonly Value[], seed: bigint): readonly Va
     return ordered;
 }
 
-export function orderedRunCases<Case extends OrderedCase>(
+export function orderedRunItems<Item>(
+    items: readonly Item[],
+    order: RunOrder,
+    seed: RunSeed
+): readonly Item[];
+export function orderedRunItems<Item>(
+    items: readonly Item[],
+    order: RunOrder,
+    seed: RunSeed
+): readonly Item[] {
+    return order === 'seeded' ? seededOrder(items, resolvedSeed(seed)) : items;
+}
+
+function orderedNonEmptyRunCases<Case>(
     cases: NonEmptyReadonlyArray<Case>,
     order: RunOrder,
     seed: RunSeed
-): NonEmptyReadonlyArray<Case>;
-export function orderedRunCases<Case extends OrderedCase>(
-    cases: readonly Case[],
-    order: RunOrder,
-    seed: RunSeed
-): readonly Case[];
-export function orderedRunCases<Case extends OrderedCase>(
-    cases: readonly Case[],
-    order: RunOrder,
-    seed: RunSeed
-): readonly Case[] {
-    return order === 'seeded' ? seededOrder(cases, resolvedSeed(seed)) : cases;
+): NonEmptyReadonlyArray<Case> {
+    const orderedCases = orderedRunItems(cases, order, seed);
+    const firstCase = orderedCases[0];
+
+    if (firstCase === undefined) {
+        throw new Error('Run ordering produced an empty case plan.');
+    }
+
+    return [ firstCase, ...orderedCases.slice(1) ];
 }
 
 export function orderedTestPlan(testPlan: TestPlan, order: RunOrder, seed: RunSeed): TestPlan {
-    const cases = orderedRunCases(testPlan.cases, order, seed);
+    const cases = orderedNonEmptyRunCases(testPlan.cases, order, seed);
 
     return {
         ...testPlan,

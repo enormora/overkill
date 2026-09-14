@@ -160,6 +160,7 @@ export const testNode = createOverkillSuite({
                         debug: { mode: 'off', selectors: [] },
                         engine: { kind: 'default' },
                         order: 'seeded',
+                        placementPlan: null,
                         processModel: 'supervised-process',
                         profile: 'microtest',
                         resourceUsagePolicy: {
@@ -402,6 +403,7 @@ export const testNode = createOverkillSuite({
                         debug: { mode: 'off', selectors: [] },
                         engine: { kind: 'default' },
                         order: 'seeded',
+                        placementPlan: null,
                         processModel: 'in-process',
                         profile: 'microtest',
                         resourceUsagePolicy: {

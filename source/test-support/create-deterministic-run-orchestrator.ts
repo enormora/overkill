@@ -254,6 +254,7 @@ export function createDeterministicRunOrchestratorWithSeed(createSeed: () => big
     });
 
     return createRunOrchestrator({
+        availableParallelism: 4,
         createResourceUsageTracker(): RunResourceUsageTracker {
             return {
                 finish() {

@@ -17,6 +17,7 @@ import {
     createWorkerPoolRuntime,
     type WorkerPoolRunRuntime
 } from './worker-pool-runtime.ts';
+import { createWorkerPoolPlacementPlan } from './work-unit-planning.ts';
 
 type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
 type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
@@ -76,6 +77,12 @@ function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
                 debug: { mode: 'off', selectors: [] },
                 engine: { kind: 'default' },
                 order: 'seeded',
+                placementPlan: createWorkerPoolPlacementPlan({
+                    availableParallelism: 2,
+                    order: 'plan',
+                    seed: { value: 42n },
+                    selectedPlan: collectedPlan
+                }),
                 processModel: 'worker-pool',
                 profile: 'integration',
                 resourceUsagePolicy: {
@@ -134,6 +141,7 @@ const createFakeWorkerPool: RunOrchestratorDependencies['createWorkerPool'] = fu
 
 function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
     return {
+        availableParallelism: 2,
         createResourceUsageTracker: testOnlyDependency,
         createSeed() {
             return 42n;
@@ -248,6 +256,7 @@ function supervisedExecutionFacts(): ResolvedRun['facts']['execution'] {
         debug: { mode: 'off', selectors: [] },
         engine: { kind: 'default' },
         order: 'seeded',
+        placementPlan: null,
         processModel: 'supervised-process',
         profile: 'integration',
         resourceUsagePolicy: {

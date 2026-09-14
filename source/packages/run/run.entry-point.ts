@@ -77,8 +77,16 @@ export type {
     CollectedRunCase,
     CollectedRunFile,
     CollectedRunPlan,
+    ExecutorDescriptor,
+    PlacementAssignment,
+    PlacementLane,
+    PlacementPlan,
+    PlacementTrace,
+    PlacementTraceEntry,
     ResolvedRun,
     ResolvedRunPlan,
+    RuntimeDimensions,
+    RuntimeId,
     RunCaseFacts,
     RunCommand,
     RunConfig,
@@ -114,5 +122,10 @@ export type {
     RunTimeoutPolicy,
     RunWorkDistribution,
     RunWorkerLifecycle,
-    SerializedValue
+    SerializedValue,
+    WorkId,
+    WorkloadId,
+    WorkUnit,
+    WorkUnitMode,
+    WorkUnitId
 } from '../../run/run-types.ts';

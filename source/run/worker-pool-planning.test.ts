@@ -17,23 +17,38 @@ import {
     createSupervisedCollectCommand,
     createWorkerPoolCommand
 } from './run-isolated-command.ts';
-import type { ResolvedRunInput } from './run-input-resolution.ts';
 import {
-    fileUnits,
     runStartTimeFromMilliseconds,
-    workerPoolCollectedPlan
+    workerPoolCollectedPlan,
+    type WorkerPoolRunRuntime
 } from './worker-pool-runtime.ts';
+import {
+    createWorkerPoolPlacementPlan,
+    workUnitsFromCollectedPlan
+} from './work-unit-planning.ts';
 import {
     createEmptyAssignmentResult,
     selectedAssignedCases,
     sendCollectedPlan
 } from './worker-pool-worker-plan.ts';
-import type { CollectedRunPlan, ResolvedRun, RunCommand, RunProfileConfig } from './run-types.ts';
+import type { RunCommand } from './run-types.ts';
 
 const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const secondIntegrationPath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
 const annotations = { ownership: [], tags: [] };
 const controls = { capture: null, timeoutMilliseconds: null };
+type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
+type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
+type PlacementPlan = NonNullable<ResolvedRun['facts']['execution']['placementPlan']>;
+type RunProfileConfig = RunCommand['config']['profiles'][string];
+type WorkUnit = PlacementPlan['units'][number];
+type DiscoveredFile = {
+    readonly file: string;
+    readonly fileSet: string | null;
+    readonly href: string;
+    readonly path: string;
+};
+type DiscoveredFiles = readonly [DiscoveredFile, ...readonly DiscoveredFile[]];
 
 function createPlanningTestPlan(): TestPlan {
     const firstCase = defaultRunEngine.createTestCase({
@@ -170,6 +185,7 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
                 debug: { mode: 'off', selectors: [] },
                 engine: { kind: 'default' },
                 order: 'seeded',
+                placementPlan: null,
                 processModel: 'worker-pool',
                 profile: 'integration',
                 resourceUsagePolicy: {
@@ -228,7 +244,56 @@ function secondCaseId(): CaseId {
     };
 }
 
-function discoveredFiles(): ResolvedRunInput['files'] {
+function firstWorkUnit(): WorkUnit {
+    return {
+        group: null,
+        id: { key: integrationPath, mode: 'file', runtime: null, workload: null },
+        work: [ { case: firstCaseId(), runtime: null, workload: null } ]
+    };
+}
+
+function secondWorkUnit(): WorkUnit {
+    return {
+        group: null,
+        id: { key: secondIntegrationPath, mode: 'file', runtime: null, workload: null },
+        work: [ { case: secondCaseId(), runtime: null, workload: null } ]
+    };
+}
+
+function expectedPlacementPlan(): PlacementPlan {
+    const firstUnit = firstWorkUnit();
+    const secondUnit = secondWorkUnit();
+
+    return {
+        assignments: [
+            { lane: 'worker-1', unit: firstUnit.id },
+            { lane: 'worker-2', unit: secondUnit.id }
+        ],
+        lanes: [
+            {
+                executor: {
+                    capabilities: [],
+                    capacity: 1,
+                    id: 'worker-1',
+                    kind: 'local-worker'
+                },
+                id: 'worker-1'
+            },
+            {
+                executor: {
+                    capabilities: [],
+                    capacity: 1,
+                    id: 'worker-2',
+                    kind: 'local-worker'
+                },
+                id: 'worker-2'
+            }
+        ],
+        units: [ firstUnit, secondUnit ]
+    };
+}
+
+function discoveredFiles(): DiscoveredFiles {
     return [
         { file: integrationPath, fileSet: null, href: 'virtual:first', path: integrationPath },
         { file: secondIntegrationPath, fileSet: 'slow', href: 'virtual:second', path: secondIntegrationPath }
@@ -287,18 +352,30 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool runtime helpers expose collected file units',
+            title: 'worker-pool planning creates file work units and round-robin placement',
             body(scope: OverkillScope) {
                 const collectedPlan = createCollectedPlan();
                 const workerPoolRun = workerPoolResolvedRun(collectedPlan);
-                const localRun = createResolvedRun({ kind: 'local', testPlan: createPlanningTestPlan() });
+                const localRun = createResolvedRun({
+                    kind: 'local',
+                    testPlan: createPlanningTestPlan()
+                });
 
                 scope.assert.equal(runStartTimeFromMilliseconds(0), '1970-01-01T00:00:00.000Z');
                 scope.assert.equal(workerPoolCollectedPlan(workerPoolRun), collectedPlan);
-                scope.assert.deepEqual(fileUnits(collectedPlan), [
-                    { assignedCases: [ firstCaseId() ], file: integrationPath },
-                    { assignedCases: [ secondCaseId() ], file: secondIntegrationPath }
-                ]);
+                scope.assert.deepEqual(
+                    workUnitsFromCollectedPlan(collectedPlan),
+                    [ firstWorkUnit(), secondWorkUnit() ]
+                );
+                scope.assert.deepEqual(
+                    createWorkerPoolPlacementPlan({
+                        availableParallelism: 3,
+                        order: 'plan',
+                        seed: { value: 1n },
+                        selectedPlan: collectedPlan
+                    }),
+                    expectedPlacementPlan()
+                );
                 scope.assert.throws(function readLocalPlan() {
                     workerPoolCollectedPlan(localRun);
                 }, { message: 'Worker-pool execution requires a worker-pool collected plan.' });

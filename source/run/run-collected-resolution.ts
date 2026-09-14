@@ -16,9 +16,13 @@ import {
 import {
     assertCollectedRunPlanHasCases,
     assertCollectedRunPlanMatchesTestFamily,
-    orderedRunCases,
+    orderedRunItems,
     selectedCollectedRunPlan
 } from './run-selection.ts';
+import {
+    collectedRunCaseEntriesFromWorkUnits,
+    createWorkerPoolPlacementPlan
+} from './work-unit-planning.ts';
 import {
     freezeValue,
     resolveRunReporters
@@ -86,16 +90,27 @@ function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): R
         assertCollectedRunPlanHasCases(input.collectedPlan);
     }
 
-    const orderedCases = orderedRunCases(
-        collectedRunCaseEntries(input.collectedPlan),
-        input.request.order,
-        input.request.seed
-    );
+    const placementPlan = input.planKind === 'worker-pool'
+        ? createWorkerPoolPlacementPlan({
+            availableParallelism: input.dependencies.availableParallelism,
+            order: input.request.order,
+            seed: input.request.seed,
+            selectedPlan: input.collectedPlan
+        })
+        : null;
+    const orderedCases = placementPlan === null
+        ? orderedRunItems(
+            collectedRunCaseEntries(input.collectedPlan),
+            input.request.order,
+            input.request.seed
+        )
+        : collectedRunCaseEntriesFromWorkUnits(input.collectedPlan, placementPlan.units);
     const facts = freezeValue(createRunFacts({
         cases: collectedRunCaseFactsFromEntries(orderedCases, fileSetForDiscoveredFiles(input.files)),
         config: input.config,
         dependencies: input.dependencies,
         engine: input.engine,
+        placementPlan,
         projectRoot: input.projectRoot,
         request: input.request
     }));

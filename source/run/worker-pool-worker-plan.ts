@@ -25,6 +25,10 @@ export type CollectedWorkerPoolTestPlan = {
     readonly testPlan: TestPlan;
 };
 
+type AssignedWork = readonly {
+    readonly case: CaseId;
+}[];
+
 async function selectedEngine(command: WorkerPoolCommand): Promise<Engine> {
     return command.engine.kind === 'module' ? await loadRunEngineModule(command.engine) : defaultRunEngine;
 }
@@ -69,6 +73,15 @@ export function selectedAssignedCases(testPlan: TestPlan, assignedCases: readonl
         ...testPlan,
         cases: [ firstCase, ...cases.slice(1) ]
     };
+}
+
+export function selectedAssignedWork(testPlan: TestPlan, assignedWork: AssignedWork): TestPlan {
+    return selectedAssignedCases(
+        testPlan,
+        assignedWork.map(function toCaseId(work) {
+            return work.case;
+        })
+    );
 }
 
 export function createEmptyAssignmentResult(

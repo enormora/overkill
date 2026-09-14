@@ -137,6 +137,7 @@ function createResolvedRun(testPlan: TestPlan): ResolvedRun {
                 debug: request.debug,
                 engine: { kind: 'default' },
                 order: request.order,
+                placementPlan: null,
                 processModel: profile.execution.processModel,
                 profile: request.profile,
                 resourceUsagePolicy: profile.resourceUsage,

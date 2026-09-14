@@ -22,7 +22,7 @@ import type {
 import {
     collectTestPlan,
     createEmptyAssignmentResult,
-    selectedAssignedCases,
+    selectedAssignedWork,
     sendCollectedPlan,
     type CollectedWorkerPoolTestPlan
 } from './worker-pool-worker-plan.ts';
@@ -74,7 +74,7 @@ async function runAssignment(
 ): Promise<WorkerPoolRunOutput> {
     const collectedPlan = await collectAssignmentTestPlan(task);
 
-    if (task.assignedCases.length === 0) {
+    if (task.assignedWork.length === 0) {
         return createEmptyAssignmentResult(collectedPlan.testPlan, wallClock, task.startedAtMilliseconds);
     }
 
@@ -90,7 +90,7 @@ async function runAssignment(
     });
 
     try {
-        const result = await execute(selectedAssignedCases(collectedPlan.testPlan, task.assignedCases), {
+        const result = await execute(selectedAssignedWork(collectedPlan.testPlan, task.assignedWork), {
             execution: { mode: executionMode(task.command) },
             outputRenderer: createPlainOutputRenderer(),
             reporters: [ createWorkerPoolReporter(task) ],

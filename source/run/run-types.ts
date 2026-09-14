@@ -144,6 +144,95 @@ export type RunWorkDistribution = {
     readonly mode: 'file';
 };
 
+export type RuntimeDimensions = Readonly<Record<string, string>>;
+
+export type RuntimeId = {
+    readonly dimensions: RuntimeDimensions;
+    readonly name: string;
+};
+
+export type WorkloadId = {
+    readonly name: string;
+    readonly params: Readonly<Record<string, string>>;
+};
+
+export type WorkId = {
+    readonly case: RunCaseId;
+    readonly runtime: RuntimeId | null;
+    readonly workload: WorkloadId | null;
+};
+
+export type WorkUnitMode = 'case' | 'file' | 'group';
+
+export type WorkUnitId = {
+    readonly key: string;
+    readonly mode: WorkUnitMode;
+    readonly runtime: RuntimeId | null;
+    readonly workload: WorkloadId | null;
+};
+
+export type WorkUnit = {
+    readonly group: string | null;
+    readonly id: WorkUnitId;
+    readonly work: NonEmptyReadonlyArray<WorkId>;
+};
+
+export type ExecutorDescriptor = {
+    readonly capabilities: readonly string[];
+    readonly capacity: number;
+    readonly id: string;
+    readonly kind: 'browser' | 'local-process' | 'local-worker' | 'remote';
+};
+
+export type PlacementLane = {
+    readonly executor: ExecutorDescriptor;
+    readonly id: string;
+};
+
+export type PlacementAssignment = {
+    readonly lane: PlacementLane['id'];
+    readonly unit: WorkUnitId;
+};
+
+export type PlacementPlan = {
+    readonly assignments: readonly PlacementAssignment[];
+    readonly lanes: readonly PlacementLane[];
+    readonly units: readonly WorkUnit[];
+};
+
+export type PlacementTrace = {
+    readonly entries: readonly PlacementTraceEntry[];
+};
+
+export type PlacementTraceEntry = {
+    readonly activeUnit: WorkUnitId | null;
+    readonly kind: 'worker-crashed';
+    readonly workerId: string;
+} | {
+    readonly durationMilliseconds: number;
+    readonly kind: 'unit-completed';
+    readonly unit: WorkUnitId;
+    readonly workerId: string;
+} | {
+    readonly fromLane: PlacementLane['id'];
+    readonly kind: 'unit-reassigned';
+    readonly toLane: PlacementLane['id'];
+    readonly unit: WorkUnitId;
+} | {
+    readonly kind: 'hedged-duplicate-discarded';
+    readonly unit: WorkUnitId;
+    readonly workerId: string;
+} | {
+    readonly kind: 'hedged-duplicate-started';
+    readonly unit: WorkUnitId;
+    readonly workerId: string;
+} | {
+    readonly kind: 'unit-started';
+    readonly lane: PlacementLane['id'];
+    readonly unit: WorkUnitId;
+    readonly workerId: string;
+};
+
 export type RunMicrotestExecution = {
     readonly processModel: RunMicrotestProcessModel;
     readonly scheduling: RunScheduling;
@@ -280,6 +369,7 @@ type RunExecutionBaseFacts = {
     readonly debug: RunDebugRequest;
     readonly engine: RunEngineFacts;
     readonly order: RunOrder;
+    readonly placementPlan: PlacementPlan | null;
     readonly profile: string;
     readonly resourceUsagePolicy: RunResourceUsagePolicy;
     readonly scheduling: RunScheduling;

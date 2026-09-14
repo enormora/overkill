@@ -1,5 +1,4 @@
 import type { MessagePort as NodeMessagePort } from 'node:worker_threads';
-import type { CaseId } from '../engine/identity.ts';
 import type { ReporterEvent } from '../engine/reporter.ts';
 import type {
     RunnerError,
@@ -10,7 +9,8 @@ import type {
     RunEngineSelection,
     RunResourceBudgets,
     RunScheduling,
-    RunTestFamily
+    RunTestFamily,
+    WorkId
 } from './run-types.ts';
 
 export type WorkerPoolCommand = {
@@ -33,7 +33,7 @@ type WorkerPoolCollectTask = {
 };
 
 export type WorkerPoolRunTask = {
-    readonly assignedCases: readonly CaseId[];
+    readonly assignedWork: readonly WorkId[];
     readonly command: WorkerPoolCommand;
     readonly kind: 'run';
     readonly port: NodeMessagePort;

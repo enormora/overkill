@@ -34,6 +34,7 @@ export type CreatedWorkerPool = {
 };
 
 export type RunOrchestratorDependencies = {
+    readonly availableParallelism: number;
     readonly createSeed: () => bigint;
     readonly createResourceUsageTracker: (options: ResourceUsageTrackerOptions) => RunResourceUsageTracker;
     readonly createWorkerPool: (options: WorkerPoolCreationOptions) => CreatedWorkerPool;

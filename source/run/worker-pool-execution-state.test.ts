@@ -23,7 +23,9 @@ import type {
 
 type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
 type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
+type PlacementPlan = NonNullable<ResolvedRun['facts']['execution']['placementPlan']>;
 type ResourceSample = ReturnType<WorkerPoolRunRuntime['previousPoolSample']['read']>;
+type WorkUnit = PlacementPlan['units'][number];
 
 const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const annotations = { ownership: [], tags: [] };
@@ -41,6 +43,12 @@ function firstCaseId(): CaseId {
         suite: [ 'integration' ],
         title: 'first'
     };
+}
+
+function firstCaseIdentityKey(): string {
+    const { file, params, suite, title } = firstCaseId();
+
+    return JSON.stringify([ file, suite, title, params ]);
 }
 
 function createCollectedPlan(): CollectedRunPlan {
@@ -75,6 +83,48 @@ function createCollectedPlan(): CollectedRunPlan {
     };
 }
 
+function firstWorkUnit(): WorkUnit {
+    return {
+        group: null,
+        id: {
+            key: integrationPath,
+            mode: 'file',
+            runtime: null,
+            workload: null
+        },
+        work: [
+            {
+                case: firstCaseId(),
+                runtime: null,
+                workload: null
+            }
+        ]
+    };
+}
+
+function placementPlan(): PlacementPlan {
+    return {
+        assignments: [
+            {
+                lane: 'worker-1',
+                unit: firstWorkUnit().id
+            }
+        ],
+        lanes: [
+            {
+                executor: {
+                    capabilities: [],
+                    capacity: 1,
+                    id: 'worker-1',
+                    kind: 'local-worker'
+                },
+                id: 'worker-1'
+            }
+        ],
+        units: [ firstWorkUnit() ]
+    };
+}
+
 function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
     return {
         collectionRunnerErrors: [],
@@ -94,6 +144,7 @@ function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
                 debug: { mode: 'off', selectors: [] },
                 engine: { kind: 'default' },
                 order: 'seeded',
+                placementPlan: placementPlan(),
                 processModel: 'worker-pool',
                 profile: 'integration',
                 resourceUsagePolicy: {
@@ -166,6 +217,7 @@ const createFakeWorkerPool: RunOrchestratorDependencies['createWorkerPool'] = fu
 
 function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
     return {
+        availableParallelism: 2,
         createResourceUsageTracker: testOnlyDependency,
         createSeed() {
             return 42n;
@@ -257,7 +309,7 @@ function createTaskRun(state: SupervisedRunState): WorkerPoolTaskRun {
         state,
         startedCases: new Set(),
         timeout,
-        unit: { assignedCases: [], file: integrationPath }
+        unit: firstWorkUnit()
     };
 }
 
@@ -376,7 +428,7 @@ export const testNode = createOverkillSuite({
                 });
                 const completed = await executeWorkerPoolUnits(
                     runtime,
-                    [ { assignedCases: [ firstCaseId() ], file: integrationPath } ],
+                    placementPlan(),
                     0
                 );
 
@@ -398,7 +450,7 @@ export const testNode = createOverkillSuite({
                 const activeTask = createTaskRun(createSupervisedRunState());
                 const runtime = budgetedRuntime(activeTask);
 
-                activeTask.state.addActiveCase('first', { capture: null, id: firstCaseId() });
+                activeTask.state.addActiveCase(firstCaseIdentityKey(), { capture: null, id: firstCaseId() });
                 await reportRunStart({ ...runtime, collectedPlan: { ...runtime.collectedPlan, files: [] } }, 0);
                 startPoolResourceTracking(runtime);
 

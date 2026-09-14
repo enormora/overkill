@@ -15,7 +15,6 @@ import {
 } from './run-input-resolution.ts';
 import { createLocalTestPlan } from './run-local-test-plan.ts';
 import {
-    orderedRunCases,
     orderedTestPlan,
     assertTestPlanMatchesTestFamily,
     selectedNonEmptyTestPlanCases,
@@ -61,6 +60,7 @@ function createLocalResolvedRunFromTestPlan(
         config: input.config,
         dependencies,
         engine: input.engine,
+        placementPlan: null,
         projectRoot: input.projectRoot,
         request: input.request
     }));
@@ -113,7 +113,7 @@ export async function createLocalRunOrEmptySelectionResult(
         return createEmptySelectionResult(testPlan, dependencies);
     }
 
-    const cases = orderedRunCases(plannedCases, input.request.order, input.request.seed);
+    const { cases } = orderedTestPlan({ ...testPlan, cases: plannedCases }, input.request.order, input.request.seed);
 
     return createLocalResolvedRunFromTestPlan(command, dependencies, input, {
         ...testPlan,

@@ -1,15 +1,14 @@
-import os from 'node:os';
-import { createCaseId, type CaseId } from '../engine/identity.ts';
 import type {
     ResourceUsageSnapshot,
     RunResult,
     RunnerError
 } from '../packages/engine/engine.entry-point.ts';
 import type {
-    CollectedRunFile,
     CollectedRunPlan,
+    PlacementPlan,
     RunExecutionFacts,
-    ResolvedRun
+    ResolvedRun,
+    WorkUnit
 } from './run-types.ts';
 import type {
     RunOrchestratorDependencies,
@@ -39,11 +38,6 @@ export type WorkerPoolCollectionResult = {
     readonly runnerErrors: readonly RunnerError[];
 };
 
-export type WorkerPoolFileUnit = {
-    readonly assignedCases: readonly CaseId[];
-    readonly file: string;
-};
-
 type WorkerPoolTaskRuns = {
     readonly add: (taskRun: WorkerPoolTaskRun) => WorkerPoolTaskRuns;
     readonly delete: (taskRun: WorkerPoolTaskRun) => boolean;
@@ -68,7 +62,7 @@ export type WorkerPoolTaskRun = {
     readonly state: SupervisedRunState;
     readonly startedCases: WorkerPoolStartedCaseSet;
     readonly timeout: StoredRunValue<ReturnType<RunOrchestratorDependencies['wallClock']['setTimeout']> | null>;
-    readonly unit: WorkerPoolFileUnit;
+    readonly unit: WorkUnit;
 };
 
 export type WorkerPoolRunRuntime = {
@@ -89,7 +83,6 @@ export type WorkerPoolRunRuntime = {
 
 type RunResourceUsageTracker = ReturnType<RunOrchestratorDependencies['createResourceUsageTracker']>;
 
-const maximumWorkerCount = 8;
 type WorkerPoolEntryPointToken = {
     readonly compatibility: TinypoolNodeCompatibility | null;
     readonly worker: typeof workerPoolWorkerEntryPoint;
@@ -111,14 +104,6 @@ export function runStartTimeFromMilliseconds(milliseconds: number): string {
     const startedAt = new Date(milliseconds);
 
     return startedAt.toISOString();
-}
-
-function defaultWorkerCount(unitCount: number): number {
-    if (unitCount === 0) {
-        return 0;
-    }
-
-    return Math.min(Math.max(os.availableParallelism() - 1, 1), maximumWorkerCount, unitCount);
 }
 
 type TinypoolWorkerPoolOptions = WorkerPoolCreationOptions & {
@@ -157,28 +142,6 @@ export function workerPoolCollectedPlan(resolvedRun: ResolvedRun): CollectedRunP
     return resolvedRun.plan.collectedPlan;
 }
 
-function collectFileCaseIds(file: CollectedRunFile): readonly CaseId[] {
-    return file.cases.map(function toCaseId(testCase) {
-        return createCaseId(
-            file.file,
-            testCase.suitePath.map(function toSuiteTitle(entry) {
-                return entry.title;
-            }),
-            testCase.title,
-            testCase.params
-        );
-    });
-}
-
-export function fileUnits(collectedPlan: CollectedRunPlan): readonly WorkerPoolFileUnit[] {
-    return collectedPlan.files.map(function toFileUnit(file) {
-        return {
-            assignedCases: collectFileCaseIds(file),
-            file: file.file
-        };
-    });
-}
-
 function createPoolResourceUsageTracker(
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies
@@ -200,14 +163,23 @@ function workerPoolExecutionFacts(resolvedRun: ResolvedRun): WorkerPoolExecution
     return resolvedRun.facts.execution;
 }
 
+export function workerPoolPlacementPlan(resolvedRun: ResolvedRun): PlacementPlan {
+    const { placementPlan } = workerPoolExecutionFacts(resolvedRun);
+
+    if (placementPlan === null) {
+        throw new Error('Worker-pool execution requires a placement plan.');
+    }
+
+    return placementPlan;
+}
+
 export async function createWorkerPoolRuntime(
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies,
     collectionRunnerErrors: readonly RunnerError[],
     runState: SupervisedRunState
 ): Promise<WorkerPoolRunRuntime> {
-    const units = fileUnits(workerPoolCollectedPlan(resolvedRun));
-    const workerCount = defaultWorkerCount(units.length);
+    const placementPlan = workerPoolPlacementPlan(resolvedRun);
     const execution = workerPoolExecutionFacts(resolvedRun);
     const taskResults: RunResult[] = [];
 
@@ -217,7 +189,7 @@ export async function createWorkerPoolRuntime(
         collectionRunnerErrors,
         dependencies,
         pool: dependencies.createWorkerPool({
-            workerCount,
+            workerCount: placementPlan.lanes.length,
             workerLifecycle: execution.workerLifecycle
         }),
         poolResourceUsageTracker: createPoolResourceUsageTracker(resolvedRun, dependencies),

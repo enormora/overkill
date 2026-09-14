@@ -99,6 +99,7 @@ export function testRunExecutionFacts(command: RunCommand, profile: RunProfileCo
         debug: command.request.debug,
         engine: { kind: 'default' as const },
         order: command.request.order,
+        placementPlan: null,
         profile: command.request.profile,
         resourceUsagePolicy: profile.resourceUsage,
         scheduling: profile.execution.scheduling,
