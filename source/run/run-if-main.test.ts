@@ -447,7 +447,7 @@ export const testNode = createOverkillSuite({
                 await scope.assert.rejects(async function runResourceAttachedCase() {
                     await fixture.runIfMain(fixture.project.meta, resourceAttachedCase(), { reporters: [] });
                 }, {
-                    message: 'Run profile "microtest" cannot run test cases with resource or runtime attachments.',
+                    message: 'Run profile "microtest" cannot run test cases with resource descriptors.',
                     name: 'RunCollectionError'
                 });
 

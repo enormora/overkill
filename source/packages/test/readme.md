@@ -284,8 +284,8 @@ integration.test(
 ```
 
 Resource wrappers attach descriptors for runner collection. Runner-managed
-handle injection is planned separately. Microtest authoring rejects first-party
-resource and runtime attachments.
+handle injection is planned separately. Microtest profiles reject collected
+resource descriptors before execution.
 
 Test bodies receive async-control methods on `scope`:
 

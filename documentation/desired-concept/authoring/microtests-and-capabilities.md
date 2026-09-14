@@ -94,17 +94,18 @@ Strict `console.*` diagnostics use the same active case or
 runner cannot determine the test, it reports an attribution-drift runner error
 instead of blaming the nearest sibling case.
 
-First-party resource attachments are invalid for microtest authoring and
-microtest profiles. Resource-bearing runtime attachments are invalid for the
-same reason. Pure, resource-free runtime descriptors may be valid only when
-they do not request side-effectful execution capabilities. Plain
-user-injected capability handles, in-memory doubles, and ordinary function
-parameters remain valid.
+Attached resource descriptors are invalid for microtest profiles. First-party
+authoring APIs may still create resource-bearing test values, but runner
+planning rejects those values when the selected profile family is `microtest`.
+Resource-bearing runtime attachments are invalid for the same reason. Pure,
+resource-free runtime descriptors may be valid only when they do not request
+side-effectful execution capabilities. Plain user-injected capability handles,
+in-memory doubles, and ordinary function parameters remain valid.
 
 The runner is the source of truth for this rule. Authoring helpers and
-facades may reject earlier for clearer local errors, but planning must reject
-any collected microtest body that carries attached resource descriptors. The
-check must not depend on whether the descriptor came from `withResource(...)`,
+facades preserve attachment metadata for planning. Planning must reject any
+collected microtest body that carries attached resource descriptors. The check
+must not depend on whether the descriptor came from `withResource(...)`,
 `withResources(...)`, `withRuntime(...)`, a domain preset, or another future
 wrapper.
 

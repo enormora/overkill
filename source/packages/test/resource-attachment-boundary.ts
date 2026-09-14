@@ -1,9 +1,0 @@
-import { hasTestBodyResourceAttachments, type TestFamily } from '../engine/engine.entry-point.ts';
-
-const microtestResourceAttachmentError = 'Microtest authoring does not support resource or runtime attachments.';
-
-export function assertMicrotestResourceFreeBody(testFamily: TestFamily, body: unknown): void {
-    if (testFamily === 'microtest' && hasTestBodyResourceAttachments(body)) {
-        throw new TypeError(microtestResourceAttachmentError);
-    }
-}

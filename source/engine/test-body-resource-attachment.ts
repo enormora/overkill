@@ -1,5 +1,3 @@
-import type { TestBody } from './test-node.ts';
-
 const testBodyResourceAttachmentsBrand = Symbol.for('@overkill-dev/engine/TestBodyResourceAttachments');
 
 export type TestBodyExecutionRequirementSummary = Readonly<Record<string, unknown>>;
@@ -37,6 +35,8 @@ export type ResourceFreeTestBody<Body> = Body & {
     readonly [testBodyResourceAttachmentsBrand]?: never;
 };
 
+type AttachedTestBody = (...parameters: readonly [unknown]) => unknown;
+
 const emptyTestBodyResourceAttachments: TestBodyResourceAttachments = Object.freeze({
     directResources: Object.freeze([]),
     resourceGraph: Object.freeze([]),
@@ -47,6 +47,14 @@ function hasEntries(attachments: TestBodyResourceAttachments): boolean {
     return attachments.directResources.length > 0 ||
         attachments.resourceGraph.length > 0 ||
         attachments.runtimeGraphs.length > 0;
+}
+
+export function hasAttachedResourceDescriptors(attachments: TestBodyResourceAttachments): boolean {
+    return attachments.directResources.length > 0 ||
+        attachments.resourceGraph.length > 0 ||
+        attachments.runtimeGraphs.some(function runtimeHasResources(runtime) {
+            return runtime.resources.length > 0;
+        });
 }
 
 function freezeRequirements(
@@ -97,14 +105,14 @@ function freezeAttachments(attachments: TestBodyResourceAttachments): TestBodyRe
     });
 }
 
-export function hasTestBodyResourceAttachments(value: unknown): value is ResourceAttachedTestBody<TestBody> {
+export function hasTestBodyResourceAttachments(value: unknown): value is ResourceAttachedTestBody<AttachedTestBody> {
     return typeof value === 'function' && Object.hasOwn(value, testBodyResourceAttachmentsBrand);
 }
 
-export function attachTestBodyResourceAttachments<Scope>(
-    body: (scope: Scope) => ReturnType<TestBody>,
+export function attachTestBodyResourceAttachments<Scope, Result>(
+    body: (scope: Scope) => Result,
     attachments: TestBodyResourceAttachments
-): ResourceAttachedTestBody<(scope: Scope) => ReturnType<TestBody>> {
+): ResourceAttachedTestBody<(scope: Scope) => Result> {
     if (typeof body !== 'function') {
         throw new TypeError('Resource attachments require a test body function.');
     }

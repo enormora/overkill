@@ -1,7 +1,6 @@
 import {
     createThrowingTestCase,
     stampTestNodeFamily,
-    type ResourceFreeTestBody,
     type TestAnnotationsInput,
     type TestCase,
     type TestControlsInput,
@@ -21,13 +20,10 @@ import {
     readAuthoringThrowingTestBody
 } from './authoring-input.ts';
 import { definitionLocationsForAuthoringCall, throwingBodyForActiveMacro } from './authoring-source-locations.ts';
-import { assertMicrotestResourceFreeBody } from './resource-attachment-boundary.ts';
-
-type MicrotestThrowingTestBody = ResourceFreeTestBody<ThrowingTestBody>;
 
 export type ThrowingTestDefinition = {
     readonly annotations?: AuthoringAnnotations;
-    readonly body: MicrotestThrowingTestBody;
+    readonly body: ThrowingTestBody;
     readonly controls?: MicrotestAuthoringControls;
     readonly title: string;
 };
@@ -41,7 +37,7 @@ type RuntimeThrowingTestDefinition = {
 
 export type ThrowingTestAuthor = {
     (definition: Readonly<ThrowingTestDefinition>): TestCase;
-    (title: string, body: MicrotestThrowingTestBody): TestCase;
+    (title: string, body: ThrowingTestBody): TestCase;
 };
 
 const singleArgumentCount = 1;
@@ -72,8 +68,6 @@ function readPositionalThrowingTestDefinition(input: readonly unknown[]): Runtim
 }
 
 function createRuntimeThrowingTest(definition: RuntimeThrowingTestDefinition): TestCase {
-    assertMicrotestResourceFreeBody('microtest', definition.body);
-
     const testCase = createThrowingTestCase({
         annotations: createAuthoringAnnotations({}, definition.annotations),
         body: throwingBodyForActiveMacro(definition.body),
@@ -100,7 +94,7 @@ function createAuthoredThrowingTest(...input: readonly unknown[]): TestCase {
 }
 
 export function throwingTest(...input: readonly [definition: Readonly<ThrowingTestDefinition>]): TestCase;
-export function throwingTest(...input: readonly [title: string, body: MicrotestThrowingTestBody]): TestCase;
+export function throwingTest(...input: readonly [title: string, body: ThrowingTestBody]): TestCase;
 export function throwingTest(...input: readonly unknown[]): TestCase {
     return createAuthoredThrowingTest(...input);
 }

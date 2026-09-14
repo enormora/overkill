@@ -260,29 +260,55 @@ describe('@overkill-dev/test standard subpaths', function () {
             expect(resourcesBody).type.toBeAssignableTo<TestBody>();
         });
 
-        test('rejects runtime wrappers from microtest authoring types', function () {
+        test('accepts descriptor wrappers from microtest test authoring types', function () {
             const runtimeBody = withRuntime(runtime, function runWithDatabase(scope) {
                 return scope.assert.collect();
             });
+            const resourceBody = withResource(temporaryDirectory, function runWithScratch(scope) {
+                return scope.assert.collect();
+            });
+            const microtestFacade = createTestFacade({ testFamily: 'microtest' });
+
+            expect(rootTest).type.toBeCallableWith('uses database', runtimeBody);
+            expect(rootTest).type.toBeCallableWith('uses scratch', resourceBody);
+            expect(rootTest).type.toBeCallableWith({ body: runtimeBody, title: 'uses database' });
+            expect(microtestFacade.test).type.toBeCallableWith('uses database', runtimeBody);
+            expect(microtestFacade.test).type.toBeCallableWith('uses scratch', resourceBody);
+        });
+
+        test('accepts descriptor wrappers from microtest table authoring types', function () {
             const tableRuntimeBody = withRuntime<typeof runtime, ParameterizedTestScope<TableRow>>(
                 runtime,
                 function runTableWithDatabase(scope) {
                     return scope.assert.collect();
                 }
             );
+            const tableResourceBody = withResource<typeof temporaryDirectory, ParameterizedTestScope<TableRow>>(
+                temporaryDirectory,
+                function runTableWithScratch(scope) {
+                    return scope.assert.collect();
+                }
+            );
             const microtestFacade = createTestFacade({ testFamily: 'microtest' });
 
-            expect(rootTest).type.not.toBeCallableWith('uses database', runtimeBody);
-            expect(rootTest).type.not.toBeCallableWith({ body: runtimeBody, title: 'uses database' });
-            expect(microtestFacade.test).type.not.toBeCallableWith('uses database', runtimeBody);
-            expect(rootTable).type.not.toBeCallableWith({
+            expect(rootTable).type.toBeCallableWith({
                 cases: [ { value: 1 }, { value: 2 } ],
                 test: tableRuntimeBody,
                 title: 'rows'
             });
-            expect(microtestFacade.table).type.not.toBeCallableWith({
+            expect(rootTable).type.toBeCallableWith({
+                cases: [ { value: 1 }, { value: 2 } ],
+                test: tableResourceBody,
+                title: 'rows'
+            });
+            expect(microtestFacade.table).type.toBeCallableWith({
                 cases: [ { value: 1 }, { value: 2 } ],
                 test: tableRuntimeBody,
+                title: 'rows'
+            });
+            expect(microtestFacade.table).type.toBeCallableWith({
+                cases: [ { value: 1 }, { value: 2 } ],
+                test: tableResourceBody,
                 title: 'rows'
             });
         });

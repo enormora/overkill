@@ -6,7 +6,6 @@ import {
     stampTestNodeFamily,
     type Suite,
     type Table,
-    type ResourceFreeTestBody,
     type TestAnnotationsInput,
     type TestBody,
     type TestCase,
@@ -42,18 +41,13 @@ import {
     readAuthoringString,
     readAuthoringTestBody
 } from './authoring-input.ts';
-import { assertMicrotestResourceFreeBody } from './resource-attachment-boundary.ts';
 import { createAuthoredTable, type AuthoringTableBody, type TableDefinition } from './table-authoring.ts';
 
-type MicrotestBody = ResourceFreeTestBody<TestBody>;
-type AuthoringTestBody<Family extends TestFamily> = Family extends 'microtest' ? MicrotestBody : TestBody;
-
 type TestDefinition<
-    ControlsType extends TestControlsInput = MicrotestAuthoringControls,
-    Body extends TestBody = TestBody
+    ControlsType extends TestControlsInput = MicrotestAuthoringControls
 > = {
     readonly annotations?: AuthoringAnnotations;
-    readonly body: Body;
+    readonly body: TestBody;
     readonly controls?: ControlsType;
     readonly title: string;
 };
@@ -103,14 +97,14 @@ type ObjectSkippedTestAuthorInput<ControlsType extends TestControlsInput> = read
 type ObjectSuiteAuthorInput<ControlsType extends TestControlsInput> = readonly [
     definition: Readonly<SuiteDefinition<ControlsType>>
 ];
-type ObjectTestAuthorInput<Family extends TestFamily, ControlsType extends TestControlsInput> = readonly [
-    definition: Readonly<TestDefinition<ControlsType, AuthoringTestBody<Family>>>
+type ObjectTestAuthorInput<ControlsType extends TestControlsInput> = readonly [
+    definition: Readonly<TestDefinition<ControlsType>>
 ];
 type PositionalSkippedTestAuthorInput = readonly [title: string, reason: string];
 type PositionalSuiteAuthorInput = readonly [title: string, children: readonly TestNode[]];
-type PositionalTestAuthorInput<Family extends TestFamily> = readonly [title: string, body: AuthoringTestBody<Family>];
-type TestAuthor<Family extends TestFamily, ControlsType extends TestControlsInput> = (
-    ...input: ObjectTestAuthorInput<Family, ControlsType> | PositionalTestAuthorInput<Family>
+type PositionalTestAuthorInput = readonly [title: string, body: TestBody];
+type TestAuthor<ControlsType extends TestControlsInput> = (
+    ...input: ObjectTestAuthorInput<ControlsType> | PositionalTestAuthorInput
 ) => TestCase;
 type SkippedTestAuthor<ControlsType extends TestControlsInput> = (
     ...input: ObjectSkippedTestAuthorInput<ControlsType> | PositionalSkippedTestAuthorInput
@@ -132,7 +126,7 @@ export type TestFacade<
     readonly skippedTest: SkippedTestAuthor<ControlsType>;
     readonly suite: SuiteAuthor<ControlsType>;
     readonly table: TableAuthor<Family, ControlsType>;
-    readonly test: TestAuthor<Family, ControlsType>;
+    readonly test: TestAuthor<ControlsType>;
 };
 
 const singleArgumentCount = 1;
@@ -211,7 +205,6 @@ function createAuthoredTest(
 ): TestCase {
     if (input.length === singleArgumentCount) {
         const definition = readTestDefinition(input[0]);
-        assertMicrotestResourceFreeBody(testFamily, definition.body);
 
         return stampedNode(
             createTestCase({
@@ -228,7 +221,6 @@ function createAuthoredTest(
     if (input.length === positionalArgumentCount) {
         const [ name, body ] = input;
         const testBody = readAuthoringTestBody(body);
-        assertMicrotestResourceFreeBody(testFamily, testBody);
 
         return stampedNode(
             createTestCase({
@@ -247,10 +239,10 @@ function createAuthoredTest(
 
 export function test(
     ...input: readonly [
-        definition: Readonly<TestDefinition<MicrotestAuthoringControls, AuthoringTestBody<'microtest'>>>
+        definition: Readonly<TestDefinition>
     ]
 ): TestCase;
-export function test(...input: readonly [title: string, body: AuthoringTestBody<'microtest'>]): TestCase;
+export function test(...input: readonly [title: string, body: TestBody]): TestCase;
 export function test(...input: readonly unknown[]): TestCase {
     return createAuthoredTest('microtest', {}, {}, ...input);
 }

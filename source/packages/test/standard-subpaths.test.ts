@@ -1,7 +1,11 @@
 import {
+    createRoot,
     createSuite,
     createTestCase,
+    createTestPlan,
     readTestBodyResourceAttachments,
+    type RootOptions,
+    type TestPlan,
     type TestScope
 } from '../engine/engine.entry-point.ts';
 import { createReportingContext } from '../../engine/reporting-context.ts';
@@ -13,6 +17,7 @@ import * as reportersSubpath from './reporters.entry-point.ts';
 import * as resourcesSubpath from './resources.entry-point.ts';
 import {
     createTestFacade,
+    defineMacro,
     table,
     test,
     type ParameterizedTestScope
@@ -29,8 +34,6 @@ const reservedSubpathModules: readonly ReservedSubpathModule[] = [
     { module: baselinesSubpath, name: 'baselines' },
     { module: benchSubpath, name: 'bench' }
 ];
-const invokeTable = table as (...parameters: readonly unknown[]) => unknown;
-const invokeTest = test as (...parameters: readonly unknown[]) => unknown;
 const invokeWithResource = resourcesSubpath.withResource as (...parameters: readonly unknown[]) => unknown;
 const invokeWithResources = resourcesSubpath.withResources as (...parameters: readonly unknown[]) => unknown;
 const invokeWithRuntime = resourcesSubpath.withRuntime as (...parameters: readonly unknown[]) => unknown;
@@ -54,7 +57,7 @@ type ResourceWrapperBehavior = {
     readonly body: resourcesSubpath.RuntimeWrappedTestBody;
     readonly database: NamedResourceDescriptor;
     readonly resourceBody: resourcesSubpath.ResourceWrappedTestBody;
-    readonly runtime: NamedRuntimeDescriptor;
+    readonly runtime: resourcesSubpath.RuntimeGraph;
     readonly tableBody: resourcesSubpath.RuntimeWrappedTestBody<
         resourcesSubpath.RuntimeGraph,
         ParameterizedTestScope<BoundaryRow>
@@ -139,7 +142,16 @@ function assertResourcesSubpathExports(scope: TestScope): void {
     scope.assert.equal(typeof resourcesSubpath.startRuntime, 'function');
 }
 
-function assertRuntimeAuthoringBoundary(
+function testPlanForChildren(children: RootOptions['children']): TestPlan {
+    return createTestPlan(createRoot({
+        annotations: {},
+        children,
+        controls: {},
+        title: 'root'
+    }));
+}
+
+function assertIntegrationRuntimeAuthoring(
     scope: TestScope,
     body: resourcesSubpath.RuntimeWrappedTestBody,
     tableBody: resourcesSubpath.RuntimeWrappedTestBody<
@@ -156,16 +168,74 @@ function assertRuntimeAuthoringBoundary(
 
     scope.assert.equal(integrationFacade.test('uses database', body).kind, 'test');
     scope.assert.equal(runtimeTable.kind, 'table');
-    scope.assert.throws(function createMicrotestRuntimeCase() {
-        invokeTest('uses database', body);
-    }, { message: 'Microtest authoring does not support resource or runtime attachments.' });
-    scope.assert.throws(function createMicrotestRuntimeTable() {
-        invokeTable({
-            cases: [ { value: 1 }, { value: 2 } ],
-            test: tableBody,
-            title: 'rows'
-        });
-    }, { message: 'Microtest authoring does not support resource or runtime attachments.' });
+}
+
+function assertMicrotestCaseRuntimeMetadata(scope: TestScope, body: resourcesSubpath.RuntimeWrappedTestBody): void {
+    const microtestCase = test('uses database', body);
+    const microtestCasePlan = testPlanForChildren([ microtestCase ]);
+    const plannedCase = microtestCasePlan.discoveredCases[0];
+    scope.require.defined(plannedCase);
+
+    scope.assert.deepEqual(plannedCase.resourceAttachments, readTestBodyResourceAttachments(body));
+}
+
+function assertMicrotestTableRuntimeMetadata(
+    scope: TestScope,
+    tableBody: resourcesSubpath.RuntimeWrappedTestBody<
+        resourcesSubpath.RuntimeGraph,
+        ParameterizedTestScope<BoundaryRow>
+    >
+): void {
+    const microtestTable = table({
+        cases: [ { value: 1 }, { value: 2 } ],
+        test: tableBody,
+        title: 'rows'
+    });
+    const microtestTablePlan = testPlanForChildren([ microtestTable ]);
+    const firstTableCase = microtestTablePlan.discoveredCases[0];
+    const secondTableCase = microtestTablePlan.discoveredCases[1];
+    scope.require.defined(firstTableCase);
+    scope.require.defined(secondTableCase);
+
+    scope.assert.deepEqual(firstTableCase.resourceAttachments, readTestBodyResourceAttachments(tableBody));
+    scope.assert.deepEqual(secondTableCase.resourceAttachments, readTestBodyResourceAttachments(tableBody));
+}
+
+function assertRuntimeAuthoringMetadata(
+    scope: TestScope,
+    body: resourcesSubpath.RuntimeWrappedTestBody,
+    tableBody: resourcesSubpath.RuntimeWrappedTestBody<
+        resourcesSubpath.RuntimeGraph,
+        ParameterizedTestScope<BoundaryRow>
+    >
+): void {
+    assertIntegrationRuntimeAuthoring(scope, body, tableBody);
+    assertMicrotestCaseRuntimeMetadata(scope, body);
+    assertMicrotestTableRuntimeMetadata(scope, tableBody);
+}
+
+function assertMacroRuntimeMetadata(scope: TestScope, runtime: resourcesSubpath.RuntimeGraph): void {
+    const runtimeMacro = defineMacro(function createRuntimeCase(title: string) {
+        return test(
+            title,
+            resourcesSubpath.withRuntime(runtime, function runWithRuntime(runtimeScope) {
+                return runtimeScope.assert.collect();
+            })
+        );
+    });
+    const testCase = runtimeMacro('uses runtime');
+    const plannedCase = testPlanForChildren([ testCase ]).discoveredCases[0];
+    scope.require.defined(plannedCase);
+
+    const runtimeGraph = plannedCase.resourceAttachments.runtimeGraphs[0];
+    scope.require.defined(runtimeGraph);
+    scope.assert.deepEqual(runtimeGraph.resources, [ { key: 'database', resourceName: 'database' } ]);
+    scope.assert.deepEqual(
+        plannedCase.resourceAttachments.resourceGraph.map(function toName(resource) {
+            return resource.name;
+        }),
+        [ 'database' ]
+    );
 }
 
 function assertResourceDescriptors(
@@ -287,7 +357,8 @@ function assertResourceWrapperValidation(
 
 function assertResourceWrapperBehavior(scope: TestScope, input: ResourceWrapperBehavior): void {
     scope.assert.equal(Array.isArray(input.body(scope)), true);
-    assertRuntimeAuthoringBoundary(scope, input.body, input.tableBody);
+    assertRuntimeAuthoringMetadata(scope, input.body, input.tableBody);
+    assertMacroRuntimeMetadata(scope, input.runtime);
     assertResourcesSubpathExports(scope);
     assertResourceDescriptors(scope, input.database, input.runtime, input.temporaryDirectory);
     assertRuntimeAttachments(scope, input.body);

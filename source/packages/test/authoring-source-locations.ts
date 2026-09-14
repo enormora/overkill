@@ -1,6 +1,9 @@
 import {
+    attachTestBodyResourceAttachments,
     captureSourceLocation,
     forwardAssertionSourceLocations,
+    hasTestBodyResourceAttachments,
+    readTestBodyResourceAttachments,
     type NonEmptyReadonlyArray,
     type ResolvableSourceLocation,
     type SourceLocation,
@@ -53,6 +56,15 @@ export function definitionLocationsForAuthoringCall(): NonEmptyReadonlyArray<Sou
     );
 }
 
+function forwardResourceAttachments<Scope, Result>(
+    sourceBody: (scope: Scope) => Result,
+    forwardedBody: (scope: Scope) => Result
+): (scope: Scope) => Result {
+    return hasTestBodyResourceAttachments(sourceBody)
+        ? attachTestBodyResourceAttachments(forwardedBody, readTestBodyResourceAttachments(sourceBody))
+        : forwardedBody;
+}
+
 export function assertionBodyForActiveMacro(body: TestBody): TestBody {
     const sourceLocations = activeMacroSourceLocations();
 
@@ -60,11 +72,11 @@ export function assertionBodyForActiveMacro(body: TestBody): TestBody {
         return body;
     }
 
-    return async function runMacroGeneratedTestBody(scope) {
+    return forwardResourceAttachments(body, async function runMacroGeneratedTestBody(scope) {
         return await runWithForwardedSourceLocations(sourceLocations, async function runBody() {
             return await body(scope);
         });
-    };
+    });
 }
 
 export function throwingBodyForActiveMacro(body: ThrowingTestBody): ThrowingTestBody {
@@ -74,11 +86,11 @@ export function throwingBodyForActiveMacro(body: ThrowingTestBody): ThrowingTest
         return body;
     }
 
-    return async function runMacroGeneratedThrowingTestBody(scope) {
+    return forwardResourceAttachments(body, async function runMacroGeneratedThrowingTestBody(scope) {
         await runWithForwardedSourceLocations(sourceLocations, async function runBody() {
             await body(scope);
         });
-    };
+    });
 }
 
 export function runMacroWithDefinitionLocations<Result>(body: () => Result): Result {
