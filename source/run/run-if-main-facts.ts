@@ -105,6 +105,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
             debug: request.debug,
             engine: { kind: 'default' },
             order: request.order,
+            placementPlan: null,
             processModel: 'in-process',
             profile: input.profileName,
             resourceUsagePolicy: resolveResourceUsagePolicy(request, profile),

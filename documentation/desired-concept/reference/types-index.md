@@ -41,7 +41,7 @@ type RuntimeId = {
 
 type WorkloadId = {
     readonly name: string;
-    readonly params?: Record<string, string>;
+    readonly params: Readonly<Record<string, string>>;
 };
 
 type WorkId = {
@@ -1047,7 +1047,7 @@ type PlacementLane = {
 
 type ExecutorDescriptor = {
     readonly id: string;
-    readonly kind: 'local-process' | 'browser' | 'remote';
+    readonly kind: 'local-process' | 'local-worker' | 'browser' | 'remote';
     readonly capacity: number;
     readonly capabilities: ReadonlyArray<string>;
 };

@@ -15,8 +15,10 @@ import type { RunWorkerLifecycle } from './run-types.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import {
     createWorkerPoolRuntime,
+    workerPoolPlacementPlan,
     type WorkerPoolRunRuntime
 } from './worker-pool-runtime.ts';
+import { createWorkerPoolPlacementPlan } from './work-unit-planning.ts';
 
 type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
 type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
@@ -76,6 +78,12 @@ function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
                 debug: { mode: 'off', selectors: [] },
                 engine: { kind: 'default' },
                 order: 'seeded',
+                placementPlan: createWorkerPoolPlacementPlan({
+                    availableParallelism: 2,
+                    order: 'plan',
+                    seed: { value: 42n },
+                    selectedPlan: collectedPlan
+                }),
                 processModel: 'worker-pool',
                 profile: 'integration',
                 resourceUsagePolicy: {
@@ -134,6 +142,7 @@ const createFakeWorkerPool: RunOrchestratorDependencies['createWorkerPool'] = fu
 
 function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
     return {
+        availableParallelism: 2,
         createResourceUsageTracker: testOnlyDependency,
         createSeed() {
             return 42n;
@@ -248,6 +257,7 @@ function supervisedExecutionFacts(): ResolvedRun['facts']['execution'] {
         debug: { mode: 'off', selectors: [] },
         engine: { kind: 'default' },
         order: 'seeded',
+        placementPlan: null,
         processModel: 'supervised-process',
         profile: 'integration',
         resourceUsagePolicy: {
@@ -279,6 +289,21 @@ function workerPoolPlanWithSupervisedFacts(): ResolvedRun {
         facts: {
             ...resolvedRun.facts,
             execution: supervisedExecutionFacts()
+        }
+    };
+}
+
+function workerPoolRunWithoutPlacementPlan(): ResolvedRun {
+    const resolvedRun = workerPoolResolvedRun(createCollectedPlan());
+
+    return {
+        ...resolvedRun,
+        facts: {
+            ...resolvedRun.facts,
+            execution: {
+                ...resolvedRun.facts.execution,
+                placementPlan: null
+            }
         }
     };
 }
@@ -388,6 +413,19 @@ export const testNode = createOverkillSuite({
                 }, {
                     message: 'Worker-pool execution requires worker-pool execution facts.'
                 });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'worker-pool runtime rejects missing placement plans',
+            body(scope: OverkillScope) {
+                scope.assert.throws(function readMissingPlacementPlan() {
+                    workerPoolPlacementPlan(workerPoolRunWithoutPlacementPlan());
+                }, { message: 'Worker-pool execution requires a placement plan.' });
 
                 return scope.assert.collect();
             }

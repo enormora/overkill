@@ -1,6 +1,6 @@
+import os from 'node:os';
 import { createWallClock } from '@enormora/wall-clock';
 import { createExecute } from '../engine/execution.ts';
-import type { Engine } from '../engine/engine.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { createNodeResourceUsageTracker } from './resource-usage.ts';
 import { createRunOrchestrator } from './run.ts';
@@ -16,7 +16,7 @@ function readActiveResourceTypes(): readonly string[] {
 type RuntimeCapabilityPolicyInput = RunOrchestratorDependencies['runtimeCapabilityPolicy'];
 
 export type NodeRunOrchestratorInput = {
-    readonly defaultEngine: Engine;
+    readonly defaultEngine: RunOrchestratorDependencies['defaultEngine'];
     readonly discoverRunFilesWithProjectRoot: RunOrchestratorDependencies['discoverRunFilesWithProjectRoot'];
     readonly installIpcRestriction: RuntimeCapabilityPolicyInput['installIpcRestriction'];
     readonly installProcessExecutionRestriction: RuntimeCapabilityPolicyInput['installProcessExecutionRestriction'];
@@ -45,6 +45,7 @@ export function createNodeRunOrchestrator(input: NodeRunOrchestratorInput): RunO
     });
 
     return createRunOrchestrator({
+        availableParallelism: os.availableParallelism(),
         createSeed: createRandomRunSeed,
         createResourceUsageTracker(options) {
             return createNodeResourceUsageTracker(wallClock, options);

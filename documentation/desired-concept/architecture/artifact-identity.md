@@ -81,7 +81,7 @@ type RuntimeId = {
 
 type WorkloadId = {
     readonly name: string; // 'small', 'medium', 'large', 'real-world-1'
-    readonly params?: Record<string, string>;
+    readonly params: Readonly<Record<string, string>>;
 };
 
 type WorkId = {

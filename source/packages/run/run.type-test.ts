@@ -13,6 +13,8 @@ import {
     type loadRunConfig,
     type LoadedRunConfig,
     type orchestrator,
+    type PlacementPlan,
+    type PlacementTrace,
     type ResolvedRun,
     type RunCommand,
     type RunConfig,
@@ -44,7 +46,12 @@ import {
     type RunTestFamily,
     type RunWorkDistribution,
     type RunWorkerLifecycle,
-    type SerializedValue
+    type RuntimeId,
+    type SerializedValue,
+    type WorkloadId,
+    type WorkId,
+    type WorkUnit,
+    type WorkUnitMode
 } from './run.entry-point.ts';
 
 declare const outputRenderer: DefinedOutputRenderer;
@@ -94,6 +101,14 @@ type ProjectProfileFileSets = {
             readonly include: readonly [string, ...readonly string[]];
         }>
     >;
+};
+type ExpectedPlacementTraceKinds = {
+    readonly 'hedged-duplicate-discarded': true;
+    readonly 'hedged-duplicate-started': true;
+    readonly 'unit-completed': true;
+    readonly 'unit-reassigned': true;
+    readonly 'unit-started': true;
+    readonly 'worker-crashed': true;
 };
 
 describe('@overkill-dev/run', function () {
@@ -152,15 +167,19 @@ describe('@overkill-dev/run', function () {
 
     test('exposes serializable run facts with case annotations and controls', function () {
         expect<keyof RunFacts>().type.toBe<'cases' | 'environment' | 'execution' | 'loader' | 'reproducibility'>();
-        expect<RunExecutionFacts['engine']['kind']>().type.toBe<'default' | 'instance' | 'module'>();
-        expect<RunExecutionFacts['capture']>().type.toBe<'buffered' | 'live'>();
-        expect<RunExecutionFacts['processModel']>().type.toBe<RunProcessModel>();
-        expect<RunExecutionFacts['profile']>().type.toBe<string>();
-        expect<RunExecutionFacts['resourceUsagePolicy']>().type.toBe<RunResourceUsagePolicy>();
         expect<RunFacts['cases'][number]['annotations']>().type.toBe<SerializedValue>();
         expect<RunFacts['cases'][number]['controls']>().type.toBe<SerializedValue>();
         expect<RunFacts['reproducibility']['selection']>().type.toBe<RunSelection>();
         expect<RunFacts>().type.toBeAssignableTo<Readonly<Record<string, unknown>>>();
+    });
+
+    test('exposes serializable run execution facts', function () {
+        expect<RunExecutionFacts['engine']['kind']>().type.toBe<'default' | 'instance' | 'module'>();
+        expect<RunExecutionFacts['capture']>().type.toBe<'buffered' | 'live'>();
+        expect<RunExecutionFacts['processModel']>().type.toBe<RunProcessModel>();
+        expect<RunExecutionFacts['placementPlan']>().type.toBe<PlacementPlan | null>();
+        expect<RunExecutionFacts['profile']>().type.toBe<string>();
+        expect<RunExecutionFacts['resourceUsagePolicy']>().type.toBe<RunResourceUsagePolicy>();
     });
 
     test('exposes case file set facts', function () {
@@ -185,6 +204,33 @@ describe('@overkill-dev/run', function () {
         }>();
     });
 
+    test('exposes worker-pool placement facts', function () {
+        expect<
+            Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['placementPlan']
+        >()
+            .type
+            .toBe<PlacementPlan | null>();
+    });
+
+    test('exposes work-unit planning types', function () {
+        expect<WorkId['runtime']>().type.toBe<RuntimeId | null>();
+        expect<WorkId['workload']>().type.toBe<WorkloadId | null>();
+        expect<WorkUnit['work']>().type.toBe<readonly [WorkId, ...readonly WorkId[]]>();
+        expect<WorkUnit['id']['mode']>().type.toBe<WorkUnitMode>();
+        expect<PlacementPlan['lanes'][number]['executor']['kind']>().type.toBe<
+            'browser' | 'local-process' | 'local-worker' | 'remote'
+        >();
+        expect<PlacementPlan['assignments'][number]['unit']>().type.toBe<WorkUnit['id']>();
+    });
+
+    test('exposes placement trace entry kinds', function () {
+        expect<Readonly<Record<PlacementTrace['entries'][number]['kind'], true>>>().type.toBe<
+            ExpectedPlacementTraceKinds
+        >();
+    });
+});
+
+describe('@overkill-dev/run config', function () {
     test('exposes collection, soft, and hard timeout facts', function () {
         expect<RunExecutionFacts['timeoutPolicy']['collectionMilliseconds']>().type.toBe<number>();
         expect<RunExecutionFacts['timeoutPolicy']['hardMilliseconds']>().type.toBe<number>();
@@ -200,6 +246,9 @@ describe('@overkill-dev/run', function () {
         expect<RunProfileConfig>().type.toBe<RunIntegrationProfileConfig | RunMicrotestProfileConfig>();
         expect<RunConfig['profiles']['backend-http']>().type.toBe<RunProfileConfig>();
         expect<RunConfig['reporters']>().type.toBe<readonly DefinedReporter[]>();
+    });
+
+    test('exposes run resource budget and resolution error types', function () {
         expect<keyof RunResourceBudgets>().type.toBe<
             'activeResourceCount' | 'javaScriptEngineHeapBytes' | 'residentSetBytes' | 'residentSetGrowthBytesPerSecond'
         >();

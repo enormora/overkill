@@ -7,7 +7,6 @@ import type {
     ReporterEvent,
     ResourceUsageSnapshot
 } from '../packages/engine/engine.entry-point.ts';
-import { collectedRunCaseEntries } from './collected-run-plan.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
     applyEvent
@@ -31,10 +30,15 @@ import type {
 } from './worker-pool-protocol.ts';
 import {
     runStartTimeFromMilliseconds,
-    type WorkerPoolFileUnit,
     type WorkerPoolRunRuntime,
     type WorkerPoolTaskRun
 } from './worker-pool-runtime.ts';
+import type {
+    PlacementPlan,
+    PlacementLane,
+    WorkUnit,
+    WorkId
+} from './run-types.ts';
 
 type WorkerPoolTaskChannel = {
     readonly close: () => void;
@@ -43,8 +47,8 @@ type WorkerPoolTaskChannel = {
 
 type WorkerPoolUnitQueue = {
     readonly clear: () => void;
-    readonly pull: () => WorkerPoolFileUnit | null;
-    readonly requeue: (unit: WorkerPoolFileUnit) => void;
+    readonly pull: () => WorkUnit | null;
+    readonly requeue: (unit: WorkUnit) => void;
 };
 
 type CompletedTaskRuns = {
@@ -71,12 +75,12 @@ function portTransferList(port: NodeMessagePort): readonly NodeMessagePort[] {
     return [ port ];
 }
 
-function casesByKey(
-    assignedCases: readonly WorkerPoolFileUnit['assignedCases'][number][]
-): ReadonlyMap<string, SupervisedCase> {
-    return new Map(assignedCases.map(function toCaseEntry(id) {
-        return [ caseIdentityKey(id), { capture: null, id } ];
-    }));
+function casesByKey(unit: WorkUnit): ReadonlyMap<string, SupervisedCase> {
+    return new Map(
+        unit.work.map(function toCaseEntry(work) {
+            return [ caseIdentityKey(work.case), { capture: null, id: work.case } ];
+        })
+    );
 }
 
 async function recordReporterEventErrors(
@@ -110,7 +114,7 @@ function startTaskTimeout(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRunt
     taskRun.timeout.write(runtime.dependencies.wallClock.setTimeout(function abortTimedOutWorker() {
         taskRun.endedByParent.write(true);
         taskRun.requeuePendingCases.write(true);
-        taskRun.state.recordRunnerError(crashError(taskRun.state, 'Worker-pool file task exceeded hard timeout.'));
+        taskRun.state.recordRunnerError(crashError(taskRun.state, 'Worker-pool work unit exceeded hard timeout.'));
         taskRun.state.recordTerminalActiveCases('crashed');
         taskRun.controller.abort();
     }, runtime.resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds));
@@ -136,7 +140,7 @@ function handleWorkerEvent(
         }
         : event;
 
-    applyEvent(reportedEvent, taskRun.state, casesByKey(taskRun.unit.assignedCases));
+    applyEvent(reportedEvent, taskRun.state, casesByKey(taskRun.unit));
 
     if (reportedEvent.kind === 'test-end' && taskRun.state.activeCases.size === 0) {
         clearTaskTimeout(taskRun, runtime.dependencies);
@@ -184,13 +188,21 @@ function workerPoolEngine(runtime: WorkerPoolRunRuntime): WorkerPoolCommand['eng
     return runtime.resolvedRun.engine;
 }
 
-function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkerPoolFileUnit): WorkerPoolCommand {
+function unitFile(unit: WorkUnit): string {
+    if (unit.id.mode !== 'file') {
+        throw new Error('Worker-pool file distribution requires file work units.');
+    }
+
+    return unit.id.key;
+}
+
+function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit): WorkerPoolCommand {
     return {
         collectionTimeoutMilliseconds: runtime.resolvedRun.facts.execution.timeoutPolicy.collectionMilliseconds,
         cwd: runtime.resolvedRun.cwd,
         engine: workerPoolEngine(runtime),
         hardTimeoutMilliseconds: runtime.resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds,
-        paths: [ unit.file ],
+        paths: [ unitFile(unit) ],
         resourceBudgets: runtime.resolvedRun.facts.execution.resourceUsagePolicy.budgets,
         resourceUsageSamplingIntervalMilliseconds: runtime
             .resolvedRun
@@ -217,7 +229,7 @@ async function runWorkerTask(
     startedAtMilliseconds: number
 ): Promise<WorkerPoolRunOutput> {
     const output: unknown = await runtime.pool.run({
-        assignedCases: taskRun.unit.assignedCases,
+        assignedWork: taskRun.unit.work,
         command: createRunCommand(runtime, taskRun.unit),
         kind: 'run',
         port: channel.port,
@@ -249,7 +261,7 @@ async function runFileUnit(
     }
 }
 
-function createTaskRun(unit: WorkerPoolFileUnit): WorkerPoolTaskRun {
+function createTaskRun(unit: WorkUnit): WorkerPoolTaskRun {
     return {
         controller: new AbortController(),
         endedByParent: createStoredRunValue(false),
@@ -261,20 +273,21 @@ function createTaskRun(unit: WorkerPoolFileUnit): WorkerPoolTaskRun {
     };
 }
 
-function pendingCases(taskRun: WorkerPoolTaskRun): readonly WorkerPoolFileUnit['assignedCases'][number][] {
-    return taskRun.unit.assignedCases.filter(function caseHasNotStarted(testCase) {
-        return !taskRun.startedCases.has(caseIdentityKey(testCase));
+function pendingWork(taskRun: WorkerPoolTaskRun): readonly WorkId[] {
+    return taskRun.unit.work.filter(function caseHasNotStarted(work) {
+        return !taskRun.startedCases.has(caseIdentityKey(work.case));
     });
 }
 
-function pendingFileUnit(taskRun: WorkerPoolTaskRun): WorkerPoolFileUnit | null {
-    const cases = pendingCases(taskRun);
+function pendingWorkUnit(taskRun: WorkerPoolTaskRun): WorkUnit | null {
+    const work = pendingWork(taskRun);
+    const firstWork = work[0];
 
-    return cases.length === 0
+    return firstWork === undefined
         ? null
         : {
-            assignedCases: cases,
-            file: taskRun.unit.file
+            ...taskRun.unit,
+            work: [ firstWork, ...work.slice(1) ]
         };
 }
 
@@ -328,19 +341,19 @@ function recordWorkerCrash(
 function handleParentEndedFailure(
     taskRun: WorkerPoolTaskRun,
     context: TaskFailureContext
-): WorkerPoolFileUnit | null {
+): WorkUnit | null {
     if (!taskRun.requeuePendingCases.read()) {
         return null;
     }
 
-    return recordWorkerCrash(context.runtime, context.crashCount, context.queue) ? null : pendingFileUnit(taskRun);
+    return recordWorkerCrash(context.runtime, context.crashCount, context.queue) ? null : pendingWorkUnit(taskRun);
 }
 
 function handleTaskFailure(
     error: unknown,
     taskRun: WorkerPoolTaskRun,
     context: TaskFailureContext
-): WorkerPoolFileUnit | null {
+): WorkUnit | null {
     if (taskRun.endedByParent.read()) {
         return handleParentEndedFailure(taskRun, context);
     }
@@ -348,10 +361,10 @@ function handleTaskFailure(
     taskRun.state.recordRunnerError(crashError(taskRun.state, crashReason(error)));
     taskRun.state.recordTerminalActiveCases('crashed');
 
-    return recordWorkerCrash(context.runtime, context.crashCount, context.queue) ? null : pendingFileUnit(taskRun);
+    return recordWorkerCrash(context.runtime, context.crashCount, context.queue) ? null : pendingWorkUnit(taskRun);
 }
 
-function createUnitQueue(units: readonly WorkerPoolFileUnit[]): WorkerPoolUnitQueue {
+function createUnitQueue(units: readonly WorkUnit[]): WorkerPoolUnitQueue {
     const pendingUnits = Array.from(units);
     let nextIndex = 0;
 
@@ -407,27 +420,44 @@ async function runWorkerLoop(context: WorkerLoopContext): Promise<void> {
     }
 }
 
-function workerLoopIndexes(runtime: WorkerPoolRunRuntime): readonly number[] {
-    return Array.from({ length: runtime.pool.options.maxThreads }, function toWorkerIndex(_value, index) {
-        return index;
+function unitByKey(units: readonly WorkUnit[]): ReadonlyMap<string, WorkUnit> {
+    return new Map(units.map(function toEntry(unit) {
+        return [ JSON.stringify(unit.id), unit ];
+    }));
+}
+
+function unitsAssignedToLane(plan: PlacementPlan, lane: PlacementLane): readonly WorkUnit[] {
+    const units = unitByKey(plan.units);
+
+    return plan.assignments.flatMap(function toUnit(assignment) {
+        const unit = units.get(JSON.stringify(assignment.unit));
+
+        if (assignment.lane !== lane.id) {
+            return [];
+        }
+
+        if (unit === undefined) {
+            throw new Error('Placement assignment referenced an unknown work unit.');
+        }
+
+        return [ unit ];
     });
 }
 
 export async function executeWorkerPoolUnits(
     runtime: WorkerPoolRunRuntime,
-    units: readonly WorkerPoolFileUnit[],
+    placementPlan: PlacementPlan,
     startedAtMilliseconds: number
 ): Promise<readonly WorkerPoolTaskRun[]> {
-    const queue = createUnitQueue(units);
     const completedTaskRuns: WorkerPoolTaskRun[] = [];
     const crashCount = createStoredRunValue(0);
 
     await Promise.all(
-        workerLoopIndexes(runtime).map(async function runLoop() {
+        placementPlan.lanes.map(async function runLoop(lane) {
             await runWorkerLoop({
                 completedTaskRuns,
                 crashCount,
-                queue,
+                queue: createUnitQueue(unitsAssignedToLane(placementPlan, lane)),
                 runtime,
                 startedAtMilliseconds
             });
@@ -504,7 +534,7 @@ export async function reportRunStart(
     runtime: WorkerPoolRunRuntime,
     startedAtMilliseconds: number
 ): Promise<void> {
-    if (collectedRunCaseEntries(runtime.collectedPlan).length === 0) {
+    if (runtime.resolvedRun.facts.execution.placementPlan?.units.length === 0) {
         return;
     }
 

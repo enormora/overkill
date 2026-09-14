@@ -20,8 +20,7 @@ import {
 } from './worker-pool-results.ts';
 import {
     createWorkerPoolRuntime,
-    fileUnits,
-    workerPoolCollectedPlan,
+    workerPoolPlacementPlan,
     type WorkerPoolCollectionResult
 } from './worker-pool-runtime.ts';
 
@@ -37,7 +36,7 @@ async function executeWorkerPoolRunWithState(
     dependencies: RunOrchestratorDependencies,
     collectionRunState: SupervisedRunState
 ): Promise<RunResult> {
-    if (fileUnits(workerPoolCollectedPlan(resolvedRun)).length === 0) {
+    if (workerPoolPlacementPlan(resolvedRun).units.length === 0) {
         return await createEmptyWorkerPoolResult(resolvedRun, dependencies, collectionRunState);
     }
 
@@ -54,7 +53,7 @@ async function executeWorkerPoolRunWithState(
         startPoolResourceTracking(runtime);
         const completedTaskRuns = await executeWorkerPoolUnits(
             runtime,
-            fileUnits(runtime.collectedPlan),
+            workerPoolPlacementPlan(resolvedRun),
             startedAtMilliseconds
         );
 

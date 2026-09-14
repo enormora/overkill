@@ -2,6 +2,7 @@ import { createSuite as createOverkillSuite } from '../packages/engine/engine.en
 import { testNode as supervisedRunTestNode } from './supervised-run-suite.test.ts';
 import { testNode as workerPoolExecutionStateTestNode } from './worker-pool-execution-state.test.ts';
 import { testNode as workerPoolLifecycleTestNode } from './worker-pool-lifecycle.test.ts';
+import { testNode as workerPoolPlacementValidationTestNode } from './worker-pool-placement-validation.test.ts';
 import { testNode as workerPoolPlanningTestNode } from './worker-pool-planning.test.ts';
 import { testNode as workerPoolRunTestNode } from './worker-pool-run.test.ts';
 import { testNode as workerPoolRuntimeTestNode } from './worker-pool-runtime.test.ts';
@@ -15,6 +16,7 @@ export const testNode = createOverkillSuite({
         supervisedRunTestNode,
         workerPoolExecutionStateTestNode,
         workerPoolLifecycleTestNode,
+        workerPoolPlacementValidationTestNode,
         workerPoolPlanningTestNode,
         workerPoolRunTestNode,
         workerPoolRuntimeTestNode

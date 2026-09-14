@@ -9,6 +9,7 @@ import type {
     RunConfig,
     RunFacts,
     RunExecutionFacts,
+    PlacementPlan,
     RunProfileConfig,
     RunRequest,
     RunResourceBudgets,
@@ -20,6 +21,7 @@ export type RunFactsInput = {
     readonly config: RunConfig;
     readonly dependencies: RunOrchestratorDependencies;
     readonly engine: RunCommand['engine'];
+    readonly placementPlan: PlacementPlan | null;
     readonly projectRoot: string;
     readonly request: RunRequest;
 };
@@ -125,6 +127,7 @@ function createRunExecutionFacts(
         debug: input.request.debug,
         engine: runEngineFacts(input.engine),
         order: input.request.order,
+        placementPlan: input.placementPlan,
         profile: input.request.profile,
         resourceUsagePolicy: resolveResourceUsagePolicy(input.request, profile),
         scheduling: profile.execution.scheduling,
