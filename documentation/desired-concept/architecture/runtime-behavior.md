@@ -238,7 +238,7 @@ only supervision.
 
 Resource usage measurement observes how much process memory and runtime state a
 run used. Resource budgets are thresholds over that data. They are part of
-runtime policy, not benchmark policy: a benchmark asks "how much did this
+runtime policy, not benchmark budgets: a benchmark asks "how much did this
 workload use?", while a resource budget asks "did this test exceed the ceiling
 for this profile?"
 

@@ -230,7 +230,7 @@ Canonical shape:
   surface
 - unit, integration, browser, and type-test differences normally live as
   named profiles in that one policy file, not as separate convention files
-- benchmark policy lives in the standard `benchmark` configuration domain
+- benchmark configuration lives in the standard `benchmark` configuration domain
   because benchmark execution uses the `overkill bench` namespace
 
 The only configuration-oriented CLI flag should be `--config <path>` to pick
@@ -285,7 +285,7 @@ export const config = defineConfig({
 });
 ```
 
-Benchmark policy is a standard top-level configuration domain because
+Benchmark configuration is a standard top-level configuration domain because
 benchmark execution uses `overkill bench`, not `overkill run --profile
 benchmark`.
 
@@ -368,7 +368,7 @@ Configuration belongs above the engine. `@overkill-dev/run` owns configuration
 file loading APIs, CLI discovery, and cross-package merging/validation.
 Standard-stack packages may still contribute their own configuration domains
 where that matches project policy, such as reporters, coverage, baseline
-policy, and benchmark policy. Optional packages start with typed imported
+policy, and benchmark configuration. Optional packages start with typed imported
 values such as profile factories, runtime/resource factories, reporters,
 baseline adapters, or authoring helpers rather than adding package-owned
 top-level config keys by default. The detailed package-boundary matrix lives in

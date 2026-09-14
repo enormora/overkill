@@ -1737,7 +1737,7 @@ sample explicitly defines them.
   illustrative `saveUser` example
 - `arbitrary.user`, `arbitrary.bytes`, `gen.user`: placeholder generator
   references in property-test snippets
-- `relation`, `differential`, `linearizability`, `browserBenchmark`,
-  `slo()`: settled helper names for higher-layer families; owning
+- `relation`, `differential`, `linearizability`, `browserBenchmark`:
+  settled helper names for higher-layer families; owning
   documentation defines the package home and concept-level semantics, but
   this index does not own their full signatures
