@@ -98,8 +98,7 @@ type SimulationDefinition<Scenarios extends string> = {
     readonly scenarios: Readonly<Record<Scenarios, SimulationScenario>>;
 };
 
-type ScenarioKeyOf<Simulation> = Simulation extends SimulationDefinition<infer Scenario>
-    ? Scenario
+type ScenarioKeyOf<Simulation> = Simulation extends SimulationDefinition<infer Scenario> ? Scenario
     : never;
 ```
 
@@ -183,7 +182,7 @@ Its core handler shape is fetch-style:
 ```ts
 type SimulatedHttpHandler<Scenario extends string> = (
     request: Request,
-    scenario: { readonly key: Scenario }
+    scenario: { readonly key: Scenario; }
 ) => Response | Promise<Response>;
 ```
 

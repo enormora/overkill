@@ -1405,8 +1405,7 @@ type SimulationDefinition<Scenario extends string> = {
     readonly scenarios: Readonly<Record<Scenario, SimulationScenario>>;
 };
 
-type ScenarioKeyOf<Simulation> = Simulation extends SimulationDefinition<infer Scenario>
-    ? Scenario
+type ScenarioKeyOf<Simulation> = Simulation extends SimulationDefinition<infer Scenario> ? Scenario
     : never;
 
 type SimulatedHttpServerDefinition<Scenario extends string> = {
@@ -1495,24 +1494,40 @@ type RuntimeVariantBody<
 
 type RuntimeMatrix<
     Name extends string,
-    Variants extends Readonly<Record<string, RuntimeVariantBody<
-        Readonly<Record<string, ResourceDefinition<unknown>>>,
-        Readonly<Record<string, readonly string[]>>
-    >>>
+    Variants extends Readonly<
+        Record<
+            string,
+            RuntimeVariantBody<
+                Readonly<Record<string, ResourceDefinition<unknown>>>,
+                Readonly<Record<string, readonly string[]>>
+            >
+        >
+    >
 > = {
     readonly kind: 'runtime-matrix';
     readonly name: Name;
     readonly variants: Variants;
 };
 
-type RuntimeGraph = RuntimeDefinition<
-    string,
-    Readonly<Record<string, ResourceDefinition<unknown>>>,
-    Readonly<Record<string, readonly string[]>>
-> | RuntimeMatrix<string, Readonly<Record<string, RuntimeVariantBody<
-    Readonly<Record<string, ResourceDefinition<unknown>>>,
-    Readonly<Record<string, readonly string[]>>
->>>> | ComposedRuntimes<ReadonlyArray<RuntimeGraph>>;
+type RuntimeGraph =
+    | RuntimeDefinition<
+        string,
+        Readonly<Record<string, ResourceDefinition<unknown>>>,
+        Readonly<Record<string, readonly string[]>>
+    >
+    | RuntimeMatrix<
+        string,
+        Readonly<
+            Record<
+                string,
+                RuntimeVariantBody<
+                    Readonly<Record<string, ResourceDefinition<unknown>>>,
+                    Readonly<Record<string, readonly string[]>>
+                >
+            >
+        >
+    >
+    | ComposedRuntimes<ReadonlyArray<RuntimeGraph>>;
 
 type ComposedRuntimes<Runtimes extends ReadonlyArray<RuntimeGraph>> = {
     readonly kind: 'composed-runtimes';
@@ -1574,13 +1589,15 @@ type RuntimeTestScope<Graph extends RuntimeGraph, Scope extends TestScope = Test
     readonly runtimes: RuntimeGraphContext<Graph>;
 };
 
-type RuntimeTestBody<Graph extends RuntimeGraph, Scope extends TestScope = TestScope> =
-    (scope: RuntimeTestScope<Graph, Scope>) => ReturnType<TestBody>;
+type RuntimeTestBody<Graph extends RuntimeGraph, Scope extends TestScope = TestScope> = (
+    scope: RuntimeTestScope<Graph, Scope>
+) => ReturnType<TestBody>;
 
 type RuntimeWrappedTestBody<Graph extends RuntimeGraph, Scope extends TestScope = TestScope> =
-    ((scope: Scope) => ReturnType<TestBody>) & {
-    readonly runtimeGraph: Graph;
-};
+    & ((scope: Scope) => ReturnType<TestBody>)
+    & {
+        readonly runtimeGraph: Graph;
+    };
 
 type TestBodyResourceAttachments = {
     readonly resources: Readonly<Record<string, ResourceDefinition<unknown>>>;
@@ -1597,8 +1614,9 @@ type ResourceTestScope<Resources extends ResourceMap, Scope extends TestScope = 
     readonly resources: ResourceScopeContext<Resources>;
 };
 
-type ResourceTestBody<Resources extends ResourceMap, Scope extends TestScope = TestScope> =
-    (scope: ResourceTestScope<Resources, Scope>) => ReturnType<TestBody>;
+type ResourceTestBody<Resources extends ResourceMap, Scope extends TestScope = TestScope> = (
+    scope: ResourceTestScope<Resources, Scope>
+) => ReturnType<TestBody>;
 
 type ResourceWrappedTestBody<
     Resources extends ResourceMap,
@@ -1613,10 +1631,15 @@ type RuntimeMatrixDefinition<Name extends string, Variants extends RuntimeVarian
     readonly variants: Variants;
 };
 
-type RuntimeVariantMap = Readonly<Record<string, RuntimeVariantBody<
-    Readonly<Record<string, ResourceDefinition<unknown>>>,
-    Readonly<Record<string, readonly string[]>>
->>>;
+type RuntimeVariantMap = Readonly<
+    Record<
+        string,
+        RuntimeVariantBody<
+            Readonly<Record<string, ResourceDefinition<unknown>>>,
+            Readonly<Record<string, readonly string[]>>
+        >
+    >
+>;
 
 declare function defineRuntimeMatrix<
     const Name extends string,
