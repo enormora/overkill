@@ -56,6 +56,11 @@ const policyTestCase: PolicyTestCase = {
         params: null,
         suite: [ 'runtime policy' ]
     },
+    resourceAttachments: {
+        directResources: [],
+        resourceGraph: [],
+        runtimeGraphs: []
+    },
     suitePath: [
         { definitionLocations: [ { kind: 'unknown' as const } ], title: 'runtime policy' }
     ],

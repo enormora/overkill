@@ -8,8 +8,9 @@ import {
     type TestBody,
     type TestControlsInput,
     type TestFamily,
-    isResourceAttachedTestBody,
-    markResourceAttachedTestBody,
+    attachTestBodyResourceAttachments,
+    hasTestBodyResourceAttachments,
+    readTestBodyResourceAttachments,
     type ResourceFreeTestBody,
     type TestScope
 } from '../engine/engine.entry-point.ts';
@@ -102,7 +103,9 @@ function tableCaseBody<Row>(
         });
     };
 
-    return isResourceAttachedTestBody(definition.test) ? markResourceAttachedTestBody(body) : body;
+    return hasTestBodyResourceAttachments(definition.test)
+        ? attachTestBodyResourceAttachments(body, readTestBodyResourceAttachments(definition.test))
+        : body;
 }
 
 function ensureTableDefinitionShape(definition: Readonly<Record<string, unknown>>): void {

@@ -965,6 +965,7 @@ type TestPlanCase = {
     readonly testFamily: TestFamily | null;
     readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
     readonly body: TestBody;
+    readonly resourceAttachments: TestBodyResourceAttachments;
 };
 
 type TestPlan = {
@@ -1088,6 +1089,7 @@ type CollectedRunCase = {
     readonly controls: SerializedValue;
     readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
     readonly params: string | null;
+    readonly resourceAttachments: TestBodyResourceAttachments;
     readonly suitePath: ReadonlyArray<TestPlanSuitePathEntry>;
     readonly testFamily: TestFamily | null;
     readonly title: string;
@@ -1593,15 +1595,40 @@ type RuntimeTestBody<Graph extends RuntimeGraph, Scope extends TestScope = TestS
     scope: RuntimeTestScope<Graph, Scope>
 ) => ReturnType<TestBody>;
 
-type RuntimeWrappedTestBody<Graph extends RuntimeGraph, Scope extends TestScope = TestScope> =
-    & ((scope: Scope) => ReturnType<TestBody>)
-    & {
-        readonly runtimeGraph: Graph;
-    };
+type ResourceAttachedTestBody<Body, AttachmentMarker> =
+    & Body
+    & Readonly<Record<never, AttachmentMarker>>;
+
+type RuntimeWrappedTestBody<Graph extends RuntimeGraph, Scope extends TestScope = TestScope> = ResourceAttachedTestBody<
+    (scope: Scope) => ReturnType<TestBody>,
+    Graph
+>;
+
+type TestBodyExecutionRequirementSummary = Readonly<Record<string, unknown>>;
+
+type TestBodyDirectResourceAttachmentSummary = {
+    readonly key: string;
+    readonly resourceName: string;
+};
+
+type TestBodyResourceSummary = {
+    readonly dependencies: ReadonlyArray<string>;
+    readonly name: string;
+    readonly requirements: ReadonlyArray<TestBodyExecutionRequirementSummary>;
+    readonly scope: string;
+};
+
+type TestBodyRuntimeSummary = {
+    readonly dimensions: Readonly<Record<string, string>>;
+    readonly name: string;
+    readonly requirements: ReadonlyArray<TestBodyExecutionRequirementSummary>;
+    readonly resources: ReadonlyArray<TestBodyDirectResourceAttachmentSummary>;
+};
 
 type TestBodyResourceAttachments = {
-    readonly resources: Readonly<Record<string, ResourceDefinition<unknown>>>;
-    readonly runtimeGraphs: ReadonlyArray<RuntimeGraph>;
+    readonly directResources: ReadonlyArray<TestBodyDirectResourceAttachmentSummary>;
+    readonly resourceGraph: ReadonlyArray<TestBodyResourceSummary>;
+    readonly runtimeGraphs: ReadonlyArray<TestBodyRuntimeSummary>;
 };
 
 type ResourceMap = Readonly<Record<string, ResourceDefinition<unknown>>>;
@@ -1621,9 +1648,10 @@ type ResourceTestBody<Resources extends ResourceMap, Scope extends TestScope = T
 type ResourceWrappedTestBody<
     Resources extends ResourceMap,
     Scope extends TestScope = TestScope
-> = ((scope: Scope) => ReturnType<TestBody>) & {
-    readonly resources: Resources;
-};
+> = ResourceAttachedTestBody<
+    (scope: Scope) => ReturnType<TestBody>,
+    Resources
+>;
 
 type RuntimeMatrixDefinition<Name extends string, Variants extends RuntimeVariantMap> = {
     readonly name: Name;
@@ -1686,10 +1714,12 @@ directly.
 
 `withRuntime(runtime, body)`, `withResource(resource, body)`, and
 `withResources(resources, body)` carry first-party descriptor attachment
-metadata. They do not receive already acquired handles. Collection reads the
-descriptors before scheduling, planning lowers scopes and requirements into
-placement constraints, expands runtime matrices, and execution injects acquired
-handles into `scope.runtimes` and `scope.resources` when handles exist.
+metadata. They do not receive already acquired handles. Collection stores an
+IPC-safe summary with public resource keys, stable descriptor names, dependency
+edges, scopes, dimensions, and requirements before scheduling. Planning lowers
+those summaries into placement constraints, expands runtime matrices, and
+execution injects acquired handles into `scope.runtimes` and `scope.resources`
+when handles exist.
 Microtest profiles reject resource descriptors before body execution.
 Rejection is based on the collected attachment descriptors, not on which
 authoring wrapper or facade attached them.

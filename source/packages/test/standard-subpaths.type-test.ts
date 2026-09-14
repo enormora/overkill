@@ -47,14 +47,16 @@ import {
     defineRuntime,
     type ResourceLifecycleError,
     startRuntime,
+    withResource,
+    withResources,
     withRuntime,
     type ResourceContext,
     type ResourceHandle,
+    type ResourceWrappedTestBody,
+    type RuntimeGraph,
     type RuntimeSession,
     type RuntimeContext,
-    type RuntimeTestBody,
     type RuntimeWrappedTestBody,
-    type RuntimeTestScope,
     type TemporaryDirectoryHandle
 } from './resources.entry-point.ts';
 import {
@@ -183,109 +185,126 @@ describe('@overkill-dev/test standard subpaths', function () {
         });
     });
 
-    test('exposes resource descriptor types through the standard distribution', function () {
-        expect<ResourceHandle<typeof database>>().type.toBe<Database>();
-        expect<ResourceHandle<typeof temporaryDirectory>>().type.toBe<TemporaryDirectoryHandle>();
-        expect<ResourceContext<typeof runtime.resources>>().type.toBe<DatabaseContext>();
-        expect<RuntimeContext<typeof runtime>>().type.toBe<{
-            readonly database: Database;
-        }>();
-        expect(startRuntime({ runtime, signal: typeTestController.signal })).type.toBe<
-            Promise<RuntimeSession<typeof runtime>>
-        >();
-        expect<ResourceLifecycleError>().type.toBeAssignableTo<Error>();
-        expect(composeRuntimeContext(testScope, runtime, {
-            database: { url: 'postgres://localhost' }
-        }))
-            .type
-            .toBe<ExpectedComposedRuntimeScope>();
-        expect(runtime.name).type.toBe<'api'>();
-        expect(temporaryDirectory.name).type.toBe<'scratch'>();
-        expect<TemporaryDirectoryHandle>().type.toBe<{ readonly path: string; }>();
-    });
-
-    test('exposes runtime test context wrappers through the resources subpath', function () {
-        const runtimeBody = withRuntime(runtime, {
-            database: { url: 'postgres://localhost' }
-        }, function runWithDatabase(scope) {
-            expect(scope).type.toBe<RuntimeTestScope<typeof runtime>>();
-            expect(scope.runtime.database.url).type.toBe<string>();
-
-            return scope.assert.collect();
+    describe('@overkill-dev/test/resources standard subpath', function () {
+        test('exposes resource descriptor types through the standard distribution', function () {
+            expect<ResourceHandle<typeof database>>().type.toBe<Database>();
+            expect<ResourceHandle<typeof temporaryDirectory>>().type.toBe<TemporaryDirectoryHandle>();
+            expect<ResourceContext<typeof runtime.resources>>().type.toBe<DatabaseContext>();
+            expect<RuntimeContext<typeof runtime>>().type.toBe<{
+                readonly database: Database;
+            }>();
+            expect(runtime.name).type.toBe<'api'>();
+            expect(temporaryDirectory.name).type.toBe<'scratch'>();
+            expect<TemporaryDirectoryHandle>().type.toBe<{ readonly path: string; }>();
         });
 
-        expect(runtimeBody).type.toBe<RuntimeWrappedTestBody>();
-        expect(runtimeBody).type.toBeAssignableTo<TestBody>();
-        expect<RuntimeTestBody<typeof runtime>>().type.toBe<
-            (scope: RuntimeTestScope<typeof runtime>) => ReturnType<TestBody>
-        >();
-        expect<typeof withRuntime>().type.not.toBeCallableWith(runtime, {
-            database: { port: 5432 }
-        }, function runInvalidRuntimeScope(scope: RuntimeTestScope<typeof runtime>) {
-            return scope.assert.collect();
-        });
-    });
-
-    test('types table runtime wrappers through the resources subpath', function () {
-        const tableRuntimeBody = withRuntime<typeof runtime, ParameterizedTestScope<TableRow>>(runtime, {
-            database: { url: 'postgres://localhost' }
-        }, function runTableWithDatabase(scope) {
-            expect(scope.parameters.value).type.toBe<number>();
-            expect(scope.runtime.database.url).type.toBe<string>();
-
-            return scope.assert.collect();
+        test('exposes resource lifecycle types through the standard distribution', function () {
+            expect(startRuntime({ runtime, signal: typeTestController.signal })).type.toBe<
+                Promise<RuntimeSession<typeof runtime>>
+            >();
+            expect<ResourceLifecycleError>().type.toBeAssignableTo<Error>();
+            expect(composeRuntimeContext(testScope, runtime, {
+                database: { url: 'postgres://localhost' }
+            }))
+                .type
+                .toBe<ExpectedComposedRuntimeScope>();
         });
 
-        expect(tableRuntimeBody).type.toBe<RuntimeWrappedTestBody<ParameterizedTestScope<TableRow>>>();
-        expect(tableRuntimeBody).type.toBeAssignableTo<TableTestBody<TableRow>>();
-    });
+        test('exposes runtime test context wrappers through the resources subpath', function () {
+            const runtimeBody = withRuntime(runtime, function runWithDatabase(scope) {
+                expect(scope).type.toBe<TestScope>();
+                return scope.assert.collect();
+            });
 
-    test('rejects runtime wrappers from microtest authoring types', function () {
-        const runtimeBody = withRuntime(runtime, {
-            database: { url: 'postgres://localhost' }
-        }, function runWithDatabase(scope) {
-            return scope.assert.collect();
+            expect(runtimeBody).type.toBe<RuntimeWrappedTestBody<typeof runtime>>();
+            expect(runtimeBody).type.toBeAssignableTo<TestBody>();
+            expect<RuntimeGraph>().type.toBeAssignableFrom<typeof runtime>();
+            expect<typeof withRuntime>().type.not.toBeCallableWith(runtime, {
+                database: { url: 'postgres://localhost' }
+            }, function runInvalidRuntimeScope(scope: TestScope) {
+                return scope.assert.collect();
+            });
         });
-        const tableRuntimeBody = withRuntime<typeof runtime, ParameterizedTestScope<TableRow>>(runtime, {
-            database: { url: 'postgres://localhost' }
-        }, function runTableWithDatabase(scope) {
-            return scope.assert.collect();
-        });
-        const microtestFacade = createTestFacade({ testFamily: 'microtest' });
 
-        expect(rootTest).type.not.toBeCallableWith('uses database', runtimeBody);
-        expect(rootTest).type.not.toBeCallableWith({ body: runtimeBody, title: 'uses database' });
-        expect(microtestFacade.test).type.not.toBeCallableWith('uses database', runtimeBody);
-        expect(rootTable).type.not.toBeCallableWith({
-            cases: [ { value: 1 }, { value: 2 } ],
-            test: tableRuntimeBody,
-            title: 'rows'
-        });
-        expect(microtestFacade.table).type.not.toBeCallableWith({
-            cases: [ { value: 1 }, { value: 2 } ],
-            test: tableRuntimeBody,
-            title: 'rows'
-        });
-    });
+        test('types table runtime wrappers through the resources subpath', function () {
+            const tableRuntimeBody = withRuntime<typeof runtime, ParameterizedTestScope<TableRow>>(
+                runtime,
+                function runTableWithDatabase(scope) {
+                    expect(scope.parameters.value).type.toBe<number>();
 
-    test('accepts runtime wrappers from integration authoring types', function () {
-        const runtimeBody = withRuntime(runtime, {
-            database: { url: 'postgres://localhost' }
-        }, function runWithDatabase(scope) {
-            return scope.assert.collect();
-        });
-        const tableRuntimeBody = withRuntime<typeof runtime, ParameterizedTestScope<TableRow>>(runtime, {
-            database: { url: 'postgres://localhost' }
-        }, function runTableWithDatabase(scope) {
-            return scope.assert.collect();
-        });
-        const integrationFacade = createTestFacade({ testFamily: 'integration' });
+                    return scope.assert.collect();
+                }
+            );
 
-        expect(integrationFacade.test).type.toBeCallableWith('uses database', runtimeBody);
-        expect(integrationFacade.table).type.toBeCallableWith({
-            cases: [ { value: 1 }, { value: 2 } ],
-            test: tableRuntimeBody,
-            title: 'rows'
+            expect(tableRuntimeBody).type.toBe<
+                RuntimeWrappedTestBody<typeof runtime, ParameterizedTestScope<TableRow>>
+            >();
+            expect(tableRuntimeBody).type.toBeAssignableTo<TableTestBody<TableRow>>();
+        });
+
+        test('types direct resource wrappers through the resources subpath', function () {
+            const resourceBody = withResource(temporaryDirectory, function runWithScratch(scope) {
+                expect(scope).type.toBe<TestScope>();
+
+                return scope.assert.collect();
+            });
+            const resourcesBody = withResources({ dir: temporaryDirectory }, function runWithResources(scope) {
+                expect(scope).type.toBe<TestScope>();
+
+                return scope.assert.collect();
+            });
+
+            expect(resourceBody).type.toBe<ResourceWrappedTestBody<Record<'scratch', typeof temporaryDirectory>>>();
+            expect(resourcesBody).type.toBe<ResourceWrappedTestBody<{ readonly dir: typeof temporaryDirectory; }>>();
+            expect(resourceBody).type.toBeAssignableTo<TestBody>();
+            expect(resourcesBody).type.toBeAssignableTo<TestBody>();
+        });
+
+        test('rejects runtime wrappers from microtest authoring types', function () {
+            const runtimeBody = withRuntime(runtime, function runWithDatabase(scope) {
+                return scope.assert.collect();
+            });
+            const tableRuntimeBody = withRuntime<typeof runtime, ParameterizedTestScope<TableRow>>(
+                runtime,
+                function runTableWithDatabase(scope) {
+                    return scope.assert.collect();
+                }
+            );
+            const microtestFacade = createTestFacade({ testFamily: 'microtest' });
+
+            expect(rootTest).type.not.toBeCallableWith('uses database', runtimeBody);
+            expect(rootTest).type.not.toBeCallableWith({ body: runtimeBody, title: 'uses database' });
+            expect(microtestFacade.test).type.not.toBeCallableWith('uses database', runtimeBody);
+            expect(rootTable).type.not.toBeCallableWith({
+                cases: [ { value: 1 }, { value: 2 } ],
+                test: tableRuntimeBody,
+                title: 'rows'
+            });
+            expect(microtestFacade.table).type.not.toBeCallableWith({
+                cases: [ { value: 1 }, { value: 2 } ],
+                test: tableRuntimeBody,
+                title: 'rows'
+            });
+        });
+
+        test('accepts runtime wrappers from integration authoring types', function () {
+            const runtimeBody = withRuntime(runtime, function runWithDatabase(scope) {
+                return scope.assert.collect();
+            });
+            const tableRuntimeBody = withRuntime<typeof runtime, ParameterizedTestScope<TableRow>>(
+                runtime,
+                function runTableWithDatabase(scope) {
+                    return scope.assert.collect();
+                }
+            );
+            const integrationFacade = createTestFacade({ testFamily: 'integration' });
+
+            expect(integrationFacade.test).type.toBeCallableWith('uses database', runtimeBody);
+            expect(integrationFacade.table).type.toBeCallableWith({
+                cases: [ { value: 1 }, { value: 2 } ],
+                test: tableRuntimeBody,
+                title: 'rows'
+            });
         });
     });
 

@@ -1,6 +1,8 @@
 import { createSuite } from '../../packages/engine/engine.entry-point.ts';
+import { testNode as testBodyResourceAttachmentTestNode } from '../../engine/test-body-resource-attachment.test.ts';
 import { testNode as testPlanAuthoringRulesTestNode } from '../../engine/test-plan-authoring-rules.test.ts';
 import { testNode as testPlanLocationTestNode } from '../../engine/test-plan-location.test.ts';
+import { testNode as testPlanResourceAttachmentTestNode } from '../../engine/test-plan-resource-attachment.test.ts';
 import { testNode as testPlanTestNode } from '../../engine/test-plan.test.ts';
 import { testNode as skippedTestPlanTestNode } from '../../engine/skipped-test-plan.test.ts';
 
@@ -10,8 +12,10 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     children: [
+        testBodyResourceAttachmentTestNode,
         testPlanAuthoringRulesTestNode,
         testPlanLocationTestNode,
+        testPlanResourceAttachmentTestNode,
         skippedTestPlanTestNode,
         testPlanTestNode
     ]

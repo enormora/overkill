@@ -44,8 +44,8 @@ Standard subpaths:
   throwable-style test authoring.
 - `@overkill-dev/test/resources` re-exports typed resource and runtime
   descriptors from `@overkill-dev/resources`, including
-  `createTemporaryDirectoryResource(...)`, and adds `withRuntime(...)` for
-  explicit `scope.runtime` composition.
+  `createTemporaryDirectoryResource(...)`, and adds `withRuntime(...)`,
+  `withResource(...)`, and `withResources(...)` for descriptor attachment.
 - `@overkill-dev/test/bench` and `@overkill-dev/test/baselines` are reserved.
   They currently export only `unavailable()`.
 
@@ -242,7 +242,7 @@ import {
     createTemporaryDirectoryResource,
     defineResource,
     defineRuntime,
-    startRuntime,
+    withResource,
     withRuntime
 } from '@overkill-dev/test/resources';
 
@@ -265,19 +265,27 @@ const runtime = defineRuntime({
     resources: { database, scratch },
     requirements: []
 });
-await using session = await startRuntime({ runtime, signal });
 
 integration.test(
     'loads user',
-    withRuntime(runtime, session.context, (scope) => {
-        scope.assert.true(scope.runtime.scratch.path.length > 0);
-        scope.assert.equal(scope.runtime.database.loadUser('42').id, '42');
+    withRuntime(runtime, (scope) => {
+        scope.assert.true(scope.signal instanceof AbortSignal);
+        return scope.assert.collect();
+    })
+);
+
+integration.test(
+    'writes scratch output',
+    withResource(scratch, (scope) => {
+        scope.assert.true(scope.signal instanceof AbortSignal);
         return scope.assert.collect();
     })
 );
 ```
 
-Microtest authoring rejects first-party resource and runtime attachments.
+Resource wrappers attach descriptors for runner collection. Runner-managed
+handle injection is planned separately. Microtest authoring rejects first-party
+resource and runtime attachments.
 
 Test bodies receive async-control methods on `scope`:
 

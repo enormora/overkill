@@ -38,6 +38,11 @@ function createCollectedPlan(): CollectedRunPlan {
                         controls,
                         definitionLocations: [ { kind: 'unknown' as const } ],
                         params: null,
+                        resourceAttachments: {
+                            directResources: [],
+                            resourceGraph: [],
+                            runtimeGraphs: []
+                        },
                         suitePath: [
                             { definitionLocations: [ { kind: 'unknown' as const } ], title: 'integration' }
                         ],

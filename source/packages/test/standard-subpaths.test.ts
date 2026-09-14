@@ -1,4 +1,9 @@
-import { createSuite, createTestCase, type TestScope } from '../engine/engine.entry-point.ts';
+import {
+    createSuite,
+    createTestCase,
+    readTestBodyResourceAttachments,
+    type TestScope
+} from '../engine/engine.entry-point.ts';
 import { createReportingContext } from '../../engine/reporting-context.ts';
 import * as assertSubpath from './assert.entry-point.ts';
 import * as baselinesSubpath from './baselines.entry-point.ts';
@@ -26,6 +31,9 @@ const reservedSubpathModules: readonly ReservedSubpathModule[] = [
 ];
 const invokeTable = table as (...parameters: readonly unknown[]) => unknown;
 const invokeTest = test as (...parameters: readonly unknown[]) => unknown;
+const invokeWithResource = resourcesSubpath.withResource as (...parameters: readonly unknown[]) => unknown;
+const invokeWithResources = resourcesSubpath.withResources as (...parameters: readonly unknown[]) => unknown;
+const invokeWithRuntime = resourcesSubpath.withRuntime as (...parameters: readonly unknown[]) => unknown;
 
 type BoundaryRow = {
     readonly value: number;
@@ -38,6 +46,20 @@ type NamedRuntimeDescriptor = {
         readonly name: string;
     };
     readonly resources: Readonly<Record<string, unknown>>;
+};
+type CycleDependencies = {
+    readonly self: resourcesSubpath.ResourceDefinition<'cycle', string, CycleDependencies>;
+};
+type ResourceWrapperBehavior = {
+    readonly body: resourcesSubpath.RuntimeWrappedTestBody;
+    readonly database: NamedResourceDescriptor;
+    readonly resourceBody: resourcesSubpath.ResourceWrappedTestBody;
+    readonly runtime: NamedRuntimeDescriptor;
+    readonly tableBody: resourcesSubpath.RuntimeWrappedTestBody<
+        resourcesSubpath.RuntimeGraph,
+        ParameterizedTestScope<BoundaryRow>
+    >;
+    readonly temporaryDirectory: NamedResourceDescriptor;
 };
 
 function sortedKeys(value: Readonly<Record<string, unknown>>): readonly string[] {
@@ -110,6 +132,8 @@ function assertResourcesSubpathExports(scope: TestScope): void {
         'defineRuntime',
         'ResourceLifecycleError',
         'startRuntime',
+        'withResource',
+        'withResources',
         'withRuntime'
     ]);
     scope.assert.equal(typeof resourcesSubpath.startRuntime, 'function');
@@ -118,7 +142,10 @@ function assertResourcesSubpathExports(scope: TestScope): void {
 function assertRuntimeAuthoringBoundary(
     scope: TestScope,
     body: resourcesSubpath.RuntimeWrappedTestBody,
-    tableBody: resourcesSubpath.RuntimeWrappedTestBody<ParameterizedTestScope<BoundaryRow>>
+    tableBody: resourcesSubpath.RuntimeWrappedTestBody<
+        resourcesSubpath.RuntimeGraph,
+        ParameterizedTestScope<BoundaryRow>
+    >
 ): void {
     const integrationFacade = createTestFacade({ testFamily: 'integration' });
     const runtimeTable = integrationFacade.table({
@@ -153,6 +180,120 @@ function assertResourceDescriptors(
     scope.assert.equal(temporaryDirectory.name, 'scratch');
 }
 
+function assertRuntimeAttachments(
+    scope: TestScope,
+    body: resourcesSubpath.RuntimeWrappedTestBody
+): void {
+    scope.assert.deepEqual(readTestBodyResourceAttachments(body), {
+        directResources: [],
+        resourceGraph: [
+            {
+                dependencies: [],
+                name: 'database',
+                requirements: [ { kind: 'exclusive-resource', name: 'database' } ],
+                scope: 'per-case'
+            }
+        ],
+        runtimeGraphs: [
+            {
+                dimensions: {},
+                name: 'api',
+                requirements: [ { kind: 'startup-budget-milliseconds', minimumMilliseconds: 1000 } ],
+                resources: [ { key: 'database', resourceName: 'database' } ]
+            }
+        ]
+    });
+}
+
+function assertDirectResourceAttachments(
+    scope: TestScope,
+    body: resourcesSubpath.ResourceWrappedTestBody
+): void {
+    scope.assert.deepEqual(readTestBodyResourceAttachments(body), {
+        directResources: [ { key: 'scratch', resourceName: 'scratch' } ],
+        resourceGraph: [
+            {
+                dependencies: [],
+                name: 'scratch',
+                requirements: [],
+                scope: 'per-case'
+            }
+        ],
+        runtimeGraphs: []
+    });
+}
+
+function cyclicResource(): resourcesSubpath.ResourceDefinition<'cycle', string, CycleDependencies> {
+    const resource: resourcesSubpath.ResourceDefinition<'cycle', string, CycleDependencies> = resourcesSubpath
+        .defineResource({
+            name: 'cycle',
+            scope: 'per-case',
+            requirements: [],
+            dependencies: {
+                get self(): resourcesSubpath.ResourceDefinition<'cycle', string, CycleDependencies> {
+                    return resource;
+                }
+            },
+            acquire() {
+                return 'cycle';
+            },
+            dispose: null
+        });
+
+    return resource;
+}
+
+function assertResourceWrapperValidation(
+    scope: TestScope,
+    database: resourcesSubpath.AnyResourceDefinition,
+    runtime: resourcesSubpath.RuntimeGraph,
+    temporaryDirectory: resourcesSubpath.AnyResourceDefinition
+): void {
+    const body = function resourceBody() {
+        return function runResourceValidation(resourceScope: TestScope) {
+            return resourceScope.assert.collect();
+        };
+    };
+
+    scope.assert.throws(function rejectInvalidResource() {
+        invokeWithResource({ name: 'invalid' }, body());
+    }, { message: 'withResource() requires resource descriptors.' });
+    scope.assert.throws(function rejectInvalidRuntime() {
+        invokeWithRuntime({ name: 'invalid' }, body());
+    }, { message: 'withRuntime() requires a runtime descriptor.' });
+    scope.assert.throws(function rejectEmptyResources() {
+        invokeWithResources({}, body());
+    }, { message: 'withResources() requires at least one resource descriptor.' });
+    scope.assert.throws(function rejectNestedWrapper() {
+        resourcesSubpath.withResource(temporaryDirectory, resourcesSubpath.withRuntime(runtime, body()));
+    }, { message: 'withResource() does not support already wrapped bodies yet.' });
+    scope.assert.throws(function rejectDuplicateNames() {
+        const duplicateDatabase = resourcesSubpath.defineResource({
+            name: 'database',
+            scope: 'per-case',
+            requirements: [],
+            acquire() {
+                return { url: 'postgres://duplicate' };
+            },
+            dispose: null
+        });
+
+        resourcesSubpath.withResources({ database, duplicateDatabase }, body());
+    }, { message: 'Resource name "database" is used by multiple descriptors.' });
+    scope.assert.throws(function rejectCycles() {
+        resourcesSubpath.withResource(cyclicResource(), body());
+    }, { message: 'Resource dependency cycle detected: cycle -> cycle.' });
+}
+
+function assertResourceWrapperBehavior(scope: TestScope, input: ResourceWrapperBehavior): void {
+    scope.assert.equal(Array.isArray(input.body(scope)), true);
+    assertRuntimeAuthoringBoundary(scope, input.body, input.tableBody);
+    assertResourcesSubpathExports(scope);
+    assertResourceDescriptors(scope, input.database, input.runtime, input.temporaryDirectory);
+    assertRuntimeAttachments(scope, input.body);
+    assertDirectResourceAttachments(scope, input.resourceBody);
+}
+
 function assertResourcesSubpath(scope: TestScope): void {
     const database = resourcesSubpath.defineResource({
         name: 'database',
@@ -169,31 +310,33 @@ function assertResourcesSubpath(scope: TestScope): void {
         resources: { database },
         requirements: [ { kind: 'startup-budget-milliseconds', minimumMilliseconds: 1000 } ]
     });
-    const body = resourcesSubpath.withRuntime(runtime, {
-        database: { url: 'postgres://localhost' }
-    }, function runWithDatabase(runtimeScope) {
-        runtimeScope.assert.equal(runtimeScope.runtime.database.url, 'postgres://localhost');
+    const body = resourcesSubpath.withRuntime(runtime, function runWithDatabase(runtimeScope) {
+        runtimeScope.assert.equal(runtime.name, 'api');
 
         return runtimeScope.assert.collect();
     });
     const temporaryDirectory = resourcesSubpath.createTemporaryDirectoryResource('scratch');
+    const resourceBody = resourcesSubpath.withResource(temporaryDirectory, function runWithScratch(resourceScope) {
+        return resourceScope.assert.collect();
+    });
     const tableBody = resourcesSubpath.withRuntime<typeof runtime, ParameterizedTestScope<{ readonly value: number; }>>(
         runtime,
-        {
-            database: { url: 'postgres://localhost' }
-        },
         function runTableWithDatabase(runtimeScope) {
-            runtimeScope.assert.equal(runtimeScope.runtime.database.url, 'postgres://localhost');
             runtimeScope.assert.true(runtimeScope.parameters.value > 0);
 
             return runtimeScope.assert.collect();
         }
     );
 
-    scope.assert.equal(Array.isArray(body(scope)), true);
-    assertRuntimeAuthoringBoundary(scope, body, tableBody);
-    assertResourcesSubpathExports(scope);
-    assertResourceDescriptors(scope, database, runtime, temporaryDirectory);
+    assertResourceWrapperBehavior(scope, {
+        body,
+        database,
+        resourceBody,
+        runtime,
+        tableBody,
+        temporaryDirectory
+    });
+    assertResourceWrapperValidation(scope, database, runtime, temporaryDirectory);
 }
 
 function assertReservedSubpath(scope: TestScope, subpath: ReservedSubpathModule): void {

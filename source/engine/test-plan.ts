@@ -2,6 +2,10 @@ import type { NonEmptyReadonlyArray, SourceLocation } from '../assertion-protoco
 import { serializeValue } from '../compare/serialized-value.ts';
 import { caseIdentityKey, createCaseId, formatCaseId, type CaseId } from './identity.ts';
 import {
+    readTestBodyResourceAttachments,
+    type TestBodyResourceAttachments
+} from './test-body-resource-attachment.ts';
+import {
     resolveRootTestAnnotations,
     resolveRootTestControls,
     resolveTestAnnotations,
@@ -43,6 +47,7 @@ export type TestPlanCase = {
     readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
     readonly execution: TestPlanCaseExecution;
     readonly id: CaseId;
+    readonly resourceAttachments: TestBodyResourceAttachments;
     readonly suitePath: readonly TestPlanSuitePathEntry[];
     readonly testFamily: TestFamily | null;
 };
@@ -114,6 +119,14 @@ function duplicateTitleMessage(title: string, path: readonly string[]): string {
     return `Duplicate test node title under ${location}: ${title}.`;
 }
 
+function resourceAttachmentsFromExecution(execution: TestCaseExecution): TestBodyResourceAttachments {
+    if (execution.kind !== 'body') {
+        return readTestBodyResourceAttachments(null);
+    }
+
+    return readTestBodyResourceAttachments(execution.body);
+}
+
 function assertUniqueSiblingTitles(nodes: readonly TitledNode[], path: readonly string[]): void {
     const seenTitles = new Set<string>();
 
@@ -145,6 +158,7 @@ function collectTestCase(
                 definitionLocations: testCase.definitionLocations,
                 execution: testCase.execution,
                 id: createCaseId(context.file, suiteTitles(context.suitePath), testCase.title, null),
+                resourceAttachments: resourceAttachmentsFromExecution(testCase.execution),
                 suitePath: context.suitePath,
                 testFamily: testNodeFamily(testCase)
             }
@@ -188,6 +202,7 @@ function collectTable(
                     tableCase.title,
                     parameterIdentity(tableCase.parameters)
                 ),
+                resourceAttachments: readTestBodyResourceAttachments(tableCase.body),
                 suitePath: tablePath,
                 testFamily: testNodeFamily(table)
             };

@@ -313,7 +313,7 @@ export const expectedStandardSubpathImportOutput = [
     '["createBriefReporter","createDotReporter","createGithubActionsOutputRenderer","createLineReporter"]',
     '["defineCompositeAssertion","defineNarrowingCompositeAssertion"]',
     '["throwingTest"]',
-    '["ResourceLifecycleError","composeRuntimeContext","createTemporaryDirectoryResource","defineResource","defineRuntime","startRuntime","withRuntime"]',
+    '["ResourceLifecycleError","composeRuntimeContext","createTemporaryDirectoryResource","defineResource","defineRuntime","startRuntime","withResource","withResources","withRuntime"]',
     'function',
     'function',
     'false',
