@@ -1631,6 +1631,8 @@ type TestBodyResourceAttachments = {
     readonly runtimeGraphs: ReadonlyArray<TestBodyRuntimeSummary>;
 };
 
+declare function hasAttachedResourceDescriptors(attachments: TestBodyResourceAttachments): boolean;
+
 type ResourceMap = Readonly<Record<string, ResourceDefinition<unknown>>>;
 
 type ResourceScopeContext<Resources extends ResourceMap> = {

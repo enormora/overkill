@@ -6,8 +6,10 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import {
     attachTestBodyResourceAttachments,
+    hasAttachedResourceDescriptors,
     hasTestBodyResourceAttachments,
     readTestBodyResourceAttachments,
+    type TestBodyExecutionRequirementSummary,
     type TestBodyResourceAttachments
 } from './test-body-resource-attachment.ts';
 
@@ -17,12 +19,91 @@ function passingBody(scope: OverkillScope): ReturnType<TestBody> {
     return scope.assert.collect();
 }
 
+function resourceAttachments(
+    resources: readonly { readonly key: string; readonly resourceName: string; }[]
+): TestBodyResourceAttachments {
+    return {
+        directResources: [],
+        resourceGraph: resources.map(function toResource(resource) {
+            return {
+                dependencies: [],
+                name: resource.resourceName,
+                requirements: [],
+                scope: 'per-case'
+            };
+        }),
+        runtimeGraphs: []
+    };
+}
+
+function runtimeAttachments(
+    resources: readonly { readonly key: string; readonly resourceName: string; }[],
+    requirements: readonly TestBodyExecutionRequirementSummary[]
+): TestBodyResourceAttachments {
+    return {
+        directResources: [],
+        resourceGraph: [],
+        runtimeGraphs: [
+            {
+                dimensions: {},
+                name: 'runtime',
+                requirements,
+                resources
+            }
+        ]
+    };
+}
+
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/engine/test-body-resource-attachment.test.ts',
     annotations: {},
     controls: {},
     children: [
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'hasAttachedResourceDescriptors() reads resource descriptors from attachment metadata',
+            annotations: {},
+            controls: {},
+            body(scope) {
+                scope.assert.equal(
+                    hasAttachedResourceDescriptors({
+                        directResources: [],
+                        resourceGraph: [],
+                        runtimeGraphs: []
+                    }),
+                    false
+                );
+                scope.assert.equal(
+                    hasAttachedResourceDescriptors({
+                        directResources: [ { key: 'database', resourceName: 'database' } ],
+                        resourceGraph: [],
+                        runtimeGraphs: []
+                    }),
+                    true
+                );
+                scope.assert.equal(
+                    hasAttachedResourceDescriptors(resourceAttachments([
+                        { key: 'database', resourceName: 'database' }
+                    ])),
+                    true
+                );
+                scope.assert.equal(
+                    hasAttachedResourceDescriptors(runtimeAttachments([
+                        { key: 'database', resourceName: 'database' }
+                    ], [])),
+                    true
+                );
+                scope.assert.equal(
+                    hasAttachedResourceDescriptors(runtimeAttachments([], [
+                        { kind: 'startup-budget-milliseconds', minimumMilliseconds: 1000 }
+                    ])),
+                    false
+                );
+
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'resource attachment metadata is readable without becoming a body property',

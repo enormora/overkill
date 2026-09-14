@@ -1,6 +1,12 @@
 import {
+    attachTestBodyResourceAttachments,
+    createRoot,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
+    createTestPlan,
+    stampTestNodeFamily,
+    type TestCase,
+    type TestBodyResourceAttachments,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
@@ -9,6 +15,7 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
+import type { TestPlan } from '../engine/test-plan.ts';
 import type { ResolvedRun, RunCommand, RunConfig, RunFilter, RunRequest } from './run-types.ts';
 import {
     caseId,
@@ -19,6 +26,11 @@ import {
     tag,
     title
 } from './run-selection-filters.ts';
+import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
+import {
+    assertCollectedRunPlanMatchesTestFamily,
+    assertTestPlanMatchesTestFamily
+} from './run-selection.ts';
 
 type RunCommandParts = {
     readonly config: RunConfig;
@@ -49,6 +61,87 @@ const supervisedSelectionConfig: RunConfig = defaultRunConfig({
         })
     }
 });
+const microtestResourceDescriptorError = 'Run profile "microtest" cannot run test cases with resource descriptors.';
+
+function directResourceAttachments(): TestBodyResourceAttachments {
+    return {
+        directResources: [ { key: 'database', resourceName: 'database' } ],
+        resourceGraph: [],
+        runtimeGraphs: []
+    };
+}
+
+function graphOnlyResourceAttachments(): TestBodyResourceAttachments {
+    return {
+        directResources: [],
+        resourceGraph: [
+            {
+                dependencies: [],
+                name: 'database',
+                requirements: [],
+                scope: 'per-case'
+            }
+        ],
+        runtimeGraphs: []
+    };
+}
+
+function runtimeResourceAttachments(): TestBodyResourceAttachments {
+    return {
+        directResources: [],
+        resourceGraph: [],
+        runtimeGraphs: [
+            {
+                dimensions: {},
+                name: 'api',
+                requirements: [],
+                resources: [ { key: 'database', resourceName: 'database' } ]
+            }
+        ]
+    };
+}
+
+function pureRuntimeAttachments(): TestBodyResourceAttachments {
+    return {
+        directResources: [],
+        resourceGraph: [],
+        runtimeGraphs: [
+            {
+                dimensions: { node: '26' },
+                name: 'node',
+                requirements: [ { kind: 'startup-budget-milliseconds', minimumMilliseconds: 1000 } ],
+                resources: []
+            }
+        ]
+    };
+}
+
+function testCaseWithAttachments(attachments: TestBodyResourceAttachments): TestCase {
+    return createOverkillTestCase({
+        annotations: {},
+        body: attachTestBodyResourceAttachments(function attachedBody(scope: OverkillScope) {
+            scope.assert.true(true);
+
+            return scope.assert.collect();
+        }, attachments),
+        controls: {},
+        definitionLocations: [ { kind: 'unknown' as const } ],
+        title: 'uses metadata'
+    });
+}
+
+function testPlanForCase(testCase: TestCase): TestPlan {
+    return createTestPlan(createRoot({
+        annotations: {},
+        children: [ testCase ],
+        controls: {},
+        title: 'root'
+    }));
+}
+
+function testPlanWithAttachments(attachments: TestBodyResourceAttachments): TestPlan {
+    return testPlanForCase(testCaseWithAttachments(attachments));
+}
 
 function createRunCommand(overrides: RunCommandParts): RunCommand {
     return {
@@ -79,6 +172,104 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'assertTestPlanMatchesTestFamily() rejects microtest cases with resource descriptors',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                for (
+                    const attachments of [
+                        directResourceAttachments(),
+                        graphOnlyResourceAttachments(),
+                        runtimeResourceAttachments()
+                    ]
+                ) {
+                    scope.assert.throws(function assertResourceDescriptors() {
+                        assertTestPlanMatchesTestFamily(testPlanWithAttachments(attachments), 'microtest');
+                    }, {
+                        message: microtestResourceDescriptorError,
+                        name: 'RunCollectionError'
+                    });
+                }
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'assertTestPlanMatchesTestFamily() accepts pure runtime descriptors for microtests',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const testPlan = testPlanWithAttachments(pureRuntimeAttachments());
+
+                assertTestPlanMatchesTestFamily(testPlan, 'microtest');
+                scope.assert.equal(testPlan.discoveredCases.length, 1);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'assertCollectedRunPlanMatchesTestFamily() rejects collected microtest resource descriptors',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                for (
+                    const attachments of [
+                        directResourceAttachments(),
+                        graphOnlyResourceAttachments(),
+                        runtimeResourceAttachments()
+                    ]
+                ) {
+                    scope.assert.throws(function assertCollectedResourceDescriptors() {
+                        assertCollectedRunPlanMatchesTestFamily(
+                            collectedRunPlanFromTestPlan(testPlanWithAttachments(attachments)),
+                            'microtest'
+                        );
+                    }, {
+                        message: microtestResourceDescriptorError,
+                        name: 'RunCollectionError'
+                    });
+                }
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'assertCollectedRunPlanMatchesTestFamily() accepts collected pure runtime descriptors',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const collectedPlan = collectedRunPlanFromTestPlan(testPlanWithAttachments(pureRuntimeAttachments()));
+
+                assertCollectedRunPlanMatchesTestFamily(collectedPlan, 'microtest');
+                scope.assert.equal(collectedPlan.discoveredFiles.length, 1);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'assertTestPlanMatchesTestFamily() reports family mismatch before resource descriptors',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const testCase = testCaseWithAttachments(runtimeResourceAttachments());
+                stampTestNodeFamily(testCase, 'integration');
+
+                scope.assert.throws(function assertFamilyMismatch() {
+                    assertTestPlanMatchesTestFamily(testPlanForCase(testCase), 'microtest');
+                }, {
+                    message: 'Run profile "microtest" cannot run test case authored for "integration".',
+                    name: 'RunCollectionError'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() selects local test cases by stable filter dimensions',

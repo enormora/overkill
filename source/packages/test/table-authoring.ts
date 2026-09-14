@@ -11,7 +11,6 @@ import {
     attachTestBodyResourceAttachments,
     hasTestBodyResourceAttachments,
     readTestBodyResourceAttachments,
-    type ResourceFreeTestBody,
     type TestScope
 } from '../engine/engine.entry-point.ts';
 import {
@@ -28,7 +27,6 @@ import {
     runWithForwardedSourceLocations
 } from './authoring-source-locations.ts';
 import { readAuthoringRecord, readAuthoringString, readAuthoringTestBody } from './authoring-input.ts';
-import { assertMicrotestResourceFreeBody } from './resource-attachment-boundary.ts';
 
 function stampedTable(table: Table, testFamily: TestFamily): Table {
     stampTestNodeFamily(table, testFamily);
@@ -44,9 +42,7 @@ export type TableTestBody<Row> = (
     scope: ParameterizedTestScope<Row>
 ) => ReturnType<TestBody>;
 
-export type AuthoringTableBody<Family extends TestFamily, Row> = Family extends 'microtest'
-    ? ResourceFreeTestBody<TableTestBody<Row>>
-    : TableTestBody<Row>;
+export type AuthoringTableBody<Family extends TestFamily, Row> = Family extends TestFamily ? TableTestBody<Row> : never;
 
 export type TableDefinition<
     Row,
@@ -159,7 +155,6 @@ export function createAuthoredTable<Row, ControlsType extends TestControlsInput>
     definition: TableDefinition<Row, ControlsType>
 ): Table {
     const tableDefinition = readTableDefinition(definition);
-    assertMicrotestResourceFreeBody(testFamily, tableDefinition.test);
 
     return stampedTable(
         createTable({

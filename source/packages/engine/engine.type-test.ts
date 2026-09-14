@@ -7,6 +7,7 @@ import {
     type CompositeCheckBuilder
 } from '../assert/assert.entry-point.ts';
 import type {
+    hasAttachedResourceDescriptors,
     AssertAssertionFacade,
     AssertAssertionNode,
     AssertionNode,
@@ -41,6 +42,7 @@ import type {
     TestControlsInput,
     TestFailure,
     TestFamily,
+    TestBodyResourceAttachments,
     TestOutcome,
     ThrowingTestBody,
     ThrowingTestScope,
@@ -132,6 +134,12 @@ type CaseIdFixture = {
 type TestStartReporterEvent = Extract<ReporterEvent, { readonly kind: 'test-start'; }>;
 type SuiteStartReporterEvent = Extract<ReporterEvent, { readonly kind: 'suite-start'; }>;
 describe('TestOutcome', function () {
+    test('exports resource descriptor attachment predicates', function () {
+        expect<typeof hasAttachedResourceDescriptors>().type.toBe<
+            (attachments: TestBodyResourceAttachments) => boolean
+        >();
+    });
+
     test('accepts public outcome shapes', function () {
         expect<TestOutcome>().type.toBeAssignableFrom<{ readonly kind: 'pass'; }>();
         expect<TestOutcome>().type.toBeAssignableFrom<{

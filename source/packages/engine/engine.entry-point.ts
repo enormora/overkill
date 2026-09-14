@@ -308,6 +308,7 @@ export type {
 export { stampTestNodeFamily, testNodeFamily } from '../../engine/test-node.ts';
 export {
     attachTestBodyResourceAttachments,
+    hasAttachedResourceDescriptors,
     hasTestBodyResourceAttachments,
     readTestBodyResourceAttachments
 } from '../../engine/test-body-resource-attachment.ts';

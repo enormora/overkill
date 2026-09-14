@@ -3,6 +3,7 @@ import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
 
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import { createCaseId, type CaseId } from '../engine/identity.ts';
+import { hasAttachedResourceDescriptors } from '../engine/test-body-resource-attachment.ts';
 import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
 import { noTestsCollected, RunCollectionError } from './run-errors.ts';
 import { matchesRunFilter } from './run-selection-filters.ts';
@@ -22,6 +23,9 @@ type SelectedRunCases<Case> = {
     readonly plannedCases: readonly Case[];
 };
 
+type ResourceAttachedRunCase = {
+    readonly resourceAttachments: TestPlanCase['resourceAttachments'];
+};
 type OrderedSeededTestPlan = {
     readonly seed: {
         readonly value: bigint;
@@ -133,17 +137,13 @@ function assertTestFamily(testFamily: string | null, expectedFamily: RunTestFami
     }
 }
 
-function assertMicrotestCaseHasNoResourceAttachment(testCase: TestPlanCase, expectedFamily: RunTestFamily): void {
-    if (
-        expectedFamily === 'microtest' &&
-        (
-            testCase.resourceAttachments.directResources.length > 0 ||
-            testCase.resourceAttachments.resourceGraph.length > 0 ||
-            testCase.resourceAttachments.runtimeGraphs.length > 0
-        )
-    ) {
+function assertMicrotestCaseHasNoResourceDescriptors(
+    testCase: ResourceAttachedRunCase,
+    expectedFamily: RunTestFamily
+): void {
+    if (expectedFamily === 'microtest' && hasAttachedResourceDescriptors(testCase.resourceAttachments)) {
         throw new RunCollectionError(
-            'Run profile "microtest" cannot run test cases with resource or runtime attachments.',
+            'Run profile "microtest" cannot run test cases with resource descriptors.',
             { cause: null },
             'loader'
         );
@@ -153,7 +153,7 @@ function assertMicrotestCaseHasNoResourceAttachment(testCase: TestPlanCase, expe
 export function assertTestPlanMatchesTestFamily(testPlan: TestPlan, testFamily: RunTestFamily): void {
     for (const testCase of testPlan.discoveredCases) {
         assertTestFamily(testCase.testFamily, testFamily);
-        assertMicrotestCaseHasNoResourceAttachment(testCase, testFamily);
+        assertMicrotestCaseHasNoResourceDescriptors(testCase, testFamily);
     }
 }
 
@@ -161,6 +161,7 @@ export function assertCollectedRunPlanMatchesTestFamily(plan: CollectedRunPlan, 
     for (const file of plan.discoveredFiles) {
         for (const testCase of file.cases) {
             assertTestFamily(testCase.testFamily, testFamily);
+            assertMicrotestCaseHasNoResourceDescriptors(testCase, testFamily);
         }
     }
 }
