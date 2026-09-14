@@ -112,16 +112,25 @@ export type RuntimeScopeContext<Runtime extends RuntimeDefinition> = Readonly<
 
 type EmptyRuntimeScopes = Pick<Readonly<Record<string, never>>, never>;
 type RuntimeScopeKey<Runtime extends RuntimeDefinition> = Runtime['name'];
-type RuntimeScopes<Context> = Context extends { readonly runtimes: infer Runtimes; } ? Runtimes : EmptyRuntimeScopes;
+type RuntimeScopes<Context> = Context extends {
+    readonly runtimes: infer Runtimes extends Readonly<Record<string, unknown>>;
+} ? Runtimes
+    : EmptyRuntimeScopes;
 
-type RuntimeScopeFreeContext<
+type RuntimeScopeGuard<
     Context,
     Runtime extends RuntimeDefinition
-> = RuntimeScopeKey<Runtime> extends keyof RuntimeScopes<Context> ? never : Context;
-
-export type RuntimeContextComposition<BaseContext, Runtime extends RuntimeDefinition> = BaseContext & {
+> = RuntimeScopeKey<Runtime> extends keyof RuntimeScopes<Context> ? never : unknown;
+type RuntimeScopeBaseContext<Context> = {
+    readonly [Key in keyof Context as Key extends 'runtimes' ? never : Key]: Context[Key];
+};
+type ComposedRuntimeScopes<BaseContext, Runtime extends RuntimeDefinition> = {
     readonly runtimes: RuntimeScopeContext<Runtime> & RuntimeScopes<BaseContext>;
 };
+
+export type RuntimeContextComposition<BaseContext, Runtime extends RuntimeDefinition> = Readonly<
+    ComposedRuntimeScopes<BaseContext, Runtime> & RuntimeScopeBaseContext<BaseContext>
+>;
 
 export type TemporaryDirectoryHandle = {
     readonly path: string;
@@ -210,31 +219,60 @@ export function defineRuntime<
     });
 }
 
+function assertRuntimeScopes<Context>(runtimes: unknown): asserts runtimes is RuntimeScopes<Context> {
+    if (typeof runtimes !== 'object' || runtimes === null || Array.isArray(runtimes)) {
+        throw new TypeError('composeRuntimeContext() requires context.runtimes to be an object when present.');
+    }
+}
+
+function assertRuntimeScopeContext<Runtime extends RuntimeDefinition>(
+    runtimes: Readonly<Record<string, unknown>>,
+    runtime: Runtime
+): asserts runtimes is RuntimeScopeContext<Runtime> {
+    if (!Object.hasOwn(runtimes, runtime.name)) {
+        throw new TypeError(`Runtime scope "${runtime.name}" was not composed.`);
+    }
+}
+
+function assertRuntimeContextComposition<BaseContext, Runtime extends RuntimeDefinition>(
+    composition: unknown
+): asserts composition is RuntimeContextComposition<BaseContext, Runtime> {
+    if (typeof composition !== 'object' || composition === null) {
+        throw new TypeError('composeRuntimeContext() created an invalid context.');
+    }
+}
+
 function composeRuntimeContext<
     BaseContext extends Readonly<Record<string, unknown>>,
     Runtime extends RuntimeDefinition
 >(
-    context: RuntimeScopeFreeContext<BaseContext, Runtime>,
+    context: BaseContext & RuntimeScopeGuard<BaseContext, Runtime>,
     runtime: Runtime,
     resourceHandles: RuntimeContext<Runtime>
 ): RuntimeContextComposition<BaseContext, Runtime> {
     const runtimes: unknown = Object.hasOwn(context, 'runtimes') ? Reflect.get(context, 'runtimes') : {};
 
-    if (typeof runtimes !== 'object' || runtimes === null || Array.isArray(runtimes)) {
-        throw new TypeError('composeRuntimeContext() requires context.runtimes to be an object when present.');
-    }
+    assertRuntimeScopes<BaseContext>(runtimes);
 
     if (Object.hasOwn(runtimes, runtime.name)) {
         throw new TypeError(`Runtime scope "${runtime.name}" already exists.`);
     }
 
-    return Object.freeze({
-        ...context,
-        runtimes: Object.freeze({
-            ...runtimes,
-            [runtime.name]: resourceHandles
-        })
+    const runtimeScopes = Object.freeze({
+        ...runtimes,
+        [runtime.name]: resourceHandles
     });
+    assertRuntimeScopeContext(runtimeScopes, runtime);
+    const baseContext: BaseContext = context;
+
+    const composition: unknown = Object.freeze({
+        ...baseContext,
+        runtimes: runtimeScopes
+    });
+
+    assertRuntimeContextComposition<BaseContext, Runtime>(composition);
+
+    return composition;
 }
 
 export function createResourcesModule(dependencies: ResourcesModuleDependencies): ResourcesModule {
