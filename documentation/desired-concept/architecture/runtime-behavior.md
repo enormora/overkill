@@ -459,7 +459,7 @@ distribution, assignment policy, and in-worker scheduling.
 | `supervised-process` | A parent process supervises a disposable child | `microtest`, `property`, `integration`   |
 | `worker-pool`        | N bounded executor slots run assigned work     | `integration`, browser-oriented profiles |
 
-`process-per-file` is not a process model. It is a resolved execution shape:
+`worker-per-file` is not a process model. It is a resolved execution shape:
 
 ```ts
 {
@@ -469,9 +469,9 @@ distribution, assignment policy, and in-worker scheduling.
 }
 ```
 
-The same mechanism can express process-per-case or process-per-group by
-changing the work distribution. `worker-pool` means Overkill owns bounded
-executor capacity. It does not imply that a worker is reused.
+The same mechanism can express worker-per-case or worker-per-group by changing
+the work distribution. `worker-pool` means Overkill owns bounded executor
+capacity. It does not imply that a worker is reused.
 
 For the Node substrate, `worker-pool` uses worker threads. The coordinator
 stays in the runner process, collection happens once in a worker thread, and

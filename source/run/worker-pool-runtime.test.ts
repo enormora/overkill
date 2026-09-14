@@ -90,6 +90,7 @@ function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
                     hardMilliseconds: 1000,
                     softMilliseconds: 500
                 },
+                workDistribution: { mode: 'file' },
                 workerLifecycle: 'reuse',
                 verbose: false
             },

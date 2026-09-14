@@ -106,6 +106,7 @@ function copyIntegrationExecution(execution: RunIntegrationExecution): RunIntegr
         return {
             processModel: execution.processModel,
             scheduling: execution.scheduling,
+            workDistribution: execution.workDistribution,
             workerLifecycle: execution.workerLifecycle
         };
     }

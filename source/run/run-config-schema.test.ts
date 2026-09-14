@@ -278,13 +278,14 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'integration execution schema accepts worker-pool lifecycle fields',
+            title: 'integration execution schema accepts worker-pool lifecycle and distribution fields',
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
                 assertValidationSuccess(scope, integrationExecutionSchema, {
                     processModel: 'worker-pool',
                     scheduling: 'serial',
+                    workDistribution: { mode: 'file' },
                     workerLifecycle: 'fresh-worker-per-unit'
                 });
 
@@ -293,6 +294,23 @@ export const testNode = createOverkillSuite({
                     scheduling: 'serial',
                     workerLifecycle: 'reuse'
                 });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'integration execution schema rejects invalid worker-pool distribution fields',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const result = safeParse(integrationExecutionSchema, {
+                    processModel: 'worker-pool',
+                    scheduling: 'serial',
+                    workDistribution: { mode: 'case' }
+                });
+
+                scope.assert.equal(result.success, false);
 
                 return scope.assert.collect();
             }
@@ -316,13 +334,14 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'integration execution schema rejects worker lifecycle fields on supervised profiles',
+            title: 'integration execution schema rejects worker-pool fields on supervised profiles',
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
                 const result = safeParse(integrationExecutionSchema, {
                     processModel: 'supervised-process',
                     scheduling: 'serial',
+                    workDistribution: { mode: 'file' },
                     workerLifecycle: 'fresh-worker-per-unit'
                 });
 

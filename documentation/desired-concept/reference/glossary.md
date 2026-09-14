@@ -86,9 +86,8 @@ Source: [Microtests And Capabilities](../authoring/microtests-and-capabilities.m
 
 A profile-level decision about the process boundary used for execution.
 Ordinary microtests support `in-process` and `supervised-process`. Advanced
-profiles may support `worker-pool`. `process-per-file` is not a process
-model; it is a worker-pool placement shape with file work units and fresh
-workers.
+profiles may support `worker-pool`. `worker-per-file` is not a process model;
+it is a worker-pool placement shape with file work units and fresh workers.
 
 Source: [Runtime Behavior](../architecture/runtime-behavior.md).
 

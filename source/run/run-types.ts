@@ -140,6 +140,10 @@ export type RunScheduling = 'concurrent' | 'serial';
 
 export type RunWorkerLifecycle = 'fresh-worker-per-unit' | 'reuse';
 
+export type RunWorkDistribution = {
+    readonly mode: 'file';
+};
+
 export type RunMicrotestExecution = {
     readonly processModel: RunMicrotestProcessModel;
     readonly scheduling: RunScheduling;
@@ -153,6 +157,7 @@ type RunSupervisedIntegrationExecution = {
 type RunWorkerPoolExecution = {
     readonly processModel: 'worker-pool';
     readonly scheduling: RunScheduling;
+    readonly workDistribution: RunWorkDistribution;
     readonly workerLifecycle: RunWorkerLifecycle;
 };
 
@@ -285,6 +290,7 @@ type RunExecutionBaseFacts = {
 
 type RunWorkerPoolExecutionFacts = RunExecutionBaseFacts & {
     readonly processModel: 'worker-pool';
+    readonly workDistribution: RunWorkDistribution;
     readonly workerLifecycle: RunWorkerLifecycle;
 };
 

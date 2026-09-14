@@ -100,6 +100,12 @@ const workerLifecycleSchema = z.union([
     z.literal('reuse')
 ]);
 
+const workDistributionSchema = z
+    .strictObject({
+        mode: z.literal('file')
+    })
+    .readonly();
+
 export const integrationExecutionSchema = z.discriminatedUnion('processModel', [
     z
         .strictObject({
@@ -111,6 +117,7 @@ export const integrationExecutionSchema = z.discriminatedUnion('processModel', [
         .strictObject({
             processModel: z.literal('worker-pool'),
             scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ])),
+            workDistribution: z.optional(workDistributionSchema),
             workerLifecycle: z.optional(workerLifecycleSchema)
         })
         .readonly()

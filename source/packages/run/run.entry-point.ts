@@ -112,6 +112,7 @@ export type {
     RunStringFilterField,
     RunTestFamily,
     RunTimeoutPolicy,
+    RunWorkDistribution,
     RunWorkerLifecycle,
     SerializedValue
 } from '../../run/run-types.ts';

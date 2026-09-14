@@ -137,6 +137,7 @@ function createRunExecutionFacts(
         return {
             ...facts,
             processModel: profile.execution.processModel,
+            workDistribution: profile.execution.workDistribution,
             workerLifecycle: profile.execution.workerLifecycle
         };
     }
