@@ -219,29 +219,6 @@ export function defineRuntime<
     });
 }
 
-function assertRuntimeScopes<Context>(runtimes: unknown): asserts runtimes is RuntimeScopes<Context> {
-    if (typeof runtimes !== 'object' || runtimes === null || Array.isArray(runtimes)) {
-        throw new TypeError('composeRuntimeContext() requires context.runtimes to be an object when present.');
-    }
-}
-
-function assertRuntimeScopeContext<Runtime extends RuntimeDefinition>(
-    runtimes: Readonly<Record<string, unknown>>,
-    runtime: Runtime
-): asserts runtimes is RuntimeScopeContext<Runtime> {
-    if (!Object.hasOwn(runtimes, runtime.name)) {
-        throw new TypeError(`Runtime scope "${runtime.name}" was not composed.`);
-    }
-}
-
-function assertRuntimeContextComposition<BaseContext, Runtime extends RuntimeDefinition>(
-    composition: unknown
-): asserts composition is RuntimeContextComposition<BaseContext, Runtime> {
-    if (typeof composition !== 'object' || composition === null) {
-        throw new TypeError('composeRuntimeContext() created an invalid context.');
-    }
-}
-
 function composeRuntimeContext<
     BaseContext extends Readonly<Record<string, unknown>>,
     Runtime extends RuntimeDefinition
@@ -249,30 +226,29 @@ function composeRuntimeContext<
     context: BaseContext & RuntimeScopeGuard<BaseContext, Runtime>,
     runtime: Runtime,
     resourceHandles: RuntimeContext<Runtime>
-): RuntimeContextComposition<BaseContext, Runtime> {
+): RuntimeContextComposition<BaseContext, Runtime>;
+function composeRuntimeContext(
+    context: Readonly<Record<string, unknown>>,
+    runtime: RuntimeDefinition,
+    resourceHandles: Readonly<Record<string, unknown>>
+): Readonly<Record<string, unknown>> {
     const runtimes: unknown = Object.hasOwn(context, 'runtimes') ? Reflect.get(context, 'runtimes') : {};
 
-    assertRuntimeScopes<BaseContext>(runtimes);
+    if (typeof runtimes !== 'object' || runtimes === null || Array.isArray(runtimes)) {
+        throw new TypeError('composeRuntimeContext() requires context.runtimes to be an object when present.');
+    }
 
     if (Object.hasOwn(runtimes, runtime.name)) {
         throw new TypeError(`Runtime scope "${runtime.name}" already exists.`);
     }
 
-    const runtimeScopes = Object.freeze({
-        ...runtimes,
-        [runtime.name]: resourceHandles
+    return Object.freeze({
+        ...context,
+        runtimes: Object.freeze({
+            ...runtimes,
+            [runtime.name]: resourceHandles
+        })
     });
-    assertRuntimeScopeContext(runtimeScopes, runtime);
-    const baseContext: BaseContext = context;
-
-    const composition: unknown = Object.freeze({
-        ...baseContext,
-        runtimes: runtimeScopes
-    });
-
-    assertRuntimeContextComposition<BaseContext, Runtime>(composition);
-
-    return composition;
 }
 
 export function createResourcesModule(dependencies: ResourcesModuleDependencies): ResourcesModule {
