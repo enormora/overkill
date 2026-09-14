@@ -45,6 +45,7 @@ export type {
     RuntimeDimensions,
     RuntimeId,
     RuntimeResourceMap,
+    RuntimeScopeContext,
     TemporaryDirectoryHandle
 } from '../../resources/resources.ts';
 export type {

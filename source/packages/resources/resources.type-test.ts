@@ -17,6 +17,7 @@ import {
     type RuntimeContext,
     type RuntimeDimensions,
     type RuntimeId,
+    type RuntimeScopeContext,
     type RuntimeSession,
     type TemporaryDirectoryHandle
 } from './resources.entry-point.ts';
@@ -33,6 +34,10 @@ type ExpectedResourceDefinitionInput = {
 type ExpectedRuntimeContext = {
     readonly database: Database;
     readonly server: Server;
+};
+
+type ExpectedRuntimeScopeContext = {
+    readonly api: ExpectedRuntimeContext;
 };
 
 type ExpectedDatabaseResourceContext = {
@@ -102,6 +107,12 @@ const hiddenDependencyRuntime = defineRuntime({
     resources: { server },
     requirements: []
 });
+const secondaryRuntime = defineRuntime({
+    name: 'secondary-api',
+    dimensions: {},
+    resources: { database },
+    requirements: []
+});
 const typeTestController = new AbortController();
 
 const databaseHandle = {
@@ -129,6 +140,7 @@ describe('@overkill-dev/resources', function () {
         expect<RuntimeContext<typeof runtime>>().type.toBe<ExpectedRuntimeContext>();
         expect<RuntimeContext<typeof runtime>['database']>().type.toBe<Database>();
         expect<RuntimeContext<typeof runtime>['server']>().type.toBe<Server>();
+        expect<RuntimeScopeContext<typeof runtime>>().type.toBe<ExpectedRuntimeScopeContext>();
         expect(runtime.name).type.toBe<'api'>();
     });
 
@@ -167,15 +179,24 @@ describe('@overkill-dev/resources', function () {
             database: databaseHandle,
             server: serverHandle
         });
+        const nestedContext = composeRuntimeContext(context, secondaryRuntime, {
+            database: databaseHandle
+        });
 
-        expect(context.runtime).type.toBe<ExpectedRuntimeContext>();
+        expect(context.runtimes.api).type.toBe<ExpectedRuntimeContext>();
         expect(context.test).type.toBe<boolean>();
+        expect(nestedContext.runtimes.api).type.toBe<ExpectedRuntimeContext>();
+        expect(nestedContext.runtimes['secondary-api']).type.toBe<{ readonly database: Database; }>();
         expect<typeof composeRuntimeContext>().type.not.toBeCallableWith({ test: true }, runtime, {
             database: databaseHandle
         });
         expect<typeof composeRuntimeContext>().type.not.toBeCallableWith({ test: true }, runtime, {
             database: databaseHandle,
             server: { port: 80 }
+        });
+        expect<typeof composeRuntimeContext>().type.not.toBeCallableWith(context, runtime, {
+            database: databaseHandle,
+            server: serverHandle
         });
     });
 

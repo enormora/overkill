@@ -56,6 +56,7 @@ import {
     type RuntimeGraph,
     type RuntimeSession,
     type RuntimeContext,
+    type RuntimeScopeContext,
     type RuntimeWrappedTestBody,
     type TemporaryDirectoryHandle
 } from './resources.entry-point.ts';
@@ -93,7 +94,9 @@ type DatabaseContext = {
     readonly database: Database;
 };
 type ExpectedComposedRuntimeScope = TestScope & {
-    readonly runtime: DatabaseContext;
+    readonly runtimes: {
+        readonly api: DatabaseContext;
+    };
 };
 type TableRow = {
     readonly value: number;
@@ -192,6 +195,11 @@ describe('@overkill-dev/test standard subpaths', function () {
             expect<ResourceContext<typeof runtime.resources>>().type.toBe<DatabaseContext>();
             expect<RuntimeContext<typeof runtime>>().type.toBe<{
                 readonly database: Database;
+            }>();
+            expect<RuntimeScopeContext<typeof runtime>>().type.toBe<{
+                readonly api: {
+                    readonly database: Database;
+                };
             }>();
             expect(runtime.name).type.toBe<'api'>();
             expect(temporaryDirectory.name).type.toBe<'scratch'>();
