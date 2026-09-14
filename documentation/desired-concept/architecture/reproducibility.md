@@ -214,7 +214,7 @@ That is enough to make:
 - failures debuggable
 - randomization replayable
 - baseline changes reviewable
-- benchmark policies meaningful
+- benchmark budgets meaningful
 - CI failures reproducible locally
 
 ## Cross-References

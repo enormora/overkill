@@ -112,7 +112,7 @@ These are usually better suited to integration-oriented packages than to the mic
 
 Benchmarks model workflow performance under controlled workloads. Their
 output is not just pass/fail correctness but measured behavior relative to
-budgets, baselines, and policies.
+budgets and baselines.
 
 Benchmarks may measure:
 
@@ -122,9 +122,9 @@ Benchmarks may measure:
 - responsiveness
 - domain-specific metrics captured during execution
 
-SLO or latency-sensitive checks belong in this family too: benchmarks
-measure, and SLO policies decide whether the measured latency or
-responsiveness stays within declared budgets.
+Latency-sensitive checks belong in this family too: benchmarks measure, and
+budgets decide whether the measured latency or responsiveness stays within
+declared limits.
 
 ## Type Tests
 

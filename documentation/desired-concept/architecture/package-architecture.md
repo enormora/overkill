@@ -559,7 +559,7 @@ verbs too:
 This is also the logical layer for choosing ordinary runner profiles.
 Benchmark execution is intentionally not a `run --profile benchmark` alias:
 benchmarks use the `overkill bench` namespace because their primary output is
-measurement data and policy evaluation, not an ordinary test verdict.
+measurement data, budget evaluation, and benchmark-specific artifacts.
 
 It is also the semantic home for first-party configuration-file loading and
 `defineConfig(...)` support. Standard users import the helper through
@@ -694,7 +694,7 @@ The most important extension types Overkill should support are:
 - custom assertions
 - resource and runtime factories
 - benchmark metric collectors
-- benchmark policy adapters
+- benchmark budget adapters
 - orchestration helpers
 - browser and workflow integrations
 
@@ -705,7 +705,7 @@ runner patch points. That means:
 - resource packages contribute explicit runtime or execution constraints
 - baselines contribute identity, collection, comparison, and update
   semantics
-- benchmark packages contribute workloads, measurements, and policies
+- benchmark packages contribute workloads, measurements, and budgets
 
 Overkill does not need a giant global plugin container to be extensible.
 Installing a package does not mutate the `overkill` CLI, widen global
@@ -753,7 +753,7 @@ able to wire in:
 - baseline adapters
 - mutation integrations
 - type-test adapters
-- browser or benchmark backends
+- browser adapters or benchmark measurement strategies
 
 ## Integrations
 
@@ -798,8 +798,8 @@ What this means conceptually:
 subpackages for:
 
 - workload definitions
-- measurement engines
-- policies and budgets
+- measurement strategies
+- budgets
 - calibration
 - process and PTY execution
 - benchmark reporters
@@ -846,7 +846,7 @@ or extend the contract but do not redefine it.
 | Capability handle pattern (`AppRuntime`, …)                       | user code / adapter package                                            | No first-party `@overkill-dev/world`; see [Capability Handles](../authoring/capability-handles.md).                                                            |
 | Baseline subtypes (snapshot, visual, perf)                        | `@overkill-dev/baselines`                                              | Shared identity and stale detection.                                                                                                                           |
 | Baseline verbs (`update`/`apply`/…)                               | `@overkill-dev/run`                                                    | Verbs sit at the runner layer; semantics from `@overkill-dev/baselines`.                                                                                       |
-| Benchmark workloads, measurements, policies                       | `@overkill-dev/bench`                                                  | Above the engine; contributes execution requirements.                                                                                                          |
+| Benchmark workloads, measurements, budgets                        | `@overkill-dev/bench`                                                  | Above the engine; contributes execution requirements and generated assertions.                                                                                 |
 | Coverage instrumentation                                          | `@overkill-dev/run`                                                    | V8 native; microtest-only; opt-in.                                                                                                                             |
 | Witness file format                                               | `@overkill-dev/engine`                                                 | Schema in engine; producers/consumers across families.                                                                                                         |
 | Failure artifacts (storage + schema)                              | `@overkill-dev/engine` (schema) + `@overkill-dev/run` (storage policy) | Storage layout owned by orchestration.                                                                                                                         |

@@ -11,7 +11,7 @@ The core reason is that benchmark suites need a richer model:
 - lifecycle management
 - domain metrics
 - calibration
-- policies and budgets
+- budgets
 
 The benchmark family should stay focused on **performance and
 resource-consumption** questions.
@@ -103,13 +103,13 @@ export const config = defineConfig({
 ```
 
 This lets `overkill bench run --profile cli-cold-start` select benchmark
-policy without making `benchmark` an ordinary `overkill run` profile.
+configuration without making `benchmark` an ordinary `overkill run` profile.
 
 It also confirms that Overkill should support:
 
 - benchmark registries or service handles as resources
 - PTY-aware process benchmarking
-- explicit metric-specific policies
+- explicit metric-specific budgets
 - normalization as a first-class harness concern
 - benchmark-specific artifact output and diagnostics
 
@@ -142,11 +142,11 @@ A benchmark definition should be able to describe:
 - named workload dimensions such as small, medium, large
 - deterministic fixture generation
 - validation of generated fixtures
-- suite-level setup and teardown
-- case-level setup and teardown
-- warmup policy
-- measurement policy
-- benchmark-specific setup that is excluded from timing
+- resource and runtime requirements
+- fixture lifecycle through ordinary resource/runtime descriptors
+- warmup rules
+- measurement strategy
+- pre-measurement fixture preparation that is excluded from timing
 - benchmark-specific cleanup that runs between or after samples
 - benchmark kind metadata such as `throughput`, `responsiveness`,
   `startup`, `bundle-size`, or `browser-performance`
@@ -156,51 +156,143 @@ This is closer to BenchmarkTools benchmark groups and to real workflow benchmark
 Example direction:
 
 ```ts
-import { benchmark, workload } from '@overkill-dev/bench';
+import { benchmark, suite, workload } from '@overkill-dev/bench';
+import { withResource } from '@overkill-dev/test/resources';
+import { publishFixtureResource } from '#tests/resources/publish-fixture';
 
-export const cliPublishBench = benchmark('publish command', {
-    kind: 'responsiveness',
-    workloads: [
-        workload('small', { packages: 5 }),
-        workload('medium', { packages: 50 }),
-        workload('large', { packages: 200 })
-    ],
-    setup(workload) {
-        return createPublishFixture(workload);
-    },
-    measure: async (context) => {
-        const { fixture, workload, sample } = context;
-        const run = await sample.process({
-            command: [ 'node', 'dist/cli.js', 'publish', '--dry-run' ],
-            cwd: fixture.cwd,
-            pty: true
-        });
+export const testNode = suite('cli benchmarks', [
+    benchmark('publish command', {
+        kind: 'responsiveness',
+        workloads: [
+            workload('small', { packages: 5 }),
+            workload('medium', { packages: 50 }),
+            workload('large', { packages: 200 })
+        ],
+        measure: withResource(publishFixtureResource, async (context) => {
+            const { resources, sample } = context;
+            const run = await sample.process({
+                command: [ 'node', 'dist/cli.js', 'publish', '--dry-run' ],
+                cwd: resources.publishFixture.cwd,
+                pty: true
+            });
 
-        return {
-            durationMs: run.durationMs,
-            startupMs: run.startupMs,
-            p95EventLoopBlockMs: run.eventLoop.p95,
-            maxEventLoopBlockMs: run.eventLoop.max,
-            outputBytes: run.stdoutBytes + run.stderrBytes,
-            workload: workload.name
-        };
-    },
-    policy: {
-        small: { startupMs: { max: 120 }, p95EventLoopBlockMs: { max: 8 } },
-        medium: { durationMs: { max: 900 }, p95EventLoopBlockMs: { max: 16 } },
-        large: { durationMs: { max: 3200 }, maxEventLoopBlockMs: { max: 40 } }
-    }
-});
+            return {
+                durationMilliseconds: run.durationMilliseconds,
+                startupMilliseconds: run.startupMilliseconds,
+                percentile95EventLoopBlockMilliseconds: run.eventLoop.percentile95Milliseconds,
+                maximumEventLoopBlockMilliseconds: run.eventLoop.maximumMilliseconds,
+                outputBytes: run.stdoutBytes + run.stderrBytes
+            };
+        }),
+        diagnosticMetrics: [ 'outputBytes' ],
+        budgets: {
+            small: {
+                durationMilliseconds: { maximum: 500 },
+                startupMilliseconds: { maximum: 120 },
+                percentile95EventLoopBlockMilliseconds: { maximum: 8 },
+                maximumEventLoopBlockMilliseconds: { maximum: 20 }
+            },
+            medium: {
+                durationMilliseconds: { maximum: 900 },
+                startupMilliseconds: { maximum: 150 },
+                percentile95EventLoopBlockMilliseconds: { maximum: 16 },
+                maximumEventLoopBlockMilliseconds: { maximum: 30 }
+            },
+            large: {
+                durationMilliseconds: { maximum: 3200 },
+                startupMilliseconds: { maximum: 220 },
+                percentile95EventLoopBlockMilliseconds: { maximum: 24 },
+                maximumEventLoopBlockMilliseconds: { maximum: 40 }
+            }
+        }
+    })
+]);
 ```
 
 The important shape in this example:
 
 - workload size is explicit and named
-- fixture creation happens outside the timing window
+- fixture lifecycle is expressed through existing resource/runtime descriptors,
+  not benchmark-local hooks
 - the measured action is a real external CLI workflow, not a naked function
 - multiple metrics are recorded from one run
-- the policy is checked in as reviewable budget data rather than buried in
-  ad hoc assertions
+- the exported value is the conventional `testNode`
+- the benchmark family still composes with ordinary `suite(...)` values
+- the returned object contains measured metrics only
+- every returned metric is either covered by `budgets` or listed in
+  `diagnosticMetrics`
+- budgets are checked in as reviewable data instead of buried in ad hoc
+  assertions inside `measure(...)`
+
+`measure(...)` may return either a metric object or a promise for a metric
+object. Synchronous `measure(...)` bodies are important for microbenchmarks
+because the harness should not add a `Promise.resolve(...)` boundary when the
+workload itself is synchronous.
+
+Budget evaluation happens after samples are measured and aggregated. Internally,
+benchmark budget checks should be represented with the same assertion protocol
+used by ordinary tests, so reporters can reuse structured assertion failure
+rendering. They are generated harness assertions, not user-authored assertions
+inside the measurement window. They do not count toward user `plan(n)` calls,
+do not satisfy ordinary no-assertion detection before measurement, and do not
+let measurement code branch on pass/fail logic.
+
+Budget coverage is strict:
+
+- a benchmark must define at least one budget
+- a returned metric with no matching budget and no `diagnosticMetrics` entry is
+  a definition error
+- a budget for a metric that is not returned by `measure(...)` is a benchmark
+  failure
+- diagnostic metrics are reported and stored, but they never decide pass/fail
+
+Benchmark authoring should not introduce a parallel hook model. In particular,
+`@overkill-dev/bench` should not add benchmark-specific `setup(...)`,
+`teardown(...)`, `beforeEach(...)`, or `afterEach(...)` hooks. Work that must
+happen outside the measured region belongs in existing resources, runtimes,
+fixture resources, or sample cleanup/cooldown phases owned by the benchmark
+harness. That keeps benchmark suites aligned with the rest of Overkill:
+collection sees descriptors before scheduling, planning can lower them into
+placement constraints, and execution can acquire and dispose handles through
+the ordinary resource/runtime lifecycle.
+
+Benchmark-specific fixture resources may be workload-aware when the workload is
+part of planning. For example, a package-registry fixture or temporary project
+fixture can be acquired for a named workload before measured samples begin, and
+the benchmark body can read the injected handle through `context.resources` or
+`context.runtimes`. Any per-sample reset that must occur between measurements
+belongs to benchmark cleanup, not to a user-authored lifecycle hook hidden
+inside `measure(...)`.
+
+Settled decisions:
+
+- benchmark authoring is a facade over ordinary Overkill test-node authoring
+  and generated assertions, not a separate runner universe
+- `overkill bench run` remains the public command namespace, but it resolves
+  through the regular runner planning, placement, execution, result, and
+  reporter flow
+- `budgets` is the public gate field; `policy`, `assertions`, `slo(...)`, and
+  `budget(...)` are not settled benchmark authoring APIs
+- custom sample metrics come from the `measure(...)` return object; no
+  `context.record(...)` or `context.recordMetric(...)` API is part of the
+  current concept
+- `diagnosticMetrics` marks returned metrics that should be reported but never
+  gate pass/fail
+- benchmark definitions must have at least one budget, so every committed
+  benchmark produces real generated assertions
+- resource/runtime descriptors carry lifecycle, fixture, service, browser,
+  registry, temporary-directory, and PTY needs into planning
+- host calibration discovers host capacity and noise before measured samples;
+  it does not infer arbitrary per-case workload cost
+- parallel benchmark placement is allowed only when the measurement strategy
+  and host calibration agree it is safe
+- ambient-noise handling always records metadata where available, may block on
+  opt-in thresholds, and may reduce lanes or switch to serial placement
+- `hostProcess` is a generic resolved execution shape from the runner's
+  process model, not a benchmark measurement strategy
+- forced V8 garbage collection is opt-in; supervised or hosted benchmark
+  processes may enable `--expose-gc`, but the harness calls
+  `globalThis.gc()` only when requested
 
 Source:
 
@@ -208,7 +300,7 @@ Source:
 
 ## Measurement Layer
 
-The measurement engine should support:
+The measurement layer should support:
 
 - runtime and throughput
 - memory and allocation-oriented measurements where available
@@ -218,45 +310,64 @@ The measurement engine should support:
 - browser-facing performance metrics where a browser runtime exposes them
 - artifact-size measurements for bundle and output budgets
 
-It should also leave room for multiple measurement backends:
+It should also leave room for multiple measurement strategies and metric
+collectors:
 
 - simple wall-clock timing
+- CPU time
+- user time and system time where the platform exposes them
+- memory, allocation, heap, and resident-set measurements
+- event-loop and runtime-health measurements
+- I/O or handle-count measurements where they are observable
 - custom counters
 - external diagnosers
 - process-level measurements for external command benchmarks
 
-Tinybench is a useful reference for statistics APIs and event hooks, but it only solves part of the problem.
+Tinybench is a useful reference for statistics APIs and event hooks, but it
+only solves part of the problem.
+
+Node's `node:bench` is also useful design input, especially its explicit
+runner, warmup and sample events, fresh-process CLI mode, and warnings about
+noise, optimization, and comparability. It is not a foundation for
+`@overkill-dev/bench`: it is early-development Node API surface, requires
+`--experimental-bench`, owns a runner model that overlaps with Overkill, and
+does not provide the benchmark budget, calibration, placement, or artifact
+model Overkill needs.
 
 Source:
 
 - <https://github.com/tinylibs/tinybench>
+- <https://raw.githubusercontent.com/nodejs/node/main/doc/api/bench.md>
 
-## Policy Layer
+## Budget Layer
 
-Overkill should separate measurement from policy.
+Overkill should separate measurement from budgets.
 
-Policy examples:
+Budget examples:
 
 - median must remain below a checked-in budget
 - p50/p95/p99 must stay within explicit bounds
 - p99 latency may regress only within tolerance
 - responsiveness metrics must remain within a calibrated range
 - results may be normalized relative to a calibration workload
-- cold-start and steady-state benchmarks may use different policies
+- cold-start and steady-state benchmarks may use different budgets
 - bundle output must stay below a checked-in size budget
 - browser paint / interactivity metrics must stay within explicit limits
 
-This policy layer is where CI gating semantics belong. Reporters explain the outcome; policy decides what counts as failure.
+This budget layer is where CI gating semantics belong. Reporters explain the
+outcome; budgets decide what counts as failure. The budget layer is still built
+on Overkill's assertion protocol internally, so benchmark failures remain
+ordinary structured failures to reporters and machine consumers.
 
-## SLO And Latency-Sensitive Checks
+## Latency-Sensitive Budgets
 
-SLO or latency-sensitive testing belongs inside the benchmark family rather
-than beside it as a separate testing model.
+Latency-sensitive testing belongs inside the benchmark family rather than
+beside it as a separate testing model.
 
 The settled direction is:
 
 - measurement captures latency, responsiveness, and related metrics
-- policy evaluates those measurements against explicit service-level or
+- budgets evaluate those measurements against explicit service-level or
   workflow-level budgets
 - the same benchmark/reporting infrastructure carries the result
 
@@ -270,13 +381,8 @@ Typical examples:
 So the distinction should stay clear:
 
 - benchmarks measure behavior
-- SLO checks decide whether measured behavior stays within declared
+- budgets decide whether measured behavior stays within declared
   latency/service budgets
-
-The canonical policy helper name should be treated as settled too:
-
-- `slo(...)` in `@overkill-dev/bench` expresses latency- or service-level
-  budget policy over measured benchmark results
 
 ## Execution Strategy
 
@@ -287,12 +393,16 @@ Typical benchmark preferences may include:
 - forcing worker count to `1`
 - preventing unrelated workloads from running concurrently
 - isolating process state between workloads
-- reusing expensive setup only where it does not contaminate measurements
+- reusing expensive resource/runtime state only where it does not contaminate
+  measurements
 - forking fresh processes for cold-start benchmarks
 - preserving one warmed process for steady-state measurement
 - launching a browser with a controlled runtime profile
 - isolating browser benchmark runs from unrelated system noise where
   possible
+- using a host process when custom Node or V8 flags are needed
+- reducing or disabling benchmark parallelism when the measurement strategy or
+  host calibration says parallel execution would contaminate results
 
 Overkill should therefore distinguish benchmark shapes such as:
 
@@ -305,6 +415,59 @@ Overkill should therefore distinguish benchmark shapes such as:
 - bundle-size
 
 These should be modeled as execution constraints contributed to orchestration, not as ad hoc benchmark-only hacks.
+
+Benchmark commands should be implemented on top of the regular runner
+pipeline. `overkill bench run` remains the public command because benchmark
+configuration, baselines, and reports are distinct enough to deserve their own
+namespace. Under that command, benchmark authoring compiles to ordinary
+Overkill test nodes plus benchmark metadata, then the runner resolves the same
+kind of plan, placement, execution, result, and reporter flow used by other
+families.
+
+The runner may resolve `hostProcess` when a benchmark or profile needs
+process-level control around worker threads. The public `processModel` can
+still be `worker-pool`; the extra host process is resolved execution detail
+owned by the generic runner process model. Benchmark execution may use it to
+pass `--expose-gc` or other Node/V8 options without requiring the parent runner
+process to carry those options. See
+[Runtime Behavior § Process Model And Scheduling](../architecture/runtime-behavior.md#process-model-and-scheduling).
+
+Parallel benchmark execution is allowed only when safe. The benchmark strategy
+contributes an initial capacity shape, such as single-core CPU work,
+multi-core wall-clock work, external-process work, or I/O-oriented work. A host
+calibration pass then records available parallelism, load, memory pressure,
+runtime metadata, and platform-specific noise signals. If the strategy and
+calibration agree that independent benchmark cases can run without material
+contamination, the runner may use multiple lanes. Otherwise it runs serially or
+with reduced lanes and records that placement decision in benchmark metadata.
+
+Noise handling has three levels:
+
+- every benchmark run records noise metadata when available
+- profiles may opt into blocking thresholds for known-bad host conditions
+- high-noise calibration may automatically reduce benchmark parallelism or
+  switch to serial placement before measured samples begin
+
+Node APIs are the first source for portable noise and resource metadata, such
+as `os.availableParallelism()`, `os.loadavg()`, `os.freemem()`,
+`process.cpuUsage()`, `process.resourceUsage()`, and process memory APIs.
+Platform probes such as POSIX or Darwin tools may add detail when they are
+available, but their source and unavailable state must be recorded explicitly
+so reports do not pretend every host supplied the same data.
+
+Warmup, calibration, cleanup, and cooldown are distinct phases:
+
+- warmup prepares the measured code path and records warmup observations
+- host calibration estimates current host capacity and noise before placement
+  and measured samples
+- cleanup resets benchmark-owned state between samples where needed
+- cooldown waits for configured runtime or platform signals to settle, with
+  hard caps to avoid hiding hangs
+
+Forced V8 garbage collection is opt-in. Benchmark profiles that run under a
+supervised or hosted process may start Node with `--expose-gc`, but the harness
+only calls `globalThis.gc()` when the benchmark or profile explicitly requests
+forced garbage collection as part of sample cleanup or cooldown.
 
 ## Calibration And Normalization
 
@@ -330,7 +493,7 @@ Benchmarking external processes should be first-class:
 - environment control
 - stdout and stderr capture
 - PTY-aware execution for CLI workflows
-- prepare/setup/cleanup commands that are not part of the timing window
+- prepare and cleanup commands that are not part of the timing window
 - command-parameter scans and workload matrices
 - repeated fresh-process execution for cold-start measurements
 
@@ -377,7 +540,7 @@ The implementation direction is:
 
 The package split should be:
 
-- `@overkill-dev/bench` owns the generic workload, measurement, policy,
+- `@overkill-dev/bench` owns the generic workload, measurement, budgets,
   baseline, and reporting contracts
 - `@overkill-dev/browser-bench` owns browser runtime provisioning, page-flow
   workloads, browser-specific metric collectors, and browser-specific
@@ -395,14 +558,14 @@ Concept sketch for `@overkill-dev/browser-bench`:
   engine-specific adapters layered where needed
 - artifacts may include traces, screenshots, filmstrips, performance-event
   timelines, and raw metric dumps attached to the benchmark result
-- policies remain expressed through the shared benchmark model: explicit
+- budgets remain expressed through the shared benchmark model: explicit
   budgets for paint timing, interaction latency, jank, bundle weight, or
   other measured dimensions
 
 This keeps browser benchmarking inside one benchmark family while still
 giving it a real package boundary and room for browser-specific mechanics.
 
-The benchmark layer should therefore be **backend-agnostic** at the concept
+The benchmark layer should therefore be **adapter-agnostic** at the concept
 level:
 
 - BiDi-first where portable browser automation and event streams are enough
@@ -439,7 +602,7 @@ Useful stored data may include:
 - exact metadata expectations
 - range-based budget semantics
 - benchmark shape (`cold-start`, `steady-state`, `external-process`, etc.)
-- measurement backend identity
+- measurement strategy identity
 - browser/runtime metadata for frontend benchmarks
 - bundle-size budget metadata
 
