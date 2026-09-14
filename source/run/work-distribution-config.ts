@@ -11,6 +11,8 @@ type NormalizedProfileFileSets = {
     readonly sets: NonNullable<RunProfileFiles['sets']>;
 };
 
+type GroupWorkDistribution = Extract<RunWorkDistribution, { readonly mode: 'group'; }>;
+
 function normalizeWorkGroup(group: RunWorkGroup): RunWorkGroup {
     return {
         fileSets: [ group.fileSets[0], ...group.fileSets.slice(1) ],
@@ -92,14 +94,10 @@ function invalidGroupMessage(
 }
 
 function invalidAssignedGroupsMessage(
-    distribution: RunWorkDistribution,
+    distribution: GroupWorkDistribution,
     profileFileSets: ReadonlySet<string>
 ): string | null {
     const assignedFileSets = new Map<string, string>();
-
-    if (distribution.mode !== 'group') {
-        return null;
-    }
 
     for (const group of distribution.groups) {
         const groupMessage = invalidGroupMessage(group, profileFileSets, assignedFileSets);

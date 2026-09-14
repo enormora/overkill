@@ -23,6 +23,8 @@ import type {
 
 const maximumWorkerCount = 8;
 
+type GroupWorkDistribution = Extract<RunWorkDistribution, { readonly mode: 'group'; }>;
+
 export type WorkerPoolPlacementPlanInput = {
     readonly availableParallelism: number;
     readonly fileSetForFile: (file: string) => string | null;
@@ -144,11 +146,7 @@ function selectedFileSets(
     return fileSets;
 }
 
-function assignedGroupFileSets(distribution: RunWorkDistribution): ReadonlySet<string> {
-    if (distribution.mode !== 'group') {
-        return new Set();
-    }
-
+function assignedGroupFileSets(distribution: GroupWorkDistribution): ReadonlySet<string> {
     return new Set(distribution.groups.flatMap(function toFileSets(group) {
         return group.fileSets;
     }));
@@ -156,7 +154,7 @@ function assignedGroupFileSets(distribution: RunWorkDistribution): ReadonlySet<s
 
 function assertNoUnmatchedSelectedFileSets(
     plan: CollectedRunPlan,
-    distribution: RunWorkDistribution,
+    distribution: GroupWorkDistribution,
     fileSetForFile: (file: string) => string | null
 ): ReadonlyMap<string, string> {
     const fileSets = selectedFileSets(plan, fileSetForFile);
@@ -203,13 +201,9 @@ function groupWorkUnit(
 
 function groupWorkUnitsFromCollectedPlan(
     plan: CollectedRunPlan,
-    distribution: RunWorkDistribution,
+    distribution: GroupWorkDistribution,
     fileSetForFile: (file: string) => string | null
 ): readonly WorkUnit[] {
-    if (distribution.mode !== 'group') {
-        return [];
-    }
-
     const fileSets = assertNoUnmatchedSelectedFileSets(plan, distribution, fileSetForFile);
 
     return distribution.groups.flatMap(function toGroupUnit(group) {
@@ -238,6 +232,10 @@ export function workUnitsFromCollectedPlan(
 }
 
 function defaultWorkerCount(availableParallelism: number, unitCount: number): number {
+    if (!Number.isSafeInteger(availableParallelism) || availableParallelism <= 0) {
+        invalidRequest('Available parallelism must be a positive safe integer.');
+    }
+
     if (unitCount === 0) {
         return 0;
     }

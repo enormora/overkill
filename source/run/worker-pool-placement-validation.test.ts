@@ -148,6 +148,29 @@ function placementPlanWithGroupUnit(): PlacementPlan {
     };
 }
 
+function placementPlanAssignedToSecondLane(): PlacementPlan {
+    const base = placementPlan();
+    const unit = firstWorkUnit();
+
+    return {
+        ...base,
+        assignments: [ { lane: 'worker-2', unit: unit.id } ],
+        lanes: [
+            ...base.lanes,
+            {
+                executor: {
+                    capabilities: [],
+                    capacity: 1,
+                    id: 'worker-2',
+                    kind: 'local-worker'
+                },
+                id: 'worker-2'
+            }
+        ],
+        units: [ unit ]
+    };
+}
+
 function workerPoolResolvedRun(placement: PlacementPlan): ResolvedRun {
     return {
         collectionRunnerErrors: [],
@@ -404,6 +427,24 @@ export const testNode = createOverkillSuite({
 
                 await reportRunStart(runtime, 0);
                 scope.assert.equal(reportedEvents, 0);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'worker-pool execution runs only units assigned to each lane',
+            async body(scope: OverkillScope) {
+                const acceptingPool = createAcceptingPool();
+                const placement = placementPlanAssignedToSecondLane();
+                const runtime = {
+                    ...fakeWorkerRuntime(placement),
+                    pool: acceptingPool.pool
+                };
+                const completed = await executeWorkerPoolUnits(runtime, placement, 0);
+
+                scope.assert.equal(completed.length, 1);
+                scope.assert.equal(acceptingPool.capturedTasks.length, 1);
 
                 return scope.assert.collect();
             }
