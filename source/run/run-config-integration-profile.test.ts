@@ -45,6 +45,7 @@ export const testNode = createOverkillSuite({
                     execution: {
                         processModel: 'worker-pool',
                         scheduling: 'concurrent',
+                        workDistribution: { mode: 'file' },
                         workerLifecycle: 'reuse'
                     },
                     files: {
@@ -67,7 +68,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() normalizes worker-pool lifecycle overrides',
+            title: 'loadRunConfig() normalizes worker-pool lifecycle and distribution overrides',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -87,6 +88,7 @@ export const testNode = createOverkillSuite({
                             execution: {
                                 processModel: 'worker-pool',
                                 scheduling: 'serial',
+                                workDistribution: { mode: 'file' },
                                 workerLifecycle: 'fresh-worker-per-unit'
                             }
                         }
@@ -100,11 +102,13 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(defaultedProfile.execution, {
                     processModel: 'worker-pool',
                     scheduling: 'serial',
+                    workDistribution: { mode: 'file' },
                     workerLifecycle: 'reuse'
                 });
                 scope.assert.deepEqual(profile.execution, {
                     processModel: 'worker-pool',
                     scheduling: 'serial',
+                    workDistribution: { mode: 'file' },
                     workerLifecycle: 'fresh-worker-per-unit'
                 });
 

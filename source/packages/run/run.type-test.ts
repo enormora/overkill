@@ -42,6 +42,7 @@ import {
     type RunRequest,
     type RunScheduling,
     type RunTestFamily,
+    type RunWorkDistribution,
     type RunWorkerLifecycle,
     type SerializedValue
 } from './run.entry-point.ts';
@@ -174,6 +175,14 @@ describe('@overkill-dev/run', function () {
         >()
             .type
             .toBe<RunWorkerLifecycle>();
+        expect<
+            Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['workDistribution']
+        >()
+            .type
+            .toBe<RunWorkDistribution>();
+        expect<RunWorkDistribution>().type.toBe<{
+            readonly mode: 'file';
+        }>();
     });
 
     test('exposes collection, soft, and hard timeout facts', function () {

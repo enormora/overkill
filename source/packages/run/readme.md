@@ -132,11 +132,9 @@ Explicit file paths bypass the files policy. Directory paths require a files
 policy, filter the profile-discovered file set, and cannot be mixed with file
 paths.
 
-Configured integration profiles require a `files` policy and currently run
-through `execution.processModel: 'supervised-process'` with `serial` or
-`concurrent` scheduling. Integration tests are not governed by
-`RunRequest.capabilityRestrictions`; that request field is part of the
-microtest runtime model only.
+Configured integration profiles require a `files` policy. Integration tests
+are not governed by `RunRequest.capabilityRestrictions`; that request field is
+part of the microtest runtime model only.
 
 Microtest profile execution is modeled with two independent fields:
 `execution.processModel` is `in-process` or `supervised-process`, and
@@ -146,8 +144,11 @@ in `RunFacts.execution` and drive runner planning.
 
 Integration profiles default to `worker-pool` with concurrent scheduling.
 `worker-pool` uses bounded Node worker threads, collects once in a worker,
-then executes selected file units in isolated worker tasks. `supervised-process`
-remains available when a single process-isolated child boundary is preferred.
+then executes selected file units. `workerLifecycle: 'reuse'` reuses worker
+threads between file units. `workerLifecycle: 'fresh-worker-per-unit'` creates
+worker-per-file disposable isolation when combined with
+`workDistribution: { mode: 'file' }`. `supervised-process` remains available
+when a single process-isolated child boundary is preferred.
 
 `RunRequest.capabilityRestrictions.mode` controls the current microtest
 restriction policy. The programmatic default is `enabled`; the command-line

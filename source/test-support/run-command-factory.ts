@@ -14,6 +14,7 @@ import type {
     RunResourceBudgets,
     RunResourceUsagePolicy,
     RunTimeoutPolicy,
+    RunWorkDistribution,
     RunWorkerLifecycle
 } from '../run/run-types.ts';
 
@@ -110,6 +111,7 @@ export function testRunExecutionFacts(command: RunCommand, profile: RunProfileCo
         return {
             ...facts,
             processModel: profile.execution.processModel,
+            workDistribution: profile.execution.workDistribution,
             workerLifecycle: profile.execution.workerLifecycle
         };
     }
@@ -132,6 +134,18 @@ function defaultWorkerLifecycle(overrides: Partial<RunIntegrationExecution>): Ru
         : 'reuse';
 }
 
+function hasWorkDistributionOverride(
+    overrides: Partial<RunIntegrationExecution>
+): overrides is WorkerPoolExecutionOverrides {
+    return Object.hasOwn(overrides, 'workDistribution');
+}
+
+function defaultWorkDistribution(overrides: Partial<RunIntegrationExecution>): RunWorkDistribution {
+    return hasWorkDistributionOverride(overrides)
+        ? overrides.workDistribution ?? { mode: 'file' }
+        : { mode: 'file' };
+}
+
 function defaultIntegrationExecution(overrides: Partial<RunIntegrationExecution> = {}): RunIntegrationExecution {
     const processModel = overrides.processModel ?? 'worker-pool';
     const scheduling = overrides.scheduling ?? 'concurrent';
@@ -140,6 +154,7 @@ function defaultIntegrationExecution(overrides: Partial<RunIntegrationExecution>
         return {
             processModel,
             scheduling,
+            workDistribution: defaultWorkDistribution(overrides),
             workerLifecycle: defaultWorkerLifecycle(overrides)
         };
     }

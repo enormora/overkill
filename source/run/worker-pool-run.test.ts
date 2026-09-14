@@ -128,6 +128,7 @@ export const testNode = createOverkillSuite({
                 }
 
                 scope.assert.equal(resolvedRun.facts.execution.workerLifecycle, 'reuse');
+                scope.assert.deepEqual(resolvedRun.facts.execution.workDistribution, { mode: 'file' });
                 scope.assert.equal(resolvedRun.plan.kind, 'worker-pool');
 
                 return scope.assert.collect();
@@ -159,6 +160,7 @@ export const testNode = createOverkillSuite({
                 }
 
                 scope.assert.equal(resolvedRun.facts.execution.workerLifecycle, 'fresh-worker-per-unit');
+                scope.assert.deepEqual(resolvedRun.facts.execution.workDistribution, { mode: 'file' });
 
                 return scope.assert.collect();
             }

@@ -34,6 +34,7 @@ import {
     type RunResourceBudgets,
     type RunResourceUsagePolicy,
     type RunTimeoutPolicy,
+    type RunWorkDistribution,
     type RunWorkerLifecycle
 } from './run-types.ts';
 import {
@@ -127,10 +128,12 @@ const defaultMicrotestExecution: RunMicrotestExecution = {
 const defaultIntegrationExecution: RunIntegrationExecution = {
     processModel: 'worker-pool',
     scheduling: 'concurrent',
+    workDistribution: { mode: 'file' },
     workerLifecycle: 'reuse'
 };
 
 const defaultWorkerLifecycle = defaultIntegrationExecution.workerLifecycle;
+const defaultWorkDistribution = defaultIntegrationExecution.workDistribution;
 
 type ProjectProfileFilePatterns = {
     readonly exclude?: readonly string[] | undefined;
@@ -418,6 +421,14 @@ function normalizeWorkerLifecycle(execution: RunProjectIntegrationExecution | un
     return execution.workerLifecycle ?? defaultWorkerLifecycle;
 }
 
+function normalizeWorkDistribution(execution: RunProjectIntegrationExecution | undefined): RunWorkDistribution {
+    if (execution?.processModel !== 'worker-pool') {
+        return defaultWorkDistribution;
+    }
+
+    return execution.workDistribution ?? defaultWorkDistribution;
+}
+
 function normalizeWorkerPoolExecution(
     execution: RunProjectIntegrationExecution | undefined,
     scheduling: RunIntegrationExecution['scheduling']
@@ -425,6 +436,7 @@ function normalizeWorkerPoolExecution(
     return {
         processModel: 'worker-pool',
         scheduling,
+        workDistribution: normalizeWorkDistribution(execution),
         workerLifecycle: normalizeWorkerLifecycle(execution)
     };
 }
