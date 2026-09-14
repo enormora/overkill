@@ -34,12 +34,15 @@ import {
     type RunResourceBudgets,
     type RunResourceUsagePolicy,
     type RunTimeoutPolicy,
-    type RunWorkDistribution,
     type RunWorkerLifecycle
 } from './run-types.ts';
 import {
     invalidProfileFileGlobConfigMessage
 } from './profile-file-glob.ts';
+import {
+    invalidWorkDistributionConfigMessage,
+    normalizeWorkDistribution
+} from './work-distribution-config.ts';
 
 export type RunProjectConfig = ParsedRunProjectConfig;
 export type RunProjectIntegrationExecution = ParsedRunProjectIntegrationExecution;
@@ -421,12 +424,15 @@ function normalizeWorkerLifecycle(execution: RunProjectIntegrationExecution | un
     return execution.workerLifecycle ?? defaultWorkerLifecycle;
 }
 
-function normalizeWorkDistribution(execution: RunProjectIntegrationExecution | undefined): RunWorkDistribution {
-    if (execution?.processModel !== 'worker-pool') {
-        return defaultWorkDistribution;
-    }
+function assertValidWorkDistribution(
+    execution: RunIntegrationExecution,
+    files: RunProfileFiles
+): void {
+    const message = invalidWorkDistributionConfigMessage(execution, files);
 
-    return execution.workDistribution ?? defaultWorkDistribution;
+    if (message !== null) {
+        throw new RunConfigError(message);
+    }
 }
 
 function normalizeWorkerPoolExecution(
@@ -436,7 +442,7 @@ function normalizeWorkerPoolExecution(
     return {
         processModel: 'worker-pool',
         scheduling,
-        workDistribution: normalizeWorkDistribution(execution),
+        workDistribution: normalizeWorkDistribution(execution, defaultWorkDistribution),
         workerLifecycle: normalizeWorkerLifecycle(execution)
     };
 }
@@ -474,12 +480,15 @@ function normalizeMicrotestProfile(profile: RunProjectMicrotestProfileConfig): R
 
 function normalizeIntegrationProfile(profile: RunProjectIntegrationProfileConfig): RunIntegrationProfileConfig {
     const timeouts = normalizeTimeouts(profile.timeouts, defaultIntegrationTimeoutPolicy);
+    const files = normalizeRequiredProfileFiles(profile.files);
+    const execution = normalizeIntegrationExecution(profile.execution);
 
     assertValidTimeouts(timeouts);
+    assertValidWorkDistribution(execution, files);
 
     return {
-        execution: normalizeIntegrationExecution(profile.execution),
-        files: normalizeRequiredProfileFiles(profile.files),
+        execution,
+        files,
         reporters: normalizeReporters(profile.reporters),
         resourceUsage: normalizeResourceUsage(profile.resourceUsage),
         testFamily: 'integration',

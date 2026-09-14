@@ -45,6 +45,7 @@ import {
     type RunScheduling,
     type RunTestFamily,
     type RunWorkDistribution,
+    type RunWorkGroup,
     type RunWorkerLifecycle,
     type RuntimeId,
     type SerializedValue,
@@ -109,6 +110,15 @@ type ExpectedPlacementTraceKinds = {
     readonly 'unit-reassigned': true;
     readonly 'unit-started': true;
     readonly 'worker-crashed': true;
+};
+type ExpectedRunWorkDistribution = {
+    readonly groups: readonly [RunWorkGroup, ...readonly RunWorkGroup[]];
+    readonly mode: 'group';
+    readonly unmatched: 'reject';
+} | {
+    readonly mode: 'case';
+} | {
+    readonly mode: 'file';
 };
 
 describe('@overkill-dev/run', function () {
@@ -199,8 +209,10 @@ describe('@overkill-dev/run', function () {
         >()
             .type
             .toBe<RunWorkDistribution>();
-        expect<RunWorkDistribution>().type.toBe<{
-            readonly mode: 'file';
+        expect<RunWorkDistribution>().type.toBe<ExpectedRunWorkDistribution>();
+        expect<RunWorkGroup>().type.toBe<{
+            readonly fileSets: readonly [string, ...readonly string[]];
+            readonly name: string;
         }>();
     });
 

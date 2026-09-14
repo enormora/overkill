@@ -288,6 +288,21 @@ export const testNode = createOverkillSuite({
                     workDistribution: { mode: 'file' },
                     workerLifecycle: 'fresh-worker-per-unit'
                 });
+                assertValidationSuccess(scope, integrationExecutionSchema, {
+                    processModel: 'worker-pool',
+                    scheduling: 'serial',
+                    workDistribution: { mode: 'case' },
+                    workerLifecycle: 'fresh-worker-per-unit'
+                });
+                assertValidationSuccess(scope, integrationExecutionSchema, {
+                    processModel: 'worker-pool',
+                    scheduling: 'serial',
+                    workDistribution: {
+                        groups: [ { fileSets: [ 'integration' ], name: 'integration' } ],
+                        mode: 'group'
+                    },
+                    workerLifecycle: 'fresh-worker-per-unit'
+                });
 
                 assertValidationSuccess(scope, integrationExecutionSchema, {
                     processModel: 'worker-pool',
@@ -307,7 +322,11 @@ export const testNode = createOverkillSuite({
                 const result = safeParse(integrationExecutionSchema, {
                     processModel: 'worker-pool',
                     scheduling: 'serial',
-                    workDistribution: { mode: 'case' }
+                    workDistribution: {
+                        groups: [ { fileSets: [ 'integration' ], name: 'integration' } ],
+                        mode: 'group',
+                        unmatched: 'file'
+                    }
                 });
 
                 scope.assert.equal(result.success, false);

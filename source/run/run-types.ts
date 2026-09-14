@@ -140,9 +140,26 @@ export type RunScheduling = 'concurrent' | 'serial';
 
 export type RunWorkerLifecycle = 'fresh-worker-per-unit' | 'reuse';
 
-export type RunWorkDistribution = {
+type FileRunWorkDistribution = {
     readonly mode: 'file';
 };
+
+type CaseRunWorkDistribution = {
+    readonly mode: 'case';
+};
+
+export type RunWorkGroup = {
+    readonly fileSets: NonEmptyReadonlyArray<string>;
+    readonly name: string;
+};
+
+type GroupRunWorkDistribution = {
+    readonly groups: NonEmptyReadonlyArray<RunWorkGroup>;
+    readonly mode: 'group';
+    readonly unmatched: 'reject';
+};
+
+export type RunWorkDistribution = CaseRunWorkDistribution | FileRunWorkDistribution | GroupRunWorkDistribution;
 
 export type RuntimeDimensions = Readonly<Record<string, string>>;
 

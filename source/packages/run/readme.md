@@ -144,13 +144,16 @@ in `RunFacts.execution` and drive runner planning.
 
 Integration profiles default to `worker-pool` with concurrent scheduling.
 `worker-pool` uses bounded Node worker threads, collects once in a worker,
-then resolves selected cases into file `WorkUnit`s. `RunFacts.execution`
-contains the frozen `PlacementPlan`: file work units, local worker lanes, and
-the deterministic initial lane assignment used by execution. `workerLifecycle:
-'reuse'` reuses worker threads between file units. `workerLifecycle:
-'fresh-worker-per-unit'` creates worker-per-file disposable isolation when
-combined with `workDistribution: { mode: 'file' }`. `supervised-process`
-remains available when a single process-isolated child boundary is preferred.
+then resolves selected cases into `WorkUnit`s. `workDistribution` controls
+whether those units are packed by file, by individual case, or by named
+profile file-set groups. Minimal group distribution requires `files.sets`,
+uses one indivisible unit per configured group, and rejects selected files
+whose file set is not assigned to a group. `RunFacts.execution` contains the
+frozen `PlacementPlan`: work units, local worker lanes, and the deterministic
+initial lane assignment used by execution. `workerLifecycle: 'reuse'` reuses
+worker threads between units. `workerLifecycle: 'fresh-worker-per-unit'`
+creates disposable isolation per unit. `supervised-process` remains available
+when a single process-isolated child boundary is preferred.
 
 `RunRequest.capabilityRestrictions.mode` controls the current microtest
 restriction policy. The programmatic default is `enabled`; the command-line

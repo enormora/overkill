@@ -188,12 +188,16 @@ function workerPoolEngine(runtime: WorkerPoolRunRuntime): WorkerPoolCommand['eng
     return runtime.resolvedRun.engine;
 }
 
-function unitFile(unit: WorkUnit): string {
-    if (unit.id.mode !== 'file') {
-        throw new Error('Worker-pool file distribution requires file work units.');
-    }
+function unitPaths(unit: WorkUnit): readonly string[] {
+    return Array.from(
+        new Set(unit.work.map(function toFile(work) {
+            if (work.case.file === null) {
+                throw new Error('Worker-pool work units require file-backed cases.');
+            }
 
-    return unit.id.key;
+            return work.case.file;
+        }))
+    );
 }
 
 function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit): WorkerPoolCommand {
@@ -202,7 +206,7 @@ function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit): Worker
         cwd: runtime.resolvedRun.cwd,
         engine: workerPoolEngine(runtime),
         hardTimeoutMilliseconds: runtime.resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds,
-        paths: [ unitFile(unit) ],
+        paths: unitPaths(unit),
         resourceBudgets: runtime.resolvedRun.facts.execution.resourceUsagePolicy.budgets,
         resourceUsageSamplingIntervalMilliseconds: runtime
             .resolvedRun
