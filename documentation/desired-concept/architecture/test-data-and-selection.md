@@ -132,9 +132,12 @@ Filterable dimensions:
 - params
 - tag
 - owner
+- public runtime key
+- runtime matrix variant id
+- runtime dimension
 
 Test family is not a filter dimension because the selected profile already
-binds one family. Runtime and stability are not current filter dimensions.
+binds one family. Stability is not a current filter dimension.
 
 ## Filter Expression Grammar
 
@@ -152,6 +155,18 @@ term      := dimension '=' value
 value     := identifier | quoted-string
 dimension := 'tag' | 'owner' | 'file' | 'title' | 'suite' | 'params'
 ```
+
+Runtime selection may also be expressed through dedicated CLI sugar instead of
+the general filter grammar:
+
+```sh
+overkill run --runtime browser
+overkill run --runtime browser:chromium
+overkill run --runtime browser.engine=chromium
+```
+
+Repeated `--runtime` flags combine with AND and lower to the same run
+selection model as programmatic runtime filters.
 
 Examples:
 

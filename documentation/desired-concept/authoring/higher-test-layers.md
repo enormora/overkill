@@ -411,30 +411,38 @@ runner profile owns the family and runtime policy:
 ```ts
 import { test } from '@overkill-dev/test';
 import { withRuntime } from '@overkill-dev/test/resources';
-import { apiRuntime } from '#tests/runtimes/api';
+import { apiRuntime } from '#tests/api-runtime';
 
 export const testNode = test(
     'loads user',
     withRuntime(apiRuntime, (scope) => {
-        scope.assert.equal(scope.runtime.database.loadUser('42').id, '42');
+        scope.assert.equal(scope.runtimes.api.database.loadUser('42').id, '42');
         return scope.assert.collect();
     })
 );
 ```
 
-For a single resource, `withResource(resource, body)` is syntax sugar that
-keeps the common case small while preserving the same runner-visible
-descriptor model:
+For direct resources, `withResource(resource, body)` keeps the common
+single-resource case small, while `withResources(resources, body)` gives
+multiple resources explicit public keys:
 
 ```ts
 import { test } from '@overkill-dev/test';
-import { withResource } from '@overkill-dev/test/resources';
+import { withResource, withResources } from '@overkill-dev/test/resources';
 import { scratch } from '#tests/resources/scratch';
 
 export const testNode = test(
     'writes output',
     withResource(scratch, (scope) => {
-        scope.assert.match(scope.resource.path, /overkill/);
+        scope.assert.match(scope.resources.scratch.path, /overkill/);
+        return scope.assert.collect();
+    })
+);
+
+export const secondTestNode = test(
+    'writes report',
+    withResources({ dir: scratch }, (scope) => {
+        scope.assert.match(scope.resources.dir.path, /overkill/);
         return scope.assert.collect();
     })
 );
@@ -443,8 +451,37 @@ export const testNode = test(
 Both wrappers attach descriptors, not already acquired handles. Collection
 must happen before scheduling. The runner lowers resource scopes and
 requirements into placement constraints, starts resources inside the selected
-worker or process, injects handles into `scope.runtime` or `scope.resource`
+worker or process, injects handles into `scope.runtimes` or `scope.resources`
 when handles exist, and disposes them according to their declared scope.
+
+Runtime matrices and composition are runtime-layer concerns, not test-family
+concepts. A browser matrix can run the same authored case once per variant:
+
+```ts
+const browserRuntime = defineRuntimeMatrix({
+    name: 'browser',
+    shared: { ignoreSSLErrors: true },
+    variants: {
+        chromium: chromiumRuntime,
+        firefox: firefoxRuntime
+    }
+});
+
+const appBrowserRuntime = composeRuntimes([ appRuntime, browserRuntime ]);
+
+export const testNode = test(
+    'renders the settings page',
+    withRuntime(appBrowserRuntime, (scope) => {
+        scope.assert.equal(scope.runtimes.app.frontendServer.status(), 'ready');
+        scope.assert.equal(scope.runtimes.browser.page.title(), 'Settings');
+        return scope.assert.collect();
+    })
+);
+```
+
+The composed runtime has no own scope name. Child runtime and matrix names are
+lifted into `scope.runtimes`. Duplicate names fail, and multiple matrices
+expand as a Cartesian product during planning.
 
 Execution requirements. Runtimes should be able to contribute execution
 requirements without owning the final scheduling decision. Examples:
@@ -461,15 +498,20 @@ together with the needs of the test family and runner profile.
 
 The deterministic-server pattern is too useful to leave implicit.
 
-Overkill should support named scenarios or runtime presets at the
-resource/runtime layer, where they can influence:
+Overkill should support named scenarios at the resource/runtime layer, where
+they can influence:
 
 - runtime identity
 - artifact identity
 - replay metadata
 - browser and integration matrices
+- resource acquisition cache keys when a scenario changes acquisition
 
 This should remain explicit and adapter-owned, not guessed by the runner.
+Scenario names are finite typed catalogs on scenario-aware resources or
+simulations. The runner only needs to know scenarios that affect planning,
+cache identity, global binding, filtering, or reporting. A resource handle may
+still expose body-time scenario methods through normal TypeScript return types.
 
 ### 3. Generic Interaction Transcript Recording
 

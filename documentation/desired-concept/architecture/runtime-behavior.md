@@ -84,6 +84,31 @@ Selection itself is annotation-driven: tags are a first-class annotation
 field, and tag filtering happens through `--filter` expressions such as
 `tag=fast` or `!tag=flaky` (see [Test Data And Selection](./test-data-and-selection.md)).
 
+## Runtime Selection
+
+Runtime matrices expand during planning before resource acquisition. Runtime
+selection then filters the planned cases by public runtime keys, variant ids,
+and dimensions.
+
+Programmatic filters should include:
+
+- `runtime(name)`: match planned cases that include a public runtime key
+- `runtimeVariant(name, variantId)`: match a matrix variant id
+- `runtimeDimension(name, dimensionName, value)`: match a runtime dimension
+
+The CLI exposes the common cases through repeated `--runtime` flags:
+
+```sh
+overkill run --runtime browser
+overkill run --runtime browser:chromium
+overkill run --runtime browser.engine=chromium --runtime app
+```
+
+Repeated runtime selectors combine with AND and compose with `--filter`.
+Selectors match public runtime keys, not inner runtime names reused inside a
+matrix. Filtering happens before acquisition, so unselected matrix variants and
+filtered cases do not start resources.
+
 ## Exit Codes And `process.exit`
 
 Default exit codes for the `overkill` CLI:
@@ -400,7 +425,7 @@ Hard-timeout mechanics:
 
 - only available in profiles that own a worker or subprocess
   boundary (supervised microtests, integration runs with workers,
-  benchmark execution, or adapter-owned simulation runs)
+  benchmark execution, or resource-backed simulation runs)
 - the watchdog terminates the worker after the hard timeout; the
   test is recorded as `crashed`
 - crash-budget rules (`Process Crash Handling`) apply

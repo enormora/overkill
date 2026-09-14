@@ -6,17 +6,17 @@ Deterministic simulation testing should remain a first-class Overkill concept,
 but not as an Overkill-owned application architecture.
 
 Overkill should not prescribe one dependency-injection style, one runtime
-object shape, or one simulator implementation. Instead, it should provide first-class
-support for **simulation-aware runtimes**:
+object shape, or one simulator implementation. Instead, it should provide
+first-class support for **simulation-aware resources and runtimes**:
 
-- tests may declare that they run under a specific simulation adapter
-- adapters declare execution requirements and replay metadata
+- tests may attach resources created from simulation definitions
+- resources declare execution requirements and replay metadata
 - failures capture seeds, scenarios, and witnesses in a standard shape
 - the same simulator can also be used outside tests for manual or
   exploratory runs
 
 This is the important distinction. The simulator belongs to the application or
-an adapter package. Overkill owns the _testing integration_ around it.
+an adapter package. Overkill owns the resource and runner integration around it.
 
 ## Why This Matters
 
@@ -61,11 +61,11 @@ simulatable by itself.
 
 Overkill should own the runner-facing integration surface:
 
-- simulation-aware execution profiles
+- simulation-aware resource descriptors
 - structured seed handling
 - witness capture and replay metadata
 - scenario identity and reporting
-- execution requirements contributed by simulation adapters
+- execution requirements contributed by simulation resources
 
 Overkill should _not_ own:
 
@@ -73,37 +73,33 @@ Overkill should _not_ own:
 - predefined app-level service handles
 - one official simulator implementation for all apps
 - hidden monkey-patching as the default strategy
+- a `withSimulation(...)` test wrapper in `@overkill-dev/test`
 
-## Simulation Adapters, Not Built-In Worlds
+## Simulation Definitions, Not Built-In Worlds
 
-The clean concept is a generic simulation adapter contract.
+The clean concept is a generic simulation definition plus resource adapters.
+`@overkill-dev/simulation` owns generic simulation vocabulary, finite scenario
+catalogs, and server definitions that can also be launched outside a test run.
+`@overkill-dev/resources` owns the resource adapters that turn those
+definitions into runner-visible descriptors.
 
-An adapter declares:
+A simulation definition declares:
 
-- how to install the simulation runtime
-- what execution strategy it needs
-- what seed and scenario metadata it uses
-- how to capture witness or replay information
-- how to expose manual or exploratory launch modes when relevant
+- its name
+- its finite scenario catalog
+- any seed and replay metadata it can provide
+- any manual or exploratory launch surface when relevant
 
 Illustrative shape:
 
 ```ts
-type SimulationAdapter = {
+type SimulationDefinition<Scenarios extends string> = {
     readonly name: string;
-    readonly executionRequirements?: ExecutionRequirement[];
-    start(options: { seed?: bigint; scenario?: string; signal: AbortSignal; }): Promise<SimulationSession>;
+    readonly scenarios: Readonly<Record<Scenarios, SimulationScenario>>;
 };
 
-type SimulationSession = {
-    readonly runtimeMetadata: {
-        seed?: bigint;
-        scenario?: string;
-        endpoint?: URL;
-    };
-    witness?(): Promise<unknown>;
-    stop(): Promise<void>;
-};
+type ScenarioKeyOf<Simulation> = Simulation extends SimulationDefinition<infer Scenario> ? Scenario
+    : never;
 ```
 
 This keeps Overkill DI-agnostic. A simulator may be:
@@ -113,7 +109,8 @@ This keeps Overkill DI-agnostic. A simulator may be:
 - a worker-hosted state machine
 - a browser or multi-process harness
 
-Overkill only needs the generic contract.
+Overkill only needs enough metadata for resource adapters, typed scenario
+bindings, reporting, and replay.
 
 ## Scenarios As First-Class Presets
 
@@ -174,53 +171,120 @@ That model has several advantages:
 Overkill should therefore treat **simulation via deterministic local
 services** as a first-class pattern, not as an edge case.
 
+## Simulated HTTP Servers
+
+HTTP is the first server shape Overkill should make easy, but the generic
+simulation package must not become HTTP-only.
+
+`@overkill-dev/simulation` should expose `defineSimulatedHttpServer(...)`.
+Its core handler shape is fetch-style:
+
+```ts
+type SimulatedHttpHandler<Scenario extends string> = (
+    request: Request,
+    scenario: { readonly key: Scenario; }
+) => Response | Promise<Response>;
+```
+
+`@overkill-dev/resources` should expose
+`createSimulatedHttpServerResource(...)`. That adapter turns the simulated
+HTTP server definition into a resource descriptor. It owns `listen`, teardown,
+host, port, and the exposed `baseUrl`. By default it binds to `127.0.0.1` with
+`port: 0`, so the operating system assigns an unused port atomically. The
+adapter can still expose URL builders for path-prefix, query, header, or
+cookie scenario routing when the scenario is request-routed.
+
+## Scenario Timing
+
+Only runner-visible scenarios are declared in descriptors. A scenario is
+runner-visible when it affects planning, cache identity, global binding,
+filtering, reporting, or replay metadata.
+
+Two scenario timing modes are in scope:
+
+- `request-routed`: the resource can serve multiple scenarios from the same
+  acquired handle. The scenario affects the exposed handle, URL builder, or
+  request construction. It does not affect the resource acquisition cache key.
+- `acquire`: the scenario changes startup or acquired state. The scenario is
+  part of the acquisition context, disposal context, and resource acquisition
+  cache key.
+
+For `shared-per-worker` resources, acquire-time scenarios are cached per worker
+and per scenario key. If an app server depends on a simulated API URL during
+`acquire`, the API scenario must also be acquire-time for that graph. The
+runner must not pretend a body-time scenario can reconfigure an already
+acquired dependent resource.
+
 ## What A Test Might Look Like
 
-The preferred public entry shape should be a **runtime wrapper**, not a new
-test primitive. In other words:
+The preferred public entry shape should be a resource-backed runtime, not a
+new test primitive. In other words:
 
 - simulation belongs in runtime/resource composition
 - tests still look like ordinary tests
-- the wrapper should make the adapter, seed, and scenario explicit at the
-  declaration site
-
-The public helper should be treated as settled:
-
-- `withSimulation(adapter, options, body)`
-
-`SimulationAdapter` and `SimulationSession` are canonical too (see the
-section above and the types index). `withSimulation(...)` is the wrapper
-entrypoint that turns those lower-level pieces into ordinary test authoring.
-
-In-process style:
+- runtime descriptors make runner-visible scenarios explicit before scheduling
+- handles may expose body-time scenario methods when the scenario does not
+  affect scheduling or acquisition
 
 ```ts
-integration.test(
-    'queue stays consistent under the deterministic runtime',
-    withSimulation(myAppSim, { seed: 42n, scenario: 'default' }, async (scope) => {
-        scope.assert.collect();
+import { test } from '@overkill-dev/test';
+import { withRuntime } from '@overkill-dev/test/resources';
+import {
+    createSimulatedHttpServerResource,
+    defineRuntime
+} from '@overkill-dev/resources';
+import { defineSimulatedHttpServer } from '@overkill-dev/simulation';
+
+const apiSimulation = defineSimulatedHttpServer({
+    name: 'api',
+    scenarios: {
+        default: { title: 'default responses' },
+        'payments-500': { title: 'payment service fails' }
+    },
+    handle(request, scenario) {
+        return scenario.key === 'payments-500'
+            ? Response.json({ error: 'upstream failed' }, { status: 500 })
+            : Response.json({ status: 'ok' });
+    }
+});
+
+const apiServer = createSimulatedHttpServerResource(apiSimulation);
+
+const apiRuntime = defineRuntime({
+    name: 'api',
+    dimensions: {},
+    resources: { server: apiServer },
+    requirements: []
+});
+
+export const testNode = test(
+    'checkout handles upstream 500s',
+    withRuntime(apiRuntime.scenario({ api: 'payments-500' }), async (scope) => {
+        const baseUrl = scope.runtimes.api.server.baseUrl;
+
+        scope.assert.equal(await checkoutAgainst(baseUrl), 'fallback');
+        return scope.assert.collect();
     })
 );
 ```
 
-Local-service style:
+Custom resource handles may also expose scenario methods that are just normal
+typed handle API. The runner does not need to understand every body-time
+scenario choice:
 
 ```ts
-integration.test(
-    'checkout handles upstream 500s',
-    withSimulation(deterministicApi, { scenario: 'payments-500' }, async (scope) => {
-        const runtime = scope.runtime;
-        const baseUrl = runtime.endpoint;
-        // App under test talks to the deterministic service over real HTTP.
-        scope.assert.collect();
-    })
-);
+type ApiScenario = ScenarioKeyOf<typeof apiSimulation>;
+
+type ApiServerHandle = {
+    readonly baseUrl: string;
+    readonly scenarioUrl: (scenario: ApiScenario, path: string) => string;
+};
 ```
 
 The important point is that the public shape stays:
 
-- runtime wrapper first
-- adapter/seed/scenario explicit in the wrapper call
+- resource-backed runtime first
+- planning-visible scenarios explicit on runtime descriptors
 - non-microtest `test(...)` body inside that wrapper
 
 That gives Overkill enough metadata to plan, report, and replay the run
@@ -244,22 +308,23 @@ with that runtime for automation, reporting, and replay.
 ## Seeds, Witnesses, And Replays
 
 When a simulation-aware run fails, Overkill should capture structured replay
-metadata when the adapter provides it.
+metadata when the resource provides it.
 
 Minimum useful metadata:
 
-- adapter name
+- simulation name
+- resource name
 - scenario key
 - seed
 - runtime version
-- adapter-specific witness payload
+- simulation-specific witness payload
 
 Not every simulator will use the same witness format. Overkill should
 standardize the envelope, not the internals of every simulator.
 
 ## Execution Requirements
 
-Simulation adapters may contribute execution requirements just like other
+Simulation resources may contribute execution requirements just like other
 runtime layers.
 
 Typical needs:
@@ -270,7 +335,7 @@ Typical needs:
 - artifact directories
 - longer startup or shutdown budgets
 
-The runner should not guess these rules. The adapter declares them; Overkill
+The runner should not guess these rules. The resource declares them; Overkill
 resolves them alongside the rest of the run plan.
 
 ## Relationship To Capability Handles
@@ -311,9 +376,9 @@ The concept should stay ambitious but grounded.
 
 Strong near-term direction:
 
-1. simulation-aware runtime adapter contract
+1. simulation definitions and resource adapters
 2. scenario-aware artifact identity and reporting
 3. seed/witness/replay envelope
 4. support for local deterministic services and base-URL swapping
-5. runtime-wrapper authoring shape for both in-process and local-service
-   simulation entry
+5. resource-backed runtime authoring for both in-process and local-service
+   simulation

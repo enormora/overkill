@@ -17,13 +17,13 @@ process or worker.
 
 Overkill should distinguish three artifact sources:
 
-- **native artifacts** — produced directly by the engine or assertion
+- **native artifacts** - produced directly by the engine or assertion
   system, such as diffs, plan mismatches, witnesses, retry metadata, and
   benchmark metrics
-- **boundary-captured artifacts** — captured because the runner owns a
+- **boundary-captured artifacts** - captured because the runner owns a
   subprocess or worker boundary, such as stdout/stderr, exit signals, and
   crash metadata
-- **instrumented artifacts** — captured through explicit observability or
+- **instrumented artifacts** - captured through explicit observability or
   interception, such as same-process console events or selected protocol
   traces
 
@@ -73,10 +73,10 @@ The runner should also preserve provenance:
 
 A clear conceptual distinction:
 
-- **test failure** — the test ran and reported unmet expectations. The
+- **test failure** - the test ran and reported unmet expectations. The
   test produced a failed structured assertion result (or threw a
   recognised assertion failure through the throwing adapter).
-- **runner or infrastructure error** — the system could not execute or
+- **runner or infrastructure error** - the system could not execute or
   observe the test correctly. Examples: fixture setup threw, a worker
   crashed, an unhandled rejection escaped the test window, a Node
   permission was denied unexpectedly, a loader hook errored.
@@ -179,11 +179,11 @@ in this section is rooted at that directory. See
 Artifacts that survive runs (baselines, witnesses) live in their own
 directories:
 
-- `test-baselines/` — all baseline subtypes
-- `.overkill/witnesses/` — replay witnesses (gitignored by default; can
+- `test-baselines/` - all baseline subtypes
+- `.overkill/witnesses/` - replay witnesses (gitignored by default; can
   be promoted into the repository when valuable)
-- `.overkill/corpus/` — fuzzing/property regression corpus
-- `.overkill/runs/` — run records (kept for the last N runs, default 20)
+- `.overkill/corpus/` - fuzzing/property regression corpus
+- `.overkill/runs/` - run records (kept for the last N runs, default 20)
 
 Per-run artifacts are garbage-collected: the runner keeps the most recent
 N successful runs (default 5) and all failing runs from the last
@@ -211,7 +211,7 @@ state rather than only on source code:
 
 - property tests record the failing generated input and shrink state
 - deterministic-simulation tests record the seed, scenario, and
-  adapter-owned replay payload
+  simulation-owned replay payload
 
 Run-record and replay semantics live in
 [Reproducibility](../architecture/reproducibility.md). This doc owns only
@@ -231,7 +231,8 @@ type WitnessFile = {
     readonly shrinkPath?: ReadonlyArray<unknown>;
     readonly counterexample?: unknown;
     // present for deterministic-simulation tests
-    readonly adapter?: { name: string; payload: unknown; };
+    readonly simulation?: { name: string; payload: unknown; };
+    readonly resource?: { name: string; };
     readonly scenario?: string;
     // present when the runtime supports it
     readonly runtimeSnapshot?: unknown;
@@ -239,7 +240,7 @@ type WitnessFile = {
 };
 ```
 
-A witness is also a failure artifact — it attaches to the failing case via
+A witness is also a failure artifact - it attaches to the failing case via
 `ArtifactId` and is rendered by reporters as a replay command line:
 
 ```text
@@ -360,6 +361,6 @@ the enforcement model.
 
 ## Sources
 
-- [Pytest — terminal output and reports](https://docs.pytest.org/en/stable/how-to/output.html)
-- [Playwright — Trace Viewer](https://playwright.dev/docs/trace-viewer)
-- [Vitest — Reporters](https://vitest.dev/guide/reporters)
+- [Pytest - terminal output and reports](https://docs.pytest.org/en/stable/how-to/output.html)
+- [Playwright - Trace Viewer](https://playwright.dev/docs/trace-viewer)
+- [Vitest - Reporters](https://vitest.dev/guide/reporters)
