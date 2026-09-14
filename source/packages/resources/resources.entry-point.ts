@@ -20,10 +20,15 @@ export const defineResource: ResourcesModule['defineResource'] = resourcesModule
 export const defineRuntime: ResourcesModule['defineRuntime'] = resourcesModule.defineRuntime;
 
 export {
+    isDefinedResource,
+    isDefinedRuntime
+} from '../../resources/resources.ts';
+export {
     ResourceLifecycleError,
     startRuntime
 } from '../../resources/runtime-lifecycle.ts';
 export type {
+    AnyResourceDefinition,
     ExecutionRequirement,
     ResourceContext,
     ResourceCreationContext,
@@ -39,7 +44,12 @@ export type {
     RuntimeDefinitionInput,
     RuntimeDimensions,
     RuntimeId,
+    RuntimeResourceMap,
     TemporaryDirectoryHandle
+} from '../../resources/resources.ts';
+export type {
+    RuntimeDefinition as RuntimeGraph,
+    RuntimeResourceMap as ResourceMap
 } from '../../resources/resources.ts';
 export type {
     ResourceLifecycleFailure,

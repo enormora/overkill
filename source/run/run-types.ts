@@ -316,6 +316,7 @@ export type CollectedRunCase = {
     readonly controls: TestPlan['cases'][number]['controls'];
     readonly definitionLocations: TestPlan['cases'][number]['definitionLocations'];
     readonly params: string | null;
+    readonly resourceAttachments: TestPlan['cases'][number]['resourceAttachments'];
     readonly suitePath: TestPlan['cases'][number]['suitePath'];
     readonly testFamily: TestPlan['cases'][number]['testFamily'];
     readonly title: string;

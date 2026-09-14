@@ -307,12 +307,18 @@ export type {
 } from '../../engine/test-node.ts';
 export { stampTestNodeFamily, testNodeFamily } from '../../engine/test-node.ts';
 export {
-    isResourceAttachedTestBody,
-    markResourceAttachedTestBody
+    attachTestBodyResourceAttachments,
+    hasTestBodyResourceAttachments,
+    readTestBodyResourceAttachments
 } from '../../engine/test-body-resource-attachment.ts';
 export type {
     ResourceAttachedTestBody,
-    ResourceFreeTestBody
+    ResourceFreeTestBody,
+    TestBodyDirectResourceAttachmentSummary,
+    TestBodyExecutionRequirementSummary,
+    TestBodyResourceAttachments,
+    TestBodyResourceSummary,
+    TestBodyRuntimeSummary
 } from '../../engine/test-body-resource-attachment.ts';
 export type {
     CaptureMode,

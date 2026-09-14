@@ -2,7 +2,6 @@ import { uniformInt } from 'pure-rand/distribution/uniformInt';
 import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
 
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
-import { isResourceAttachedTestBody } from '../engine/test-body-resource-attachment.ts';
 import { createCaseId, type CaseId } from '../engine/identity.ts';
 import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
 import { noTestsCollected, RunCollectionError } from './run-errors.ts';
@@ -130,8 +129,11 @@ function assertTestFamily(testFamily: string | null, expectedFamily: RunTestFami
 function assertMicrotestCaseHasNoResourceAttachment(testCase: TestPlanCase, expectedFamily: RunTestFamily): void {
     if (
         expectedFamily === 'microtest' &&
-        testCase.execution.kind === 'body' &&
-        isResourceAttachedTestBody(testCase.execution.body)
+        (
+            testCase.resourceAttachments.directResources.length > 0 ||
+            testCase.resourceAttachments.resourceGraph.length > 0 ||
+            testCase.resourceAttachments.runtimeGraphs.length > 0
+        )
     ) {
         throw new RunCollectionError(
             'Run profile "microtest" cannot run test cases with resource or runtime attachments.',

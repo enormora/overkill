@@ -87,6 +87,11 @@ function collectedCase(
         controls,
         definitionLocations: [ { kind: 'unknown' as const } ],
         params: title === 'second' ? '["slow"]' : null,
+        resourceAttachments: {
+            directResources: [],
+            resourceGraph: [],
+            runtimeGraphs: []
+        },
         suitePath,
         testFamily: 'integration',
         title

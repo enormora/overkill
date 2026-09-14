@@ -142,6 +142,7 @@ function collectRunPlanFile(file: string, cases: readonly TestPlan['cases'][numb
                 controls: testCase.controls,
                 definitionLocations: testCase.definitionLocations,
                 params: testCase.id.params,
+                resourceAttachments: testCase.resourceAttachments,
                 suitePath: testCase.suitePath,
                 testFamily: testCase.testFamily,
                 title: testCase.id.title

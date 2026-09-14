@@ -8,7 +8,7 @@ import {
     type TestScope as DirectScope,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { markResourceAttachedTestBody } from '../engine/test-body-resource-attachment.ts';
+import { attachTestBodyResourceAttachments } from '../engine/test-body-resource-attachment.ts';
 import type {
     DefinedReporter,
     ReporterEvent
@@ -66,7 +66,18 @@ function integrationCase(): DirectTestNode {
 function resourceAttachedCase(): DirectTestNode {
     return createDirectTestCase({
         annotations: {},
-        body: markResourceAttachedTestBody(passingBody),
+        body: attachTestBodyResourceAttachments(passingBody, {
+            directResources: [ { key: 'database', resourceName: 'database' } ],
+            resourceGraph: [
+                {
+                    dependencies: [],
+                    name: 'database',
+                    requirements: [],
+                    scope: 'per-case'
+                }
+            ],
+            runtimeGraphs: []
+        }),
         controls: {},
         definitionLocations: [ { kind: 'unknown' as const } ],
         title: 'uses runtime'
