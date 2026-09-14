@@ -93,9 +93,13 @@ function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): R
     const placementPlan = input.planKind === 'worker-pool'
         ? createWorkerPoolPlacementPlan({
             availableParallelism: input.dependencies.availableParallelism,
+            fileSetForFile: fileSetForDiscoveredFiles(input.files),
             order: input.request.order,
             seed: input.request.seed,
-            selectedPlan: input.collectedPlan
+            selectedPlan: input.collectedPlan,
+            workDistribution: input.profile.execution.processModel === 'worker-pool'
+                ? input.profile.execution.workDistribution
+                : { mode: 'file' }
         })
         : null;
     const orderedCases = placementPlan === null

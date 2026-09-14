@@ -7,6 +7,7 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
+import { createRunResultFromCollectedPlan } from './collected-run-plan.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import type {
     CreatedWorkerPool
@@ -147,6 +148,29 @@ function placementPlanWithGroupUnit(): PlacementPlan {
     };
 }
 
+function placementPlanAssignedToSecondLane(): PlacementPlan {
+    const base = placementPlan();
+    const unit = firstWorkUnit();
+
+    return {
+        ...base,
+        assignments: [ { lane: 'worker-2', unit: unit.id } ],
+        lanes: [
+            ...base.lanes,
+            {
+                executor: {
+                    capabilities: [],
+                    capacity: 1,
+                    id: 'worker-2',
+                    kind: 'local-worker'
+                },
+                id: 'worker-2'
+            }
+        ],
+        units: [ unit ]
+    };
+}
+
 function workerPoolResolvedRun(placement: PlacementPlan): ResolvedRun {
     return {
         collectionRunnerErrors: [],
@@ -215,6 +239,50 @@ function createFakePool(): CreatedWorkerPool {
         options: { isolateWorkers: false, maxThreads: 1 },
         async run() {
             throw new Error('Fake worker pool did not receive a task implementation.');
+        }
+    };
+}
+
+type CapturedWorkerTask = {
+    readonly assignedWork: readonly unknown[];
+    readonly command: {
+        readonly paths: readonly string[];
+    };
+};
+
+type AcceptingPool = {
+    readonly capturedTasks: readonly CapturedWorkerTask[];
+    readonly pool: CreatedWorkerPool;
+};
+
+function createAcceptingPool(): AcceptingPool {
+    const capturedTasks: CapturedWorkerTask[] = [];
+
+    return {
+        capturedTasks,
+        pool: {
+            async destroy() {
+                return undefined;
+            },
+            options: { isolateWorkers: false, maxThreads: 1 },
+            async run(task) {
+                const workerTask = task as CapturedWorkerTask;
+
+                capturedTasks.push(workerTask);
+
+                return {
+                    result: createRunResultFromCollectedPlan(
+                        createCollectedPlan(),
+                        [],
+                        [],
+                        {
+                            resourceUsage: null,
+                            startedAtMs: 0,
+                            wallClock: createDeterministicWallClock()
+                        }
+                    )
+                };
+            }
         }
     };
 }
@@ -365,6 +433,24 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             ...testCaseMetadata,
+            title: 'worker-pool execution runs only units assigned to each lane',
+            async body(scope: OverkillScope) {
+                const acceptingPool = createAcceptingPool();
+                const placement = placementPlanAssignedToSecondLane();
+                const runtime = {
+                    ...fakeWorkerRuntime(placement),
+                    pool: acceptingPool.pool
+                };
+                const completed = await executeWorkerPoolUnits(runtime, placement, 0);
+
+                scope.assert.equal(completed.length, 1);
+                scope.assert.equal(acceptingPool.capturedTasks.length, 1);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
             title: 'worker-pool execution reports instance engines as crashes',
             async body(scope: OverkillScope) {
                 const completed = await executeWorkerPoolUnits(runtimeWithInstanceEngine(), placementPlan(), 0);
@@ -380,19 +466,25 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             ...testCaseMetadata,
-            title: 'worker-pool execution reports non-file units as crashes',
+            title: 'worker-pool execution accepts group units',
             async body(scope: OverkillScope) {
+                const acceptingPool = createAcceptingPool();
+                const runtime = {
+                    ...fakeWorkerRuntime(placementPlan()),
+                    pool: acceptingPool.pool
+                };
                 const completed = await executeWorkerPoolUnits(
-                    fakeWorkerRuntime(placementPlan()),
+                    runtime,
                     placementPlanWithGroupUnit(),
                     0
                 );
 
-                scope.assert.equal(completed.length, 3);
-                scope.assert.equal(
-                    completed[0]?.state.runnerErrors()[0]?.message,
-                    'Worker-pool file distribution requires file work units.'
-                );
+                scope.assert.equal(completed.length, 1);
+                const capturedTask = acceptingPool.capturedTasks[0];
+
+                scope.require.defined(capturedTask);
+                scope.assert.deepEqual(capturedTask.command.paths, [ integrationPath ]);
+                scope.assert.equal(capturedTask.assignedWork.length, 1);
 
                 return scope.assert.collect();
             }

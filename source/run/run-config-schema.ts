@@ -100,11 +100,32 @@ const workerLifecycleSchema = z.union([
     z.literal('reuse')
 ]);
 
-const workDistributionSchema = z
+const workGroupSchema = z
     .strictObject({
-        mode: z.literal('file')
+        fileSets: z.tuple([ z.string() ]).rest(z.string()).readonly(),
+        name: z.string()
     })
     .readonly();
+
+const workDistributionSchema = z.discriminatedUnion('mode', [
+    z
+        .strictObject({
+            mode: z.literal('file')
+        })
+        .readonly(),
+    z
+        .strictObject({
+            mode: z.literal('case')
+        })
+        .readonly(),
+    z
+        .strictObject({
+            groups: z.tuple([ workGroupSchema ]).rest(workGroupSchema).readonly(),
+            mode: z.literal('group'),
+            unmatched: z.optional(z.literal('reject'))
+        })
+        .readonly()
+]);
 
 export const integrationExecutionSchema = z.discriminatedUnion('processModel', [
     z

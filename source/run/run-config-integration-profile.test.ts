@@ -84,11 +84,20 @@ export const testNode = createOverkillSuite({
                         },
                         service: {
                             testFamily: 'integration',
-                            files: { include: [ 'source/**/*.integration.test.ts' ] },
+                            files: {
+                                sets: {
+                                    integration: { include: [ 'source/**/*.integration.test.ts' ] }
+                                }
+                            },
                             execution: {
                                 processModel: 'worker-pool',
                                 scheduling: 'serial',
-                                workDistribution: { mode: 'file' },
+                                workDistribution: {
+                                    groups: [
+                                        { fileSets: [ 'integration' ], name: 'integration' }
+                                    ],
+                                    mode: 'group'
+                                },
                                 workerLifecycle: 'fresh-worker-per-unit'
                             }
                         }
@@ -108,8 +117,88 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(profile.execution, {
                     processModel: 'worker-pool',
                     scheduling: 'serial',
-                    workDistribution: { mode: 'file' },
+                    workDistribution: {
+                        groups: [
+                            { fileSets: [ 'integration' ], name: 'integration' }
+                        ],
+                        mode: 'group',
+                        unmatched: 'reject'
+                    },
                     workerLifecycle: 'fresh-worker-per-unit'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'loadRunConfig() rejects invalid grouped work distribution',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                await scope.assert.rejects(async function loadGroupedWithoutFileSets() {
+                    await loadConfigValue({
+                        profiles: {
+                            service: {
+                                testFamily: 'integration',
+                                files: { include: [ 'source/**/*.integration.test.ts' ] },
+                                execution: {
+                                    processModel: 'worker-pool',
+                                    workDistribution: {
+                                        groups: [ { fileSets: [ 'integration' ], name: 'integration' } ],
+                                        mode: 'group'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }, { message: 'Grouped work distribution requires profile files.sets.' });
+                await scope.assert.rejects(async function loadUnknownFileSetGroup() {
+                    await loadConfigValue({
+                        profiles: {
+                            service: {
+                                testFamily: 'integration',
+                                files: {
+                                    sets: {
+                                        integration: { include: [ 'source/**/*.integration.test.ts' ] }
+                                    }
+                                },
+                                execution: {
+                                    processModel: 'worker-pool',
+                                    workDistribution: {
+                                        groups: [ { fileSets: [ 'slow' ], name: 'slow' } ],
+                                        mode: 'group'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }, { message: 'Invalid work group "slow": unknown file set "slow".' });
+                await scope.assert.rejects(async function loadDuplicateFileSetGroup() {
+                    await loadConfigValue({
+                        profiles: {
+                            service: {
+                                testFamily: 'integration',
+                                files: {
+                                    sets: {
+                                        integration: { include: [ 'source/**/*.integration.test.ts' ] }
+                                    }
+                                },
+                                execution: {
+                                    processModel: 'worker-pool',
+                                    workDistribution: {
+                                        groups: [
+                                            { fileSets: [ 'integration' ], name: 'first' },
+                                            { fileSets: [ 'integration' ], name: 'second' }
+                                        ],
+                                        mode: 'group'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }, {
+                    message: 'Invalid work group "second": file set "integration" is already assigned to "first".'
                 });
 
                 return scope.assert.collect();

@@ -121,6 +121,7 @@ export type {
     RunTestFamily,
     RunTimeoutPolicy,
     RunWorkDistribution,
+    RunWorkGroup,
     RunWorkerLifecycle,
     SerializedValue,
     WorkId,

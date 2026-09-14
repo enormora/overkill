@@ -80,9 +80,13 @@ function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
                 order: 'seeded',
                 placementPlan: createWorkerPoolPlacementPlan({
                     availableParallelism: 2,
+                    fileSetForFile() {
+                        return null;
+                    },
                     order: 'plan',
                     seed: { value: 42n },
-                    selectedPlan: collectedPlan
+                    selectedPlan: collectedPlan,
+                    workDistribution: { mode: 'file' }
                 }),
                 processModel: 'worker-pool',
                 profile: 'integration',

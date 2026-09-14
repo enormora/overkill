@@ -16,7 +16,9 @@ import type {
     RunResourceBudgets,
     RunResourceUsagePolicy,
     RunShard,
-    RunTimeoutPolicy
+    RunTimeoutPolicy,
+    RunWorkDistribution,
+    RunWorkGroup
 } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import { copyRunSelection } from './run-selection-filters.ts';
@@ -101,12 +103,34 @@ function copyMicrotestExecution(execution: RunMicrotestExecution): RunMicrotestE
     };
 }
 
+function copyWorkGroup(group: RunWorkGroup): RunWorkGroup {
+    return {
+        fileSets: [ group.fileSets[0], ...group.fileSets.slice(1) ],
+        name: group.name
+    };
+}
+
+function copyWorkDistribution(distribution: RunWorkDistribution): RunWorkDistribution {
+    if (distribution.mode !== 'group') {
+        return { mode: distribution.mode };
+    }
+
+    return {
+        groups: [
+            copyWorkGroup(distribution.groups[0]),
+            ...distribution.groups.slice(1).map(copyWorkGroup)
+        ],
+        mode: 'group',
+        unmatched: distribution.unmatched
+    };
+}
+
 function copyIntegrationExecution(execution: RunIntegrationExecution): RunIntegrationExecution {
     if (execution.processModel === 'worker-pool') {
         return {
             processModel: execution.processModel,
             scheduling: execution.scheduling,
-            workDistribution: execution.workDistribution,
+            workDistribution: copyWorkDistribution(execution.workDistribution),
             workerLifecycle: execution.workerLifecycle
         };
     }

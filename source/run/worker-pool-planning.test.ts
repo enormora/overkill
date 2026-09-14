@@ -344,6 +344,15 @@ function discoveredFiles(): DiscoveredFiles {
     ];
 }
 
+function fileSetForFile(file: string): string | null {
+    const files = new Map([
+        [ integrationPath, 'fast' ],
+        [ secondIntegrationPath, 'slow' ]
+    ]);
+
+    return files.get(file) ?? null;
+}
+
 function requiredSecondCase(testPlan: TestPlan): TestPlan['cases'][number] {
     const secondCase = testPlan.cases[1];
 
@@ -382,23 +391,29 @@ function assertWorkerCountBounds(scope: OverkillScope): void {
     const manyPlan = collectedPlanWithFiles(manyCollectedFiles());
     const singleWorkerPlan = createWorkerPoolPlacementPlan({
         availableParallelism: 1,
+        fileSetForFile,
         order: 'plan',
         seed: { value: 1n },
-        selectedPlan: manyPlan
+        selectedPlan: manyPlan,
+        workDistribution: { mode: 'file' }
     });
     const cappedWorkerPlan = createWorkerPoolPlacementPlan({
         availableParallelism: 99,
+        fileSetForFile,
         order: 'plan',
         seed: { value: 1n },
-        selectedPlan: manyPlan
+        selectedPlan: manyPlan,
+        workDistribution: { mode: 'file' }
     });
 
     scope.assert.deepEqual(
         createWorkerPoolPlacementPlan({
             availableParallelism: 8,
+            fileSetForFile,
             order: 'plan',
             seed: { value: 1n },
-            selectedPlan: emptyPlan
+            selectedPlan: emptyPlan,
+            workDistribution: { mode: 'file' }
         }),
         { assignments: [], lanes: [], units: [] }
     );
@@ -471,9 +486,11 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(
                     createWorkerPoolPlacementPlan({
                         availableParallelism: 3,
+                        fileSetForFile,
                         order: 'plan',
                         seed: { value: 1n },
-                        selectedPlan: collectedPlan
+                        selectedPlan: collectedPlan,
+                        workDistribution: { mode: 'file' }
                     }),
                     expectedPlacementPlan()
                 );
