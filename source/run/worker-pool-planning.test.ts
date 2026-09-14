@@ -23,6 +23,7 @@ import {
     type WorkerPoolRunRuntime
 } from './worker-pool-runtime.ts';
 import {
+    collectedRunCaseEntriesFromWorkUnits,
     createWorkerPoolPlacementPlan,
     workUnitsFromCollectedPlan
 } from './work-unit-planning.ts';
@@ -137,6 +138,30 @@ function createCollectedPlan(): CollectedRunPlan {
             controls,
             title: 'worker pool'
         }
+    };
+}
+
+function collectedPlanWithFiles(files: CollectedRunPlan['files']): CollectedRunPlan {
+    return {
+        ...createCollectedPlan(),
+        defined: files.reduce(function countCases(total, file) {
+            return total + file.cases.length;
+        }, 0),
+        files
+    };
+}
+
+function generatedCollectedFile(index: number): CollectedRunPlan['files'][number] {
+    const file = `source/integration-tests/run/fixtures/generated-${index}.test.ts`;
+
+    return {
+        file,
+        cases: [
+            {
+                ...collectedCase(`case-${index}`, []),
+                params: null
+            }
+        ]
     };
 }
 
@@ -293,6 +318,25 @@ function expectedPlacementPlan(): PlacementPlan {
     };
 }
 
+function unknownWorkUnit(): WorkUnit {
+    return {
+        ...firstWorkUnit(),
+        work: [
+            {
+                case: { ...firstCaseId(), title: 'missing' },
+                runtime: null,
+                workload: null
+            }
+        ]
+    };
+}
+
+function manyCollectedFiles(): CollectedRunPlan['files'] {
+    return Array.from({ length: 10 }, function createFile(_value, index) {
+        return generatedCollectedFile(index);
+    });
+}
+
 function discoveredFiles(): DiscoveredFiles {
     return [
         { file: integrationPath, fileSet: null, href: 'virtual:first', path: integrationPath },
@@ -324,6 +368,50 @@ function assertPlanningHelpers(scope: OverkillScope, testPlan: TestPlan): void {
     scope.assert.equal(collection.collectedPlan.files[0]?.file, integrationPath);
 }
 
+function assertEmptyCollectedFiles(scope: OverkillScope): void {
+    const plan = collectedPlanWithFiles([
+        { cases: [], file: integrationPath },
+        createCollectedPlan().files[1] ?? generatedCollectedFile(1)
+    ]);
+
+    scope.assert.deepEqual(workUnitsFromCollectedPlan(plan), [ secondWorkUnit() ]);
+}
+
+function assertWorkerCountBounds(scope: OverkillScope): void {
+    const emptyPlan = collectedPlanWithFiles([]);
+    const manyPlan = collectedPlanWithFiles(manyCollectedFiles());
+    const singleWorkerPlan = createWorkerPoolPlacementPlan({
+        availableParallelism: 1,
+        order: 'plan',
+        seed: { value: 1n },
+        selectedPlan: manyPlan
+    });
+    const cappedWorkerPlan = createWorkerPoolPlacementPlan({
+        availableParallelism: 99,
+        order: 'plan',
+        seed: { value: 1n },
+        selectedPlan: manyPlan
+    });
+
+    scope.assert.deepEqual(
+        createWorkerPoolPlacementPlan({
+            availableParallelism: 8,
+            order: 'plan',
+            seed: { value: 1n },
+            selectedPlan: emptyPlan
+        }),
+        { assignments: [], lanes: [], units: [] }
+    );
+    scope.assert.equal(singleWorkerPlan.lanes.length, 1);
+    scope.assert.equal(cappedWorkerPlan.lanes.length, 8);
+}
+
+function assertUnknownWorkReferences(scope: OverkillScope): void {
+    scope.assert.throws(function readUnknownWork() {
+        collectedRunCaseEntriesFromWorkUnits(createCollectedPlan(), [ unknownWorkUnit() ]);
+    }, { message: 'Placement plan referenced an unknown collected case.' });
+}
+
 export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
@@ -344,6 +432,19 @@ export const testNode = createOverkillSuite({
                         { file: integrationPath, params: null, suite: [], title: 'missing' }
                     ]);
                 }, { message: 'Worker-pool test plan did not match assigned case identities.' });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'worker-pool planning covers empty files, worker limits, and stale work',
+            body(scope: OverkillScope) {
+                assertEmptyCollectedFiles(scope);
+                assertWorkerCountBounds(scope);
+                assertUnknownWorkReferences(scope);
 
                 return scope.assert.collect();
             }

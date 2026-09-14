@@ -15,6 +15,7 @@ import type { RunWorkerLifecycle } from './run-types.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import {
     createWorkerPoolRuntime,
+    workerPoolPlacementPlan,
     type WorkerPoolRunRuntime
 } from './worker-pool-runtime.ts';
 import { createWorkerPoolPlacementPlan } from './work-unit-planning.ts';
@@ -292,6 +293,21 @@ function workerPoolPlanWithSupervisedFacts(): ResolvedRun {
     };
 }
 
+function workerPoolRunWithoutPlacementPlan(): ResolvedRun {
+    const resolvedRun = workerPoolResolvedRun(createCollectedPlan());
+
+    return {
+        ...resolvedRun,
+        facts: {
+            ...resolvedRun.facts,
+            execution: {
+                ...resolvedRun.facts.execution,
+                placementPlan: null
+            }
+        }
+    };
+}
+
 async function workerPoolRuntimeCreation(): Promise<{
     readonly createdWorkerPools: readonly WorkerPoolCreationOptions[];
     readonly measuredSamplingInterval: number;
@@ -397,6 +413,19 @@ export const testNode = createOverkillSuite({
                 }, {
                     message: 'Worker-pool execution requires worker-pool execution facts.'
                 });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'worker-pool runtime rejects missing placement plans',
+            body(scope: OverkillScope) {
+                scope.assert.throws(function readMissingPlacementPlan() {
+                    workerPoolPlacementPlan(workerPoolRunWithoutPlacementPlan());
+                }, { message: 'Worker-pool execution requires a placement plan.' });
 
                 return scope.assert.collect();
             }
