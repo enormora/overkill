@@ -142,11 +142,11 @@ A benchmark definition should be able to describe:
 - named workload dimensions such as small, medium, large
 - deterministic fixture generation
 - validation of generated fixtures
-- suite-level setup and teardown
-- case-level setup and teardown
+- resource and runtime requirements
+- fixture lifecycle through ordinary resource/runtime descriptors
 - warmup rules
 - measurement strategy
-- benchmark-specific setup that is excluded from timing
+- pre-measurement fixture preparation that is excluded from timing
 - benchmark-specific cleanup that runs between or after samples
 - benchmark kind metadata such as `throughput`, `responsiveness`,
   `startup`, `bundle-size`, or `browser-performance`
@@ -157,6 +157,8 @@ Example direction:
 
 ```ts
 import { benchmark, suite, workload } from '@overkill-dev/bench';
+import { withResource } from '@overkill-dev/test/resources';
+import { publishFixtureResource } from '#tests/resources/publish-fixture';
 
 export const testNode = suite('cli benchmarks', [
     benchmark('publish command', {
@@ -166,14 +168,11 @@ export const testNode = suite('cli benchmarks', [
             workload('medium', { packages: 50 }),
             workload('large', { packages: 200 })
         ],
-        setup(workload) {
-            return createPublishFixture(workload);
-        },
-        async measure(context) {
-            const { fixture, sample } = context;
+        measure: withResource(publishFixtureResource, async (context) => {
+            const { resources, sample } = context;
             const run = await sample.process({
                 command: [ 'node', 'dist/cli.js', 'publish', '--dry-run' ],
-                cwd: fixture.cwd,
+                cwd: resources.publishFixture.cwd,
                 pty: true
             });
 
@@ -184,7 +183,7 @@ export const testNode = suite('cli benchmarks', [
                 maximumEventLoopBlockMilliseconds: run.eventLoop.maximumMilliseconds,
                 outputBytes: run.stdoutBytes + run.stderrBytes
             };
-        },
+        }),
         diagnosticMetrics: [ 'outputBytes' ],
         budgets: {
             small: {
@@ -213,7 +212,8 @@ export const testNode = suite('cli benchmarks', [
 The important shape in this example:
 
 - workload size is explicit and named
-- fixture creation happens outside the timing window
+- fixture lifecycle is expressed through existing resource/runtime descriptors,
+  not benchmark-local hooks
 - the measured action is a real external CLI workflow, not a naked function
 - multiple metrics are recorded from one run
 - the exported value is the conventional `testNode`
@@ -245,6 +245,54 @@ Budget coverage is strict:
 - a budget for a metric that is not returned by `measure(...)` is a benchmark
   failure
 - diagnostic metrics are reported and stored, but they never decide pass/fail
+
+Benchmark authoring should not introduce a parallel hook model. In particular,
+`@overkill-dev/bench` should not add benchmark-specific `setup(...)`,
+`teardown(...)`, `beforeEach(...)`, or `afterEach(...)` hooks. Work that must
+happen outside the measured region belongs in existing resources, runtimes,
+fixture resources, or sample cleanup/cooldown phases owned by the benchmark
+harness. That keeps benchmark suites aligned with the rest of Overkill:
+collection sees descriptors before scheduling, planning can lower them into
+placement constraints, and execution can acquire and dispose handles through
+the ordinary resource/runtime lifecycle.
+
+Benchmark-specific fixture resources may be workload-aware when the workload is
+part of planning. For example, a package-registry fixture or temporary project
+fixture can be acquired for a named workload before measured samples begin, and
+the benchmark body can read the injected handle through `context.resources` or
+`context.runtimes`. Any per-sample reset that must occur between measurements
+belongs to benchmark cleanup, not to a user-authored lifecycle hook hidden
+inside `measure(...)`.
+
+Settled decisions:
+
+- benchmark authoring is a facade over ordinary Overkill test-node authoring
+  and generated assertions, not a separate runner universe
+- `overkill bench run` remains the public command namespace, but it resolves
+  through the regular runner planning, placement, execution, result, and
+  reporter flow
+- `budgets` is the public gate field; `policy`, `assertions`, `slo(...)`, and
+  `budget(...)` are not settled benchmark authoring APIs
+- custom sample metrics come from the `measure(...)` return object; no
+  `context.record(...)` or `context.recordMetric(...)` API is part of the
+  current concept
+- `diagnosticMetrics` marks returned metrics that should be reported but never
+  gate pass/fail
+- benchmark definitions must have at least one budget, so every committed
+  benchmark produces real generated assertions
+- resource/runtime descriptors carry lifecycle, fixture, service, browser,
+  registry, temporary-directory, and PTY needs into planning
+- host calibration discovers host capacity and noise before measured samples;
+  it does not infer arbitrary per-case workload cost
+- parallel benchmark placement is allowed only when the measurement strategy
+  and host calibration agree it is safe
+- ambient-noise handling always records metadata where available, may block on
+  opt-in thresholds, and may reduce lanes or switch to serial placement
+- `hostProcess` is a resolved execution shape for worker-pool runs that need
+  process-level Node or V8 flags, profiling, debugging, or benchmark isolation
+- forced V8 garbage collection is opt-in; supervised or hosted benchmark
+  processes may enable `--expose-gc`, but the harness calls
+  `globalThis.gc()` only when requested
 
 Source:
 
@@ -345,7 +393,8 @@ Typical benchmark preferences may include:
 - forcing worker count to `1`
 - preventing unrelated workloads from running concurrently
 - isolating process state between workloads
-- reusing expensive setup only where it does not contaminate measurements
+- reusing expensive resource/runtime state only where it does not contaminate
+  measurements
 - forking fresh processes for cold-start benchmarks
 - preserving one warmed process for steady-state measurement
 - launching a browser with a controlled runtime profile
@@ -444,7 +493,7 @@ Benchmarking external processes should be first-class:
 - environment control
 - stdout and stderr capture
 - PTY-aware execution for CLI workflows
-- prepare/setup/cleanup commands that are not part of the timing window
+- prepare and cleanup commands that are not part of the timing window
 - command-parameter scans and workload matrices
 - repeated fresh-process execution for cold-start measurements
 
