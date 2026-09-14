@@ -473,6 +473,33 @@ The same mechanism can express worker-per-case or worker-per-group by changing
 the work distribution. `worker-pool` means Overkill owns bounded executor
 capacity. It does not imply that a worker is reused.
 
+`hostProcess` is also not a process model. It is a resolved execution shape for
+worker-pool runs where the runner inserts one supervised host process between
+the coordinator and the worker-thread pool:
+
+```ts
+{
+    processModel: 'worker-pool',
+    hostProcess: {
+        reasons: [ 'node-arguments' ],
+        nodeArguments: [ '--expose-gc' ]
+    }
+}
+```
+
+The public profile still says `processModel: 'worker-pool'`. The host process
+is selected by planning when a run needs process-level Node/V8 arguments or
+isolation around the worker pool. This is a generic runner shape, not a
+benchmark-only mechanism. It is useful for benchmarks, profiling, debugging, and
+other supervised worker-pool runs that need process flags without applying
+those flags to the parent coordinator.
+
+`hostProcess` does not make worker-thread execution process-fatal-safe. A
+native abort, process out-of-memory failure, or forced process exit still takes
+down the hosted pool process. The benefit is containment away from the
+coordinator plus a place to pass host-level flags, gather host-level metadata,
+and restart or dispose the whole hosted pool according to runner policy.
+
 For the Node substrate, `worker-pool` uses worker threads. The coordinator
 stays in the runner process, collection happens once in a worker thread, and
 execution workers re-import assigned files to recover executable test bodies.
@@ -666,6 +693,8 @@ The process that imports user modules depends on the boundary:
 - supervised strategies that must avoid parent-side user-module execution
   collect inside a supervised child and send the coordinator a minimal
   bodyless collected plan
+- hosted worker-pool strategies import user modules inside the host process and
+  its workers, not inside the coordinator
 - the coordinator maps that collected plan into assignments by stable
   `WorkId`, then the child reuses executable references inside its own
   process
@@ -687,6 +716,12 @@ Assignment depends on execution strategy:
     each unit
   - `workDistribution` decides whether units are built by file, case, or
     group
+- `hostProcess`
+  - the coordinator starts one supervised host process for the worker pool
+  - the host owns worker-thread creation, worker-pool flags, and host-local
+    metadata collection
+  - the coordinator still owns collection authority, `RunFacts`, placement,
+    reporter routing, and final result assembly
 - `single-worker-serial`
   - one dedicated worker/process executes the whole frozen plan in order
 
@@ -695,6 +730,8 @@ The worker input is therefore not "go discover tests." It is:
 - the frozen run identity (`runId`, seed, selected shard, ordering)
 - assigned work-unit and work identities
 - runtime / capability / timeout requirements
+- resolved host-process facts and Node/V8 arguments when the worker pool is
+  hosted
 - reporter and artifact routing metadata
 
 Workers re-import code to obtain executable test-body references, but that
@@ -723,6 +760,9 @@ pool implementation:
   reused worker
 - resource-aware placement lowers resource scopes into serial keys,
   capacity weights, affinity keys, and fault domains before assignment
+- host-process placement may require that all worker-pool lanes for a run share
+  one host process so Node/V8 arguments, host metadata, and host-level cleanup
+  stay coherent
 
 ## Remote Execution
 

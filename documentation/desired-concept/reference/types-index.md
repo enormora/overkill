@@ -996,8 +996,21 @@ type RunExecutionBaseFacts = {
 };
 
 type RunWorkerPoolExecutionFacts = RunExecutionBaseFacts & {
+    readonly hostProcess: HostProcessFacts | null;
     readonly processModel: 'worker-pool';
     readonly workerLifecycle: 'reuse' | 'fresh-worker-per-unit';
+};
+
+type HostProcessFacts = {
+    readonly nodeArguments: ReadonlyArray<string>;
+    readonly ownsWorkerPool: true;
+    readonly reasons: NonEmptyReadonlyArray<
+        | 'benchmark-isolation'
+        | 'debugging'
+        | 'forced-garbage-collection'
+        | 'node-arguments'
+        | 'profiling'
+    >;
 };
 
 type RunSingleProcessExecutionFacts = RunExecutionBaseFacts & {

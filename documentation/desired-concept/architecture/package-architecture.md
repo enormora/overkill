@@ -753,7 +753,7 @@ able to wire in:
 - baseline adapters
 - mutation integrations
 - type-test adapters
-- browser or benchmark backends
+- browser adapters or benchmark measurement strategies
 
 ## Integrations
 

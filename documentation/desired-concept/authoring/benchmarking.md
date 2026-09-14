@@ -288,8 +288,8 @@ Settled decisions:
   and host calibration agree it is safe
 - ambient-noise handling always records metadata where available, may block on
   opt-in thresholds, and may reduce lanes or switch to serial placement
-- `hostProcess` is a resolved execution shape for worker-pool runs that need
-  process-level Node or V8 flags, profiling, debugging, or benchmark isolation
+- `hostProcess` is a generic resolved execution shape from the runner's
+  process model, not a benchmark measurement strategy
 - forced V8 garbage collection is opt-in; supervised or hosted benchmark
   processes may enable `--expose-gc`, but the harness calls
   `globalThis.gc()` only when requested
@@ -424,13 +424,13 @@ Overkill test nodes plus benchmark metadata, then the runner resolves the same
 kind of plan, placement, execution, result, and reporter flow used by other
 families.
 
-The runner may resolve a hosted worker-pool execution shape when a benchmark or
-profile needs process-level control around worker threads. The public
-`processModel` can still be `worker-pool`; the extra host process is resolved
-execution detail. This is useful beyond benchmarks too, for example when a run
-needs profiling or debugging flags. Benchmark execution may use it to pass
-`--expose-gc` or other Node/V8 options without requiring the parent runner
-process to carry those options.
+The runner may resolve `hostProcess` when a benchmark or profile needs
+process-level control around worker threads. The public `processModel` can
+still be `worker-pool`; the extra host process is resolved execution detail
+owned by the generic runner process model. Benchmark execution may use it to
+pass `--expose-gc` or other Node/V8 options without requiring the parent runner
+process to carry those options. See
+[Runtime Behavior § Process Model And Scheduling](../architecture/runtime-behavior.md#process-model-and-scheduling).
 
 Parallel benchmark execution is allowed only when safe. The benchmark strategy
 contributes an initial capacity shape, such as single-core CPU work,
@@ -565,7 +565,7 @@ Concept sketch for `@overkill-dev/browser-bench`:
 This keeps browser benchmarking inside one benchmark family while still
 giving it a real package boundary and room for browser-specific mechanics.
 
-The benchmark layer should therefore be **backend-agnostic** at the concept
+The benchmark layer should therefore be **adapter-agnostic** at the concept
 level:
 
 - BiDi-first where portable browser automation and event streams are enough
