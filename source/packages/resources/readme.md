@@ -13,7 +13,9 @@ import {
     createTemporaryDirectoryResource,
     defineResource,
     defineRuntime,
+    startResources,
     startRuntime,
+    type ResourceContext,
     type RuntimeContext
 } from '@overkill-dev/resources';
 
@@ -54,11 +56,15 @@ const runtime = defineRuntime({
 });
 
 type ApiContext = RuntimeContext<typeof runtime>;
+type ScratchContext = ResourceContext<{ readonly scratch: typeof scratch; }>;
 
 await using session = await startRuntime({ runtime, signal });
 
 const scopeWithRuntime = composeRuntimeContext(testScope, runtime, session.context);
 scopeWithRuntime.runtimes.api.database;
+
+await using resources = await startResources({ resources: { scratch }, signal });
+resources.context.scratch.path;
 ```
 
 `RuntimeContext` uses the keys from the runtime's `resources` object. Resource
@@ -79,6 +85,10 @@ directory with an Overkill prefix. Disposal removes that directory recursively.
 `startRuntime(...)` acquires dependencies before dependents, shares one handle
 per descriptor inside the session, and disposes acquired resources once in
 reverse dependency order. Independent ready resources may acquire concurrently.
+
+`startResources(...)` starts a direct resource session without wrapping the
+handles in a runtime name. It uses the keys from the provided resource map and
+the same acquisition, sharing, and disposal behavior as `startRuntime(...)`.
 
 `scope` and `requirements` are metadata in this package-level session API.
 Runner-managed per-run, per-file, per-suite, per-case, and shared-per-worker

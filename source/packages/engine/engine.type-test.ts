@@ -6,48 +6,51 @@ import {
     type AssertReferenceReturn,
     type CompositeCheckBuilder
 } from '../assert/assert.entry-point.ts';
-import type {
-    hasAttachedResourceDescriptors,
-    AssertAssertionFacade,
-    AssertAssertionNode,
-    AssertionNode,
-    AssertionResult,
-    AssertionSource,
-    CaseId,
-    captureSourceLocation,
-    createThrowingTestCase,
-    DeepComparable,
-    Diff,
-    DiffPathSegment,
-    ErrorMatcher,
-    ExactThrownMatcher,
-    FailedCheck,
-    FailedCompositeCheck,
-    FailedForeignCheck,
-    FailedLeafCheck,
-    NonEmptyReadonlyArray,
-    PerTestResult,
-    ReporterEvent,
-    RequireAssertionFacade,
-    RequireAssertionNode,
-    ResolvableSourceLocation,
-    RunnerError,
-    SerializationTruncation,
-    SerializedValue,
-    SourceLocation,
-    SourceLocationProvider,
-    TestAnnotations,
-    TestAnnotationsInput,
-    TestControls,
-    TestControlsInput,
-    TestFailure,
-    TestFamily,
-    TestBodyResourceAttachments,
-    TestOutcome,
-    ThrowingTestBody,
-    ThrowingTestScope,
-    ThrownMatcher,
-    unknownSourceLocation
+import {
+    CaseRunnerError,
+    type isCaseRunnerError,
+    type hasAttachedResourceDescriptors,
+    type AssertAssertionFacade,
+    type AssertAssertionNode,
+    type AssertionNode,
+    type AssertionResult,
+    type AssertionSource,
+    type CaseId,
+    type CaseRunnerErrorOptions,
+    type captureSourceLocation,
+    type createThrowingTestCase,
+    type DeepComparable,
+    type Diff,
+    type DiffPathSegment,
+    type ErrorMatcher,
+    type ExactThrownMatcher,
+    type FailedCheck,
+    type FailedCompositeCheck,
+    type FailedForeignCheck,
+    type FailedLeafCheck,
+    type NonEmptyReadonlyArray,
+    type PerTestResult,
+    type ReporterEvent,
+    type RequireAssertionFacade,
+    type RequireAssertionNode,
+    type ResolvableSourceLocation,
+    type RunnerError,
+    type SerializationTruncation,
+    type SerializedValue,
+    type SourceLocation,
+    type SourceLocationProvider,
+    type TestAnnotations,
+    type TestAnnotationsInput,
+    type TestControls,
+    type TestControlsInput,
+    type TestFailure,
+    type TestFamily,
+    type TestBodyResourceAttachments,
+    type TestOutcome,
+    type ThrowingTestBody,
+    type ThrowingTestScope,
+    type ThrownMatcher,
+    type unknownSourceLocation
 } from './engine.entry-point.ts';
 
 type FailedCheckFixture = {
@@ -120,6 +123,7 @@ declare const assertFacade: AssertAssertionFacade;
 declare const compositeCheckBuilder: CompositeCheckBuilder<'assert'>;
 declare const functionValue: () => number;
 declare const throwingBody: ThrowingTestBody;
+declare const caseId: CaseId;
 declare const mixedDeepValue: string | { readonly id: string; };
 declare const objectValues: readonly { readonly id: number; }[];
 declare const unknownValue: unknown;
@@ -138,6 +142,21 @@ describe('TestOutcome', function () {
         expect<typeof hasAttachedResourceDescriptors>().type.toBe<
             (attachments: TestBodyResourceAttachments) => boolean
         >();
+    });
+
+    test('exports case runner error markers', function () {
+        const error = new CaseRunnerError('Fixture failed.', {
+            cause: unknownValue,
+            subtype: 'fixture'
+        });
+
+        expect<CaseRunnerErrorOptions>().type.toBe<{
+            readonly cause: unknown;
+            readonly subtype: RunnerError['subtype'];
+        }>();
+        expect(error).type.toBe<CaseRunnerError>();
+        expect(error.runnerError(caseId)).type.toBe<RunnerError>();
+        expect<typeof isCaseRunnerError>().type.toBe<(value: unknown) => value is CaseRunnerError>();
     });
 
     test('accepts public outcome shapes', function () {

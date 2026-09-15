@@ -48,6 +48,7 @@ function runtimePolicyCase(testCase: TestPlanCase, executedCase: ConcurrentCase)
             outcome: null,
             verdict: 'runtime-policy'
         },
+        runnerErrors: executedCase.runnerErrors,
         wallTimeMs: executedCase.wallTimeMs
     };
 }

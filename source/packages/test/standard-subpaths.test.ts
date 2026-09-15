@@ -355,8 +355,9 @@ function assertResourceWrapperValidation(
     }, { message: 'Resource dependency cycle detected: cycle -> cycle.' });
 }
 
-function assertResourceWrapperBehavior(scope: TestScope, input: ResourceWrapperBehavior): void {
-    scope.assert.equal(Array.isArray(input.body(scope)), true);
+async function assertResourceWrapperBehavior(scope: TestScope, input: ResourceWrapperBehavior): Promise<void> {
+    scope.assert.equal(Array.isArray(await input.body(scope)), true);
+    scope.assert.equal(Array.isArray(await input.resourceBody(scope)), true);
     assertRuntimeAuthoringMetadata(scope, input.body, input.tableBody);
     assertMacroRuntimeMetadata(scope, input.runtime);
     assertResourcesSubpathExports(scope);
@@ -365,7 +366,7 @@ function assertResourceWrapperBehavior(scope: TestScope, input: ResourceWrapperB
     assertDirectResourceAttachments(scope, input.resourceBody);
 }
 
-function assertResourcesSubpath(scope: TestScope): void {
+async function assertResourcesSubpath(scope: TestScope): Promise<void> {
     const database = resourcesSubpath.defineResource({
         name: 'database',
         scope: 'per-case',
@@ -383,11 +384,14 @@ function assertResourcesSubpath(scope: TestScope): void {
     });
     const body = resourcesSubpath.withRuntime(runtime, function runWithDatabase(runtimeScope) {
         runtimeScope.assert.equal(runtime.name, 'api');
+        runtimeScope.assert.equal(runtimeScope.runtimes.api.database.url, 'postgres://localhost');
 
         return runtimeScope.assert.collect();
     });
     const temporaryDirectory = resourcesSubpath.createTemporaryDirectoryResource('scratch');
     const resourceBody = resourcesSubpath.withResource(temporaryDirectory, function runWithScratch(resourceScope) {
+        resourceScope.assert.equal(typeof resourceScope.resources.scratch.path, 'string');
+
         return resourceScope.assert.collect();
     });
     const tableBody = resourcesSubpath.withRuntime<typeof runtime, ParameterizedTestScope<{ readonly value: number; }>>(
@@ -399,7 +403,7 @@ function assertResourcesSubpath(scope: TestScope): void {
         }
     );
 
-    assertResourceWrapperBehavior(scope, {
+    await assertResourceWrapperBehavior(scope, {
         body,
         database,
         resourceBody,
@@ -463,8 +467,8 @@ export const testNode = createSuite({
             title: '@overkill-dev/test/resources re-exports resource descriptors',
             annotations: {},
             controls: {},
-            body(scope: TestScope) {
-                assertResourcesSubpath(scope);
+            async body(scope: TestScope) {
+                await assertResourcesSubpath(scope);
 
                 return scope.assert.collect();
             }

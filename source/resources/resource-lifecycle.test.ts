@@ -6,7 +6,8 @@ import {
     type ResourceDefinition,
     type RuntimeDefinition
 } from './resources.ts';
-import { ResourceLifecycleError, startRuntime, type StartRuntimeRequest } from './runtime-lifecycle.ts';
+import { ResourceLifecycleError } from './resource-lifecycle-error.ts';
+import { startRuntime, type StartRuntimeRequest } from './runtime-lifecycle.ts';
 
 type Database = {
     readonly query: (sql: string) => readonly string[];

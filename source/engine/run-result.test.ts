@@ -5,7 +5,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import type { FailedCheck, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
-import { verdictFromOutcome, type TestOutcome } from './run-result.ts';
+import { CaseRunnerError, isCaseRunnerError, verdictFromOutcome, type TestOutcome } from './run-result.ts';
 
 type FailedCheckFixture = {
     readonly actual: FailedCheck['actual'];
@@ -33,6 +33,23 @@ function createFailedCheck(): FailedCheckFixture {
     };
 }
 
+function assertCaseRunnerErrorPredicates(scope: OverkillScope): void {
+    const branded = new CaseRunnerError('Fixture failed.', {
+        cause: new Error('fixture'),
+        subtype: 'fixture'
+    });
+    const foreignBrand = Symbol.for('@overkill-dev/engine/CaseRunnerError');
+    const invalidForeign = Object.freeze({
+        [foreignBrand]: true,
+        runnerError: null
+    });
+
+    scope.assert.equal(isCaseRunnerError(null), false);
+    scope.assert.equal(isCaseRunnerError('fixture'), false);
+    scope.assert.equal(isCaseRunnerError(invalidForeign), false);
+    scope.assert.equal(isCaseRunnerError(branded), true);
+}
+
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/run-result.test.ts',
@@ -51,6 +68,17 @@ export const testNode = createOverkillSuite({
                 };
 
                 scope.assert.equal(verdictFromOutcome(outcome), 'fail');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'isCaseRunnerError() accepts only branded runner errors',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                assertCaseRunnerErrorPredicates(scope);
 
                 return scope.assert.collect();
             }

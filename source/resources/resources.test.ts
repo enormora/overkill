@@ -1,6 +1,8 @@
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     createResourcesModule,
+    isDefinedResource,
+    isDefinedRuntime,
     type TemporaryDirectoryHandle,
     type ResourcesModuleDependencies
 } from './resources.ts';
@@ -101,6 +103,34 @@ const serverResource = defineResource({
     }
 });
 const temporaryDirectoryResource = createTemporaryDirectoryResource('scratch');
+
+function assertResourceDescriptorPredicates(scope: TestScope, runtime: unknown): void {
+    scope.assert.equal(isDefinedResource(null), false);
+    scope.assert.equal(isDefinedResource('database'), false);
+    scope.assert.equal(isDefinedResource({ name: 'database' }), false);
+    scope.assert.equal(isDefinedResource(databaseResource), true);
+    scope.assert.equal(isDefinedResource(runtime), false);
+}
+
+function assertRuntimeDescriptorPredicates(scope: TestScope, runtime: unknown): void {
+    scope.assert.equal(isDefinedRuntime(null), false);
+    scope.assert.equal(isDefinedRuntime('runtime'), false);
+    scope.assert.equal(isDefinedRuntime({ name: 'api' }), false);
+    scope.assert.equal(isDefinedRuntime(databaseResource), false);
+    scope.assert.equal(isDefinedRuntime(runtime), true);
+}
+
+function assertDescriptorPredicates(scope: TestScope): void {
+    const runtime = defineRuntime({
+        name: 'api',
+        dimensions: {},
+        resources: { database: databaseResource },
+        requirements: []
+    });
+
+    assertResourceDescriptorPredicates(scope, runtime);
+    assertRuntimeDescriptorPredicates(scope, runtime);
+}
 
 function assertDatabaseResourceDescriptor(scope: TestScope): void {
     scope.assert.deepEqual(databaseResource.dependencies, {});
@@ -226,6 +256,28 @@ function assertRuntimeContextCompositionRejectsDuplicateScopes(scope: TestScope)
     }, { message: 'Runtime scope "api" already exists.' });
 }
 
+function assertRuntimeContextCompositionRejectsInvalidRuntimeScopes(scope: TestScope): void {
+    const runtime = defineRuntime({
+        name: 'api',
+        dimensions: {},
+        resources: { database: databaseResource },
+        requirements: []
+    });
+    const invalidContexts = [
+        { runtimes: 'api' },
+        { runtimes: null },
+        { runtimes: [] }
+    ];
+
+    for (const context of invalidContexts) {
+        scope.assert.throws(function composeInvalidRuntimeContext() {
+            Reflect.apply(composeRuntimeContext, undefined, [ context, runtime, { database: createDatabase() } ]);
+        }, {
+            message: 'composeRuntimeContext() requires context.runtimes to be an object when present.'
+        });
+    }
+}
+
 type TemporaryDirectoryResource = typeof temporaryDirectoryResource;
 
 function assertTemporaryDirectoryDescriptor(scope: TestScope, resource: TemporaryDirectoryResource): void {
@@ -289,6 +341,7 @@ export const testNode = createSuite({
             controls: {},
             async body(scope: TestScope) {
                 assertDatabaseResourceDescriptor(scope);
+                assertDescriptorPredicates(scope);
                 await assertDatabaseResourceCallbacks(scope);
                 await assertServerResourceCallbacks(scope);
 
@@ -305,6 +358,7 @@ export const testNode = createSuite({
                 assertRuntimeContextComposition(scope);
                 assertRuntimeContextCompositionMergesRuntimeScopes(scope);
                 assertRuntimeContextCompositionRejectsDuplicateScopes(scope);
+                assertRuntimeContextCompositionRejectsInvalidRuntimeScopes(scope);
 
                 return scope.assert.collect();
             }

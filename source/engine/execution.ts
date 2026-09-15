@@ -141,6 +141,25 @@ async function reportTestEnd(
     });
 }
 
+async function reportCaseRunnerErrors(
+    runnerErrors: readonly RunnerError[],
+    context: ExecutionReportingContext
+): Promise<readonly RunnerError[]> {
+    let reporterErrors: readonly RunnerError[] = [];
+
+    for (const error of runnerErrors) {
+        reporterErrors = [
+            ...reporterErrors,
+            ...await context.reporterDelivery.reportEvent({
+                error,
+                kind: 'runner-error'
+            })
+        ];
+    }
+
+    return reporterErrors;
+}
+
 async function executeCase(input: ExecuteCaseInput): Promise<ReportedCase> {
     const startErrors = await reportTestStart(input.testCase, input.attempt, input.context);
     const activeResourceTypesBefore = input.context.dependencies.readActiveResourceTypes();
@@ -163,10 +182,19 @@ async function executeCase(input: ExecuteCaseInput): Promise<ReportedCase> {
         testCase: input.testCase
     });
 
-    for (const runnerError of leakCheckedCase.runnerErrors) {
+    for (
+        const runnerError of [
+            ...leakCheckedCase.executedCase.runnerErrors,
+            ...leakCheckedCase.runnerErrors
+        ]
+    ) {
         input.supervision.recordRunnerError(runnerError);
     }
 
+    const runnerErrorNotificationErrors = await reportCaseRunnerErrors(
+        leakCheckedCase.executedCase.runnerErrors,
+        input.context
+    );
     const endErrors = await reportTestEnd(
         {
             attempt: input.attempt,
@@ -178,7 +206,7 @@ async function executeCase(input: ExecuteCaseInput): Promise<ReportedCase> {
     );
 
     return {
-        reporterErrors: [ ...startErrors, ...endErrors ],
+        reporterErrors: [ ...startErrors, ...runnerErrorNotificationErrors, ...endErrors ],
         result: leakCheckedCase.executedCase.result
     };
 }
@@ -317,6 +345,25 @@ async function reportConcurrentCaseEnd(
     });
 }
 
+async function reportConcurrentCaseRunnerErrors(
+    runnerErrors: readonly RunnerError[],
+    reportQueue: ReporterEventQueue
+): Promise<readonly RunnerError[]> {
+    let reporterErrors: readonly RunnerError[] = [];
+
+    for (const error of runnerErrors) {
+        reporterErrors = [
+            ...reporterErrors,
+            ...await reportQueue.report({
+                error,
+                kind: 'runner-error'
+            })
+        ];
+    }
+
+    return reporterErrors;
+}
+
 async function executeConcurrentCases(input: ExecuteConcurrentCasesInput): Promise<ConcurrentCaseExecution> {
     const endReporterErrors: RunnerError[] = [];
     const caseExecutions = input.testPlan.cases.map(async function executeCaseConcurrently(testCase) {
@@ -339,11 +386,20 @@ async function executeConcurrentCases(input: ExecuteConcurrentCasesInput): Promi
             testCase
         });
 
-        for (const runnerError of leakCheckedCase.runnerErrors) {
+        for (
+            const runnerError of [
+                ...leakCheckedCase.executedCase.runnerErrors,
+                ...leakCheckedCase.runnerErrors
+            ]
+        ) {
             input.supervision.recordRunnerError(runnerError);
         }
 
         endReporterErrors.push(
+            ...await reportConcurrentCaseRunnerErrors(
+                leakCheckedCase.executedCase.runnerErrors,
+                input.reportQueue
+            ),
             ...await reportConcurrentCaseEnd(testCase, leakCheckedCase.executedCase, input.reportQueue)
         );
 

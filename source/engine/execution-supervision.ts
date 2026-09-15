@@ -30,6 +30,7 @@ export type ExecuteResourceBudgets = {
 
 export type ConcurrentCase = {
     readonly result: PerTestResult;
+    readonly runnerErrors: readonly RunnerError[];
     readonly wallTimeMs: number;
 };
 
@@ -154,6 +155,7 @@ function createTerminalCase(
             outcome: null,
             verdict
         },
+        runnerErrors: [],
         wallTimeMs
     };
 }
@@ -256,7 +258,10 @@ function policyCheckedCase(
         supervision.recordRunnerError(error);
     }
 
-    return createTerminalCase(testCase, 'runtime-policy', executedCase.wallTimeMs);
+    return {
+        ...createTerminalCase(testCase, 'runtime-policy', executedCase.wallTimeMs),
+        runnerErrors: executedCase.runnerErrors
+    };
 }
 
 async function runTestCaseWithPolicy(
@@ -387,6 +392,7 @@ async function runCaseWithSoftTimeout(
 function invalidTimeoutCase(testCase: TestPlanCase, failure: TestFailure): ConcurrentCase {
     return {
         result: failCase(testCase.id, [ failure ]),
+        runnerErrors: [],
         wallTimeMs: 0
     };
 }
@@ -441,6 +447,7 @@ function createInconclusiveCaseResult(testCase: TestPlanCase, error: unknown): P
 function completeUnexpectedBodyError(input: CaseBodyInput, error: unknown): void {
     completeFinishedActiveCase(input, {
         result: createInconclusiveCaseResult(input.testCase, error),
+        runnerErrors: [],
         wallTimeMs: input.dependencies.wallClock.currentTimestampInMilliseconds -
             input.activeCase.startedAtMilliseconds
     });
@@ -458,6 +465,7 @@ async function runCaseBodyUnderSupervision(input: CaseBodyInput): Promise<Concur
     } catch (error: unknown) {
         const fallbackCase = {
             result: createInconclusiveCaseResult(input.testCase, error),
+            runnerErrors: [],
             wallTimeMs: input.dependencies.wallClock.currentTimestampInMilliseconds -
                 input.activeCase.startedAtMilliseconds
         };

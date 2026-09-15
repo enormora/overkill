@@ -15,6 +15,7 @@ import {
 } from './assertion-recorder.ts';
 import { isNodeAssertionError, nodeAssertionErrorFailure } from './node-assertion-error.ts';
 import {
+    isCaseRunnerError,
     type PerTestResult,
     type RunnerError,
     type TestContractFailure,
@@ -34,20 +35,41 @@ type ExecutedBody = {
     readonly cleanupErrors: readonly BodyErrorRecord[];
     readonly contractFailures: readonly TestContractFailure[];
     readonly requireFailed: boolean;
+    readonly runnerErrors: readonly RunnerError[];
     readonly returnedAssertions: readonly AssertionNode[];
 };
 
 type ExecutedCase = {
     readonly result: PerTestResult;
+    readonly runnerErrors: readonly RunnerError[];
     readonly wallTimeMs: number;
 };
 
 type FailedBodyInput = {
-    readonly cleanupErrors: readonly BodyErrorRecord[];
+    readonly context: BodyResultContext;
     readonly error: unknown;
-    readonly lifecycleFailures: readonly TestContractFailure[];
-    readonly recorder: AssertionRecorder;
     readonly testCase: TestPlanCase;
+};
+
+type CompletedBodyInput = {
+    readonly assertionResult: AssertionResult;
+    readonly context: BodyResultContext;
+};
+
+type BodyResultContext = {
+    readonly cleanupErrors: readonly BodyErrorRecord[];
+    readonly contractFailures: readonly TestContractFailure[];
+    readonly recorder: AssertionRecorder;
+    readonly runnerErrors: readonly RunnerError[];
+};
+
+type FinishedCaseCleanup = {
+    readonly cleanupErrors: readonly BodyErrorRecord[];
+    readonly runnerErrors: readonly RunnerError[];
+};
+type FinishedScope = {
+    readonly cleanupErrors: readonly unknown[];
+    readonly lifecycleFailures: readonly TestContractFailure[];
 };
 
 export type RunTestCaseOptions = {
@@ -97,45 +119,64 @@ function assertionFailure(assertions: readonly AssertionNode[]): TestFailure | n
     return assertionContractFailure(assertions) ?? evaluatedAssertionFailure(assertions);
 }
 
-function requireFailedBody(
-    recorder: AssertionRecorder,
-    contractFailures: readonly TestContractFailure[],
-    cleanupErrors: readonly BodyErrorRecord[]
-): ExecutedBody {
+function caseRunnerError(testCase: TestPlanCase, error: unknown): RunnerError | null {
+    return isCaseRunnerError(error) ? error.runnerError(testCase.id) : null;
+}
+
+function requireFailedBody(context: BodyResultContext): ExecutedBody {
+    const { cleanupErrors, contractFailures, recorder, runnerErrors } = context;
+
     return {
         bodyError: null,
         cleanupErrors,
         contractFailures,
         requireFailed: true,
+        runnerErrors,
         returnedAssertions: recorder.activeRecordedAssertions()
     };
 }
 
 function contractFailedBody(
-    recorder: AssertionRecorder,
-    contractFailures: readonly TestContractFailure[],
-    cleanupErrors: readonly BodyErrorRecord[]
+    context: BodyResultContext,
+    contractFailures: readonly TestContractFailure[]
 ): ExecutedBody {
+    const { cleanupErrors, recorder, runnerErrors } = context;
+
     return {
         bodyError: null,
         cleanupErrors,
         contractFailures,
         requireFailed: false,
+        runnerErrors,
         returnedAssertions: recorder.activeRecordedAssertions()
     };
 }
 
-function bodyErrorResult(
-    recorder: AssertionRecorder,
-    error: unknown,
-    contractFailures: readonly TestContractFailure[],
-    cleanupErrors: readonly BodyErrorRecord[]
-): ExecutedBody {
+function bodyErrorResult(context: BodyResultContext, error: unknown): ExecutedBody {
+    const { cleanupErrors, contractFailures, recorder, runnerErrors } = context;
+
     return {
         bodyError: createThrownErrorRecord(error),
         cleanupErrors,
         contractFailures,
         requireFailed: false,
+        runnerErrors,
+        returnedAssertions: recorder.activeRecordedAssertions()
+    };
+}
+
+function caseRunnerErrorBody(
+    context: BodyResultContext,
+    runnerError: RunnerError
+): ExecutedBody {
+    const { cleanupErrors, contractFailures, recorder, runnerErrors } = context;
+
+    return {
+        bodyError: null,
+        cleanupErrors,
+        contractFailures,
+        requireFailed: false,
+        runnerErrors: [ runnerError, ...runnerErrors ],
         returnedAssertions: recorder.activeRecordedAssertions()
     };
 }
@@ -152,6 +193,7 @@ function nodeAssertionFailedBody(
         cleanupErrors: [],
         contractFailures: [],
         requireFailed: false,
+        runnerErrors: [],
         returnedAssertions: [
             ...recorder.activeRecordedAssertions(),
             nodeAssertionErrorFailure(error, fallbackLocation)
@@ -159,58 +201,69 @@ function nodeAssertionFailedBody(
     };
 }
 
-function completedBody(
-    recorder: AssertionRecorder,
-    assertionResult: AssertionResult,
-    lifecycleFailures: readonly TestContractFailure[],
-    cleanupErrors: readonly BodyErrorRecord[]
-): ExecutedBody {
+function completedBody(input: CompletedBodyInput): ExecutedBody {
+    const { assertionResult, context } = input;
+    const { recorder } = context;
+
     if (recorder.requireFailed()) {
-        return requireFailedBody(recorder, lifecycleFailures, cleanupErrors);
+        return requireFailedBody(context);
     }
 
     const returnedAssertions = recorder.returnedAssertions(assertionResult);
 
     if (isTestContractFailure(returnedAssertions)) {
-        return contractFailedBody(recorder, [ returnedAssertions, ...lifecycleFailures ], cleanupErrors);
+        return contractFailedBody(context, [ returnedAssertions, ...context.contractFailures ]);
     }
 
     return {
         bodyError: null,
-        cleanupErrors,
-        contractFailures: lifecycleFailures,
+        cleanupErrors: context.cleanupErrors,
+        contractFailures: context.contractFailures,
         requireFailed: false,
+        runnerErrors: context.runnerErrors,
         returnedAssertions
     };
 }
 
 function completedThrowingBody(recorder: AssertionRecorder): ExecutedBody {
     if (recorder.requireFailed()) {
-        return requireFailedBody(recorder, [], []);
+        return requireFailedBody({
+            cleanupErrors: [],
+            contractFailures: [],
+            recorder,
+            runnerErrors: []
+        });
     }
 
     const returnedAssertions = recorder.completedThrowingAssertions();
 
     return isTestContractFailure(returnedAssertions)
-        ? contractFailedBody(recorder, [ returnedAssertions ], [])
+        ? contractFailedBody({
+            cleanupErrors: [],
+            contractFailures: [],
+            recorder,
+            runnerErrors: []
+        }, [ returnedAssertions ])
         : {
             bodyError: null,
             cleanupErrors: [],
             contractFailures: [],
             requireFailed: false,
+            runnerErrors: [],
             returnedAssertions
         };
 }
 
-function failedBody(input: FailedBodyInput): ExecutedBody {
-    const { cleanupErrors, error, lifecycleFailures, recorder, testCase } = input;
+function nonRunnerFailedBody(input: FailedBodyInput): ExecutedBody {
+    const { context, error, testCase } = input;
+    const { recorder } = context;
 
     if (error instanceof RequireFailedSignalError) {
-        return requireFailedBody(recorder, lifecycleFailures, cleanupErrors);
+        return requireFailedBody(context);
     }
 
     if (error instanceof TestContractSignalError) {
-        return contractFailedBody(recorder, [ error.failure(), ...lifecycleFailures ], cleanupErrors);
+        return contractFailedBody(context, [ error.failure(), ...context.contractFailures ]);
     }
 
     if (
@@ -221,7 +274,53 @@ function failedBody(input: FailedBodyInput): ExecutedBody {
         return nodeAssertionFailedBody(testCase, recorder, error);
     }
 
-    return bodyErrorResult(recorder, error, lifecycleFailures, cleanupErrors);
+    return bodyErrorResult(context, error);
+}
+
+function failedBody(input: FailedBodyInput): ExecutedBody {
+    const { context, error, testCase } = input;
+    const runnerError = caseRunnerError(testCase, error);
+
+    if (runnerError !== null) {
+        return caseRunnerErrorBody(context, runnerError);
+    }
+
+    return nonRunnerFailedBody(input);
+}
+
+function finishedCaseCleanup(testCase: TestPlanCase, cleanupErrors: readonly unknown[]): FinishedCaseCleanup {
+    const bodyErrors: BodyErrorRecord[] = [];
+    const runnerErrors: RunnerError[] = [];
+
+    for (const error of cleanupErrors) {
+        const runnerError = caseRunnerError(testCase, error);
+
+        if (runnerError === null) {
+            bodyErrors.push(createThrownErrorRecord(error));
+        } else {
+            runnerErrors.push(runnerError);
+        }
+    }
+
+    return {
+        cleanupErrors: bodyErrors,
+        runnerErrors
+    };
+}
+
+function bodyResultContext(
+    recorder: AssertionRecorder,
+    testCase: TestPlanCase,
+    finishedScope: FinishedScope
+): BodyResultContext {
+    const cleanup = finishedCaseCleanup(testCase, finishedScope.cleanupErrors);
+
+    return {
+        cleanupErrors: cleanup.cleanupErrors,
+        contractFailures: finishedScope.lifecycleFailures,
+        recorder,
+        runnerErrors: cleanup.runnerErrors
+    };
 }
 
 async function runBuilderCaseBody(
@@ -245,22 +344,15 @@ async function runBuilderCaseBody(
 
     try {
         const assertionResult = await runPolicyCheckedBody();
-        const finishedBody = await lifecycle.finish(options.controller);
 
-        return completedBody(
-            recorder,
+        return completedBody({
             assertionResult,
-            finishedBody.lifecycleFailures,
-            finishedBody.cleanupErrors.map(createThrownErrorRecord)
-        );
+            context: bodyResultContext(recorder, testCase, await lifecycle.finish(options.controller))
+        });
     } catch (error: unknown) {
-        const finishedBody = await lifecycle.finish(options.controller);
-
         return failedBody({
-            cleanupErrors: finishedBody.cleanupErrors.map(createThrownErrorRecord),
+            context: bodyResultContext(recorder, testCase, await lifecycle.finish(options.controller)),
             error,
-            lifecycleFailures: finishedBody.lifecycleFailures,
-            recorder,
             testCase
         });
     }
@@ -294,10 +386,13 @@ async function runThrowingCaseBody(
         return completedThrowingBody(recorder);
     } catch (error: unknown) {
         return failedBody({
-            cleanupErrors: [],
+            context: {
+                cleanupErrors: [],
+                contractFailures: [],
+                recorder,
+                runnerErrors: []
+            },
             error,
-            lifecycleFailures: [],
-            recorder,
             testCase
         });
     }
@@ -342,12 +437,26 @@ function planFailure(recorder: AssertionRecorder, executedBody: ExecutedBody): T
         executedBody.requireFailed ||
         executedBody.contractFailures.length > 0 ||
         executedBody.bodyError !== null ||
-        executedBody.cleanupErrors.length > 0
+        executedBody.cleanupErrors.length > 0 ||
+        executedBody.runnerErrors.length > 0
     ) {
         return null;
     }
 
     return recorder.validateAssertionCount(executedBody.returnedAssertions.length);
+}
+
+function createInconclusiveOutcome(executedBody: ExecutedBody): TestOutcome | null {
+    const [ runnerError ] = executedBody.runnerErrors;
+
+    if (runnerError === undefined) {
+        return null;
+    }
+
+    return {
+        kind: 'inconclusive',
+        reason: runnerError.message
+    };
 }
 
 function createOutcome(recorder: AssertionRecorder, executedBody: ExecutedBody): TestOutcome {
@@ -361,7 +470,7 @@ function createOutcome(recorder: AssertionRecorder, executedBody: ExecutedBody):
         });
 
     if (failures.length === 0) {
-        return { kind: 'pass' };
+        return createInconclusiveOutcome(executedBody) ?? { kind: 'pass' };
     }
 
     assertNonEmptyItems(failures, 'Expected test failures to be non-empty.');
@@ -415,6 +524,7 @@ export async function runTestCase(
                 outcome,
                 verdict: verdictFromOutcome(outcome)
             },
+            runnerErrors: [],
             wallTimeMs: wallClock.currentTimestampInMilliseconds - startedAt
         };
     }
@@ -431,6 +541,7 @@ export async function runTestCase(
             outcome,
             verdict
         },
+        runnerErrors: executedBody.runnerErrors,
         wallTimeMs: wallClock.currentTimestampInMilliseconds - startedAt
     };
 }
