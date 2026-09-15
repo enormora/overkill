@@ -1,5 +1,6 @@
 import { createDeterministicWallClock } from '@enormora/wall-clock';
 import {
+    type ResourceUsageSnapshot,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -8,6 +9,7 @@ import { defaultRunConfig, defaultRunRequest } from '../test-support/run-command
 import { defaultRunEngine } from './default-run-engine.ts';
 import type {
     CreatedWorkerPool,
+    WorkerPoolResourceUsageTracker,
     WorkerPoolCreationOptions
 } from './run-orchestrator-dependencies.ts';
 import type { RunWorkerLifecycle } from './run-types.ts';
@@ -186,6 +188,30 @@ function mixedLifecycleResolvedRun(): ResolvedRun {
     };
 }
 
+function measuredMixedLifecycleResolvedRun(): ResolvedRun {
+    const resolvedRun = mixedLifecycleResolvedRun();
+
+    return {
+        ...resolvedRun,
+        facts: {
+            ...resolvedRun.facts,
+            execution: {
+                ...resolvedRun.facts.execution,
+                resourceUsagePolicy: {
+                    budgets: {
+                        activeResourceCount: null,
+                        javaScriptEngineHeapBytes: null,
+                        residentSetBytes: null,
+                        residentSetGrowthBytesPerSecond: null
+                    },
+                    measure: true,
+                    samplingIntervalMilliseconds: 17
+                }
+            }
+        }
+    };
+}
+
 function testOnlyDependency(): never {
     throw new Error('Test fixture dependency is not configured.');
 }
@@ -206,6 +232,54 @@ function fakePool(
             routedLifecycles.push(options.workerLifecycle);
 
             return options.workerLifecycle;
+        }
+    };
+}
+
+function resourceSnapshot(workerLifecycle: RunWorkerLifecycle, capturedAtMilliseconds: number): ResourceUsageSnapshot {
+    return {
+        activeResourceCount: workerLifecycle === 'reuse' ? 1 : 2,
+        activeResourceTypes: [ workerLifecycle ],
+        capturedAtMilliseconds,
+        javaScriptEngineHeapBytes: workerLifecycle === 'reuse' ? 10 : 20,
+        residentSetBytes: workerLifecycle === 'reuse' ? 100 : 200
+    };
+}
+
+function resourceUsageTracker(workerLifecycle: RunWorkerLifecycle): WorkerPoolResourceUsageTracker {
+    return {
+        finish() {
+            const start = resourceSnapshot(workerLifecycle, 1);
+            const end = resourceSnapshot(workerLifecycle, 2);
+
+            return {
+                activeResourceTypes: [ workerLifecycle ],
+                end,
+                peakActiveResourceCount: end.activeResourceCount,
+                peakJavaScriptEngineHeapBytes: end.javaScriptEngineHeapBytes,
+                peakResidentSetBytes: end.residentSetBytes,
+                peakResidentSetGrowthBytesPerSecond: 0,
+                sampleCount: 2,
+                start
+            };
+        },
+        start(onSample) {
+            onSample?.(resourceSnapshot(workerLifecycle, 1));
+        },
+        async waitForStart() {
+            return undefined;
+        }
+    };
+}
+
+function trackingPool(options: WorkerPoolCreationOptions): CreatedWorkerPool {
+    const routedLifecycles: RunWorkerLifecycle[] = [];
+    const pool = fakePool(options, routedLifecycles);
+
+    return {
+        ...pool,
+        createResourceUsageTracker() {
+            return resourceUsageTracker(options.workerLifecycle);
         }
     };
 }
@@ -285,10 +359,30 @@ function fakeDependencies(
     };
 }
 
+function trackingDependencies(createdWorkerPools: CreatedWorkerPools): WorkerPoolRunRuntime['dependencies'] {
+    const routedLifecycles: RunWorkerLifecycle[] = [];
+
+    return {
+        ...fakeDependencies(createdWorkerPools, routedLifecycles),
+        createWorkerPool(options) {
+            createdWorkerPools.push(options);
+
+            return trackingPool(options);
+        }
+    };
+}
+
 function lifecycleTask(workerLifecycle: RunWorkerLifecycle): unknown {
     return {
         command: { workerLifecycle },
         kind: 'run'
+    };
+}
+
+function invalidWorkerPoolTask(): unknown {
+    return {
+        command: { workerLifecycle: 'reuse' },
+        kind: 'invalid'
     };
 }
 
@@ -300,6 +394,65 @@ function runOptions(): Parameters<CreatedWorkerPool['run']>[1] {
         signal: controller.signal,
         transferList: []
     };
+}
+
+async function routedResourceUsage(): Promise<{
+    readonly samples: readonly ResourceUsageSnapshot[];
+    readonly sampleCount: number;
+    readonly startActiveResourceTypes: readonly string[];
+}> {
+    const createdWorkerPools: WorkerPoolCreationOptions[] = [];
+    const samples: ResourceUsageSnapshot[] = [];
+    const runtime = await createWorkerPoolRuntime({
+        collectionRunnerErrors: [],
+        createdPool: null,
+        dependencies: trackingDependencies(createdWorkerPools),
+        resolvedRun: measuredMixedLifecycleResolvedRun(),
+        runState: createSupervisedRunState()
+    });
+
+    if (runtime.poolResourceUsageTracker === null) {
+        throw new Error('Mixed lifecycle resource usage test requires resource tracking.');
+    }
+
+    runtime.poolResourceUsageTracker.start(function recordSample(sample) {
+        samples.push(sample);
+    });
+    await runtime.poolResourceUsageTracker.waitForStart?.();
+    const usage = runtime.poolResourceUsageTracker.finish();
+    await runtime.pool.destroy();
+
+    return {
+        sampleCount: usage.sampleCount,
+        samples,
+        startActiveResourceTypes: usage.start.activeResourceTypes
+    };
+}
+
+async function assertRoutedPoolErrors(scope: OverkillScope, runtime: WorkerPoolRunRuntime): Promise<void> {
+    await scope.assert.rejects(async function runInvalidTask() {
+        await runtime.pool.run(invalidWorkerPoolTask(), runOptions());
+    }, { message: 'Worker-pool received an invalid task.' });
+    await scope.assert.rejects(async function runUnknownLifecycle() {
+        await runtime.pool.run({
+            command: { workerLifecycle: 'unknown' },
+            kind: 'run'
+        }, runOptions());
+    }, { message: 'Worker-pool task has no "unknown" route.' });
+}
+
+async function assertRoutedLifecycleRuns(
+    scope: OverkillScope,
+    runtime: WorkerPoolRunRuntime,
+    routedLifecycles: readonly RunWorkerLifecycle[]
+): Promise<void> {
+    scope.assert.equal(runtime.pool.options.maxThreads, 2);
+    scope.assert.equal(await runtime.pool.run(lifecycleTask('reuse'), runOptions()), 'reuse');
+    scope.assert.equal(
+        await runtime.pool.run(lifecycleTask('fresh-worker-per-unit'), runOptions()),
+        'fresh-worker-per-unit'
+    );
+    scope.assert.deepEqual(routedLifecycles, [ 'reuse', 'fresh-worker-per-unit' ]);
 }
 
 export const testNode = createOverkillSuite({
@@ -324,13 +477,7 @@ export const testNode = createOverkillSuite({
                     runState: createSupervisedRunState()
                 });
 
-                scope.assert.equal(runtime.pool.options.maxThreads, 2);
-                scope.assert.equal(await runtime.pool.run(lifecycleTask('reuse'), runOptions()), 'reuse');
-                scope.assert.equal(
-                    await runtime.pool.run(lifecycleTask('fresh-worker-per-unit'), runOptions()),
-                    'fresh-worker-per-unit'
-                );
-                scope.assert.deepEqual(routedLifecycles, [ 'reuse', 'fresh-worker-per-unit' ]);
+                await assertRoutedLifecycleRuns(scope, runtime, routedLifecycles);
                 scope.assert.deepEqual(createdWorkerPools, [
                     { cwd: process.cwd(), hostProcess: { kind: 'direct' }, workerCount: 1, workerLifecycle: 'reuse' },
                     {
@@ -340,8 +487,32 @@ export const testNode = createOverkillSuite({
                         workerLifecycle: 'fresh-worker-per-unit'
                     }
                 ]);
+                await assertRoutedPoolErrors(scope, runtime);
 
                 await runtime.pool.destroy();
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'worker-pool runtime combines mixed lifecycle resource tracking',
+            async body(scope: OverkillScope) {
+                const usage = await routedResourceUsage();
+
+                scope.assert.equal(usage.sampleCount, 3);
+                scope.assert.deepEqual(usage.startActiveResourceTypes, [
+                    'fresh-worker-per-unit',
+                    'reuse'
+                ]);
+                scope.assert.deepEqual(
+                    usage.samples.map(function toActiveResourceCount(sample) {
+                        return sample.activeResourceCount;
+                    }),
+                    [ 3 ]
+                );
 
                 return scope.assert.collect();
             }

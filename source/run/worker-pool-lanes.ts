@@ -48,6 +48,12 @@ function hasMixedLifecycles(units: readonly WorkUnit[]): boolean {
         lifecycleCount(units, reuseWorkerLifecycle) > 0;
 }
 
+function firstUnitWorkerLifecycle(units: readonly WorkUnit[]): RunWorkerLifecycle {
+    return units.reduce<RunWorkerLifecycle>(function keepFirstLifecycle(firstLifecycle, unit, index) {
+        return index === 0 ? unit.workerLifecycle : firstLifecycle;
+    }, reuseWorkerLifecycle);
+}
+
 function workerCount(input: WorkerPoolLaneInput): number {
     const baseWorkerCount = defaultWorkerCount(input.availableParallelism, input.units.length);
 
@@ -78,7 +84,8 @@ export function workerPoolLanes(input: WorkerPoolLaneInput): readonly PlacementL
 
 function proportionalExtraLaneLifecycle(
     units: readonly WorkUnit[],
-    remainingLanes: number
+    remainingLanes: number,
+    tiedLifecycle: RunWorkerLifecycle
 ): RunWorkerLifecycle {
     const freshUnits = lifecycleCount(units, freshWorkerLifecycle);
     const reuseUnits = lifecycleCount(units, reuseWorkerLifecycle);
@@ -90,7 +97,7 @@ function proportionalExtraLaneLifecycle(
         return freshRemainder > reuseRemainder ? freshWorkerLifecycle : reuseWorkerLifecycle;
     }
 
-    return units[0]?.workerLifecycle ?? reuseWorkerLifecycle;
+    return tiedLifecycle;
 }
 
 function mixedLifecycleBaseLaneCounts(
@@ -116,7 +123,7 @@ function mixedLifecycleLaneCounts(
     let { freshLanes, remainingLanes, reuseLanes } = mixedLifecycleBaseLaneCounts(units, totalLaneCount);
 
     if (freshLanes + reuseLanes < totalLaneCount) {
-        const targetLifecycle = proportionalExtraLaneLifecycle(units, remainingLanes);
+        const targetLifecycle = proportionalExtraLaneLifecycle(units, remainingLanes, firstUnitWorkerLifecycle(units));
 
         if (targetLifecycle === freshWorkerLifecycle) {
             freshLanes += 1;

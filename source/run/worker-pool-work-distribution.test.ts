@@ -200,6 +200,17 @@ function workGroupWithOrder(
     };
 }
 
+function workGroupWithPolicyOverrides(
+    name: string,
+    groupFileSets: readonly [string, ...string[]]
+): RunWorkGroup {
+    return {
+        ...workGroupWithGranularity(name, groupFileSets, 'file'),
+        scheduling: 'serial',
+        workerLifecycle: 'fresh-worker-per-unit'
+    };
+}
+
 function planningInput(
     selectedPlan: CollectedRunPlan,
     workDistribution: RunWorkDistribution,
@@ -231,6 +242,40 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(
                     workUnitsFromCollectedPlan(planningInput(collectedPlan(), { mode: 'case' }, fileSetForFile)),
                     [ caseWorkUnit(firstCaseId()), caseWorkUnit(secondCaseId()) ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'worker-pool planning applies group overrides with unmatched file fallback',
+            body(scope: OverkillScope) {
+                const fastFileUnit = {
+                    ...fileWorkUnit(firstCaseId(), 'fast-files'),
+                    scheduling: 'serial',
+                    workerLifecycle: 'fresh-worker-per-unit'
+                } as const;
+
+                scope.assert.deepEqual(
+                    workUnitsFromCollectedPlan(planningInput(
+                        collectedPlanWithEmptyFile(),
+                        {
+                            groups: [
+                                workGroup('empty-group', [ 'empty' ]),
+                                workGroupWithPolicyOverrides('fast-files', [ 'fast' ])
+                            ],
+                            mode: 'group',
+                            unmatched: 'file'
+                        },
+                        fileSetForFile
+                    )),
+                    [
+                        fastFileUnit,
+                        fileWorkUnit(secondCaseId(), null)
+                    ]
                 );
 
                 return scope.assert.collect();
