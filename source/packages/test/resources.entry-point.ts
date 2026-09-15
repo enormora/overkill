@@ -13,11 +13,13 @@ import {
     type RuntimeScopeContext
 } from '../resources/resources.entry-point.ts';
 import {
-    attachComposedResourceBody,
+    attachComposedResourceBody
+} from './resource-wrapper-composition.ts';
+import {
     resourcesWrapperStep,
     resourceWrapperStep,
     runtimeWrapperStep
-} from './resource-wrapper-composition.ts';
+} from './resource-wrapper-session.ts';
 
 export {
     composeRuntimeContext,

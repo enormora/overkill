@@ -1,6 +1,5 @@
 import {
     attachTestBodyResourceAttachments,
-    CaseRunnerError,
     hasTestBodyResourceAttachments,
     type ResourceAttachedTestBody,
     type AssertionResult,
@@ -14,7 +13,6 @@ import {
 } from '../engine/engine.entry-point.ts';
 import {
     isDefinedResource,
-    ResourceLifecycleError,
     type AnyResourceDefinition,
     type ExecutionRequirement,
     type ResourceContext,
@@ -24,18 +22,23 @@ import {
     type RuntimeScopeContext
 } from '../resources/resources.entry-point.ts';
 import {
-    startComposedResourceSession,
-    type ComposedResourceSession
-} from '../../resources/composed-resource-session.ts';
+    acquireComposedResources,
+    directResourceEntries,
+    disposeComposedResources,
+    lifecycleMessages,
+    resourceContextForStep,
+    resourceWrapperLifecycleError,
+    runtimeContextForStep,
+    stepRuntimeGraphs,
+    type ComposedResourceSession,
+    type ResourceEntry,
+    type ResourceWrapperStep
+} from './resource-wrapper-session.ts';
 
 type TestBodyWithScope<Scope extends TestScope> = (scope: Scope) => ReturnType<TestBody>;
 type CallableTestBody = (scope: never) => unknown;
 type TestBodyResult = ReturnType<TestBody>;
 type AsyncTestBodyResult = Promise<Awaited<TestBodyResult>>;
-type Mutable<Value> = {
-    -readonly [Key in keyof Value]: Value[Key];
-};
-
 type RuntimeTestScope<
     Graph extends RuntimeGraph,
     Scope extends TestScope = TestScope
@@ -50,23 +53,6 @@ type ResourceTestScope<
     readonly resources: ResourceContext<Resources>;
 };
 
-type ResourceEntry = {
-    readonly key: string;
-    readonly resource: AnyResourceDefinition;
-};
-
-type ResourceWrapperResourcesStep = {
-    readonly kind: 'resources';
-    readonly resources: ResourceMap;
-};
-
-type ResourceWrapperRuntimeStep = {
-    readonly kind: 'runtime';
-    readonly runtime: RuntimeGraph;
-};
-
-type ResourceWrapperStep = ResourceWrapperResourcesStep | ResourceWrapperRuntimeStep;
-
 const composedResourceBodyBrand = Symbol.for('@overkill-dev/test/ComposedResourceBody');
 
 type ComposedResourceBody = TestBody & {
@@ -79,11 +65,6 @@ type ComposedResourceBody = TestBody & {
 type ResourceGraphCollector = {
     readonly resourceGraph: () => readonly TestBodyResourceSummary[];
     readonly visit: (resource: AnyResourceDefinition, path: readonly string[]) => void;
-};
-
-type LifecycleMessages = {
-    readonly acquisitionFailure: string;
-    readonly disposalFailure: string;
 };
 
 function isComposedResourceBody(value: unknown): value is ComposedResourceBody {
@@ -280,41 +261,8 @@ function invokeTestBody(body: CallableTestBody, scope: TestScope): ReturnType<Te
     throw new TypeError('Resource wrapper body returned an invalid assertion result.');
 }
 
-function directResourceEntries(steps: readonly ResourceWrapperStep[]): readonly ResourceEntry[] {
-    return steps.flatMap(function stepResourceEntries(step) {
-        return step.kind === 'resources'
-            ? entries(step.resources).map(function resourceEntry([ key, resource ]) {
-                return { key, resource };
-            })
-            : [];
-    });
-}
-
-function stepRuntimeGraphs(steps: readonly ResourceWrapperStep[]): readonly RuntimeGraph[] {
-    return steps.flatMap(function stepRuntimeGraph(step) {
-        return step.kind === 'runtime' ? [ step.runtime ] : [];
-    });
-}
-
 function buildStepAttachments(steps: readonly ResourceWrapperStep[]): TestBodyResourceAttachments {
     return buildAttachments(directResourceEntries(steps), stepRuntimeGraphs(steps));
-}
-
-function freshDisposalSignal(): AbortSignal {
-    const controller = new AbortController();
-
-    return controller.signal;
-}
-
-function lifecycleError(message: string, cause: unknown): CaseRunnerError {
-    const runnerCause = cause instanceof ResourceLifecycleError && cause.cause !== undefined
-        ? cause.cause
-        : cause;
-
-    return new CaseRunnerError(message, {
-        cause: runnerCause,
-        subtype: 'fixture'
-    });
 }
 
 function isResourceScopeInput(value: unknown): value is Readonly<Record<string, unknown>> {
@@ -345,12 +293,12 @@ function composeResourceContext<
     const resources: unknown = Object.hasOwn(scope, 'resources') ? Reflect.get(scope, 'resources') : {};
 
     if (!isResourceScopeInput(resources)) {
-        throw lifecycleError('Resource scope composition failed.', resources);
+        throw resourceWrapperLifecycleError('Resource scope composition failed.', resources);
     }
 
     for (const key of Object.keys(handles)) {
         if (Object.hasOwn(resources, key)) {
-            throw lifecycleError(`Resource scope "${key}" already exists.`, handles);
+            throw resourceWrapperLifecycleError(`Resource scope "${key}" already exists.`, handles);
         }
     }
 
@@ -374,11 +322,11 @@ function composeRuntimeScope<
     const runtimes: unknown = Object.hasOwn(scope, 'runtimes') ? Reflect.get(scope, 'runtimes') : {};
 
     if (!isResourceScopeInput(runtimes)) {
-        throw lifecycleError('Runtime scope composition failed.', runtimes);
+        throw resourceWrapperLifecycleError('Runtime scope composition failed.', runtimes);
     }
 
     if (Object.hasOwn(runtimes, runtimeGraph.name)) {
-        throw lifecycleError(`Runtime scope "${runtimeGraph.name}" already exists.`, handles);
+        throw resourceWrapperLifecycleError(`Runtime scope "${runtimeGraph.name}" already exists.`, handles);
     }
 
     const composed = Object.freeze({
@@ -393,121 +341,13 @@ function composeRuntimeScope<
         return composed;
     }
 
-    throw lifecycleError('Runtime scope composition failed.', handles);
-}
-
-function resourceMapFromEntries(resourceEntries: readonly ResourceEntry[]): ResourceMap {
-    const resources: Mutable<Record<string, AnyResourceDefinition>> = {};
-
-    for (const entry of resourceEntries) {
-        resources[entry.key] = entry.resource;
-    }
-
-    return Object.freeze(resources);
-}
-
-function isResourceContext<Resources extends ResourceMap>(
-    context: Readonly<Record<string, unknown>>,
-    resources: Resources
-): context is ResourceContext<Resources> {
-    for (const key of Object.keys(resources)) {
-        if (!Object.hasOwn(context, key)) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-function isRuntimeContext<Graph extends RuntimeGraph>(
-    context: Readonly<Record<string, unknown>>,
-    runtime: Graph
-): context is RuntimeContext<Graph> {
-    return isResourceContext(context, runtime.resources);
-}
-
-function resourceContextForStep<Resources extends ResourceMap>(
-    resources: Resources,
-    handles: ResourceContext<ResourceMap>
-): ResourceContext<Resources> {
-    const context: Mutable<Record<string, unknown>> = {};
-
-    for (const key of Object.keys(resources)) {
-        context[key] = Reflect.get(handles, key);
-    }
-
-    const frozenContext = Object.freeze(context);
-
-    if (isResourceContext(frozenContext, resources)) {
-        return frozenContext;
-    }
-
-    throw lifecycleError('Resource scope composition failed.', resources);
-}
-
-function runtimeContextForStep<Graph extends RuntimeGraph>(
-    runtime: Graph,
-    session: ComposedResourceSession<ResourceMap>
-): RuntimeContext<Graph> {
-    const context = session.runtimeContexts.get(runtime);
-
-    if (context === undefined || !isRuntimeContext(context, runtime)) {
-        throw lifecycleError('Runtime scope composition failed.', runtime);
-    }
-
-    return context;
-}
-
-function lifecycleMessages(steps: readonly ResourceWrapperStep[]): LifecycleMessages {
-    const hasDirectResources = steps.some(function stepHasDirectResources(step) {
-        return step.kind === 'resources';
-    });
-
-    return hasDirectResources
-        ? {
-            acquisitionFailure: 'Resource acquisition failed.',
-            disposalFailure: 'Resource disposal failed.'
-        }
-        : {
-            acquisitionFailure: 'Runtime resource acquisition failed.',
-            disposalFailure: 'Runtime resource disposal failed.'
-        };
-}
-
-async function acquireComposedResources(
-    steps: readonly ResourceWrapperStep[],
-    signal: AbortSignal,
-    messages: LifecycleMessages
-): Promise<ComposedResourceSession<ResourceMap>> {
-    try {
-        return await startComposedResourceSession({
-            directResources: resourceMapFromEntries(directResourceEntries(steps)),
-            lifecycleMessages: messages,
-            runtimes: stepRuntimeGraphs(steps),
-            signal
-        });
-    } catch (error: unknown) {
-        throw error instanceof CaseRunnerError
-            ? error
-            : lifecycleError(messages.acquisitionFailure, error);
-    }
-}
-
-async function disposeComposedResources(
-    session: ComposedResourceSession<ResourceMap>,
-    messages: LifecycleMessages
-): Promise<void> {
-    try {
-        await session.disposeOnce({ signal: freshDisposalSignal() });
-    } catch (error: unknown) {
-        throw lifecycleError(messages.disposalFailure, error);
-    }
+    throw resourceWrapperLifecycleError('Runtime scope composition failed.', handles);
 }
 
 function composeStepScope(
     scope: TestScope,
     step: ResourceWrapperStep,
-    session: ComposedResourceSession<ResourceMap>
+    session: ComposedResourceSession
 ): TestScope {
     return step.kind === 'resources'
         ? composeResourceContext(scope, resourceContextForStep(step.resources, session.directResources))
@@ -517,26 +357,11 @@ function composeStepScope(
 function composeStepScopes(
     scope: TestScope,
     steps: readonly ResourceWrapperStep[],
-    session: ComposedResourceSession<ResourceMap>
+    session: ComposedResourceSession
 ): TestScope {
     return steps.reduce(function composeScope(composedScope, step) {
         return composeStepScope(composedScope, step, session);
     }, scope);
-}
-
-export function resourceWrapperStep(resource: AnyResourceDefinition): ResourceWrapperStep {
-    return {
-        kind: 'resources',
-        resources: Object.freeze({ [resource.name]: resource })
-    };
-}
-
-export function resourcesWrapperStep(resources: ResourceMap): ResourceWrapperStep {
-    return { kind: 'resources', resources };
-}
-
-export function runtimeWrapperStep(runtime: RuntimeGraph): ResourceWrapperStep {
-    return { kind: 'runtime', runtime };
 }
 
 export function attachComposedResourceBody<Scope extends TestScope>(

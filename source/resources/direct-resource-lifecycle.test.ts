@@ -10,7 +10,6 @@ import {
     startResources,
     type ResourceSessionDisposalContext
 } from './resource-session.ts';
-import { startComposedResourceSession } from './composed-resource-session.ts';
 import { assertPerCaseResourceGraph } from './resource-graph.ts';
 import { ResourceLifecycleError } from './resource-lifecycle-error.ts';
 
@@ -281,33 +280,6 @@ async function assertAsyncDisposal(scope: TestScope): Promise<void> {
     ]);
 }
 
-async function assertComposedAsyncDisposal(scope: TestScope): Promise<void> {
-    const events = createEventLog();
-    const database = databaseResource(events, function recordAcquisition(): void {
-        return undefined;
-    });
-    const session = await startComposedResourceSession({
-        directResources: { database },
-        lifecycleMessages: {
-            acquisitionFailure: 'Resource acquisition failed.',
-            disposalFailure: 'Resource disposal failed.'
-        },
-        runtimes: [],
-        signal: testSignal()
-    });
-
-    const dispose: unknown = Reflect.get(session, runtimeAsyncDisposeSymbol());
-
-    scope.require.function(dispose);
-    await dispose();
-    await session.disposeOnce({ signal: testSignal() });
-    scope.assert.deepEqual(events.values(), [
-        'database signal',
-        'database acquire',
-        'database dispose'
-    ]);
-}
-
 async function assertNullDispose(scope: TestScope): Promise<void> {
     const resource = scopedResource('per-case');
     const session = await startResources({ resources: { resource }, signal: testSignal() });
@@ -356,7 +328,6 @@ export const testNode = createSuite({
         lifecycleTestCase('startResources shares dependency handles within one session', assertSharedDependencyHandles),
         lifecycleTestCase('startResources cleans acquired resources after setup failure', assertStartupFailureCleanup),
         lifecycleTestCase('resource session supports async disposal', assertAsyncDisposal),
-        lifecycleTestCase('composed resource session supports async disposal', assertComposedAsyncDisposal),
         lifecycleTestCase('startResources skips null dispose callbacks', assertNullDispose),
         lifecycleTestCase('direct resource scope validation accepts only per-case resources', assertScopeValidation)
     ]
