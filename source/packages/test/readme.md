@@ -45,7 +45,7 @@ Standard subpaths:
 - `@overkill-dev/test/resources` re-exports typed resource and runtime
   descriptors from `@overkill-dev/resources`, including
   `createTemporaryDirectoryResource(...)`, and adds `withRuntime(...)`,
-  `withResource(...)`, and `withResources(...)` for descriptor attachment.
+  `withResource(...)`, and `withResources(...)` for runner-aware binding.
 - `@overkill-dev/test/bench` and `@overkill-dev/test/baselines` are reserved.
   They currently export only `unavailable()`.
 
@@ -270,6 +270,7 @@ integration.test(
     'loads user',
     withRuntime(runtime, (scope) => {
         scope.assert.true(scope.signal instanceof AbortSignal);
+        scope.assert.equal(typeof scope.runtimes.api.database, 'object');
         return scope.assert.collect();
     })
 );
@@ -278,14 +279,19 @@ integration.test(
     'writes scratch output',
     withResource(scratch, (scope) => {
         scope.assert.true(scope.signal instanceof AbortSignal);
+        scope.assert.true(scope.resources.scratch.path.length > 0);
         return scope.assert.collect();
     })
 );
 ```
 
-Resource wrappers attach descriptors for runner collection. Runner-managed
-handle injection is planned separately. Microtest profiles reject collected
-resource descriptors before execution.
+Resource wrappers attach descriptors for runner collection and acquire handles
+when the body executes. `withRuntime(...)` exposes handles at
+`scope.runtimes.<runtimeName>`, while `withResource(...)` and
+`withResources(...)` expose handles at `scope.resources.<resourceKey>`.
+Execution wrappers currently run only `per-case` resource graphs; broader
+resource scopes stay metadata until runner-managed lifetimes are implemented.
+Microtest profiles reject collected resource descriptors before execution.
 
 Test bodies receive async-control methods on `scope`:
 

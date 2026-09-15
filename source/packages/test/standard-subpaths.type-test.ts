@@ -52,11 +52,14 @@ import {
     withRuntime,
     type ResourceContext,
     type ResourceHandle,
+    type ResourceScopeContext,
+    type ResourceTestScope,
     type ResourceWrappedTestBody,
     type RuntimeGraph,
     type RuntimeSession,
     type RuntimeContext,
     type RuntimeScopeContext,
+    type RuntimeTestScope,
     type RuntimeWrappedTestBody,
     type TemporaryDirectoryHandle
 } from './resources.entry-point.ts';
@@ -201,6 +204,9 @@ describe('@overkill-dev/test standard subpaths', function () {
                     readonly database: Database;
                 };
             }>();
+            expect<ResourceScopeContext<{ readonly dir: typeof temporaryDirectory; }>>().type.toBe<{
+                readonly dir: TemporaryDirectoryHandle;
+            }>();
             expect(runtime.name).type.toBe<'api'>();
             expect(temporaryDirectory.name).type.toBe<'scratch'>();
             expect<TemporaryDirectoryHandle>().type.toBe<{ readonly path: string; }>();
@@ -220,7 +226,9 @@ describe('@overkill-dev/test standard subpaths', function () {
 
         test('exposes runtime test context wrappers through the resources subpath', function () {
             const runtimeBody = withRuntime(runtime, function runWithDatabase(scope) {
-                expect(scope).type.toBe<TestScope>();
+                expect(scope).type.toBe<RuntimeTestScope<typeof runtime>>();
+                expect(scope.runtimes.api.database).type.toBe<Database>();
+
                 return scope.assert.collect();
             });
 
@@ -238,7 +246,9 @@ describe('@overkill-dev/test standard subpaths', function () {
             const tableRuntimeBody = withRuntime<typeof runtime, ParameterizedTestScope<TableRow>>(
                 runtime,
                 function runTableWithDatabase(scope) {
+                    expect(scope).type.toBe<RuntimeTestScope<typeof runtime, ParameterizedTestScope<TableRow>>>();
                     expect(scope.parameters.value).type.toBe<number>();
+                    expect(scope.runtimes.api.database.url).type.toBe<string>();
 
                     return scope.assert.collect();
                 }
@@ -252,12 +262,14 @@ describe('@overkill-dev/test standard subpaths', function () {
 
         test('types direct resource wrappers through the resources subpath', function () {
             const resourceBody = withResource(temporaryDirectory, function runWithScratch(scope) {
-                expect(scope).type.toBe<TestScope>();
+                expect(scope).type.toBe<ResourceTestScope<Record<'scratch', typeof temporaryDirectory>>>();
+                expect(scope.resources.scratch).type.toBe<TemporaryDirectoryHandle>();
 
                 return scope.assert.collect();
             });
             const resourcesBody = withResources({ dir: temporaryDirectory }, function runWithResources(scope) {
-                expect(scope).type.toBe<TestScope>();
+                expect(scope).type.toBe<ResourceTestScope<{ readonly dir: typeof temporaryDirectory; }>>();
+                expect(scope.resources.dir.path).type.toBe<string>();
 
                 return scope.assert.collect();
             });

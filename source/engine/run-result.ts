@@ -126,6 +126,51 @@ export type RunnerError = {
     readonly subtype: RunnerErrorSubtype;
 };
 
+const caseRunnerErrorBrand = Symbol.for('@overkill-dev/engine/CaseRunnerError');
+
+export type CaseRunnerErrorOptions = {
+    readonly cause: unknown;
+    readonly subtype: RunnerErrorSubtype;
+};
+
+export class CaseRunnerError extends Error {
+    private readonly runnerErrorCause: unknown;
+    private readonly runnerErrorSubtype: RunnerErrorSubtype;
+
+    public constructor(message: string, options: CaseRunnerErrorOptions) {
+        super(message, options);
+        this.name = 'CaseRunnerError';
+        this.runnerErrorCause = options.cause;
+        this.runnerErrorSubtype = options.subtype;
+
+        Object.defineProperty(this, caseRunnerErrorBrand, {
+            value: true
+        });
+    }
+
+    public runnerError(attributedTo: CaseId): RunnerError {
+        return {
+            attributedTo,
+            cause: this.runnerErrorCause,
+            message: this.message,
+            subtype: this.runnerErrorSubtype
+        };
+    }
+}
+
+function hasCaseRunnerErrorBrand(value: unknown): boolean {
+    if (typeof value !== 'object' || value === null) {
+        return false;
+    }
+
+    return Reflect.get(value, caseRunnerErrorBrand) === true &&
+        typeof Reflect.get(value, 'runnerError') === 'function';
+}
+
+export function isCaseRunnerError(value: unknown): value is CaseRunnerError {
+    return value instanceof CaseRunnerError || hasCaseRunnerErrorBrand(value);
+}
+
 export type RunSummary = {
     readonly crashed: number;
     readonly defined: number;

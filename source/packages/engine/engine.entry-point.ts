@@ -247,6 +247,7 @@ export type {
 export type {
     AssertionTestFailure,
     BodyErrorTestFailure,
+    CaseRunnerErrorOptions,
     CapturedOutputArtifactPayload,
     FailOutcome,
     InconclusiveOutcome,
@@ -312,6 +313,10 @@ export {
     hasTestBodyResourceAttachments,
     readTestBodyResourceAttachments
 } from '../../engine/test-body-resource-attachment.ts';
+export {
+    CaseRunnerError,
+    isCaseRunnerError
+} from '../../engine/run-result.ts';
 export type {
     ResourceAttachedTestBody,
     ResourceFreeTestBody,

@@ -146,6 +146,9 @@ Reporter lifecycle:
 - Reporter callback failures are returned in `RunResult.runnerErrors` with
   subtype `reporter`. `run-end` failures are included before final-result
   `onResult` and real-time `onFinish` callbacks receive the result.
+- `CaseRunnerError` lets runner-aware wrappers report case-attributed runner
+  errors without turning setup or teardown failures into ordinary body
+  failures.
 - `onResult`, `onFinish`, and `dispose` failures are added to the returned
   `RunResult`. Final callbacks are not repeated with sibling final-phase
   failures, and `dispose` failures are not sent back through reporters.
