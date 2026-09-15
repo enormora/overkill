@@ -6,7 +6,6 @@ import {
     freezeValue
 } from './run-support.ts';
 import type {
-    CollectedRunPlan,
     RunCommand,
     RunConfig,
     RunProfileConfig,
@@ -34,23 +33,6 @@ function assertMicrotestCaptureSupported(
 ): void {
     if (profile.testFamily === 'microtest' && request.capture === 'live') {
         invalidRequest('Microtest profiles do not support live capture.');
-    }
-}
-
-export function assertMicrotestControlCaptureSupported(
-    profile: RunProfileConfig,
-    collectedPlan: CollectedRunPlan
-): void {
-    if (profile.testFamily !== 'microtest') {
-        return;
-    }
-
-    for (const file of collectedPlan.files) {
-        for (const testCase of file.cases) {
-            if (testCase.controls.capture !== null) {
-                invalidRequest('Microtest controls do not support capture mode.');
-            }
-        }
     }
 }
 

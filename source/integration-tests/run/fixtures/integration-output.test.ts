@@ -4,8 +4,7 @@ process.stdout.write('collection stdout\n');
 
 const integration = createTestFacade({
     annotations: { tags: [ 'output' ] },
-    controls: {},
-    testFamily: 'integration'
+    controls: {}
 });
 
 export const testNode = integration.test('captures output', function testOutput(scope) {

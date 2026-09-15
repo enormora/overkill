@@ -4,7 +4,6 @@ import type {
     DefinedReporter,
     TestAnnotationsInput,
     TestControlsInput,
-    TestFamily,
     TestNode
 } from '../engine/engine.entry-point.ts';
 
@@ -13,70 +12,24 @@ export type AuthoringAnnotations = {
     readonly tags?: readonly string[];
 };
 
-export type MicrotestAuthoringControls = {
-    readonly capture?: never;
-    readonly timeoutMilliseconds?: number;
-};
-
-export type CaptureAuthoringControls = {
+export type AuthoringControls = {
     readonly capture?: CaptureMode;
     readonly timeoutMilliseconds?: number;
 };
 
-export type NonMicrotestFamily = Exclude<TestFamily, 'microtest'>;
-
-export type AuthoringControlsForFamily<Family extends TestFamily> = Family extends 'microtest'
-    ? MicrotestAuthoringControls
-    : CaptureAuthoringControls;
-
-type FacadeFamily<Family extends TestFamily> = {
-    readonly testFamily: Family;
+export type TestFacadeDefinition = {
+    readonly annotations?: AuthoringAnnotations;
+    readonly controls?: AuthoringControls;
 };
-
-type FacadeTestData<Family extends TestFamily> = {
-    readonly annotations: AuthoringAnnotations;
-    readonly controls: AuthoringControlsForFamily<Family>;
-    readonly testFamily: Family;
-};
-
-type FacadeAnnotations<Family extends TestFamily> = {
-    readonly annotations: AuthoringAnnotations;
-    readonly testFamily: Family;
-};
-
-type FacadeControls<Family extends TestFamily> = {
-    readonly controls: AuthoringControlsForFamily<Family>;
-    readonly testFamily: Family;
-};
-
-type FacadeDefinitionByKind<Family extends TestFamily> = {
-    readonly annotations: FacadeAnnotations<Family>;
-    readonly controls: FacadeControls<Family>;
-    readonly family: FacadeFamily<Family>;
-    readonly testData: FacadeTestData<Family>;
-};
-
-type FacadeDefinitionKind = 'annotations' | 'controls' | 'family' | 'testData';
-
-type FacadeDefinitionParts<Family extends TestFamily> = FacadeDefinitionByKind<Family>[FacadeDefinitionKind];
-
-export type MicrotestFacadeDefinition = FacadeDefinitionParts<'microtest'>;
-
-export type CaptureFacadeDefinition = FacadeDefinitionParts<NonMicrotestFamily>;
-
-export type TestFacadeDefinition = CaptureFacadeDefinition | MicrotestFacadeDefinition;
-
-export type TestFacadeDefinitionForFamily<Family extends TestFamily> = FacadeDefinitionParts<Family>;
 
 export type ReadTestFacadeDefinitionResult = {
     readonly annotations: TestAnnotationsInput;
     readonly controls: TestControlsInput;
-    readonly testFamily: TestFamily;
 };
 
 export type RunIfMainRootOptions = {
     readonly annotations?: AuthoringAnnotations;
-    readonly controls?: MicrotestAuthoringControls;
+    readonly controls?: AuthoringControls;
     readonly title: string;
 };
 
@@ -92,16 +45,9 @@ export type RunIfMain = (
     options?: RunIfMainOptions
 ) => Promise<void>;
 
-const createTestFacadeArgumentsError = 'createTestFacade() requires ({ testFamily, annotations?, controls? }).';
-const testFamilyValues: readonly TestFamily[] = [
-    'benchmark',
-    'integration',
-    'microtest',
-    'property',
-    'type-test'
-] as const;
+const createTestFacadeArgumentsError = 'createTestFacade() requires no arguments or ({ annotations?, controls? }).';
 const captureModeValues: readonly CaptureMode[] = [ 'buffered', 'live' ] as const;
-const knownTestFamilies: ReadonlySet<unknown> = new Set(testFamilyValues);
+const facadeDefinitionFields: ReadonlySet<string> = new Set([ 'annotations', 'controls', 'testFamily' ]);
 const knownCaptureModes: ReadonlySet<unknown> = new Set(captureModeValues);
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
@@ -116,20 +62,16 @@ function readRecord(value: unknown, message: string): Readonly<Record<string, un
     return value;
 }
 
-function isTestFamily(value: unknown): value is TestFamily {
-    return typeof value === 'string' && knownTestFamilies.has(value);
+function assertFacadeDefinitionFields(definition: Readonly<Record<string, unknown>>): void {
+    for (const field of Object.keys(definition)) {
+        if (!facadeDefinitionFields.has(field)) {
+            throw new TypeError(createTestFacadeArgumentsError);
+        }
+    }
 }
 
 function isCaptureMode(value: unknown): value is CaptureMode {
     return typeof value === 'string' && knownCaptureModes.has(value);
-}
-
-function readTestFamily(value: unknown): TestFamily {
-    if (!isTestFamily(value)) {
-        throw new TypeError(createTestFacadeArgumentsError);
-    }
-
-    return value;
 }
 
 function readStringArray(value: unknown, field: string): readonly string[] {
@@ -224,12 +166,6 @@ function mergedTimeoutMilliseconds(
     return dataField(nodeControls, 'timeoutMilliseconds') ?? dataField(facadeControls, 'timeoutMilliseconds');
 }
 
-function assertMicrotestCapture(testFamily: TestFamily, controls: TestControlsInput): void {
-    if (testFamily === 'microtest' && controls.capture !== undefined) {
-        throw new TypeError('Microtest authoring controls do not support capture mode.');
-    }
-}
-
 export function createAuthoringAnnotations(
     facadeAnnotations: TestAnnotationsInput,
     nodeAnnotations: TestAnnotationsInput
@@ -244,36 +180,39 @@ export function createAuthoringAnnotations(
 }
 
 export function createAuthoringControls(
-    testFamily: TestFamily,
     facadeControls: TestControlsInput,
     nodeControls: TestControlsInput
 ): TestControlsInput {
     const capture = mergedCapture(facadeControls, nodeControls);
     const timeoutMilliseconds = mergedTimeoutMilliseconds(facadeControls, nodeControls);
-    const controls = {
+
+    return {
         ...capture === undefined ? {} : { capture },
         ...timeoutMilliseconds === undefined ? {} : { timeoutMilliseconds }
     };
-
-    assertMicrotestCapture(testFamily, controls);
-
-    return controls;
 }
 
-export function readTestFacadeDefinition(definition: TestFacadeDefinition): ReadTestFacadeDefinitionResult {
+export function readTestFacadeDefinition(
+    definition: TestFacadeDefinition | undefined
+): ReadTestFacadeDefinitionResult {
+    if (definition === undefined) {
+        return {
+            annotations: {},
+            controls: {}
+        };
+    }
+
     const facadeDefinition = readRecord(definition, createTestFacadeArgumentsError);
-    const testFamily = readTestFamily(facadeDefinition.testFamily);
+    assertFacadeDefinitionFields(facadeDefinition);
     const annotations = Object.hasOwn(facadeDefinition, 'annotations')
         ? readAuthoringAnnotations(facadeDefinition.annotations)
         : {};
     const controls = Object.hasOwn(facadeDefinition, 'controls')
         ? readAuthoringControls(facadeDefinition.controls)
         : {};
-    assertMicrotestCapture(testFamily, controls);
 
     return {
         annotations,
-        controls,
-        testFamily
+        controls
     };
 }

@@ -96,8 +96,7 @@ export type {
 
 export type {
     AuthoringAnnotations,
-    CaptureAuthoringControls,
-    MicrotestAuthoringControls,
+    AuthoringControls,
     TestFacadeDefinition
 } from './authoring-test-data.ts';
 

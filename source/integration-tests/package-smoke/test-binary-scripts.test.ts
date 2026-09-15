@@ -75,8 +75,7 @@ export const customAuthoringFacadeScript = [
     '    table,',
     '    test',
     '} = createTestFacade({',
-    "    annotations: { tags: [ 'custom-authoring' ] },",
-    "    testFamily: 'microtest'",
+    "    annotations: { tags: [ 'custom-authoring' ] }",
     '});',
     ''
 ]
@@ -146,8 +145,7 @@ export const rootImportScript = [
     'console.log(tableNode.kind);',
     'console.log(tableNode.cases.length);',
     'const facade = testModule.createTestFacade({',
-    "    annotations: { tags: [ 'facade' ] },",
-    "    testFamily: 'integration'",
+    "    annotations: { tags: [ 'facade' ] }",
     '});',
     'console.log(JSON.stringify(Object.keys(facade)));',
     'const facadeNode = facade.suite({',

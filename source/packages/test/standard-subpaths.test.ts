@@ -159,14 +159,14 @@ function assertIntegrationRuntimeAuthoring(
         ParameterizedTestScope<BoundaryRow>
     >
 ): void {
-    const integrationFacade = createTestFacade({ testFamily: 'integration' });
-    const runtimeTable = integrationFacade.table({
+    const facade = createTestFacade();
+    const runtimeTable = facade.table({
         cases: [ { value: 1 }, { value: 2 } ],
         test: tableBody,
         title: 'rows'
     });
 
-    scope.assert.equal(integrationFacade.test('uses database', body).kind, 'test');
+    scope.assert.equal(facade.test('uses database', body).kind, 'test');
     scope.assert.equal(runtimeTable.kind, 'table');
 }
 

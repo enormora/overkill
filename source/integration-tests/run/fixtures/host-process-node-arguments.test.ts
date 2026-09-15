@@ -1,6 +1,6 @@
 import { createTestFacade } from '../../../packages/test/test.entry-point.ts';
 
-const integration = createTestFacade({ testFamily: 'integration' });
+const integration = createTestFacade();
 
 export const testNode = integration.suite('host process node arguments', [
     integration.test('receives expose gc', function receivesExposeGc(scope) {

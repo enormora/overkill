@@ -75,18 +75,17 @@ async function executeRootSkippedNode(): Promise<SkippedAuthoringExecution> {
 }
 
 async function executeFacadeSkippedNode(): Promise<SkippedAuthoringExecution> {
-    const integration = createTestFacade({
+    const facade = createTestFacade({
         annotations: { tags: [ 'facade' ] },
-        controls: { capture: 'buffered' },
-        testFamily: 'integration'
+        controls: { capture: 'buffered' }
     });
-    const testCase = integration.skippedTest({
+    const testCase = facade.skippedTest({
         annotations: { tags: [ 'case' ] },
         controls: { capture: 'live' },
         reason: 'external service unavailable',
         title: 'skips'
     });
-    const testNode = integration.suite({
+    const testNode = facade.suite({
         annotations: { tags: [ 'suite' ] },
         children: [ testCase ],
         controls: { capture: 'buffered' },
@@ -131,14 +130,14 @@ function assertRootSkippedCase(scope: OverkillScope, execution: SkippedAuthoring
         suite: [ 'runtime' ]
     });
     scope.assert.deepEqual(execution.plannedCase.execution, { kind: 'skip', reason: 'unsupported platform' });
-    scope.assert.equal(execution.plannedCase.testFamily, 'microtest');
+    scope.assert.equal(execution.plannedCase.testFamily, null);
     scope.assert.deepEqual(execution.plannedCase.annotations.tags, [ 'suite', 'case' ]);
     assertSkippedOutcome(scope, execution, 'unsupported platform');
 }
 
 function assertFacadeSkippedData(scope: OverkillScope, execution: SkippedAuthoringExecution): void {
     scope.require.defined(execution.plannedCase);
-    scope.assert.equal(execution.plannedCase.testFamily, 'integration');
+    scope.assert.equal(execution.plannedCase.testFamily, null);
     scope.assert.equal(execution.plannedCase.controls.capture, 'live');
     scope.assert.deepEqual(execution.plannedCase.annotations.tags, [ 'facade', 'suite', 'case' ]);
 }
@@ -236,13 +235,13 @@ export const testNode = createOverkillSuite({
                 scope.assert.throws(function createSkippedTestWithoutReason() {
                     skippedTest('skips', ' ');
                 }, { message: 'Skipped test reason must not be empty.' });
-                scope.assert.throws(function createSkippedMicrotestWithCapture() {
-                    invokeSkippedTest({
-                        controls: { capture: 'live' },
-                        reason: 'not supported',
-                        title: 'captures'
-                    });
-                }, { message: 'Microtest authoring controls do not support capture mode.' });
+                const captureCase = skippedTest({
+                    controls: { capture: 'live' },
+                    reason: 'not supported',
+                    title: 'captures'
+                });
+
+                scope.assert.deepEqual(captureCase.controls, { capture: 'live' });
 
                 return scope.assert.collect();
             }

@@ -1,13 +1,11 @@
 import {
     createTable,
     type SourceLocation,
-    stampTestNodeFamily,
     type Table,
     type TableOptions,
     type TestAnnotationsInput,
     type TestBody,
     type TestControlsInput,
-    type TestFamily,
     attachTestBodyResourceAttachments,
     hasTestBodyResourceAttachments,
     readTestBodyResourceAttachments,
@@ -19,7 +17,7 @@ import {
     readAuthoringAnnotations,
     readAuthoringControls,
     type AuthoringAnnotations,
-    type MicrotestAuthoringControls
+    type AuthoringControls
 } from './authoring-test-data.ts';
 import {
     activeMacroSourceLocations,
@@ -27,12 +25,6 @@ import {
     runWithForwardedSourceLocations
 } from './authoring-source-locations.ts';
 import { readAuthoringRecord, readAuthoringString, readAuthoringTestBody } from './authoring-input.ts';
-
-function stampedTable(table: Table, testFamily: TestFamily): Table {
-    stampTestNodeFamily(table, testFamily);
-
-    return table;
-}
 
 export type ParameterizedTestScope<Row> = TestScope & {
     readonly parameters: Row;
@@ -42,11 +34,9 @@ export type TableTestBody<Row> = (
     scope: ParameterizedTestScope<Row>
 ) => ReturnType<TestBody>;
 
-export type AuthoringTableBody<Family extends TestFamily, Row> = Family extends TestFamily ? TableTestBody<Row> : never;
-
 export type TableDefinition<
     Row,
-    ControlsType extends TestControlsInput = MicrotestAuthoringControls,
+    ControlsType extends TestControlsInput = AuthoringControls,
     Body extends TableTestBody<Row> = TableTestBody<Row>
 > = {
     readonly annotations?: AuthoringAnnotations;
@@ -149,21 +139,17 @@ function tableCases<Row>(
 }
 
 export function createAuthoredTable<Row, ControlsType extends TestControlsInput>(
-    testFamily: TestFamily,
     facadeAnnotations: TestAnnotationsInput,
     facadeControls: TestControlsInput,
     definition: TableDefinition<Row, ControlsType>
 ): Table {
     const tableDefinition = readTableDefinition(definition);
 
-    return stampedTable(
-        createTable({
-            annotations: createAuthoringAnnotations(facadeAnnotations, tableDefinition.annotations),
-            cases: tableCases(tableDefinition),
-            controls: createAuthoringControls(testFamily, facadeControls, tableDefinition.controls),
-            definitionLocations: definitionLocationsForAuthoringCall(),
-            title: tableDefinition.title
-        }),
-        testFamily
-    );
+    return createTable({
+        annotations: createAuthoringAnnotations(facadeAnnotations, tableDefinition.annotations),
+        cases: tableCases(tableDefinition),
+        controls: createAuthoringControls(facadeControls, tableDefinition.controls),
+        definitionLocations: definitionLocationsForAuthoringCall(),
+        title: tableDefinition.title
+    });
 }

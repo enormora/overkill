@@ -109,7 +109,7 @@ export const testNode = createOverkillSuite({
                             paths: [ microtestCaptureControlsFixturePath ]
                         })
                     }));
-                }, { message: 'Microtest controls do not support capture mode.' });
+                }, { message: 'Run profile "microtest" cannot run test cases with authored capture controls.' });
 
                 return scope.assert.collect();
             }
