@@ -151,6 +151,7 @@ function assertRootAuthoredCase(scope: OverkillScope, plannedCase: RootAuthoring
     });
     scope.assert.deepEqual(plannedCase.annotations.tags, [ 'suite', 'case' ]);
     scope.assert.deepEqual(plannedCase.controls, { capture: null, timeoutMilliseconds: null });
+    scope.assert.equal(plannedCase.testFamily, null);
 }
 
 function assertTableSummary(scope: OverkillScope, summary: unknown): void {
@@ -500,14 +501,14 @@ export const testNode = createOverkillSuite({
                 scope.assert.throws(function createTestWithWrongArity() {
                     invokeTest();
                 }, { message: 'test() requires (title, body) or ({ title, annotations?, controls?, body }).' });
-                scope.assert.throws(function createMicrotestWithCapture() {
-                    invokeTest({
-                        annotations: {},
-                        body: passingBody,
-                        controls: { capture: 'live' },
-                        title: 'captures'
-                    });
-                }, { message: 'Microtest authoring controls do not support capture mode.' });
+                const captureCase = test({
+                    annotations: {},
+                    body: passingBody,
+                    controls: { capture: 'live' },
+                    title: 'captures'
+                });
+
+                scope.assert.deepEqual(captureCase.controls, { capture: 'live' });
                 scope.assert.throws(function createSuiteWithWrongArity() {
                     invokeSuite();
                 }, {

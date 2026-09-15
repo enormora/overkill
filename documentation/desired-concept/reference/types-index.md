@@ -180,12 +180,7 @@ type AuthoringAnnotations = {
     readonly tags?: readonly string[];
 };
 
-type MicrotestAuthoringControls = {
-    readonly capture?: never;
-    readonly timeoutMilliseconds?: number;
-};
-
-type CaptureAuthoringControls = {
+type AuthoringControls = {
     readonly capture?: CaptureMode;
     readonly timeoutMilliseconds?: number;
 };
@@ -576,7 +571,7 @@ type RunIfMainOptions = {
     readonly reporters?: ReadonlyArray<DefinedReporter>;
     readonly root?: {
         readonly annotations: AuthoringAnnotations;
-        readonly controls: MicrotestAuthoringControls;
+        readonly controls: AuthoringControls;
         readonly name: string;
     };
 };
@@ -584,7 +579,7 @@ type RunIfMainOptions = {
 type ThrowingTestDefinition = {
     readonly title: string;
     readonly annotations?: AuthoringAnnotations;
-    readonly controls?: MicrotestAuthoringControls;
+    readonly controls?: AuthoringControls;
     readonly body: ThrowingTestBody;
 };
 

@@ -1,6 +1,5 @@
 import {
     createThrowingTestCase,
-    stampTestNodeFamily,
     type TestAnnotationsInput,
     type TestCase,
     type TestControlsInput,
@@ -12,7 +11,7 @@ import {
     readAuthoringAnnotations,
     readAuthoringControls,
     type AuthoringAnnotations,
-    type MicrotestAuthoringControls
+    type AuthoringControls
 } from './authoring-test-data.ts';
 import {
     readAuthoringRecord,
@@ -24,7 +23,7 @@ import { definitionLocationsForAuthoringCall, throwingBodyForActiveMacro } from 
 export type ThrowingTestDefinition = {
     readonly annotations?: AuthoringAnnotations;
     readonly body: ThrowingTestBody;
-    readonly controls?: MicrotestAuthoringControls;
+    readonly controls?: AuthoringControls;
     readonly title: string;
 };
 
@@ -68,17 +67,13 @@ function readPositionalThrowingTestDefinition(input: readonly unknown[]): Runtim
 }
 
 function createRuntimeThrowingTest(definition: RuntimeThrowingTestDefinition): TestCase {
-    const testCase = createThrowingTestCase({
+    return createThrowingTestCase({
         annotations: createAuthoringAnnotations({}, definition.annotations),
         body: throwingBodyForActiveMacro(definition.body),
-        controls: createAuthoringControls('microtest', {}, definition.controls),
+        controls: createAuthoringControls({}, definition.controls),
         definitionLocations: definitionLocationsForAuthoringCall(),
         title: definition.title
     });
-
-    stampTestNodeFamily(testCase, 'microtest');
-
-    return testCase;
 }
 
 function createAuthoredThrowingTest(...input: readonly unknown[]): TestCase {

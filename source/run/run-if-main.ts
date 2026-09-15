@@ -10,6 +10,10 @@ import {
     runConfig
 } from './run-if-main-facts.ts';
 import {
+    assertTestPlanCasesMatchProfilePolicy,
+    createSeededTestPlan
+} from './run-selection.ts';
+import {
     executionMode,
     rootAnnotations,
     rootControls,
@@ -20,7 +24,6 @@ import {
     type RunIfMainOptions
 } from './run-if-main-options.ts';
 import type { DirectProfileContext } from './run-if-main-profile.ts';
-import { createSeededTestPlan } from './run-selection.ts';
 
 export type RunIfMain = (
     meta: Readonly<ImportMeta>,
@@ -142,6 +145,7 @@ async function executeDirectRun(context: DirectRunContext, dependencies: RunIfMa
     const testPlan = directTestPlan(context, dependencies);
 
     assertDirectTestPlanMatchesTestFamily(testPlan, context.profile.testFamily);
+    assertTestPlanCasesMatchProfilePolicy(testPlan, context.profile);
     applyFailureExitCode(await executeDirectTestPlan(context, testPlan, dependencies), dependencies);
 }
 

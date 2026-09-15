@@ -9,13 +9,11 @@ import {
 import {
     createRunFacts
 } from './run-facts.ts';
-import {
-    assertMicrotestControlCaptureSupported,
-    type ResolvedRunInput
-} from './run-input-resolution.ts';
+import type { ResolvedRunInput } from './run-input-resolution.ts';
 import {
     assertCollectedRunPlanHasCases,
     assertCollectedRunPlanMatchesTestFamily,
+    assertCollectedRunPlanCasesMatchProfilePolicy,
     orderedRunItems,
     selectedCollectedRunPlan
 } from './run-selection.ts';
@@ -84,7 +82,7 @@ function fileSetForDiscoveredFiles(files: ResolvedRunInput['files']): (file: str
 
 function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): ResolvedRun {
     assertCollectedRunPlanMatchesTestFamily(input.collectedPlan, input.profile.testFamily);
-    assertMicrotestControlCaptureSupported(input.profile, input.collectedPlan);
+    assertCollectedRunPlanCasesMatchProfilePolicy(input.collectedPlan, input.profile);
 
     if (!input.allowEmptySelection) {
         assertCollectedRunPlanHasCases(input.collectedPlan);

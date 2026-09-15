@@ -13,7 +13,10 @@ import {
     type TestScope,
     type TestScope as OverkillScope
 } from '../engine/engine.entry-point.ts';
-import { createTestFacade } from './test.entry-point.ts';
+import {
+    createTestFacade,
+    type TestFacade
+} from './test.entry-point.ts';
 
 type FacadeAuthoringExecution = {
     readonly plannedCase: TestPlan['discoveredCases'][number] | undefined;
@@ -57,18 +60,17 @@ function assertPassingSummary(scope: OverkillScope, summary: unknown): void {
 }
 
 async function executeFacadeAuthoredNode(): Promise<FacadeAuthoringExecution> {
-    const integration = createTestFacade({
+    const facade = createTestFacade({
         annotations: { tags: [ 'facade' ] },
-        controls: { capture: 'buffered' },
-        testFamily: 'integration'
+        controls: { capture: 'buffered' }
     });
-    const testCase = integration.test({
+    const testCase = facade.test({
         annotations: { tags: [ 'case' ] },
         body: passingBody,
         controls: { capture: 'buffered' },
         title: 'passes'
     });
-    const testNode = integration.suite({
+    const testNode = facade.suite({
         annotations: { tags: [ 'suite' ] },
         children: [ testCase ],
         controls: { capture: 'live' },
@@ -179,6 +181,23 @@ function assertFacadeAuthoredCase(scope: OverkillScope, plannedCase: FacadeAutho
     });
     scope.assert.equal(plannedCase.controls.capture, 'buffered');
     scope.assert.deepEqual(plannedCase.annotations.tags, [ 'facade', 'suite', 'case' ]);
+    scope.assert.equal(plannedCase.testFamily, null);
+}
+
+function assertNarrowFacadeSurface(scope: OverkillScope, facade: TestFacade): void {
+    scope.assert.deepEqual(Object.keys(facade), [
+        'defineMacro',
+        'defineParameterizedTestBody',
+        'runIfMain',
+        'skippedTest',
+        'suite',
+        'table',
+        'test'
+    ]);
+    scope.assert.equal(Object.hasOwn(facade, 'doubleUsage'), false);
+    scope.assert.equal(Object.hasOwn(facade, 'testDouble'), false);
+    scope.assert.equal(Object.hasOwn(facade, 'defineHarness'), false);
+    scope.assert.equal(Object.hasOwn(facade, 'defineCompositeAssertion'), false);
 }
 
 export const testNode = createOverkillSuite({
@@ -193,38 +212,30 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
-                const facade = createTestFacade({ testFamily: 'microtest' });
+                const facade = createTestFacade();
+                const legacyFacade = invokeCreateTestFacade({
+                    controls: { capture: 'live' },
+                    testFamily: 'microtest'
+                }) as TestFacade;
 
-                scope.assert.deepEqual(Object.keys(facade), [
-                    'defineMacro',
-                    'defineParameterizedTestBody',
-                    'runIfMain',
-                    'skippedTest',
-                    'suite',
-                    'table',
-                    'test'
-                ]);
-                scope.assert.equal(Object.hasOwn(facade, 'doubleUsage'), false);
-                scope.assert.equal(Object.hasOwn(facade, 'testDouble'), false);
-                scope.assert.equal(Object.hasOwn(facade, 'defineHarness'), false);
-                scope.assert.equal(Object.hasOwn(facade, 'defineCompositeAssertion'), false);
-                scope.assert.throws(function createFacadeWithoutDefinition() {
-                    invokeCreateTestFacade();
-                }, { message: 'createTestFacade() requires ({ testFamily, annotations?, controls? }).' });
-                scope.assert.throws(function createMicrotestFacadeWithCapture() {
-                    invokeCreateTestFacade({
-                        annotations: {},
-                        controls: { capture: 'live' },
-                        testFamily: 'microtest'
-                    });
-                }, { message: 'Microtest authoring controls do not support capture mode.' });
+                assertNarrowFacadeSurface(scope, facade);
+                scope.assert.deepEqual(Object.keys(legacyFacade), Object.keys(facade));
+                scope.assert.equal(
+                    legacyFacade.test('captures', passingBody).controls.capture,
+                    'live'
+                );
+                scope.assert.throws(function createUnknownFacade() {
+                    invokeCreateTestFacade({ unknown: true });
+                }, {
+                    message: 'createTestFacade() requires no arguments or ({ annotations?, controls? }).'
+                });
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test createTestFacade() composes family-specific authoring helpers',
+            title: '@overkill-dev/test createTestFacade() composes neutral authoring helpers',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -244,7 +255,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const facade = createTestFacade({ testFamily: 'microtest' });
+                const facade = createTestFacade();
                 const checkMissingName = facade.defineMacro(function createFacadeMissingNameTest(title: string) {
                     return facade.test(title, function checkName(testScope) {
                         testScope.assert.equal('', 'Ada', { message: 'missing name' });

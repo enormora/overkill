@@ -3,14 +3,12 @@ import {
     createSkippedTestCase,
     createTestCase,
     ownsTestNode,
-    stampTestNodeFamily,
     type Suite,
     type Table,
     type TestAnnotationsInput,
     type TestBody,
     type TestCase,
     type TestControlsInput,
-    type TestFamily,
     type TestNode,
     type TestScope
 } from '../engine/engine.entry-point.ts';
@@ -27,24 +25,20 @@ import {
     readAuthoringControls,
     readTestFacadeDefinition,
     type AuthoringAnnotations,
-    type AuthoringControlsForFamily,
-    type CaptureAuthoringControls,
-    type MicrotestAuthoringControls,
-    type NonMicrotestFamily,
+    type AuthoringControls,
     type RunIfMain,
     type RunIfMainOptions,
-    type TestFacadeDefinition,
-    type TestFacadeDefinitionForFamily
+    type TestFacadeDefinition
 } from './authoring-test-data.ts';
 import {
     readAuthoringRecord,
     readAuthoringString,
     readAuthoringTestBody
 } from './authoring-input.ts';
-import { createAuthoredTable, type AuthoringTableBody, type TableDefinition } from './table-authoring.ts';
+import { createAuthoredTable, type TableDefinition } from './table-authoring.ts';
 
 type TestDefinition<
-    ControlsType extends TestControlsInput = MicrotestAuthoringControls
+    ControlsType extends TestControlsInput = AuthoringControls
 > = {
     readonly annotations?: AuthoringAnnotations;
     readonly body: TestBody;
@@ -59,7 +53,7 @@ type RuntimeTestDefinition = {
     readonly title: string;
 };
 
-type SkippedTestDefinition<ControlsType extends TestControlsInput = MicrotestAuthoringControls> = {
+type SkippedTestDefinition<ControlsType extends TestControlsInput = AuthoringControls> = {
     readonly annotations?: AuthoringAnnotations;
     readonly controls?: ControlsType;
     readonly reason: string;
@@ -73,7 +67,7 @@ type RuntimeSkippedTestDefinition = {
     readonly title: string;
 };
 
-type SuiteDefinition<ControlsType extends TestControlsInput = MicrotestAuthoringControls> = {
+type SuiteDefinition<ControlsType extends TestControlsInput = AuthoringControls> = {
     readonly annotations?: AuthoringAnnotations;
     readonly children: readonly TestNode[];
     readonly controls?: ControlsType;
@@ -112,20 +106,17 @@ type SkippedTestAuthor<ControlsType extends TestControlsInput> = (
 type SuiteAuthor<ControlsType extends TestControlsInput> = (
     ...input: ObjectSuiteAuthorInput<ControlsType> | PositionalSuiteAuthorInput
 ) => Suite;
-type TableAuthor<Family extends TestFamily, ControlsType extends TestControlsInput> = <Row>(
-    definition: TableDefinition<Row, ControlsType, AuthoringTableBody<Family, Row>>
+type TableAuthor<ControlsType extends TestControlsInput> = <Row>(
+    definition: TableDefinition<Row, ControlsType>
 ) => Table;
 
-export type TestFacade<
-    ControlsType extends TestControlsInput = MicrotestAuthoringControls,
-    Family extends TestFamily = ControlsType extends MicrotestAuthoringControls ? 'microtest' : NonMicrotestFamily
-> = {
+export type TestFacade<ControlsType extends TestControlsInput = AuthoringControls> = {
     readonly defineMacro: typeof defineMacro;
     readonly defineParameterizedTestBody: typeof defineParameterizedTestBody;
     readonly runIfMain: RunIfMain;
     readonly skippedTest: SkippedTestAuthor<ControlsType>;
     readonly suite: SuiteAuthor<ControlsType>;
-    readonly table: TableAuthor<Family, ControlsType>;
+    readonly table: TableAuthor<ControlsType>;
     readonly test: TestAuthor<ControlsType>;
 };
 
@@ -191,14 +182,7 @@ function readSuiteDefinition(value: unknown): RuntimeSuiteDefinition {
     };
 }
 
-function stampedNode<Node extends TestNode>(node: Node, testFamily: TestFamily): Node {
-    stampTestNodeFamily(node, testFamily);
-
-    return node;
-}
-
 function createAuthoredTest(
-    testFamily: TestFamily,
     facadeAnnotations: TestAnnotationsInput,
     facadeControls: TestControlsInput,
     ...input: readonly unknown[]
@@ -206,32 +190,26 @@ function createAuthoredTest(
     if (input.length === singleArgumentCount) {
         const definition = readTestDefinition(input[0]);
 
-        return stampedNode(
-            createTestCase({
-                annotations: createAuthoringAnnotations(facadeAnnotations, definition.annotations),
-                body: assertionBodyForActiveMacro(definition.body),
-                controls: createAuthoringControls(testFamily, facadeControls, definition.controls),
-                definitionLocations: definitionLocationsForAuthoringCall(),
-                title: definition.title
-            }),
-            testFamily
-        );
+        return createTestCase({
+            annotations: createAuthoringAnnotations(facadeAnnotations, definition.annotations),
+            body: assertionBodyForActiveMacro(definition.body),
+            controls: createAuthoringControls(facadeControls, definition.controls),
+            definitionLocations: definitionLocationsForAuthoringCall(),
+            title: definition.title
+        });
     }
 
     if (input.length === positionalArgumentCount) {
         const [ name, body ] = input;
         const testBody = readAuthoringTestBody(body);
 
-        return stampedNode(
-            createTestCase({
-                annotations: createAuthoringAnnotations(facadeAnnotations, {}),
-                body: assertionBodyForActiveMacro(testBody),
-                controls: createAuthoringControls(testFamily, facadeControls, {}),
-                definitionLocations: definitionLocationsForAuthoringCall(),
-                title: readAuthoringString(name, testArgumentsError)
-            }),
-            testFamily
-        );
+        return createTestCase({
+            annotations: createAuthoringAnnotations(facadeAnnotations, {}),
+            body: assertionBodyForActiveMacro(testBody),
+            controls: createAuthoringControls(facadeControls, {}),
+            definitionLocations: definitionLocationsForAuthoringCall(),
+            title: readAuthoringString(name, testArgumentsError)
+        });
     }
 
     throw new TypeError(testArgumentsError);
@@ -244,11 +222,10 @@ export function test(
 ): TestCase;
 export function test(...input: readonly [title: string, body: TestBody]): TestCase;
 export function test(...input: readonly unknown[]): TestCase {
-    return createAuthoredTest('microtest', {}, {}, ...input);
+    return createAuthoredTest({}, {}, ...input);
 }
 
 function createAuthoredSkippedTest(
-    testFamily: TestFamily,
     facadeAnnotations: TestAnnotationsInput,
     facadeControls: TestControlsInput,
     ...input: readonly unknown[]
@@ -256,31 +233,25 @@ function createAuthoredSkippedTest(
     if (input.length === singleArgumentCount) {
         const definition = readSkippedTestDefinition(input[0]);
 
-        return stampedNode(
-            createSkippedTestCase({
-                annotations: createAuthoringAnnotations(facadeAnnotations, definition.annotations),
-                controls: createAuthoringControls(testFamily, facadeControls, definition.controls),
-                definitionLocations: definitionLocationsForAuthoringCall(),
-                reason: definition.reason,
-                title: definition.title
-            }),
-            testFamily
-        );
+        return createSkippedTestCase({
+            annotations: createAuthoringAnnotations(facadeAnnotations, definition.annotations),
+            controls: createAuthoringControls(facadeControls, definition.controls),
+            definitionLocations: definitionLocationsForAuthoringCall(),
+            reason: definition.reason,
+            title: definition.title
+        });
     }
 
     if (input.length === positionalArgumentCount) {
         const [ title, reason ] = input;
 
-        return stampedNode(
-            createSkippedTestCase({
-                annotations: createAuthoringAnnotations(facadeAnnotations, {}),
-                controls: createAuthoringControls(testFamily, facadeControls, {}),
-                definitionLocations: definitionLocationsForAuthoringCall(),
-                reason: readReason(reason),
-                title: readAuthoringString(title, skippedTestArgumentsError)
-            }),
-            testFamily
-        );
+        return createSkippedTestCase({
+            annotations: createAuthoringAnnotations(facadeAnnotations, {}),
+            controls: createAuthoringControls(facadeControls, {}),
+            definitionLocations: definitionLocationsForAuthoringCall(),
+            reason: readReason(reason),
+            title: readAuthoringString(title, skippedTestArgumentsError)
+        });
     }
 
     throw new TypeError(skippedTestArgumentsError);
@@ -289,11 +260,10 @@ function createAuthoredSkippedTest(
 export function skippedTest(...input: readonly [definition: Readonly<SkippedTestDefinition>]): TestCase;
 export function skippedTest(...input: readonly [title: string, reason: string]): TestCase;
 export function skippedTest(...input: readonly unknown[]): TestCase {
-    return createAuthoredSkippedTest('microtest', {}, {}, ...input);
+    return createAuthoredSkippedTest({}, {}, ...input);
 }
 
 function createAuthoredSuite(
-    testFamily: TestFamily,
     facadeAnnotations: TestAnnotationsInput,
     facadeControls: TestControlsInput,
     ...input: readonly unknown[]
@@ -301,31 +271,25 @@ function createAuthoredSuite(
     if (input.length === singleArgumentCount) {
         const definition = readSuiteDefinition(input[0]);
 
-        return stampedNode(
-            createSuite({
-                annotations: createAuthoringAnnotations(facadeAnnotations, definition.annotations),
-                children: definition.children,
-                controls: createAuthoringControls(testFamily, facadeControls, definition.controls),
-                definitionLocations: definitionLocationsForAuthoringCall(),
-                title: definition.title
-            }),
-            testFamily
-        );
+        return createSuite({
+            annotations: createAuthoringAnnotations(facadeAnnotations, definition.annotations),
+            children: definition.children,
+            controls: createAuthoringControls(facadeControls, definition.controls),
+            definitionLocations: definitionLocationsForAuthoringCall(),
+            title: definition.title
+        });
     }
 
     if (input.length === positionalArgumentCount) {
         const [ name, children ] = input;
 
-        return stampedNode(
-            createSuite({
-                annotations: createAuthoringAnnotations(facadeAnnotations, {}),
-                children: readChildren(children, suiteArgumentsError),
-                controls: createAuthoringControls(testFamily, facadeControls, {}),
-                definitionLocations: definitionLocationsForAuthoringCall(),
-                title: readAuthoringString(name, suiteArgumentsError)
-            }),
-            testFamily
-        );
+        return createSuite({
+            annotations: createAuthoringAnnotations(facadeAnnotations, {}),
+            children: readChildren(children, suiteArgumentsError),
+            controls: createAuthoringControls(facadeControls, {}),
+            definitionLocations: definitionLocationsForAuthoringCall(),
+            title: readAuthoringString(name, suiteArgumentsError)
+        });
     }
 
     throw new TypeError(suiteArgumentsError);
@@ -334,13 +298,11 @@ function createAuthoredSuite(
 export function suite(...input: readonly [definition: Readonly<SuiteDefinition>]): Suite;
 export function suite(...input: readonly [title: string, children: readonly TestNode[]]): Suite;
 export function suite(...input: readonly unknown[]): Suite {
-    return createAuthoredSuite('microtest', {}, {}, ...input);
+    return createAuthoredSuite({}, {}, ...input);
 }
 
-export function table<Row>(
-    definition: TableDefinition<Row, MicrotestAuthoringControls, AuthoringTableBody<'microtest', Row>>
-): Table {
-    return createAuthoredTable('microtest', {}, {}, definition);
+export function table<Row>(definition: TableDefinition<Row>): Table {
+    return createAuthoredTable({}, {}, definition);
 }
 
 function createMacroNode<const MacroParameters extends readonly unknown[], Node extends TestNode>(
@@ -394,22 +356,18 @@ export async function runIfMain(
     await runModule.runIfMain(meta, testNode, options);
 }
 
-type ResolvedTestFacadeDefinition<Family extends TestFamily> = {
+type ResolvedTestFacadeDefinition = {
     readonly annotations: TestAnnotationsInput;
     readonly controls: TestControlsInput;
-    readonly testFamily: Family;
 };
 
-function createTestFacadeFromDefinition<Family extends TestFamily>(
-    facadeDefinition: ResolvedTestFacadeDefinition<Family>
-): TestFacade<AuthoringControlsForFamily<Family>, Family> {
+function createTestFacadeFromDefinition(facadeDefinition: ResolvedTestFacadeDefinition): TestFacade {
     return {
         defineMacro,
         defineParameterizedTestBody,
         runIfMain,
         skippedTest(...input) {
             return createAuthoredSkippedTest(
-                facadeDefinition.testFamily,
                 facadeDefinition.annotations,
                 facadeDefinition.controls,
                 ...input
@@ -417,15 +375,13 @@ function createTestFacadeFromDefinition<Family extends TestFamily>(
         },
         suite(...input) {
             return createAuthoredSuite(
-                facadeDefinition.testFamily,
                 facadeDefinition.annotations,
                 facadeDefinition.controls,
                 ...input
             );
         },
-        table<Row>(tableDefinition: TableDefinition<Row, AuthoringControlsForFamily<Family>>) {
+        table<Row>(tableDefinition: TableDefinition<Row>) {
             return createAuthoredTable(
-                facadeDefinition.testFamily,
                 facadeDefinition.annotations,
                 facadeDefinition.controls,
                 tableDefinition
@@ -433,7 +389,6 @@ function createTestFacadeFromDefinition<Family extends TestFamily>(
         },
         test(...input) {
             return createAuthoredTest(
-                facadeDefinition.testFamily,
                 facadeDefinition.annotations,
                 facadeDefinition.controls,
                 ...input
@@ -442,12 +397,7 @@ function createTestFacadeFromDefinition<Family extends TestFamily>(
     };
 }
 
-export function createTestFacade<Family extends TestFamily>(
-    definition: TestFacadeDefinitionForFamily<Family>
-): TestFacade<AuthoringControlsForFamily<Family>, Family>;
-export function createTestFacade(
-    definition: TestFacadeDefinition
-): TestFacade<CaptureAuthoringControls | MicrotestAuthoringControls, TestFamily> {
+export function createTestFacade(definition?: TestFacadeDefinition): TestFacade {
     const facadeDefinition = readTestFacadeDefinition(definition);
 
     return createTestFacadeFromDefinition(facadeDefinition);

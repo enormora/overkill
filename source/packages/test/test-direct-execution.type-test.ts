@@ -13,13 +13,12 @@ import type {
 } from '../engine/engine.entry-point.ts';
 import {
     type AuthoringAnnotations,
-    type CaptureAuthoringControls,
+    type AuthoringControls,
     type createTestFacade,
     runIfMain,
     type RunIfMainOptions as RootRunIfMainOptions,
     type RunIfMainRootOptions as RootRunIfMainRootOptions,
     skippedTest,
-    type MicrotestAuthoringControls,
     type InFlightTask as RootInFlightTask,
     type Suite as RootSuite,
     test,
@@ -33,28 +32,22 @@ import {
 
 declare const body: TestBody;
 declare const annotations: AuthoringAnnotations;
-declare const captureControls: CaptureAuthoringControls;
-declare const microtestControls: MicrotestAuthoringControls;
+declare const authoringControls: AuthoringControls;
 declare const node: TestNode;
 declare const outputRenderer: DefinedOutputRenderer;
 declare const reporter: DefinedReporter;
 
 describe('@overkill-dev/test capture and direct execution types', function () {
-    typeTest('types capture controls by authored family', function () {
+    typeTest('types capture controls as selected-profile policy', function () {
         expect<typeof createTestFacade>().type.toBeCallableWith({
-            controls: captureControls,
-            testFamily: 'integration'
+            controls: authoringControls
         });
-        expect<typeof createTestFacade>().type.not.toBeCallableWith({
-            controls: { capture: 'live' },
-            testFamily: 'microtest'
-        });
-        expect(test).type.not.toBeCallableWith({
+        expect(test).type.toBeCallableWith({
             body,
             controls: { capture: 'live' },
             title: 'passes'
         });
-        expect(skippedTest).type.not.toBeCallableWith({
+        expect(skippedTest).type.toBeCallableWith({
             controls: { capture: 'live' },
             reason: 'unsupported platform',
             title: 'skips'
@@ -69,7 +62,7 @@ describe('@overkill-dev/test capture and direct execution types', function () {
         }>();
         expect<RootRunIfMainRootOptions>().type.toBe<{
             readonly annotations?: AuthoringAnnotations;
-            readonly controls?: MicrotestAuthoringControls;
+            readonly controls?: AuthoringControls;
             readonly title: string;
         }>();
         expect<RootInFlightTask<string>>().type.toBe<InFlightTask<string>>();
@@ -89,7 +82,7 @@ describe('@overkill-dev/test capture and direct execution types', function () {
             reporters: [ reporter ],
             root: {
                 annotations,
-                controls: microtestControls,
+                controls: authoringControls,
                 title: 'root'
             }
         });

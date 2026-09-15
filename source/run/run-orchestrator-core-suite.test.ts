@@ -1,5 +1,6 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as runOrderingTestNode } from './run-ordering.test.ts';
+import { testNode as runProfilePolicyTestNode } from './run-profile-policy.test.ts';
 import { testNode as runSelectionTestNode } from './run-selection.test.ts';
 import { testNode as runTestNode } from './run.test.ts';
 
@@ -10,6 +11,7 @@ export const testNode = createOverkillSuite({
     controls: {},
     children: [
         runOrderingTestNode,
+        runProfilePolicyTestNode,
         runSelectionTestNode,
         runTestNode
     ]

@@ -81,8 +81,9 @@ The root doubles exports are the current lightweight public surface from
 `@overkill-dev/doubles`. Import the leaf package directly when documenting or
 testing doubles package ownership.
 
-Nodes created through this root facade are microtests. The engine records that
-as internal family data, not as authored test data.
+Nodes created through this root facade are family-neutral. The selected runner
+profile owns family policy, capture support, resource policy, and timeout
+validation.
 
 Use the object form when attaching annotations or controls. Annotations on the
 exported top-level `testNode` apply to the whole module's test tree.
@@ -246,7 +247,7 @@ import {
     withRuntime
 } from '@overkill-dev/test/resources';
 
-const integration = createTestFacade({ testFamily: 'integration' });
+const api = createTestFacade({ annotations: { tags: [ 'api' ] } });
 const scratch = createTemporaryDirectoryResource('scratch');
 const database = defineResource({
     name: 'database',
@@ -266,7 +267,7 @@ const runtime = defineRuntime({
     requirements: []
 });
 
-integration.test(
+api.test(
     'loads user',
     withRuntime(runtime, (scope) => {
         scope.assert.true(scope.signal instanceof AbortSignal);
@@ -275,7 +276,7 @@ integration.test(
     })
 );
 
-integration.test(
+api.test(
     'writes scratch output',
     withResource(scratch, (scope) => {
         scope.assert.true(scope.signal instanceof AbortSignal);
@@ -323,8 +324,8 @@ test('logs background failures', async (scope) => {
 cascades, not as proof that all background work is complete. Work started with
 `startInFlight(...)` must settle and be observed before the test ends.
 
-`createTestFacade` creates another narrow authoring surface for one test
-family:
+`createTestFacade` creates another narrow authoring surface without selecting
+a test family:
 
 ```ts
 import { createTestFacade } from '@overkill-dev/test';
@@ -338,16 +339,15 @@ export const {
     table,
     test
 } = createTestFacade({
-    annotations: { tags: [ 'integration' ] },
-    controls: { capture: 'live' },
-    testFamily: 'integration'
+    annotations: { tags: [ 'api' ] },
+    controls: { capture: 'live' }
 });
 ```
 
 The returned facade contains authoring helpers only. Assertions and doubles
 are imported alongside it instead of being registered into the facade.
-Non-microtest facades also accept `controls.capture` as a capture preference
-for tests, suites, tables, and facade-wide controls.
+Facades and root helpers accept `controls.capture` as authored data. The
+selected profile decides whether that control is valid for a run.
 
 Default tests should keep importing from `@overkill-dev/test`. When a project
 has a custom facade, it can re-export that facade through a stable local alias:
@@ -364,8 +364,7 @@ has a custom facade, it can re-export that facade through a stable local alias:
 import { createTestFacade } from '@overkill-dev/test';
 
 export const { suite, test } = createTestFacade({
-    annotations: { tags: [ 'custom-authoring' ] },
-    testFamily: 'microtest'
+    annotations: { tags: [ 'custom-authoring' ] }
 });
 ```
 

@@ -13,6 +13,7 @@ import type {
     CollectedRunFile,
     CollectedRunPlan,
     RunOrder,
+    RunProfileConfig,
     RunSeed,
     RunSelection,
     RunTestFamily
@@ -25,6 +26,9 @@ type SelectedRunCases<Case> = {
 
 type ResourceAttachedRunCase = {
     readonly resourceAttachments: TestPlanCase['resourceAttachments'];
+};
+type ProfileControlledRunCase = {
+    readonly controls: TestPlanCase['controls'];
 };
 type OrderedSeededTestPlan = {
     readonly seed: {
@@ -150,6 +154,48 @@ function assertMicrotestCaseHasNoResourceDescriptors(
     }
 }
 
+function microtestCaptureControlsMessage(): string {
+    return 'Run profile "microtest" cannot run test cases with authored capture controls.';
+}
+
+function assertMicrotestCaseHasNoCaptureControls(testCase: ProfileControlledRunCase, profile: RunProfileConfig): void {
+    if (profile.testFamily === 'microtest' && testCase.controls.capture !== null) {
+        throw new RunCollectionError(microtestCaptureControlsMessage(), { cause: null }, 'loader');
+    }
+}
+
+function isPositiveSafeInteger(value: number): boolean {
+    return Number.isSafeInteger(value) && value > 0;
+}
+
+function timeoutControlsMessage(timeoutMilliseconds: number, profile: RunProfileConfig): string {
+    return [
+        `Run profile "${profile.testFamily}" cannot run test case timeoutMilliseconds ${timeoutMilliseconds};`,
+        `expected positive safe integer <= ${profile.timeouts.softMilliseconds}.`
+    ]
+        .join(' ');
+}
+
+function assertCaseTimeoutControls(testCase: ProfileControlledRunCase, profile: RunProfileConfig): void {
+    const { timeoutMilliseconds } = testCase.controls;
+
+    if (timeoutMilliseconds === null) {
+        return;
+    }
+
+    if (
+        !isPositiveSafeInteger(timeoutMilliseconds) ||
+        timeoutMilliseconds > profile.timeouts.softMilliseconds
+    ) {
+        throw new RunCollectionError(timeoutControlsMessage(timeoutMilliseconds, profile), { cause: null }, 'loader');
+    }
+}
+
+function assertCaseControlsMatchProfile(testCase: ProfileControlledRunCase, profile: RunProfileConfig): void {
+    assertMicrotestCaseHasNoCaptureControls(testCase, profile);
+    assertCaseTimeoutControls(testCase, profile);
+}
+
 export function assertTestPlanMatchesTestFamily(testPlan: TestPlan, testFamily: RunTestFamily): void {
     for (const testCase of testPlan.discoveredCases) {
         assertTestFamily(testCase.testFamily, testFamily);
@@ -162,6 +208,23 @@ export function assertCollectedRunPlanMatchesTestFamily(plan: CollectedRunPlan, 
         for (const testCase of file.cases) {
             assertTestFamily(testCase.testFamily, testFamily);
             assertMicrotestCaseHasNoResourceDescriptors(testCase, testFamily);
+        }
+    }
+}
+
+export function assertTestPlanCasesMatchProfilePolicy(testPlan: TestPlan, profile: RunProfileConfig): void {
+    for (const testCase of testPlan.cases) {
+        assertCaseControlsMatchProfile(testCase, profile);
+    }
+}
+
+export function assertCollectedRunPlanCasesMatchProfilePolicy(
+    plan: CollectedRunPlan,
+    profile: RunProfileConfig
+): void {
+    for (const file of plan.files) {
+        for (const testCase of file.cases) {
+            assertCaseControlsMatchProfile(testCase, profile);
         }
     }
 }

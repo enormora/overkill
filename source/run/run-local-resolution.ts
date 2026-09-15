@@ -1,7 +1,4 @@
 import {
-    collectedRunPlanFromTestPlanCases
-} from './collected-run-plan.ts';
-import {
     createRunFacts,
     runCaseFactsFromTestPlan
 } from './run-facts.ts';
@@ -9,7 +6,6 @@ import {
     createEmptySelectionResult
 } from './run-collected-resolution.ts';
 import {
-    assertMicrotestControlCaptureSupported,
     readResolvedRunInput,
     type ResolvedRunInput
 } from './run-input-resolution.ts';
@@ -17,6 +13,7 @@ import { createLocalTestPlan } from './run-local-test-plan.ts';
 import {
     orderedTestPlan,
     assertTestPlanMatchesTestFamily,
+    assertTestPlanCasesMatchProfilePolicy,
     selectedNonEmptyTestPlanCases,
     selectedTestPlan
 } from './run-selection.ts';
@@ -50,10 +47,7 @@ function createLocalResolvedRunFromTestPlan(
     plannedTestPlan: Awaited<ReturnType<typeof createLocalTestPlan>>
 ): ResolvedRun {
     assertTestPlanMatchesTestFamily(plannedTestPlan, input.profile.testFamily);
-    assertMicrotestControlCaptureSupported(
-        input.profile,
-        collectedRunPlanFromTestPlanCases(plannedTestPlan, plannedTestPlan.cases)
-    );
+    assertTestPlanCasesMatchProfilePolicy(plannedTestPlan, input.profile);
 
     const facts = freezeValue(createRunFacts({
         cases: runCaseFactsFromTestPlan(plannedTestPlan, fileSetForDiscoveredFiles(input.files)),

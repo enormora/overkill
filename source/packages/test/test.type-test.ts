@@ -60,7 +60,7 @@ import type {
 } from '../doubles/doubles.entry-point.ts';
 import {
     type AuthoringAnnotations,
-    type CaptureAuthoringControls,
+    type AuthoringControls,
     createTestFacade,
     type createTranscript,
     type defineHarness,
@@ -93,7 +93,6 @@ import {
     type RuleFactory as RootRuleFactory,
     runIfMain,
     type RunIfMain,
-    type MicrotestAuthoringControls,
     type SyncIterableConfiguration as RootSyncIterableConfiguration,
     type SyncIteratorConfiguration as RootSyncIteratorConfiguration,
     type SyncIteratorSource as RootSyncIteratorSource,
@@ -131,9 +130,8 @@ import {
 
 declare const body: TestBody;
 declare const annotations: AuthoringAnnotations;
-declare const captureControls: CaptureAuthoringControls;
+declare const authoringControls: AuthoringControls;
 declare const engineControls: TestControlsInput;
-declare const microtestControls: MicrotestAuthoringControls;
 declare const node: TestNode;
 declare const tableBody: TableTestBody<{ readonly value: number; }>;
 type RootRuntimeExport = keyof {
@@ -267,7 +265,8 @@ describe('@overkill-dev/test', function () {
                 readonly transcriptUsage: true;
             }
         >();
-        expect<typeof createTestFacade>().type.toBeCallableWith({ testFamily: 'microtest' });
+        expect<typeof createTestFacade>().type.toBeCallableWith();
+        expect<typeof createTestFacade>().type.toBeCallableWith({});
         expect<typeof runIfMain>().type.toBe<RunIfMain>();
         expect<TestFamily>().type.toBe<EngineTestFamily>();
     });
@@ -311,13 +310,12 @@ describe('@overkill-dev/test authoring', function () {
         expect(parameterizedBody({ value: 1 })).type.toBe<TestBody>();
     });
 
-    typeTest('creates family-specific test facade nodes', function () {
+    typeTest('creates neutral test facade nodes', function () {
         const facade = createTestFacade({
-            controls: captureControls,
-            testFamily: 'integration'
+            controls: authoringControls
         });
 
-        expect(facade).type.toBe<TestFacade<CaptureAuthoringControls>>();
+        expect(facade).type.toBe<TestFacade>();
         expect(facade.skippedTest('skips', 'unsupported platform')).type.toBe<TestCase>();
         expect(facade.skippedTest({
             controls: { capture: 'live' },
@@ -342,10 +340,9 @@ describe('@overkill-dev/test authoring', function () {
             .toBe<Table>();
     });
 
-    typeTest('creates family-specific facade macro forms', function () {
+    typeTest('creates neutral facade macro forms', function () {
         const facade = createTestFacade({
-            annotations,
-            testFamily: 'integration'
+            annotations
         });
         const macro = facade.defineMacro(function reusableCase(title: string) {
             return facade.test(title, body);
@@ -364,10 +361,9 @@ describe('@overkill-dev/test authoring', function () {
         expect(parameterizedBody({ value: 1 })).type.toBe<TestBody>();
     });
 
-    typeTest('keeps family-specific facades narrow', function () {
+    typeTest('keeps neutral facades narrow', function () {
         const facade = createTestFacade({
-            annotations,
-            testFamily: 'integration'
+            annotations
         });
 
         expect(facade).type.not.toHaveProperty('doubleUsage');
@@ -378,18 +374,18 @@ describe('@overkill-dev/test authoring', function () {
 
     typeTest('creates test, suite, and table nodes from default root authoring forms', function () {
         expect(test('passes', body)).type.toBe<TestCase>();
-        expect(test({ annotations, body, controls: microtestControls, title: 'passes' })).type.toBe<TestCase>();
+        expect(test({ annotations, body, controls: authoringControls, title: 'passes' })).type.toBe<TestCase>();
         expect(skippedTest('skips', 'unsupported platform')).type.toBe<TestCase>();
         expect(skippedTest({
             annotations,
-            controls: microtestControls,
+            controls: authoringControls,
             reason: 'unsupported platform',
             title: 'skips'
         }))
             .type
             .toBe<TestCase>();
         expect(suite('group', [ node ])).type.toBe<Suite>();
-        expect(suite({ annotations, children: [ node ], controls: microtestControls, title: 'group' })).type.toBe<
+        expect(suite({ annotations, children: [ node ], controls: authoringControls, title: 'group' })).type.toBe<
             Suite
         >();
         expect(table({
@@ -401,7 +397,7 @@ describe('@overkill-dev/test authoring', function () {
 
                 return String(parameters.value);
             },
-            controls: microtestControls,
+            controls: authoringControls,
             test: tableBody,
             title: 'rows'
         }))
@@ -437,24 +433,16 @@ describe('@overkill-dev/test authoring', function () {
             readonly tags?: readonly string[];
         }>();
         expect<AuthoringAnnotations>().type.toBeAssignableTo<TestAnnotationsInput>();
-        expect<MicrotestAuthoringControls>().type.toBe<{
-            readonly capture?: never;
-            readonly timeoutMilliseconds?: number;
-        }>();
-        expect<MicrotestAuthoringControls>().type.toBeAssignableTo<TestControlsInput>();
-        expect<CaptureAuthoringControls>().type.toBe<{
+        expect<AuthoringControls>().type.toBe<{
             readonly capture?: 'buffered' | 'live';
             readonly timeoutMilliseconds?: number;
         }>();
-        expect<CaptureAuthoringControls>().type.toBeAssignableTo<TestControlsInput>();
+        expect<AuthoringControls>().type.toBeAssignableTo<TestControlsInput>();
     });
 
     typeTest('rejects removed high-level authoring metadata', function () {
-        expect<typeof createTestFacade>().type.toBeCallableWith({ testFamily: 'microtest' });
-        expect<typeof createTestFacade>().type.not.toBeCallableWith();
         expect<typeof createTestFacade>().type.not.toBeCallableWith({ metadata: annotations });
         expect<typeof createTestFacade>().type.not.toBeCallableWith({
-            controls: { capture: 'live' },
             testFamily: 'microtest'
         });
         expect(test).type.not.toBeCallableWith({ body, metadata: { kind: 'microtest' }, title: 'passes' });
@@ -463,13 +451,13 @@ describe('@overkill-dev/test authoring', function () {
             metadata: { ownership: [ '@runtime' ] },
             title: 'group'
         });
-        expect(table).type.not.toBeCallableWith({
+        expect(table).type.toBeCallableWith({
             cases: [ { value: 1 } ],
             controls: { capture: 'live' },
             test: tableBody,
             title: 'rows'
         });
-        expect(runIfMain).type.not.toBeCallableWith(import.meta, node, {
+        expect(runIfMain).type.toBeCallableWith(import.meta, node, {
             root: {
                 controls: engineControls,
                 title: 'root'

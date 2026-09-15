@@ -1,9 +1,7 @@
 import { isMainThread } from 'node:worker_threads';
 import { createTestFacade } from '../../../packages/test/test.entry-point.ts';
 
-const integration = createTestFacade({
-    testFamily: 'integration'
-});
+const integration = createTestFacade();
 
 export const testNode = integration.suite('worker pool crash fixture', [
     integration.test('runs in a worker thread', function runsInWorkerThread(scope) {

@@ -51,7 +51,7 @@ function assertThrowingTestCase(scope: OverkillScope, testCase: TestCase): void 
 }
 
 function assertPlannedCompatibilityCase(scope: OverkillScope, plannedCase: PlannedCase): void {
-    scope.assert.equal(plannedCase.testFamily, 'microtest');
+    scope.assert.equal(plannedCase.testFamily, null);
     scope.assert.deepEqual(plannedCase.annotations.tags, [ 'compatibility' ]);
     scope.assert.equal(plannedCase.controls.timeoutMilliseconds, 50);
 }
@@ -76,7 +76,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test/compatibility throwingTest() creates default microtests',
+            title: '@overkill-dev/test/compatibility throwingTest() creates neutral tests',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -152,15 +152,15 @@ export const testNode = createOverkillSuite({
                 scope.assert.throws(function createThrowingTestWithInvalidBody() {
                     invokeThrowingTest('passes', null);
                 }, { message: 'Test case body must be a function.' });
-                scope.assert.throws(function createThrowingMicrotestWithCapture() {
-                    invokeThrowingTest({
-                        body() {
-                            return undefined;
-                        },
-                        controls: { capture: 'live' },
-                        title: 'captures'
-                    });
-                }, { message: 'Microtest authoring controls do not support capture mode.' });
+                const captureCase = throwingTest({
+                    body() {
+                        return undefined;
+                    },
+                    controls: { capture: 'live' },
+                    title: 'captures'
+                });
+
+                scope.assert.deepEqual(captureCase.controls, { capture: 'live' });
 
                 return scope.assert.collect();
             }

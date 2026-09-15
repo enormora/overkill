@@ -9,8 +9,7 @@ import { createTestFacade } from '../../../packages/test/test.entry-point.ts';
 
 const integration = createTestFacade({
     annotations: {},
-    controls: {},
-    testFamily: 'integration'
+    controls: {}
 });
 
 const outputPath = 'source/integration-tests/run/fixtures/integration-unrestricted-runtime-output.txt';

@@ -31,6 +31,12 @@ function passingBody(scope: DirectScope): ReturnType<DirectTestBody> {
     return scope.assert.collect();
 }
 
+function resourceBody(scope: DirectScope): ReturnType<DirectTestBody> {
+    scope.assert.equal('ready', 'ready');
+
+    return scope.assert.collect();
+}
+
 function passingCase(controls: DirectTestNode['controls'] = {}): DirectTestNode {
     return createDirectTestCase({
         annotations: {},
@@ -66,7 +72,7 @@ function integrationCase(): DirectTestNode {
 function resourceAttachedCase(): DirectTestNode {
     return createDirectTestCase({
         annotations: {},
-        body: attachTestBodyResourceAttachments(passingBody, {
+        body: attachTestBodyResourceAttachments(resourceBody, {
             directResources: [ { key: 'database', resourceName: 'database' } ],
             resourceGraph: [
                 {
@@ -448,6 +454,42 @@ export const testNode = createOverkillSuite({
                     await fixture.runIfMain(fixture.project.meta, resourceAttachedCase(), { reporters: [] });
                 }, {
                     message: 'Run profile "microtest" cannot run test cases with resource descriptors.',
+                    name: 'RunCollectionError'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'runIfMain() rejects selected-profile control policy violations',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const fixture = createDirectRunFixture({
+                    config: null,
+                    fileName: 'direct.test.ts',
+                    files: []
+                });
+
+                await scope.assert.rejects(async function runCaptureControlCase() {
+                    await fixture.runIfMain(
+                        fixture.project.meta,
+                        passingCase({ capture: 'live' }),
+                        { reporters: [] }
+                    );
+                }, {
+                    message: 'Run profile "microtest" cannot run test cases with authored capture controls.',
+                    name: 'RunCollectionError'
+                });
+                await scope.assert.rejects(async function runLongTimeoutCase() {
+                    await fixture.runIfMain(
+                        fixture.project.meta,
+                        passingCase({ timeoutMilliseconds: 999_999 }),
+                        { reporters: [] }
+                    );
+                }, {
+                    message: /timeoutMilliseconds 999999/u,
                     name: 'RunCollectionError'
                 });
 
