@@ -35,17 +35,17 @@ export type StartComposedResourceSessionRequest<DirectResources extends Resource
 
 export type ComposedResourceSession<DirectResources extends ResourceDependencies> = AsyncDisposable & {
     readonly directResources: ResourceContext<DirectResources>;
-    readonly disposeOnce: (context: ComposedResourceSessionDisposalContext) => Promise<void>;
+    readonly disposeOnce: (context: DisposalContext) => Promise<void>;
     readonly runtimeContexts: ReadonlyMap<RuntimeDefinition, RuntimeContext<RuntimeDefinition>>;
 };
 
-export type ComposedResourceSessionDisposalContext = {
+type DisposalContext = {
     readonly signal: AbortSignal;
 };
 
 type ComposedResourceSessionBase<DirectResources extends ResourceDependencies> = {
     readonly directResources: ResourceContext<DirectResources>;
-    readonly disposeOnce: (context: ComposedResourceSessionDisposalContext) => Promise<void>;
+    readonly disposeOnce: (context: DisposalContext) => Promise<void>;
     readonly runtimeContexts: ReadonlyMap<RuntimeDefinition, RuntimeContext<RuntimeDefinition>>;
 };
 
@@ -184,7 +184,7 @@ export async function startComposedResourceSession<DirectResources extends Resou
     const session = {
         directResources: directResourceContext(request.directResources, acquisition.handles),
         runtimeContexts: runtimeContexts(request.runtimes, acquisition.handles),
-        async disposeOnce(context: ComposedResourceSessionDisposalContext): Promise<void> {
+        async disposeOnce(context: DisposalContext): Promise<void> {
             if (disposal === null) {
                 disposal = disposeComposedResourceSession(
                     acquisition,

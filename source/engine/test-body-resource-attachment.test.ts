@@ -137,6 +137,23 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             body(scope) {
+                scope.assert.throws(function rejectNonFunctionBody() {
+                    Reflect.apply(attachTestBodyResourceAttachments, undefined, [
+                        {},
+                        {
+                            directResources: [ { key: 'scratch', resourceName: 'scratch' } ],
+                            resourceGraph: [
+                                {
+                                    dependencies: [],
+                                    name: 'scratch',
+                                    requirements: [],
+                                    scope: 'per-case'
+                                }
+                            ],
+                            runtimeGraphs: []
+                        }
+                    ]);
+                }, { message: 'Resource attachments require a test body function.' });
                 scope.assert.throws(function attachEmptyMetadata() {
                     attachTestBodyResourceAttachments(
                         function emptyAttachmentBody(testScope: OverkillScope): ReturnType<TestBody> {
