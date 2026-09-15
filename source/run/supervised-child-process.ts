@@ -1,4 +1,3 @@
-import type { Serializable } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy.ts';
 import { childRoleArgument, supervisedChildRole } from './child-process-roles.ts';
@@ -27,7 +26,7 @@ export type SupervisedChildProcess = {
     readonly kill: (signal: 'SIGKILL') => unknown;
     readonly on: (...registration: SupervisedChildListenerRegistration) => unknown;
     readonly pid: number | undefined;
-    readonly send: (message: Serializable) => unknown;
+    readonly send: (message: Readonly<Record<string, unknown>>) => unknown;
     readonly signalCode: string | null;
     readonly stderr: SupervisedChildProcessOutput | null;
     readonly stdout: SupervisedChildProcessOutput | null;

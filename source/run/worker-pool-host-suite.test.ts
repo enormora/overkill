@@ -1,15 +1,15 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
-import { testNode as supervisedRunTestNode } from './supervised-run-suite.test.ts';
-import { testNode as workerPoolTestNode } from './worker-pool-suite.test.ts';
+import { testNode as workerPoolHostProcessTestNode } from './worker-pool-host-process.test.ts';
+import { testNode as workerPoolHostProtocolTestNode } from './worker-pool-host-protocol.test.ts';
 
 export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-execution-suite.test.ts',
+    title: 'source/run/worker-pool-host-suite.test.ts',
     children: [
-        supervisedRunTestNode,
-        workerPoolTestNode
+        workerPoolHostProcessTestNode,
+        workerPoolHostProtocolTestNode
     ]
 });
 

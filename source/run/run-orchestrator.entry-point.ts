@@ -65,7 +65,7 @@ function forkSupervisedChildProcess(
         get pid() {
             return child.pid;
         },
-        send(message: Parameters<typeof child.send>[0]) {
+        send(message) {
             return child.send(message);
         },
         get signalCode() {

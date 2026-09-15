@@ -68,6 +68,11 @@ export const testNode = createOverkillSuite({
                 }, {
                     message: 'Host process Node argument must use long-form syntax: -r'
                 });
+                scope.assert.throws(function rejectEmptyArgument() {
+                    validateHostProcess({ kind: 'child', nodeArguments: [ '' ] });
+                }, {
+                    message: 'Host process Node argument must not be empty.'
+                });
                 scope.assert.throws(function rejectPreloadArgument() {
                     validateHostProcess({ kind: 'child', nodeArguments: [ '--require=./setup.js' ] });
                 }, {
