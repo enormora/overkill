@@ -6,6 +6,7 @@ import {
     defineReporter,
     execute,
     type DefinedReporter,
+    type ExecuteExecution,
     type ReporterEvent,
     type RunResult,
     type TestBody,
@@ -63,7 +64,7 @@ function eventReporter(events: EventLog): DefinedReporter {
     });
 }
 
-async function executeObservedBody(body: TestBody): Promise<ObservedExecution> {
+async function executeObservedBodyInMode(body: TestBody, execution: ExecuteExecution): Promise<ObservedExecution> {
     const events = createEventLog();
     const result = await execute(
         createTestPlan(createRoot({
@@ -81,7 +82,7 @@ async function executeObservedBody(body: TestBody): Promise<ObservedExecution> {
             title: 'root'
         })),
         {
-            execution: { mode: 'serial-in-process' },
+            execution,
             reporters: [ eventReporter(events) ],
             resourceUsageTracker: null,
             runFacts: {},
@@ -93,6 +94,10 @@ async function executeObservedBody(body: TestBody): Promise<ObservedExecution> {
         events: events.values(),
         result
     };
+}
+
+async function executeObservedBody(body: TestBody): Promise<ObservedExecution> {
+    return await executeObservedBodyInMode(body, { mode: 'serial-in-process' });
 }
 
 function firstCaseResult(scope: TestScope, observed: ObservedExecution): RunResult['perTest'][number] {
@@ -243,6 +248,35 @@ async function assertBroaderScopeRunnerError(scope: TestScope): Promise<void> {
     scope.assert.equal(acquisitions, 0);
 }
 
+async function assertConcurrentAcquireFailureRunnerError(scope: TestScope): Promise<void> {
+    const acquireError = new Error('database unavailable');
+    const failingResource = resourcesSubpath.defineResource({
+        name: 'database',
+        scope: 'per-case',
+        requirements: [],
+        acquire() {
+            throw acquireError;
+        },
+        dispose: null
+    });
+    const observed = await executeObservedBodyInMode(
+        resourcesSubpath.withResource(
+            failingResource,
+            function runWithDatabase(resourceScope) {
+                return resourceScope.assert.collect();
+            }
+        ),
+        { mode: 'concurrent-in-process' }
+    );
+    const error = assertInconclusiveFixture(scope, observed, 'Resource acquisition failed.');
+
+    scope.assert.equal(error.cause, acquireError);
+    scope.assert.deepEqual(observed.events, [
+        'runner-error:Resource acquisition failed.',
+        'test-end:inconclusive'
+    ]);
+}
+
 function executionTestCase(title: string, assertion: (scope: TestScope) => Promise<void>): TestNode {
     return createTestCase({
         definitionLocations: [ { kind: 'unknown' } ],
@@ -275,6 +309,10 @@ export const testNode = createSuite({
         executionTestCase(
             'resource wrappers reject broader resource scopes before acquisition',
             assertBroaderScopeRunnerError
+        ),
+        executionTestCase(
+            'resource wrappers report concurrent acquire failures as fixture runner errors',
+            assertConcurrentAcquireFailureRunnerError
         )
     ]
 });
