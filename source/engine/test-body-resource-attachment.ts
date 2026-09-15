@@ -49,6 +49,59 @@ function hasEntries(attachments: TestBodyResourceAttachments): boolean {
         attachments.runtimeGraphs.length > 0;
 }
 
+function assertUniqueKeys(
+    values: readonly string[],
+    message: (key: string) => string
+): void {
+    const seenKeys = new Set<string>();
+
+    for (const key of values) {
+        if (seenKeys.has(key)) {
+            throw new TypeError(message(key));
+        }
+
+        seenKeys.add(key);
+    }
+}
+
+function validateAttachments(attachments: TestBodyResourceAttachments): void {
+    assertUniqueKeys(
+        attachments.directResources.map(function directResourceKey(resource) {
+            return resource.key;
+        }),
+        function duplicateDirectResourceKey(key) {
+            return `Resource scope "${key}" is attached multiple times.`;
+        }
+    );
+    assertUniqueKeys(
+        attachments.resourceGraph.map(function resourceGraphName(resource) {
+            return resource.name;
+        }),
+        function duplicateResourceGraphName(name) {
+            return `Resource descriptor "${name}" is attached multiple times.`;
+        }
+    );
+    assertUniqueKeys(
+        attachments.runtimeGraphs.map(function runtimeGraphName(runtime) {
+            return runtime.name;
+        }),
+        function duplicateRuntimeGraphName(name) {
+            return `Runtime scope "${name}" is attached multiple times.`;
+        }
+    );
+
+    for (const runtime of attachments.runtimeGraphs) {
+        assertUniqueKeys(
+            runtime.resources.map(function runtimeResourceKey(resource) {
+                return resource.key;
+            }),
+            function duplicateRuntimeResourceKey(key) {
+                return `Runtime scope "${runtime.name}" resource "${key}" is attached multiple times.`;
+            }
+        );
+    }
+}
+
 export function hasAttachedResourceDescriptors(attachments: TestBodyResourceAttachments): boolean {
     return attachments.directResources.length > 0 ||
         attachments.resourceGraph.length > 0 ||
@@ -124,6 +177,8 @@ export function attachTestBodyResourceAttachments<Scope, Result>(
     if (!hasEntries(attachments)) {
         throw new TypeError('Test body resource attachments must not be empty.');
     }
+
+    validateAttachments(attachments);
 
     return Object.assign(body, {
         [testBodyResourceAttachmentsBrand]: freezeAttachments(attachments)
