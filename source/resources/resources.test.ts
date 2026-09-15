@@ -177,9 +177,53 @@ function assertRuntimeContextComposition(scope: TestScope): void {
     const context = composeRuntimeContext({ base: 'scope' }, runtime, { database, server });
 
     scope.assert.equal(context.base, 'scope');
-    scope.assert.equal(context.runtime.database, database);
-    scope.assert.equal(context.runtime.server, server);
+    scope.assert.equal(context.runtimes.api.database, database);
+    scope.assert.equal(context.runtimes.api.server, server);
     scope.assert.equal(Object.isFrozen(context), true);
+    scope.assert.equal(Object.isFrozen(context.runtimes), true);
+}
+
+function assertRuntimeContextCompositionMergesRuntimeScopes(scope: TestScope): void {
+    const apiRuntime = defineRuntime({
+        name: 'api',
+        dimensions: {},
+        resources: { database: databaseResource },
+        requirements: []
+    });
+    const serverRuntime = defineRuntime({
+        name: 'server',
+        dimensions: {},
+        resources: { server: serverResource },
+        requirements: []
+    });
+    const database = createDatabase();
+    const firstContext = composeRuntimeContext({ base: 'scope' }, apiRuntime, { database });
+    const server = { results: [ 'ready' ] };
+    const secondContext = composeRuntimeContext(firstContext, serverRuntime, { server });
+
+    scope.assert.equal(secondContext.base, 'scope');
+    scope.assert.equal(secondContext.runtimes.api.database, database);
+    scope.assert.equal(secondContext.runtimes.server.server, server);
+}
+
+function assertRuntimeContextCompositionRejectsDuplicateScopes(scope: TestScope): void {
+    const firstRuntime = defineRuntime({
+        name: 'api',
+        dimensions: {},
+        resources: { database: databaseResource },
+        requirements: []
+    });
+    const secondRuntime = defineRuntime({
+        name: 'api',
+        dimensions: {},
+        resources: { database: databaseResource },
+        requirements: []
+    });
+    const context = composeRuntimeContext({ base: 'scope' }, firstRuntime, { database: createDatabase() });
+
+    scope.assert.throws(function composeDuplicateRuntimeContext() {
+        composeRuntimeContext(context as { readonly base: string; }, secondRuntime, { database: createDatabase() });
+    }, { message: 'Runtime scope "api" already exists.' });
 }
 
 type TemporaryDirectoryResource = typeof temporaryDirectoryResource;
@@ -259,6 +303,8 @@ export const testNode = createSuite({
             body(scope: TestScope) {
                 assertRuntimeDescriptor(scope);
                 assertRuntimeContextComposition(scope);
+                assertRuntimeContextCompositionMergesRuntimeScopes(scope);
+                assertRuntimeContextCompositionRejectsDuplicateScopes(scope);
 
                 return scope.assert.collect();
             }

@@ -49,6 +49,7 @@ export type {
     RuntimeGraph,
     RuntimeId,
     RuntimeResourceMap,
+    RuntimeScopeContext,
     RuntimeSession,
     RuntimeSessionDisposalContext,
     StartRuntimeRequest,

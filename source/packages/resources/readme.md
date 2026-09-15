@@ -58,11 +58,15 @@ type ApiContext = RuntimeContext<typeof runtime>;
 await using session = await startRuntime({ runtime, signal });
 
 const scopeWithRuntime = composeRuntimeContext(testScope, runtime, session.context);
+scopeWithRuntime.runtimes.api.database;
 ```
 
 `RuntimeContext` uses the keys from the runtime's `resources` object. Resource
 `name` remains the stable identity used by reporters, artifacts, and future
 scheduling work.
+
+`composeRuntimeContext(...)` exposes acquired handles under
+`scope.runtimes.<runtimeName>`, such as `scope.runtimes.api`.
 
 Dependency context uses the keys from the resource's `dependencies` object.
 Omitting `dependencies` is accepted for compatibility and produces

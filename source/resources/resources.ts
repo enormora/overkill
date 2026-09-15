@@ -106,9 +106,31 @@ export type RuntimeContext<Runtime extends RuntimeDefinition> = {
     readonly [Key in keyof Runtime['resources']]: ResourceHandle<Runtime['resources'][Key]>;
 };
 
-export type RuntimeContextComposition<BaseContext, Runtime extends RuntimeDefinition> = BaseContext & {
-    readonly runtime: RuntimeContext<Runtime>;
+export type RuntimeScopeContext<Runtime extends RuntimeDefinition> = Readonly<
+    Record<Runtime['name'], RuntimeContext<Runtime>>
+>;
+
+type EmptyRuntimeScopes = Pick<Readonly<Record<string, never>>, never>;
+type RuntimeScopeKey<Runtime extends RuntimeDefinition> = Runtime['name'];
+type RuntimeScopes<Context> = Context extends {
+    readonly runtimes: infer Runtimes extends Readonly<Record<string, unknown>>;
+} ? Runtimes
+    : EmptyRuntimeScopes;
+
+type RuntimeScopeGuard<
+    Context,
+    Runtime extends RuntimeDefinition
+> = RuntimeScopeKey<Runtime> extends keyof RuntimeScopes<Context> ? never : unknown;
+type RuntimeScopeBaseContext<Context> = {
+    readonly [Key in keyof Context as Key extends 'runtimes' ? never : Key]: Context[Key];
 };
+type ComposedRuntimeScopes<BaseContext, Runtime extends RuntimeDefinition> = {
+    readonly runtimes: RuntimeScopeContext<Runtime> & RuntimeScopes<BaseContext>;
+};
+
+export type RuntimeContextComposition<BaseContext, Runtime extends RuntimeDefinition> = Readonly<
+    ComposedRuntimeScopes<BaseContext, Runtime> & RuntimeScopeBaseContext<BaseContext>
+>;
 
 export type TemporaryDirectoryHandle = {
     readonly path: string;
@@ -201,13 +223,31 @@ function composeRuntimeContext<
     BaseContext extends Readonly<Record<string, unknown>>,
     Runtime extends RuntimeDefinition
 >(
-    context: BaseContext,
-    _runtime: Runtime,
+    context: BaseContext & RuntimeScopeGuard<BaseContext, Runtime>,
+    runtime: Runtime,
     resourceHandles: RuntimeContext<Runtime>
-): RuntimeContextComposition<BaseContext, Runtime> {
+): RuntimeContextComposition<BaseContext, Runtime>;
+function composeRuntimeContext(
+    context: Readonly<Record<string, unknown>>,
+    runtime: RuntimeDefinition,
+    resourceHandles: Readonly<Record<string, unknown>>
+): Readonly<Record<string, unknown>> {
+    const runtimes: unknown = Object.hasOwn(context, 'runtimes') ? Reflect.get(context, 'runtimes') : {};
+
+    if (typeof runtimes !== 'object' || runtimes === null || Array.isArray(runtimes)) {
+        throw new TypeError('composeRuntimeContext() requires context.runtimes to be an object when present.');
+    }
+
+    if (Object.hasOwn(runtimes, runtime.name)) {
+        throw new TypeError(`Runtime scope "${runtime.name}" already exists.`);
+    }
+
     return Object.freeze({
         ...context,
-        runtime: resourceHandles
+        runtimes: Object.freeze({
+            ...runtimes,
+            [runtime.name]: resourceHandles
+        })
     });
 }
 
