@@ -1,6 +1,7 @@
 import { serializeValue } from '../compare/serialized-value.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { invalidRequest } from './run-errors.ts';
+import { hostProcessFacts } from './run-host-process.ts';
 import { copyResourceBudgets, runEngineFacts } from './run-support.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type {
@@ -139,6 +140,7 @@ function createRunExecutionFacts(
     if (profile.execution.processModel === 'worker-pool') {
         return {
             ...facts,
+            hostProcess: hostProcessFacts(profile.execution.hostProcess),
             processModel: profile.execution.processModel,
             workDistribution: profile.execution.workDistribution,
             workerLifecycle: profile.execution.workerLifecycle

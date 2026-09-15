@@ -154,6 +154,12 @@ initial lane assignment used by execution. `workerLifecycle: 'reuse'` reuses
 worker threads between units. `workerLifecycle: 'fresh-worker-per-unit'`
 creates disposable isolation per unit. `supervised-process` remains available
 when a single process-isolated child boundary is preferred.
+Direct `RunConfig` values may set `execution.hostProcess` for worker-pool
+profiles. `{ kind: 'direct' }` keeps the worker-thread pool in the coordinator
+process. `{ kind: 'child', nodeArguments: [...] }` starts one supervised host
+process around the worker-thread pool, applies validated Node/V8 arguments to
+that host only, and records the derived host reasons in `RunFacts.execution`.
+Loaded project config files reject `hostProcess` for now.
 
 `RunRequest.capabilityRestrictions.mode` controls the current microtest
 restriction policy. The programmatic default is `enabled`; the command-line

@@ -7,6 +7,7 @@ import {
 import type {
     ResolvedRun
 } from './run-types.ts';
+import type { TinypoolInstance } from './tinypool-node-compatibility.ts';
 import { collectInWorkerPool } from './worker-pool-collection.ts';
 import {
     executeWorkerPoolUnits,
@@ -31,35 +32,55 @@ export async function collectWorkerPoolRun(
     return await collectInWorkerPool(command, dependencies, createSupervisedRunState());
 }
 
+async function releaseRuntimePool(
+    runtime: Awaited<ReturnType<typeof createWorkerPoolRuntime>>,
+    shouldDestroy: boolean
+): Promise<void> {
+    runtime.pool.setHostOutputSink?.(null);
+
+    if (shouldDestroy) {
+        await runtime.pool.destroy();
+    }
+}
+
+async function finishExecution(
+    runtime: Awaited<ReturnType<typeof createWorkerPoolRuntime>>,
+    resolvedRun: ResolvedRun,
+    startedAtMilliseconds: number
+): Promise<RunResult> {
+    await reportRunStart(runtime, startedAtMilliseconds);
+    await startPoolResourceTracking(runtime);
+
+    return await finishWorkerPoolRun(
+        runtime,
+        await executeWorkerPoolUnits(runtime, workerPoolPlacementPlan(resolvedRun), startedAtMilliseconds),
+        startedAtMilliseconds
+    );
+}
+
 async function executeWorkerPoolRunWithState(
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies,
-    collectionRunState: SupervisedRunState
+    collectionRunState: SupervisedRunState,
+    createdPool: TinypoolInstance | null = null
 ): Promise<RunResult> {
     if (workerPoolPlacementPlan(resolvedRun).units.length === 0) {
         return await createEmptyWorkerPoolResult(resolvedRun, dependencies, collectionRunState);
     }
 
-    const runtime = await createWorkerPoolRuntime(
-        resolvedRun,
+    const runtime = await createWorkerPoolRuntime({
+        collectionRunnerErrors: resolvedRun.collectionRunnerErrors,
+        createdPool,
         dependencies,
-        resolvedRun.collectionRunnerErrors,
-        collectionRunState
-    );
+        resolvedRun,
+        runState: collectionRunState
+    });
     const startedAtMilliseconds = dependencies.wallClock.currentTimestampInMilliseconds;
 
     try {
-        await reportRunStart(runtime, startedAtMilliseconds);
-        startPoolResourceTracking(runtime);
-        const completedTaskRuns = await executeWorkerPoolUnits(
-            runtime,
-            workerPoolPlacementPlan(resolvedRun),
-            startedAtMilliseconds
-        );
-
-        return await finishWorkerPoolRun(runtime, completedTaskRuns, startedAtMilliseconds);
+        return await finishExecution(runtime, resolvedRun, startedAtMilliseconds);
     } finally {
-        await runtime.pool.destroy();
+        await releaseRuntimePool(runtime, createdPool === null);
     }
 }
 
@@ -76,7 +97,25 @@ export async function runWorkerPoolCommand(
     createResolvedRun: (collection: WorkerPoolCollectionResult) => ResolvedRun
 ): Promise<RunResult> {
     const collectionRunState = createSupervisedRunState();
-    const collection = await collectInWorkerPool(command, dependencies, collectionRunState);
+    const pool = command.hostProcess.kind === 'child'
+        ? dependencies.createWorkerPool({
+            cwd: command.cwd,
+            hostProcess: command.hostProcess,
+            workerCount: dependencies.availableParallelism,
+            workerLifecycle: command.workerLifecycle
+        })
+        : null;
 
-    return await executeWorkerPoolRunWithState(createResolvedRun(collection), dependencies, collectionRunState);
+    try {
+        const collection = await collectInWorkerPool(command, dependencies, collectionRunState, pool);
+
+        return await executeWorkerPoolRunWithState(
+            createResolvedRun(collection),
+            dependencies,
+            collectionRunState,
+            pool
+        );
+    } finally {
+        await pool?.destroy();
+    }
 }

@@ -14,62 +14,84 @@ import {
     type SupervisedChildProcess
 } from './supervised-child-process.ts';
 import {
-    supervisedChildProcessEntryPointUrl
-} from './supervised-child-process.entry-point.ts';
+    childProcessEntryPointUrl
+} from './child-process.entry-point.ts';
+import {
+    createWorkerPoolHostProcessStarter
+} from './worker-pool-host-process.ts';
 
-const childProcessEntryPoint = fileURLToPath(supervisedChildProcessEntryPointUrl);
+const childProcessEntryPoint = fileURLToPath(childProcessEntryPointUrl);
 const childPackageRoot = dirname(dirname(childProcessEntryPoint));
+
+type ChildForkOptions = {
+    readonly cwd: string;
+    readonly env: Readonly<Record<string, string>>;
+    readonly execArgv: readonly string[];
+    readonly stdio: readonly ['ignore', 'pipe', 'pipe', 'ipc'];
+};
+
+function forkSupervisedChildProcess(
+    modulePath: string,
+    childArguments: readonly string[],
+    options: ChildForkOptions
+): SupervisedChildProcess {
+    const child = fork(modulePath, Array.from(childArguments), {
+        cwd: options.cwd,
+        env: options.env,
+        execArgv: Array.from(options.execArgv),
+        stdio: Array.from(options.stdio)
+    });
+
+    return {
+        get exitCode() {
+            return child.exitCode;
+        },
+        kill(signal) {
+            return child.kill(signal);
+        },
+        on(...registration) {
+            const [ event, listener ] = registration;
+
+            if (event === 'error') {
+                return child.on(event, listener);
+            }
+
+            if (event === 'exit') {
+                return child.on(event, listener);
+            }
+
+            return child.on(event, listener);
+        },
+        get pid() {
+            return child.pid;
+        },
+        send(message) {
+            return child.send(message);
+        },
+        get signalCode() {
+            return child.signalCode;
+        },
+        stderr: child.stderr,
+        stdout: child.stdout
+    };
+}
 
 export const startSupervisedChild = createSupervisedChildProcessStarter({
     childPackageRoot,
     childProcessEntryPoint,
-    fork(modulePath, childArguments, options): SupervisedChildProcess {
-        const child = fork(modulePath, Array.from(childArguments), {
-            cwd: options.cwd,
-            env: options.env,
-            execArgv: Array.from(options.execArgv),
-            stdio: Array.from(options.stdio)
-        });
-
-        return {
-            get exitCode() {
-                return child.exitCode;
-            },
-            kill(signal) {
-                return child.kill(signal);
-            },
-            on(...registration) {
-                const [ event, listener ] = registration;
-
-                if (event === 'error') {
-                    return child.on(event, listener);
-                }
-
-                if (event === 'exit') {
-                    return child.on(event, listener);
-                }
-
-                return child.on(event, listener);
-            },
-            get pid() {
-                return child.pid;
-            },
-            send(message) {
-                return child.send(message);
-            },
-            get signalCode() {
-                return child.signalCode;
-            },
-            stderr: child.stderr,
-            stdout: child.stdout
-        };
-    },
+    fork: forkSupervisedChildProcess,
     realpath: runFileSystem.realpath
+});
+
+export const startWorkerPoolHost = createWorkerPoolHostProcessStarter({
+    childProcessEntryPoint,
+    fork: forkSupervisedChildProcess
 });
 
 export const orchestrator = createCurrentProcessRunOrchestrator(defaultRunEngine, {
     discoverRunFilesWithProjectRoot: runDiscovery.discoverRunFilesWithProjectRoot,
     loadRunEngineModule,
     loadRunTestModules,
-    startSupervisedChild
+    startSupervisedChild,
+    startWorkerPoolHost
 });

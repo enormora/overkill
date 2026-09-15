@@ -1,11 +1,17 @@
-import type { ResourceUsageSnapshot } from '../engine/run-result.ts';
-import type { CollectedRunPlan } from '../run/run-types.ts';
 import type { RunnerError } from '../packages/engine/engine.entry-point.ts';
+import type { ResourceUsageSnapshot } from '../engine/run-result.ts';
+import {
+    childProcessEnvelope,
+    type ChildProcessEnvelope,
+    envelopeMessage
+} from '../run/child-process-protocol.ts';
+import type { CollectedRunPlan } from '../run/run-types.ts';
 import type { SupervisedChildProcess } from '../run/supervised-child-process.ts';
-import type {
-    SupervisedAssignmentCommand,
-    SupervisedChildCommand,
-    SupervisedChildMessage
+import {
+    supervisedChildCorrelationId,
+    type SupervisedAssignmentCommand,
+    type SupervisedChildCommand,
+    type SupervisedChildMessage
 } from '../run/supervised-protocol.ts';
 
 type ChildProcessOutputDataListener = (chunk: Uint8Array) => void;
@@ -62,14 +68,14 @@ type FakeSupervisedChildProcessState = {
     readonly emitExit: () => void;
     readonly emitMessage: (message: SupervisedChildMessage) => void;
     readonly onExit: (listener: () => void) => void;
-    readonly onMessage: (listener: (message: SupervisedChildMessage) => void) => void;
+    readonly onMessage: (listener: (message: ChildProcessEnvelope<SupervisedChildMessage>) => void) => void;
     readonly stderr: FakeSupervisedChildProcessOutput;
     readonly stdout: FakeSupervisedChildProcessOutput;
 };
 
 function createFakeSupervisedChildProcessState(): FakeSupervisedChildProcessState {
     const exitListeners: (() => void)[] = [];
-    const messageListeners: ((message: SupervisedChildMessage) => void)[] = [];
+    const messageListeners: ((message: ChildProcessEnvelope<SupervisedChildMessage>) => void)[] = [];
 
     return {
         emitExit() {
@@ -79,7 +85,7 @@ function createFakeSupervisedChildProcessState(): FakeSupervisedChildProcessStat
         },
         emitMessage(message) {
             for (const listener of messageListeners) {
-                listener(message);
+                listener(childProcessEnvelope(supervisedChildCorrelationId, message));
             }
         },
         onExit(listener) {
@@ -170,13 +176,18 @@ export function createFakeSupervisedChildProcess(input: FakeSupervisedChildProce
         },
         pid: 1,
         send(message) {
-            if (message.kind === 'assign') {
+            const parentMessage = envelopeMessage<SupervisedAssignmentCommand | SupervisedChildCommand>(
+                message,
+                supervisedChildCorrelationId
+            );
+
+            if (parentMessage?.kind === 'assign') {
                 if (command === null || testFile === null) {
                     throw new Error('Fake supervised child did not receive a test file.');
                 }
 
                 input.run({
-                    assignment: message,
+                    assignment: parentMessage,
                     command,
                     emitExit: state.emitExit,
                     emitMessage: state.emitMessage,
@@ -194,7 +205,9 @@ export function createFakeSupervisedChildProcess(input: FakeSupervisedChildProce
                 return;
             }
 
-            receiveRunCommand(message);
+            if (parentMessage !== null) {
+                receiveRunCommand(parentMessage);
+            }
         },
         signalCode: null,
         stderr: state.stderr,

@@ -16,6 +16,7 @@ import {
 
 type NodeCommandLineRunDiscovery = CurrentProcessRunOrchestratorDependencies['discoverRunFilesWithProjectRoot'];
 type NodeCommandLineStartSupervisedChild = CurrentProcessRunOrchestratorDependencies['startSupervisedChild'];
+type NodeCommandLineStartWorkerPoolHost = CurrentProcessRunOrchestratorDependencies['startWorkerPoolHost'];
 
 type NodeCommandLineRunnerDependencies = {
     readonly discoverRunFilesWithProjectRoot: NodeCommandLineRunDiscovery;
@@ -23,6 +24,7 @@ type NodeCommandLineRunnerDependencies = {
     readonly loadRunEngineModule: CurrentProcessRunOrchestratorDependencies['loadRunEngineModule'];
     readonly loadRunTestModules: CurrentProcessRunOrchestratorDependencies['loadRunTestModules'];
     readonly startSupervisedChild: NodeCommandLineStartSupervisedChild;
+    readonly startWorkerPoolHost: NodeCommandLineStartWorkerPoolHost;
 };
 
 export type NodeCommandLineRunnerOptions = {
@@ -43,7 +45,8 @@ export function createNodeCommandLineRunner(input: NodeCommandLineRunnerInput): 
             discoverRunFilesWithProjectRoot: input.dependencies.discoverRunFilesWithProjectRoot,
             loadRunEngineModule: input.dependencies.loadRunEngineModule,
             loadRunTestModules: input.dependencies.loadRunTestModules,
-            startSupervisedChild: input.dependencies.startSupervisedChild
+            startSupervisedChild: input.dependencies.startSupervisedChild,
+            startWorkerPoolHost: input.dependencies.startWorkerPoolHost
         })
     });
 }

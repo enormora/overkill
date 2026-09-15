@@ -30,6 +30,7 @@ import type {
 } from './worker-pool-protocol.ts';
 import {
     runStartTimeFromMilliseconds,
+    workerPoolExecutionFacts,
     type WorkerPoolRunRuntime,
     type WorkerPoolTaskRun
 } from './worker-pool-runtime.ts';
@@ -201,11 +202,19 @@ function unitPaths(unit: WorkUnit): readonly string[] {
 }
 
 function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit): WorkerPoolCommand {
+    const execution = workerPoolExecutionFacts(runtime.resolvedRun);
+
     return {
         collectionTimeoutMilliseconds: runtime.resolvedRun.facts.execution.timeoutPolicy.collectionMilliseconds,
         cwd: runtime.resolvedRun.cwd,
         engine: workerPoolEngine(runtime),
         hardTimeoutMilliseconds: runtime.resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds,
+        hostProcess: execution.hostProcess.kind === 'direct'
+            ? { kind: 'direct' }
+            : {
+                kind: 'child',
+                nodeArguments: Array.from(execution.hostProcess.nodeArguments)
+            },
         paths: unitPaths(unit),
         resourceBudgets: runtime.resolvedRun.facts.execution.resourceUsagePolicy.budgets,
         resourceUsageSamplingIntervalMilliseconds: runtime
@@ -216,7 +225,8 @@ function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit): Worker
             .samplingIntervalMilliseconds,
         scheduling: runtime.resolvedRun.facts.execution.scheduling,
         testFamily: runtime.resolvedRun.facts.execution.testFamily,
-        timeoutMilliseconds: runtime.resolvedRun.facts.execution.timeoutPolicy.softMilliseconds
+        timeoutMilliseconds: runtime.resolvedRun.facts.execution.timeoutPolicy.softMilliseconds,
+        workerLifecycle: execution.workerLifecycle
     };
 }
 
@@ -526,12 +536,13 @@ function recordPoolResourceBreach(runtime: WorkerPoolRunRuntime, sample: Resourc
     }
 }
 
-export function startPoolResourceTracking(runtime: WorkerPoolRunRuntime): void {
+export async function startPoolResourceTracking(runtime: WorkerPoolRunRuntime): Promise<void> {
     runtime.poolResourceUsageTracker?.start(function recordPoolSample(sample) {
         if (!runtime.terminalFailure.read()) {
             recordPoolResourceBreach(runtime, sample);
         }
     });
+    await runtime.poolResourceUsageTracker?.waitForStart?.();
 }
 
 export async function reportRunStart(

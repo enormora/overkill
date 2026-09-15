@@ -143,6 +143,7 @@ function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
                 capture: 'buffered',
                 debug: { mode: 'off', selectors: [] },
                 engine: { kind: 'default' },
+                hostProcess: { kind: 'direct' },
                 order: 'seeded',
                 placementPlan: placementPlan(),
                 processModel: 'worker-pool',
@@ -266,6 +267,7 @@ function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
             }
         },
         startSupervisedChild: testOnlyDependency,
+        startWorkerPoolHost: testOnlyDependency,
         wallClock: createDeterministicWallClock()
     };
 }
@@ -452,7 +454,7 @@ export const testNode = createOverkillSuite({
 
                 activeTask.state.addActiveCase(firstCaseIdentityKey(), { capture: null, id: firstCaseId() });
                 await reportRunStart({ ...runtime, collectedPlan: { ...runtime.collectedPlan, files: [] } }, 0);
-                startPoolResourceTracking(runtime);
+                await startPoolResourceTracking(runtime);
 
                 scope.assert.equal(runtime.terminalFailure.read(), true);
                 scope.assert.equal(activeTask.controller.signal.aborted, true);

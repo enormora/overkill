@@ -9,6 +9,11 @@ import type {
     RunScheduling,
     RunTestFamily
 } from './run-types.ts';
+import {
+    childProcessEnvelope,
+    envelopeMessage,
+    type ChildProcessEnvelope
+} from './child-process-protocol.ts';
 
 type SupervisedCommandBase = {
     readonly capabilityRestrictions: {
@@ -37,6 +42,8 @@ export type SupervisedRunCommand = SupervisedCommandBase & {
 
 export type SupervisedChildCommand = SupervisedCollectCommand | SupervisedRunCommand;
 
+export const supervisedChildCorrelationId = 'supervised-run';
+
 export type SupervisedAssignmentCommand = {
     readonly assignedCases: readonly CaseId[];
     readonly kind: 'assign';
@@ -56,3 +63,13 @@ export type SupervisedChildMessage = {
     readonly kind: 'sample';
     readonly sample: ResourceUsageSnapshot;
 };
+
+export function supervisedChildEnvelope(
+    message: SupervisedAssignmentCommand | SupervisedChildCommand | SupervisedChildMessage
+): ChildProcessEnvelope<SupervisedAssignmentCommand | SupervisedChildCommand | SupervisedChildMessage> {
+    return childProcessEnvelope(supervisedChildCorrelationId, message);
+}
+
+export function supervisedChildMessage(value: unknown): SupervisedChildMessage | null {
+    return envelopeMessage<SupervisedChildMessage>(value, supervisedChildCorrelationId);
+}

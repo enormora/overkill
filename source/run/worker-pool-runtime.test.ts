@@ -77,6 +77,7 @@ function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
                 capture: 'buffered',
                 debug: { mode: 'off', selectors: [] },
                 engine: { kind: 'default' },
+                hostProcess: { kind: 'direct' },
                 order: 'seeded',
                 placementPlan: createWorkerPoolPlacementPlan({
                     availableParallelism: 2,
@@ -207,6 +208,7 @@ function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
             }
         },
         startSupervisedChild: testOnlyDependency,
+        startWorkerPoolHost: testOnlyDependency,
         wallClock: createDeterministicWallClock()
     };
 }
@@ -340,24 +342,27 @@ async function workerPoolRuntimeCreation(): Promise<{
             return createFakeWorkerPool(options);
         }
     };
-    const unmeasuredRuntime = await createWorkerPoolRuntime(
-        workerPoolResolvedRun({ ...createCollectedPlan(), files: [] }),
+    const unmeasuredRuntime = await createWorkerPoolRuntime({
+        collectionRunnerErrors: [],
+        createdPool: null,
         dependencies,
-        [],
-        createSupervisedRunState()
-    );
-    const measuredRuntime = await createWorkerPoolRuntime(
-        resourceMeasurementResolvedRun(),
+        resolvedRun: workerPoolResolvedRun({ ...createCollectedPlan(), files: [] }),
+        runState: createSupervisedRunState()
+    });
+    const measuredRuntime = await createWorkerPoolRuntime({
+        collectionRunnerErrors: [],
+        createdPool: null,
         dependencies,
-        [],
-        createSupervisedRunState()
-    );
-    const freshRuntime = await createWorkerPoolRuntime(
-        workerPoolResolvedRunWithLifecycle('fresh-worker-per-unit'),
+        resolvedRun: resourceMeasurementResolvedRun(),
+        runState: createSupervisedRunState()
+    });
+    const freshRuntime = await createWorkerPoolRuntime({
+        collectionRunnerErrors: [],
+        createdPool: null,
         dependencies,
-        [],
-        createSupervisedRunState()
-    );
+        resolvedRun: workerPoolResolvedRunWithLifecycle('fresh-worker-per-unit'),
+        runState: createSupervisedRunState()
+    });
 
     await unmeasuredRuntime.pool.destroy();
     await measuredRuntime.pool.destroy();
@@ -393,9 +398,14 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(result.measuredSamplingInterval, 17);
                 scope.assert.notEqual(result.measuredTracker, null);
                 scope.assert.deepEqual(result.createdWorkerPools, [
-                    { workerCount: 0, workerLifecycle: 'reuse' },
-                    { workerCount: 1, workerLifecycle: 'reuse' },
-                    { workerCount: 1, workerLifecycle: 'fresh-worker-per-unit' }
+                    { cwd: process.cwd(), hostProcess: { kind: 'direct' }, workerCount: 0, workerLifecycle: 'reuse' },
+                    { cwd: process.cwd(), hostProcess: { kind: 'direct' }, workerCount: 1, workerLifecycle: 'reuse' },
+                    {
+                        cwd: process.cwd(),
+                        hostProcess: { kind: 'direct' },
+                        workerCount: 1,
+                        workerLifecycle: 'fresh-worker-per-unit'
+                    }
                 ]);
 
                 return scope.assert.collect();
@@ -408,12 +418,13 @@ export const testNode = createOverkillSuite({
             title: 'worker-pool runtime creation rejects non-worker-pool facts',
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function createMismatchedRuntime() {
-                    await createWorkerPoolRuntime(
-                        workerPoolPlanWithSupervisedFacts(),
-                        fakeDependencies(),
-                        [],
-                        createSupervisedRunState()
-                    );
+                    await createWorkerPoolRuntime({
+                        collectionRunnerErrors: [],
+                        createdPool: null,
+                        dependencies: fakeDependencies(),
+                        resolvedRun: workerPoolPlanWithSupervisedFacts(),
+                        runState: createSupervisedRunState()
+                    });
                 }, {
                     message: 'Worker-pool execution requires worker-pool execution facts.'
                 });

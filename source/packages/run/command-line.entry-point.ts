@@ -13,7 +13,10 @@ import {
     loadUnimplementedBaselineCommands,
     loadUnimplementedBenchmarkCommands
 } from '../../run/command-line-unimplemented-commands.ts';
-import { startSupervisedChild } from '../../run/run-orchestrator.entry-point.ts';
+import {
+    startSupervisedChild,
+    startWorkerPoolHost
+} from '../../run/run-orchestrator.entry-point.ts';
 import {
     loadRunEngineModule,
     loadRunTestModules,
@@ -38,7 +41,8 @@ export function createNodeCommandLineRunner(options: NodeCommandLineRunnerOption
             loadRunEngineModule,
             loadRunTestModules,
             loadRunConfig,
-            startSupervisedChild
+            startSupervisedChild,
+            startWorkerPoolHost
         }
     });
 }

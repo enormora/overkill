@@ -140,6 +140,24 @@ export type RunScheduling = 'concurrent' | 'serial';
 
 export type RunWorkerLifecycle = 'fresh-worker-per-unit' | 'reuse';
 
+type RunHostProcessReasonKey = {
+    readonly 'benchmark-isolation': true;
+    readonly debugging: true;
+    readonly 'forced-garbage-collection': true;
+    readonly 'host-isolation': true;
+    readonly 'node-arguments': true;
+    readonly profiling: true;
+};
+
+export type RunHostProcessReason = keyof RunHostProcessReasonKey;
+
+export type RunHostProcess = {
+    readonly kind: 'child';
+    readonly nodeArguments: readonly string[];
+} | {
+    readonly kind: 'direct';
+};
+
 type FileRunWorkDistribution = {
     readonly mode: 'file';
 };
@@ -261,6 +279,7 @@ type RunSupervisedIntegrationExecution = {
 };
 
 type RunWorkerPoolExecution = {
+    readonly hostProcess: RunHostProcess;
     readonly processModel: 'worker-pool';
     readonly scheduling: RunScheduling;
     readonly workDistribution: RunWorkDistribution;
@@ -396,9 +415,18 @@ type RunExecutionBaseFacts = {
 };
 
 type RunWorkerPoolExecutionFacts = RunExecutionBaseFacts & {
+    readonly hostProcess: RunHostProcessFacts;
     readonly processModel: 'worker-pool';
     readonly workDistribution: RunWorkDistribution;
     readonly workerLifecycle: RunWorkerLifecycle;
+};
+
+export type RunHostProcessFacts = {
+    readonly kind: 'child';
+    readonly nodeArguments: readonly string[];
+    readonly reasons: NonEmptyReadonlyArray<RunHostProcessReason>;
+} | {
+    readonly kind: 'direct';
 };
 
 type RunSingleProcessExecutionFacts = RunExecutionBaseFacts & {

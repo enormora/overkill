@@ -12,6 +12,7 @@ import type {
 } from './run-types.ts';
 import type {
     RunOrchestratorDependencies,
+    WorkerPoolResourceUsageTracker,
     WorkerPoolCreationOptions
 } from './run-orchestrator-dependencies.ts';
 import {
@@ -71,7 +72,7 @@ export type WorkerPoolRunRuntime = {
     readonly collectionRunnerErrors: readonly RunnerError[];
     readonly dependencies: RunOrchestratorDependencies;
     readonly pool: TinypoolInstance;
-    readonly poolResourceUsageTracker: RunResourceUsageTracker | null;
+    readonly poolResourceUsageTracker: WorkerPoolResourceUsageTracker | null;
     readonly previousPoolSample: StoredRunValue<ResourceUsageSnapshot | null>;
     readonly reporterDelivery: Awaited<ReturnType<typeof createReporterDelivery>>;
     readonly reporterEvents: ReporterEventQueue;
@@ -81,7 +82,13 @@ export type WorkerPoolRunRuntime = {
     readonly terminalFailure: StoredRunValue<boolean>;
 };
 
-type RunResourceUsageTracker = ReturnType<RunOrchestratorDependencies['createResourceUsageTracker']>;
+type WorkerPoolRuntimeInput = {
+    readonly collectionRunnerErrors: readonly RunnerError[];
+    readonly createdPool: TinypoolInstance | null;
+    readonly dependencies: RunOrchestratorDependencies;
+    readonly resolvedRun: ResolvedRun;
+    readonly runState: SupervisedRunState;
+};
 
 type WorkerPoolEntryPointToken = {
     readonly compatibility: TinypoolNodeCompatibility | null;
@@ -95,7 +102,7 @@ function workerPoolEntryPointHref(entryPoint: WorkerPoolEntryPointToken): string
     return workerPoolEntryPointUrl.href + entryPointWorkerName.slice(0, 0);
 }
 
-const workerPoolEntryPoint = workerPoolEntryPointHref({
+export const workerPoolEntryPoint = workerPoolEntryPointHref({
     compatibility: null,
     worker: workerPoolWorkerEntryPoint
 });
@@ -143,11 +150,18 @@ export function workerPoolCollectedPlan(resolvedRun: ResolvedRun): CollectedRunP
 }
 
 function createPoolResourceUsageTracker(
+    pool: TinypoolInstance,
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies
-): RunResourceUsageTracker | null {
+): WorkerPoolResourceUsageTracker | null {
     if (!resolvedRun.facts.execution.resourceUsagePolicy.measure) {
         return null;
+    }
+
+    if (pool.createResourceUsageTracker !== undefined) {
+        return pool.createResourceUsageTracker({
+            samplingIntervalMilliseconds: resolvedRun.facts.execution.resourceUsagePolicy.samplingIntervalMilliseconds
+        });
     }
 
     return dependencies.createResourceUsageTracker({
@@ -155,7 +169,7 @@ function createPoolResourceUsageTracker(
     });
 }
 
-function workerPoolExecutionFacts(resolvedRun: ResolvedRun): WorkerPoolExecutionFacts {
+export function workerPoolExecutionFacts(resolvedRun: ResolvedRun): WorkerPoolExecutionFacts {
     if (resolvedRun.facts.execution.processModel !== 'worker-pool') {
         throw new Error('Worker-pool execution requires worker-pool execution facts.');
     }
@@ -174,25 +188,40 @@ export function workerPoolPlacementPlan(resolvedRun: ResolvedRun): PlacementPlan
 }
 
 export async function createWorkerPoolRuntime(
-    resolvedRun: ResolvedRun,
-    dependencies: RunOrchestratorDependencies,
-    collectionRunnerErrors: readonly RunnerError[],
-    runState: SupervisedRunState
+    input: WorkerPoolRuntimeInput
 ): Promise<WorkerPoolRunRuntime> {
+    const { collectionRunnerErrors, createdPool, dependencies, resolvedRun, runState } = input;
     const placementPlan = workerPoolPlacementPlan(resolvedRun);
     const execution = workerPoolExecutionFacts(resolvedRun);
     const taskResults: RunResult[] = [];
+    const pool = createdPool ?? dependencies.createWorkerPool({
+        cwd: resolvedRun.cwd,
+        hostProcess: execution.hostProcess.kind === 'direct'
+            ? { kind: 'direct' }
+            : {
+                kind: 'child',
+                nodeArguments: Array.from(execution.hostProcess.nodeArguments)
+            },
+        workerCount: placementPlan.lanes.length,
+        workerLifecycle: execution.workerLifecycle
+    });
+    pool.setHostOutputSink?.(function recordHostOutput(stream, chunk) {
+        if (execution.capture === 'live') {
+            dependencies.liveOutput[stream].write(chunk);
+
+            return;
+        }
+
+        runState.recordCapturedOutput(stream, chunk, dependencies.wallClock.currentTimestampInMilliseconds);
+    });
 
     return {
         activeTasks: new Set(),
         collectedPlan: workerPoolCollectedPlan(resolvedRun),
         collectionRunnerErrors,
         dependencies,
-        pool: dependencies.createWorkerPool({
-            workerCount: placementPlan.lanes.length,
-            workerLifecycle: execution.workerLifecycle
-        }),
-        poolResourceUsageTracker: createPoolResourceUsageTracker(resolvedRun, dependencies),
+        pool,
+        poolResourceUsageTracker: createPoolResourceUsageTracker(pool, resolvedRun, dependencies),
         previousPoolSample: createStoredRunValue<ResourceUsageSnapshot | null>(null),
         reporterDelivery: await createReporterDelivery(resolvedRun, dependencies),
         reporterEvents: createReporterEventQueue(),

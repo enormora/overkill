@@ -4,6 +4,7 @@ import {
     unsupportedRequest
 } from './run-errors.ts';
 import { validateRunEngineSelection } from './run-engine-selection.ts';
+import { validateHostProcess } from './run-host-process.ts';
 import { invalidRunSelectionMessage } from './run-selection-filters.ts';
 import {
     invalidRunProfileNameMessage,
@@ -127,6 +128,10 @@ function validateRunMicrotestProfile(profile: RunProfileConfig): void {
 function validateRunIntegrationProfile(profile: RunProfileConfig): void {
     validateRunResourceUsagePolicy(profile.resourceUsage);
     validateTimeoutPolicy(profile.timeouts);
+
+    if (profile.execution.processModel === 'worker-pool') {
+        validateHostProcess(profile.execution.hostProcess);
+    }
 }
 
 const runProfileValidators: Readonly<Record<RunTestFamily, (profile: RunProfileConfig) => void>> = {

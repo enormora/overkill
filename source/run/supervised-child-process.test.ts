@@ -4,6 +4,10 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import {
+    childRoleArgument,
+    supervisedChildRole
+} from './child-process-roles.ts';
+import {
     createStoredRunValue,
     createSupervisedRunState,
     type StoredRunValue,
@@ -94,7 +98,7 @@ function createStarterFixture(): StarterFixture {
         },
         startSupervisedChild: createSupervisedChildProcessStarter({
             childPackageRoot: '/package/root',
-            childProcessEntryPoint: '/package/root/source/run/supervised-child-process.entry-point.ts',
+            childProcessEntryPoint: '/package/root/source/run/child-process.entry-point.ts',
             fork(modulePath, childArguments, options) {
                 forkCalls.push({ childArguments, modulePath, options });
 
@@ -192,9 +196,9 @@ export const testNode = createOverkillSuite({
                 scope.require.defined(forkCall);
                 scope.assert.equal(
                     forkCall.modulePath,
-                    '/package/root/source/run/supervised-child-process.entry-point.ts'
+                    '/package/root/source/run/child-process.entry-point.ts'
                 );
-                scope.assert.deepEqual(forkCall.childArguments, [ '--overkill-supervised-child' ]);
+                scope.assert.deepEqual(forkCall.childArguments, [ childRoleArgument(supervisedChildRole) ]);
                 scope.assert.deepEqual(forkCall.options, {
                     cwd: '/project/sub',
                     env: { KEEP: 'yes' },
@@ -254,7 +258,7 @@ export const testNode = createOverkillSuite({
                 await runSupervisedChildProcessEntryPoint([ 'plain' ], loadSupervisedChild);
                 await runSupervisedChildProcessEntryPoint([
                     'plain',
-                    '--overkill-supervised-child'
+                    childRoleArgument(supervisedChildRole)
                 ], loadSupervisedChild);
 
                 scope.assert.equal(loadCount, 1);

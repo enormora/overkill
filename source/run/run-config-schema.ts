@@ -193,6 +193,4 @@ export type RunProjectIntegrationExecution = z.infer<typeof integrationExecution
 export type RunProjectIntegrationProfileConfig = z.infer<typeof integrationProfileSchema>;
 export type RunProjectMicrotestExecution = z.infer<typeof microtestExecutionSchema>;
 export type RunProjectMicrotestProfileConfig = z.infer<typeof microtestProfileSchema>;
-export type RunProjectProfileConfig = z.infer<typeof profileSchema>;
-export type RunProjectProfilesConfig = z.infer<typeof profilesSchema>;
 export type RunProjectConfig = z.infer<typeof projectConfigSchema>;

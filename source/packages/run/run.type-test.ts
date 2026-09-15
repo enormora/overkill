@@ -25,6 +25,9 @@ import {
     type RunIfMain,
     type RunIfMainOptions,
     type RunIfMainRootOptions,
+    type RunHostProcess,
+    type RunHostProcessFacts,
+    type RunHostProcessReason,
     type runIfMain,
     type RunIntegrationProfileConfig,
     type RunSelection,
@@ -120,6 +123,19 @@ type ExpectedRunWorkDistribution = {
 } | {
     readonly mode: 'file';
 };
+type ExpectedRunHostProcess = {
+    readonly kind: 'child';
+    readonly nodeArguments: readonly string[];
+} | {
+    readonly kind: 'direct';
+};
+type ExpectedRunHostProcessFacts = {
+    readonly kind: 'child';
+    readonly nodeArguments: readonly string[];
+    readonly reasons: readonly [RunHostProcessReason, ...readonly RunHostProcessReason[]];
+} | {
+    readonly kind: 'direct';
+};
 
 describe('@overkill-dev/run', function () {
     test('exposes the typed run command surface', function () {
@@ -209,6 +225,23 @@ describe('@overkill-dev/run', function () {
         >()
             .type
             .toBe<RunWorkDistribution>();
+        expect<
+            Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['hostProcess']
+        >()
+            .type
+            .toBe<RunHostProcessFacts>();
+        expect<RunHostProcess>().type.toBe<ExpectedRunHostProcess>();
+        expect<RunHostProcessFacts>().type.toBe<ExpectedRunHostProcessFacts>();
+        expect<RunHostProcessReason>().type.toBe<
+            keyof {
+                readonly 'benchmark-isolation': true;
+                readonly debugging: true;
+                readonly 'forced-garbage-collection': true;
+                readonly 'host-isolation': true;
+                readonly 'node-arguments': true;
+                readonly profiling: true;
+            }
+        >();
         expect<RunWorkDistribution>().type.toBe<ExpectedRunWorkDistribution>();
         expect<RunWorkGroup>().type.toBe<{
             readonly fileSets: readonly [string, ...readonly string[]];
@@ -298,6 +331,28 @@ describe('@overkill-dev/run config', function () {
             readonly testFamily: 'microtest';
         }>();
         expect<RunProjectProfileConfig>().type.toBeAssignableFrom<{
+            readonly files: RunProjectProfileFiles;
+            readonly testFamily: 'integration';
+        }>();
+        expect<RunIntegrationProfileConfig>().type.toBeAssignableFrom<{
+            readonly execution: {
+                readonly hostProcess: { readonly kind: 'child'; readonly nodeArguments: readonly string[]; };
+                readonly processModel: 'worker-pool';
+                readonly scheduling: 'concurrent';
+                readonly workDistribution: { readonly mode: 'file'; };
+                readonly workerLifecycle: 'reuse';
+            };
+            readonly files: RunProfileFiles;
+            readonly reporters: null;
+            readonly resourceUsage: RunResourceUsagePolicy;
+            readonly testFamily: 'integration';
+            readonly timeouts: RunExecutionFacts['timeoutPolicy'];
+        }>();
+        expect<RunProjectIntegrationProfileConfig>().type.not.toBeAssignableFrom<{
+            readonly execution: {
+                readonly hostProcess: { readonly kind: 'child'; readonly nodeArguments: readonly string[]; };
+                readonly processModel: 'worker-pool';
+            };
             readonly files: RunProjectProfileFiles;
             readonly testFamily: 'integration';
         }>();

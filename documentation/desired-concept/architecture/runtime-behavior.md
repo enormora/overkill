@@ -481,18 +481,21 @@ the coordinator and the worker-thread pool:
 {
     processModel: 'worker-pool',
     hostProcess: {
+        kind: 'child',
         reasons: [ 'node-arguments' ],
         nodeArguments: [ '--expose-gc' ]
     }
 }
 ```
 
-The public profile still says `processModel: 'worker-pool'`. The host process
-is selected by planning when a run needs process-level Node/V8 arguments or
-isolation around the worker pool. This is a generic runner shape, not a
-benchmark-only mechanism. It is useful for benchmarks, profiling, debugging, and
-other supervised worker-pool runs that need process flags without applying
-those flags to the parent coordinator.
+The public profile still says `processModel: 'worker-pool'`. `hostProcess:
+{ kind: 'direct' }` means the coordinator owns the worker-thread pool directly.
+`hostProcess: { kind: 'child', nodeArguments }` means planning inserts the
+supervised host process. Empty `nodeArguments` is still meaningful when the run
+needs host-level isolation without Node flags. This is a generic runner shape,
+not a benchmark-only mechanism. It is useful for benchmarks, profiling,
+debugging, and other supervised worker-pool runs that need process flags
+without applying those flags to the parent coordinator.
 
 `hostProcess` does not make worker-thread execution process-fatal-safe. A
 native abort, process out-of-memory failure, or forced process exit still takes

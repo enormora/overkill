@@ -353,6 +353,9 @@ export function createDeterministicRunOrchestratorWithSeed(createSeed: () => big
                 }
             });
         },
+        startWorkerPoolHost() {
+            throw new Error('Deterministic worker-pool host execution is not configured.');
+        },
         wallClock
     });
 }

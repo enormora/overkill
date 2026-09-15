@@ -4,6 +4,7 @@ import type {
     RunCommand,
     RunConfig,
     RunExecutionFacts,
+    RunHostProcess,
     RunIntegrationExecution,
     RunIntegrationProfileConfig,
     RunMicrotestExecution,
@@ -17,6 +18,7 @@ import type {
     RunWorkDistribution,
     RunWorkerLifecycle
 } from '../run/run-types.ts';
+import { hostProcessFacts } from '../run/run-host-process.ts';
 
 type WorkerPoolExecutionOverrides = Partial<
     Extract<RunIntegrationExecution, { readonly processModel: 'worker-pool'; }>
@@ -111,6 +113,7 @@ export function testRunExecutionFacts(command: RunCommand, profile: RunProfileCo
     if (profile.execution.processModel === 'worker-pool') {
         return {
             ...facts,
+            hostProcess: hostProcessFacts(profile.execution.hostProcess),
             processModel: profile.execution.processModel,
             workDistribution: profile.execution.workDistribution,
             workerLifecycle: profile.execution.workerLifecycle
@@ -147,6 +150,22 @@ function defaultWorkDistribution(overrides: Partial<RunIntegrationExecution>): R
         : { mode: 'file' };
 }
 
+function hasHostProcessOverride(
+    overrides: Partial<RunIntegrationExecution>
+): overrides is WorkerPoolExecutionOverrides {
+    return Object.hasOwn(overrides, 'hostProcess');
+}
+
+function defaultHostProcess(overrides: Partial<RunIntegrationExecution>): RunHostProcess {
+    if (!hasHostProcessOverride(overrides)) {
+        return { kind: 'direct' };
+    }
+
+    const { hostProcess } = overrides;
+
+    return hostProcess ?? { kind: 'direct' };
+}
+
 function defaultIntegrationExecution(overrides: Partial<RunIntegrationExecution> = {}): RunIntegrationExecution {
     const processModel = overrides.processModel ?? 'worker-pool';
     const scheduling = overrides.scheduling ?? 'concurrent';
@@ -156,6 +175,7 @@ function defaultIntegrationExecution(overrides: Partial<RunIntegrationExecution>
             processModel,
             scheduling,
             workDistribution: defaultWorkDistribution(overrides),
+            hostProcess: defaultHostProcess(overrides),
             workerLifecycle: defaultWorkerLifecycle(overrides)
         };
     }
