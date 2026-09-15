@@ -587,7 +587,10 @@ Default group behavior is intentionally conservative:
   selected file set unless it explicitly opts into `unmatched: 'file'`
 
 Groups affect placement only. They do not create a new test identity and do
-not add a selection/filter dimension.
+not add a selection/filter dimension. Resolved `WorkUnit`s record the concrete
+order, scheduling, and worker lifecycle used for execution. Group-local order
+may reorder that group's units or in-unit work, but the selected profile order
+still owns the global placement slots.
 
 ## Execution Order
 

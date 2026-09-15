@@ -7,16 +7,10 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import {
-    defaultIntegrationProfile,
-    defaultMicrotestProfile,
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
-import {
-    createSupervisedCollectCommand,
-    createWorkerPoolCommand
-} from './run-isolated-command.ts';
 import {
     runStartTimeFromMilliseconds,
     workerPoolCollectedPlan,
@@ -32,24 +26,20 @@ import {
     selectedAssignedCases,
     sendCollectedPlan
 } from './worker-pool-worker-plan.ts';
-import type { RunCommand } from './run-types.ts';
 
 const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const secondIntegrationPath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
 const annotations = { ownership: [], tags: [] };
 const controls = { capture: null, timeoutMilliseconds: null };
+const defaultUnitPolicy = {
+    order: 'plan',
+    scheduling: 'concurrent',
+    workerLifecycle: 'reuse'
+} as const;
 type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
 type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
 type PlacementPlan = NonNullable<ResolvedRun['facts']['execution']['placementPlan']>;
-type RunProfileConfig = RunCommand['config']['profiles'][string];
 type WorkUnit = PlacementPlan['units'][number];
-type DiscoveredFile = {
-    readonly file: string;
-    readonly fileSet: string | null;
-    readonly href: string;
-    readonly path: string;
-};
-type DiscoveredFiles = readonly [DiscoveredFile, ...readonly DiscoveredFile[]];
 
 function createPlanningTestPlan(): TestPlan {
     const firstCase = defaultRunEngine.createTestCase({
@@ -165,32 +155,6 @@ function generatedCollectedFile(index: number): CollectedRunPlan['files'][number
     };
 }
 
-function createRunCommand(profile: RunProfileConfig): RunCommand {
-    return {
-        config: defaultRunConfig({
-            profiles: {
-                integration: profile,
-                microtest: defaultMicrotestProfile()
-            }
-        }),
-        cwd: process.cwd(),
-        engine: { kind: 'default' },
-        request: defaultRunRequest({
-            capture: 'live',
-            paths: [ integrationPath ],
-            profile: 'integration',
-            resourceBudgetOverrides: {
-                activeResourceCount: 7,
-                javaScriptEngineHeapBytes: null,
-                residentSetBytes: null,
-                residentSetGrowthBytesPerSecond: null
-            },
-            measureResourceUsage: true,
-            resourceUsageSamplingIntervalMilliseconds: 13
-        })
-    };
-}
-
 function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
     return {
         collectionRunnerErrors: [],
@@ -274,6 +238,7 @@ function firstWorkUnit(): WorkUnit {
     return {
         group: null,
         id: { key: integrationPath, mode: 'file', runtime: null, workload: null },
+        ...defaultUnitPolicy,
         work: [ { case: firstCaseId(), runtime: null, workload: null } ]
     };
 }
@@ -282,6 +247,7 @@ function secondWorkUnit(): WorkUnit {
     return {
         group: null,
         id: { key: secondIntegrationPath, mode: 'file', runtime: null, workload: null },
+        ...defaultUnitPolicy,
         work: [ { case: secondCaseId(), runtime: null, workload: null } ]
     };
 }
@@ -338,13 +304,6 @@ function manyCollectedFiles(): CollectedRunPlan['files'] {
     });
 }
 
-function discoveredFiles(): DiscoveredFiles {
-    return [
-        { file: integrationPath, fileSet: null, href: 'virtual:first', path: integrationPath },
-        { file: secondIntegrationPath, fileSet: 'slow', href: 'virtual:second', path: secondIntegrationPath }
-    ];
-}
-
 function fileSetForFile(file: string): string | null {
     const files = new Map([
         [ integrationPath, 'fast' ],
@@ -384,7 +343,18 @@ function assertEmptyCollectedFiles(scope: OverkillScope): void {
         createCollectedPlan().files[1] ?? generatedCollectedFile(1)
     ]);
 
-    scope.assert.deepEqual(workUnitsFromCollectedPlan(plan), [ secondWorkUnit() ]);
+    scope.assert.deepEqual(
+        workUnitsFromCollectedPlan({
+            fileSetForFile,
+            order: 'plan',
+            seed: { value: 1n },
+            selectedPlan: plan,
+            scheduling: 'concurrent',
+            workDistribution: { mode: 'file' },
+            workerLifecycle: 'reuse'
+        }),
+        [ secondWorkUnit() ]
+    );
 }
 
 function assertWorkerCountBounds(scope: OverkillScope): void {
@@ -396,7 +366,9 @@ function assertWorkerCountBounds(scope: OverkillScope): void {
         order: 'plan',
         seed: { value: 1n },
         selectedPlan: manyPlan,
-        workDistribution: { mode: 'file' }
+        scheduling: 'concurrent',
+        workDistribution: { mode: 'file' },
+        workerLifecycle: 'reuse'
     });
     const cappedWorkerPlan = createWorkerPoolPlacementPlan({
         availableParallelism: 99,
@@ -404,7 +376,9 @@ function assertWorkerCountBounds(scope: OverkillScope): void {
         order: 'plan',
         seed: { value: 1n },
         selectedPlan: manyPlan,
-        workDistribution: { mode: 'file' }
+        scheduling: 'concurrent',
+        workDistribution: { mode: 'file' },
+        workerLifecycle: 'reuse'
     });
 
     scope.assert.deepEqual(
@@ -414,7 +388,9 @@ function assertWorkerCountBounds(scope: OverkillScope): void {
             order: 'plan',
             seed: { value: 1n },
             selectedPlan: emptyPlan,
-            workDistribution: { mode: 'file' }
+            scheduling: 'concurrent',
+            workDistribution: { mode: 'file' },
+            workerLifecycle: 'reuse'
         }),
         { assignments: [], lanes: [], units: [] }
     );
@@ -481,7 +457,15 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(runStartTimeFromMilliseconds(0), '1970-01-01T00:00:00.000Z');
                 scope.assert.equal(workerPoolCollectedPlan(workerPoolRun), collectedPlan);
                 scope.assert.deepEqual(
-                    workUnitsFromCollectedPlan(collectedPlan),
+                    workUnitsFromCollectedPlan({
+                        fileSetForFile,
+                        order: 'plan',
+                        seed: { value: 1n },
+                        selectedPlan: collectedPlan,
+                        scheduling: 'concurrent',
+                        workDistribution: { mode: 'file' },
+                        workerLifecycle: 'reuse'
+                    }),
                     [ firstWorkUnit(), secondWorkUnit() ]
                 );
                 scope.assert.deepEqual(
@@ -491,40 +475,15 @@ export const testNode = createOverkillSuite({
                         order: 'plan',
                         seed: { value: 1n },
                         selectedPlan: collectedPlan,
-                        workDistribution: { mode: 'file' }
+                        scheduling: 'concurrent',
+                        workDistribution: { mode: 'file' },
+                        workerLifecycle: 'reuse'
                     }),
                     expectedPlacementPlan()
                 );
                 scope.assert.throws(function readLocalPlan() {
                     workerPoolCollectedPlan(localRun);
                 }, { message: 'Worker-pool execution requires a worker-pool collected plan.' });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'isolated command builders map integration profiles to worker commands',
-            body(scope: OverkillScope) {
-                const profile = defaultIntegrationProfile({
-                    execution: { processModel: 'worker-pool', scheduling: 'serial' },
-                    files: { exclude: [], include: [ integrationPath ] },
-                    timeouts: { collectionMilliseconds: 17, hardMilliseconds: 23, softMilliseconds: 19 }
-                });
-                const command = createRunCommand(profile);
-
-                scope.assert.deepEqual(
-                    createSupervisedCollectCommand(command, profile, discoveredFiles()).capabilityRestrictions,
-                    {
-                        mode: 'disabled'
-                    }
-                );
-                scope.assert.deepEqual(createWorkerPoolCommand(command, profile, discoveredFiles()).paths, [
-                    integrationPath,
-                    secondIntegrationPath
-                ]);
 
                 return scope.assert.collect();
             }

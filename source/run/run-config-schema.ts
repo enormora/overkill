@@ -100,10 +100,39 @@ const workerLifecycleSchema = z.union([
     z.literal('reuse')
 ]);
 
+const workGroupGranularitySchema = z.union([
+    z.literal('case'),
+    z.literal('file'),
+    z.literal('group')
+]);
+
+const workGroupOrderSchema = z.union([
+    z.literal('lexical'),
+    z.literal('plan'),
+    z.literal('profile-default'),
+    z.literal('seeded')
+]);
+
+const workGroupSchedulingSchema = z.union([
+    z.literal('concurrent'),
+    z.literal('profile-default'),
+    z.literal('serial')
+]);
+
+const workGroupWorkerLifecycleSchema = z.union([
+    z.literal('fresh-worker-per-unit'),
+    z.literal('profile-default'),
+    z.literal('reuse')
+]);
+
 const workGroupSchema = z
     .strictObject({
         fileSets: z.tuple([ z.string() ]).rest(z.string()).readonly(),
-        name: z.string()
+        granularity: z.optional(workGroupGranularitySchema),
+        name: z.string(),
+        order: z.optional(workGroupOrderSchema),
+        scheduling: z.optional(workGroupSchedulingSchema),
+        workerLifecycle: z.optional(workGroupWorkerLifecycleSchema)
     })
     .readonly();
 
@@ -122,7 +151,7 @@ const workDistributionSchema = z.discriminatedUnion('mode', [
         .strictObject({
             groups: z.tuple([ workGroupSchema ]).rest(workGroupSchema).readonly(),
             mode: z.literal('group'),
-            unmatched: z.optional(z.literal('reject'))
+            unmatched: z.optional(z.union([ z.literal('file'), z.literal('reject') ]))
         })
         .readonly()
 ]);

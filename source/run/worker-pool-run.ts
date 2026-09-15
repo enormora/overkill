@@ -1,5 +1,8 @@
 import type { RunResult } from '../packages/engine/engine.entry-point.ts';
-import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
+import type {
+    CreatedWorkerPool,
+    RunOrchestratorDependencies
+} from './run-orchestrator-dependencies.ts';
 import {
     createSupervisedRunState,
     type SupervisedRunState
@@ -7,7 +10,6 @@ import {
 import type {
     ResolvedRun
 } from './run-types.ts';
-import type { TinypoolInstance } from './tinypool-node-compatibility.ts';
 import { collectInWorkerPool } from './worker-pool-collection.ts';
 import {
     executeWorkerPoolUnits,
@@ -33,12 +35,11 @@ export async function collectWorkerPoolRun(
 }
 
 async function releaseRuntimePool(
-    runtime: Awaited<ReturnType<typeof createWorkerPoolRuntime>>,
-    shouldDestroy: boolean
+    runtime: Awaited<ReturnType<typeof createWorkerPoolRuntime>>
 ): Promise<void> {
     runtime.pool.setHostOutputSink?.(null);
 
-    if (shouldDestroy) {
+    if (runtime.destroyPool) {
         await runtime.pool.destroy();
     }
 }
@@ -62,7 +63,7 @@ async function executeWorkerPoolRunWithState(
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies,
     collectionRunState: SupervisedRunState,
-    createdPool: TinypoolInstance | null = null
+    createdPool: CreatedWorkerPool | null = null
 ): Promise<RunResult> {
     if (workerPoolPlacementPlan(resolvedRun).units.length === 0) {
         return await createEmptyWorkerPoolResult(resolvedRun, dependencies, collectionRunState);
@@ -80,7 +81,7 @@ async function executeWorkerPoolRunWithState(
     try {
         return await finishExecution(runtime, resolvedRun, startedAtMilliseconds);
     } finally {
-        await releaseRuntimePool(runtime, createdPool === null);
+        await releaseRuntimePool(runtime);
     }
 }
 

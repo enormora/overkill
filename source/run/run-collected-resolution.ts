@@ -97,9 +97,13 @@ function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): R
             order: input.request.order,
             seed: input.request.seed,
             selectedPlan: input.collectedPlan,
+            scheduling: input.profile.execution.scheduling,
             workDistribution: input.profile.execution.processModel === 'worker-pool'
                 ? input.profile.execution.workDistribution
-                : { mode: 'file' }
+                : { mode: 'file' },
+            workerLifecycle: input.profile.execution.processModel === 'worker-pool'
+                ? input.profile.execution.workerLifecycle
+                : 'reuse'
         })
         : null;
     const orderedCases = placementPlan === null

@@ -32,6 +32,11 @@ const testCaseMetadata = {
     controls: {},
     definitionLocations: [ { kind: 'unknown' as const } ]
 } as const;
+const defaultUnitPolicy = {
+    order: 'plan',
+    scheduling: 'serial',
+    workerLifecycle: 'reuse'
+} as const;
 
 function firstCaseId(): CaseId {
     return {
@@ -83,6 +88,7 @@ function firstWorkUnit(): WorkUnit {
             runtime: null,
             workload: null
         },
+        ...defaultUnitPolicy,
         work: [
             {
                 case: firstCaseId(),
@@ -139,6 +145,20 @@ function placementPlanWithGroupUnit(): PlacementPlan {
             runtime: null,
             workload: null
         }
+    };
+
+    return {
+        ...placementPlan(),
+        assignments: [ { lane: 'worker-1', unit: unit.id } ],
+        units: [ unit ]
+    };
+}
+
+function placementPlanWithUnitPolicy(): PlacementPlan {
+    const unit: WorkUnit = {
+        ...firstWorkUnit(),
+        scheduling: 'concurrent',
+        workerLifecycle: 'fresh-worker-per-unit'
     };
 
     return {
@@ -248,6 +268,8 @@ type CapturedWorkerTask = {
     readonly assignedWork: readonly unknown[];
     readonly command: {
         readonly paths: readonly string[];
+        readonly scheduling: 'concurrent' | 'serial';
+        readonly workerLifecycle: 'fresh-worker-per-unit' | 'reuse';
     };
 };
 
@@ -364,6 +386,7 @@ function fakeWorkerRuntime(placement: PlacementPlan): WorkerPoolRunRuntime {
         collectedPlan: createCollectedPlan(),
         collectionRunnerErrors: [],
         dependencies: fakeDependencies(),
+        destroyPool: true,
         pool: createFakePool(),
         poolResourceUsageTracker: null,
         previousPoolSample: createStoredRunValue<ResourceSample>(null),
@@ -487,6 +510,29 @@ export const testNode = createOverkillSuite({
                 scope.require.defined(capturedTask);
                 scope.assert.deepEqual(capturedTask.command.paths, [ integrationPath ]);
                 scope.assert.equal(capturedTask.assignedWork.length, 1);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'worker-pool execution applies unit scheduling and lifecycle',
+            async body(scope: OverkillScope) {
+                const acceptingPool = createAcceptingPool();
+                const runtime = {
+                    ...fakeWorkerRuntime(placementPlan()),
+                    pool: acceptingPool.pool
+                };
+                await executeWorkerPoolUnits(
+                    runtime,
+                    placementPlanWithUnitPolicy(),
+                    0
+                );
+                const capturedTask = acceptingPool.capturedTasks[0];
+
+                scope.require.defined(capturedTask);
+                scope.assert.equal(capturedTask.command.scheduling, 'concurrent');
+                scope.assert.equal(capturedTask.command.workerLifecycle, 'fresh-worker-per-unit');
 
                 return scope.assert.collect();
             }

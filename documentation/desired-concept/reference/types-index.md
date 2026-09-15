@@ -1061,6 +1061,9 @@ type WorkUnit = {
     readonly id: WorkUnitId;
     readonly work: NonEmptyReadonlyArray<WorkId>;
     readonly group: string | null;
+    readonly order: 'plan' | 'lexical' | 'seeded';
+    readonly scheduling: 'serial' | 'concurrent';
+    readonly workerLifecycle: 'reuse' | 'fresh-worker-per-unit';
 };
 
 type PlacementPlan = {

@@ -107,7 +107,11 @@ function copyMicrotestExecution(execution: RunMicrotestExecution): RunMicrotestE
 function copyWorkGroup(group: RunWorkGroup): RunWorkGroup {
     return {
         fileSets: [ group.fileSets[0], ...group.fileSets.slice(1) ],
-        name: group.name
+        granularity: group.granularity,
+        name: group.name,
+        order: group.order,
+        scheduling: group.scheduling,
+        workerLifecycle: group.workerLifecycle
     };
 }
 

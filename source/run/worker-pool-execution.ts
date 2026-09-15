@@ -223,10 +223,10 @@ function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit): Worker
             .execution
             .resourceUsagePolicy
             .samplingIntervalMilliseconds,
-        scheduling: runtime.resolvedRun.facts.execution.scheduling,
+        scheduling: unit.scheduling,
         testFamily: runtime.resolvedRun.facts.execution.testFamily,
         timeoutMilliseconds: runtime.resolvedRun.facts.execution.timeoutPolicy.softMilliseconds,
-        workerLifecycle: execution.workerLifecycle
+        workerLifecycle: unit.workerLifecycle
     };
 }
 
