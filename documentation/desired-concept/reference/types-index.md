@@ -1751,6 +1751,10 @@ edges, scopes, dimensions, and requirements before scheduling. Planning lowers
 those summaries into placement constraints, expands runtime matrices, and
 execution injects acquired handles into `scope.runtimes` and `scope.resources`
 when handles exist.
+Nested first-party wrappers normalize to one descriptor set before planning.
+Duplicate public `scope.resources` keys and public `scope.runtimes` names are
+rejected. Equal resource keys may appear under different runtime names because
+those handles are namespaced by `scope.runtimes.<runtimeName>`.
 Microtest profiles reject resource descriptors before body execution.
 Rejection is based on the collected attachment descriptors, not on which
 authoring wrapper or facade attached them.

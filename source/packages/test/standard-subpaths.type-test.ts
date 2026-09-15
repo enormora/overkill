@@ -280,6 +280,23 @@ describe('@overkill-dev/test standard subpaths', function () {
             expect(resourcesBody).type.toBeAssignableTo<TestBody>();
         });
 
+        test('types nested resource wrappers through explicit scope generics', function () {
+            const nestedBody = withResource(
+                temporaryDirectory,
+                withRuntime<typeof runtime, ResourceTestScope<Record<'scratch', typeof temporaryDirectory>>>(
+                    runtime,
+                    function runWithScratchAndRuntime(scope) {
+                        expect(scope.resources.scratch).type.toBe<TemporaryDirectoryHandle>();
+                        expect(scope.runtimes.api.database).type.toBe<Database>();
+
+                        return scope.assert.collect();
+                    }
+                )
+            );
+
+            expect(nestedBody).type.toBeAssignableTo<TestBody>();
+        });
+
         test('accepts descriptor wrappers from microtest test authoring types', function () {
             const runtimeBody = withRuntime(runtime, function runWithDatabase(scope) {
                 return scope.assert.collect();

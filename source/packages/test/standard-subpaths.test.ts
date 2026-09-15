@@ -334,9 +334,43 @@ function assertResourceWrapperValidation(
     scope.assert.throws(function rejectEmptyResources() {
         invokeWithResources({}, body());
     }, { message: 'withResources() requires at least one resource descriptor.' });
-    scope.assert.throws(function rejectNestedWrapper() {
-        resourcesSubpath.withResource(temporaryDirectory, resourcesSubpath.withRuntime(runtime, body()));
-    }, { message: 'withResource() does not support already wrapped bodies yet.' });
+    scope.assert.deepEqual(
+        readTestBodyResourceAttachments(resourcesSubpath.withResource(
+            temporaryDirectory,
+            resourcesSubpath.withRuntime(runtime, body())
+        )),
+        {
+            directResources: [ { key: 'scratch', resourceName: 'scratch' } ],
+            resourceGraph: [
+                {
+                    dependencies: [],
+                    name: 'scratch',
+                    requirements: [],
+                    scope: 'per-case'
+                },
+                {
+                    dependencies: [],
+                    name: 'database',
+                    requirements: [ { kind: 'exclusive-resource', name: 'database' } ],
+                    scope: 'per-case'
+                }
+            ],
+            runtimeGraphs: [
+                {
+                    dimensions: {},
+                    name: 'api',
+                    requirements: [ { kind: 'startup-budget-milliseconds', minimumMilliseconds: 1000 } ],
+                    resources: [ { key: 'database', resourceName: 'database' } ]
+                }
+            ]
+        }
+    );
+    scope.assert.throws(function rejectDuplicateDirectResourceKey() {
+        resourcesSubpath.withResource(temporaryDirectory, resourcesSubpath.withResource(temporaryDirectory, body()));
+    }, { message: 'Resource scope "scratch" is attached multiple times.' });
+    scope.assert.throws(function rejectDuplicateRuntimeKey() {
+        resourcesSubpath.withRuntime(runtime, resourcesSubpath.withRuntime(runtime, body()));
+    }, { message: 'Runtime scope "api" is attached multiple times.' });
     scope.assert.throws(function rejectDuplicateNames() {
         const duplicateDatabase = resourcesSubpath.defineResource({
             name: 'database',

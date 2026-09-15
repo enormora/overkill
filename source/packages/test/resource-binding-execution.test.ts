@@ -144,6 +144,20 @@ function databaseResource(): DatabaseResource {
     });
 }
 
+function countedDatabaseResource(recordAcquisition: () => void): DatabaseResource {
+    return resourcesSubpath.defineResource({
+        name: 'database',
+        scope: 'per-case',
+        requirements: [],
+        acquire(): Database {
+            recordAcquisition();
+
+            return { url: 'postgres://localhost' };
+        },
+        dispose: null
+    });
+}
+
 async function assertWrappersInjectHandles(scope: TestScope): Promise<void> {
     const database = databaseResource();
     const runtime = resourcesSubpath.defineRuntime({
@@ -165,6 +179,117 @@ async function assertWrappersInjectHandles(scope: TestScope): Promise<void> {
 
     scope.assert.equal(Array.isArray(await runtimeBody(scope)), true);
     scope.assert.equal(Array.isArray(await resourceBody(scope)), true);
+}
+
+async function assertNestedWrappersShareAcquisition(scope: TestScope): Promise<void> {
+    let acquisitions = 0;
+    const database = countedDatabaseResource(function recordAcquisition(): void {
+        acquisitions += 1;
+    });
+    const runtime = resourcesSubpath.defineRuntime({
+        name: 'api',
+        dimensions: {},
+        resources: { database },
+        requirements: []
+    });
+    const body = resourcesSubpath.withResource(
+        database,
+        resourcesSubpath.withRuntime<
+            typeof runtime,
+            resourcesSubpath.ResourceTestScope<Record<'database', typeof database>>
+        >(
+            runtime,
+            function runWithNestedScope(nestedScope) {
+                nestedScope.assert.equal(nestedScope.resources.database.url, 'postgres://localhost');
+                nestedScope.assert.equal(nestedScope.runtimes.api.database.url, 'postgres://localhost');
+                nestedScope.assert.equal(nestedScope.resources.database, nestedScope.runtimes.api.database);
+
+                return nestedScope.assert.collect();
+            }
+        )
+    );
+    const observed = await executeObservedBody(body);
+    const result = firstCaseResult(scope, observed);
+
+    scope.assert.equal(result.verdict, 'pass');
+    scope.assert.equal(acquisitions, 1);
+}
+
+async function assertRuntimeInternalKeysRemainNamespaced(scope: TestScope): Promise<void> {
+    let acquisitions = 0;
+    const database = countedDatabaseResource(function recordAcquisition(): void {
+        acquisitions += 1;
+    });
+    const apiRuntime = resourcesSubpath.defineRuntime({
+        name: 'api',
+        dimensions: {},
+        resources: { database },
+        requirements: []
+    });
+    const adminRuntime = resourcesSubpath.defineRuntime({
+        name: 'admin',
+        dimensions: {},
+        resources: { database },
+        requirements: []
+    });
+    const body = resourcesSubpath.withRuntime(
+        apiRuntime,
+        resourcesSubpath.withRuntime<typeof adminRuntime, resourcesSubpath.RuntimeTestScope<typeof apiRuntime>>(
+            adminRuntime,
+            function runWithRuntimeKeys(runtimeScope) {
+                runtimeScope.assert.equal(runtimeScope.runtimes.api.database, runtimeScope.runtimes.admin.database);
+                runtimeScope.assert.equal(runtimeScope.runtimes.api.database.url, 'postgres://localhost');
+
+                return runtimeScope.assert.collect();
+            }
+        )
+    );
+    const observed = await executeObservedBody(body);
+    const result = firstCaseResult(scope, observed);
+
+    scope.assert.equal(result.verdict, 'pass');
+    scope.assert.equal(acquisitions, 1);
+}
+
+async function assertNestedWrapperDuplicateKeysFail(scope: TestScope): Promise<void> {
+    const database = databaseResource();
+    const apiRuntime = resourcesSubpath.defineRuntime({
+        name: 'api',
+        dimensions: {},
+        resources: { database },
+        requirements: []
+    });
+    const duplicateRuntime = resourcesSubpath.defineRuntime({
+        name: 'api',
+        dimensions: { role: 'duplicate' },
+        resources: {},
+        requirements: []
+    });
+    const body = function runWithScope(testScope: TestScope): ReturnType<TestBody> {
+        return testScope.assert.collect();
+    };
+
+    scope.assert.throws(function duplicateDirectResourceKey() {
+        resourcesSubpath.withResource(
+            database,
+            resourcesSubpath.withResource<
+                typeof database,
+                resourcesSubpath.ResourceTestScope<Record<'database', typeof database>>
+            >(
+                database,
+                body
+            )
+        );
+    }, { message: 'Resource scope "database" is attached multiple times.' });
+    scope.assert.throws(function duplicateRuntimeKey() {
+        resourcesSubpath.withRuntime(
+            apiRuntime,
+            resourcesSubpath.withRuntime<typeof duplicateRuntime, resourcesSubpath.RuntimeTestScope<typeof apiRuntime>>(
+                duplicateRuntime,
+                body
+            )
+        );
+    }, { message: 'Runtime scope "api" is attached multiple times.' });
 }
 
 async function assertAcquireFailureRunnerError(scope: TestScope): Promise<void> {
@@ -298,6 +423,18 @@ export const testNode = createSuite({
     controls: {},
     children: [
         executionTestCase('resource wrappers inject runtime and direct handles', assertWrappersInjectHandles),
+        executionTestCase(
+            'nested resource wrappers inject composed scope and share acquisition',
+            assertNestedWrappersShareAcquisition
+        ),
+        executionTestCase(
+            'nested runtime wrappers keep internal resource keys namespaced',
+            assertRuntimeInternalKeysRemainNamespaced
+        ),
+        executionTestCase(
+            'nested resource wrappers reject duplicate public keys',
+            assertNestedWrapperDuplicateKeysFail
+        ),
         executionTestCase(
             'resource wrappers report acquire failures as fixture runner errors',
             assertAcquireFailureRunnerError

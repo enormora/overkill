@@ -289,6 +289,10 @@ Resource wrappers attach descriptors for runner collection and acquire handles
 when the body executes. `withRuntime(...)` exposes handles at
 `scope.runtimes.<runtimeName>`, while `withResource(...)` and
 `withResources(...)` expose handles at `scope.resources.<resourceKey>`.
+Nested resource wrappers compose into one per-case acquisition graph before
+the body runs. Duplicate public `scope.resources` keys or public
+`scope.runtimes` names are rejected before planning; resource keys inside
+different runtime scopes remain namespaced by their runtime name.
 Execution wrappers currently run only `per-case` resource graphs; broader
 resource scopes stay metadata until runner-managed lifetimes are implemented.
 Microtest profiles reject collected resource descriptors before execution.

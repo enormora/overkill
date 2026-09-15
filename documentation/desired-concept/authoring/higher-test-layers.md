@@ -453,6 +453,10 @@ must happen before scheduling. The runner lowers resource scopes and
 requirements into placement constraints, starts resources inside the selected
 worker or process, injects handles into `scope.runtimes` or `scope.resources`
 when handles exist, and disposes them according to their declared scope.
+Nested first-party wrappers normalize before planning, so direct resource
+keys and runtime names are validated as one public scope. Duplicate direct
+resource keys or runtime names fail; equal resource keys under different
+runtime names remain distinct.
 
 Runtime matrices and composition are runtime-layer concerns, not test-family
 concepts. A browser matrix can run the same authored case once per variant:

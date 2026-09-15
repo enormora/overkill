@@ -137,6 +137,23 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             body(scope) {
+                scope.assert.throws(function rejectNonFunctionBody() {
+                    Reflect.apply(attachTestBodyResourceAttachments, undefined, [
+                        {},
+                        {
+                            directResources: [ { key: 'scratch', resourceName: 'scratch' } ],
+                            resourceGraph: [
+                                {
+                                    dependencies: [],
+                                    name: 'scratch',
+                                    requirements: [],
+                                    scope: 'per-case'
+                                }
+                            ],
+                            runtimeGraphs: []
+                        }
+                    ]);
+                }, { message: 'Resource attachments require a test body function.' });
                 scope.assert.throws(function attachEmptyMetadata() {
                     attachTestBodyResourceAttachments(
                         function emptyAttachmentBody(testScope: OverkillScope): ReturnType<TestBody> {
@@ -185,6 +202,61 @@ export const testNode = createOverkillSuite({
                         runtimeGraphs: []
                     });
                 }, { message: 'Test body already has resource attachments.' });
+                scope.assert.throws(function attachDuplicateResourceScope() {
+                    attachTestBodyResourceAttachments(function resourceDuplicateBody(
+                        testScope: OverkillScope
+                    ): ReturnType<TestBody> {
+                        testScope.assert.true(true);
+
+                        return testScope.assert.collect();
+                    }, {
+                        directResources: [
+                            { key: 'scratch', resourceName: 'scratch' },
+                            { key: 'scratch', resourceName: 'workspace' }
+                        ],
+                        resourceGraph: [
+                            {
+                                dependencies: [],
+                                name: 'scratch',
+                                requirements: [],
+                                scope: 'per-case'
+                            },
+                            {
+                                dependencies: [],
+                                name: 'workspace',
+                                requirements: [],
+                                scope: 'per-case'
+                            }
+                        ],
+                        runtimeGraphs: []
+                    });
+                }, { message: 'Resource scope "scratch" is attached multiple times.' });
+                scope.assert.throws(function attachDuplicateRuntimeScope() {
+                    attachTestBodyResourceAttachments(function runtimeDuplicateBody(
+                        testScope: OverkillScope
+                    ): ReturnType<TestBody> {
+                        testScope.assert.true(true);
+
+                        return testScope.assert.collect();
+                    }, {
+                        directResources: [],
+                        resourceGraph: [],
+                        runtimeGraphs: [
+                            {
+                                dimensions: {},
+                                name: 'api',
+                                requirements: [],
+                                resources: []
+                            },
+                            {
+                                dimensions: {},
+                                name: 'api',
+                                requirements: [],
+                                resources: []
+                            }
+                        ]
+                    });
+                }, { message: 'Runtime scope "api" is attached multiple times.' });
 
                 return scope.assert.collect();
             }

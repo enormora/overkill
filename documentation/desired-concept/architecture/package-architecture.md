@@ -221,6 +221,12 @@ export const secondTestNode = test(
 );
 ```
 
+Nested first-party body wrappers normalize to one planning-visible descriptor
+set before the runner builds the plan. Public direct resource keys under
+`scope.resources` must be unique, and public runtime names under
+`scope.runtimes` must be unique. Resource keys inside different runtime
+scopes remain namespaced by their runtime name.
+
 Project-local aliases such as `#tests/api` or `#tests/browser` may still
 re-export ordinary helpers, runtimes, resources, macros, and assertion
 references. They are worthwhile only when they add domain value beyond the
