@@ -87,7 +87,9 @@ function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
                     order: 'plan',
                     seed: { value: 42n },
                     selectedPlan: collectedPlan,
-                    workDistribution: { mode: 'file' }
+                    scheduling: 'serial',
+                    workDistribution: { mode: 'file' },
+                    workerLifecycle: 'reuse'
                 }),
                 processModel: 'worker-pool',
                 profile: 'integration',
@@ -244,12 +246,24 @@ function workerPoolResolvedRunWithLifecycle(workerLifecycle: RunWorkerLifecycle)
         throw new Error('Worker-pool lifecycle test requires worker-pool execution facts.');
     }
 
+    const { placementPlan } = resolvedRun.facts.execution;
+
+    if (placementPlan === null) {
+        throw new Error('Worker-pool lifecycle test requires a placement plan.');
+    }
+
     return {
         ...resolvedRun,
         facts: {
             ...resolvedRun.facts,
             execution: {
                 ...resolvedRun.facts.execution,
+                placementPlan: {
+                    ...placementPlan,
+                    units: placementPlan.units.map(function toLifecycleUnit(unit) {
+                        return { ...unit, workerLifecycle };
+                    })
+                },
                 workerLifecycle
             }
         }

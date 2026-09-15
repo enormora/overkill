@@ -59,13 +59,17 @@ export function sendCollectedPlan(collectedPlan: CollectedWorkerPoolTestPlan): W
 }
 
 export function selectedAssignedCases(testPlan: TestPlan, assignedCases: readonly CaseId[]): TestPlan {
-    const assigned = new Set(assignedCases.map(caseIdentityKey));
-    const cases = testPlan.cases.filter(function assignedCase(testCase) {
-        return assigned.has(caseIdentityKey(testCase.id));
+    const casesByIdentity = new Map(testPlan.cases.map(function toCaseEntry(testCase) {
+        return [ caseIdentityKey(testCase.id), testCase ];
+    }));
+    const cases = assignedCases.flatMap(function toAssignedCase(testCase) {
+        const matchedCase = casesByIdentity.get(caseIdentityKey(testCase));
+
+        return matchedCase === undefined ? [] : [ matchedCase ];
     });
     const firstCase = cases[0];
 
-    if (firstCase === undefined || cases.length !== assigned.size) {
+    if (firstCase === undefined || cases.length !== assignedCases.length) {
         throw new Error('Worker-pool test plan did not match assigned case identities.');
     }
 

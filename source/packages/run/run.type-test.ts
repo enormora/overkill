@@ -49,6 +49,10 @@ import {
     type RunTestFamily,
     type RunWorkDistribution,
     type RunWorkGroup,
+    type RunWorkGroupGranularity,
+    type RunWorkGroupOrder,
+    type RunWorkGroupScheduling,
+    type RunWorkGroupWorkerLifecycle,
     type RunWorkerLifecycle,
     type RuntimeId,
     type SerializedValue,
@@ -117,7 +121,7 @@ type ExpectedPlacementTraceKinds = {
 type ExpectedRunWorkDistribution = {
     readonly groups: readonly [RunWorkGroup, ...readonly RunWorkGroup[]];
     readonly mode: 'group';
-    readonly unmatched: 'reject';
+    readonly unmatched: 'file' | 'reject';
 } | {
     readonly mode: 'case';
 } | {
@@ -245,7 +249,11 @@ describe('@overkill-dev/run', function () {
         expect<RunWorkDistribution>().type.toBe<ExpectedRunWorkDistribution>();
         expect<RunWorkGroup>().type.toBe<{
             readonly fileSets: readonly [string, ...readonly string[]];
+            readonly granularity: RunWorkGroupGranularity;
             readonly name: string;
+            readonly order: RunWorkGroupOrder;
+            readonly scheduling: RunWorkGroupScheduling;
+            readonly workerLifecycle: RunWorkGroupWorkerLifecycle;
         }>();
     });
 
@@ -262,6 +270,9 @@ describe('@overkill-dev/run', function () {
         expect<WorkId['workload']>().type.toBe<WorkloadId | null>();
         expect<WorkUnit['work']>().type.toBe<readonly [WorkId, ...readonly WorkId[]]>();
         expect<WorkUnit['id']['mode']>().type.toBe<WorkUnitMode>();
+        expect<WorkUnit['order']>().type.toBe<RunOrder>();
+        expect<WorkUnit['scheduling']>().type.toBe<RunScheduling>();
+        expect<WorkUnit['workerLifecycle']>().type.toBe<RunWorkerLifecycle>();
         expect<PlacementPlan['lanes'][number]['executor']['kind']>().type.toBe<
             'browser' | 'local-process' | 'local-worker' | 'remote'
         >();

@@ -1,5 +1,4 @@
 import { createRequire } from 'node:module';
-import type { Worker as NodeWorker } from 'node:worker_threads';
 import type { RunResourceUsageTracker } from '../engine/run-result.ts';
 import type { WorkerPoolHostOutputSink } from './run-orchestrator-dependencies.ts';
 
@@ -36,8 +35,6 @@ export type TinypoolInstance = {
 };
 
 export type TinypoolConstructor = new (options: TinypoolOptions) => TinypoolInstance;
-
-export type TinypoolNodeCompatibility = NodeWorker;
 
 type TinypoolModule = {
     readonly Tinypool: TinypoolConstructor;

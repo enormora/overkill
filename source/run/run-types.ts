@@ -140,6 +140,14 @@ export type RunScheduling = 'concurrent' | 'serial';
 
 export type RunWorkerLifecycle = 'fresh-worker-per-unit' | 'reuse';
 
+export type RunWorkGroupGranularity = 'case' | 'file' | 'group';
+
+export type RunWorkGroupOrder = RunOrder | 'profile-default';
+
+export type RunWorkGroupScheduling = RunScheduling | 'profile-default';
+
+export type RunWorkGroupWorkerLifecycle = RunWorkerLifecycle | 'profile-default';
+
 type RunHostProcessReasonKey = {
     readonly 'benchmark-isolation': true;
     readonly debugging: true;
@@ -168,13 +176,17 @@ type CaseRunWorkDistribution = {
 
 export type RunWorkGroup = {
     readonly fileSets: NonEmptyReadonlyArray<string>;
+    readonly granularity: RunWorkGroupGranularity;
     readonly name: string;
+    readonly order: RunWorkGroupOrder;
+    readonly scheduling: RunWorkGroupScheduling;
+    readonly workerLifecycle: RunWorkGroupWorkerLifecycle;
 };
 
 type GroupRunWorkDistribution = {
     readonly groups: NonEmptyReadonlyArray<RunWorkGroup>;
     readonly mode: 'group';
-    readonly unmatched: 'reject';
+    readonly unmatched: 'file' | 'reject';
 };
 
 export type RunWorkDistribution = CaseRunWorkDistribution | FileRunWorkDistribution | GroupRunWorkDistribution;
@@ -209,7 +221,10 @@ export type WorkUnitId = {
 export type WorkUnit = {
     readonly group: string | null;
     readonly id: WorkUnitId;
+    readonly order: RunOrder;
+    readonly scheduling: RunScheduling;
     readonly work: NonEmptyReadonlyArray<WorkId>;
+    readonly workerLifecycle: RunWorkerLifecycle;
 };
 
 export type ExecutorDescriptor = {

@@ -146,14 +146,17 @@ Integration profiles default to `worker-pool` with concurrent scheduling.
 `worker-pool` uses bounded Node worker threads, collects once in a worker,
 then resolves selected cases into `WorkUnit`s. `workDistribution` controls
 whether those units are packed by file, by individual case, or by named
-profile file-set groups. Minimal group distribution requires `files.sets`,
-uses one indivisible unit per configured group, and rejects selected files
-whose file set is not assigned to a group. `RunFacts.execution` contains the
-frozen `PlacementPlan`: work units, local worker lanes, and the deterministic
-initial lane assignment used by execution. `workerLifecycle: 'reuse'` reuses
-worker threads between units. `workerLifecycle: 'fresh-worker-per-unit'`
-creates disposable isolation per unit. `supervised-process` remains available
-when a single process-isolated child boundary is preferred.
+profile file-set groups. Group distribution requires `files.sets`. Each group
+names one or more file sets and can override granularity, in-unit scheduling,
+local order, and worker lifecycle. Unmatched selected file sets are rejected
+by default, or run as plain file units with profile defaults when
+`unmatched: 'file'` is configured. `RunFacts.execution` contains the frozen
+`PlacementPlan`: work units, resolved per-unit policy, local worker lanes, and
+the deterministic initial lane assignment used by execution.
+`workerLifecycle: 'reuse'` reuses worker threads between units.
+`workerLifecycle: 'fresh-worker-per-unit'` creates disposable isolation per
+unit. `supervised-process` remains available when a single process-isolated
+child boundary is preferred.
 Direct `RunConfig` values may set `execution.hostProcess` for worker-pool
 profiles. `{ kind: 'direct' }` keeps the worker-thread pool in the coordinator
 process. `{ kind: 'child', nodeArguments: [...] }` starts one supervised host

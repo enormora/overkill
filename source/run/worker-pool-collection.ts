@@ -3,13 +3,15 @@ import {
     type MessagePort as NodeMessagePort
 } from 'node:worker_threads';
 import { RunCollectionError } from './run-errors.ts';
-import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
+import type {
+    CreatedWorkerPool,
+    RunOrchestratorDependencies
+} from './run-orchestrator-dependencies.ts';
 import {
     createStoredRunValue,
     type StoredRunValue,
     type SupervisedRunState
 } from './supervised-run-state.ts';
-import type { TinypoolInstance } from './tinypool-node-compatibility.ts';
 import type { WorkerPoolCollectionResult } from './worker-pool-runtime.ts';
 import type {
     WorkerPoolCollection,
@@ -59,7 +61,7 @@ type CollectionTimeoutContext = {
 type CollectionRuntime = {
     readonly destroyPool: boolean;
     readonly controller: AbortController;
-    readonly pool: TinypoolInstance;
+    readonly pool: CreatedWorkerPool;
     readonly port1: NodeMessagePort;
     readonly port2: NodeMessagePort;
     readonly terminalFailure: StoredRunValue<boolean>;
@@ -82,7 +84,7 @@ function startCollectionTimeout(
 }
 
 async function runCollectionTask(
-    pool: TinypoolInstance,
+    pool: CreatedWorkerPool,
     command: WorkerPoolCommand,
     port: NodeMessagePort,
     controller: AbortController
@@ -114,7 +116,7 @@ function createCollectionRuntime(
     command: WorkerPoolCommand,
     dependencies: RunOrchestratorDependencies,
     runState: SupervisedRunState,
-    createdPool: TinypoolInstance | null
+    createdPool: CreatedWorkerPool | null
 ): CollectionRuntime {
     const { port1, port2 } = new NodeMessageChannel();
     const controller = new AbortController();
@@ -169,7 +171,7 @@ export async function collectInWorkerPool(
     command: WorkerPoolCommand,
     dependencies: RunOrchestratorDependencies,
     runState: SupervisedRunState,
-    createdPool: TinypoolInstance | null = null
+    createdPool: CreatedWorkerPool | null = null
 ): Promise<WorkerPoolCollectionResult> {
     const runtime = createCollectionRuntime(command, dependencies, runState, createdPool);
 

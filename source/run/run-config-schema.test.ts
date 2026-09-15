@@ -298,8 +298,18 @@ export const testNode = createOverkillSuite({
                     processModel: 'worker-pool',
                     scheduling: 'serial',
                     workDistribution: {
-                        groups: [ { fileSets: [ 'integration' ], name: 'integration' } ],
-                        mode: 'group'
+                        groups: [
+                            {
+                                fileSets: [ 'integration' ],
+                                granularity: 'case',
+                                name: 'integration',
+                                order: 'seeded',
+                                scheduling: 'serial',
+                                workerLifecycle: 'fresh-worker-per-unit'
+                            }
+                        ],
+                        mode: 'group',
+                        unmatched: 'file'
                     },
                     workerLifecycle: 'fresh-worker-per-unit'
                 });
@@ -323,9 +333,9 @@ export const testNode = createOverkillSuite({
                     processModel: 'worker-pool',
                     scheduling: 'serial',
                     workDistribution: {
-                        groups: [ { fileSets: [ 'integration' ], name: 'integration' } ],
+                        groups: [ { fileSets: [ 'integration' ], granularity: 'suite', name: 'integration' } ],
                         mode: 'group',
-                        unmatched: 'file'
+                        unmatched: 'fallback'
                     }
                 });
 

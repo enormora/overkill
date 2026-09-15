@@ -122,7 +122,14 @@ export const testNode = createOverkillSuite({
                     scheduling: 'serial',
                     workDistribution: {
                         groups: [
-                            { fileSets: [ 'integration' ], name: 'integration' }
+                            {
+                                fileSets: [ 'integration' ],
+                                granularity: 'group',
+                                name: 'integration',
+                                order: 'profile-default',
+                                scheduling: 'profile-default',
+                                workerLifecycle: 'profile-default'
+                            }
                         ],
                         mode: 'group',
                         unmatched: 'reject'
@@ -191,8 +198,22 @@ export const testNode = createOverkillSuite({
                                     processModel: 'worker-pool',
                                     workDistribution: {
                                         groups: [
-                                            { fileSets: [ 'integration' ], name: 'first' },
-                                            { fileSets: [ 'integration' ], name: 'second' }
+                                            {
+                                                fileSets: [ 'integration' ],
+                                                granularity: 'group',
+                                                name: 'first',
+                                                order: 'profile-default',
+                                                scheduling: 'profile-default',
+                                                workerLifecycle: 'profile-default'
+                                            },
+                                            {
+                                                fileSets: [ 'integration' ],
+                                                granularity: 'group',
+                                                name: 'second',
+                                                order: 'profile-default',
+                                                scheduling: 'profile-default',
+                                                workerLifecycle: 'profile-default'
+                                            }
                                         ],
                                         mode: 'group'
                                     }
@@ -202,6 +223,54 @@ export const testNode = createOverkillSuite({
                     });
                 }, {
                     message: 'Invalid work group "second": file set "integration" is already assigned to "first".'
+                });
+                await scope.assert.rejects(async function loadDuplicateGroupName() {
+                    await loadConfigValue({
+                        profiles: {
+                            service: {
+                                testFamily: 'integration',
+                                files: {
+                                    sets: {
+                                        fast: { include: [ 'source/**/*.fast.test.ts' ] },
+                                        slow: { include: [ 'source/**/*.slow.test.ts' ] }
+                                    }
+                                },
+                                execution: {
+                                    processModel: 'worker-pool',
+                                    workDistribution: {
+                                        groups: [
+                                            { fileSets: [ 'fast' ], name: 'same' },
+                                            { fileSets: [ 'slow' ], name: 'same' }
+                                        ],
+                                        mode: 'group'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }, { message: 'Invalid work group "same": group name is already used.' });
+                await scope.assert.rejects(async function loadRepeatedFileSetInGroup() {
+                    await loadConfigValue({
+                        profiles: {
+                            service: {
+                                testFamily: 'integration',
+                                files: {
+                                    sets: {
+                                        integration: { include: [ 'source/**/*.integration.test.ts' ] }
+                                    }
+                                },
+                                execution: {
+                                    processModel: 'worker-pool',
+                                    workDistribution: {
+                                        groups: [ { fileSets: [ 'integration', 'integration' ], name: 'grouped' } ],
+                                        mode: 'group'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }, {
+                    message: 'Invalid work group "grouped": file set "integration" is already assigned to "grouped".'
                 });
 
                 return scope.assert.collect();

@@ -35,6 +35,11 @@ const testCaseMetadata = {
     controls: {},
     definitionLocations: [ { kind: 'unknown' as const } ]
 } as const;
+const defaultUnitPolicy = {
+    order: 'plan',
+    scheduling: 'serial',
+    workerLifecycle: 'reuse'
+} as const;
 
 function firstCaseId(): CaseId {
     return {
@@ -92,6 +97,7 @@ function firstWorkUnit(): WorkUnit {
             runtime: null,
             workload: null
         },
+        ...defaultUnitPolicy,
         work: [
             {
                 case: firstCaseId(),
@@ -280,6 +286,7 @@ function fakeWorkerRuntime(collectedPlan: CollectedRunPlan): WorkerPoolRunRuntim
         collectedPlan,
         collectionRunnerErrors: [],
         dependencies: fakeDependencies(),
+        destroyPool: true,
         pool: createFakePool(1, false),
         poolResourceUsageTracker: null,
         previousPoolSample: createStoredRunValue<ResourceSample>(null),
