@@ -241,6 +241,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(
                     invalidWorkDistributionConfigMessage(
                         {
+                            hostProcess: { kind: 'direct' },
                             processModel: 'worker-pool',
                             scheduling: 'concurrent',
                             workDistribution: {

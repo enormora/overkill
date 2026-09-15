@@ -1,27 +1,32 @@
 import { createWallClock } from '@enormora/wall-clock';
-import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
 import {
-    installIpcRestriction as installProcessIpcRestriction,
-    installProcessExecutionRestriction as installNodeProcessExecutionRestriction
-} from './node-process-capability-restrictions.ts';
-import { runSupervisedChild, type SupervisedChildHost } from './supervised-child.ts';
-import { createNodeResourceUsageTracker } from './resource-usage.ts';
+    childProcessEnvelope,
+    envelopeMessage
+} from './child-process-protocol.ts';
+import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
 import {
     loadRunEngineModule,
     loadRunTestModules,
     runDiscovery
 } from './node-run-dependencies.entry-point.ts';
-import type {
-    SupervisedAssignmentCommand,
-    SupervisedChildCommand,
-    SupervisedRunCommand
+import {
+    installIpcRestriction as installProcessIpcRestriction,
+    installProcessExecutionRestriction as installNodeProcessExecutionRestriction
+} from './node-process-capability-restrictions.ts';
+import { createNodeResourceUsageTracker } from './resource-usage.ts';
+import { runSupervisedChild, type SupervisedChildHost } from './supervised-child.ts';
+import {
+    supervisedChildCorrelationId,
+    type SupervisedAssignmentCommand,
+    type SupervisedChildCommand,
+    type SupervisedRunCommand
 } from './supervised-protocol.ts';
 
 const sendMessage = process.send?.bind(process);
 const disconnectProcess = process.disconnect?.bind(process);
 
 function send(message: Parameters<SupervisedChildHost['send']>[0]): void {
-    sendMessage?.(message);
+    sendMessage?.(childProcessEnvelope(supervisedChildCorrelationId, message));
 }
 
 function disconnect(): void {
@@ -44,11 +49,20 @@ function isAssignmentCommand(message: unknown): message is SupervisedAssignmentC
         message.kind === 'assign';
 }
 
+function supervisedParentMessage(message: unknown): SupervisedAssignmentCommand | SupervisedChildCommand | null {
+    return envelopeMessage<SupervisedAssignmentCommand | SupervisedChildCommand>(
+        message,
+        supervisedChildCorrelationId
+    );
+}
+
 async function receiveCommand(): Promise<SupervisedChildCommand> {
     return new Promise(function waitForCommand(resolve) {
         process.once('message', function receiveChildCommand(message: unknown) {
-            if (isChildCommand(message)) {
-                resolve(message);
+            const parentMessage = supervisedParentMessage(message);
+
+            if (isChildCommand(parentMessage)) {
+                resolve(parentMessage);
             }
         });
     });
@@ -57,8 +71,10 @@ async function receiveCommand(): Promise<SupervisedChildCommand> {
 async function receiveAssignment(): Promise<SupervisedAssignmentCommand> {
     return new Promise(function waitForAssignment(resolve) {
         process.once('message', function receiveAssignmentCommand(message: unknown) {
-            if (isAssignmentCommand(message)) {
-                resolve(message);
+            const parentMessage = supervisedParentMessage(message);
+
+            if (isAssignmentCommand(parentMessage)) {
+                resolve(parentMessage);
             }
         });
     });

@@ -6,6 +6,7 @@ import type {
     RunConfig,
     RunEngineFacts,
     RunEngineSelection,
+    RunHostProcess,
     RunIntegrationExecution,
     RunLoaderConfig,
     RunMicrotestExecution,
@@ -125,9 +126,21 @@ function copyWorkDistribution(distribution: RunWorkDistribution): RunWorkDistrib
     };
 }
 
+function copyHostProcess(hostProcess: RunHostProcess): RunHostProcess {
+    if (hostProcess.kind === 'direct') {
+        return { kind: 'direct' };
+    }
+
+    return {
+        kind: 'child',
+        nodeArguments: Array.from(hostProcess.nodeArguments)
+    };
+}
+
 function copyIntegrationExecution(execution: RunIntegrationExecution): RunIntegrationExecution {
     if (execution.processModel === 'worker-pool') {
         return {
+            hostProcess: copyHostProcess(execution.hostProcess),
             processModel: execution.processModel,
             scheduling: execution.scheduling,
             workDistribution: copyWorkDistribution(execution.workDistribution),

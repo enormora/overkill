@@ -79,7 +79,7 @@ function peakResidentSetGrowthBytesPerSecond(samples: readonly ResourceUsageSamp
     return peakGrowthBytesPerSecond;
 }
 
-function createResourceUsage(
+export function createResourceUsageFromSamples(
     start: ResourceUsageSnapshot,
     end: ResourceUsageSnapshot,
     samples: readonly ResourceUsageSample[]
@@ -135,7 +135,7 @@ export function createResourceUsageTracker(
             const endSnapshot = readResourceUsageSample(dependencies);
             samples = [ ...samples, endSnapshot ];
 
-            return createResourceUsage(startSnapshot, endSnapshot, samples);
+            return createResourceUsageFromSamples(startSnapshot, endSnapshot, samples);
         },
         start(onSample) {
             if (startSnapshot !== null) {

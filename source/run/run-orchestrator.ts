@@ -3,11 +3,14 @@ import { createWallClock } from '@enormora/wall-clock';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { createNodeResourceUsageTracker } from './resource-usage.ts';
+import { createWorkerPoolWithHostProcess } from './node-worker-pool-factory.ts';
 import { createRunOrchestrator } from './run.ts';
 import { createRandomRunSeed } from './run-seed.ts';
-import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
+import type {
+    RunOrchestratorDependencies,
+    WorkerPoolHostProcessStarter
+} from './run-orchestrator-dependencies.ts';
 import type { RunOrchestrator } from './run-types.ts';
-import { createPool } from './worker-pool-runtime.ts';
 
 function readActiveResourceTypes(): readonly string[] {
     return process.getActiveResourcesInfo();
@@ -26,6 +29,7 @@ export type NodeRunOrchestratorInput = {
     readonly loadRunEngineModule: RunOrchestratorDependencies['loadRunEngineModule'];
     readonly loadRunTestModules: RunOrchestratorDependencies['loadRunTestModules'];
     readonly startSupervisedChild: RunOrchestratorDependencies['startSupervisedChild'];
+    readonly startWorkerPoolHost: WorkerPoolHostProcessStarter;
     readonly stderr: {
         readonly write: (chunk: Uint8Array) => void;
         readonly writeLine: (line: string) => void;
@@ -51,7 +55,9 @@ export function createNodeRunOrchestrator(input: NodeRunOrchestratorInput): RunO
             return createNodeResourceUsageTracker(wallClock, options);
         },
         defaultEngine: input.defaultEngine,
-        createWorkerPool: createPool,
+        createWorkerPool(options) {
+            return createWorkerPoolWithHostProcess(options, input.readEnvironment(), input.startWorkerPoolHost);
+        },
         discoverRunFilesWithProjectRoot: input.discoverRunFilesWithProjectRoot,
         execute: createExecute({
             asyncLeakDiagnostics: 'enabled',
@@ -68,6 +74,7 @@ export function createNodeRunOrchestrator(input: NodeRunOrchestratorInput): RunO
         node: input.node,
         reporterDispatcher,
         startSupervisedChild: input.startSupervisedChild,
+        startWorkerPoolHost: input.startWorkerPoolHost,
         runtimeCapabilityPolicy: {
             installIpcRestriction: input.installIpcRestriction,
             installProcessExecutionRestriction: input.installProcessExecutionRestriction,

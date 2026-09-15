@@ -12,8 +12,6 @@ import {
     type RunProjectMicrotestExecution as ParsedRunProjectMicrotestExecution,
     type RunProjectMicrotestProfileConfig as ParsedRunProjectMicrotestProfileConfig,
     type RunProjectProfileFiles as ParsedRunProjectProfileFiles,
-    type RunProjectProfileConfig as ParsedRunProjectProfileConfig,
-    type RunProjectProfilesConfig as ParsedRunProjectProfilesConfig,
     type RunProjectResourceBudgets as ParsedRunProjectResourceBudgets,
     type RunProjectResourceUsageConfig as ParsedRunProjectResourceUsageConfig,
     type RunProjectTimeoutConfig as ParsedRunProjectTimeoutConfig,
@@ -44,20 +42,6 @@ import {
     normalizeWorkDistribution
 } from './work-distribution-config.ts';
 
-export type RunProjectConfig = ParsedRunProjectConfig;
-export type RunProjectIntegrationExecution = ParsedRunProjectIntegrationExecution;
-export type RunProjectIntegrationProfileConfig = ParsedRunProjectIntegrationProfileConfig;
-export type RunProjectMeasuredResourceUsage = ParsedRunProjectMeasuredResourceUsage;
-export type RunProjectMicrotestExecution = ParsedRunProjectMicrotestExecution;
-export type RunProjectMicrotestProfileConfig = ParsedRunProjectMicrotestProfileConfig;
-export type RunProjectProfileFiles = ParsedRunProjectProfileFiles;
-export type RunProjectProfileConfig = ParsedRunProjectProfileConfig;
-export type RunProjectProfilesConfig = ParsedRunProjectProfilesConfig;
-export type RunProjectResourceBudgets = ParsedRunProjectResourceBudgets;
-export type RunProjectResourceUsageConfig = ParsedRunProjectResourceUsageConfig;
-export type RunProjectTimeoutConfig = ParsedRunProjectTimeoutConfig;
-export type RunProjectUnmeasuredResourceUsage = ParsedRunProjectUnmeasuredResourceUsage;
-
 const defaultConfigFileNames = [ 'overkill.config.ts', 'overkill.config.js' ];
 const defaultResourceUsageSamplingIntervalMilliseconds = 100;
 const defaultMicrotestCollectionTimeoutMilliseconds = 1000;
@@ -67,6 +51,8 @@ const defaultIntegrationCollectionTimeoutMilliseconds = 5000;
 const defaultIntegrationHardTimeoutMilliseconds = 7000;
 const defaultIntegrationTimeoutMilliseconds = 5000;
 
+type ProjectHostProcessGuard = Readonly<Partial<Record<'hostProcess', never>>>;
+
 export type LoadedRunConfig = {
     readonly configPath: string | null;
     readonly loader: RunLoaderConfig;
@@ -74,6 +60,33 @@ export type LoadedRunConfig = {
     readonly profiles: RunProfilesConfig;
     readonly reporters: NonEmptyReadonlyArray<DefinedReporter> | null;
     readonly runtimeStateDir: string;
+};
+
+export type RunProjectIntegrationExecution = ParsedRunProjectIntegrationExecution & ProjectHostProcessGuard;
+export type RunProjectIntegrationProfileConfig = {
+    readonly execution?: RunProjectIntegrationExecution | undefined;
+    readonly files: ParsedRunProjectIntegrationProfileConfig['files'];
+    readonly reporters?: ParsedRunProjectIntegrationProfileConfig['reporters'];
+    readonly resourceUsage?: ParsedRunProjectIntegrationProfileConfig['resourceUsage'];
+    readonly testFamily: ParsedRunProjectIntegrationProfileConfig['testFamily'];
+    readonly timeouts?: ParsedRunProjectIntegrationProfileConfig['timeouts'];
+};
+export type RunProjectMicrotestExecution = ParsedRunProjectMicrotestExecution;
+export type RunProjectMicrotestProfileConfig = ParsedRunProjectMicrotestProfileConfig;
+export type RunProjectProfileFiles = ParsedRunProjectProfileFiles;
+export type RunProjectProfileConfig = RunProjectIntegrationProfileConfig | RunProjectMicrotestProfileConfig;
+export type RunProjectProfilesConfig = Readonly<Record<string, RunProjectProfileConfig>>;
+export type RunProjectResourceBudgets = ParsedRunProjectResourceBudgets;
+export type RunProjectMeasuredResourceUsage = ParsedRunProjectMeasuredResourceUsage;
+export type RunProjectUnmeasuredResourceUsage = ParsedRunProjectUnmeasuredResourceUsage;
+export type RunProjectResourceUsageConfig = ParsedRunProjectResourceUsageConfig;
+export type RunProjectTimeoutConfig = ParsedRunProjectTimeoutConfig;
+export type RunProjectConfig = {
+    readonly loader?: ParsedRunProjectConfig['loader'];
+    readonly outputRenderer?: ParsedRunProjectConfig['outputRenderer'];
+    readonly profiles?: RunProjectProfilesConfig | undefined;
+    readonly reporters?: ParsedRunProjectConfig['reporters'];
+    readonly runtimeStateDir?: ParsedRunProjectConfig['runtimeStateDir'];
 };
 
 export type RunConfigLoadRequest = {
@@ -128,15 +141,10 @@ const defaultMicrotestExecution: RunMicrotestExecution = {
     scheduling: 'concurrent'
 };
 
-const defaultIntegrationExecution: RunIntegrationExecution = {
-    processModel: 'worker-pool',
-    scheduling: 'concurrent',
-    workDistribution: { mode: 'file' },
-    workerLifecycle: 'reuse'
-};
-
-const defaultWorkerLifecycle = defaultIntegrationExecution.workerLifecycle;
-const defaultWorkDistribution = defaultIntegrationExecution.workDistribution;
+const defaultIntegrationProcessModel = 'worker-pool';
+const defaultIntegrationScheduling = 'concurrent';
+const defaultWorkerLifecycle = 'reuse';
+const defaultWorkDistribution = { mode: 'file' } as const;
 
 type ProjectProfileFilePatterns = {
     readonly exclude?: readonly string[] | undefined;
@@ -440,6 +448,7 @@ function normalizeWorkerPoolExecution(
     scheduling: RunIntegrationExecution['scheduling']
 ): RunIntegrationExecution {
     return {
+        hostProcess: { kind: 'direct' },
         processModel: 'worker-pool',
         scheduling,
         workDistribution: normalizeWorkDistribution(execution, defaultWorkDistribution),
@@ -450,8 +459,8 @@ function normalizeWorkerPoolExecution(
 function normalizeIntegrationExecution(
     execution: RunProjectIntegrationExecution | undefined
 ): RunIntegrationExecution {
-    const processModel = execution?.processModel ?? defaultIntegrationExecution.processModel;
-    const scheduling = execution?.scheduling ?? defaultIntegrationExecution.scheduling;
+    const processModel = execution?.processModel ?? defaultIntegrationProcessModel;
+    const scheduling = execution?.scheduling ?? defaultIntegrationScheduling;
 
     if (processModel === 'worker-pool') {
         return normalizeWorkerPoolExecution(execution, scheduling);

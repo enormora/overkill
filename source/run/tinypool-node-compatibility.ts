@@ -1,5 +1,7 @@
 import { createRequire } from 'node:module';
 import type { Worker as NodeWorker } from 'node:worker_threads';
+import type { RunResourceUsageTracker } from '../engine/run-result.ts';
+import type { WorkerPoolHostOutputSink } from './run-orchestrator-dependencies.ts';
 
 type TinypoolFilledOptions = {
     readonly isolateWorkers: boolean;
@@ -12,6 +14,10 @@ type TinypoolRunOptions = {
     readonly transferList: readonly unknown[];
 };
 
+type ResourceUsageTrackerOptions = {
+    readonly samplingIntervalMilliseconds: number;
+};
+
 type TinypoolOptions = {
     readonly concurrentTasksPerWorker: number;
     readonly filename: string;
@@ -22,9 +28,11 @@ type TinypoolOptions = {
 };
 
 export type TinypoolInstance = {
+    readonly createResourceUsageTracker?: (options: ResourceUsageTrackerOptions) => RunResourceUsageTracker;
     readonly destroy: () => Promise<void>;
     readonly options: TinypoolFilledOptions;
     run: (task: unknown, options: TinypoolRunOptions) => Promise<unknown>;
+    readonly setHostOutputSink?: (sink: WorkerPoolHostOutputSink | null) => void;
 };
 
 export type TinypoolConstructor = new (options: TinypoolOptions) => TinypoolInstance;

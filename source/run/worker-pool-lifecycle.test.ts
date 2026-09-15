@@ -42,7 +42,9 @@ async function realTinypoolWorkerLifecycle(
     workerLifecycle: RunWorkerLifecycle
 ): Promise<readonly [WorkerLifecycleProbeResult, WorkerLifecycleProbeResult]> {
     const pool = createTinypoolWorkerPool({
+        cwd: process.cwd(),
         filename: workerLifecycleProbeEntryPoint,
+        hostProcess: { kind: 'direct' },
         workerCount: 1,
         workerLifecycle
     });

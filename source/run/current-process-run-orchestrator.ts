@@ -15,6 +15,7 @@ export type CurrentProcessRunOrchestratorDependencies = {
     readonly loadRunEngineModule: NodeRunOrchestratorInput['loadRunEngineModule'];
     readonly loadRunTestModules: NodeRunOrchestratorInput['loadRunTestModules'];
     readonly startSupervisedChild: NodeRunOrchestratorInput['startSupervisedChild'];
+    readonly startWorkerPoolHost: NodeRunOrchestratorInput['startWorkerPoolHost'];
 };
 
 function writeStdoutLine(line: string): void {
@@ -43,6 +44,7 @@ export function createCurrentProcessRunOrchestrator(
         loadRunEngineModule: dependencies.loadRunEngineModule,
         loadRunTestModules: dependencies.loadRunTestModules,
         startSupervisedChild: dependencies.startSupervisedChild,
+        startWorkerPoolHost: dependencies.startWorkerPoolHost,
         installIpcRestriction(record) {
             return installProcessIpcRestriction(process, record);
         },

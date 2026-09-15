@@ -1,17 +1,14 @@
+import type { Serializable } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy.ts';
+import { childRoleArgument, supervisedChildRole } from './child-process-roles.ts';
 import type { RunRequest } from './run-types.ts';
-import type {
-    SupervisedAssignmentCommand,
-    SupervisedChildCommand,
-    SupervisedChildMessage
-} from './supervised-protocol.ts';
 import type { StoredRunValue, SupervisedRunState } from './supervised-run-state.ts';
 
 type SupervisedChildEventListener = {
     readonly error: (error: Error) => void;
     readonly exit: () => void;
-    readonly message: (message: SupervisedChildMessage) => void;
+    readonly message: (message: unknown) => void;
 };
 
 type SupervisedChildListenerRegistration = {
@@ -30,7 +27,7 @@ export type SupervisedChildProcess = {
     readonly kill: (signal: 'SIGKILL') => unknown;
     readonly on: (...registration: SupervisedChildListenerRegistration) => unknown;
     readonly pid: number | undefined;
-    readonly send: (message: SupervisedAssignmentCommand | SupervisedChildCommand) => unknown;
+    readonly send: (message: Serializable) => unknown;
     readonly signalCode: string | null;
     readonly stderr: SupervisedChildProcessOutput | null;
     readonly stdout: SupervisedChildProcessOutput | null;
@@ -94,9 +91,9 @@ export type SupervisedChildOutputRuntime = {
     readonly terminalFailure: StoredRunValue<boolean>;
 };
 
-const supervisedChildProcessEntryPointArgument = '--overkill-supervised-child';
-
-function sanitizedChildEnvironment(environmentVariables: RuntimeCapabilityPolicyEnvironment): Record<string, string> {
+export function sanitizedChildEnvironment(
+    environmentVariables: RuntimeCapabilityPolicyEnvironment
+): Record<string, string> {
     const environment = Object.fromEntries(
         Object.entries(environmentVariables).filter(function hasEnvironmentValue(
             entry
@@ -198,7 +195,7 @@ export function createSupervisedChildProcessStarter(
     return async function startSupervisedChild(options) {
         return dependencies.fork(
             dependencies.childProcessEntryPoint,
-            [ supervisedChildProcessEntryPointArgument ],
+            [ childRoleArgument(supervisedChildRole) ],
             {
                 cwd: options.cwd,
                 env: sanitizedChildEnvironment(options.environmentVariables),
@@ -213,7 +210,7 @@ export async function runSupervisedChildProcessEntryPoint(
     childArguments: readonly string[],
     loadSupervisedChild: () => Promise<unknown>
 ): Promise<void> {
-    if (childArguments.includes(supervisedChildProcessEntryPointArgument)) {
+    if (childArguments.includes(childRoleArgument(supervisedChildRole))) {
         await loadSupervisedChild();
     }
 }

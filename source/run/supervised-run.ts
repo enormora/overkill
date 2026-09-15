@@ -3,15 +3,20 @@ import type {
     RunResult,
     RunnerError
 } from '../packages/engine/engine.entry-point.ts';
+import {
+    childProcessEnvelope,
+    envelopeMessage
+} from './child-process-protocol.ts';
 import type {
     CollectedRunPlan,
     ResolvedRun
 } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import type {
-    SupervisedChildMessage,
-    SupervisedCollectCommand,
-    SupervisedRunCommand
+import {
+    supervisedChildCorrelationId,
+    type SupervisedChildMessage,
+    type SupervisedCollectCommand,
+    type SupervisedRunCommand
 } from './supervised-protocol.ts';
 import {
     observeSupervisedChildOutput,
@@ -97,6 +102,10 @@ function handleCollectionMessage(
     }
 }
 
+function supervisedChildMessage(message: unknown): SupervisedChildMessage | null {
+    return envelopeMessage<SupervisedChildMessage>(message, supervisedChildCorrelationId);
+}
+
 async function observeCollection(
     runtime: SupervisedCollectionRuntime<SupervisedCollectionResult | null>
 ): Promise<void> {
@@ -121,8 +130,12 @@ async function observeCollection(
             kill(runtime.child);
         }, runtime.command.collectionTimeoutMilliseconds);
 
-        runtime.child.on('message', function receiveMessage(message: SupervisedChildMessage) {
-            handleCollectionMessage(message, runtime);
+        runtime.child.on('message', function receiveMessage(message: unknown) {
+            const childMessage = supervisedChildMessage(message);
+
+            if (childMessage !== null) {
+                handleCollectionMessage(childMessage, runtime);
+            }
         });
         runtime.child.on('error', function recordChildError(error: Error) {
             runtime.terminalFailure.write(true);
@@ -284,8 +297,12 @@ function observeLiveRun(command: SupervisedRunCommand, liveRun: SupervisedLiveRu
         state: liveRun.state,
         terminalFailure: liveRun.terminalFailure
     });
-    liveRun.child.on('message', function receiveMessage(message: SupervisedChildMessage) {
-        handleLiveMessage(message, command, liveRun);
+    liveRun.child.on('message', function receiveMessage(message: unknown) {
+        const childMessage = supervisedChildMessage(message);
+
+        if (childMessage !== null) {
+            handleLiveMessage(childMessage, command, liveRun);
+        }
     });
     liveRun.child.on('error', function recordChildError(error: Error) {
         liveRun.terminalFailure.write(true);
@@ -344,12 +361,12 @@ async function createLiveRunRuntime(
 }
 
 function sendAssignmentForPlan(runtime: SupervisedRunRuntime): void {
-    runtime.child.send({
+    runtime.child.send(childProcessEnvelope(supervisedChildCorrelationId, {
         assignedCases: runtime.resolvedRun.facts.cases.map(function toCaseId(testCase) {
             return testCase.id;
         }),
         kind: 'assign'
-    });
+    }));
 }
 
 async function reportRunStartForPlannedCases(
@@ -388,7 +405,7 @@ export async function collectSupervisedRun(
 ): Promise<SupervisedCollectionResult> {
     const runtime = await createCollectionRuntime(command, dependencies);
     const childFinished = observeCollection(runtime);
-    runtime.child.send(command);
+    runtime.child.send(childProcessEnvelope(supervisedChildCorrelationId, command));
     await childFinished;
 
     return readCollectedResult(runtime);
@@ -401,7 +418,7 @@ export async function runSupervisedCommand(
 ): Promise<RunResult> {
     const liveRun = await createLiveRun(command, dependencies);
     observeLiveRun(command, liveRun);
-    liveRun.child.send(command);
+    liveRun.child.send(childProcessEnvelope(supervisedChildCorrelationId, command));
     const collection = await readLiveCollection(liveRun);
 
     return await continueLiveRun(liveRun, collection, createResolvedRun);

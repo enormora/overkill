@@ -189,6 +189,7 @@ function workerPoolResolvedRun(placement: PlacementPlan): ResolvedRun {
                 capture: 'buffered',
                 debug: { mode: 'off', selectors: [] },
                 engine: { kind: 'default' },
+                hostProcess: { kind: 'direct' },
                 order: 'seeded',
                 placementPlan: placement,
                 processModel: 'worker-pool',
@@ -350,6 +351,7 @@ function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
             }
         },
         startSupervisedChild: testOnlyDependency,
+        startWorkerPoolHost: testOnlyDependency,
         wallClock: createDeterministicWallClock()
     };
 }

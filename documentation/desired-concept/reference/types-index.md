@@ -828,8 +828,18 @@ type MicrotestExecutionConfig = {
     readonly scheduling: 'serial' | 'concurrent';
 };
 
-type IntegrationExecutionConfig = {
-    readonly processModel: 'worker-pool' | 'supervised-process';
+type IntegrationExecutionConfig =
+    | SupervisedIntegrationExecutionConfig
+    | WorkerPoolIntegrationExecutionConfig;
+
+type SupervisedIntegrationExecutionConfig = {
+    readonly processModel: 'supervised-process';
+    readonly scheduling: 'serial' | 'concurrent';
+};
+
+type WorkerPoolIntegrationExecutionConfig = {
+    readonly hostProcess: HostProcess;
+    readonly processModel: 'worker-pool';
     readonly scheduling: 'serial' | 'concurrent';
     readonly workerLifecycle: 'reuse' | 'fresh-worker-per-unit';
     readonly workDistribution: WorkDistribution;
@@ -838,6 +848,11 @@ type IntegrationExecutionConfig = {
         | 'case-count-balanced'
         | 'duration-history-balanced'
         | 'dynamic-lease';
+};
+
+type HostProcess = { readonly kind: 'direct'; } | {
+    readonly kind: 'child';
+    readonly nodeArguments: ReadonlyArray<string>;
 };
 
 type WorkDistribution =
@@ -996,18 +1011,19 @@ type RunExecutionBaseFacts = {
 };
 
 type RunWorkerPoolExecutionFacts = RunExecutionBaseFacts & {
-    readonly hostProcess: HostProcessFacts | null;
+    readonly hostProcess: HostProcessFacts;
     readonly processModel: 'worker-pool';
     readonly workerLifecycle: 'reuse' | 'fresh-worker-per-unit';
 };
 
-type HostProcessFacts = {
+type HostProcessFacts = { readonly kind: 'direct'; } | {
+    readonly kind: 'child';
     readonly nodeArguments: ReadonlyArray<string>;
-    readonly ownsWorkerPool: true;
     readonly reasons: NonEmptyReadonlyArray<
         | 'benchmark-isolation'
         | 'debugging'
         | 'forced-garbage-collection'
+        | 'host-isolation'
         | 'node-arguments'
         | 'profiling'
     >;

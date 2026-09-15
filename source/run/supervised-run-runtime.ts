@@ -1,21 +1,16 @@
+import type { ReporterDelivery } from '../engine/reporter-dispatcher.ts';
 import { caseIdentityKey } from '../engine/identity.ts';
 import type {
     ReporterEvent,
     ResourceUsageSnapshot,
     RunResult
 } from '../packages/engine/engine.entry-point.ts';
-import type { ReporterDelivery } from '../engine/reporter-dispatcher.ts';
 import { createRunResultFromCollectedPlan } from './collected-run-plan.ts';
 import type {
     CollectedRunPlan,
     ResolvedRun
 } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import type {
-    SupervisedChildMessage,
-    SupervisedCollectCommand,
-    SupervisedRunCommand
-} from './supervised-protocol.ts';
 import {
     observeSupervisedChildOutput,
     type SupervisedChildProcess
@@ -32,6 +27,13 @@ import {
     type SupervisedCase,
     type SupervisedRunState
 } from './supervised-run-state.ts';
+import {
+    supervisedChildEnvelope,
+    supervisedChildMessage,
+    type SupervisedChildMessage,
+    type SupervisedCollectCommand,
+    type SupervisedRunCommand
+} from './supervised-protocol.ts';
 
 export type ReporterEventQueue = {
     readonly add: (eventReport: Promise<void>) => void;
@@ -254,16 +256,16 @@ function createRunCommand(resolvedRun: ResolvedRun): SupervisedRunCommand {
 }
 
 export function sendRunCommand(runtime: SupervisedRunRuntime): void {
-    runtime.child.send(createRunCommand(runtime.resolvedRun));
+    runtime.child.send(supervisedChildEnvelope(createRunCommand(runtime.resolvedRun)));
 }
 
 export function sendAssignment(runtime: SupervisedRunRuntime): void {
-    runtime.child.send({
+    runtime.child.send(supervisedChildEnvelope({
         assignedCases: runtime.resolvedRun.facts.cases.map(function toCaseId(testCase) {
             return testCase.id;
         }),
         kind: 'assign'
-    });
+    }));
 }
 
 function handleChildEvent(event: ReporterEvent, runtime: SupervisedRunRuntime): void {
@@ -387,8 +389,12 @@ export async function observeChild(runtime: SupervisedRunRuntime): Promise<void>
     });
 
     return new Promise(function waitForChild(resolve) {
-        runtime.child.on('message', function receiveMessage(message: SupervisedChildMessage) {
-            handleChildMessage(message, runtime);
+        runtime.child.on('message', function receiveMessage(message: unknown) {
+            const childMessage = supervisedChildMessage(message);
+
+            if (childMessage !== null) {
+                handleChildMessage(childMessage, runtime);
+            }
         });
         runtime.child.on('error', function recordChildError(error: Error) {
             if (!runtime.terminalFailure.read()) {

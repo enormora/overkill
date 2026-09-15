@@ -262,7 +262,10 @@ function createTestOrchestrator(output: CapturedProcessOutput): RunOrchestrator 
                 output.appendStdout(Buffer.from(`${line}\n`));
             }
         },
-        startSupervisedChild: startFakeIntegrationOutputChild
+        startSupervisedChild: startFakeIntegrationOutputChild,
+        startWorkerPoolHost() {
+            throw new Error('Fake supervised child tests do not start worker-pool hosts.');
+        }
     });
 }
 

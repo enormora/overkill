@@ -336,6 +336,26 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'integration execution schema rejects host-process fields',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const result = safeParse(integrationExecutionSchema, {
+                    hostProcess: {
+                        kind: 'child',
+                        nodeArguments: [ '--expose-gc' ]
+                    },
+                    processModel: 'worker-pool',
+                    scheduling: 'serial'
+                });
+
+                scope.assert.equal(result.success, false);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'integration execution schema rejects invalid worker lifecycle fields',
             annotations: {},
             controls: {},

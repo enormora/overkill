@@ -7,6 +7,7 @@ import type {
 import type {
     CollectedRunPlan,
     RunEngineSelection,
+    RunHostProcess,
     RunResourceBudgets,
     RunScheduling,
     RunTestFamily,
@@ -18,12 +19,14 @@ export type WorkerPoolCommand = {
     readonly cwd: string;
     readonly engine: Exclude<RunEngineSelection, { readonly kind: 'instance'; }>;
     readonly hardTimeoutMilliseconds: number;
+    readonly hostProcess: RunHostProcess;
     readonly paths: readonly string[];
     readonly resourceBudgets: RunResourceBudgets;
     readonly resourceUsageSamplingIntervalMilliseconds: number;
     readonly scheduling: RunScheduling;
     readonly testFamily: RunTestFamily;
     readonly timeoutMilliseconds: number;
+    readonly workerLifecycle: 'fresh-worker-per-unit' | 'reuse';
 };
 
 type WorkerPoolCollectTask = {

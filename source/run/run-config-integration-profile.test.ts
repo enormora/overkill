@@ -43,6 +43,7 @@ export const testNode = createOverkillSuite({
                 scope.require.defined(microtestProfile);
                 scope.assert.deepEqual(profile, {
                     execution: {
+                        hostProcess: { kind: 'direct' },
                         processModel: 'worker-pool',
                         scheduling: 'concurrent',
                         workDistribution: { mode: 'file' },
@@ -109,12 +110,14 @@ export const testNode = createOverkillSuite({
                 scope.require.defined(defaultedProfile);
                 scope.require.defined(profile);
                 scope.assert.deepEqual(defaultedProfile.execution, {
+                    hostProcess: { kind: 'direct' },
                     processModel: 'worker-pool',
                     scheduling: 'serial',
                     workDistribution: { mode: 'file' },
                     workerLifecycle: 'reuse'
                 });
                 scope.assert.deepEqual(profile.execution, {
+                    hostProcess: { kind: 'direct' },
                     processModel: 'worker-pool',
                     scheduling: 'serial',
                     workDistribution: {

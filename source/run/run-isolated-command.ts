@@ -111,11 +111,17 @@ export function createWorkerPoolCommand(
         cwd: command.cwd,
         engine: isolatedEngine(command),
         hardTimeoutMilliseconds: profile.timeouts.hardMilliseconds,
+        hostProcess: profile.execution.processModel === 'worker-pool'
+            ? profile.execution.hostProcess
+            : { kind: 'direct' },
         paths: resolvedPaths(files),
         resourceBudgets: resourceUsagePolicy.budgets,
         resourceUsageSamplingIntervalMilliseconds: resourceUsagePolicy.samplingIntervalMilliseconds,
         scheduling: profile.execution.scheduling,
         testFamily: profile.testFamily,
-        timeoutMilliseconds: profile.timeouts.softMilliseconds
+        timeoutMilliseconds: profile.timeouts.softMilliseconds,
+        workerLifecycle: profile.execution.processModel === 'worker-pool'
+            ? profile.execution.workerLifecycle
+            : 'reuse'
     };
 }

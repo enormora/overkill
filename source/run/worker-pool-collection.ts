@@ -10,10 +10,7 @@ import {
     type SupervisedRunState
 } from './supervised-run-state.ts';
 import type { TinypoolInstance } from './tinypool-node-compatibility.ts';
-import {
-    createPool,
-    type WorkerPoolCollectionResult
-} from './worker-pool-runtime.ts';
+import type { WorkerPoolCollectionResult } from './worker-pool-runtime.ts';
 import type {
     WorkerPoolCollection,
     WorkerPoolCommand,
@@ -60,6 +57,7 @@ type CollectionTimeoutContext = {
 };
 
 type CollectionRuntime = {
+    readonly destroyPool: boolean;
     readonly controller: AbortController;
     readonly pool: TinypoolInstance;
     readonly port1: NodeMessagePort;
@@ -115,7 +113,8 @@ function observeCollectionOutput(port: NodeMessagePort, runState: SupervisedRunS
 function createCollectionRuntime(
     command: WorkerPoolCommand,
     dependencies: RunOrchestratorDependencies,
-    runState: SupervisedRunState
+    runState: SupervisedRunState,
+    createdPool: TinypoolInstance | null
 ): CollectionRuntime {
     const { port1, port2 } = new NodeMessageChannel();
     const controller = new AbortController();
@@ -123,10 +122,20 @@ function createCollectionRuntime(
     const timeout = startCollectionTimeout({ command, controller, dependencies, runState, terminalFailure });
 
     observeCollectionOutput(port2, runState);
+    const pool = createdPool ?? dependencies.createWorkerPool({
+        cwd: command.cwd,
+        hostProcess: command.hostProcess,
+        workerCount: 1,
+        workerLifecycle: 'fresh-worker-per-unit'
+    });
+    pool.setHostOutputSink?.(function recordHostOutput(stream, chunk) {
+        runState.recordCapturedOutput(stream, chunk, dependencies.wallClock.currentTimestampInMilliseconds);
+    });
 
     return {
         controller,
-        pool: createPool({ workerCount: 1, workerLifecycle: 'fresh-worker-per-unit' }),
+        destroyPool: createdPool === null,
+        pool,
         port1,
         port2,
         terminalFailure,
@@ -159,9 +168,10 @@ function completeCollection(
 export async function collectInWorkerPool(
     command: WorkerPoolCommand,
     dependencies: RunOrchestratorDependencies,
-    runState: SupervisedRunState
+    runState: SupervisedRunState,
+    createdPool: TinypoolInstance | null = null
 ): Promise<WorkerPoolCollectionResult> {
-    const runtime = createCollectionRuntime(command, dependencies, runState);
+    const runtime = createCollectionRuntime(command, dependencies, runState, createdPool);
 
     try {
         return completeCollection(
@@ -174,6 +184,9 @@ export async function collectInWorkerPool(
     } finally {
         dependencies.wallClock.clearTimeout(runtime.timeout);
         runtime.port2.close();
-        await runtime.pool.destroy();
+        runtime.pool.setHostOutputSink?.(null);
+        if (runtime.destroyPool) {
+            await runtime.pool.destroy();
+        }
     }
 }

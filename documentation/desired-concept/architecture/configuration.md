@@ -264,6 +264,7 @@ export const config = defineConfig({
                 exclude: []
             },
             execution: {
+                hostProcess: { kind: 'direct' },
                 processModel: 'worker-pool',
                 scheduling: 'concurrent',
                 workerLifecycle: 'fresh-worker-per-unit',
@@ -288,6 +289,11 @@ export const config = defineConfig({
 Benchmark configuration is a standard top-level configuration domain because
 benchmark execution uses `overkill bench`, not `overkill run --profile
 benchmark`.
+
+Direct `RunConfig` values can choose worker-pool host shape with
+`execution.hostProcess`. Project configuration files do not expose that key
+until the configuration schema has a stable policy for which Node/V8 arguments
+are acceptable in persistent project policy.
 
 Profile names are project-owned strings. First-party config validates that a
 profile name is non-empty and contains only letters, numbers, dots,

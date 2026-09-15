@@ -5,6 +5,7 @@ import { testNode as runConfigLoadErrorTestNode } from './run-config-load-error.
 import { testNode as runConfigProfileFilesTestNode } from './run-config-profile-files.test.ts';
 import { testNode as runConfigReportersTestNode } from './run-config-reporters.test.ts';
 import { testNode as runConfigSchemaTestNode } from './run-config-schema.test.ts';
+import { testNode as runHostProcessTestNode } from './run-host-process.test.ts';
 import { testNode as runProfileNameTestNode } from './run-profile-name.test.ts';
 
 export const testNode = createOverkillSuite({
@@ -19,6 +20,7 @@ export const testNode = createOverkillSuite({
         runConfigProfileFilesTestNode,
         runConfigReportersTestNode,
         runConfigSchemaTestNode,
+        runHostProcessTestNode,
         runProfileNameTestNode
     ]
 });

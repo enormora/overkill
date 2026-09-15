@@ -19,6 +19,7 @@ import { orchestrator } from './run-orchestrator.entry-point.ts';
 import type { RunCommand, RunConfig } from './run-types.ts';
 
 const integrationOutputFixturePath = 'source/integration-tests/run/fixtures/integration-output.test.ts';
+const hostProcessNodeArgumentsFixturePath = 'source/integration-tests/run/fixtures/host-process-node-arguments.test.ts';
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const workerPoolCrashFixturePath = 'source/integration-tests/run/fixtures/worker-pool-crash.test.ts';
 
@@ -127,6 +128,7 @@ export const testNode = createOverkillSuite({
                     throw new Error('Expected worker-pool execution facts.');
                 }
 
+                scope.assert.deepEqual(resolvedRun.facts.execution.hostProcess, { kind: 'direct' });
                 scope.assert.equal(resolvedRun.facts.execution.workerLifecycle, 'reuse');
                 scope.assert.deepEqual(resolvedRun.facts.execution.workDistribution, { mode: 'file' });
                 scope.assert.equal(resolvedRun.plan.kind, 'worker-pool');
@@ -159,8 +161,38 @@ export const testNode = createOverkillSuite({
                     throw new Error('Expected worker-pool execution facts.');
                 }
 
+                scope.assert.deepEqual(resolvedRun.facts.execution.hostProcess, { kind: 'direct' });
                 scope.assert.equal(resolvedRun.facts.execution.workerLifecycle, 'fresh-worker-per-unit');
                 scope.assert.deepEqual(resolvedRun.facts.execution.workDistribution, { mode: 'file' });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'orchestrator.run() hosts worker-pool execution with Node arguments',
+            async body(scope: OverkillScope) {
+                const result = await orchestrator.run(integrationCommand(
+                    defaultIntegrationProfile({
+                        execution: {
+                            hostProcess: {
+                                kind: 'child',
+                                nodeArguments: [ '--expose-gc' ]
+                            },
+                            processModel: 'worker-pool'
+                        },
+                        files: {
+                            exclude: [],
+                            include: [ hostProcessNodeArgumentsFixturePath ]
+                        }
+                    }),
+                    hostProcessNodeArgumentsFixturePath
+                ));
+
+                scope.assert.equal(result.summary.passed, 1);
+                scope.assert.deepEqual(result.runnerErrors, []);
 
                 return scope.assert.collect();
             }
