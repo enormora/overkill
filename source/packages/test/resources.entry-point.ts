@@ -12,26 +12,22 @@ import {
     type TestScope
 } from '../engine/engine.entry-point.ts';
 import {
+    assertPerCaseResourceGraph,
     isDefinedResource,
     isDefinedRuntime,
     ResourceLifecycleError,
+    startResources,
     startRuntime,
     type AnyResourceDefinition,
     type ExecutionRequirement,
     type ResourceContext,
     type ResourceMap,
+    type ResourceSession,
     type RuntimeContext,
     type RuntimeGraph,
     type RuntimeSession,
     type RuntimeScopeContext
 } from '../resources/resources.entry-point.ts';
-import {
-    assertPerCaseResourceGraph
-} from '../../resources/resource-graph.ts';
-import {
-    startResources,
-    type ResourceSession
-} from '../../resources/resource-session.ts';
 
 export {
     composeRuntimeContext,

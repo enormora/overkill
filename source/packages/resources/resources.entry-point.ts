@@ -24,6 +24,12 @@ export {
     isDefinedRuntime
 } from '../../resources/resources.ts';
 export {
+    assertPerCaseResourceGraph
+} from '../../resources/resource-graph.ts';
+export {
+    startResources
+} from '../../resources/resource-session.ts';
+export {
     ResourceLifecycleError
 } from '../../resources/resource-lifecycle-error.ts';
 export {
@@ -58,6 +64,11 @@ export type {
     ResourceLifecycleFailure,
     ResourceLifecyclePhase
 } from '../../resources/resource-lifecycle-error.ts';
+export type {
+    ResourceSession,
+    ResourceSessionDisposalContext,
+    StartResourcesRequest
+} from '../../resources/resource-session.ts';
 export type {
     RuntimeSession,
     RuntimeSessionDisposalContext,

@@ -1,10 +1,12 @@
 import { describe, expect, test } from 'tstyche';
 import {
+    type assertPerCaseResourceGraph,
     composeRuntimeContext,
     createTemporaryDirectoryResource,
     defineResource,
     defineRuntime,
     type ResourceLifecycleError,
+    startResources,
     startRuntime,
     type ExecutionRequirement,
     type ResourceContext,
@@ -13,6 +15,7 @@ import {
     type ResourceDisposalContext,
     type ResourceHandle,
     type ResourceLifecycleFailure,
+    type ResourceSession,
     type ResourceScope,
     type RuntimeContext,
     type RuntimeDimensions,
@@ -157,9 +160,12 @@ describe('@overkill-dev/resources', function () {
     });
 
     test('exposes runtime lifecycle session types', function () {
-        const session = startRuntime({ runtime, signal: typeTestController.signal });
+        const runtimeSession = startRuntime({ runtime, signal: typeTestController.signal });
+        const resourceSession = startResources({ resources: { database }, signal: typeTestController.signal });
 
-        expect(session).type.toBe<Promise<RuntimeSession<typeof runtime>>>();
+        expect(runtimeSession).type.toBe<Promise<RuntimeSession<typeof runtime>>>();
+        expect(resourceSession).type.toBe<Promise<ResourceSession<{ readonly database: typeof database; }>>>();
+        expect<typeof assertPerCaseResourceGraph>().type.toBeCallableWith({ database });
         expect<ResourceLifecycleFailure>().type.toBe<{
             readonly cause: unknown;
             readonly phase: 'acquire' | 'dispose' | 'graph';
