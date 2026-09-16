@@ -98,6 +98,7 @@ function applySerialRequirement(sets: ConstraintSets, resource: ResourceSummary)
 
 function applyExclusiveResourceRequirement(
     sets: ConstraintSets,
+    _resource: ResourceSummary,
     requirement: ResourceRequirementSummary
 ): ConstraintSets {
     return { ...sets, serialKeys: withOptionalValue(sets.serialKeys, stringRequirementValue(requirement, 'name')) };
@@ -107,14 +108,22 @@ function applySingleWorkerRequirement(sets: ConstraintSets, resource: ResourceSu
     return { ...sets, singleWorkerKeys: new Set([ ...sets.singleWorkerKeys, `single-worker:${resource.name}` ]) };
 }
 
-function applyAffinityRequirement(sets: ConstraintSets, requirement: ResourceRequirementSummary): ConstraintSets {
+function applyAffinityRequirement(
+    sets: ConstraintSets,
+    _resource: ResourceSummary,
+    requirement: ResourceRequirementSummary
+): ConstraintSets {
     return {
         ...sets,
         affinityKeys: withOptionalValue(sets.affinityKeys, stringRequirementValue(requirement, 'key'))
     };
 }
 
-function applyFaultDomainRequirement(sets: ConstraintSets, requirement: ResourceRequirementSummary): ConstraintSets {
+function applyFaultDomainRequirement(
+    sets: ConstraintSets,
+    _resource: ResourceSummary,
+    requirement: ResourceRequirementSummary
+): ConstraintSets {
     return {
         ...sets,
         faultDomains: withOptionalValue(sets.faultDomains, stringRequirementValue(requirement, 'key'))

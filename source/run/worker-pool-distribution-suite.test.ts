@@ -3,6 +3,7 @@ import { testNode as workerPoolCommandPlanningTestNode } from './worker-pool-com
 import { testNode as workerPoolLanesTestNode } from './worker-pool-lanes.test.ts';
 import { testNode as workerPoolLifecycleRoutingTestNode } from './worker-pool-lifecycle-routing.test.ts';
 import { testNode as workerPoolWorkDistributionTestNode } from './worker-pool-work-distribution.test.ts';
+import { testNode as workUnitResourceConstraintsTestNode } from './work-unit-resource-constraints.test.ts';
 
 export const testNode = createOverkillSuite({
     annotations: {},
@@ -13,7 +14,8 @@ export const testNode = createOverkillSuite({
         workerPoolCommandPlanningTestNode,
         workerPoolLanesTestNode,
         workerPoolLifecycleRoutingTestNode,
-        workerPoolWorkDistributionTestNode
+        workerPoolWorkDistributionTestNode,
+        workUnitResourceConstraintsTestNode
     ]
 });
 
