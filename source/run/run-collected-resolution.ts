@@ -31,7 +31,8 @@ import type {
     RunConfig,
     CollectedRunPlan,
     RunProfileConfig,
-    RunRequest
+    RunRequest,
+    RunWorkerPoolAssignmentPolicy
 } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 
@@ -80,6 +81,12 @@ function fileSetForDiscoveredFiles(files: ResolvedRunInput['files']): (file: str
     };
 }
 
+function workerPoolAssignmentPolicy(profile: RunProfileConfig): RunWorkerPoolAssignmentPolicy {
+    return profile.execution.processModel === 'worker-pool'
+        ? profile.execution.assignmentPolicy
+        : 'case-count-balanced';
+}
+
 function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): ResolvedRun {
     assertCollectedRunPlanMatchesTestFamily(input.collectedPlan, input.profile.testFamily);
     assertCollectedRunPlanCasesMatchProfilePolicy(input.collectedPlan, input.profile);
@@ -90,6 +97,7 @@ function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): R
 
     const placementPlan = input.planKind === 'worker-pool'
         ? createWorkerPoolPlacementPlan({
+            assignmentPolicy: workerPoolAssignmentPolicy(input.profile),
             availableParallelism: input.dependencies.availableParallelism,
             fileSetForFile: fileSetForDiscoveredFiles(input.files),
             order: input.request.order,

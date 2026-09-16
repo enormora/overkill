@@ -841,6 +841,7 @@ type WorkerPoolIntegrationExecutionConfig = {
     readonly assignmentPolicy:
         | 'stable'
         | 'case-count-balanced'
+        // future placement policies
         | 'duration-history-balanced'
         | 'dynamic-lease';
 };

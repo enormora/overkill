@@ -128,6 +128,7 @@ export const testNode = createOverkillSuite({
                     throw new Error('Expected worker-pool execution facts.');
                 }
 
+                scope.assert.equal(resolvedRun.facts.execution.assignmentPolicy, 'case-count-balanced');
                 scope.assert.deepEqual(resolvedRun.facts.execution.hostProcess, { kind: 'direct' });
                 scope.assert.equal(resolvedRun.facts.execution.workerLifecycle, 'reuse');
                 scope.assert.deepEqual(resolvedRun.facts.execution.workDistribution, { mode: 'file' });
@@ -161,6 +162,7 @@ export const testNode = createOverkillSuite({
                     throw new Error('Expected worker-pool execution facts.');
                 }
 
+                scope.assert.equal(resolvedRun.facts.execution.assignmentPolicy, 'case-count-balanced');
                 scope.assert.deepEqual(resolvedRun.facts.execution.hostProcess, { kind: 'direct' });
                 scope.assert.equal(resolvedRun.facts.execution.workerLifecycle, 'fresh-worker-per-unit');
                 scope.assert.deepEqual(resolvedRun.facts.execution.workDistribution, { mode: 'file' });

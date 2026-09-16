@@ -100,6 +100,11 @@ const workerLifecycleSchema = z.union([
     z.literal('reuse')
 ]);
 
+const workerPoolAssignmentPolicySchema = z.union([
+    z.literal('case-count-balanced'),
+    z.literal('stable')
+]);
+
 const workGroupGranularitySchema = z.union([
     z.literal('case'),
     z.literal('file'),
@@ -165,6 +170,7 @@ export const integrationExecutionSchema = z.discriminatedUnion('processModel', [
         .readonly(),
     z
         .strictObject({
+            assignmentPolicy: z.optional(workerPoolAssignmentPolicySchema),
             processModel: z.literal('worker-pool'),
             scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ])),
             workDistribution: z.optional(workDistributionSchema),

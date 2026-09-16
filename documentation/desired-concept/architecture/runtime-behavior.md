@@ -666,6 +666,8 @@ available work-unit count. Override via `--workers N`.
 Worker-pool placement defaults to case-count balancing: the planner places
 larger work units first, uses selected case count as weight, and uses seeded
 order as a deterministic tie-breaker and lane-local execution order.
+`assignmentPolicy: 'stable'` is the compatibility policy for profiles that
+need source-order round-robin placement instead.
 
 ## Sharding
 

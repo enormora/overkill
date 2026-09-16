@@ -16,6 +16,7 @@ import type {
     RunResourceUsagePolicy,
     RunTimeoutPolicy,
     RunWorkDistribution,
+    RunWorkerPoolAssignmentPolicy,
     RunWorkerLifecycle
 } from '../run/run-types.ts';
 import { hostProcessFacts } from '../run/run-host-process.ts';
@@ -113,6 +114,7 @@ export function testRunExecutionFacts(command: RunCommand, profile: RunProfileCo
     if (profile.execution.processModel === 'worker-pool') {
         return {
             ...facts,
+            assignmentPolicy: profile.execution.assignmentPolicy,
             hostProcess: hostProcessFacts(profile.execution.hostProcess),
             processModel: profile.execution.processModel,
             workDistribution: profile.execution.workDistribution,
@@ -136,6 +138,18 @@ function defaultWorkerLifecycle(overrides: Partial<RunIntegrationExecution>): Ru
     return hasWorkerLifecycleOverride(overrides)
         ? overrides.workerLifecycle ?? 'reuse'
         : 'reuse';
+}
+
+function hasAssignmentPolicyOverride(
+    overrides: Partial<RunIntegrationExecution>
+): overrides is WorkerPoolExecutionOverrides {
+    return Object.hasOwn(overrides, 'assignmentPolicy');
+}
+
+function defaultAssignmentPolicy(overrides: Partial<RunIntegrationExecution>): RunWorkerPoolAssignmentPolicy {
+    return hasAssignmentPolicyOverride(overrides)
+        ? overrides.assignmentPolicy ?? 'case-count-balanced'
+        : 'case-count-balanced';
 }
 
 function hasWorkDistributionOverride(
@@ -172,6 +186,7 @@ function defaultIntegrationExecution(overrides: Partial<RunIntegrationExecution>
 
     if (processModel === 'worker-pool') {
         return {
+            assignmentPolicy: defaultAssignmentPolicy(overrides),
             processModel,
             scheduling,
             workDistribution: defaultWorkDistribution(overrides),

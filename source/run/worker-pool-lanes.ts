@@ -1,26 +1,28 @@
 import { invalidRequest } from './run-errors.ts';
+import {
+    caseCountPlacementLoad,
+    freshWorkerLifecycle,
+    lifecycleCount,
+    lifecycleLaneCounts,
+    selectedCaseCount,
+    reuseWorkerLifecycle,
+    workerLifecycles
+} from './worker-pool-lifecycle-lanes.ts';
 import type {
     PlacementAssignment,
     PlacementLane,
+    RunWorkerPoolAssignmentPolicy,
     RunWorkerLifecycle,
     WorkUnit
 } from './run-types.ts';
 
 const maximumWorkerCount = 8;
 const mixedLifecycleCount = 2;
-const freshWorkerLifecycle = 'fresh-worker-per-unit';
-const reuseWorkerLifecycle = 'reuse';
-const workerLifecycles: readonly RunWorkerLifecycle[] = [ reuseWorkerLifecycle, freshWorkerLifecycle ];
 
 export type WorkerPoolLaneInput = {
+    readonly assignmentPolicy: RunWorkerPoolAssignmentPolicy;
     readonly availableParallelism: number;
     readonly units: readonly WorkUnit[];
-};
-
-type LifecycleLaneCounts = {
-    readonly freshLanes: number;
-    readonly remainingLanes: number;
-    readonly reuseLanes: number;
 };
 type LanePlacementState = {
     readonly chooseLane: (unit: WorkUnit, lanes: readonly PlacementLane[]) => PlacementLane;
@@ -32,6 +34,18 @@ type LaneChoiceSnapshot = {
     readonly laneLoads: ReadonlyMap<string, number>;
     readonly preferredLaneByAffinity: ReadonlyMap<string, string>;
 };
+type IndexedWorkUnit = {
+    readonly index: number;
+    readonly unit: WorkUnit;
+};
+type LaneSelectionInput = {
+    readonly assignmentPolicy: RunWorkerPoolAssignmentPolicy;
+    readonly lanes: readonly PlacementLane[];
+    readonly nextIndex: number;
+    readonly placementState: LanePlacementState;
+    readonly unit: WorkUnit;
+};
+type UnitLoad = (unit: WorkUnit) => number;
 
 function defaultWorkerCount(availableParallelism: number, unitCount: number): number {
     if (!Number.isSafeInteger(availableParallelism) || availableParallelism <= 0) {
@@ -45,23 +59,9 @@ function defaultWorkerCount(availableParallelism: number, unitCount: number): nu
     return Math.min(Math.max(availableParallelism - 1, 1), maximumWorkerCount, unitCount);
 }
 
-function lifecycleCount(units: readonly WorkUnit[], workerLifecycle: RunWorkerLifecycle): number {
-    return units
-        .filter(function hasWorkerLifecycle(unit) {
-            return unit.workerLifecycle === workerLifecycle;
-        })
-        .length;
-}
-
 function hasMixedLifecycles(units: readonly WorkUnit[]): boolean {
     return lifecycleCount(units, freshWorkerLifecycle) > 0 &&
         lifecycleCount(units, reuseWorkerLifecycle) > 0;
-}
-
-function firstUnitWorkerLifecycle(units: readonly WorkUnit[]): RunWorkerLifecycle {
-    return units.reduce<RunWorkerLifecycle>(function keepFirstLifecycle(firstLifecycle, unit, index) {
-        return index === 0 ? unit.workerLifecycle : firstLifecycle;
-    }, reuseWorkerLifecycle);
 }
 
 function workerCount(input: WorkerPoolLaneInput): number {
@@ -92,82 +92,12 @@ export function workerPoolLanes(input: WorkerPoolLaneInput): readonly PlacementL
     });
 }
 
-function proportionalExtraLaneLifecycle(
-    units: readonly WorkUnit[],
-    remainingLanes: number,
-    tiedLifecycle: RunWorkerLifecycle
-): RunWorkerLifecycle {
-    const freshUnits = lifecycleCount(units, freshWorkerLifecycle);
-    const reuseUnits = lifecycleCount(units, reuseWorkerLifecycle);
-    const totalUnits = freshUnits + reuseUnits;
-    const freshRemainder = remainingLanes * freshUnits / totalUnits % 1;
-    const reuseRemainder = remainingLanes * reuseUnits / totalUnits % 1;
-
-    if (freshRemainder !== reuseRemainder) {
-        return freshRemainder > reuseRemainder ? freshWorkerLifecycle : reuseWorkerLifecycle;
-    }
-
-    return tiedLifecycle;
-}
-
-function mixedLifecycleBaseLaneCounts(
-    units: readonly WorkUnit[],
-    totalLaneCount: number
-): LifecycleLaneCounts {
-    const freshUnits = lifecycleCount(units, freshWorkerLifecycle);
-    const reuseUnits = lifecycleCount(units, reuseWorkerLifecycle);
-    const remainingLanes = totalLaneCount - mixedLifecycleCount;
-    const unitCount = freshUnits + reuseUnits;
-
-    return {
-        freshLanes: 1 + Math.floor(remainingLanes * freshUnits / unitCount),
-        remainingLanes,
-        reuseLanes: 1 + Math.floor(remainingLanes * reuseUnits / unitCount)
-    };
-}
-
-function mixedLifecycleLaneCounts(
-    units: readonly WorkUnit[],
-    totalLaneCount: number
-): ReadonlyMap<RunWorkerLifecycle, number> {
-    let { freshLanes, remainingLanes, reuseLanes } = mixedLifecycleBaseLaneCounts(units, totalLaneCount);
-
-    if (freshLanes + reuseLanes < totalLaneCount) {
-        const targetLifecycle = proportionalExtraLaneLifecycle(units, remainingLanes, firstUnitWorkerLifecycle(units));
-
-        if (targetLifecycle === freshWorkerLifecycle) {
-            freshLanes += 1;
-        } else {
-            reuseLanes += 1;
-        }
-    }
-
-    return new Map([
-        [ freshWorkerLifecycle, freshLanes ],
-        [ reuseWorkerLifecycle, reuseLanes ]
-    ]);
-}
-
-function lifecycleLaneCounts(
-    units: readonly WorkUnit[],
-    totalLaneCount: number
-): ReadonlyMap<RunWorkerLifecycle, number> {
-    if (lifecycleCount(units, freshWorkerLifecycle) === 0) {
-        return new Map([ [ reuseWorkerLifecycle, totalLaneCount ] ]);
-    }
-
-    if (lifecycleCount(units, reuseWorkerLifecycle) === 0) {
-        return new Map([ [ freshWorkerLifecycle, totalLaneCount ] ]);
-    }
-
-    return mixedLifecycleLaneCounts(units, totalLaneCount);
-}
-
 function lanesByLifecycle(
     lanes: readonly PlacementLane[],
-    units: readonly WorkUnit[]
+    units: readonly WorkUnit[],
+    assignmentPolicy: RunWorkerPoolAssignmentPolicy
 ): ReadonlyMap<RunWorkerLifecycle, readonly PlacementLane[]> {
-    const counts = lifecycleLaneCounts(units, lanes.length);
+    const counts = lifecycleLaneCounts(units, lanes.length, assignmentPolicy);
     let nextLaneIndex = 0;
 
     return new Map(
@@ -279,14 +209,14 @@ function chooseLane(
     return lane;
 }
 
-function createLanePlacementState(): LanePlacementState {
+function createLanePlacementState(unitLoad: UnitLoad): LanePlacementState {
     const faultDomainLanes = new Map<string, Set<string>>();
     const fixedLaneByKey = new Map<string, string>();
     const laneLoads = new Map<string, number>();
     const preferredLaneByAffinity = new Map<string, string>();
 
     function rememberLaneChoice(unit: WorkUnit, lane: PlacementLane): void {
-        laneLoads.set(lane.id, laneLoad(lane, laneLoads) + unit.resourceConstraints.capacityWeight);
+        laneLoads.set(lane.id, laneLoad(lane, laneLoads) + unitLoad(unit));
 
         for (const key of [ ...unit.resourceConstraints.singleWorkerKeys, ...unit.resourceConstraints.serialKeys ]) {
             fixedLaneByKey.set(key, lane.id);
@@ -329,35 +259,68 @@ function requiresResourceAwareLane(unit: WorkUnit): boolean {
         unit.resourceConstraints.faultDomains.length > 0;
 }
 
-function selectedLaneForUnit(
-    unit: WorkUnit,
-    lanes: readonly PlacementLane[],
-    nextIndex: number,
-    placementState: LanePlacementState
-): PlacementLane {
-    const fixedLane = placementState.firstFixedLane(unit, lanes);
+function selectedLaneForUnit(input: LaneSelectionInput): PlacementLane {
+    const fixedLane = input.placementState.firstFixedLane(input.unit, input.lanes);
 
     if (fixedLane !== null) {
         return fixedLane;
     }
 
-    return requiresResourceAwareLane(unit)
-        ? placementState.chooseLane(unit, lanes)
-        : assignedLane(lanes, nextIndex);
+    return input.assignmentPolicy === 'case-count-balanced' || requiresResourceAwareLane(input.unit)
+        ? input.placementState.chooseLane(input.unit, input.lanes)
+        : assignedLane(input.lanes, input.nextIndex);
+}
+
+function orderedUnitsForAssignment(
+    units: readonly WorkUnit[],
+    assignmentPolicy: RunWorkerPoolAssignmentPolicy
+): readonly WorkUnit[] {
+    if (assignmentPolicy === 'stable') {
+        return units;
+    }
+
+    return units
+        .map(function toIndexedUnit(unit, index): IndexedWorkUnit {
+            return { index, unit };
+        })
+        .toSorted(function compareSelectedCaseCount(left, right) {
+            const caseCountDifference = selectedCaseCount(right.unit) - selectedCaseCount(left.unit);
+
+            return caseCountDifference === 0 ? left.index - right.index : caseCountDifference;
+        })
+        .map(function toUnit(indexedUnit) {
+            return indexedUnit.unit;
+        });
+}
+
+function assignmentUnitLoad(assignmentPolicy: RunWorkerPoolAssignmentPolicy): UnitLoad {
+    return assignmentPolicy === 'case-count-balanced'
+        ? caseCountPlacementLoad
+        : function stablePlacementLoad(unit) {
+            return unit.resourceConstraints.capacityWeight;
+        };
 }
 
 export function workerPoolPlacementAssignments(
     units: readonly WorkUnit[],
-    lanes: readonly PlacementLane[]
+    lanes: readonly PlacementLane[],
+    assignmentPolicy: RunWorkerPoolAssignmentPolicy
 ): readonly PlacementAssignment[] {
-    const lifecycleLanes = lanesByLifecycle(lanes, units);
+    const lifecycleLanes = lanesByLifecycle(lanes, units, assignmentPolicy);
     const lifecycleIndexes = new Map<RunWorkerLifecycle, number>();
-    const placementState = createLanePlacementState();
+    const placementState = createLanePlacementState(assignmentUnitLoad(assignmentPolicy));
+    const assignmentUnits = orderedUnitsForAssignment(units, assignmentPolicy);
 
-    return units.map(function toAssignment(unit) {
+    return assignmentUnits.map(function toAssignment(unit) {
         const lanesForUnit = lifecycleLanes.get(unit.workerLifecycle) ?? [];
         const nextIndex = lifecycleIndexes.get(unit.workerLifecycle) ?? 0;
-        const lane = selectedLaneForUnit(unit, lanesForUnit, nextIndex, placementState);
+        const lane = selectedLaneForUnit({
+            assignmentPolicy,
+            lanes: lanesForUnit,
+            nextIndex,
+            placementState,
+            unit
+        });
 
         lifecycleIndexes.set(unit.workerLifecycle, nextIndex + 1);
         placementState.rememberLaneChoice(unit, lane);

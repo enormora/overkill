@@ -16,6 +16,7 @@ import {
     type RunScheduling,
     type RunWorkDistribution,
     type RunWorkGroup,
+    type RunWorkerPoolAssignmentPolicy,
     type RunWorkerLifecycle,
     type WorkId,
     type WorkUnit,
@@ -30,6 +31,7 @@ import {
 type GroupWorkDistribution = Extract<RunWorkDistribution, { readonly mode: 'group'; }>;
 
 export type WorkerPoolPlacementPlanInput = {
+    readonly assignmentPolicy: RunWorkerPoolAssignmentPolicy;
     readonly availableParallelism: number;
     readonly fileSetForFile: (file: string) => string | null;
     readonly order: RunOrder;
@@ -534,12 +536,13 @@ export function workUnitsFromCollectedPlan(
 export function createWorkerPoolPlacementPlan(input: WorkerPoolPlacementPlanInput): PlacementPlan {
     const units = workUnitsFromCollectedPlan(input);
     const lanes = workerPoolLanes({
+        assignmentPolicy: input.assignmentPolicy,
         availableParallelism: input.availableParallelism,
         units
     });
 
     return {
-        assignments: workerPoolPlacementAssignments(units, lanes),
+        assignments: workerPoolPlacementAssignments(units, lanes, input.assignmentPolicy),
         lanes,
         units
     };

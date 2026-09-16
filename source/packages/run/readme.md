@@ -156,7 +156,11 @@ local order, and worker lifecycle. Unmatched selected file sets are rejected
 by default, or run as plain file units with profile defaults when
 `unmatched: 'file'` is configured. `RunFacts.execution` contains the frozen
 `PlacementPlan`: work units, resolved per-unit policy, local worker lanes, and
-the deterministic initial lane assignment used by execution.
+the deterministic initial lane assignment used by execution. Worker-pool
+placement defaults to `assignmentPolicy: 'case-count-balanced'`, which places
+larger selected work units first and balances lane load by selected case count.
+Use `assignmentPolicy: 'stable'` to preserve source-order round-robin
+placement.
 `workerLifecycle: 'reuse'` reuses worker threads between units.
 `workerLifecycle: 'fresh-worker-per-unit'` creates disposable isolation per
 unit. `supervised-process` remains available when a single process-isolated

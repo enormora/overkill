@@ -140,6 +140,7 @@ function createRunExecutionFacts(
     if (profile.execution.processModel === 'worker-pool') {
         return {
             ...facts,
+            assignmentPolicy: profile.execution.assignmentPolicy,
             hostProcess: hostProcessFacts(profile.execution.hostProcess),
             processModel: profile.execution.processModel,
             workDistribution: profile.execution.workDistribution,

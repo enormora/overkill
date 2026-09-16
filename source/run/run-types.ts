@@ -140,6 +140,8 @@ export type RunScheduling = 'concurrent' | 'serial';
 
 export type RunWorkerLifecycle = 'fresh-worker-per-unit' | 'reuse';
 
+export type RunWorkerPoolAssignmentPolicy = 'case-count-balanced' | 'stable';
+
 export type RunWorkGroupGranularity = 'case' | 'file' | 'group';
 
 export type RunWorkGroupOrder = RunOrder | 'profile-default';
@@ -311,6 +313,7 @@ type RunSupervisedIntegrationExecution = {
 };
 
 type RunWorkerPoolExecution = {
+    readonly assignmentPolicy: RunWorkerPoolAssignmentPolicy;
     readonly hostProcess: RunHostProcess;
     readonly processModel: 'worker-pool';
     readonly scheduling: RunScheduling;
@@ -447,6 +450,7 @@ type RunExecutionBaseFacts = {
 };
 
 type RunWorkerPoolExecutionFacts = RunExecutionBaseFacts & {
+    readonly assignmentPolicy: RunWorkerPoolAssignmentPolicy;
     readonly hostProcess: RunHostProcessFacts;
     readonly processModel: 'worker-pool';
     readonly workDistribution: RunWorkDistribution;
