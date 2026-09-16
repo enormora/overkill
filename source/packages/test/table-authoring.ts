@@ -25,19 +25,32 @@ import {
     runWithForwardedSourceLocations
 } from './authoring-source-locations.ts';
 import { readAuthoringRecord, readAuthoringString, readAuthoringTestBody } from './authoring-input.ts';
+import { attachComposedResourceActions } from './resource-wrapper-composition.ts';
+import {
+    scopeWrapperStep,
+    type ResourceWrapperAction
+} from './resource-wrapper-data.ts';
 
-export type ParameterizedTestScope<Row> = TestScope & {
+export type ParameterizedTestScope<
+    Row,
+    Scope extends TestScope = TestScope
+> = Scope & {
     readonly parameters: Row;
 };
 
-export type TableTestBody<Row> = (
-    scope: ParameterizedTestScope<Row>
+export type TableTestBody<
+    Row,
+    Scope extends TestScope = TestScope
+> = (
+    scope: ParameterizedTestScope<Row, Scope>
 ) => ReturnType<TestBody>;
+
+type AnyTableTestBody = (scope: never) => ReturnType<TestBody>;
 
 export type TableDefinition<
     Row,
     ControlsType extends TestControlsInput = AuthoringControls,
-    Body extends TableTestBody<Row> = TableTestBody<Row>
+    Body extends AnyTableTestBody = TableTestBody<Row>
 > = {
     readonly annotations?: AuthoringAnnotations;
     readonly caseTitle?: (parameters: Row, index: number) => string;
@@ -52,7 +65,7 @@ type RuntimeTableDefinition<Row> = {
     readonly caseTitle: ((parameters: Row, index: number) => string) | null;
     readonly cases: readonly Row[];
     readonly controls: TestControlsInput;
-    readonly test: TableTestBody<Row>;
+    readonly test: AnyTableTestBody;
     readonly title: string;
 };
 
@@ -81,16 +94,27 @@ function tableCaseTitle<Row>(
 function tableCaseBody<Row>(
     definition: RuntimeTableDefinition<Row>,
     parameters: Row,
-    sourceLocations: readonly SourceLocation[]
+    sourceLocations: readonly SourceLocation[],
+    facadeActions: readonly ResourceWrapperAction[]
 ): TestBody {
+    const caseBody = attachComposedResourceActions(
+        [
+            ...facadeActions,
+            scopeWrapperStep('table() parameters', function addTableParameters() {
+                return { parameters };
+            }, 'replace-existing')
+        ],
+        definition.test,
+        'table'
+    );
     const body: TestBody = async function runTableCase(scope: TestScope) {
         return await runWithForwardedSourceLocations(sourceLocations, async function runMacroGeneratedTableCase() {
-            return await definition.test({ ...scope, parameters });
+            return await caseBody(scope);
         });
     };
 
-    return hasTestBodyResourceAttachments(definition.test)
-        ? attachTestBodyResourceAttachments(body, readTestBodyResourceAttachments(definition.test))
+    return hasTestBodyResourceAttachments(caseBody)
+        ? attachTestBodyResourceAttachments(body, readTestBodyResourceAttachments(caseBody))
         : body;
 }
 
@@ -106,8 +130,12 @@ function ensureTableDefinitionShape(definition: Readonly<Record<string, unknown>
     readAuthoringTestBody(definition.test);
 }
 
-function readTableDefinition<Row, ControlsType extends TestControlsInput>(
-    definition: TableDefinition<Row, ControlsType>
+function readTableDefinition<
+    Row,
+    ControlsType extends TestControlsInput,
+    Body extends AnyTableTestBody
+>(
+    definition: TableDefinition<Row, ControlsType, Body>
 ): RuntimeTableDefinition<Row> {
     const runtimeDefinition = readAuthoringRecord(definition, tableArgumentsError);
     ensureTableDefinitionShape(runtimeDefinition);
@@ -123,14 +151,15 @@ function readTableDefinition<Row, ControlsType extends TestControlsInput>(
 }
 
 function tableCases<Row>(
-    definition: RuntimeTableDefinition<Row>
+    definition: RuntimeTableDefinition<Row>,
+    facadeActions: readonly ResourceWrapperAction[]
 ): TableCases {
     const sourceLocations = activeMacroSourceLocations();
 
     return definition.cases.map(function createTableCase(parameters, index) {
         return {
             annotations: {},
-            body: tableCaseBody(definition, parameters, sourceLocations),
+            body: tableCaseBody(definition, parameters, sourceLocations, facadeActions),
             controls: {},
             parameters,
             title: tableCaseTitle(definition.caseTitle, parameters, index)
@@ -138,16 +167,21 @@ function tableCases<Row>(
     });
 }
 
-export function createAuthoredTable<Row, ControlsType extends TestControlsInput>(
+export function createAuthoredTable<
+    Row,
+    ControlsType extends TestControlsInput,
+    Body extends AnyTableTestBody = TableTestBody<Row>
+>(
     facadeAnnotations: TestAnnotationsInput,
     facadeControls: TestControlsInput,
-    definition: TableDefinition<Row, ControlsType>
+    definition: TableDefinition<Row, ControlsType, Body>,
+    facadeActions: readonly ResourceWrapperAction[] = []
 ): Table {
     const tableDefinition = readTableDefinition(definition);
 
     return createTable({
         annotations: createAuthoringAnnotations(facadeAnnotations, tableDefinition.annotations),
-        cases: tableCases(tableDefinition),
+        cases: tableCases(tableDefinition, facadeActions),
         controls: createAuthoringControls(facadeControls, tableDefinition.controls),
         definitionLocations: definitionLocationsForAuthoringCall(),
         title: tableDefinition.title

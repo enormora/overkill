@@ -19,7 +19,7 @@ import {
     resourcesWrapperStep,
     resourceWrapperStep,
     runtimeWrapperStep
-} from './resource-wrapper-session.ts';
+} from './resource-wrapper-data.ts';
 
 export {
     composeRuntimeContext,

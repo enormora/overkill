@@ -5,6 +5,7 @@ import type {
     DefinedReporter,
     RealTimeReporter,
     RequireAssertionFacade,
+    Table,
     TestBody,
     TestCase,
     TestScope
@@ -368,6 +369,46 @@ describe('@overkill-dev/test standard subpaths', function () {
                 test: tableRuntimeBody,
                 title: 'rows'
             });
+        });
+
+        test('types facade-bound runtime resources and mapped scope', function () {
+            const facade = createTestFacade({
+                runtime,
+                resources: { scratch: temporaryDirectory },
+                mapScope(scope) {
+                    expect(scope.runtimes.api.database).type.toBe<Database>();
+                    expect(scope.resources.scratch).type.toBe<TemporaryDirectoryHandle>();
+
+                    return {
+                        databaseUrl: scope.runtimes.api.database.url,
+                        scratchPath: scope.resources.scratch.path
+                    };
+                }
+            });
+
+            expect(facade.test('uses facade runtime', function runWithFacade(scope) {
+                expect(scope.databaseUrl).type.toBe<string>();
+                expect(scope.scratchPath).type.toBe<string>();
+                expect(scope.resources.scratch).type.toBe<TemporaryDirectoryHandle>();
+                expect(scope.runtimes.api.database).type.toBe<Database>();
+
+                return scope.assert.collect();
+            }))
+                .type
+                .toBe<TestCase>();
+            expect(facade.table({
+                cases: [ { value: 1 }, { value: 2 } ],
+                test(scope) {
+                    expect(scope.parameters.value).type.toBe<number>();
+                    expect(scope.databaseUrl).type.toBe<string>();
+                    expect(scope.resources.scratch.path).type.toBe<string>();
+
+                    return scope.assert.collect();
+                },
+                title: 'rows'
+            }))
+                .type
+                .toBe<Table>();
         });
     });
 

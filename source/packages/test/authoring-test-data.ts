@@ -4,8 +4,19 @@ import type {
     DefinedReporter,
     TestAnnotationsInput,
     TestControlsInput,
-    TestNode
+    TestNode,
+    TestScope
 } from '../engine/engine.entry-point.ts';
+import type {
+    ResourceContext,
+    ResourceMap,
+    RuntimeGraph,
+    RuntimeScopeContext
+} from '../resources/resources.entry-point.ts';
+import {
+    ensureRuntimeGraph,
+    readResourceMap
+} from './resource-wrapper-data.ts';
 
 export type AuthoringAnnotations = {
     readonly ownership?: readonly string[];
@@ -17,14 +28,56 @@ export type AuthoringControls = {
     readonly timeoutMilliseconds?: number;
 };
 
-export type TestFacadeDefinition = {
+type EmptyResources = Readonly<Record<string, never>>;
+type EmptyMappedScope = Readonly<Record<string, never>>;
+type FacadeRuntimeScope<Runtime, Scope extends TestScope> = Runtime extends RuntimeGraph
+    ? Scope & { readonly runtimes: RuntimeScopeContext<Runtime>; }
+    : Scope;
+type FacadeResourceMapScope<Resources extends ResourceMap, Scope extends TestScope> = keyof Resources extends never
+    ? Scope
+    : Scope & { readonly resources: ResourceContext<Resources>; };
+type FacadeResourceScope<Resources, Scope extends TestScope> = Resources extends ResourceMap
+    ? FacadeResourceMapScope<Resources, Scope>
+    : Scope;
+type FacadeMappedScope<
+    MappedScope extends Readonly<Record<string, unknown>>,
+    Scope extends TestScope
+> = keyof MappedScope extends never ? Scope : MappedScope & Scope;
+type FacadeBaseScope<
+    Runtime extends RuntimeGraph | null,
+    Resources extends ResourceMap
+> = FacadeResourceScope<Resources, FacadeRuntimeScope<Runtime, TestScope>>;
+
+export type FacadeScope<
+    Runtime extends RuntimeGraph | null,
+    Resources extends ResourceMap,
+    MappedScope extends Readonly<Record<string, unknown>>
+> = FacadeMappedScope<MappedScope, FacadeBaseScope<Runtime, Resources>>;
+
+export type FacadeMapScope<
+    Runtime extends RuntimeGraph | null,
+    Resources extends ResourceMap,
+    MappedScope extends Readonly<Record<string, unknown>>
+> = (scope: FacadeBaseScope<Runtime, Resources>) => MappedScope;
+
+export type TestFacadeDefinition<
+    Runtime extends RuntimeGraph | null = null,
+    Resources extends ResourceMap = EmptyResources,
+    MappedScope extends Readonly<Record<string, unknown>> = EmptyMappedScope
+> = {
     readonly annotations?: AuthoringAnnotations;
     readonly controls?: AuthoringControls;
+    readonly mapScope?: FacadeMapScope<Runtime, Resources, MappedScope>;
+    readonly resources?: Resources;
+    readonly runtime?: Runtime;
 };
 
 export type ReadTestFacadeDefinitionResult = {
     readonly annotations: TestAnnotationsInput;
     readonly controls: TestControlsInput;
+    readonly mapScope: ((scope: TestScope) => Readonly<Record<string, unknown>>) | null;
+    readonly resources: ResourceMap | null;
+    readonly runtime: RuntimeGraph | null;
 };
 
 export type RunIfMainRootOptions = {
@@ -45,9 +98,16 @@ export type RunIfMain = (
     options?: RunIfMainOptions
 ) => Promise<void>;
 
-const createTestFacadeArgumentsError = 'createTestFacade() requires no arguments or ({ annotations?, controls? }).';
+const createTestFacadeArgumentsError =
+    'createTestFacade() requires no arguments or ({ annotations?, controls?, runtime?, resources?, mapScope? }).';
 const captureModeValues: readonly CaptureMode[] = [ 'buffered', 'live' ] as const;
-const facadeDefinitionFields: ReadonlySet<string> = new Set([ 'annotations', 'controls', 'testFamily' ]);
+const facadeDefinitionFields: ReadonlySet<string> = new Set([
+    'annotations',
+    'controls',
+    'mapScope',
+    'resources',
+    'runtime'
+]);
 const knownCaptureModes: ReadonlySet<unknown> = new Set(captureModeValues);
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
@@ -103,6 +163,26 @@ function readCapture(value: unknown): CaptureMode {
 function readTimeoutMilliseconds(value: unknown): number {
     if (typeof value !== 'number' || !Number.isFinite(value)) {
         throw new TypeError('Control field "timeoutMilliseconds" must be a finite number.');
+    }
+
+    return value;
+}
+
+function readFacadeRuntime(value: unknown): RuntimeGraph {
+    return ensureRuntimeGraph(value, 'createTestFacade() runtime must be a runtime descriptor.');
+}
+
+function readFacadeResources(value: unknown): ResourceMap {
+    return readResourceMap(value, 'createTestFacade() resources must be a non-empty resource descriptor map.');
+}
+
+function isFacadeMapScope(value: unknown): value is (scope: TestScope) => Readonly<Record<string, unknown>> {
+    return typeof value === 'function';
+}
+
+function readFacadeMapScope(value: unknown): (scope: TestScope) => Readonly<Record<string, unknown>> {
+    if (!isFacadeMapScope(value)) {
+        throw new TypeError('createTestFacade() mapScope must be a function.');
     }
 
     return value;
@@ -192,27 +272,59 @@ export function createAuthoringControls(
     };
 }
 
+function readFacadeAnnotations(definition: Readonly<Record<string, unknown>>): TestAnnotationsInput {
+    return Object.hasOwn(definition, 'annotations')
+        ? readAuthoringAnnotations(definition.annotations)
+        : {};
+}
+
+function readFacadeControls(definition: Readonly<Record<string, unknown>>): TestControlsInput {
+    return Object.hasOwn(definition, 'controls')
+        ? readAuthoringControls(definition.controls)
+        : {};
+}
+
+function readOptionalFacadeRuntime(definition: Readonly<Record<string, unknown>>): RuntimeGraph | null {
+    return Object.hasOwn(definition, 'runtime')
+        ? readFacadeRuntime(definition.runtime)
+        : null;
+}
+
+function readOptionalFacadeResources(definition: Readonly<Record<string, unknown>>): ResourceMap | null {
+    return Object.hasOwn(definition, 'resources')
+        ? readFacadeResources(definition.resources)
+        : null;
+}
+
+function readOptionalFacadeMapScope(
+    definition: Readonly<Record<string, unknown>>
+): ((scope: TestScope) => Readonly<Record<string, unknown>>) | null {
+    return Object.hasOwn(definition, 'mapScope')
+        ? readFacadeMapScope(definition.mapScope)
+        : null;
+}
+
 export function readTestFacadeDefinition(
     definition: TestFacadeDefinition | undefined
 ): ReadTestFacadeDefinitionResult {
     if (definition === undefined) {
         return {
             annotations: {},
-            controls: {}
+            controls: {},
+            mapScope: null,
+            resources: null,
+            runtime: null
         };
     }
 
     const facadeDefinition = readRecord(definition, createTestFacadeArgumentsError);
     assertFacadeDefinitionFields(facadeDefinition);
-    const annotations = Object.hasOwn(facadeDefinition, 'annotations')
-        ? readAuthoringAnnotations(facadeDefinition.annotations)
-        : {};
-    const controls = Object.hasOwn(facadeDefinition, 'controls')
-        ? readAuthoringControls(facadeDefinition.controls)
-        : {};
 
     return {
-        annotations,
-        controls
+        annotations: readFacadeAnnotations(facadeDefinition),
+        controls: readFacadeControls(facadeDefinition),
+        mapScope: readOptionalFacadeMapScope(facadeDefinition),
+        resources: readOptionalFacadeResources(facadeDefinition),
+        runtime: readOptionalFacadeRuntime(facadeDefinition)
     };
 }
