@@ -14,29 +14,23 @@ import {
 } from '../resources/resources.entry-point.ts';
 import {
     directResourceEntries,
-    resourceWrapperSteps,
     stepRuntimeGraphs,
     type ResourceEntry,
     type ResourceWrapperStep
 } from './resource-wrapper-data.ts';
+import { activeManagedLifecycle } from './resource-wrapper-lifecycle-state.ts';
+import type {
+    ComposedResourceSession,
+    LifecycleMessages
+} from './resource-wrapper-session-types.ts';
+
+export {
+    directResourceEntries,
+    stepRuntimeGraphs
+} from './resource-wrapper-data.ts';
 
 type Mutable<Value> = {
     -readonly [Key in keyof Value]: Value[Key];
-};
-
-type DisposalContext = {
-    readonly signal: AbortSignal;
-};
-
-export type LifecycleMessages = {
-    readonly acquisitionFailure: string;
-    readonly disposalFailure: string;
-};
-
-export type ComposedResourceSession = {
-    readonly directResources: ResourceContext<ResourceMap>;
-    readonly disposeOnce: (context: DisposalContext) => Promise<void>;
-    readonly runtimeContexts: ReadonlyMap<RuntimeGraph, RuntimeContext<RuntimeGraph>>;
 };
 
 export function resourceWrapperLifecycleError(message: string, cause: unknown): CaseRunnerError {
@@ -54,7 +48,7 @@ function entries(record: Readonly<Record<string, AnyResourceDefinition>>): reado
     return Object.entries(record);
 }
 
-function resourceMapFromEntries(resourceEntries: readonly ResourceEntry[]): ResourceMap {
+export function resourceMapFromEntries(resourceEntries: readonly ResourceEntry[]): ResourceMap {
     const resources: Mutable<Record<string, AnyResourceDefinition>> = {};
 
     for (const entry of resourceEntries) {
@@ -120,7 +114,7 @@ function combinedResourceKey(prefix: string, parts: readonly string[]): string {
     return `${prefix}:${parts.join(':')}`;
 }
 
-function combinedResourceEntries(steps: readonly ResourceWrapperStep[]): ResourceMap {
+export function combinedResourceEntries(steps: readonly ResourceWrapperStep[]): ResourceMap {
     const resources: Mutable<Record<string, AnyResourceDefinition>> = {};
 
     for (const entry of directResourceEntries(steps)) {
@@ -170,7 +164,7 @@ function runtimeContexts(
     }));
 }
 
-function composedResourceSession(
+export function composedResourceSession(
     directResources: ResourceMap,
     runtimes: readonly RuntimeGraph[],
     session: ResourceSession<ResourceMap>
@@ -182,24 +176,52 @@ function composedResourceSession(
     });
 }
 
+export function lifecycleMessages(steps: readonly ResourceWrapperStep[]): LifecycleMessages {
+    const hasDirectResources = steps.some(function stepHasDirectResources(step) {
+        return step.kind === 'resources';
+    });
+
+    return hasDirectResources
+        ? {
+            acquisitionFailure: 'Resource acquisition failed.',
+            disposalFailure: 'Resource disposal failed.'
+        }
+        : {
+            acquisitionFailure: 'Runtime resource acquisition failed.',
+            disposalFailure: 'Runtime resource disposal failed.'
+        };
+}
+
+async function acquireUnmanagedComposedResources(
+    steps: readonly ResourceWrapperStep[],
+    signal: AbortSignal
+): Promise<ComposedResourceSession> {
+    const directResources = resourceMapFromEntries(directResourceEntries(steps));
+    const runtimes = stepRuntimeGraphs(steps);
+    const combinedResources = combinedResourceEntries(steps);
+
+    assertPerCaseResourceGraph(combinedResources);
+    const session = await startResources({
+        resources: combinedResources,
+        signal
+    });
+
+    return composedResourceSession(directResources, runtimes, session);
+}
+
 export async function acquireComposedResources(
     steps: readonly ResourceWrapperStep[],
     signal: AbortSignal,
     messages: LifecycleMessages
 ): Promise<ComposedResourceSession> {
+    const managedLifecycle = activeManagedLifecycle();
+
+    if (managedLifecycle !== null) {
+        return await managedLifecycle.acquireComposedResources(steps, signal, messages);
+    }
+
     try {
-        const actions = resourceWrapperSteps(steps);
-        const directResources = resourceMapFromEntries(directResourceEntries(actions));
-        const runtimes = stepRuntimeGraphs(actions);
-        const combinedResources = combinedResourceEntries(actions);
-
-        assertPerCaseResourceGraph(combinedResources);
-        const session = await startResources({
-            resources: combinedResources,
-            signal
-        });
-
-        return composedResourceSession(directResources, runtimes, session);
+        return await acquireUnmanagedComposedResources(steps, signal);
     } catch (error: unknown) {
         throw error instanceof CaseRunnerError
             ? error

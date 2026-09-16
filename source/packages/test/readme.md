@@ -251,13 +251,21 @@ const api = createTestFacade({ annotations: { tags: [ 'api' ] } });
 const scratch = createTemporaryDirectoryResource('scratch');
 const database = defineResource({
     name: 'database',
-    scope: 'per-case',
+    scope: 'per-file',
     requirements: [],
     dependencies: {},
     acquire() {
         return openDatabase();
     },
-    dispose: null
+    deserializeHandle(payload) {
+        return { url: payload.url };
+    },
+    dispose(database) {
+        return database.close();
+    },
+    serializeHandle(database) {
+        return { url: database.url };
+    }
 });
 
 const runtime = defineRuntime({
@@ -291,11 +299,15 @@ when the body executes. `withRuntime(...)` exposes handles at
 `scope.runtimes.<runtimeName>`, while `withResource(...)` and
 `withResources(...)` expose handles at `scope.resources.<resourceKey>`.
 Nested resource wrappers compose into one per-case acquisition graph before
-the body runs. Duplicate public `scope.resources` keys or public
+the body runs when no runner lifecycle policy is active. During normal
+runner execution, wrappers declare descriptors and the runner acquires them at
+their declared `per-run`, `per-file`, `per-suite`, `per-case`, or
+`shared-per-worker` lifetime boundary. Duplicate public `scope.resources` keys or public
 `scope.runtimes` names are rejected before planning; resource keys inside
 different runtime scopes remain namespaced by their runtime name.
-Execution wrappers currently run only `per-case` resource graphs; broader
-resource scopes stay metadata until runner-managed lifetimes are implemented.
+`per-run` resources require `serializeHandle(...)` and
+`deserializeHandle(...)`; `per-file` and `per-suite` resources may use those
+hooks when the owner handle and consumer handle differ.
 Microtest profiles reject collected resource descriptors before execution.
 
 Test bodies receive async-control methods on `scope`:

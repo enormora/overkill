@@ -24,16 +24,23 @@ type PlacementPlan = NonNullable<ResolvedRun['facts']['execution']['placementPla
 type ResourceSample = ReturnType<WorkerPoolRunRuntime['previousPoolSample']['read']>;
 type WorkUnit = PlacementPlan['units'][number];
 
-const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
+export const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const annotations = { ownership: [], tags: [] };
 const controls = { capture: null, timeoutMilliseconds: null };
-const testCaseMetadata = {
+export const testCaseMetadata = {
     annotations: {},
     controls: {},
     definitionLocations: [ { kind: 'unknown' as const } ]
 } as const;
 const defaultUnitPolicy = {
     order: 'plan',
+    resourceConstraints: {
+        affinityKeys: [],
+        capacityWeight: 1,
+        faultDomains: [],
+        serialKeys: [],
+        singleWorkerKeys: []
+    },
     scheduling: 'serial',
     workerLifecycle: 'reuse'
 } as const;
@@ -99,7 +106,7 @@ function firstWorkUnit(): WorkUnit {
     };
 }
 
-function placementPlan(): PlacementPlan {
+export function placementPlan(): PlacementPlan {
     const unit = firstWorkUnit();
 
     return {
@@ -136,7 +143,7 @@ function placementPlanWithMissingUnit(): PlacementPlan {
     };
 }
 
-function placementPlanWithGroupUnit(): PlacementPlan {
+export function placementPlanWithGroupUnit(): PlacementPlan {
     const unit: WorkUnit = {
         ...firstWorkUnit(),
         id: {
@@ -154,7 +161,7 @@ function placementPlanWithGroupUnit(): PlacementPlan {
     };
 }
 
-function placementPlanWithUnitPolicy(): PlacementPlan {
+export function placementPlanWithUnitPolicy(): PlacementPlan {
     const unit: WorkUnit = {
         ...firstWorkUnit(),
         scheduling: 'concurrent',
@@ -273,12 +280,12 @@ type CapturedWorkerTask = {
     };
 };
 
-type AcceptingPool = {
+export type AcceptingPool = {
     readonly capturedTasks: readonly CapturedWorkerTask[];
     readonly pool: CreatedWorkerPool;
 };
 
-function createAcceptingPool(): AcceptingPool {
+export function createAcceptingPool(): AcceptingPool {
     const capturedTasks: CapturedWorkerTask[] = [];
 
     return {
@@ -378,7 +385,7 @@ function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
     };
 }
 
-function fakeWorkerRuntime(placement: PlacementPlan): WorkerPoolRunRuntime {
+export function fakeWorkerRuntime(placement: PlacementPlan): WorkerPoolRunRuntime {
     const taskResults: RunResult[] = [];
 
     return {
@@ -429,7 +436,6 @@ export const testNode = createOverkillSuite({
                 await scope.assert.rejects(async function executeMissingUnit() {
                     await executeWorkerPoolUnits(fakeWorkerRuntime(placementPlan()), placementPlanWithMissingUnit(), 0);
                 }, { message: 'Placement assignment referenced an unknown work unit.' });
-
                 return scope.assert.collect();
             }
         }),
@@ -449,10 +455,8 @@ export const testNode = createOverkillSuite({
                         }
                     }
                 };
-
                 await reportRunStart(runtime, 0);
                 scope.assert.equal(reportedEvents, 0);
-
                 return scope.assert.collect();
             }
         }),
@@ -467,10 +471,8 @@ export const testNode = createOverkillSuite({
                     pool: acceptingPool.pool
                 };
                 const completed = await executeWorkerPoolUnits(runtime, placement, 0);
-
                 scope.assert.equal(completed.length, 1);
                 scope.assert.equal(acceptingPool.capturedTasks.length, 1);
-
                 return scope.assert.collect();
             }
         }),
@@ -479,61 +481,11 @@ export const testNode = createOverkillSuite({
             title: 'worker-pool execution reports instance engines as crashes',
             async body(scope: OverkillScope) {
                 const completed = await executeWorkerPoolUnits(runtimeWithInstanceEngine(), placementPlan(), 0);
-
                 scope.assert.equal(completed.length, 3);
                 scope.assert.equal(
                     completed[0]?.state.runnerErrors()[0]?.message,
                     'Instance engines are not supported with worker-pool execution. Use a module engine.'
                 );
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...testCaseMetadata,
-            title: 'worker-pool execution accepts group units',
-            async body(scope: OverkillScope) {
-                const acceptingPool = createAcceptingPool();
-                const runtime = {
-                    ...fakeWorkerRuntime(placementPlan()),
-                    pool: acceptingPool.pool
-                };
-                const completed = await executeWorkerPoolUnits(
-                    runtime,
-                    placementPlanWithGroupUnit(),
-                    0
-                );
-
-                scope.assert.equal(completed.length, 1);
-                const capturedTask = acceptingPool.capturedTasks[0];
-
-                scope.require.defined(capturedTask);
-                scope.assert.deepEqual(capturedTask.command.paths, [ integrationPath ]);
-                scope.assert.equal(capturedTask.assignedWork.length, 1);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...testCaseMetadata,
-            title: 'worker-pool execution applies unit scheduling and lifecycle',
-            async body(scope: OverkillScope) {
-                const acceptingPool = createAcceptingPool();
-                const runtime = {
-                    ...fakeWorkerRuntime(placementPlan()),
-                    pool: acceptingPool.pool
-                };
-                await executeWorkerPoolUnits(
-                    runtime,
-                    placementPlanWithUnitPolicy(),
-                    0
-                );
-                const capturedTask = acceptingPool.capturedTasks[0];
-
-                scope.require.defined(capturedTask);
-                scope.assert.equal(capturedTask.command.scheduling, 'concurrent');
-                scope.assert.equal(capturedTask.command.workerLifecycle, 'fresh-worker-per-unit');
-
                 return scope.assert.collect();
             }
         })

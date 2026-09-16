@@ -11,6 +11,7 @@ import {
 } from './run-input-resolution.ts';
 import {
     assertRunnableResourceUsagePolicy,
+    createRunResourceRuntimePolicy,
     createRunRuntimePolicy,
     type RunRuntimePolicy
 } from './run-support.ts';
@@ -337,7 +338,7 @@ async function executeResolvedRun(
         reporters: resolvedRun.reporters,
         resourceBudgets: resourceUsagePolicy.budgets,
         resourceUsageTracker: createExecutionResourceUsageTracker(resourceUsagePolicy, dependencies),
-        runtimePolicy,
+        runtimePolicy: createRunResourceRuntimePolicy(resolvedRun.plan.testPlan.cases, runtimePolicy),
         runFacts: resolvedRun.facts,
         startedAt: currentRunStartTime(dependencies),
         timeoutPolicy: {

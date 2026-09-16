@@ -5,21 +5,23 @@ import {
 } from './collected-run-plan.ts';
 import { invalidRequest } from './run-errors.ts';
 import { orderedRunItems } from './run-selection.ts';
-import type {
-    CollectedRunCase,
-    CollectedRunFile,
-    CollectedRunPlan,
-    PlacementPlan,
-    RunOrder,
-    RunSeed,
-    RunScheduling,
-    RunWorkDistribution,
-    RunWorkGroup,
-    RunWorkerLifecycle,
-    WorkId,
-    WorkUnit,
-    WorkUnitId
+import {
+    emptyWorkUnitResourceConstraints,
+    type CollectedRunCase,
+    type CollectedRunFile,
+    type CollectedRunPlan,
+    type PlacementPlan,
+    type RunOrder,
+    type RunSeed,
+    type RunScheduling,
+    type RunWorkDistribution,
+    type RunWorkGroup,
+    type RunWorkerLifecycle,
+    type WorkId,
+    type WorkUnit,
+    type WorkUnitId
 } from './run-types.ts';
+import { workResourceConstraints } from './work-unit-resource-constraints.ts';
 import {
     workerPoolLanes,
     workerPoolPlacementAssignments
@@ -173,6 +175,7 @@ function fileWorkUnit(
             group,
             id: fileWorkUnitId(file.file),
             order: policy.order,
+            resourceConstraints: emptyWorkUnitResourceConstraints,
             scheduling: policy.scheduling,
             workerLifecycle: policy.workerLifecycle,
             work
@@ -184,10 +187,24 @@ function caseWorkUnit(work: WorkId, policy: WorkUnitPolicy, group: string | null
         group,
         id: caseWorkUnitId(work),
         order: policy.order,
+        resourceConstraints: emptyWorkUnitResourceConstraints,
         scheduling: policy.scheduling,
         work: [ work ],
         workerLifecycle: policy.workerLifecycle
     };
+}
+
+function workUnitWithResourceConstraints(unit: WorkUnit, plan: CollectedRunPlan): WorkUnit {
+    return {
+        ...unit,
+        resourceConstraints: workResourceConstraints(unit.work, plan)
+    };
+}
+
+function workUnitsWithResourceConstraints(units: readonly WorkUnit[], plan: CollectedRunPlan): readonly WorkUnit[] {
+    return units.map(function withResourceConstraints(unit) {
+        return workUnitWithResourceConstraints(unit, plan);
+    });
 }
 
 function fileWorkUnitsFromCollectedPlan(input: WorkUnitPlanningInput): readonly WorkUnit[] {
@@ -311,6 +328,7 @@ function groupWorkUnit(
             group: group.name,
             id: groupWorkUnitId(group),
             order: policy.order,
+            resourceConstraints: emptyWorkUnitResourceConstraints,
             scheduling: policy.scheduling,
             work,
             workerLifecycle: policy.workerLifecycle
@@ -500,14 +518,17 @@ export function workUnitsFromCollectedPlan(
     input: WorkUnitPlanningInput
 ): readonly WorkUnit[] {
     if (input.workDistribution.mode === 'case') {
-        return caseWorkUnitsFromCollectedPlan(input);
+        return workUnitsWithResourceConstraints(caseWorkUnitsFromCollectedPlan(input), input.selectedPlan);
     }
 
     if (input.workDistribution.mode === 'group') {
-        return groupWorkUnitsFromCollectedPlan(input.workDistribution, input);
+        return workUnitsWithResourceConstraints(
+            groupWorkUnitsFromCollectedPlan(input.workDistribution, input),
+            input.selectedPlan
+        );
     }
 
-    return fileWorkUnitsFromCollectedPlan(input);
+    return workUnitsWithResourceConstraints(fileWorkUnitsFromCollectedPlan(input), input.selectedPlan);
 }
 
 export function createWorkerPoolPlacementPlan(input: WorkerPoolPlacementPlanInput): PlacementPlan {

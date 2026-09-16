@@ -22,6 +22,9 @@ import {
     type RuntimeCapabilityPolicyDependencies
 } from './capability-policy.ts';
 import {
+    createRunResourceRuntimePolicy
+} from './run-support.ts';
+import {
     createSupervisedChildTestPlan,
     type SupervisedChildTestPlanDependencies
 } from './supervised-child-test-plan.ts';
@@ -312,7 +315,7 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
             input.dependencies,
             input.wallClock
         ),
-        runtimePolicy,
+        runtimePolicy: createRunResourceRuntimePolicy(testPlan.cases, runtimePolicy),
         runFacts: {},
         startedAt: startedAtIso(input.startedAtMs),
         timeoutPolicy: {

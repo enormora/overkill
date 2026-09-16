@@ -218,10 +218,27 @@ export type WorkUnitId = {
     readonly workload: WorkloadId | null;
 };
 
+export type WorkUnitResourceConstraints = {
+    readonly affinityKeys: readonly string[];
+    readonly capacityWeight: number;
+    readonly faultDomains: readonly string[];
+    readonly serialKeys: readonly string[];
+    readonly singleWorkerKeys: readonly string[];
+};
+
+export const emptyWorkUnitResourceConstraints: WorkUnitResourceConstraints = Object.freeze({
+    affinityKeys: Object.freeze([]),
+    capacityWeight: 1,
+    faultDomains: Object.freeze([]),
+    serialKeys: Object.freeze([]),
+    singleWorkerKeys: Object.freeze([])
+});
+
 export type WorkUnit = {
     readonly group: string | null;
     readonly id: WorkUnitId;
     readonly order: RunOrder;
+    readonly resourceConstraints: WorkUnitResourceConstraints;
     readonly scheduling: RunScheduling;
     readonly work: NonEmptyReadonlyArray<WorkId>;
     readonly workerLifecycle: RunWorkerLifecycle;

@@ -1,6 +1,10 @@
+import type { TestRuntimePolicy } from '../engine/case-execution.ts';
+import type { TestPlanCase } from '../engine/test-plan.ts';
 import {
-    createRuntimeCapabilityPolicy,
-    type RuntimeCapabilityPolicy
+    createResourceLifecycleRuntimePolicy
+} from '../packages/test/resource-wrapper-lifecycle.ts';
+import {
+    createRuntimeCapabilityPolicy
 } from './capability-policy.ts';
 import type {
     RunConfig,
@@ -25,7 +29,54 @@ import type { RunOrchestratorDependencies } from './run-orchestrator-dependencie
 import { copyRunSelection } from './run-selection-filters.ts';
 import { validateRunResourceUsagePolicy } from './run-validation.ts';
 
-export type RunRuntimePolicy = RuntimeCapabilityPolicy;
+export type RunRuntimePolicy = TestRuntimePolicy;
+
+function composeRunRuntimePolicies(
+    firstPolicy: TestRuntimePolicy | null,
+    secondPolicy: TestRuntimePolicy | null
+): TestRuntimePolicy | null {
+    if (firstPolicy === null) {
+        return secondPolicy;
+    }
+
+    if (secondPolicy === null) {
+        return firstPolicy;
+    }
+
+    return {
+        async runCase<Value>(testCase: TestPlanCase, run: () => Promise<Value>): Promise<Value> {
+            return await firstPolicy.runCase(testCase, async function runSecondPolicy() {
+                return await secondPolicy.runCase(testCase, run);
+            });
+        },
+        async runLoad<Value>(run: () => Promise<Value>): Promise<Value> {
+            return await firstPolicy.runLoad(async function runSecondPolicyLoad() {
+                return await secondPolicy.runLoad(run);
+            });
+        },
+        takeCaseErrors(testCase) {
+            return [
+                ...firstPolicy.takeCaseErrors(testCase),
+                ...secondPolicy.takeCaseErrors(testCase)
+            ];
+        },
+        takeRunErrors() {
+            return [
+                ...firstPolicy.takeRunErrors(),
+                ...secondPolicy.takeRunErrors()
+            ];
+        }
+    };
+}
+
+export function createRunResourceRuntimePolicy(
+    testCases: readonly TestPlanCase[],
+    runtimePolicy: TestRuntimePolicy | null
+): TestRuntimePolicy {
+    const resourcePolicy = createResourceLifecycleRuntimePolicy(testCases);
+
+    return composeRunRuntimePolicies(runtimePolicy, resourcePolicy) ?? resourcePolicy;
+}
 
 type RunProfileFileSets = {
     readonly sets: NonNullable<RunProfileFiles['sets']>;

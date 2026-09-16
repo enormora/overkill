@@ -34,10 +34,16 @@ import {
 } from './resource-wrapper-data.ts';
 import type {
     acquireComposedResources as acquireComposedResourcesFunction,
-    ComposedResourceSession,
-    disposeComposedResources as disposeComposedResourcesFunction,
-    LifecycleMessages
+    disposeComposedResources as disposeComposedResourcesFunction
 } from './resource-wrapper-session.ts';
+import {
+    resourceContextForStep,
+    runtimeContextForStep
+} from './resource-wrapper-session.ts';
+import type {
+    ComposedResourceSession,
+    LifecycleMessages
+} from './resource-wrapper-session-types.ts';
 
 type TestBodyWithScope<Scope extends TestScope> = (scope: Scope) => ReturnType<TestBody>;
 type CallableTestBody = (scope: never) => unknown;
@@ -298,49 +304,20 @@ function isRuntimeTestScope<
         Reflect.get(runtimes, runtimeGraph.name) !== undefined;
 }
 
-function isResourceContext<Resources extends ResourceMap>(
-    context: Readonly<Record<string, unknown>>,
-    resources: Resources
-): context is ResourceContext<Resources> {
-    for (const key of Object.keys(resources)) {
-        if (!Object.hasOwn(context, key)) {
-            return false;
-        }
+function isResourceTestScope<
+    Resources extends ResourceMap,
+    Scope extends TestScope
+>(value: unknown, handles: ResourceContext<Resources>): value is ResourceTestScope<Resources, Scope> {
+    if (!isResourceScopeInput(value)) {
+        return false;
     }
 
-    return true;
-}
+    const resources: unknown = Object.hasOwn(value, 'resources') ? Reflect.get(value, 'resources') : {};
 
-function resourceContextForStep<Resources extends ResourceMap>(
-    resources: Resources,
-    handles: ResourceContext<ResourceMap>
-): ResourceContext<Resources> {
-    const context: Record<string, unknown> = {};
-
-    for (const key of Object.keys(resources)) {
-        context[key] = Reflect.get(handles, key);
-    }
-
-    const frozenContext = Object.freeze(context);
-
-    if (isResourceContext(frozenContext, resources)) {
-        return frozenContext;
-    }
-
-    throw resourceWrapperLifecycleError('Resource scope composition failed.', resources);
-}
-
-function runtimeContextForStep(
-    runtime: RuntimeGraph,
-    session: ComposedResourceSession
-): RuntimeContext<RuntimeGraph> {
-    const context = session.runtimeContexts.get(runtime);
-
-    if (context === undefined || !isResourceContext(context, runtime.resources)) {
-        throw resourceWrapperLifecycleError('Runtime scope composition failed.', runtime);
-    }
-
-    return context;
+    return isResourceScopeInput(resources) &&
+        Object.keys(handles).every(function hasResourceHandle(key) {
+            return Reflect.get(resources, key) !== undefined;
+        });
 }
 
 function composeResourceContext<
@@ -362,13 +339,19 @@ function composeResourceContext<
         }
     }
 
-    return Object.freeze({
+    const composed = Object.freeze({
         ...scope,
         resources: Object.freeze({
             ...resources,
             ...handles
         })
     });
+
+    if (isResourceTestScope<Resources, Scope>(composed, handles)) {
+        return composed;
+    }
+
+    throw resourceWrapperLifecycleError('Resource scope composition failed.', handles);
 }
 
 function composeRuntimeScope<

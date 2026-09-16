@@ -39,6 +39,8 @@ export type {
     ResourceDefinitionInput,
     ResourceDisposalContext,
     ResourceHandle,
+    ResourceProjectionContext,
+    ResourceProjectionPayload,
     ResourceLifecycleFailure,
     ResourceLifecyclePhase,
     ResourceMap,

@@ -94,6 +94,9 @@ type ProjectProfileFileSets = {
 type Database = {
     readonly url: string;
 };
+type ProjectedDatabase = {
+    readonly connectionString: string;
+};
 type DatabaseContext = {
     readonly database: Database;
 };
@@ -122,6 +125,21 @@ const runtime = defineRuntime({
     requirements: []
 });
 const temporaryDirectory = createTemporaryDirectoryResource('scratch');
+const projectedDatabase = defineResource({
+    name: 'projected-database',
+    scope: 'per-file',
+    requirements: [],
+    acquire(): Database {
+        return { url: 'postgres://localhost' };
+    },
+    deserializeHandle(payload: string): ProjectedDatabase {
+        return { connectionString: payload };
+    },
+    dispose: null,
+    serializeHandle(handle): string {
+        return handle.url;
+    }
+});
 const typeTestController = new AbortController();
 declare const testScope: TestScope;
 
@@ -211,6 +229,11 @@ describe('@overkill-dev/test standard subpaths', function () {
             expect(runtime.name).type.toBe<'api'>();
             expect(temporaryDirectory.name).type.toBe<'scratch'>();
             expect<TemporaryDirectoryHandle>().type.toBe<{ readonly path: string; }>();
+        });
+
+        test('exposes projected resource descriptor types through the standard distribution', function () {
+            expect<ResourceHandle<typeof projectedDatabase>>().type.toBe<ProjectedDatabase>();
+            expect(projectedDatabase.name).type.toBe<'projected-database'>();
         });
 
         test('exposes resource lifecycle types through the standard distribution', function () {

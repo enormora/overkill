@@ -536,6 +536,38 @@ assigned work unit:
 | `case`            | One unit per selected case per runtime/workload     |
 | `group`           | Named file-set groups decide the initial unit shape |
 
+Resource scopes lower into lifecycle and placement constraints before work
+units are assigned:
+
+| Resource scope      | Lifetime boundary                       | Placement effect                                     |
+| ------------------- | --------------------------------------- | ---------------------------------------------------- |
+| `per-run`           | One owner for the selected run          | Does not force all work onto one worker              |
+| `per-file`          | One owner for each source file          | Keeps cases for that file on one logical worker lane |
+| `per-suite`         | One owner for each file plus suite path | Keeps that suite branch on one logical worker lane   |
+| `per-case`          | One owner for one case                  | No sharing placement requirement by itself           |
+| `shared-per-worker` | One owner for one executor worker       | Keeps reuse local to a worker                        |
+
+`per-run` resources require explicit handle projection because the owner may
+live outside the consumer execution context. `per-file` and `per-suite`
+resources may use the same projection hooks when ownership and consumption
+cross a worker or process boundary. Local `per-case` and `shared-per-worker`
+resources inject their acquired handle directly.
+
+Execution requirements add scheduling pressure:
+
+- `serial` and `exclusive-resource` pin matching work to one logical lane
+- `single-worker` pins matching work to one logical lane without implying
+  serial in-case execution
+- `capacity-weight` contributes to lane load balancing
+- `affinity-key` prefers the lane that first ran the same key
+- `fault-domain` spreads matching work across lanes where possible
+- `startup-budget-milliseconds` is budget metadata for acquisition policy
+
+Logical lane assignment is the scheduler contract. Worker-pool profiles that
+reuse workers should map a logical lane to a stable executor while work needing
+that lane remains live; fresh-worker profiles may satisfy the same placement
+by controlling which unit gets a fresh executor.
+
 `scheduling` describes how cases are started inside an executor or
 indivisible group:
 

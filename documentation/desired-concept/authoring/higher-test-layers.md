@@ -36,10 +36,17 @@ What Overkill should support:
 
 - first-class resource factories with explicit lifecycle scopes
 - typed yielded runtime handles
-- shared-per-worker and per-case lifetimes
+- per-run, per-file, per-suite, per-case, and shared-per-worker lifetimes
 - fixture composition without hook soup
 
 This reinforces `@overkill-dev/resources` as a core higher-layer package.
+
+Longer-lived resources still expose ordinary typed handles to test bodies.
+When the resource owner may live outside the consumer execution context,
+the descriptor projects that owner handle through explicit
+`serializeHandle(...)` and `deserializeHandle(...)` hooks. This keeps
+cross-worker and cross-process boundaries visible in the resource definition
+instead of hiding them in the runner.
 
 ### Deterministic Local Services
 

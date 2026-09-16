@@ -160,6 +160,58 @@ function failingResource(acquireError: Error): FailingResource {
 }
 
 function scopedResource(scope: ResourceScope): ScopedResource {
+    if (scope === 'per-run') {
+        return defineResource({
+            name: 'scoped',
+            scope,
+            requirements: [],
+            acquire() {
+                return 'scoped';
+            },
+            deserializeHandle: String,
+            dispose: null,
+            serializeHandle(handle) {
+                return handle;
+            }
+        });
+    }
+
+    if (scope === 'per-file') {
+        return defineResource({
+            name: 'scoped',
+            scope,
+            requirements: [],
+            acquire() {
+                return 'scoped';
+            },
+            dispose: null
+        });
+    }
+
+    if (scope === 'per-suite') {
+        return defineResource({
+            name: 'scoped',
+            scope,
+            requirements: [],
+            acquire() {
+                return 'scoped';
+            },
+            dispose: null
+        });
+    }
+
+    if (scope === 'shared-per-worker') {
+        return defineResource({
+            name: 'scoped',
+            scope,
+            requirements: [],
+            acquire() {
+                return 'scoped';
+            },
+            dispose: null
+        });
+    }
+
     return defineResource({
         name: 'scoped',
         scope,

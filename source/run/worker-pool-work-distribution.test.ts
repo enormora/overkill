@@ -5,7 +5,13 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { caseIdentityKey } from '../engine/identity.ts';
-import type { CollectedRunPlan, RunWorkDistribution, RunWorkGroup, WorkUnit } from './run-types.ts';
+import {
+    emptyWorkUnitResourceConstraints,
+    type CollectedRunPlan,
+    type RunWorkDistribution,
+    type RunWorkGroup,
+    type WorkUnit
+} from './run-types.ts';
 import { invalidWorkDistributionConfigMessage } from './work-distribution-config.ts';
 import {
     createWorkerPoolPlacementPlan,
@@ -119,6 +125,7 @@ function caseWorkUnit(testCase: CaseId): WorkUnit {
         group: null,
         id: { key: caseIdentityKey(testCase), mode: 'case', runtime: null, workload: null },
         ...defaultUnitPolicy,
+        resourceConstraints: emptyWorkUnitResourceConstraints,
         work: [ work ]
     };
 }
@@ -141,6 +148,7 @@ function fileWorkUnit(testCase: CaseId, group: string | null): WorkUnit {
         group,
         id: { key: file, mode: 'file', runtime: null, workload: null },
         ...defaultUnitPolicy,
+        resourceConstraints: emptyWorkUnitResourceConstraints,
         work: [ { case: testCase, runtime: null, workload: null } ]
     };
 }
@@ -153,6 +161,7 @@ function groupWorkUnit(group: string, cases: readonly [CaseId, ...CaseId[]]): Wo
         group,
         id: { key: group, mode: 'group', runtime: null, workload: null },
         ...defaultUnitPolicy,
+        resourceConstraints: emptyWorkUnitResourceConstraints,
         work: [
             firstWork,
             ...remainingCases.map(function toWork(testCase) {

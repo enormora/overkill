@@ -11,6 +11,7 @@ import {
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
+import { emptyWorkUnitResourceConstraints } from './run-types.ts';
 import {
     runStartTimeFromMilliseconds,
     workerPoolCollectedPlan,
@@ -239,6 +240,7 @@ function firstWorkUnit(): WorkUnit {
         group: null,
         id: { key: integrationPath, mode: 'file', runtime: null, workload: null },
         ...defaultUnitPolicy,
+        resourceConstraints: emptyWorkUnitResourceConstraints,
         work: [ { case: firstCaseId(), runtime: null, workload: null } ]
     };
 }
@@ -248,6 +250,7 @@ function secondWorkUnit(): WorkUnit {
         group: null,
         id: { key: secondIntegrationPath, mode: 'file', runtime: null, workload: null },
         ...defaultUnitPolicy,
+        resourceConstraints: emptyWorkUnitResourceConstraints,
         work: [ { case: secondCaseId(), runtime: null, workload: null } ]
     };
 }
