@@ -1,45 +1,43 @@
-import {
-    CaseRunnerError
-} from '../engine/engine.entry-point.ts';
-import { caseIdentityKey } from '../../engine/identity.ts';
-import type { TestRuntimePolicy } from '../../engine/case-execution.ts';
-import type { TestPlanCase } from '../../engine/test-plan.ts';
+import { caseIdentityKey } from '../engine/identity.ts';
+import type { TestRuntimePolicy } from '../engine/case-execution.ts';
+import type { TestPlanCase } from '../engine/test-plan.ts';
+import type {
+    AnyResourceDefinition,
+    ResourceContext,
+    ResourceProjectionContext,
+    ResourceProjectionPayload,
+    ResourceScope,
+    RuntimeResourceMap as ResourceMap
+} from './resources.ts';
 import {
     assertResourceDependencyScopes,
-    type AnyResourceDefinition,
-    type ResourceContext,
-    type ResourceMap,
-    type ResourceProjectionContext,
-    type ResourceProjectionPayload,
-    type ResourceScope
-} from '../resources/resources.entry-point.ts';
-import {
     callableResourceDefinition,
     createResourceGraph,
     resourceEntries,
     type ResourceGraph
-} from '../../resources/resource-graph.ts';
+} from './resource-graph.ts';
 import {
     combinedResourceEntries,
     composedResourceSession,
     directResourceEntries,
     resourceMapFromEntries,
-    resourceWrapperLifecycleError,
-    stepRuntimeGraphs
-} from './resource-wrapper-session.ts';
+    stepRuntimeGraphs,
+    type ComposedResourceSession,
+    type LifecycleMessages,
+    type ResourceWrapperStep
+} from './resource-wrapper-composition-core.ts';
 import {
     currentLifecycleCase,
     runWithLifecycleCase,
-    runWithManagedLifecycle
+    runWithManagedLifecycle,
+    type ManagedLifecycleState,
+    type ManagedRunnerError
 } from './resource-wrapper-lifecycle-state.ts';
+import {
+    resourceWrapperErrorFromUnknown,
+    resourceWrapperLifecycleError
+} from './resource-wrapper-lifecycle-error.ts';
 import { managedResourceSession } from './resource-wrapper-managed-session.ts';
-import type {
-    ComposedResourceSession,
-    LifecycleMessages,
-    ManagedLifecycleState,
-    ManagedRunnerError,
-    ResourceWrapperStep
-} from './resource-wrapper-session-types.ts';
 
 type LifecycleBoundary = {
     readonly key: string;
@@ -497,9 +495,7 @@ async function acquireManagedComposedResources(
     try {
         return await acquireComposedResourcesWithLifecycle(stores, steps, signal);
     } catch (error: unknown) {
-        throw error instanceof CaseRunnerError
-            ? error
-            : resourceWrapperLifecycleError(messages.acquisitionFailure, error);
+        throw resourceWrapperErrorFromUnknown(messages.acquisitionFailure, error);
     }
 }
 

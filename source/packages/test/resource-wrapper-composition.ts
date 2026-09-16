@@ -1,6 +1,5 @@
 import {
     attachTestBodyResourceAttachments,
-    CaseRunnerError,
     hasTestBodyResourceAttachments,
     type AssertionResult,
     type ResourceAttachedTestBody,
@@ -22,6 +21,15 @@ import type {
     RuntimeScopeContext
 } from '../resources/resources.entry-point.ts';
 import {
+    resourceContextForStep,
+    runtimeContextForStep,
+    type ComposedResourceSession,
+    type LifecycleMessages
+} from '../../resources/resource-wrapper-composition-core.ts';
+import {
+    resourceWrapperLifecycleError
+} from '../../resources/resource-wrapper-lifecycle-error.ts';
+import {
     directResourceEntries,
     ensureResourceDescriptor,
     lifecycleMessages,
@@ -36,14 +44,6 @@ import type {
     acquireComposedResources as acquireComposedResourcesFunction,
     disposeComposedResources as disposeComposedResourcesFunction
 } from './resource-wrapper-session.ts';
-import {
-    resourceContextForStep,
-    runtimeContextForStep
-} from './resource-wrapper-session.ts';
-import type {
-    ComposedResourceSession,
-    LifecycleMessages
-} from './resource-wrapper-session-types.ts';
 
 type TestBodyWithScope<Scope extends TestScope> = (scope: Scope) => ReturnType<TestBody>;
 type CallableTestBody = (scope: never) => unknown;
@@ -281,13 +281,6 @@ function isResourceScopeInput(value: unknown): value is Readonly<Record<string, 
 
 function isScopeMapResult(value: unknown): value is Readonly<Record<string, unknown>> {
     return isResourceScopeInput(value) && typeof Reflect.get(value, 'then') !== 'function';
-}
-
-function resourceWrapperLifecycleError(message: string, cause: unknown): CaseRunnerError {
-    return new CaseRunnerError(message, {
-        cause,
-        subtype: 'fixture'
-    });
 }
 
 function isRuntimeTestScope<

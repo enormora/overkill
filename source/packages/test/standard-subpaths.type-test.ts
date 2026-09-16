@@ -215,6 +215,14 @@ describe('@overkill-dev/test standard subpaths', function () {
             expect<ResourceHandle<typeof database>>().type.toBe<Database>();
             expect<ResourceHandle<typeof temporaryDirectory>>().type.toBe<TemporaryDirectoryHandle>();
             expect<ResourceContext<typeof runtime.resources>>().type.toBe<DatabaseContext>();
+            expect<ResourceScopeContext<{ readonly dir: typeof temporaryDirectory; }>>().type.toBe<{
+                readonly dir: TemporaryDirectoryHandle;
+            }>();
+            expect(temporaryDirectory.name).type.toBe<'scratch'>();
+            expect<TemporaryDirectoryHandle>().type.toBe<{ readonly path: string; }>();
+        });
+
+        test('exposes runtime descriptor types through the standard distribution', function () {
             expect<RuntimeContext<typeof runtime>>().type.toBe<{
                 readonly database: Database;
             }>();
@@ -223,12 +231,7 @@ describe('@overkill-dev/test standard subpaths', function () {
                     readonly database: Database;
                 };
             }>();
-            expect<ResourceScopeContext<{ readonly dir: typeof temporaryDirectory; }>>().type.toBe<{
-                readonly dir: TemporaryDirectoryHandle;
-            }>();
             expect(runtime.name).type.toBe<'api'>();
-            expect(temporaryDirectory.name).type.toBe<'scratch'>();
-            expect<TemporaryDirectoryHandle>().type.toBe<{ readonly path: string; }>();
         });
 
         test('exposes projected resource descriptor types through the standard distribution', function () {
@@ -247,7 +250,9 @@ describe('@overkill-dev/test standard subpaths', function () {
                 .type
                 .toBe<ExpectedComposedRuntimeScope>();
         });
+    });
 
+    describe('@overkill-dev/test/resources wrapper standard subpath', function () {
         test('exposes runtime test context wrappers through the resources subpath', function () {
             const runtimeBody = withRuntime(runtime, function runWithDatabase(scope) {
                 expect(scope).type.toBe<RuntimeTestScope<typeof runtime>>();

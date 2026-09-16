@@ -7,7 +7,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import {
     createResourceLifecycleRuntimePolicy
-} from '../packages/test/resource-wrapper-lifecycle.ts';
+} from '../resources/resource-wrapper-lifecycle.ts';
 import { createNodeResourceUsageTracker } from './resource-usage.ts';
 import {
     captureOutput,

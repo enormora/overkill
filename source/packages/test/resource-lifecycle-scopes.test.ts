@@ -12,8 +12,8 @@ import {
     type TestPlan,
     type TestScope
 } from '../engine/engine.entry-point.ts';
+import { createResourceLifecycleRuntimePolicy } from '../../resources/resource-wrapper-lifecycle.ts';
 import * as resourcesSubpath from './resources.entry-point.ts';
-import { createResourceLifecycleRuntimePolicy } from './resource-wrapper-lifecycle.ts';
 
 type EmptyResourceDependencies = Readonly<Record<PropertyKey, never>>;
 type LifecycleHandle = {
@@ -244,6 +244,22 @@ function lifecycleTestPlan(body: TestBody): TestPlan {
     });
 }
 
+function singleCaseLifecycleTestPlan(body: TestBody): TestPlan {
+    return createTestPlanFromTestFiles({
+        files: [
+            {
+                file: 'source/projection.test.ts',
+                testNode: caseNode('uses projection', body)
+            }
+        ],
+        root: {
+            annotations: {},
+            controls: {},
+            title: 'resource projection fixtures'
+        }
+    });
+}
+
 async function assertRunnerManagedResourceScopes(scope: TestScope): Promise<void> {
     const recorder = createLifecycleRecorder();
     const resources = {
@@ -279,6 +295,74 @@ async function assertRunnerManagedResourceScopes(scope: TestScope): Promise<void
     });
 }
 
+async function assertRunnerManagedArrayProjection(scope: TestScope): Promise<void> {
+    const projectedResource = resourcesSubpath.defineResource({
+        name: 'projected',
+        scope: 'per-run',
+        requirements: [],
+        acquire(): LifecycleHandle {
+            return { id: 1, name: 'projected' };
+        },
+        deserializeHandle(payload): LifecycleHandle {
+            if (!Array.isArray(payload)) {
+                throw new TypeError('Expected array projection.');
+            }
+
+            return { id: Number(payload[0]), name: String(payload[1]) };
+        },
+        dispose: null,
+        serializeHandle(handle) {
+            return [ handle.id, handle.name ];
+        }
+    });
+    const body = resourcesSubpath.withResource(projectedResource, function runWithProjection(resourceScope) {
+        resourceScope.assert.deepEqual(resourceScope.resources.projected, { id: 1, name: 'projected' });
+
+        return resourceScope.assert.collect();
+    });
+    const observed = await executeObservedPlan(singleCaseLifecycleTestPlan(body));
+
+    scope.assert.deepEqual(
+        observed.result.perTest.map(function toVerdict(result) {
+            return result.verdict;
+        }),
+        [ 'pass' ]
+    );
+}
+
+async function assertRunnerManagedInvalidProjection(scope: TestScope): Promise<void> {
+    const projectedResource = resourcesSubpath.defineResource({
+        name: 'projected',
+        scope: 'per-run',
+        requirements: [],
+        acquire(): LifecycleHandle {
+            return { id: 1, name: 'projected' };
+        },
+        deserializeHandle(): LifecycleHandle {
+            throw new Error('Invalid projection should not deserialize.');
+        },
+        dispose: null,
+        serializeHandle() {
+            return Number.NaN;
+        }
+    });
+    const body = resourcesSubpath.withResource(projectedResource, function runWithProjection(resourceScope) {
+        return resourceScope.assert.collect();
+    });
+    const observed = await executeObservedPlan(singleCaseLifecycleTestPlan(body));
+
+    scope.assert.deepEqual(
+        observed.result.perTest.map(function toVerdict(result) {
+            return result.verdict;
+        }),
+        [ 'inconclusive' ]
+    );
+    scope.assert.equal(
+        observed.result.runnerErrors[0]?.message,
+        'Resource "projected" returned a non-JSON projection payload.'
+    );
+}
+
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/packages/test/resource-lifecycle-scopes.test.ts',
@@ -292,6 +376,28 @@ export const testNode = createSuite({
             controls: {},
             async body(scope: TestScope) {
                 await assertRunnerManagedResourceScopes(scope);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'resource wrappers support runner-managed array projections',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                await assertRunnerManagedArrayProjection(scope);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'resource wrappers reject invalid runner-managed projections',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                await assertRunnerManagedInvalidProjection(scope);
 
                 return scope.assert.collect();
             }

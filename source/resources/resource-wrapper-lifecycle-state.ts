@@ -1,6 +1,24 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import type { TestPlanCase } from '../../engine/test-plan.ts';
-import type { ManagedLifecycleState } from './resource-wrapper-session-types.ts';
+import type { RunnerError } from '../engine/run-result.ts';
+import type { TestPlanCase } from '../engine/test-plan.ts';
+import type {
+    ComposedResourceSession,
+    LifecycleMessages,
+    ResourceWrapperStep
+} from './resource-wrapper-composition-core.ts';
+
+export type ManagedRunnerError = RunnerError;
+
+export type ManagedLifecycleState = {
+    readonly acquireComposedResources: (
+        steps: readonly ResourceWrapperStep[],
+        signal: AbortSignal,
+        messages: LifecycleMessages
+    ) => Promise<ComposedResourceSession>;
+    readonly runCase: <Value>(testCase: TestPlanCase, run: () => Promise<Value>) => Promise<Value>;
+    readonly takeCaseErrors: (testCase: TestPlanCase) => readonly ManagedRunnerError[];
+    readonly takeRunErrors: () => readonly ManagedRunnerError[];
+};
 
 const activeLifecycle = new AsyncLocalStorage<ManagedLifecycleState>();
 const runningCase = new AsyncLocalStorage<TestPlanCase>();
