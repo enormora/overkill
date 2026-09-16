@@ -9,6 +9,7 @@ import {
     type Suite,
     type TestBody,
     type TestCase,
+    type TestNode,
     type TestPlan,
     type TestScope,
     type TestScope as OverkillScope
@@ -17,6 +18,7 @@ import {
     createTestFacade,
     type TestFacade
 } from './test.entry-point.ts';
+import * as resourcesSubpath from './resources.entry-point.ts';
 
 type FacadeAuthoringExecution = {
     readonly plannedCase: TestPlan['discoveredCases'][number] | undefined;
@@ -28,6 +30,11 @@ type FacadeAuthoringExecution = {
 type NameData = {
     readonly name: string;
 };
+
+type Database = {
+    readonly url: string;
+};
+type EmptyResourceDependencies = Readonly<Record<PropertyKey, never>>;
 
 const invokeCreateTestFacade = createTestFacade as (...parameters: readonly unknown[]) => unknown;
 
@@ -200,6 +207,98 @@ function assertNarrowFacadeSurface(scope: OverkillScope, facade: TestFacade): vo
     scope.assert.equal(Object.hasOwn(facade, 'defineCompositeAssertion'), false);
 }
 
+async function executeFacadeNode(testNode: TestNode): Promise<{
+    readonly plan: TestPlan;
+    readonly result: Awaited<ReturnType<typeof execute>>;
+}> {
+    const plan = createTestPlan(createRoot({
+        annotations: {},
+        children: [ testNode ],
+        controls: {},
+        title: 'root'
+    }));
+
+    return {
+        plan,
+        result: await execute(plan)
+    };
+}
+
+function countedDatabaseResource(
+    recordAcquisition: () => void
+): resourcesSubpath.ResourceDefinition<'database', Database, EmptyResourceDependencies> {
+    return resourcesSubpath.defineResource({
+        name: 'database',
+        scope: 'per-case',
+        requirements: [],
+        acquire(): Database {
+            recordAcquisition();
+
+            return { url: 'postgres://localhost' };
+        },
+        dispose: null
+    });
+}
+
+async function executeFacadeRuntimeBinding(): Promise<{
+    readonly acquisitions: number;
+    readonly execution: Awaited<ReturnType<typeof executeFacadeNode>>;
+}> {
+    let acquisitions = 0;
+    const database = countedDatabaseResource(function recordAcquisition(): void {
+        acquisitions += 1;
+    });
+    const runtime = resourcesSubpath.defineRuntime({
+        name: 'api',
+        dimensions: {},
+        resources: { database },
+        requirements: []
+    });
+    const facade = createTestFacade({
+        runtime,
+        resources: { store: database },
+        mapScope(facadeScope) {
+            return {
+                databaseUrl: facadeScope.runtimes.api.database.url,
+                sharedHandle: facadeScope.runtimes.api.database === facadeScope.resources.store
+            };
+        }
+    });
+    const testCase = facade.test('uses facade runtime', function runFacadeRuntime(facadeScope) {
+        facadeScope.assert.equal(facadeScope.databaseUrl, 'postgres://localhost');
+        facadeScope.assert.equal(facadeScope.resources.store.url, 'postgres://localhost');
+        facadeScope.assert.equal(facadeScope.sharedHandle, true);
+
+        return facadeScope.assert.collect();
+    });
+
+    const execution = await executeFacadeNode(testCase);
+
+    return { acquisitions, execution };
+}
+
+function assertFacadeRuntimePlan(scope: OverkillScope, plan: TestPlan): void {
+    const plannedCase = plan.discoveredCases[0];
+
+    scope.require.defined(plannedCase);
+    scope.assert.equal(plannedCase.testFamily, null);
+    scope.assert.deepEqual(plannedCase.resourceAttachments.directResources, [
+        { key: 'store', resourceName: 'database' }
+    ]);
+    scope.assert.deepEqual(
+        plannedCase.resourceAttachments.runtimeGraphs.map(function runtimeName(graph) {
+            return graph.name;
+        }),
+        [ 'api' ]
+    );
+    scope.assert.deepEqual(
+        plannedCase.resourceAttachments.resourceGraph.map(function resourceName(resource) {
+            return resource.name;
+        }),
+        [ 'database' ]
+    );
+}
+
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/packages/test/test-facade-entry-point.test.ts',
@@ -213,21 +312,19 @@ export const testNode = createOverkillSuite({
             controls: {},
             body(scope: OverkillScope) {
                 const facade = createTestFacade();
-                const legacyFacade = invokeCreateTestFacade({
-                    controls: { capture: 'live' },
-                    testFamily: 'microtest'
-                }) as TestFacade;
 
                 assertNarrowFacadeSurface(scope, facade);
-                scope.assert.deepEqual(Object.keys(legacyFacade), Object.keys(facade));
-                scope.assert.equal(
-                    legacyFacade.test('captures', passingBody).controls.capture,
-                    'live'
-                );
                 scope.assert.throws(function createUnknownFacade() {
                     invokeCreateTestFacade({ unknown: true });
                 }, {
-                    message: 'createTestFacade() requires no arguments or ({ annotations?, controls? }).'
+                    message:
+                        'createTestFacade() requires no arguments or ({ annotations?, controls?, runtime?, resources?, mapScope? }).'
+                });
+                scope.assert.throws(function createFamilyFacade() {
+                    invokeCreateTestFacade({ testFamily: 'microtest' });
+                }, {
+                    message:
+                        'createTestFacade() requires no arguments or ({ annotations?, controls?, runtime?, resources?, mapScope? }).'
                 });
 
                 return scope.assert.collect();
@@ -245,6 +342,99 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(ownsTestNode(execution.testNode), true);
                 assertFacadeAuthoredCase(scope, execution.plannedCase);
                 assertPassingSummary(scope, execution.result.summary);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: '@overkill-dev/test createTestFacade() binds facade runtime resources and scope mapping',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const { acquisitions, execution } = await executeFacadeRuntimeBinding();
+
+                assertFacadeRuntimePlan(scope, execution.plan);
+                assertPassingSummary(scope, execution.result.summary);
+                scope.assert.equal(acquisitions, 1);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: '@overkill-dev/test createTestFacade() rejects duplicate facade and body resource scopes',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const database = countedDatabaseResource(function recordAcquisition(): void {
+                    return undefined;
+                });
+                const runtime = resourcesSubpath.defineRuntime({
+                    name: 'api',
+                    dimensions: {},
+                    resources: { database },
+                    requirements: []
+                });
+                const duplicateRuntime = resourcesSubpath.defineRuntime({
+                    name: 'api',
+                    dimensions: {},
+                    resources: {},
+                    requirements: []
+                });
+                const resourceFacade = createTestFacade({
+                    resources: { store: database }
+                });
+                const runtimeFacade = createTestFacade({ runtime });
+
+                scope.assert.throws(function createDuplicateResourceCase() {
+                    resourceFacade.test(
+                        'duplicates store',
+                        resourcesSubpath.withResources({ store: database }, passingBody)
+                    );
+                }, { message: 'Resource scope "store" is attached multiple times.' });
+                scope.assert.throws(function createDuplicateRuntimeCase() {
+                    runtimeFacade.test(
+                        'duplicates api',
+                        resourcesSubpath.withRuntime(duplicateRuntime, passingBody)
+                    );
+                }, { message: 'Runtime scope "api" is attached multiple times.' });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: '@overkill-dev/test createTestFacade() maps table scope before row parameters and body resources',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const database = countedDatabaseResource(function recordAcquisition(): void {
+                    return undefined;
+                });
+                const facade = createTestFacade({
+                    resources: { store: database },
+                    mapScope(facadeScope) {
+                        return {
+                            databaseUrl: facadeScope.resources.store.url,
+                            parameters: { value: 0 }
+                        };
+                    }
+                });
+                const table = facade.table({
+                    cases: [ { value: 1 }, { value: 2 } ],
+                    test(facadeScope) {
+                        facadeScope.assert.equal(facadeScope.databaseUrl, 'postgres://localhost');
+                        facadeScope.assert.true(facadeScope.parameters.value > 0);
+
+                        return facadeScope.assert.collect();
+                    },
+                    title: 'rows'
+                });
+                const execution = await executeFacadeNode(table);
+
+                scope.assert.equal(execution.result.summary.passed, 2);
+                scope.assert.equal(execution.result.summary.failed, 0);
 
                 return scope.assert.collect();
             }

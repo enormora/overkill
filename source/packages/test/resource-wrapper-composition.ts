@@ -1,8 +1,9 @@
 import {
     attachTestBodyResourceAttachments,
+    CaseRunnerError,
     hasTestBodyResourceAttachments,
-    type ResourceAttachedTestBody,
     type AssertionResult,
+    type ResourceAttachedTestBody,
     type TestBody,
     type TestBodyDirectResourceAttachmentSummary,
     type TestBodyExecutionRequirementSummary,
@@ -11,34 +12,41 @@ import {
     type TestBodyRuntimeSummary,
     type TestScope
 } from '../engine/engine.entry-point.ts';
-import {
-    isDefinedResource,
-    type AnyResourceDefinition,
-    type ExecutionRequirement,
-    type ResourceContext,
-    type ResourceMap,
-    type RuntimeContext,
-    type RuntimeGraph,
-    type RuntimeScopeContext
+import type {
+    AnyResourceDefinition,
+    ExecutionRequirement,
+    ResourceContext,
+    ResourceMap,
+    RuntimeContext,
+    RuntimeGraph,
+    RuntimeScopeContext
 } from '../resources/resources.entry-point.ts';
 import {
-    acquireComposedResources,
     directResourceEntries,
-    disposeComposedResources,
+    ensureResourceDescriptor,
     lifecycleMessages,
-    resourceContextForStep,
-    resourceWrapperLifecycleError,
-    runtimeContextForStep,
+    resourceWrapperSteps,
     stepRuntimeGraphs,
-    type ComposedResourceSession,
     type ResourceEntry,
+    type ResourceWrapperAction,
+    type ResourceWrapperScopeStep,
     type ResourceWrapperStep
+} from './resource-wrapper-data.ts';
+import type {
+    acquireComposedResources as acquireComposedResourcesFunction,
+    ComposedResourceSession,
+    disposeComposedResources as disposeComposedResourcesFunction,
+    LifecycleMessages
 } from './resource-wrapper-session.ts';
 
 type TestBodyWithScope<Scope extends TestScope> = (scope: Scope) => ReturnType<TestBody>;
 type CallableTestBody = (scope: never) => unknown;
 type TestBodyResult = ReturnType<TestBody>;
 type AsyncTestBodyResult = Promise<Awaited<TestBodyResult>>;
+type ResourceWrapperSessionModule = {
+    readonly acquireComposedResources: typeof acquireComposedResourcesFunction;
+    readonly disposeComposedResources: typeof disposeComposedResourcesFunction;
+};
 type RuntimeTestScope<
     Graph extends RuntimeGraph,
     Scope extends TestScope = TestScope
@@ -58,7 +66,7 @@ const composedResourceBodyBrand = Symbol.for('@overkill-dev/test/ComposedResourc
 type ComposedResourceBody = TestBody & {
     readonly [composedResourceBodyBrand]: {
         readonly body: CallableTestBody;
-        readonly steps: readonly ResourceWrapperStep[];
+        readonly actions: readonly ResourceWrapperAction[];
     };
 };
 
@@ -82,11 +90,7 @@ function ensureBody(body: unknown, wrapperName: string): asserts body is Callabl
 }
 
 function ensureResource(resource: unknown, wrapperName: string): AnyResourceDefinition {
-    if (!isDefinedResource(resource)) {
-        throw new TypeError(`${wrapperName}() requires resource descriptors.`);
-    }
-
-    return resource;
+    return ensureResourceDescriptor(resource, `${wrapperName}() requires resource descriptors.`);
 }
 
 function entries(record: Readonly<Record<string, AnyResourceDefinition>>): readonly [string, AnyResourceDefinition][] {
@@ -227,8 +231,8 @@ function bodyComposition(body: CallableTestBody): ComposedResourceBody[typeof co
     }
 
     return {
-        body,
-        steps: []
+        actions: [],
+        body
     };
 }
 
@@ -261,12 +265,23 @@ function invokeTestBody(body: CallableTestBody, scope: TestScope): ReturnType<Te
     throw new TypeError('Resource wrapper body returned an invalid assertion result.');
 }
 
-function buildStepAttachments(steps: readonly ResourceWrapperStep[]): TestBodyResourceAttachments {
-    return buildAttachments(directResourceEntries(steps), stepRuntimeGraphs(steps));
+function buildStepAttachments(actions: readonly ResourceWrapperAction[]): TestBodyResourceAttachments {
+    return buildAttachments(directResourceEntries(actions), stepRuntimeGraphs(actions));
 }
 
 function isResourceScopeInput(value: unknown): value is Readonly<Record<string, unknown>> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isScopeMapResult(value: unknown): value is Readonly<Record<string, unknown>> {
+    return isResourceScopeInput(value) && typeof Reflect.get(value, 'then') !== 'function';
+}
+
+function resourceWrapperLifecycleError(message: string, cause: unknown): CaseRunnerError {
+    return new CaseRunnerError(message, {
+        cause,
+        subtype: 'fixture'
+    });
 }
 
 function isRuntimeTestScope<
@@ -281,6 +296,51 @@ function isRuntimeTestScope<
 
     return isResourceScopeInput(runtimes) &&
         Reflect.get(runtimes, runtimeGraph.name) !== undefined;
+}
+
+function isResourceContext<Resources extends ResourceMap>(
+    context: Readonly<Record<string, unknown>>,
+    resources: Resources
+): context is ResourceContext<Resources> {
+    for (const key of Object.keys(resources)) {
+        if (!Object.hasOwn(context, key)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function resourceContextForStep<Resources extends ResourceMap>(
+    resources: Resources,
+    handles: ResourceContext<ResourceMap>
+): ResourceContext<Resources> {
+    const context: Record<string, unknown> = {};
+
+    for (const key of Object.keys(resources)) {
+        context[key] = Reflect.get(handles, key);
+    }
+
+    const frozenContext = Object.freeze(context);
+
+    if (isResourceContext(frozenContext, resources)) {
+        return frozenContext;
+    }
+
+    throw resourceWrapperLifecycleError('Resource scope composition failed.', resources);
+}
+
+function runtimeContextForStep(
+    runtime: RuntimeGraph,
+    session: ComposedResourceSession
+): RuntimeContext<RuntimeGraph> {
+    const context = session.runtimeContexts.get(runtime);
+
+    if (context === undefined || !isResourceContext(context, runtime.resources)) {
+        throw resourceWrapperLifecycleError('Runtime scope composition failed.', runtime);
+    }
+
+    return context;
 }
 
 function composeResourceContext<
@@ -317,7 +377,7 @@ function composeRuntimeScope<
 >(
     scope: Scope,
     runtimeGraph: Graph,
-    handles: RuntimeContext<Graph>
+    handles: RuntimeContext<RuntimeGraph>
 ): RuntimeTestScope<Graph, Scope> {
     const runtimes: unknown = Object.hasOwn(scope, 'runtimes') ? Reflect.get(scope, 'runtimes') : {};
 
@@ -344,24 +404,144 @@ function composeRuntimeScope<
     throw resourceWrapperLifecycleError('Runtime scope composition failed.', handles);
 }
 
-function composeStepScope(
+function composeMappedScope(
     scope: TestScope,
-    step: ResourceWrapperStep,
-    session: ComposedResourceSession
+    step: ResourceWrapperScopeStep
 ): TestScope {
-    return step.kind === 'resources'
-        ? composeResourceContext(scope, resourceContextForStep(step.resources, session.directResources))
-        : composeRuntimeScope(scope, step.runtime, runtimeContextForStep(step.runtime, session));
+    const mappedScope = step.mapScope(scope);
+
+    if (!isScopeMapResult(mappedScope)) {
+        throw new TypeError(`${step.name} must return an object.`);
+    }
+
+    return step.collision === 'replace-existing'
+        ? Object.freeze({
+            ...scope,
+            ...mappedScope
+        })
+        : Object.freeze({
+            ...mappedScope,
+            ...scope
+        });
 }
 
-function composeStepScopes(
+function composeActionScope(
     scope: TestScope,
-    steps: readonly ResourceWrapperStep[],
+    action: ResourceWrapperAction,
     session: ComposedResourceSession
 ): TestScope {
-    return steps.reduce(function composeScope(composedScope, step) {
-        return composeStepScope(composedScope, step, session);
+    if (action.kind === 'resources') {
+        return composeResourceContext(scope, resourceContextForStep(action.resources, session.directResources));
+    }
+
+    if (action.kind === 'runtime') {
+        return composeRuntimeScope(scope, action.runtime, runtimeContextForStep(action.runtime, session));
+    }
+
+    return composeMappedScope(scope, action);
+}
+
+function composeActionScopes(
+    scope: TestScope,
+    actions: readonly ResourceWrapperAction[],
+    session: ComposedResourceSession
+): TestScope {
+    return actions.reduce(function composeScope(composedScope, action) {
+        return composeActionScope(composedScope, action, session);
     }, scope);
+}
+
+function composeMappedOnlyScopes(
+    scope: TestScope,
+    actions: readonly ResourceWrapperAction[]
+): TestScope {
+    return actions.reduce(function composeScope(composedScope, action) {
+        if (action.kind !== 'scope') {
+            throw resourceWrapperLifecycleError('Resource scope composition failed.', action);
+        }
+
+        return composeMappedScope(composedScope, action);
+    }, scope);
+}
+
+async function importResourceWrapperSession(): Promise<ResourceWrapperSessionModule> {
+    return await import('./resource-wrapper-session.ts');
+}
+
+async function acquireCompositionSession(
+    steps: readonly ResourceWrapperStep[],
+    signal: AbortSignal,
+    messages: LifecycleMessages
+): Promise<ComposedResourceSession> {
+    const sessionModule = await importResourceWrapperSession();
+
+    return await sessionModule.acquireComposedResources(steps, signal, messages);
+}
+
+async function disposeCompositionSession(
+    session: ComposedResourceSession,
+    messages: LifecycleMessages
+): Promise<void> {
+    const sessionModule = await importResourceWrapperSession();
+
+    await sessionModule.disposeComposedResources(session, messages);
+}
+
+function defineComposedBodyBrand(
+    body: CallableTestBody,
+    composition: ComposedResourceBody[typeof composedResourceBodyBrand]
+): void {
+    Object.defineProperty(body, composedResourceBodyBrand, {
+        value: Object.freeze(composition)
+    });
+}
+
+function attachResourceMetadata<Scope extends TestScope>(
+    body: TestBodyWithScope<Scope>,
+    actions: readonly ResourceWrapperAction[]
+): ResourceAttachedTestBody<TestBodyWithScope<Scope>> {
+    return attachTestBodyResourceAttachments(body, buildStepAttachments(actions));
+}
+
+function isResourceAttachedBody<Scope extends TestScope>(
+    body: ResourceAttachedTestBody<TestBodyWithScope<Scope>> | TestBodyWithScope<Scope>
+): body is ResourceAttachedTestBody<TestBodyWithScope<Scope>> {
+    return typeof body === 'function' && hasTestBodyResourceAttachments(body);
+}
+
+export function attachComposedResourceActions<Scope extends TestScope>(
+    actions: readonly ResourceWrapperAction[],
+    body: CallableTestBody,
+    wrapperName: string
+): ResourceAttachedTestBody<TestBodyWithScope<Scope>> | TestBodyWithScope<Scope> {
+    ensureBody(body, wrapperName);
+    const composition = bodyComposition(body);
+    const composedActions = Object.freeze([ ...actions, ...composition.actions ]);
+    const steps = resourceWrapperSteps(composedActions);
+    const messages = lifecycleMessages(composedActions);
+    const wrappedBody = async function runWithComposedResources(scope: Scope): AsyncTestBodyResult {
+        if (steps.length === 0) {
+            return await invokeTestBody(composition.body, composeMappedOnlyScopes(scope, composedActions));
+        }
+
+        const session = await acquireCompositionSession(steps, scope.signal, messages);
+
+        scope.cleanup(async function cleanupComposedResources() {
+            await disposeCompositionSession(session, messages);
+        });
+
+        return await invokeTestBody(composition.body, composeActionScopes(scope, composedActions, session));
+    };
+    const composedBody = steps.length > 0
+        ? attachResourceMetadata(wrappedBody, composedActions)
+        : wrappedBody;
+
+    defineComposedBodyBrand(composedBody, {
+        actions: composedActions,
+        body: composition.body
+    });
+
+    return composedBody;
 }
 
 export function attachComposedResourceBody<Scope extends TestScope>(
@@ -369,28 +549,15 @@ export function attachComposedResourceBody<Scope extends TestScope>(
     body: CallableTestBody,
     wrapperName: string
 ): ResourceAttachedTestBody<TestBodyWithScope<Scope>> {
-    ensureBody(body, wrapperName);
-    const composition = bodyComposition(body);
-    const steps = Object.freeze([ step, ...composition.steps ]);
-    const attachments = buildStepAttachments(steps);
-    const messages = lifecycleMessages(steps);
-    const wrappedBody = async function runWithComposedResources(scope: Scope): AsyncTestBodyResult {
-        const session = await acquireComposedResources(steps, scope.signal, messages);
+    const bodyWithResources = attachComposedResourceActions<Scope>(
+        [ step ],
+        body,
+        wrapperName
+    );
 
-        scope.cleanup(async function cleanupComposedResources() {
-            await disposeComposedResources(session, messages);
-        });
+    if (isResourceAttachedBody(bodyWithResources)) {
+        return bodyWithResources;
+    }
 
-        return await invokeTestBody(composition.body, composeStepScopes(scope, steps, session));
-    };
-    const attachedBody = attachTestBodyResourceAttachments(wrappedBody, attachments);
-
-    Object.defineProperty(attachedBody, composedResourceBodyBrand, {
-        value: Object.freeze({
-            body: composition.body,
-            steps
-        })
-    });
-
-    return attachedBody;
+    throw new TypeError(`${wrapperName}() requires resource wrapper metadata.`);
 }

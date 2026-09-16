@@ -12,6 +12,13 @@ import {
     type RuntimeContext,
     type RuntimeGraph
 } from '../resources/resources.entry-point.ts';
+import {
+    directResourceEntries,
+    resourceWrapperSteps,
+    stepRuntimeGraphs,
+    type ResourceEntry,
+    type ResourceWrapperStep
+} from './resource-wrapper-data.ts';
 
 type Mutable<Value> = {
     -readonly [Key in keyof Value]: Value[Key];
@@ -21,27 +28,10 @@ type DisposalContext = {
     readonly signal: AbortSignal;
 };
 
-type LifecycleMessages = {
+export type LifecycleMessages = {
     readonly acquisitionFailure: string;
     readonly disposalFailure: string;
 };
-
-export type ResourceEntry = {
-    readonly key: string;
-    readonly resource: AnyResourceDefinition;
-};
-
-export type ResourceWrapperResourcesStep = {
-    readonly kind: 'resources';
-    readonly resources: ResourceMap;
-};
-
-export type ResourceWrapperRuntimeStep = {
-    readonly kind: 'runtime';
-    readonly runtime: RuntimeGraph;
-};
-
-export type ResourceWrapperStep = ResourceWrapperResourcesStep | ResourceWrapperRuntimeStep;
 
 export type ComposedResourceSession = {
     readonly directResources: ResourceContext<ResourceMap>;
@@ -62,22 +52,6 @@ export function resourceWrapperLifecycleError(message: string, cause: unknown): 
 
 function entries(record: Readonly<Record<string, AnyResourceDefinition>>): readonly [string, AnyResourceDefinition][] {
     return Object.entries(record);
-}
-
-export function directResourceEntries(steps: readonly ResourceWrapperStep[]): readonly ResourceEntry[] {
-    return steps.flatMap(function stepResourceEntries(step) {
-        return step.kind === 'resources'
-            ? entries(step.resources).map(function resourceEntry([ key, resource ]) {
-                return { key, resource };
-            })
-            : [];
-    });
-}
-
-export function stepRuntimeGraphs(steps: readonly ResourceWrapperStep[]): readonly RuntimeGraph[] {
-    return steps.flatMap(function stepRuntimeGraph(step) {
-        return step.kind === 'runtime' ? [ step.runtime ] : [];
-    });
 }
 
 function resourceMapFromEntries(resourceEntries: readonly ResourceEntry[]): ResourceMap {
@@ -208,31 +182,16 @@ function composedResourceSession(
     });
 }
 
-export function lifecycleMessages(steps: readonly ResourceWrapperStep[]): LifecycleMessages {
-    const hasDirectResources = steps.some(function stepHasDirectResources(step) {
-        return step.kind === 'resources';
-    });
-
-    return hasDirectResources
-        ? {
-            acquisitionFailure: 'Resource acquisition failed.',
-            disposalFailure: 'Resource disposal failed.'
-        }
-        : {
-            acquisitionFailure: 'Runtime resource acquisition failed.',
-            disposalFailure: 'Runtime resource disposal failed.'
-        };
-}
-
 export async function acquireComposedResources(
     steps: readonly ResourceWrapperStep[],
     signal: AbortSignal,
     messages: LifecycleMessages
 ): Promise<ComposedResourceSession> {
     try {
-        const directResources = resourceMapFromEntries(directResourceEntries(steps));
-        const runtimes = stepRuntimeGraphs(steps);
-        const combinedResources = combinedResourceEntries(steps);
+        const actions = resourceWrapperSteps(steps);
+        const directResources = resourceMapFromEntries(directResourceEntries(actions));
+        const runtimes = stepRuntimeGraphs(actions);
+        const combinedResources = combinedResourceEntries(actions);
 
         assertPerCaseResourceGraph(combinedResources);
         const session = await startResources({
@@ -263,19 +222,4 @@ export async function disposeComposedResources(
     } catch (error: unknown) {
         throw resourceWrapperLifecycleError(messages.disposalFailure, error);
     }
-}
-
-export function resourceWrapperStep(resource: AnyResourceDefinition): ResourceWrapperStep {
-    return {
-        kind: 'resources',
-        resources: Object.freeze({ [resource.name]: resource })
-    };
-}
-
-export function resourcesWrapperStep(resources: ResourceMap): ResourceWrapperStep {
-    return { kind: 'resources', resources };
-}
-
-export function runtimeWrapperStep(runtime: RuntimeGraph): ResourceWrapperStep {
-    return { kind: 'runtime', runtime };
 }

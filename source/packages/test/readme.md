@@ -344,6 +344,36 @@ export const {
 });
 ```
 
+Facades can also bind one runtime graph, direct resources, and project-owned
+scope conveniences:
+
+```ts
+import { createTestFacade } from '@overkill-dev/test';
+import { apiRuntime, scratch } from '#tests/resources';
+
+export const { test } = createTestFacade({
+    runtime: apiRuntime,
+    resources: { scratch },
+    mapScope(scope) {
+        return {
+            apiUrl: scope.runtimes.api.server.url,
+            scratchPath: scope.resources.scratch.path
+        };
+    }
+});
+
+test('loads users', (scope) => {
+    scope.assert.true(scope.apiUrl.length > 0);
+    scope.assert.true(scope.scratchPath.length > 0);
+    return scope.assert.collect();
+});
+```
+
+`mapScope(...)` sees the base test scope plus facade-bound runtime and
+resource handles. Body-specific `withRuntime(...)`, `withResource(...)`, and
+`withResources(...)` wrappers still compose into the final body scope, but
+they are not inputs to the facade mapper.
+
 The returned facade contains authoring helpers only. Assertions and doubles
 are imported alongside it instead of being registered into the facade.
 Facades and root helpers accept `controls.capture` as authored data. The

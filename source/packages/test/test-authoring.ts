@@ -12,6 +12,10 @@ import {
     type TestNode,
     type TestScope
 } from '../engine/engine.entry-point.ts';
+import type {
+    ResourceMap,
+    RuntimeGraph
+} from '../resources/resources.entry-point.ts';
 import {
     assertionBodyForActiveMacro,
     defineParameterizedTestBodyFactory,
@@ -26,6 +30,8 @@ import {
     readTestFacadeDefinition,
     type AuthoringAnnotations,
     type AuthoringControls,
+    type FacadeScope,
+    type ReadTestFacadeDefinitionResult,
     type RunIfMain,
     type RunIfMainOptions,
     type TestFacadeDefinition
@@ -35,13 +41,25 @@ import {
     readAuthoringString,
     readAuthoringTestBody
 } from './authoring-input.ts';
-import { createAuthoredTable, type TableDefinition } from './table-authoring.ts';
+import {
+    createAuthoredTable,
+    type ParameterizedTestScope,
+    type TableDefinition
+} from './table-authoring.ts';
+import { attachComposedResourceActions } from './resource-wrapper-composition.ts';
+import {
+    resourcesWrapperStep,
+    runtimeWrapperStep,
+    scopeWrapperStep,
+    type ResourceWrapperAction
+} from './resource-wrapper-data.ts';
 
 type TestDefinition<
-    ControlsType extends TestControlsInput = AuthoringControls
+    ControlsType extends TestControlsInput = AuthoringControls,
+    Scope extends TestScope = TestScope
 > = {
     readonly annotations?: AuthoringAnnotations;
-    readonly body: TestBody;
+    readonly body: (scope: Scope) => ReturnType<TestBody>;
     readonly controls?: ControlsType;
     readonly title: string;
 };
@@ -91,14 +109,23 @@ type ObjectSkippedTestAuthorInput<ControlsType extends TestControlsInput> = read
 type ObjectSuiteAuthorInput<ControlsType extends TestControlsInput> = readonly [
     definition: Readonly<SuiteDefinition<ControlsType>>
 ];
-type ObjectTestAuthorInput<ControlsType extends TestControlsInput> = readonly [
-    definition: Readonly<TestDefinition<ControlsType>>
-];
 type PositionalSkippedTestAuthorInput = readonly [title: string, reason: string];
 type PositionalSuiteAuthorInput = readonly [title: string, children: readonly TestNode[]];
-type PositionalTestAuthorInput = readonly [title: string, body: TestBody];
-type TestAuthor<ControlsType extends TestControlsInput> = (
-    ...input: ObjectTestAuthorInput<ControlsType> | PositionalTestAuthorInput
+type ObjectScopedTestAuthorInput<
+    ControlsType extends TestControlsInput,
+    Scope extends TestScope
+> = readonly [
+    definition: Readonly<TestDefinition<ControlsType, Scope>>
+];
+type PositionalTestAuthorInput<Scope extends TestScope> = readonly [
+    title: string,
+    body: (scope: Scope) => ReturnType<TestBody>
+];
+type TestAuthor<
+    ControlsType extends TestControlsInput,
+    Scope extends TestScope
+> = (
+    ...input: ObjectScopedTestAuthorInput<ControlsType, Scope> | PositionalTestAuthorInput<Scope>
 ) => TestCase;
 type SkippedTestAuthor<ControlsType extends TestControlsInput> = (
     ...input: ObjectSkippedTestAuthorInput<ControlsType> | PositionalSkippedTestAuthorInput
@@ -106,18 +133,24 @@ type SkippedTestAuthor<ControlsType extends TestControlsInput> = (
 type SuiteAuthor<ControlsType extends TestControlsInput> = (
     ...input: ObjectSuiteAuthorInput<ControlsType> | PositionalSuiteAuthorInput
 ) => Suite;
-type TableAuthor<ControlsType extends TestControlsInput> = <Row>(
-    definition: TableDefinition<Row, ControlsType>
+type TableAuthor<
+    ControlsType extends TestControlsInput,
+    Scope extends TestScope
+> = <Row>(
+    definition: TableDefinition<Row, ControlsType, (scope: ParameterizedTestScope<Row, Scope>) => ReturnType<TestBody>>
 ) => Table;
 
-export type TestFacade<ControlsType extends TestControlsInput = AuthoringControls> = {
+export type TestFacade<
+    ControlsType extends TestControlsInput = AuthoringControls,
+    Scope extends TestScope = TestScope
+> = {
     readonly defineMacro: typeof defineMacro;
     readonly defineParameterizedTestBody: typeof defineParameterizedTestBody;
     readonly runIfMain: RunIfMain;
     readonly skippedTest: SkippedTestAuthor<ControlsType>;
     readonly suite: SuiteAuthor<ControlsType>;
-    readonly table: TableAuthor<ControlsType>;
-    readonly test: TestAuthor<ControlsType>;
+    readonly table: TableAuthor<ControlsType, Scope>;
+    readonly test: TestAuthor<ControlsType, Scope>;
 };
 
 const singleArgumentCount = 1;
@@ -182,9 +215,19 @@ function readSuiteDefinition(value: unknown): RuntimeSuiteDefinition {
     };
 }
 
+function composeFacadeBody(
+    facadeActions: readonly ResourceWrapperAction[],
+    body: TestBody
+): TestBody {
+    return facadeActions.length === 0
+        ? body
+        : attachComposedResourceActions(facadeActions, body, 'createTestFacade');
+}
+
 function createAuthoredTest(
     facadeAnnotations: TestAnnotationsInput,
     facadeControls: TestControlsInput,
+    facadeActions: readonly ResourceWrapperAction[],
     ...input: readonly unknown[]
 ): TestCase {
     if (input.length === singleArgumentCount) {
@@ -192,7 +235,7 @@ function createAuthoredTest(
 
         return createTestCase({
             annotations: createAuthoringAnnotations(facadeAnnotations, definition.annotations),
-            body: assertionBodyForActiveMacro(definition.body),
+            body: assertionBodyForActiveMacro(composeFacadeBody(facadeActions, definition.body)),
             controls: createAuthoringControls(facadeControls, definition.controls),
             definitionLocations: definitionLocationsForAuthoringCall(),
             title: definition.title
@@ -205,7 +248,7 @@ function createAuthoredTest(
 
         return createTestCase({
             annotations: createAuthoringAnnotations(facadeAnnotations, {}),
-            body: assertionBodyForActiveMacro(testBody),
+            body: assertionBodyForActiveMacro(composeFacadeBody(facadeActions, testBody)),
             controls: createAuthoringControls(facadeControls, {}),
             definitionLocations: definitionLocationsForAuthoringCall(),
             title: readAuthoringString(name, testArgumentsError)
@@ -222,7 +265,7 @@ export function test(
 ): TestCase;
 export function test(...input: readonly [title: string, body: TestBody]): TestCase;
 export function test(...input: readonly unknown[]): TestCase {
-    return createAuthoredTest({}, {}, ...input);
+    return createAuthoredTest({}, {}, [], ...input);
 }
 
 function createAuthoredSkippedTest(
@@ -358,10 +401,33 @@ export async function runIfMain(
 
 type ResolvedTestFacadeDefinition = {
     readonly annotations: TestAnnotationsInput;
+    readonly actions: readonly ResourceWrapperAction[];
     readonly controls: TestControlsInput;
 };
 
-function createTestFacadeFromDefinition(facadeDefinition: ResolvedTestFacadeDefinition): TestFacade {
+function createFacadeActions(
+    facadeDefinition: ReadTestFacadeDefinitionResult
+): readonly ResourceWrapperAction[] {
+    const actions: ResourceWrapperAction[] = [];
+
+    if (facadeDefinition.runtime !== null) {
+        actions.push(runtimeWrapperStep(facadeDefinition.runtime));
+    }
+
+    if (facadeDefinition.resources !== null) {
+        actions.push(resourcesWrapperStep(facadeDefinition.resources));
+    }
+
+    if (facadeDefinition.mapScope !== null) {
+        actions.push(scopeWrapperStep('createTestFacade() mapScope', facadeDefinition.mapScope));
+    }
+
+    return Object.freeze(actions);
+}
+
+function createTestFacadeFromDefinition<
+    Scope extends TestScope
+>(facadeDefinition: ResolvedTestFacadeDefinition): TestFacade<AuthoringControls, Scope> {
     return {
         defineMacro,
         defineParameterizedTestBody,
@@ -380,25 +446,46 @@ function createTestFacadeFromDefinition(facadeDefinition: ResolvedTestFacadeDefi
                 ...input
             );
         },
-        table<Row>(tableDefinition: TableDefinition<Row>) {
+        table<Row>(
+            tableDefinition: TableDefinition<
+                Row,
+                AuthoringControls,
+                (scope: ParameterizedTestScope<Row, Scope>) => ReturnType<TestBody>
+            >
+        ) {
             return createAuthoredTable(
                 facadeDefinition.annotations,
                 facadeDefinition.controls,
-                tableDefinition
+                tableDefinition,
+                facadeDefinition.actions
             );
         },
         test(...input) {
             return createAuthoredTest(
                 facadeDefinition.annotations,
                 facadeDefinition.controls,
+                facadeDefinition.actions,
                 ...input
             );
         }
     };
 }
 
+export function createTestFacade(
+    definition?: TestFacadeDefinition<null, Readonly<Record<string, never>>, Readonly<Record<string, never>>>
+): TestFacade;
+export function createTestFacade<
+    Runtime extends RuntimeGraph | null = null,
+    Resources extends ResourceMap = Readonly<Record<string, never>>,
+    MappedScope extends Readonly<Record<string, unknown>> = Readonly<Record<string, never>>
+>(
+    definition: TestFacadeDefinition<Runtime, Resources, MappedScope>
+): TestFacade<AuthoringControls, FacadeScope<Runtime, Resources, MappedScope>>;
 export function createTestFacade(definition?: TestFacadeDefinition): TestFacade {
     const facadeDefinition = readTestFacadeDefinition(definition);
 
-    return createTestFacadeFromDefinition(facadeDefinition);
+    return createTestFacadeFromDefinition({
+        ...facadeDefinition,
+        actions: createFacadeActions(facadeDefinition)
+    });
 }
