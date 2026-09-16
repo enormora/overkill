@@ -17,9 +17,11 @@ type LifecycleLaneCounts = {
     readonly reuseLanes: number;
 };
 type LifecycleLaneAllocation = {
-    readonly loads: ReadonlyMap<RunWorkerLifecycle, number>;
+    readonly freshLoad: number;
+    readonly freshUnitCount: number;
+    readonly reuseLoad: number;
+    readonly reuseUnitCount: number;
     readonly tiedLifecycle: RunWorkerLifecycle;
-    readonly unitCounts: ReadonlyMap<RunWorkerLifecycle, number>;
 };
 type AssignedLifecycleLanes = {
     readonly freshLaneCount: number;
@@ -142,15 +144,11 @@ function caseCountBalancedLifecycleLaneAllocation(
     reuseUnits: number
 ): LifecycleLaneAllocation {
     return {
-        loads: new Map([
-            [ freshWorkerLifecycle, lifecycleLoad(units, freshWorkerLifecycle, caseCountPlacementLoad) ],
-            [ reuseWorkerLifecycle, lifecycleLoad(units, reuseWorkerLifecycle, caseCountPlacementLoad) ]
-        ]),
-        tiedLifecycle: firstUnitWorkerLifecycle(units),
-        unitCounts: new Map([
-            [ freshWorkerLifecycle, freshUnits ],
-            [ reuseWorkerLifecycle, reuseUnits ]
-        ])
+        freshLoad: lifecycleLoad(units, freshWorkerLifecycle, caseCountPlacementLoad),
+        freshUnitCount: freshUnits,
+        reuseLoad: lifecycleLoad(units, reuseWorkerLifecycle, caseCountPlacementLoad),
+        reuseUnitCount: reuseUnits,
+        tiedLifecycle: firstUnitWorkerLifecycle(units)
     };
 }
 
@@ -165,6 +163,14 @@ function lifecycleLaneCount(lanes: AssignedLifecycleLanes, workerLifecycle: RunW
     return workerLifecycle === freshWorkerLifecycle ? lanes.freshLaneCount : lanes.reuseLaneCount;
 }
 
+function lifecycleUnitCount(allocation: LifecycleLaneAllocation, workerLifecycle: RunWorkerLifecycle): number {
+    return workerLifecycle === freshWorkerLifecycle ? allocation.freshUnitCount : allocation.reuseUnitCount;
+}
+
+function lifecyclePlacementLoad(allocation: LifecycleLaneAllocation, workerLifecycle: RunWorkerLifecycle): number {
+    return workerLifecycle === freshWorkerLifecycle ? allocation.freshLoad : allocation.reuseLoad;
+}
+
 function assignedLifecycleLaneCount(lanes: AssignedLifecycleLanes): number {
     return lanes.freshLaneCount + lanes.reuseLaneCount;
 }
@@ -174,7 +180,7 @@ function lifecycleHasUnitCapacity(
     lanes: AssignedLifecycleLanes,
     workerLifecycle: RunWorkerLifecycle
 ): boolean {
-    return lifecycleLaneCount(lanes, workerLifecycle) < (allocation.unitCounts.get(workerLifecycle) ?? 0);
+    return lifecycleLaneCount(lanes, workerLifecycle) < lifecycleUnitCount(allocation, workerLifecycle);
 }
 
 function lifecycleAverageLoad(
@@ -182,23 +188,14 @@ function lifecycleAverageLoad(
     lanes: AssignedLifecycleLanes,
     workerLifecycle: RunWorkerLifecycle
 ): number {
-    return (allocation.loads.get(workerLifecycle) ?? 0) / lifecycleLaneCount(lanes, workerLifecycle);
+    return lifecyclePlacementLoad(allocation, workerLifecycle) / lifecycleLaneCount(lanes, workerLifecycle);
 }
 
 function compareTiedLifecycle(
     allocation: LifecycleLaneAllocation,
-    left: RunWorkerLifecycle,
-    right: RunWorkerLifecycle
+    left: RunWorkerLifecycle
 ): number {
-    if (left === allocation.tiedLifecycle) {
-        return -1;
-    }
-
-    if (right === allocation.tiedLifecycle) {
-        return 1;
-    }
-
-    return workerLifecycles.indexOf(left) - workerLifecycles.indexOf(right);
+    return left === allocation.tiedLifecycle ? -1 : 1;
 }
 
 function compareLifecycleCandidate(
@@ -210,7 +207,7 @@ function compareLifecycleCandidate(
     const loadDifference = lifecycleAverageLoad(allocation, lanes, right) -
         lifecycleAverageLoad(allocation, lanes, left);
 
-    return loadDifference === 0 ? compareTiedLifecycle(allocation, left, right) : loadDifference;
+    return loadDifference === 0 ? compareTiedLifecycle(allocation, left) : loadDifference;
 }
 
 function nextLifecycleWithCapacity(

@@ -5,6 +5,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import {
     emptyWorkUnitResourceConstraints,
+    type PlacementLane,
     type RunWorkerPoolAssignmentPolicy,
     type RunWorkerLifecycle,
     type WorkUnit,
@@ -51,6 +52,18 @@ function workUnitWithCases(key: string, workerLifecycle: RunWorkerLifecycle, cas
 
 function workUnit(key: string, workerLifecycle: RunWorkerLifecycle): WorkUnit {
     return workUnitWithCases(key, workerLifecycle, 1);
+}
+
+function placementLane(id: string): PlacementLane {
+    return {
+        executor: {
+            capabilities: [],
+            capacity: 1,
+            id,
+            kind: 'local-worker'
+        },
+        id
+    };
 }
 
 function assignedLanes(
@@ -308,6 +321,81 @@ export const testNode = createOverkillSuite({
                         'worker-1',
                         'worker-2',
                         'worker-2'
+                    ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'worker-pool lanes balance mixed lifecycle ties deterministically',
+            body(scope: OverkillScope) {
+                scope.assert.deepEqual(
+                    assignedLanes(
+                        [
+                            workUnitWithCases('fresh-a', 'fresh-worker-per-unit', 1),
+                            workUnitWithCases('fresh-b', 'fresh-worker-per-unit', 1),
+                            workUnitWithCases('reuse-a', 'reuse', 1),
+                            workUnitWithCases('reuse-b', 'reuse', 1)
+                        ],
+                        4,
+                        'case-count-balanced'
+                    ),
+                    [
+                        'worker-2',
+                        'worker-3',
+                        'worker-1',
+                        'worker-1'
+                    ]
+                );
+                scope.assert.deepEqual(
+                    assignedLanes(
+                        [
+                            workUnitWithCases('reuse-a', 'reuse', 1),
+                            workUnitWithCases('reuse-b', 'reuse', 1),
+                            workUnitWithCases('fresh-a', 'fresh-worker-per-unit', 1),
+                            workUnitWithCases('fresh-b', 'fresh-worker-per-unit', 1)
+                        ],
+                        4,
+                        'case-count-balanced'
+                    ),
+                    [
+                        'worker-1',
+                        'worker-2',
+                        'worker-3',
+                        'worker-3'
+                    ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'worker-pool lanes stop mixed lifecycle allocation at unit capacity',
+            body(scope: OverkillScope) {
+                const freshUnit = workUnitWithCases('fresh', 'fresh-worker-per-unit', 1);
+                const reuseUnit = workUnitWithCases('reuse', 'reuse', 1);
+                const units = [ freshUnit, reuseUnit ];
+
+                scope.assert.deepEqual(
+                    workerPoolPlacementAssignments(
+                        units,
+                        [
+                            placementLane('worker-1'),
+                            placementLane('worker-2'),
+                            placementLane('worker-3')
+                        ],
+                        'case-count-balanced'
+                    ),
+                    [
+                        { lane: 'worker-2', unit: freshUnit.id },
+                        { lane: 'worker-1', unit: reuseUnit.id }
                     ]
                 );
 
