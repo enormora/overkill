@@ -132,6 +132,7 @@ declare const body: TestBody;
 declare const annotations: AuthoringAnnotations;
 declare const authoringControls: AuthoringControls;
 declare const engineControls: TestControlsInput;
+declare const dynamicScopeMap: Readonly<Record<string, unknown>>;
 declare const node: TestNode;
 declare const tableBody: TableTestBody<{ readonly value: number; }>;
 type RootRuntimeExport = keyof {
@@ -370,6 +371,39 @@ describe('@overkill-dev/test authoring', function () {
         expect(facade).type.not.toHaveProperty('testDouble');
         expect(facade).type.not.toHaveProperty('defineHarness');
         expect(facade).type.not.toHaveProperty('defineCompositeAssertion');
+    });
+
+    typeTest('guards facade scope mapping against core scope keys', function () {
+        expect<typeof createTestFacade>().type.not.toBeCallableWith({
+            mapScope(scope: TestScope) {
+                return { assert: scope.assert };
+            }
+        });
+        expect<typeof createTestFacade>().type.not.toBeCallableWith({
+            mapScope() {
+                return { collect: true };
+            }
+        });
+        expect<typeof createTestFacade>().type.not.toBeCallableWith({
+            mapScope() {
+                return { parameters: { value: 1 } };
+            }
+        });
+        expect<typeof createTestFacade>().type.not.toBeCallableWith({
+            mapScope() {
+                return { resources: {} };
+            }
+        });
+        expect<typeof createTestFacade>().type.not.toBeCallableWith({
+            mapScope() {
+                return { runtimes: {} };
+            }
+        });
+        expect<typeof createTestFacade>().type.toBeCallableWith({
+            mapScope() {
+                return dynamicScopeMap;
+            }
+        });
     });
 
     typeTest('creates test, suite, and table nodes from default root authoring forms', function () {
