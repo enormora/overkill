@@ -290,6 +290,8 @@ export const testNode = test('loads the page', (scope) => {
 added. It may add convenience properties derived from those facade bindings,
 but it must not overwrite core scope keys such as `assert`, `require`, `plan`,
 `collect`, `cleanup`, `signal`, `runtimes`, `resources`, or `parameters`.
+Known collisions are rejected by TypeScript, and dynamic mapper results are
+validated at runtime before the mapped scope is composed.
 Per-test descriptor wrappers still compose into the final body scope after the
 facade mapper runs, so body-specific handles remain available to the body but
 are not mapper inputs. Facade-bound resources attach descriptors to every

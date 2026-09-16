@@ -30,6 +30,14 @@ export type AuthoringControls = {
 
 type EmptyResources = Readonly<Record<string, never>>;
 type EmptyMappedScope = Readonly<Record<string, never>>;
+type ReservedFacadeScopeKey = keyof TestScope | 'collect' | 'parameters' | 'resources' | 'runtimes';
+type FacadeMappedScopeConflict<MappedScope extends Readonly<Record<string, unknown>>> = Extract<
+    keyof MappedScope,
+    ReservedFacadeScopeKey
+>;
+type ValidFacadeMappedScope<MappedScope extends Readonly<Record<string, unknown>>> =
+    FacadeMappedScopeConflict<MappedScope> extends never ? MappedScope
+        : MappedScope & Readonly<Record<FacadeMappedScopeConflict<MappedScope>, never>>;
 type FacadeRuntimeScope<Runtime, Scope extends TestScope> = Runtime extends RuntimeGraph
     ? Scope & { readonly runtimes: RuntimeScopeContext<Runtime>; }
     : Scope;
@@ -58,7 +66,7 @@ export type FacadeMapScope<
     Runtime extends RuntimeGraph | null,
     Resources extends ResourceMap,
     MappedScope extends Readonly<Record<string, unknown>>
-> = (scope: FacadeBaseScope<Runtime, Resources>) => MappedScope;
+> = (scope: FacadeBaseScope<Runtime, Resources>) => ValidFacadeMappedScope<MappedScope>;
 
 export type TestFacadeDefinition<
     Runtime extends RuntimeGraph | null = null,
@@ -109,6 +117,22 @@ const facadeDefinitionFields: ReadonlySet<string> = new Set([
     'runtime'
 ]);
 const knownCaptureModes: ReadonlySet<unknown> = new Set(captureModeValues);
+const reservedFacadeScopeKeyValues: readonly ReservedFacadeScopeKey[] = [
+    'assert',
+    'cleanup',
+    'collect',
+    'drainMicrotasks',
+    'parameters',
+    'plan',
+    'require',
+    'resources',
+    'runtimes',
+    'settleAsyncWork',
+    'signal',
+    'startInFlight',
+    'yieldToNextTurn'
+];
+const reservedFacadeScopeKeys: ReadonlySet<string> = new Set(reservedFacadeScopeKeyValues);
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -180,12 +204,26 @@ function isFacadeMapScope(value: unknown): value is (scope: TestScope) => Readon
     return typeof value === 'function';
 }
 
+function readFacadeMappedScope(value: unknown): Readonly<Record<string, unknown>> {
+    return readRecord(value, 'createTestFacade() mapScope must return an object.');
+}
+
 function readFacadeMapScope(value: unknown): (scope: TestScope) => Readonly<Record<string, unknown>> {
     if (!isFacadeMapScope(value)) {
         throw new TypeError('createTestFacade() mapScope must be a function.');
     }
 
-    return value;
+    return function mapFacadeScope(scope) {
+        const mappedScope = readFacadeMappedScope(value(scope));
+
+        for (const key of Object.keys(mappedScope)) {
+            if (reservedFacadeScopeKeys.has(key)) {
+                throw new TypeError(`createTestFacade() mapScope must not return reserved scope key "${key}".`);
+            }
+        }
+
+        return mappedScope;
+    };
 }
 
 export function readAuthoringAnnotations(value: unknown): TestAnnotationsInput {

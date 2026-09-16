@@ -277,6 +277,17 @@ async function executeFacadeRuntimeBinding(): Promise<{
     return { acquisitions, execution };
 }
 
+async function executeFacadeScopeMappingCollision(key: string): Promise<Awaited<ReturnType<typeof execute>>> {
+    const facade = createTestFacade({
+        mapScope() {
+            return { [key]: true };
+        }
+    });
+    const testCase = facade.test('collides', passingBody);
+
+    return await executeAuthoredNode(testCase);
+}
+
 function assertFacadeRuntimePlan(scope: OverkillScope, plan: TestPlan): void {
     const plannedCase = plan.discoveredCases[0];
 
@@ -296,6 +307,25 @@ function assertFacadeRuntimePlan(scope: OverkillScope, plan: TestPlan): void {
             return resource.name;
         }),
         [ 'database' ]
+    );
+}
+
+function assertFacadeScopeMappingCollision(
+    scope: OverkillScope,
+    result: Awaited<ReturnType<typeof execute>>,
+    key: string
+): void {
+    const failure = firstFailedOutcome(result).failures[0];
+
+    if (failure.kind !== 'body-error') {
+        scope.assert.equal(failure.kind, 'body-error');
+
+        return;
+    }
+
+    scope.assert.equal(
+        failure.error.message,
+        `createTestFacade() mapScope must not return reserved scope key "${key}".`
     );
 }
 
@@ -363,6 +393,23 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
+            title: '@overkill-dev/test createTestFacade() rejects reserved scope keys from dynamic mappings',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                for (const key of [ 'assert', 'resources', 'parameters' ]) {
+                    assertFacadeScopeMappingCollision(
+                        scope,
+                        await executeFacadeScopeMappingCollision(key),
+                        key
+                    );
+                }
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test createTestFacade() rejects duplicate facade and body resource scopes',
             annotations: {},
             controls: {},
@@ -417,7 +464,7 @@ export const testNode = createOverkillSuite({
                     mapScope(facadeScope) {
                         return {
                             databaseUrl: facadeScope.resources.store.url,
-                            parameters: { value: 0 }
+                            mappedParameters: { value: 0 }
                         };
                     }
                 });
@@ -425,6 +472,7 @@ export const testNode = createOverkillSuite({
                     cases: [ { value: 1 }, { value: 2 } ],
                     test(facadeScope) {
                         facadeScope.assert.equal(facadeScope.databaseUrl, 'postgres://localhost');
+                        facadeScope.assert.equal(facadeScope.mappedParameters.value, 0);
                         facadeScope.assert.true(facadeScope.parameters.value > 0);
 
                         return facadeScope.assert.collect();

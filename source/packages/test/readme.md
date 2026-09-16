@@ -386,6 +386,13 @@ resource handles. Body-specific `withRuntime(...)`, `withResource(...)`, and
 `withResources(...)` wrappers still compose into the final body scope, but
 they are not inputs to the facade mapper.
 
+`mapScope(...)` may add project-owned convenience properties only. It must not
+return reserved scope keys: `assert`, `require`, `plan`, `collect`, `cleanup`,
+`signal`, `drainMicrotasks`, `settleAsyncWork`, `startInFlight`,
+`yieldToNextTurn`, `runtimes`, `resources`, or `parameters`. Known collisions
+are rejected by TypeScript, and dynamic mapper results are validated at
+runtime before the mapped scope is composed.
+
 The returned facade contains authoring helpers only. Assertions and doubles
 are imported alongside it instead of being registered into the facade.
 Facades and root helpers accept `controls.capture` as authored data. The
