@@ -24,7 +24,8 @@ export {
     isDefinedRuntime
 } from '../../resources/resources.ts';
 export {
-    assertPerCaseResourceGraph
+    assertPerCaseResourceGraph,
+    assertResourceDependencyScopes
 } from '../../resources/resource-graph.ts';
 export {
     startResources
@@ -45,6 +46,8 @@ export type {
     ResourceDefinitionInput,
     ResourceDisposalContext,
     ResourceHandle,
+    ResourceProjectionContext,
+    ResourceProjectionPayload,
     ResourceScope,
     RuntimeContext,
     RuntimeContextComposition,

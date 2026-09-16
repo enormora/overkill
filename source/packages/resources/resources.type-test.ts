@@ -16,6 +16,7 @@ import {
     type ResourceHandle,
     type ResourceLifecycleFailure,
     type ResourceSession,
+    type ResourceProjectionContext,
     type ResourceScope,
     type RuntimeContext,
     type RuntimeDimensions,
@@ -25,13 +26,25 @@ import {
     type TemporaryDirectoryHandle
 } from './resources.entry-point.ts';
 
-type ExpectedResourceDefinitionInput = {
+type ExpectedLocalResourceDefinitionInput = {
     readonly acquire: (context: ResourceCreationContext) => Database | Promise<Database>;
     readonly dependencies?: Readonly<Record<PropertyKey, never>>;
+    readonly deserializeHandle?: never;
     readonly dispose: ((handle: Database, context: ResourceDisposalContext) => Promise<void> | void) | null;
     readonly name: 'database';
     readonly requirements: readonly ExecutionRequirement[];
-    readonly scope: ResourceScope;
+    readonly scope: Exclude<ResourceScope, 'per-run'>;
+    readonly serializeHandle?: never;
+};
+type ExpectedProjectedResourceDefinitionInput = {
+    readonly acquire: (context: ResourceCreationContext) => Database | Promise<Database>;
+    readonly dependencies?: Readonly<Record<PropertyKey, never>>;
+    readonly deserializeHandle: (payload: string, context: ResourceProjectionContext) => ProjectedDatabase;
+    readonly dispose: ((handle: Database, context: ResourceDisposalContext) => Promise<void> | void) | null;
+    readonly name: 'database';
+    readonly requirements: readonly ExecutionRequirement[];
+    readonly scope: 'per-file' | 'per-run' | 'per-suite';
+    readonly serializeHandle: (handle: Database, context: ResourceProjectionContext) => string;
 };
 
 type ExpectedRuntimeContext = {
@@ -53,6 +66,9 @@ type Database = {
 
 type Server = {
     readonly url: string;
+};
+type ProjectedDatabase = {
+    readonly connectionString: string;
 };
 
 const database = defineResource({
@@ -124,6 +140,25 @@ const databaseHandle = {
     }
 };
 const serverHandle = { url: 'http://localhost' };
+const projectedDatabase = defineResource({
+    name: 'projected-database',
+    scope: 'per-run',
+    requirements: [
+        { kind: 'capacity-weight', weight: 3 },
+        { kind: 'affinity-key', key: 'database:primary' },
+        { kind: 'fault-domain', key: 'zone-a' }
+    ],
+    acquire(): Database {
+        return databaseHandle;
+    },
+    deserializeHandle(payload): ProjectedDatabase {
+        return { connectionString: payload };
+    },
+    dispose: null,
+    serializeHandle(): string {
+        return 'postgres://localhost';
+    }
+});
 
 function createInvalidDatabase(): Database {
     return {
@@ -145,6 +180,11 @@ describe('@overkill-dev/resources', function () {
         expect<RuntimeContext<typeof runtime>['server']>().type.toBe<Server>();
         expect<RuntimeScopeContext<typeof runtime>>().type.toBe<ExpectedRuntimeScopeContext>();
         expect(runtime.name).type.toBe<'api'>();
+    });
+
+    test('infers projected resource handles', function () {
+        expect<ResourceHandle<typeof projectedDatabase>>().type.toBe<ProjectedDatabase>();
+        expect(projectedDatabase.name).type.toBe<'projected-database'>();
     });
 
     test('infers aliased and hidden dependency runtime contexts', function () {
@@ -215,7 +255,20 @@ describe('@overkill-dev/resources', function () {
             readonly name: 'api';
             readonly dimensions: { readonly node: '26'; };
         }>();
-        expect<ResourceDefinitionInput<'database', Database>>().type.toBe<ExpectedResourceDefinitionInput>();
+        expect<ResourceDefinitionInput<'database', Database>>().type.toBeAssignableFrom<
+            ExpectedLocalResourceDefinitionInput
+        >();
+        expect<
+            ResourceDefinitionInput<
+                'database',
+                Database,
+                Readonly<Record<PropertyKey, never>>,
+                string,
+                ProjectedDatabase
+            >
+        >()
+            .type
+            .toBeAssignableFrom<ExpectedProjectedResourceDefinitionInput>();
     });
 
     test('keeps invalid shapes out of typed descriptors', function () {
@@ -238,6 +291,13 @@ describe('@overkill-dev/resources', function () {
             dimensions: { node: 26 },
             resources: { database },
             requirements: []
+        });
+        expect<typeof defineResource>().type.not.toBeCallableWith({
+            name: 'projected-database',
+            scope: 'per-run',
+            requirements: [],
+            acquire: createInvalidDatabase,
+            dispose: null
         });
         expect<typeof defineResource>().type.not.toBeCallableWith({
             name: 'server',

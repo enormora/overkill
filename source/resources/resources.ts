@@ -2,6 +2,7 @@ const resourceDefinitionBrand: unique symbol = Symbol('overkill.resourceDefiniti
 const runtimeDefinitionBrand: unique symbol = Symbol('overkill.runtimeDefinition');
 
 export type Awaitable<Value> = Promise<Value> | Value;
+type ValueOf<Values> = Values[keyof Values];
 type ExclusiveResource = { readonly kind: 'exclusive-resource'; readonly name: string; };
 type SerialExecution = { readonly kind: 'serial'; };
 type SingleWorkerExecution = { readonly kind: 'single-worker'; };
@@ -9,14 +10,28 @@ type StartupBudget = {
     readonly kind: 'startup-budget-milliseconds';
     readonly minimumMilliseconds: number;
 };
+type CapacityWeight = {
+    readonly kind: 'capacity-weight';
+    readonly weight: number;
+};
+type AffinityKey = {
+    readonly key: string;
+    readonly kind: 'affinity-key';
+};
+type FaultDomain = {
+    readonly key: string;
+    readonly kind: 'fault-domain';
+};
 
 export type AnyResourceDefinition = {
     readonly acquire: (context: never) => Awaitable<unknown>;
     readonly dependencies: ResourceDependencies;
+    readonly deserializeHandle?: (payload: never, context: never) => unknown;
     readonly dispose: ((handle: never, context: never) => Awaitable<void>) | null;
     readonly name: string;
     readonly requirements: readonly ExecutionRequirement[];
     readonly scope: ResourceScope;
+    readonly serializeHandle?: (handle: never, context: never) => ResourceProjectionPayload;
     readonly [resourceDefinitionBrand]: true;
 };
 
@@ -33,13 +48,30 @@ export type RuntimeId<
     readonly dimensions: Dimensions;
 };
 
-export type ExecutionRequirement = ExclusiveResource | SerialExecution | SingleWorkerExecution | StartupBudget;
+type PlacementRequirement = AffinityKey | CapacityWeight | ExclusiveResource | FaultDomain;
+type SchedulingRequirement = SerialExecution | SingleWorkerExecution | StartupBudget;
+
+export type ExecutionRequirement = PlacementRequirement | SchedulingRequirement;
 
 export type ResourceScope = 'per-case' | 'per-file' | 'per-run' | 'per-suite' | 'shared-per-worker';
 
 export type ResourceDependencies = Readonly<Record<string, AnyResourceDefinition>>;
 
-export type ResourceHandle<Resource extends AnyResourceDefinition> = Awaited<ReturnType<Resource['acquire']>>;
+type ResourceProjectionObject = { readonly [key: string]: ResourceProjectionPayload; };
+
+type ResourceProjectionScalar = boolean | number | string | null;
+type ResourceProjectionCollection = ResourceProjectionObject | readonly ResourceProjectionPayload[];
+
+export type ResourceProjectionPayload = ResourceProjectionCollection | ResourceProjectionScalar;
+
+export type ResourceProjectionContext<Dependencies extends ResourceDependencies = EmptyResourceDependencies> = {
+    readonly dependencies: ResourceContext<Dependencies>;
+};
+
+export type ResourceHandle<Resource extends AnyResourceDefinition> = Resource extends {
+    readonly deserializeHandle?: ((payload: never, context: never) => infer ConsumerHandle) | undefined;
+} ? ConsumerHandle
+    : Awaited<ReturnType<Resource['acquire']>>;
 
 export type ResourceContext<Resources extends ResourceDependencies> = {
     readonly [Key in keyof Resources]: ResourceHandle<Resources[Key]>;
@@ -55,9 +87,10 @@ export type ResourceDisposalContext<Dependencies extends ResourceDependencies = 
     readonly signal: AbortSignal;
 };
 
-export type ResourceDefinitionInput<
+type ResourceDefinitionBaseInput<
     Name extends string,
     Handle,
+    Scope extends ResourceScope,
     Dependencies extends ResourceDependencies = EmptyResourceDependencies
 > = {
     readonly acquire: (context: ResourceCreationContext<Dependencies>) => Awaitable<Handle>;
@@ -65,22 +98,153 @@ export type ResourceDefinitionInput<
     readonly dispose: ((handle: Handle, context: ResourceDisposalContext<Dependencies>) => Awaitable<void>) | null;
     readonly name: Name;
     readonly requirements: readonly ExecutionRequirement[];
-    readonly scope: ResourceScope;
+    readonly scope: Scope;
 };
+
+type LocalOnlyResourceDefinitionInput<
+    Name extends string,
+    Handle,
+    Scope extends ResourceScope,
+    Dependencies extends ResourceDependencies = EmptyResourceDependencies
+> = ResourceDefinitionBaseInput<Name, Handle, Scope, Dependencies> & {
+    readonly deserializeHandle?: never;
+    readonly serializeHandle?: never;
+};
+
+type ProjectedResourceDefinitionInput<
+    Name extends string,
+    OwnerHandle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Scope extends 'per-file' | 'per-run' | 'per-suite',
+    Dependencies extends ResourceDependencies = EmptyResourceDependencies
+> = ResourceDefinitionBaseInput<Name, OwnerHandle, Scope, Dependencies> & {
+    readonly deserializeHandle: (
+        payload: Projection,
+        context: ResourceProjectionContext<Dependencies>
+    ) => ConsumerHandle;
+    readonly serializeHandle: (
+        handle: OwnerHandle,
+        context: ResourceProjectionContext<Dependencies>
+    ) => Projection;
+};
+
+export type ResourceDefinitionInput<
+    Name extends string,
+    Handle,
+    Dependencies extends ResourceDependencies = EmptyResourceDependencies,
+    Projection extends ResourceProjectionPayload = ResourceProjectionPayload,
+    ConsumerHandle = Handle
+> = ValueOf<ResourceDefinitionInputOptions<Name, Handle, Dependencies, Projection, ConsumerHandle>>;
+
+type ResourceDefinitionInputOptions<
+    Name extends string,
+    Handle,
+    Dependencies extends ResourceDependencies,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle
+> = {
+    readonly local: LocalResourceDefinitionInput<Name, Handle, Dependencies>;
+    readonly projected: ProjectedResourceInput<
+        Name,
+        Handle,
+        Projection,
+        ConsumerHandle,
+        Dependencies
+    >;
+};
+
+type LocalResourceDefinitionInput<
+    Name extends string,
+    Handle,
+    Dependencies extends ResourceDependencies
+> = LocalCaseResourceInput<Name, Handle, Dependencies> | LocalFileResourceInput<Name, Handle, Dependencies>;
+
+type LocalCaseResourceInput<
+    Name extends string,
+    Handle,
+    Dependencies extends ResourceDependencies
+> = LocalOnlyResourceDefinitionInput<Name, Handle, 'per-case' | 'shared-per-worker', Dependencies>;
+
+type LocalFileResourceInput<
+    Name extends string,
+    Handle,
+    Dependencies extends ResourceDependencies
+> = LocalOnlyResourceDefinitionInput<Name, Handle, 'per-file' | 'per-suite', Dependencies>;
+
+type ProjectedResourceInput<
+    Name extends string,
+    Handle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Dependencies extends ResourceDependencies
+> = ValueOf<ProjectedResourceInputOptions<Name, Handle, Projection, ConsumerHandle, Dependencies>>;
+
+type ProjectedResourceInputOptions<
+    Name extends string,
+    Handle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Dependencies extends ResourceDependencies
+> = {
+    readonly file: ProjectedFileResourceInput<Name, Handle, Projection, ConsumerHandle, Dependencies>;
+    readonly run: ProjectedRunResourceInput<
+        Name,
+        Handle,
+        Projection,
+        ConsumerHandle,
+        Dependencies
+    >;
+};
+
+type ProjectedFileResourceInput<
+    Name extends string,
+    Handle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Dependencies extends ResourceDependencies
+> = ProjectedResourceDefinitionInput<Name, Handle, Projection, ConsumerHandle, 'per-file' | 'per-suite', Dependencies>;
+
+type ProjectedRunResourceInput<
+    Name extends string,
+    Handle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Dependencies extends ResourceDependencies
+> = ProjectedResourceDefinitionInput<Name, Handle, Projection, ConsumerHandle, 'per-run', Dependencies>;
 
 export type ResourceDefinition<
     Name extends string = string,
-    Handle = unknown,
-    Dependencies extends ResourceDependencies = ResourceDependencies
+    OwnerHandle = unknown,
+    Dependencies extends ResourceDependencies = ResourceDependencies,
+    ConsumerHandle = OwnerHandle
 > = {
-    readonly acquire: (context: ResourceCreationContext<Dependencies>) => Awaitable<Handle>;
+    readonly acquire: (context: ResourceCreationContext<Dependencies>) => Awaitable<OwnerHandle>;
     readonly dependencies: Dependencies;
-    readonly dispose: ((handle: Handle, context: ResourceDisposalContext<Dependencies>) => Awaitable<void>) | null;
+    readonly deserializeHandle?: (
+        payload: ResourceProjectionPayload,
+        context: ResourceProjectionContext<Dependencies>
+    ) => ConsumerHandle;
+    readonly dispose: ((handle: OwnerHandle, context: ResourceDisposalContext<Dependencies>) => Awaitable<void>) | null;
     readonly name: Name;
     readonly requirements: readonly ExecutionRequirement[];
     readonly scope: ResourceScope;
+    readonly serializeHandle?: (
+        handle: OwnerHandle,
+        context: ResourceProjectionContext<Dependencies>
+    ) => ResourceProjectionPayload;
     readonly [resourceDefinitionBrand]: true;
 };
+
+type ResourceOwnerHandle<Definition> = Definition extends {
+    readonly acquire: (context: never) => Awaitable<infer Handle>;
+} ? Handle
+    : never;
+
+type ResourceConsumerHandle<Definition> = Definition extends {
+    readonly deserializeHandle: (payload: never, context: never) => infer Handle;
+} ? Handle
+    : ResourceOwnerHandle<Definition>;
 
 export type RuntimeDefinitionInput<
     Name extends string,
@@ -153,17 +317,56 @@ export type ResourcesModule = {
     readonly defineRuntime: typeof defineRuntime;
 };
 
-export function defineResource<const Name extends string, Handle>(
-    definition: ResourceDefinitionInput<Name, Handle>
+export function defineResource<
+    const Name extends string,
+    Handle,
+    Scope extends Exclude<ResourceScope, 'per-run'>
+>(
+    definition: LocalOnlyResourceDefinitionInput<Name, Handle, Scope>
 ): ResourceDefinition<Name, Handle, EmptyResourceDependencies>;
-export function defineResource<const Name extends string, Handle, const Dependencies extends ResourceDependencies>(
-    definition: ResourceDefinitionInput<Name, Handle, Dependencies> & {
+export function defineResource<
+    const Name extends string,
+    OwnerHandle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Scope extends 'per-file' | 'per-run' | 'per-suite'
+>(
+    definition: ProjectedResourceDefinitionInput<Name, OwnerHandle, Projection, ConsumerHandle, Scope>
+): ResourceDefinition<Name, OwnerHandle, EmptyResourceDependencies, ConsumerHandle>;
+export function defineResource<
+    const Name extends string,
+    Handle,
+    Scope extends Exclude<ResourceScope, 'per-run'>,
+    const Dependencies extends ResourceDependencies
+>(
+    definition: LocalOnlyResourceDefinitionInput<Name, Handle, Scope, Dependencies> & {
         readonly dependencies: Dependencies;
     }
 ): ResourceDefinition<Name, Handle, Dependencies>;
-export function defineResource<const Name extends string, Handle, const Dependencies extends ResourceDependencies>(
+export function defineResource<
+    const Name extends string,
+    OwnerHandle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Scope extends 'per-file' | 'per-run' | 'per-suite',
+    const Dependencies extends ResourceDependencies
+>(
+    definition: ProjectedResourceDefinitionInput<Name, OwnerHandle, Projection, ConsumerHandle, Scope, Dependencies> & {
+        readonly dependencies: Dependencies;
+    }
+): ResourceDefinition<Name, OwnerHandle, Dependencies, ConsumerHandle>;
+export function defineResource<
+    const Name extends string,
+    Handle,
+    const Dependencies extends ResourceDependencies
+>(
     definition: ResourceDefinitionInput<Name, Handle, Dependencies>
-): ResourceDefinition<Name, Handle, Dependencies | EmptyResourceDependencies> {
+): ResourceDefinition<
+    Name,
+    Handle,
+    Dependencies | EmptyResourceDependencies,
+    ResourceConsumerHandle<typeof definition>
+> {
     if (definition.dependencies === undefined) {
         const dependencies = Object.freeze({});
 

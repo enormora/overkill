@@ -5,6 +5,9 @@ import {
     createPlainOutputRenderer,
     type RunResourceUsageTracker
 } from '../packages/engine/engine.entry-point.ts';
+import {
+    createResourceLifecycleRuntimePolicy
+} from './resource-lifecycle.ts';
 import { createNodeResourceUsageTracker } from './resource-usage.ts';
 import {
     captureOutput,
@@ -90,13 +93,14 @@ async function runAssignment(
     });
 
     try {
-        const result = await execute(selectedAssignedWork(collectedPlan.testPlan, task.assignedWork), {
+        const testPlan = selectedAssignedWork(collectedPlan.testPlan, task.assignedWork);
+        const result = await execute(testPlan, {
             execution: { mode: executionMode(task.command) },
             outputRenderer: createPlainOutputRenderer(),
             reporters: [ createWorkerPoolReporter(task) ],
             resourceBudgets: workerResourceBudgets(task.command),
             resourceUsageTracker: createResourceUsageTracker(task.command),
-            runtimePolicy: null,
+            runtimePolicy: createResourceLifecycleRuntimePolicy(testPlan.cases),
             runFacts: {},
             startedAt: startedAtIso(task.startedAtMilliseconds),
             timeoutPolicy: {

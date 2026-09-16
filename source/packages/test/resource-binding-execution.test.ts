@@ -360,7 +360,13 @@ async function assertBroaderScopeRunnerError(scope: TestScope): Promise<void> {
 
             return { url: 'postgres://localhost' };
         },
-        dispose: null
+        deserializeHandle(payload: string) {
+            return { url: payload };
+        },
+        dispose: null,
+        serializeHandle(handle) {
+            return handle.url;
+        }
     });
     const observed = await executeObservedBody(resourcesSubpath.withResource(
         runResource,

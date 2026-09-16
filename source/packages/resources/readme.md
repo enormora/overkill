@@ -48,6 +48,25 @@ const server = defineResource({
 });
 
 const scratch = createTemporaryDirectoryResource('scratch');
+const sharedDatabase = defineResource({
+    name: 'shared-database',
+    scope: 'per-run',
+    requirements: [ { kind: 'single-worker' } ],
+    async acquire(context) {
+        context.signal.throwIfAborted();
+
+        return await openDatabase();
+    },
+    deserializeHandle(payload) {
+        return { url: payload.url };
+    },
+    async dispose(database) {
+        await database.close();
+    },
+    serializeHandle(database) {
+        return { url: database.url };
+    }
+});
 const runtime = defineRuntime({
     name: 'api',
     dimensions: {},
@@ -90,6 +109,18 @@ reverse dependency order. Independent ready resources may acquire concurrently.
 handles in a runtime name. It uses the keys from the provided resource map and
 the same acquisition, sharing, and disposal behavior as `startRuntime(...)`.
 
-`scope` and `requirements` are metadata in this package-level session API.
-Runner-managed per-run, per-file, per-suite, per-case, and shared-per-worker
-lifetimes are planned separately.
+The package-level session API starts one explicit session and therefore shares
+one handle per descriptor inside that session. Runner-managed wrappers in
+`@overkill-dev/test/resources` interpret `scope` as `per-run`, `per-file`,
+`per-suite`, `per-case`, or `shared-per-worker` lifetime boundaries.
+
+`per-run` resources must define `serializeHandle(...)` and
+`deserializeHandle(...)` so runner-owned resources can be projected into
+consumer execution contexts. `per-file` and `per-suite` resources may also
+define projection hooks when their owner handle is not the same value that
+test code should consume. `per-case` and `shared-per-worker` resources are
+local to their execution owner and do not use projection hooks.
+
+Execution requirements describe placement pressure for the runner:
+`serial`, `single-worker`, `exclusive-resource`, `capacity-weight`,
+`affinity-key`, `fault-domain`, and `startup-budget-milliseconds`.

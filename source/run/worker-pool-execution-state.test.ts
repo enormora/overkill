@@ -37,6 +37,13 @@ const testCaseMetadata = {
 } as const;
 const defaultUnitPolicy = {
     order: 'plan',
+    resourceConstraints: {
+        affinityKeys: [],
+        capacityWeight: 1,
+        faultDomains: [],
+        serialKeys: [],
+        singleWorkerKeys: []
+    },
     scheduling: 'serial',
     workerLifecycle: 'reuse'
 } as const;

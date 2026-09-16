@@ -35,6 +35,12 @@ export type CallableResourceDefinition = AnyResourceDefinition & {
     readonly dispose: ResourceDisposeCallback | null;
 };
 
+const perRunScopeRank = 0;
+const perFileScopeRank = 1;
+const perSuiteScopeRank = 2;
+const sharedPerWorkerScopeRank = 3;
+const perCaseScopeRank = 4;
+
 export function resourceEntries(resources: ResourceDependencies): readonly ResourceEntry[] {
     return Object.entries(resources);
 }
@@ -43,6 +49,41 @@ function scopeDescription(scope: ResourceScope): string {
     return scope === 'per-case'
         ? 'per-case scope'
         : `${scope} scope, which direct execution wrappers do not support yet`;
+}
+
+function scopeRank(scope: ResourceScope): number {
+    if (scope === 'per-run') {
+        return perRunScopeRank;
+    }
+
+    if (scope === 'per-file') {
+        return perFileScopeRank;
+    }
+
+    if (scope === 'per-suite') {
+        return perSuiteScopeRank;
+    }
+
+    if (scope === 'shared-per-worker') {
+        return sharedPerWorkerScopeRank;
+    }
+
+    return perCaseScopeRank;
+}
+
+function dependencyScopeAllowed(resource: AnyResourceDefinition, dependency: AnyResourceDefinition): boolean {
+    const resourceScope: ResourceScope = resource.scope;
+    const dependencyScope: ResourceScope = dependency.scope;
+
+    if (dependencyScope === 'shared-per-worker') {
+        return resource.scope === 'shared-per-worker' || resource.scope === 'per-case';
+    }
+
+    if (resourceScope === 'shared-per-worker') {
+        return dependency.scope === 'per-run' || dependency.scope === 'shared-per-worker';
+    }
+
+    return scopeRank(dependencyScope) <= scopeRank(resourceScope);
 }
 
 function hasCallableResourceCallbacks(resource: AnyResourceDefinition): resource is CallableResourceDefinition {
@@ -165,4 +206,30 @@ export function assertPerCaseResourceGraph(resources: ResourceDependencies): voi
         ],
         nonPerCaseResource.descriptor
     );
+}
+
+export function assertResourceDependencyScopes(resources: ResourceDependencies): void {
+    const graph = createResourceGraph(resources);
+
+    for (const node of graph.order) {
+        for (const dependency of node.dependencies) {
+            if (!dependencyScopeAllowed(node.descriptor, dependency.descriptor)) {
+                throw resourceLifecycleError(
+                    [
+                        `Resource "${node.descriptor.name}" uses ${node.descriptor.scope} scope and cannot depend on`,
+                        `resource "${dependency.descriptor.name}" with ${dependency.descriptor.scope} scope.`
+                    ]
+                        .join(' '),
+                    [
+                        {
+                            cause: dependency.descriptor,
+                            phase: 'graph',
+                            resourceName: node.descriptor.name
+                        }
+                    ],
+                    dependency.descriptor
+                );
+            }
+        }
+    }
 }

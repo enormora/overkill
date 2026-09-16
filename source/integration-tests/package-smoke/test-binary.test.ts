@@ -8,6 +8,7 @@ import { createLineReporter } from '@overkill-dev/reporter-line';
 import {
     assertResourcesPackageRootExport,
     assertRunConfigSubpathExport,
+    assertRunResourceLifecycleSubpathExport,
     assertTestStandardSubpathExports
 } from './package-export-assertions.test.ts';
 import { runIfMain } from './direct-launcher.test.ts';
@@ -16,12 +17,12 @@ import {
     customAuthoringFacadeScript,
     customAuthoringSmokeScript,
     expectedRootImportOutput,
-    expectedRunConfigImportOutput,
+    expectedRunSubpathImportOutput,
     expectedStandardSubpathImportOutput,
     packageSmokePackageJsonScript,
     packageSmokeConfigScript,
     rootImportScript,
-    runConfigImportScript,
+    runSubpathImportScript,
     standardSubpathImportScript
 } from './test-binary-scripts.test.ts';
 
@@ -348,7 +349,7 @@ export const testNode = createSuite({
         }),
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
-            title: 'consumer imports packaged @overkill-dev/run/filters helpers',
+            title: 'consumer imports packaged @overkill-dev/run subpath helpers',
             annotations: {},
             controls: {},
             async body(scope: TestScope) {
@@ -356,14 +357,15 @@ export const testNode = createSuite({
                 const result = await spawnNode([
                     '--input-type=module',
                     '--eval',
-                    runConfigImportScript
+                    runSubpathImportScript
                 ]);
                 const filters = await importPackagedFilters();
 
                 assertRunConfigSubpathExport(scope, packageExports);
+                assertRunResourceLifecycleSubpathExport(scope, packageExports);
                 scope.assert.equal(result.code, 0);
                 scope.assert.equal(result.stderr, '');
-                scope.assert.equal(result.stdout, expectedRunConfigImportOutput);
+                scope.assert.equal(result.stdout, expectedRunSubpathImportOutput);
                 assertPackagedFilters(scope, filters);
 
                 return scope.assert.collect();

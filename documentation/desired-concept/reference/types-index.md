@@ -1455,6 +1455,9 @@ type ExecutionRequirement =
     | { kind: 'serial'; }
     | { kind: 'single-worker'; }
     | { kind: 'exclusive-resource'; name: string; }
+    | { kind: 'capacity-weight'; weight: number; }
+    | { kind: 'affinity-key'; key: string; }
+    | { kind: 'fault-domain'; key: string; }
     | { kind: 'startup-budget-milliseconds'; minimumMilliseconds: number; };
 ```
 
@@ -1481,20 +1484,45 @@ type ResourceDisposalContext<Dependencies extends ResourceDependencies = Readonl
     readonly signal: AbortSignal;
 };
 
+type ResourceProjectionPayload =
+    | boolean
+    | null
+    | number
+    | string
+    | readonly ResourceProjectionPayload[]
+    | { readonly [key: string]: ResourceProjectionPayload; };
+
+type ResourceProjectionContext<Dependencies extends ResourceDependencies = Readonly<Record<never, never>>> = {
+    readonly dependencies: ResourceContext<Dependencies>;
+};
+
 type ResourceDefinition<
-    Handle,
-    Dependencies extends ResourceDependencies = Readonly<Record<never, never>>
+    OwnerHandle,
+    Dependencies extends ResourceDependencies = Readonly<Record<never, never>>,
+    ConsumerHandle = OwnerHandle
 > = {
     readonly dependencies: Dependencies;
     readonly name: string;
     readonly scope: ResourceScope;
     readonly requirements: ReadonlyArray<ExecutionRequirement>;
-    readonly acquire: (context: ResourceCreationContext<Dependencies>) => Handle | Promise<Handle>;
-    readonly dispose: null | ((handle: Handle, context: ResourceDisposalContext<Dependencies>) => void | Promise<void>);
+    readonly acquire: (context: ResourceCreationContext<Dependencies>) => OwnerHandle | Promise<OwnerHandle>;
+    readonly deserializeHandle?: (
+        payload: ResourceProjectionPayload,
+        context: ResourceProjectionContext<Dependencies>
+    ) => ConsumerHandle;
+    readonly dispose:
+        | null
+        | ((handle: OwnerHandle, context: ResourceDisposalContext<Dependencies>) => void | Promise<void>);
+    readonly serializeHandle?: (
+        handle: OwnerHandle,
+        context: ResourceProjectionContext<Dependencies>
+    ) => ResourceProjectionPayload;
 };
 
-type ResourceHandle<Resource extends ResourceDefinition<unknown>> = Resource extends ResourceDefinition<infer Handle>
-    ? Handle
+type ResourceHandle<Resource extends ResourceDefinition<unknown>> = Resource extends {
+    readonly deserializeHandle: (payload: never, context: never) => infer Handle;
+} ? Handle
+    : Resource extends ResourceDefinition<infer Handle> ? Handle
     : never;
 
 type RuntimeDefinition<
@@ -1736,10 +1764,20 @@ declare function createSimulatedHttpServerResource<const Scenario extends string
 
 Resource sessions acquire dependency branches when prerequisites are ready,
 share one handle per descriptor in the session, and dispose once in reverse
-dependency order. Runtime scopes expose `scope.runtimes.<runtimeName>`.
-Direct resources expose `scope.resources.<resourceKey>`. Transitive
-dependencies remain internal unless the runtime or resource map lists them
-directly.
+dependency order. Runner-managed resource wrappers use the declared scope:
+`per-run` for the selected run, `per-file` for each source file, `per-suite`
+for each file plus suite path, `per-case` for one case, and
+`shared-per-worker` for one executor worker. Runtime scopes expose
+`scope.runtimes.<runtimeName>`. Direct resources expose
+`scope.resources.<resourceKey>`. Transitive dependencies remain internal
+unless the runtime or resource map lists them directly.
+
+`per-run` resources must define `serializeHandle(...)` and
+`deserializeHandle(...)` because the owner handle may live outside the
+consumer execution context. `per-file` and `per-suite` resources may define
+the same projection hooks when their owner handle differs from the injected
+consumer handle. `per-case` and `shared-per-worker` handles stay local to
+their execution owner.
 
 `withRuntime(runtime, body)`, `withResource(resource, body)`, and
 `withResources(resources, body)` carry first-party descriptor attachment
@@ -1747,8 +1785,8 @@ metadata. They do not receive already acquired handles. Collection stores an
 IPC-safe summary with public resource keys, stable descriptor names, dependency
 edges, scopes, dimensions, and requirements before scheduling. Planning lowers
 those summaries into placement constraints, expands runtime matrices, and
-execution injects acquired handles into `scope.runtimes` and `scope.resources`
-when handles exist.
+execution injects acquired or projected handles into `scope.runtimes` and
+`scope.resources` when handles exist.
 Nested first-party wrappers normalize to one descriptor set before planning.
 Duplicate public `scope.resources` keys and public `scope.runtimes` names are
 rejected. Equal resource keys may appear under different runtime names because

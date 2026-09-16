@@ -3,17 +3,27 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import type { RunWorkerLifecycle, WorkUnit } from './run-types.ts';
+import {
+    emptyWorkUnitResourceConstraints,
+    type RunWorkerLifecycle,
+    type WorkUnit,
+    type WorkUnitResourceConstraints
+} from './run-types.ts';
 import {
     workerPoolLanes,
     workerPoolPlacementAssignments
 } from './worker-pool-lanes.ts';
 
-function workUnit(key: string, workerLifecycle: RunWorkerLifecycle): WorkUnit {
+function workUnitWithConstraints(
+    key: string,
+    workerLifecycle: RunWorkerLifecycle,
+    resourceConstraints: WorkUnitResourceConstraints
+): WorkUnit {
     return {
         group: null,
         id: { key, mode: 'file', runtime: null, workload: null },
         order: 'plan',
+        resourceConstraints,
         scheduling: 'concurrent',
         work: [
             {
@@ -24,6 +34,10 @@ function workUnit(key: string, workerLifecycle: RunWorkerLifecycle): WorkUnit {
         ],
         workerLifecycle
     };
+}
+
+function workUnit(key: string, workerLifecycle: RunWorkerLifecycle): WorkUnit {
+    return workUnitWithConstraints(key, workerLifecycle, emptyWorkUnitResourceConstraints);
 }
 
 function assignedLanes(units: readonly WorkUnit[], availableParallelism: number): readonly string[] {
@@ -178,6 +192,106 @@ export const testNode = createOverkillSuite({
                     'worker-1',
                     'worker-2'
                 ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'worker-pool lanes apply resource placement constraints',
+            body(scope: OverkillScope) {
+                scope.assert.deepEqual(
+                    assignedLanes([
+                        workUnitWithConstraints('serial-1', 'reuse', {
+                            ...emptyWorkUnitResourceConstraints,
+                            serialKeys: [ 'database' ]
+                        }),
+                        workUnitWithConstraints('serial-2', 'reuse', {
+                            ...emptyWorkUnitResourceConstraints,
+                            serialKeys: [ 'database' ]
+                        })
+                    ], 3),
+                    [
+                        'worker-1',
+                        'worker-1'
+                    ]
+                );
+                scope.assert.deepEqual(
+                    assignedLanes([
+                        workUnitWithConstraints('single-worker-1', 'reuse', {
+                            ...emptyWorkUnitResourceConstraints,
+                            singleWorkerKeys: [ 'file:source/api.test.ts' ]
+                        }),
+                        workUnitWithConstraints('single-worker-2', 'reuse', {
+                            ...emptyWorkUnitResourceConstraints,
+                            singleWorkerKeys: [ 'file:source/api.test.ts' ]
+                        })
+                    ], 3),
+                    [
+                        'worker-1',
+                        'worker-1'
+                    ]
+                );
+                scope.assert.deepEqual(
+                    assignedLanes([
+                        workUnitWithConstraints('affinity-1', 'reuse', {
+                            ...emptyWorkUnitResourceConstraints,
+                            affinityKeys: [ 'tenant:a' ]
+                        }),
+                        workUnitWithConstraints('affinity-2', 'reuse', {
+                            ...emptyWorkUnitResourceConstraints,
+                            affinityKeys: [ 'tenant:a' ]
+                        })
+                    ], 3),
+                    [
+                        'worker-1',
+                        'worker-1'
+                    ]
+                );
+                scope.assert.deepEqual(
+                    assignedLanes([
+                        workUnitWithConstraints('fault-domain-1', 'reuse', {
+                            ...emptyWorkUnitResourceConstraints,
+                            faultDomains: [ 'postgres:primary' ]
+                        }),
+                        workUnitWithConstraints('fault-domain-2', 'reuse', {
+                            ...emptyWorkUnitResourceConstraints,
+                            faultDomains: [ 'postgres:primary' ]
+                        }),
+                        workUnitWithConstraints('fault-domain-3', 'reuse', {
+                            ...emptyWorkUnitResourceConstraints,
+                            faultDomains: [ 'postgres:primary' ]
+                        })
+                    ], 4),
+                    [
+                        'worker-1',
+                        'worker-2',
+                        'worker-3'
+                    ]
+                );
+                scope.assert.deepEqual(
+                    assignedLanes([
+                        workUnitWithConstraints('capacity-1', 'reuse', {
+                            ...emptyWorkUnitResourceConstraints,
+                            capacityWeight: 4
+                        }),
+                        workUnitWithConstraints('capacity-2', 'reuse', {
+                            ...emptyWorkUnitResourceConstraints,
+                            capacityWeight: 2
+                        }),
+                        workUnitWithConstraints('capacity-3', 'reuse', {
+                            ...emptyWorkUnitResourceConstraints,
+                            capacityWeight: 2
+                        })
+                    ], 3),
+                    [
+                        'worker-1',
+                        'worker-2',
+                        'worker-2'
+                    ]
+                );
 
                 return scope.assert.collect();
             }
