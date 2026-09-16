@@ -22,13 +22,11 @@ import type {
 } from '../resources/resources.entry-point.ts';
 import {
     resourceContextForStep,
+    resourceWrapperLifecycleError,
     runtimeContextForStep,
     type ComposedResourceSession,
     type LifecycleMessages
-} from '../../resources/resource-wrapper-composition-core.ts';
-import {
-    resourceWrapperLifecycleError
-} from '../../resources/resource-wrapper-lifecycle-error.ts';
+} from '../run/resource-lifecycle.entry-point.ts';
 import {
     directResourceEntries,
     ensureResourceDescriptor,

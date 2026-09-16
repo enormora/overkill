@@ -1,5 +1,5 @@
 import { CaseRunnerError } from '../engine/run-result.ts';
-import { ResourceLifecycleError } from './resource-lifecycle-error.ts';
+import { ResourceLifecycleError } from '../resources/resource-lifecycle-error.ts';
 
 export function resourceWrapperLifecycleError(message: string, cause: unknown): CaseRunnerError {
     const runnerCause = cause instanceof ResourceLifecycleError && cause.cause !== undefined

@@ -5,7 +5,7 @@ import type {
     ComposedResourceSession,
     LifecycleMessages,
     ResourceWrapperStep
-} from './resource-wrapper-composition-core.ts';
+} from './resource-lifecycle-composition.ts';
 
 export type ManagedRunnerError = RunnerError;
 

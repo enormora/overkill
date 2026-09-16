@@ -174,6 +174,10 @@ export const config = {
                 main: {
                     js: 'packages/run/run.entry-point.js',
                     declarationFile: 'packages/run/run.entry-point.d.ts'
+                },
+                resourceLifecycle: {
+                    js: 'packages/run/resource-lifecycle.entry-point.js',
+                    declarationFile: 'packages/run/resource-lifecycle.entry-point.d.ts'
                 }
             },
             packageInterface: {
@@ -193,6 +197,10 @@ export const config = {
                     {
                         export: './filters',
                         root: 'filters'
+                    },
+                    {
+                        export: './resource-lifecycle',
+                        root: 'resourceLifecycle'
                     }
                 ]
             },

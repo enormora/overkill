@@ -8,14 +8,14 @@ import type {
     ResourceProjectionPayload,
     ResourceScope,
     RuntimeResourceMap as ResourceMap
-} from './resources.ts';
+} from '../resources/resources.ts';
 import {
     assertResourceDependencyScopes,
     callableResourceDefinition,
     createResourceGraph,
     resourceEntries,
     type ResourceGraph
-} from './resource-graph.ts';
+} from '../resources/resource-graph.ts';
 import {
     combinedResourceEntries,
     composedResourceSession,
@@ -25,19 +25,19 @@ import {
     type ComposedResourceSession,
     type LifecycleMessages,
     type ResourceWrapperStep
-} from './resource-wrapper-composition-core.ts';
+} from './resource-lifecycle-composition.ts';
 import {
     currentLifecycleCase,
     runWithLifecycleCase,
     runWithManagedLifecycle,
     type ManagedLifecycleState,
     type ManagedRunnerError
-} from './resource-wrapper-lifecycle-state.ts';
+} from './resource-lifecycle-state.ts';
 import {
     resourceWrapperErrorFromUnknown,
     resourceWrapperLifecycleError
-} from './resource-wrapper-lifecycle-error.ts';
-import { managedResourceSession } from './resource-wrapper-managed-session.ts';
+} from './resource-lifecycle-error.ts';
+import { managedResourceSession } from './resource-lifecycle-managed-session.ts';
 
 type LifecycleBoundary = {
     readonly key: string;

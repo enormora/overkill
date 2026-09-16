@@ -4,9 +4,9 @@ import type {
     RuntimeContext,
     RuntimeDefinition as RuntimeGraph,
     RuntimeResourceMap as ResourceMap
-} from './resources.ts';
-import type { ResourceSession } from './resource-session.ts';
-import { resourceWrapperLifecycleError } from './resource-wrapper-lifecycle-error.ts';
+} from '../resources/resources.ts';
+import type { ResourceSession } from '../resources/resource-session.ts';
+import { resourceWrapperLifecycleError } from './resource-lifecycle-error.ts';
 
 type Mutable<Value> = {
     -readonly [Key in keyof Value]: Value[Key];

@@ -12,7 +12,7 @@ import {
     type TestPlan,
     type TestScope
 } from '../engine/engine.entry-point.ts';
-import { createResourceLifecycleRuntimePolicy } from '../../resources/resource-wrapper-lifecycle.ts';
+import { createResourceLifecycleRuntimePolicy } from '../../run/resource-lifecycle.ts';
 import * as resourcesSubpath from './resources.entry-point.ts';
 
 type EmptyResourceDependencies = Readonly<Record<PropertyKey, never>>;

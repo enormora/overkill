@@ -2,7 +2,7 @@ import type { TestRuntimePolicy } from '../engine/case-execution.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
 import {
     createResourceLifecycleRuntimePolicy
-} from '../resources/resource-wrapper-lifecycle.ts';
+} from './resource-lifecycle.ts';
 import {
     createRuntimeCapabilityPolicy
 } from './capability-policy.ts';

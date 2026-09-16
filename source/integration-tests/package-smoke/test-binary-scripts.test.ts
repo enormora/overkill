@@ -242,12 +242,16 @@ export const standardSubpathImportScript = [
 ]
     .join('\n');
 
-export const runConfigImportScript = [
+export const runSubpathImportScript = [
     "const configModule = await import('@overkill-dev/run/config');",
+    "const resourceLifecycleModule = await import('@overkill-dev/run/resource-lifecycle');",
     'console.log(JSON.stringify(Object.keys(configModule)));',
     'console.log(configModule.defineConfig({ profiles: {} }).profiles === undefined);',
     'console.log(typeof configModule.loadRunConfig);',
-    "console.log(new configModule.RunConfigError('Invalid config.').name);"
+    "console.log(new configModule.RunConfigError('Invalid config.').name);",
+    'console.log(JSON.stringify(Object.keys(resourceLifecycleModule)));',
+    'console.log(typeof resourceLifecycleModule.activeManagedLifecycle);',
+    'console.log(resourceLifecycleModule.activeManagedLifecycle());'
 ]
     .join('\n');
 
@@ -337,11 +341,14 @@ export const expectedStandardSubpathImportOutput = [
 ]
     .join('\n');
 
-export const expectedRunConfigImportOutput = [
+export const expectedRunSubpathImportOutput = [
     '["RunConfigError","defineConfig","loadRunConfig"]',
     'false',
     'function',
     'RunConfigError',
+    '["activeManagedLifecycle","combinedResourceEntries","composedResourceSession","directResourceEntries","resourceContextForStep","resourceMapFromEntries","resourceWrapperErrorFromUnknown","resourceWrapperLifecycleError","runtimeContextForStep","stepRuntimeGraphs"]',
+    'function',
+    'null',
     ''
 ]
     .join('\n');

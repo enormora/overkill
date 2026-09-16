@@ -3,8 +3,8 @@ import { testNode as directResourceLifecycleTestNode } from '../../resources/dir
 import { testNode as resourceLifecycleDisposalTestNode } from '../../resources/resource-lifecycle-disposal.test.ts';
 import { testNode as resourceLifecycleTestNode } from '../../resources/resource-lifecycle.test.ts';
 import {
-    testNode as resourceWrapperCompositionCoreTestNode
-} from '../../resources/resource-wrapper-composition-core.test.ts';
+    testNode as resourceLifecycleCompositionTestNode
+} from '../../run/resource-lifecycle-composition.test.ts';
 import { testNode as resourcesTestNode } from '../../resources/resources.test.ts';
 
 export const testNode = createSuite({
@@ -16,7 +16,7 @@ export const testNode = createSuite({
         directResourceLifecycleTestNode,
         resourceLifecycleDisposalTestNode,
         resourceLifecycleTestNode,
-        resourceWrapperCompositionCoreTestNode,
+        resourceLifecycleCompositionTestNode,
         resourcesTestNode
     ]
 });

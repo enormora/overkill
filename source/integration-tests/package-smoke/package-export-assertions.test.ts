@@ -20,6 +20,16 @@ export function assertRunConfigSubpathExport(
     });
 }
 
+export function assertRunResourceLifecycleSubpathExport(
+    scope: TestScope,
+    packageExports: Readonly<Record<string, unknown>>
+): void {
+    scope.assert.deepEqual(packageExports['./resource-lifecycle'], {
+        import: './packages/run/resource-lifecycle.entry-point.js',
+        types: './packages/run/resource-lifecycle.entry-point.d.ts'
+    });
+}
+
 export function assertTestStandardSubpathExports(
     scope: TestScope,
     packageExports: Readonly<Record<string, unknown>>

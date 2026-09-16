@@ -1,5 +1,16 @@
 import { CaseRunnerError } from '../engine/run-result.ts';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { resourceLifecycleError } from '../resources/resource-lifecycle-error.ts';
+import {
+    runtimeAsyncDisposeSymbol,
+    type ResourceSession
+} from '../resources/resource-session.ts';
+import {
+    defineResource,
+    defineRuntime,
+    type ResourceContext,
+    type RuntimeResourceMap
+} from '../resources/resources.ts';
 import {
     combinedResourceEntries,
     composedResourceSession,
@@ -10,27 +21,16 @@ import {
     runtimeContextForStep,
     stepRuntimeGraphs,
     type ComposedResourceSession
-} from './resource-wrapper-composition-core.ts';
+} from './resource-lifecycle-composition.ts';
 import {
     resourceWrapperErrorFromUnknown,
     resourceWrapperLifecycleError
-} from './resource-wrapper-lifecycle-error.ts';
+} from './resource-lifecycle-error.ts';
 import {
     activeManagedLifecycle,
     currentLifecycleCase
-} from './resource-wrapper-lifecycle-state.ts';
-import { managedResourceSession } from './resource-wrapper-managed-session.ts';
-import { resourceLifecycleError } from './resource-lifecycle-error.ts';
-import {
-    defineResource,
-    defineRuntime,
-    type ResourceContext,
-    type RuntimeResourceMap
-} from './resources.ts';
-import {
-    runtimeAsyncDisposeSymbol,
-    type ResourceSession
-} from './resource-session.ts';
+} from './resource-lifecycle-state.ts';
+import { managedResourceSession } from './resource-lifecycle-managed-session.ts';
 
 const databaseResource = defineResource({
     name: 'database',
@@ -153,7 +153,7 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/resources/resource-wrapper-composition-core.test.ts',
+    title: 'source/run/resource-lifecycle-composition.test.ts',
     children: [
         createTestCase({
             annotations: {},

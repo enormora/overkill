@@ -1,11 +1,11 @@
-import { resourceEntries } from './resource-graph.ts';
+import { resourceEntries } from '../resources/resource-graph.ts';
 import type {
     AnyResourceDefinition,
     ResourceContext,
     RuntimeResourceMap as ResourceMap
-} from './resources.ts';
-import type { ResourceSession } from './resource-session.ts';
-import { resourceWrapperLifecycleError } from './resource-wrapper-lifecycle-error.ts';
+} from '../resources/resources.ts';
+import type { ResourceSession } from '../resources/resource-session.ts';
+import { resourceWrapperLifecycleError } from './resource-lifecycle-error.ts';
 
 function mutableDependencyContext(): Record<string, unknown> {
     return {};

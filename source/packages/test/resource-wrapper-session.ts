@@ -6,22 +6,18 @@ import {
     type RuntimeGraph
 } from '../resources/resources.entry-point.ts';
 import {
-    activeManagedLifecycle
-} from '../../resources/resource-wrapper-lifecycle-state.ts';
-import {
+    activeManagedLifecycle,
     combinedResourceEntries,
     composedResourceSession,
     directResourceEntries,
     resourceMapFromEntries,
+    resourceWrapperErrorFromUnknown,
+    resourceWrapperLifecycleError,
     stepRuntimeGraphs,
     type ComposedResourceSession,
     type LifecycleMessages,
     type ResourceWrapperStep
-} from '../../resources/resource-wrapper-composition-core.ts';
-import {
-    resourceWrapperErrorFromUnknown,
-    resourceWrapperLifecycleError
-} from '../../resources/resource-wrapper-lifecycle-error.ts';
+} from '../run/resource-lifecycle.entry-point.ts';
 
 async function acquireUnmanagedComposedResources(
     steps: readonly ResourceWrapperStep[],
