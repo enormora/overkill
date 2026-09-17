@@ -189,7 +189,8 @@ function addRunnerErrors(result: RunResult, runnerErrors: readonly RunResult['ru
 
     return {
         ...result,
-        runnerErrors: [ ...runnerErrors, ...result.runnerErrors ]
+        runnerErrors: [ ...runnerErrors, ...result.runnerErrors ],
+        status: 'failed'
     };
 }
 
@@ -385,7 +386,8 @@ export function createRunOrchestrator(dependencies: RunOrchestratorDependencies)
 
             return {
                 deliveredRunnerErrors: delivery.deliveredRunnerErrors,
-                result: delivery.result
+                result: delivery.result,
+                undeliveredRunnerErrors: delivery.undeliveredRunnerErrors
             };
         }
     };

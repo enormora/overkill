@@ -1,6 +1,7 @@
 import asyncHooks, { AsyncLocalStorage } from 'node:async_hooks';
 import diagnosticsChannel from 'node:diagnostics_channel';
 import { workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
+import { recordReporterConsoleDiagnostic } from '../engine/reporter-output-scope.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import type { TestRuntimePolicy } from '../engine/case-execution.ts';
 import {
@@ -239,6 +240,10 @@ function createDiagnosticsSubscriptions(
     return Object.entries(diagnosticsCapabilities).map(function subscribeToChannel([ name, capability ]) {
         const channel = diagnosticsChannel.channel(name);
         const listener = function recordDiagnostic(message: unknown): void {
+            if (recordReporterConsoleDiagnostic(name)) {
+                return;
+            }
+
             const resolvedCapability = name.startsWith('node:permission-model:')
                 ? permissionCapability(message, capability)
                 : capability;
@@ -444,6 +449,12 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
             const key = workIdentityKey(testCase.workId);
             const errors = caseErrors.get(key) ?? [];
             caseErrors.delete(key);
+
+            return errors;
+        },
+        takePendingRunErrors() {
+            const errors = Array.from(runErrors);
+            runErrors.length = 0;
 
             return errors;
         },

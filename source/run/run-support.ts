@@ -60,6 +60,12 @@ function composeRunRuntimePolicies(
                 ...secondPolicy.takeCaseErrors(testCase)
             ];
         },
+        takePendingRunErrors() {
+            return [
+                ...firstPolicy.takePendingRunErrors(),
+                ...secondPolicy.takePendingRunErrors()
+            ];
+        },
         takeRunErrors() {
             return [
                 ...firstPolicy.takeRunErrors(),

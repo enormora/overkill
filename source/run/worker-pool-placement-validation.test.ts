@@ -359,7 +359,11 @@ function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
                 return fakeReporterDelivery;
             },
             async trackRunnerErrorDelivery(work) {
-                return { deliveredRunnerErrors: [], result: await work() };
+                return {
+                    deliveredRunnerErrors: [],
+                    result: await work(),
+                    undeliveredRunnerErrors: []
+                };
             }
         },
         runtimeCapabilityPolicy: {

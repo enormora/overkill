@@ -440,7 +440,7 @@ export const testNode = createOverkillSuite({
                         return intent.text;
                     }),
                     [
-                        'done discovered=5 planned=5 executed=5 passed=2 failed=1 skipped=1 inconclusive=1 resourceExhausted=0 crashed=0 ms=42'
+                        'done status=failed discovered=5 planned=5 executed=5 passed=2 failed=1 skipped=1 inconclusive=1 resourceExhausted=0 crashed=0 ms=42'
                     ]
                 );
 

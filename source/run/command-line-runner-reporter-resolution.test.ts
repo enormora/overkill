@@ -135,9 +135,12 @@ function createRunnerDependencies(
             },
             run,
             async runWithReporterDelivery(command) {
+                const result = await run(command);
+
                 return {
                     deliveredRunnerErrors: [],
-                    result: await run(command)
+                    result,
+                    undeliveredRunnerErrors: result.runnerErrors
                 };
             }
         }

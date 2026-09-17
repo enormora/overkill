@@ -313,7 +313,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'real-time TAP reporter writes runner errors as comments',
+            title: 'real-time TAP reporter writes runner errors as bail out',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -331,7 +331,7 @@ export const testNode = createOverkillSuite({
                 });
 
                 scope.assert(doubleUsage.callCount, log, 1);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ '# runner error: line: reporter broke' ]);
+                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ 'Bail out! line: reporter broke' ]);
 
                 return scope.assert.collect();
             }

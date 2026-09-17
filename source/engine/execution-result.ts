@@ -1,10 +1,11 @@
 import type { WallClock } from '@enormora/wall-clock';
 import { workIdentityKey } from './identity.ts';
-import type {
-    PerTestResult,
-    RunResourceUsage,
-    RunResult,
-    RunnerError
+import {
+    runStatusFromSummary,
+    type PerTestResult,
+    type RunResourceUsage,
+    type RunResult,
+    type RunnerError
 } from './run-result.ts';
 import type { TestPlan } from './test-plan.ts';
 
@@ -19,9 +20,12 @@ export function appendRunnerErrors(result: RunResult, runnerErrors: readonly Run
         return result;
     }
 
+    const updatedRunnerErrors = [ ...result.runnerErrors, ...runnerErrors ];
+
     return {
         ...result,
-        runnerErrors: [ ...result.runnerErrors, ...runnerErrors ]
+        runnerErrors: updatedRunnerErrors,
+        status: runStatusFromSummary(result.summary, updatedRunnerErrors)
     };
 }
 
@@ -157,6 +161,8 @@ export function createRunResult(
     reporterErrors: readonly RunnerError[],
     timing: RunResultTiming
 ): RunResult {
+    const summary = countOutcomes(testPlan, perTest);
+
     return {
         artifacts: [],
         bySuite: countSuites(testPlan, perTest),
@@ -164,7 +170,8 @@ export function createRunResult(
         perTest,
         resourceUsage: timing.resourceUsage,
         runnerErrors: reporterErrors,
-        summary: countOutcomes(testPlan, perTest),
+        status: runStatusFromSummary(summary, reporterErrors),
+        summary,
         wallTimeMs: timing.wallClock.currentTimestampInMilliseconds - timing.startedAtMs
     };
 }

@@ -81,6 +81,7 @@ export type TestRuntimePolicy = {
     readonly runCase: <Value>(testCase: TestPlanCase, run: () => Promise<Value>) => Promise<Value>;
     readonly runLoad: <Value>(run: () => Promise<Value>) => Promise<Value>;
     readonly takeCaseErrors: (testCase: TestPlanCase) => readonly RunnerError[];
+    readonly takePendingRunErrors: () => readonly RunnerError[];
     readonly takeRunErrors: () => readonly RunnerError[];
 };
 

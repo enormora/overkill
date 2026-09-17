@@ -340,7 +340,7 @@ function fakeDependencies(
                 };
             },
             async trackRunnerErrorDelivery(work) {
-                return { deliveredRunnerErrors: [], result: await work() };
+                return { deliveredRunnerErrors: [], result: await work(), undeliveredRunnerErrors: [] };
             }
         },
         runtimeCapabilityPolicy: {

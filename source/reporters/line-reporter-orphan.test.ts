@@ -16,6 +16,7 @@ type LogFunction = (...values: readonly unknown[]) => void;
 type Log = TestDouble<LogFunction>;
 
 const infoSymbol = colors.cyan(figures.info);
+const errorSymbol = colors.red(figures.cross);
 
 function lineReporterWithLog(log: Log): RealTimeReporter {
     const fakeDependencies = { stdoutConsole: { log } } as unknown as LineReporterDependencies;
@@ -26,7 +27,7 @@ function lineReporterWithLog(log: Log): RealTimeReporter {
 function assertOrphanOutput(scope: OverkillScope, log: Log): void {
     scope.assert(doubleUsage.callCount, log, 3);
     scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-        infoSymbol,
+        errorSymbol,
         '0 discovered, 0 planned, 0 executed (0 pass, 0 fail, 0 skip), 1 orphaned in 0 ms'
     ]);
     scope.assert(doubleUsage.nthCallWithExactly, log, 1, [

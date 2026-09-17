@@ -8,16 +8,17 @@ import type {
 } from '../assertion-protocol/assertion-node-shape.ts';
 import type { DiffPathSegment } from '../diff/diff-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
-import type {
-    OrphanedNode,
-    RunResourceUsage,
-    RunnerError,
-    RunResult,
-    RunSummary,
-    SuiteRunCounts,
-    TestFailure,
-    TestOutcome,
-    TestVerdict
+import {
+    runStatusFromSummary,
+    type OrphanedNode,
+    type RunResourceUsage,
+    type RunnerError,
+    type RunResult,
+    type RunSummary,
+    type SuiteRunCounts,
+    type TestFailure,
+    type TestOutcome,
+    type TestVerdict
 } from '../engine/run-result.ts';
 
 type FailedCheckOverrides = {
@@ -104,6 +105,7 @@ type RunResultOverrides = {
     readonly perTest?: readonly PerTestResultOverrides[];
     readonly resourceUsage?: RunResourceUsage | null;
     readonly runnerErrors?: readonly RunnerErrorOverrides[];
+    readonly status?: RunResult['status'];
     readonly summary?: Partial<RunSummary>;
     readonly wallTimeMs?: number;
 };
@@ -372,15 +374,27 @@ function buildSummary(overrides: Partial<RunSummary> | undefined): RunSummary {
     };
 }
 
+function buildRunStatus(
+    overrides: RunResultOverrides,
+    summary: RunSummary,
+    runnerErrors: readonly RunnerError[]
+): RunResult['status'] {
+    return overrides.status ?? runStatusFromSummary(summary, runnerErrors);
+}
+
 function buildRunResult(overrides: RunResultOverrides = {}): RunResult {
+    const runnerErrors = buildRunnerErrors(overrides.runnerErrors);
+    const summary = buildSummary(overrides.summary);
+
     return {
         artifacts: overrides.artifacts ?? [],
         bySuite: overrides.bySuite ?? {},
         orphans: buildOrphanedNodes(overrides.orphans),
         perTest: buildPerTestResults(overrides.perTest),
         resourceUsage: overrides.resourceUsage ?? null,
-        runnerErrors: buildRunnerErrors(overrides.runnerErrors),
-        summary: buildSummary(overrides.summary),
+        runnerErrors,
+        status: buildRunStatus(overrides, summary, runnerErrors),
+        summary,
         wallTimeMs: overrides.wallTimeMs ?? 0
     };
 }

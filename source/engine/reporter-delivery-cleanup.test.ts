@@ -398,7 +398,8 @@ export const testNode = createOverkillSuite({
                     async trackRunnerErrorDelivery(work) {
                         return {
                             deliveredRunnerErrors: [],
-                            result: await work()
+                            result: await work(),
+                            undeliveredRunnerErrors: []
                         };
                     }
                 };

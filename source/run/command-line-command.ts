@@ -18,6 +18,11 @@ export const commandLineExitCodes = Object.freeze({
 
 export type CommandLineExitCode = (typeof commandLineExitCodes)[keyof typeof commandLineExitCodes];
 
+type ExitCodeRule = {
+    readonly exitCode: CommandLineExitCode;
+    readonly matches: (result: RunResult) => boolean;
+};
+
 export type CommandLineRunTestsRequest = RunConfigLoadRequest & {
     readonly runRequest: RunRequest;
 };
@@ -133,39 +138,51 @@ function formatErrorDiagnostics(label: string, error: unknown): readonly string[
     ];
 }
 
-export function formatFallbackDiagnostics(
-    result: RunResult,
-    deliveredRunnerErrors: ReadonlySet<RunnerError>
-): readonly string[] {
-    const unreportedErrors = result.runnerErrors.filter(function wasNotDelivered(error) {
-        return !deliveredRunnerErrors.has(error);
-    });
-
-    return formatRunnerErrorDiagnostics(unreportedErrors);
-}
-
-export function readExitCodeFromRunResult(result: RunResult): CommandLineExitCode {
-    const hasResourceExhaustion = result.runnerErrors.some(function isResourceExhaustion(error) {
+function hasResourceExhaustion(result: RunResult): boolean {
+    return result.runnerErrors.some(function isResourceExhaustion(error) {
         return error.subtype === 'resource-exhaustion';
     });
+}
 
-    if (hasResourceExhaustion || result.summary.resourceExhausted > 0) {
-        return commandLineExitCodes.resourceExhaustion;
+const exitCodeRules: readonly ExitCodeRule[] = [
+    {
+        exitCode: commandLineExitCodes.resourceExhaustion,
+        matches(result) {
+            return hasResourceExhaustion(result) || result.summary.resourceExhausted > 0;
+        }
+    },
+    {
+        exitCode: commandLineExitCodes.runnerError,
+        matches(result) {
+            return result.runnerErrors.length > 0;
+        }
+    },
+    {
+        exitCode: commandLineExitCodes.noTestsCollected,
+        matches(result) {
+            return result.summary.planned === 0;
+        }
+    },
+    {
+        exitCode: commandLineExitCodes.testFailure,
+        matches(result) {
+            return result.summary.failed > 0;
+        }
+    },
+    {
+        exitCode: commandLineExitCodes.runnerError,
+        matches(result) {
+            return result.status === 'failed';
+        }
     }
+];
 
-    if (result.runnerErrors.length > 0) {
-        return commandLineExitCodes.runnerError;
-    }
-
-    if (result.summary.planned === 0) {
-        return commandLineExitCodes.noTestsCollected;
-    }
-
-    if (result.summary.failed > 0) {
-        return commandLineExitCodes.testFailure;
-    }
-
-    return commandLineExitCodes.pass;
+export function readExitCodeFromRunResult(result: RunResult): CommandLineExitCode {
+    return exitCodeRules
+        .find(function findMatchingRule(rule) {
+            return rule.matches(result);
+        })
+        ?.exitCode ?? commandLineExitCodes.pass;
 }
 
 function createCommandLineErrorResult(

@@ -534,6 +534,7 @@ export type RunOrchestrator = {
     readonly runWithReporterDelivery: (command: RunCommand) => Promise<{
         readonly deliveredRunnerErrors: readonly RunResult['runnerErrors'][number][];
         readonly result: RunResult;
+        readonly undeliveredRunnerErrors: readonly RunResult['runnerErrors'][number][];
     }>;
 };
 

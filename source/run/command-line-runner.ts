@@ -6,7 +6,6 @@ import type {
 } from './run-config.ts';
 import {
     createCommandLineErrorResultFromUnknown,
-    formatFallbackDiagnostics,
     formatRunnerErrorDiagnostics,
     commandLineExitCodes,
     type CommandLineListTestsRequest,
@@ -144,10 +143,7 @@ async function runTestsWithLoadedConfig(
 
     return {
         exitCode: readExitCodeFromRunResult(runResult.result),
-        fallbackDiagnostics: formatFallbackDiagnostics(
-            runResult.result,
-            new Set(runResult.deliveredRunnerErrors)
-        ),
+        fallbackDiagnostics: formatRunnerErrorDiagnostics(runResult.undeliveredRunnerErrors),
         runResult: runResult.result,
         stdoutLines: []
     };

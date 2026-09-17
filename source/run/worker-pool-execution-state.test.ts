@@ -259,7 +259,11 @@ function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
         reporterDispatcher: {
             createDelivery: createFakeReporterDelivery,
             async trackRunnerErrorDelivery(work) {
-                return { deliveredRunnerErrors: [], result: await work() };
+                return {
+                    deliveredRunnerErrors: [],
+                    result: await work(),
+                    undeliveredRunnerErrors: []
+                };
             }
         },
         runtimeCapabilityPolicy: {
@@ -338,6 +342,7 @@ function emptyRunResult(perTest: readonly PerTestResult[]): RunResult {
         perTest,
         resourceUsage: null,
         runnerErrors: [],
+        status: 'passed',
         summary: {
             crashed: 0,
             defined: 0,
