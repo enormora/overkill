@@ -28,6 +28,7 @@ import {
 
 type PackageJson = {
     readonly bin: unknown;
+    readonly engines: unknown;
     readonly exports: unknown;
 };
 
@@ -51,6 +52,7 @@ const packageSmokeNodeModules = path.join(packageSmokeFolder, 'node_modules');
 const testPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/test');
 const runPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/run');
 const resourcesPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/resources');
+const overkillBinPath = path.join(packageSmokeNodeModules, '.bin', 'overkill');
 const packageSmokePackageJsonFile = 'package.json';
 const packageSmokeConfigFile = 'overkill.config.js';
 const authoringSmokeFile = 'authoring-smoke.test.mjs';
@@ -97,8 +99,8 @@ async function collectStream(stream: Readable): Promise<string> {
     });
 }
 
-async function spawnNode(args: readonly string[]): Promise<SpawnOutput> {
-    const child = spawn(process.execPath, Array.from(args), {
+async function spawnCommand(command: string, args: readonly string[]): Promise<SpawnOutput> {
+    const child = spawn(command, Array.from(args), {
         cwd: packageSmokeFolder,
         stdio: [ 'ignore', 'pipe', 'pipe' ]
     });
@@ -114,6 +116,10 @@ async function spawnNode(args: readonly string[]): Promise<SpawnOutput> {
         stderr: await stderr,
         stdout: await stdout
     };
+}
+
+async function spawnNode(args: readonly string[]): Promise<SpawnOutput> {
+    return await spawnCommand(process.execPath, args);
 }
 
 async function importPackagedFilters(): Promise<FiltersModule> {
@@ -211,6 +217,8 @@ export const testNode = createSuite({
                     overkill: './packages/test/overkill.entry-point.js'
                 });
                 scope.assert.equal(runPackageJson.bin, undefined);
+                scope.assert.deepEqual(testPackageJson.engines, { node: '^26.9.0' });
+                scope.assert.deepEqual(runPackageJson.engines, { node: '^26.9.0' });
 
                 return scope.assert.collect();
             }
@@ -272,6 +280,21 @@ export const testNode = createSuite({
                     path.join(testPackageFolder, 'packages/test/overkill.entry-point.js'),
                     '--help'
                 ]);
+
+                scope.assert.equal(result.code, 0);
+                scope.assert.includes(result.stdout, 'overkill <subcommand>');
+                scope.assert.equal(result.stderr, '');
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'packaged overkill bin path prints command help',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                const result = await spawnCommand(overkillBinPath, [ '--help' ]);
 
                 scope.assert.equal(result.code, 0);
                 scope.assert.includes(result.stdout, 'overkill <subcommand>');
