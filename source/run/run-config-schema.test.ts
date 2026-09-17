@@ -283,12 +283,14 @@ export const testNode = createOverkillSuite({
             controls: {},
             body(scope: OverkillScope) {
                 assertValidationSuccess(scope, integrationExecutionSchema, {
+                    assignmentPolicy: 'case-count-balanced',
                     processModel: 'worker-pool',
                     scheduling: 'serial',
                     workDistribution: { mode: 'file' },
                     workerLifecycle: 'fresh-worker-per-unit'
                 });
                 assertValidationSuccess(scope, integrationExecutionSchema, {
+                    assignmentPolicy: 'stable',
                     processModel: 'worker-pool',
                     scheduling: 'serial',
                     workDistribution: { mode: 'case' },
@@ -374,6 +376,23 @@ export const testNode = createOverkillSuite({
                     processModel: 'worker-pool',
                     scheduling: 'serial',
                     workerLifecycle: 'per-file'
+                });
+
+                scope.assert.equal(result.success, false);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'integration execution schema rejects future assignment policies',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const result = safeParse(integrationExecutionSchema, {
+                    assignmentPolicy: 'duration-history-balanced',
+                    processModel: 'worker-pool',
+                    scheduling: 'serial'
                 });
 
                 scope.assert.equal(result.success, false);

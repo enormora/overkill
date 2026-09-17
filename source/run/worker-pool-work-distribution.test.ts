@@ -465,6 +465,7 @@ export const testNode = createOverkillSuite({
                 for (const availableParallelism of [ Number.NaN, 0 ]) {
                     scope.assert.throws(function rejectInvalidParallelism() {
                         createWorkerPoolPlacementPlan({
+                            assignmentPolicy: 'case-count-balanced',
                             availableParallelism,
                             fileSetForFile,
                             order: 'plan',
@@ -489,6 +490,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(
                     invalidWorkDistributionConfigMessage(
                         {
+                            assignmentPolicy: 'case-count-balanced',
                             hostProcess: { kind: 'direct' },
                             processModel: 'worker-pool',
                             scheduling: 'concurrent',

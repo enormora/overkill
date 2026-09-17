@@ -195,6 +195,7 @@ function copyHostProcess(hostProcess: RunHostProcess): RunHostProcess {
 function copyIntegrationExecution(execution: RunIntegrationExecution): RunIntegrationExecution {
     if (execution.processModel === 'worker-pool') {
         return {
+            assignmentPolicy: execution.assignmentPolicy,
             hostProcess: copyHostProcess(execution.hostProcess),
             processModel: execution.processModel,
             scheduling: execution.scheduling,

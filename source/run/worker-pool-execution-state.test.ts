@@ -152,6 +152,7 @@ function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                assignmentPolicy: 'case-count-balanced',
                 baselineUpdateMode: 'none',
                 capture: 'buffered',
                 debug: { mode: 'off', selectors: [] },

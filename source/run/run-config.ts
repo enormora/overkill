@@ -32,6 +32,7 @@ import {
     type RunResourceBudgets,
     type RunResourceUsagePolicy,
     type RunTimeoutPolicy,
+    type RunWorkerPoolAssignmentPolicy,
     type RunWorkerLifecycle
 } from './run-types.ts';
 import {
@@ -143,6 +144,7 @@ const defaultMicrotestExecution: RunMicrotestExecution = {
 
 const defaultIntegrationProcessModel = 'worker-pool';
 const defaultIntegrationScheduling = 'concurrent';
+const defaultWorkerPoolAssignmentPolicy = 'case-count-balanced';
 const defaultWorkerLifecycle = 'reuse';
 const defaultWorkDistribution = { mode: 'file' } as const;
 
@@ -432,6 +434,16 @@ function normalizeWorkerLifecycle(execution: RunProjectIntegrationExecution | un
     return execution.workerLifecycle ?? defaultWorkerLifecycle;
 }
 
+function normalizeWorkerPoolAssignmentPolicy(
+    execution: RunProjectIntegrationExecution | undefined
+): RunWorkerPoolAssignmentPolicy {
+    if (execution?.processModel !== 'worker-pool') {
+        return defaultWorkerPoolAssignmentPolicy;
+    }
+
+    return execution.assignmentPolicy ?? defaultWorkerPoolAssignmentPolicy;
+}
+
 function assertValidWorkDistribution(
     execution: RunIntegrationExecution,
     files: RunProfileFiles
@@ -448,6 +460,7 @@ function normalizeWorkerPoolExecution(
     scheduling: RunIntegrationExecution['scheduling']
 ): RunIntegrationExecution {
     return {
+        assignmentPolicy: normalizeWorkerPoolAssignmentPolicy(execution),
         hostProcess: { kind: 'direct' },
         processModel: 'worker-pool',
         scheduling,

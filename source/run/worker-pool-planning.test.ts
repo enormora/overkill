@@ -170,6 +170,7 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                assignmentPolicy: 'case-count-balanced',
                 baselineUpdateMode: 'none',
                 capture: 'buffered',
                 debug: { mode: 'off', selectors: [] },
@@ -364,6 +365,7 @@ function assertWorkerCountBounds(scope: OverkillScope): void {
     const emptyPlan = collectedPlanWithFiles([]);
     const manyPlan = collectedPlanWithFiles(manyCollectedFiles());
     const singleWorkerPlan = createWorkerPoolPlacementPlan({
+        assignmentPolicy: 'case-count-balanced',
         availableParallelism: 1,
         fileSetForFile,
         order: 'plan',
@@ -374,6 +376,7 @@ function assertWorkerCountBounds(scope: OverkillScope): void {
         workerLifecycle: 'reuse'
     });
     const cappedWorkerPlan = createWorkerPoolPlacementPlan({
+        assignmentPolicy: 'case-count-balanced',
         availableParallelism: 99,
         fileSetForFile,
         order: 'plan',
@@ -386,6 +389,7 @@ function assertWorkerCountBounds(scope: OverkillScope): void {
 
     scope.assert.deepEqual(
         createWorkerPoolPlacementPlan({
+            assignmentPolicy: 'case-count-balanced',
             availableParallelism: 8,
             fileSetForFile,
             order: 'plan',
@@ -473,6 +477,7 @@ export const testNode = createOverkillSuite({
                 );
                 scope.assert.deepEqual(
                     createWorkerPoolPlacementPlan({
+                        assignmentPolicy: 'case-count-balanced',
                         availableParallelism: 3,
                         fileSetForFile,
                         order: 'plan',

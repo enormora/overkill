@@ -53,6 +53,7 @@ import {
     type RunWorkGroupOrder,
     type RunWorkGroupScheduling,
     type RunWorkGroupWorkerLifecycle,
+    type RunWorkerPoolAssignmentPolicy,
     type RunWorkerLifecycle,
     type RuntimeId,
     type SerializedValue,
@@ -286,6 +287,17 @@ describe('@overkill-dev/run', function () {
     });
 });
 
+describe('@overkill-dev/run worker-pool placement', function () {
+    test('exposes worker-pool assignment policy facts', function () {
+        expect<
+            Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['assignmentPolicy']
+        >()
+            .type
+            .toBe<RunWorkerPoolAssignmentPolicy>();
+        expect<RunWorkerPoolAssignmentPolicy>().type.toBe<'case-count-balanced' | 'stable'>();
+    });
+});
+
 describe('@overkill-dev/run config', function () {
     test('exposes collection, soft, and hard timeout facts', function () {
         expect<RunExecutionFacts['timeoutPolicy']['collectionMilliseconds']>().type.toBe<number>();
@@ -350,6 +362,7 @@ describe('@overkill-dev/run config', function () {
                 readonly hostProcess: { readonly kind: 'child'; readonly nodeArguments: readonly string[]; };
                 readonly processModel: 'worker-pool';
                 readonly scheduling: 'concurrent';
+                readonly assignmentPolicy: 'case-count-balanced';
                 readonly workDistribution: { readonly mode: 'file'; };
                 readonly workerLifecycle: 'reuse';
             };

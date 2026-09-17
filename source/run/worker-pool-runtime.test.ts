@@ -73,6 +73,7 @@ function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                assignmentPolicy: 'case-count-balanced',
                 baselineUpdateMode: 'none',
                 capture: 'buffered',
                 debug: { mode: 'off', selectors: [] },
@@ -80,6 +81,7 @@ function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
                 hostProcess: { kind: 'direct' },
                 order: 'seeded',
                 placementPlan: createWorkerPoolPlacementPlan({
+                    assignmentPolicy: 'case-count-balanced',
                     availableParallelism: 2,
                     fileSetForFile() {
                         return null;
