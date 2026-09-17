@@ -161,7 +161,7 @@ configuration domain and benchmark execution uses `overkill bench`.
 | `--file <path>`     | Restrict the run to a single file.                     | same                                                                                                                        |
 | `--last-failed`     | Run only tests that failed in the previous run.        | same                                                                                                                        |
 | `--watch`           | Rerun the selected suite with Node's built-in watcher. | [Runtime Behavior § Watch-Mode Targeting](../architecture/runtime-behavior.md#watch-mode-targeting)                         |
-| `--shard <i>/<n>`   | Select shard `i` of `n` from the filtered set.         | [Runtime Behavior § Sharding](../architecture/runtime-behavior.md#sharding)                                                 |
+| `--shard <i>/<n>`   | Select one-based shard `i` of `n` from the filtered set. | [Runtime Behavior § Sharding](../architecture/runtime-behavior.md#sharding)                                                 |
 
 Repeated `--runtime` flags combine with AND and compose with `--filter`:
 

@@ -7,6 +7,9 @@ import {
     type CollectionDurationHistoryIndex
 } from './run-collected-resolution.ts';
 import {
+    createRunResultFromCollectedPlan
+} from './collected-run-plan.ts';
+import {
     readResolvedRunInput,
     type ResolvedRunInput
 } from './run-input-resolution.ts';
@@ -23,6 +26,9 @@ import {
     executeSupervisedRun,
     runSupervisedCommand
 } from './supervised-run.ts';
+import {
+    createReporterDelivery
+} from './supervised-run-runtime.ts';
 import {
     collectWorkerPoolRun,
     executeWorkerPoolRun,
@@ -71,12 +77,62 @@ function currentRunStartTime(dependencies: RunOrchestratorDependencies): string 
     return startedAt.toISOString();
 }
 
+function emptyShardCollectedPlan(resolvedRun: ResolvedRun): CollectedRunPlan {
+    if (resolvedRun.plan.kind !== 'empty-shard') {
+        throw new Error('Empty shard execution requires an empty-shard collected plan.');
+    }
+
+    return resolvedRun.plan.collectedPlan;
+}
+
+async function executeEmptyShardRun(
+    resolvedRun: ResolvedRun,
+    dependencies: RunOrchestratorDependencies,
+    runtimePolicy: RunRuntimePolicy | null
+): Promise<RunResult> {
+    const collectedPlan = emptyShardCollectedPlan(resolvedRun);
+    const reporterDelivery = await createReporterDelivery(resolvedRun, dependencies);
+    const startedAtMs = dependencies.wallClock.currentTimestampInMilliseconds;
+    const runStartErrors = await reporterDelivery.reportEvent({
+        facts: resolvedRun.facts,
+        kind: 'run-start',
+        root: {
+            annotations: collectedPlan.root.annotations,
+            title: collectedPlan.root.title
+        },
+        startedAt: currentRunStartTime(dependencies)
+    });
+    const result = createRunResultFromCollectedPlan(
+        collectedPlan,
+        [],
+        [ ...resolvedRun.collectionRunnerErrors, ...runStartErrors, ...(runtimePolicy?.takeRunErrors() ?? []) ],
+        {
+            planStatus: 'empty-shard',
+            resourceUsage: null,
+            startedAtMs,
+            wallClock: dependencies.wallClock
+        }
+    );
+    const runEndErrors = await reporterDelivery.reportEvent({ kind: 'run-end', result });
+    const resultForFinalReporting = {
+        ...result,
+        runnerErrors: [ ...result.runnerErrors, ...runEndErrors ]
+    };
+    const finalReporterErrors = await reporterDelivery.reportResult(resultForFinalReporting);
+    const disposeErrors = await reporterDelivery.disposeReporters();
+
+    return {
+        ...resultForFinalReporting,
+        runnerErrors: [ ...resultForFinalReporting.runnerErrors, ...finalReporterErrors, ...disposeErrors ]
+    };
+}
+
 function resolveEngineExecutionMode(scheduling: RunScheduling): 'concurrent-in-process' | 'serial-in-process' {
     return scheduling === 'concurrent' ? 'concurrent-in-process' : 'serial-in-process';
 }
 
-function createResolvedExecutionRun(resolution: ExecutionResolutionInput): ResolvedRun {
-    return createResolvedRunFromCollection({
+async function createResolvedExecutionRun(resolution: ExecutionResolutionInput): Promise<ResolvedRun> {
+    return await createResolvedRunFromCollection({
         allowEmptySelection: resolution.allowEmptySelection,
         collection: resolution.collection,
         command: resolution.command,
@@ -142,7 +198,7 @@ async function createSupervisedResolvedRun(
         dependencies
     );
 
-    return createResolvedExecutionRun({
+    return await createResolvedExecutionRun({
         allowEmptySelection: false,
         collection,
         command,
@@ -250,8 +306,8 @@ async function runSupervisedAndAttachPolicyErrors(
     const result = await runSupervisedCommand(
         createSupervisedRunCommand(command, input.profile, input.files),
         dependencies,
-        function createResolvedRunAfterCollection(collection): ResolvedRun {
-            return createResolvedExecutionRun({
+        async function createResolvedRunAfterCollection(collection): Promise<ResolvedRun> {
+            return await createResolvedExecutionRun({
                 allowEmptySelection: true,
                 collection,
                 command,
@@ -308,8 +364,8 @@ async function createWorkerPoolRunResult(
         return await runWorkerPoolCommand(
             createWorkerPoolCommand(command, input.profile, input.files),
             dependencies,
-            function createResolvedRunAfterCollection(collection): ResolvedRun {
-                return createResolvedExecutionRun({
+            async function createResolvedRunAfterCollection(collection): Promise<ResolvedRun> {
+                return await createResolvedExecutionRun({
                     allowEmptySelection: true,
                     collection,
                     command,
@@ -376,6 +432,10 @@ async function executeResolvedRun(
                 return await finalizeResultWithDurationHistory(dependencies, workerPoolRun, result);
             }
         });
+    }
+
+    if (resolvedRun.plan.kind === 'empty-shard') {
+        return await executeEmptyShardRun(resolvedRun, dependencies, runtimePolicy);
     }
 
     if (resolvedRun.plan.kind !== 'local') {

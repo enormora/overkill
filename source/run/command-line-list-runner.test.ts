@@ -155,7 +155,8 @@ export function createResolvedRun(
             reproducibility: {
                 selection: command.request.selection,
                 seed: '42',
-                shard: command.request.shard
+                shard: command.request.shard,
+                shardHashAlgorithm: 'xxh3-64-canonical-json-v1'
             }
         },
         plan: {
@@ -265,6 +266,7 @@ export async function listTests(
             profile: 'microtest',
             seed: { value: 42n },
             selection: { kind: 'all' },
+            shard: { index: 1, total: 1 },
             withLocations,
             withOrphans
         }
@@ -351,6 +353,7 @@ export const testNode = createOverkillSuite({
                         profile: 'integration',
                         seed: { value: 42n },
                         selection,
+                        shard: { index: 1, total: 1 },
                         withLocations: false,
                         withOrphans: false
                     }

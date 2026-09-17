@@ -127,7 +127,7 @@ function createCommandFromListRequest(
             resourceUsageSamplingIntervalMilliseconds: null,
             seed: request.listRequest.seed,
             selection: request.listRequest.selection,
-            shard: { index: 0, total: 1 },
+            shard: request.listRequest.shard,
             verbose: false
         }
     };

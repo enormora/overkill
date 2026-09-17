@@ -71,6 +71,7 @@ export const testNode = createOverkillSuite({
                         profile: 'microtest',
                         seed: { value: 42n },
                         selection: { kind: 'all' },
+                        shard: { index: 1, total: 1 },
                         withLocations: false,
                         withOrphans: false
                     }

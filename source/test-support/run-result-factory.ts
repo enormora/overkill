@@ -104,6 +104,7 @@ type RunResultOverrides = {
     readonly bySuite?: Readonly<Record<string, SuiteRunCounts>>;
     readonly orphans?: readonly OrphanedNodeOverrides[];
     readonly perTest?: readonly PerTestResultOverrides[];
+    readonly planStatus?: RunResult['planStatus'];
     readonly resourceUsage?: RunResourceUsage | null;
     readonly runnerErrors?: readonly RunnerErrorOverrides[];
     readonly status?: RunResult['status'];
@@ -393,6 +394,7 @@ function buildRunResult(overrides: RunResultOverrides = {}): RunResult {
         bySuite: overrides.bySuite ?? {},
         orphans: buildOrphanedNodes(overrides.orphans),
         perTest: buildPerTestResults(overrides.perTest),
+        planStatus: overrides.planStatus ?? 'planned',
         resourceUsage: overrides.resourceUsage ?? null,
         runnerErrors,
         status: buildRunStatus(overrides, summary, runnerErrors),

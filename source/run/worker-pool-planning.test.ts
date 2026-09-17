@@ -25,6 +25,7 @@ import {
 import {
     workUnitsFromCollectedPlan
 } from './work-unit-planning.ts';
+import type { RunShardHasher } from './run-sharding.ts';
 import {
     createEmptyAssignmentResult,
     selectedAssignedCases,
@@ -44,6 +45,12 @@ type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
 type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
 type PlacementPlan = NonNullable<ResolvedRun['facts']['execution']['placementPlan']>;
 type WorkUnit = PlacementPlan['units'][number];
+
+const shardBySecondPath: RunShardHasher = {
+    hash(value) {
+        return value.includes(secondIntegrationPath) ? 1n : 0n;
+    }
+};
 
 function createPlanningTestPlan(): TestPlan {
     const firstCase = defaultRunEngine.createTestCase({
@@ -209,7 +216,8 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
             reproducibility: {
                 selection: { kind: 'all' },
                 seed: '42',
-                shard: { index: 0, total: 1 }
+                shard: { index: 1, total: 1 },
+                shardHashAlgorithm: 'xxh3-64-canonical-json-v1'
             }
         },
         plan,
@@ -340,7 +348,8 @@ function assertPlanningHelpers(scope: OverkillScope, testPlan: TestPlan): void {
     const collection = sendCollectedPlan({ runnerErrors: [], testPlan });
 
     scope.assert.equal(selected.cases[0].id.title, 'second');
-    scope.assert.equal(emptyResult.result.summary.planned, 2);
+    scope.assert.equal(emptyResult.result.planStatus, 'empty-selection');
+    scope.assert.equal(emptyResult.result.summary.planned, 0);
     scope.assert.deepEqual(emptyResult.result.perTest, []);
     scope.assert.equal(collection.collectedPlan.files[0]?.file, integrationPath);
 }
@@ -478,6 +487,20 @@ export const testNode = createOverkillSuite({
                         workerLifecycle: 'reuse'
                     }),
                     [ firstWorkUnit(), secondWorkUnit() ]
+                );
+                scope.assert.deepEqual(
+                    workUnitsFromCollectedPlan({
+                        fileSetForFile,
+                        order: 'plan',
+                        seed: { value: 1n },
+                        selectedPlan: collectedPlan,
+                        scheduling: 'concurrent',
+                        shard: { index: 2, total: 2 },
+                        shardHasher: shardBySecondPath,
+                        workDistribution: { mode: 'file' },
+                        workerLifecycle: 'reuse'
+                    }),
+                    [ secondWorkUnit() ]
                 );
                 scope.assert.deepEqual(
                     createWorkerPoolPlacementPlan({

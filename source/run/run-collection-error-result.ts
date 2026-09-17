@@ -29,6 +29,7 @@ function createCollectionErrorRunResult(
         bySuite: {},
         orphans: [],
         perTest: [],
+        planStatus: 'empty-selection',
         resourceUsage: null,
         runnerErrors,
         status: runStatusFromSummary(summary, runnerErrors),

@@ -92,6 +92,7 @@ type RunSummary = {
 };
 
 type RunResult = {
+    readonly planStatus: 'planned' | 'empty-selection' | 'empty-shard';
     readonly summary: RunSummary;
     readonly perTest: ReadonlyArray<{ id: CaseId; outcome: TestOutcome; verdict: string; }>;
     readonly bySuite: Record<string, { discovered: number; planned: number; executed: number; }>;
@@ -114,7 +115,9 @@ identical on every shard's record. For non-matrixed microtests, each
 
 Count of `WorkId`s in the executable plan after filtering, work-unit
 construction, sharding, and ordering have selected this run's work set.
-Until those narrowing features exist, `planned` is equal to `discovered`.
+An empty shard reports `planned: 0` with `planStatus: 'empty-shard'` and
+still represents a successful run. A filter or explicit selection that
+matches no work reports `planned: 0` with `planStatus: 'empty-selection'`.
 
 `executed` at run scope is intentionally not stored as an explicit
 field. It is derivable as

@@ -220,7 +220,11 @@ function renderOrphans(
 }
 
 function resolvedCollectedPlan(resolvedRun: ResolvedRun): CollectedRunPlan {
-    if (resolvedRun.plan.kind === 'supervised' || resolvedRun.plan.kind === 'worker-pool') {
+    if (
+        resolvedRun.plan.kind === 'empty-shard' ||
+        resolvedRun.plan.kind === 'supervised' ||
+        resolvedRun.plan.kind === 'worker-pool'
+    ) {
         return resolvedRun.plan.collectedPlan;
     }
 

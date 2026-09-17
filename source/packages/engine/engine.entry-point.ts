@@ -261,6 +261,7 @@ export type {
     RunArtifactScope,
     RunResourceUsage,
     RunResourceUsageTracker,
+    RunPlanStatus,
     RunResult,
     RunnerError,
     RunSummary,

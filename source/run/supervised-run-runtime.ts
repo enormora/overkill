@@ -180,6 +180,7 @@ export function applyEvent(
 
 function createPartialRunResult(
     collectedPlan: CollectedRunPlan,
+    resolvedRun: ResolvedRun,
     state: SupervisedRunState,
     dependencies: RunOrchestratorDependencies,
     startedAtMs: number
@@ -189,6 +190,9 @@ function createPartialRunResult(
         state.perTestResults(),
         state.runnerErrors(),
         {
+            planStatus: resolvedRun.facts.cases.length === 0 && resolvedRun.request.shard.total > 1
+                ? 'empty-shard'
+                : 'planned',
             resourceUsage: null,
             startedAtMs,
             wallClock: dependencies.wallClock
@@ -505,7 +509,7 @@ function selectRunResult(runtime: SupervisedRunRuntime, startedAtMs: number): Ru
         const collectedPlan = runtime.collectedPlan.read() ?? supervisedCollectedPlan(runtime.resolvedRun);
 
         return resultWithSupervisedArtifacts(
-            createPartialRunResult(collectedPlan, runtime.state, runtime.dependencies, startedAtMs),
+            createPartialRunResult(collectedPlan, runtime.resolvedRun, runtime.state, runtime.dependencies, startedAtMs),
             runtime
         );
     }

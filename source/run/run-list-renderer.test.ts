@@ -152,7 +152,8 @@ function createResolvedRun(testPlan: TestPlan): ResolvedRun {
             reproducibility: {
                 selection: request.selection,
                 seed: '42',
-                shard: request.shard
+                shard: request.shard,
+                shardHashAlgorithm: 'xxh3-64-canonical-json-v1'
             }
         },
         plan: { kind: 'local', testPlan },

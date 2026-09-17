@@ -676,16 +676,20 @@ need source-order round-robin placement instead.
 
 ## Sharding
 
-`--shard <i>/<n>` selects shard `i` of `n`. Sharding partitions the
+`--shard <i>/<n>` selects one-based shard `i` of `n`. Sharding partitions the
 selected work-unit set deterministically by stable `WorkUnitId` (see
 [Artifact Identity](./artifact-identity.md)). Two shards never share a work
 unit and the union covers everything. The partition is reproducible across
-runs given the same identities.
+runs given the same identities and `xxh3-64-canonical-json-v1` hash contract.
 
 Sharding composes with selection: filters apply first, sharding applies to
 the selected work units. Indivisible groups therefore stay on one shard.
 Profiles that need finer CI balance should choose file or case granularity
 for those groups.
+
+A shard that owns no selected work is a successful empty shard, not a
+no-tests-collected error. Results mark this as `planStatus: 'empty-shard'`;
+true empty selections remain `planStatus: 'empty-selection'`.
 
 Baseline CI mode should not assume that the CI system provides a native
 "collect once, distribute exact test plan" primitive. Instead, each shard

@@ -99,9 +99,11 @@ run is already bound to one profile test family.
 same `RunFilter` tree. Runs use seeded ordering by default. Pass
 `RunRequest.order: 'lexical'` for deterministic source-stable order, or
 `RunRequest.order: 'plan'` for programmatic callers that need an already
-materialized order. Sharding, records, replay, and `--last-failed` are
-separate runner milestones. Direct prebuilt `TestPlan` execution belongs to
-`@overkill-dev/engine` through `execute(testPlan)`.
+materialized order. `RunRequest.shard` uses one-based `{ index, total }`
+values and partitions the filtered work-unit set by stable identity hash.
+Records, replay, and `--last-failed` are separate runner milestones. Direct
+prebuilt `TestPlan` execution belongs to `@overkill-dev/engine` through
+`execute(testPlan)`.
 The command methods other than `runTests` and `listTests` are fixed first-party
 entrypoints and currently return argument errors until their command
 implementations land.

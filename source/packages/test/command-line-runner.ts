@@ -44,6 +44,7 @@ type ResourceBudgetOverrides = NonNullable<CommandLineRunTestsRequest['runReques
 type ResourceBudgetName = keyof ResourceBudgetOverrides;
 type RunOrder = Extract<CommandLineRunTestsRequest['runRequest']['order'], 'lexical' | 'seeded'>;
 type RunSeed = CommandLineRunTestsRequest['runRequest']['seed'];
+type RunShard = CommandLineRunTestsRequest['runRequest']['shard'];
 
 type ResourceBudgetOverride = {
     readonly name: ResourceBudgetName;
@@ -61,6 +62,7 @@ type RunCommandArguments = {
     readonly profile: string;
     readonly resourceBudgetOverrides: ResourceBudgetOverrides | null;
     readonly seed: RunSeed;
+    readonly shard: RunShard;
     readonly title: string | null;
 };
 
@@ -72,6 +74,7 @@ type ListCommandArguments = {
     readonly paths: readonly string[];
     readonly profile: string;
     readonly seed: RunSeed;
+    readonly shard: RunShard;
     readonly title: string | null;
     readonly withLocations: boolean;
     readonly withOrphans: boolean;
@@ -112,6 +115,7 @@ const resourceBudgetNames: ReadonlySet<string> = new Set([
 ]);
 const runOrderType = oneOf([ 'seeded', 'lexical' ] as const);
 const unsignedDecimalPattern = /^(?:0|[1-9]\d*)$/u;
+const shardPattern = /^([1-9]\d*)\/([1-9]\d*)$/u;
 
 const wrapperExitCodes: {
     readonly argumentOrConfig: CommandLineExitCode;
@@ -186,6 +190,40 @@ function parseRunSeed(value: string): RunSeed {
     }
 
     return { value: BigInt(value) };
+}
+
+function parsePositiveSafeInteger(label: string, value: string): number {
+    const parsedValue = Number(value);
+
+    if (!Number.isSafeInteger(parsedValue) || parsedValue <= 0) {
+        throw new TypeError(`${label} must be a positive safe integer: ${value}`);
+    }
+
+    return parsedValue;
+}
+
+function parseRunShard(value: string): RunShard {
+    const match = shardPattern.exec(value);
+
+    if (match === null) {
+        throw new TypeError(`Run shard must use i/n syntax with positive integers: ${value}`);
+    }
+
+    const indexText = match[1];
+    const totalText = match[2];
+
+    if (indexText === undefined || totalText === undefined) {
+        throw new TypeError(`Run shard must use i/n syntax with positive integers: ${value}`);
+    }
+
+    const index = parsePositiveSafeInteger('Shard index', indexText);
+    const total = parsePositiveSafeInteger('Shard total', totalText);
+
+    if (index > total) {
+        throw new TypeError(`Shard index must not exceed shard total: ${value}`);
+    }
+
+    return { index, total };
 }
 
 function parseResourceBudgetOverride(rawValue: string): ResourceBudgetOverride {
@@ -263,6 +301,15 @@ const runSeedType: Type<string, RunSeed> = {
         await Promise.resolve();
 
         return parseRunSeed(value);
+    }
+};
+
+const runShardType: Type<string, RunShard> = {
+    displayName: 'i/n',
+    async from(value) {
+        await Promise.resolve();
+
+        return parseRunShard(value);
     }
 };
 
@@ -352,7 +399,7 @@ function createRunTestsRequest(args: RunCommandArguments, cwd: string): CommandL
             resourceUsageSamplingIntervalMilliseconds: null,
             seed: args.seed,
             selection: createSelection(args),
-            shard: { index: 0, total: 1 },
+            shard: args.shard,
             verbose: false
         }
     };
@@ -367,6 +414,7 @@ function createListTestsRequest(args: ListCommandArguments, cwd: string): Comman
             paths: args.paths,
             profile: args.profile,
             seed: args.seed,
+            shard: args.shard,
             selection: createSelection(args),
             withLocations: args.withLocations,
             withOrphans: args.withOrphans
@@ -408,6 +456,13 @@ const sharedCommandArguments = {
         type: runSeedType,
         defaultValue() {
             return { value: null };
+        }
+    }),
+    shard: option({
+        long: 'shard',
+        type: runShardType,
+        defaultValue() {
+            return { index: 1, total: 1 };
         }
     }),
     title: option({

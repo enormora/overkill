@@ -119,7 +119,8 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
         reproducibility: {
             selection: request.selection,
             seed: String(input.seed.value),
-            shard: request.shard
+            shard: request.shard,
+            shardHashAlgorithm: 'xxh3-64-canonical-json-v1'
         }
     };
 }

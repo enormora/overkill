@@ -104,6 +104,8 @@ export type RunShard = {
     readonly total: number;
 };
 
+export type RunShardHashAlgorithm = 'xxh3-64-canonical-json-v1';
+
 export type RunExecutionRequest = {
     readonly mode: 'profile-default';
 };
@@ -487,6 +489,7 @@ export type RunReproducibilityFacts = {
     readonly selection: RunSelection;
     readonly seed: string;
     readonly shard: RunShard;
+    readonly shardHashAlgorithm: RunShardHashAlgorithm;
 };
 
 export type RunEngineFacts = {
@@ -530,6 +533,9 @@ export type CollectedRunPlan = {
 };
 
 export type ResolvedRunPlan = {
+    readonly collectedPlan: CollectedRunPlan;
+    readonly kind: 'empty-shard';
+} | {
     readonly collectedPlan: CollectedRunPlan;
     readonly kind: 'supervised';
 } | {

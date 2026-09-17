@@ -5,6 +5,7 @@ import type { RunnerError } from '../engine/run-result.ts';
 import type { TestPlan } from '../packages/engine/engine.entry-point.ts';
 import {
     collectedRunPlanFromTestPlan,
+    collectedRunPlanFromTestPlanCases,
     createRunResultFromCollectedPlan
 } from './collected-run-plan.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
@@ -88,10 +89,11 @@ export function createEmptyAssignmentResult(
 ): WorkerPoolRunOutput {
     return {
         result: createRunResultFromCollectedPlan(
-            collectedRunPlanFromTestPlan(testPlan),
+            collectedRunPlanFromTestPlanCases(testPlan, []),
             [],
             [],
             {
+                planStatus: 'empty-selection',
                 resourceUsage: null,
                 startedAtMs: startedAtMilliseconds,
                 wallClock

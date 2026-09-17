@@ -124,7 +124,8 @@ async function resolveRunCommand(command: RunCommand): ReturnType<RunOrchestrato
             reproducibility: {
                 selection: command.request.selection,
                 seed: '42',
-                shard: command.request.shard
+                shard: command.request.shard,
+                shardHashAlgorithm: 'xxh3-64-canonical-json-v1'
             }
         },
         collectionRunnerErrors: [],
@@ -314,6 +315,7 @@ export const testNode = createOverkillSuite({
                     orchestrator: createRunOnlyOrchestrator(
                         async function runCommand() {
                             return runResultFactory.build({
+                                planStatus: 'empty-selection',
                                 summary: { defined: 0, discovered: 0, planned: 0 }
                             });
                         }

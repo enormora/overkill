@@ -205,7 +205,8 @@ export const testNode = createOverkillSuite({
                     reproducibility: {
                         selection: { kind: 'all' },
                         seed: '42',
-                        shard: { index: 0, total: 1 }
+                        shard: { index: 1, total: 1 },
+                        shardHashAlgorithm: 'xxh3-64-canonical-json-v1'
                     }
                 });
 
@@ -286,24 +287,24 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.resolve() rejects unsupported sharding',
+            title: 'orchestrator.resolve() rejects invalid sharding',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
 
-                await scope.assert.rejects(async function resolveUnsupportedShard() {
+                await scope.assert.rejects(async function resolveInvalidShard() {
                     await runOrchestrator.resolve(createRunCommand({
                         config: defaultConfig,
                         cwd: process.cwd(),
                         engine: { kind: 'default' },
                         request: {
                             ...defaultRequest,
-                            shard: { index: 1, total: 2 }
+                            shard: { index: 3, total: 2 }
                         }
                     }));
                 }, {
-                    message: 'Sharding is not implemented yet.'
+                    message: 'Shard index must not exceed shard total.'
                 });
 
                 return scope.assert.collect();
@@ -439,7 +440,8 @@ export const testNode = createOverkillSuite({
                     reproducibility: {
                         selection: { kind: 'all' },
                         seed: '42',
-                        shard: { index: 0, total: 1 }
+                        shard: { index: 1, total: 1 },
+                        shardHashAlgorithm: 'xxh3-64-canonical-json-v1'
                     }
                 });
                 scope.assert.deepEqual(result.summary, {

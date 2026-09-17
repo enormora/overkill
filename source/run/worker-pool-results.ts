@@ -81,6 +81,39 @@ function finishPoolResourceUsage(runtime: WorkerPoolRunRuntime): RunResourceUsag
     return runtime.poolResourceUsageTracker?.finish() ?? null;
 }
 
+function emptyWorkerPoolPlanStatus(resolvedRun: WorkerPoolRunRuntime['resolvedRun']): RunResult['planStatus'] {
+    return resolvedRun.facts.cases.length === 0 && resolvedRun.request.shard.total > 1
+        ? 'empty-shard'
+        : 'empty-selection';
+}
+
+function runStartTimeFromMilliseconds(milliseconds: number): string {
+    const startedAt = new Date(milliseconds);
+
+    return startedAt.toISOString();
+}
+
+async function reportEmptyShardRunStart(
+    reporterDelivery: Awaited<ReturnType<typeof createReporterDelivery>>,
+    resolvedRun: WorkerPoolRunRuntime['resolvedRun'],
+    collectedPlan: CollectedRunPlan,
+    startedAtMilliseconds: number
+): Promise<readonly RunnerError[]> {
+    if (emptyWorkerPoolPlanStatus(resolvedRun) !== 'empty-shard') {
+        return [];
+    }
+
+    return await reporterDelivery.reportEvent({
+        facts: resolvedRun.facts,
+        kind: 'run-start',
+        root: {
+            annotations: collectedPlan.root.annotations,
+            title: collectedPlan.root.title
+        },
+        startedAt: runStartTimeFromMilliseconds(startedAtMilliseconds)
+    });
+}
+
 async function reportFinalResult(result: RunResult, runtime: WorkerPoolRunRuntime): Promise<RunResult> {
     const runEndErrors = await runtime.reporterDelivery.reportEvent({ kind: 'run-end', result });
     const resultForFinalReporting = appendRunnerErrors(result, runEndErrors);
@@ -113,6 +146,7 @@ export async function finishWorkerPoolRun(
             perTest,
             allTaskErrors(runtime, completedTaskRuns),
             {
+                planStatus: 'planned',
                 resourceUsage: finishPoolResourceUsage(runtime),
                 startedAtMs: startedAtMilliseconds,
                 wallClock: runtime.dependencies.wallClock
@@ -131,12 +165,20 @@ export async function createEmptyWorkerPoolResult(
 ): Promise<RunResult> {
     const reporterDelivery = await createReporterDelivery(resolvedRun, dependencies);
     const startedAtMilliseconds = dependencies.wallClock.currentTimestampInMilliseconds;
+    const collectedPlan = workerPoolCollectedPlan(resolvedRun);
+    const runStartErrors = await reportEmptyShardRunStart(
+        reporterDelivery,
+        resolvedRun,
+        collectedPlan,
+        startedAtMilliseconds
+    );
     const result = resultWithArtifacts(
         createRunResultFromCollectedPlan(
-            workerPoolCollectedPlan(resolvedRun),
+            collectedPlan,
             [],
-            [ ...resolvedRun.collectionRunnerErrors, ...collectionRunState.runnerErrors() ],
+            [ ...resolvedRun.collectionRunnerErrors, ...collectionRunState.runnerErrors(), ...runStartErrors ],
             {
+                planStatus: emptyWorkerPoolPlanStatus(resolvedRun),
                 resourceUsage: null,
                 startedAtMs: startedAtMilliseconds,
                 wallClock: dependencies.wallClock

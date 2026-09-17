@@ -3,6 +3,7 @@ import type { TestPlan } from '../engine/test-plan.ts';
 import {
     collectedRunCaseEntries,
     collectedRunCaseFactsFromEntries,
+    collectedRunPlanFromEntries,
     collectedRunPlanFromTestPlanCases,
     createRunResultFromCollectedPlan
 } from './collected-run-plan.ts';
@@ -10,6 +11,10 @@ import {
     createRunFacts
 } from './run-facts.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
+import {
+    createRunShardHasher,
+    shardCollectedRunPlanCases
+} from './run-sharding.ts';
 import {
     assertCollectedRunPlanHasCases,
     assertCollectedRunPlanMatchesTestFamily,
@@ -105,7 +110,10 @@ function workerLifecycle(profile: RunProfileConfig): WorkerPoolPlacementResoluti
         : 'reuse';
 }
 
-function createPlacementResolution(input: CollectedResolvedRunInput): WorkerPoolPlacementResolution | null {
+function createPlacementResolution(
+    input: CollectedResolvedRunInput,
+    shardHasher: Awaited<ReturnType<typeof createRunShardHasher>>
+): WorkerPoolPlacementResolution | null {
     if (input.planKind !== 'worker-pool') {
         return null;
     }
@@ -120,6 +128,8 @@ function createPlacementResolution(input: CollectedResolvedRunInput): WorkerPool
         seed: input.request.seed,
         selectedPlan: input.collectedPlan,
         scheduling: input.profile.execution.scheduling,
+        shard: input.request.shard,
+        shardHasher,
         workDistribution: workDistribution(input.profile),
         workerLifecycle: workerLifecycle(input.profile)
     });
@@ -127,18 +137,19 @@ function createPlacementResolution(input: CollectedResolvedRunInput): WorkerPool
 
 function orderedCollectedCases(
     input: CollectedResolvedRunInput,
-    placementPlan: WorkerPoolPlacementResolution['placementPlan'] | null
+    placementPlan: WorkerPoolPlacementResolution['placementPlan'] | null,
+    shardHasher: Awaited<ReturnType<typeof createRunShardHasher>>
 ): ReturnType<typeof collectedRunCaseEntries> {
     return placementPlan === null
         ? orderedRunItems(
-            collectedRunCaseEntries(input.collectedPlan),
+            shardCollectedRunPlanCases(input.collectedPlan, input.request.shard, shardHasher),
             input.request.order,
             input.request.seed
         )
         : collectedRunCaseEntriesFromWorkUnits(input.collectedPlan, placementPlan.units);
 }
 
-function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): ResolvedRun {
+async function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): Promise<ResolvedRun> {
     assertCollectedRunPlanMatchesTestFamily(input.collectedPlan, input.profile.testFamily);
     assertCollectedRunPlanCasesMatchProfilePolicy(input.collectedPlan, input.profile);
 
@@ -146,9 +157,11 @@ function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): R
         assertCollectedRunPlanHasCases(input.collectedPlan);
     }
 
-    const placementResolution = createPlacementResolution(input);
+    const shardHasher = await createRunShardHasher(input.request.shard);
+    const placementResolution = createPlacementResolution(input, shardHasher);
     const placementPlan = placementResolution?.placementPlan ?? null;
-    const orderedCases = orderedCollectedCases(input, placementPlan);
+    const orderedCases = orderedCollectedCases(input, placementPlan, shardHasher);
+    const plannedCollectedPlan = collectedRunPlanFromEntries(input.collectedPlan, orderedCases);
     const facts = freezeValue(createRunFacts({
         cases: collectedRunCaseFactsFromEntries(orderedCases, fileSetForDiscoveredFiles(input.files)),
         config: input.config,
@@ -167,7 +180,7 @@ function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): R
         engine: input.engine,
         facts,
         plan: {
-            collectedPlan: input.collectedPlan,
+            collectedPlan: plannedCollectedPlan,
             kind: input.planKind
         },
         reporters: resolveRunReporters(input.profile, input.config.reporters),
@@ -175,10 +188,10 @@ function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): R
     });
 }
 
-export function createResolvedRunFromCollection(input: CollectionResolvedRunInput): ResolvedRun {
+export async function createResolvedRunFromCollection(input: CollectionResolvedRunInput): Promise<ResolvedRun> {
     const collectedPlan = selectedCollectedRunPlan(input.collection.collectedPlan, input.request.selection);
 
-    return createResolvedRunFromCollectedPlan({
+    return await createResolvedRunFromCollectedPlan({
         ...input,
         collectionRunnerErrors: freezeValue(Array.from(input.collection.runnerErrors)),
         collectedPlan: freezeValue(collectedPlan)
@@ -196,6 +209,7 @@ export function createEmptySelectionResult(
         [],
         [],
         {
+            planStatus: 'empty-selection',
             resourceUsage: null,
             startedAtMs,
             wallClock: dependencies.wallClock

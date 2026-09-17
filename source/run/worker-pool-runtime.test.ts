@@ -122,7 +122,8 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): Resolved
             reproducibility: {
                 selection: { kind: 'all' },
                 seed: '42',
-                shard: { index: 0, total: 1 }
+                shard: { index: 1, total: 1 },
+                shardHashAlgorithm: 'xxh3-64-canonical-json-v1'
             }
         },
         plan: { collectedPlan, kind: 'worker-pool' },

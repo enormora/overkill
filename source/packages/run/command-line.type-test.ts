@@ -79,6 +79,7 @@ describe('@overkill-dev/run/command-line', function () {
             readonly profile: string;
             readonly seed: RunRequest['seed'];
             readonly selection: RunRequest['selection'];
+            readonly shard: RunRequest['shard'];
             readonly withLocations: boolean;
             readonly withOrphans: boolean;
         }>();

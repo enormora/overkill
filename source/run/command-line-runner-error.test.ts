@@ -116,7 +116,8 @@ async function resolvePassingRun(command: RunCommand): Promise<Awaited<ReturnTyp
             reproducibility: {
                 selection: command.request.selection,
                 seed: '42',
-                shard: command.request.shard
+                shard: command.request.shard,
+                shardHashAlgorithm: 'xxh3-64-canonical-json-v1'
             }
         },
         collectionRunnerErrors: [],
