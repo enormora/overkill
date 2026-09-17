@@ -1,15 +1,13 @@
 import {
     runtimeGraphLeaves,
     type RuntimeGraph,
-    type RuntimeGraphContext
-} from '../resources/resources.ts';
-import type {
-    AnyResourceDefinition,
-    ResourceContext,
-    RuntimeId,
-    RuntimeDefinition,
-    RuntimeGraphLeaf,
-    RuntimeResourceMap as ResourceMap
+    type RuntimeGraphContext,
+    type AnyResourceDefinition,
+    type ResourceContext,
+    type RuntimeId,
+    type RuntimeDefinition,
+    type RuntimeGraphLeaf,
+    type RuntimeResourceMap as ResourceMap
 } from '../resources/resources.ts';
 import { runtimeIdentityKey, type WorkId } from '../engine/identity.ts';
 import type { ResourceSession } from '../resources/resource-session.ts';
@@ -70,7 +68,12 @@ function runtimeId(graph: RuntimeGraphLeaf, runtime: RuntimeDefinition, variantI
 }
 
 type RuntimeMatrixGraph = Extract<RuntimeGraph, { readonly kind: 'runtime-matrix'; }>;
+type ComposedRuntimeStep = Extract<RuntimeGraph, { readonly kind: 'composed-runtimes'; }>;
 type RuntimeMatrixVariantValue = RuntimeMatrixGraph['variants'][string];
+type RuntimeContextResolver = (
+    runtime: RuntimeGraph,
+    session: ComposedResourceSession
+) => RuntimeGraphContext<RuntimeGraph>;
 function selectedRuntimeId(runtime: RuntimeMatrixGraph, workId: WorkId | null): RuntimeId | null {
     return workId?.runtimes.find(function isSelectedRuntime(candidate) {
         return candidate.name === runtime.name;
@@ -212,18 +215,36 @@ export function resourceContextForStep<Resources extends ResourceMap>(
     throw resourceWrapperLifecycleError('Resource scope composition failed.', resources);
 }
 
+function composedRuntimeContextForStep(
+    runtime: ComposedRuntimeStep,
+    session: ComposedResourceSession,
+    resolveRuntimeContext: RuntimeContextResolver
+): RuntimeGraphContext<RuntimeGraph> {
+    const context: Mutable<Record<string, unknown>> = {};
+
+    for (const childRuntime of runtime.runtimes) {
+        context[childRuntime.name] = resolveRuntimeContext(childRuntime, session);
+    }
+
+    const frozenContext = Object.freeze(context);
+
+    if (isRuntimeContext(frozenContext, runtime)) {
+        return frozenContext;
+    }
+
+    throw resourceWrapperLifecycleError('Runtime scope composition failed.', runtime);
+}
+
 export function runtimeContextForStep<Graph extends RuntimeGraph>(
     runtime: Graph,
     session: ComposedResourceSession
-): RuntimeGraphContext<Graph> {
+): RuntimeGraphContext<Graph>;
+export function runtimeContextForStep(
+    runtime: RuntimeGraph,
+    session: ComposedResourceSession
+): RuntimeGraphContext<RuntimeGraph> {
     if (runtime.kind === 'composed-runtimes') {
-        const context: Mutable<Record<string, unknown>> = {};
-
-        for (const childRuntime of runtime.runtimes) {
-            context[childRuntime.name] = runtimeContextForStep(childRuntime, session);
-        }
-
-        return Object.freeze(context) as RuntimeGraphContext<Graph>;
+        return composedRuntimeContextForStep(runtime, session, runtimeContextForStep);
     }
 
     const context = session.runtimeContexts.get(runtime);

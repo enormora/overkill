@@ -257,10 +257,16 @@ describe('@overkill-dev/test standard subpaths', function () {
             }))
                 .type
                 .toBe<ExpectedComposedRuntimeScope>();
-            expect(composeRuntimeContext(testScope, composedRuntime, {
-                api: { database: { url: 'postgres://localhost' } },
-                secondary: { database: { url: 'postgres://localhost' } }
-            }).runtimes.secondary).type.toBe<DatabaseContext>();
+            expect(
+                composeRuntimeContext(testScope, composedRuntime, {
+                    api: { database: { url: 'postgres://localhost' } },
+                    secondary: { database: { url: 'postgres://localhost' } }
+                })
+                    .runtimes
+                    .secondary
+            )
+                .type
+                .toBe<DatabaseContext>();
         });
     });
 

@@ -11,7 +11,7 @@ import {
     defineRuntimeMatrix as createRuntimeMatrixDefinition,
     isComposedRuntimeGraph,
     isDefinedRuntimeMatrix as isRuntimeMatrixDefinition,
-    runtimeGraphLeaves,
+    runtimeGraphLeaves as runtimeGraphLeafDescriptors,
     type ComposedRuntimeGraph as ComposedRuntimeGraphDescriptor,
     type RuntimeGraph as RuntimeGraphDescriptor,
     type RuntimeGraphLeaf as RuntimeGraphLeafDescriptor,
@@ -269,14 +269,14 @@ type ResourceConsumerHandle<Definition> = Definition extends {
 } ? Handle
     : ResourceOwnerHandle<Definition>;
 
-type UnionToIntersection<Value> =
-    (Value extends unknown ? (value: Value) => void : never) extends (value: infer Intersection) => void
-        ? Intersection
-        : never;
-type RuntimeGraphName<Graph extends RuntimeGraph> = Graph extends ComposedRuntimeGraph<infer Runtimes>
+type UnionToIntersection<Value> = (
+    Value extends unknown ? (value: Value) => void : never
+) extends (value: infer Intersection) => void ? Intersection : never;
+type RuntimeGraphName<Graph extends RuntimeGraph> = ComposedRuntimeNames<Graph> | NamedRuntimeGraphName<Graph>;
+type ComposedRuntimeNames<Graph extends RuntimeGraph> = Graph extends ComposedRuntimeGraph<infer Runtimes>
     ? RuntimeGraphName<Runtimes[number]>
-    : Graph extends { readonly name: infer Name extends string; } ? Name
-        : never;
+    : never;
+type NamedRuntimeGraphName<Graph> = Graph extends { readonly name: infer Name extends string; } ? Name : never;
 type RuntimeMatrixRuntime<Matrix extends RuntimeMatrixDefinition> =
     Matrix['variants'][keyof Matrix['variants']]['runtime'];
 type RuntimeGraphRuntime<Graph extends RuntimeGraphLeaf> = {
@@ -294,8 +294,7 @@ export type RuntimeGraphContext<Graph extends RuntimeGraph> = Graph extends Comp
     : RuntimeContext<Extract<Graph, RuntimeGraphLeaf>>;
 
 export type RuntimeScopeContext<Runtime extends RuntimeGraph> = Readonly<
-    Runtime extends ComposedRuntimeGraph<infer Runtimes>
-        ? UnionToIntersection<RuntimeScopeContext<Runtimes[number]>>
+    Runtime extends ComposedRuntimeGraph<infer Runtimes> ? UnionToIntersection<RuntimeScopeContext<Runtimes[number]>>
         : Record<RuntimeGraphName<Runtime>, RuntimeContext<Extract<Runtime, RuntimeGraphLeaf>>>
 >;
 
@@ -320,6 +319,30 @@ type ComposedRuntimeScopes<BaseContext, Runtime extends RuntimeGraph> = {
 export type RuntimeContextComposition<BaseContext, Runtime extends RuntimeGraph> = Readonly<
     ComposedRuntimeScopes<BaseContext, Runtime> & RuntimeScopeBaseContext<BaseContext>
 >;
+
+function assertRuntimeContextHandles(
+    runtime: RuntimeGraph,
+    nextRuntimes: Readonly<Record<string, unknown>>
+): void {
+    if (!isComposedRuntimeGraph(runtime)) {
+        return;
+    }
+
+    for (const childRuntime of runtime.runtimes) {
+        if (!Object.hasOwn(nextRuntimes, childRuntime.name)) {
+            throw new TypeError(`Runtime scope "${childRuntime.name}" is missing.`);
+        }
+    }
+}
+
+function runtimeContextHandles(
+    runtime: RuntimeGraph,
+    resourceHandles: Readonly<Record<string, unknown>>
+): Readonly<Record<string, unknown>> {
+    return isComposedRuntimeGraph(runtime)
+        ? resourceHandles
+        : { [runtime.name]: resourceHandles };
+}
 
 export type TemporaryDirectoryHandle = {
     readonly path: string;
@@ -451,22 +474,15 @@ function composeRuntimeContext(
         throw new TypeError('composeRuntimeContext() requires context.runtimes to be an object when present.');
     }
 
-    const nextRuntimes = isComposedRuntimeGraph(runtime)
-        ? resourceHandles
-        : { [runtime.name]: resourceHandles };
+    const nextRuntimes = runtimeContextHandles(runtime, resourceHandles);
+    const duplicateRuntimeName = Object.keys(nextRuntimes).find(function runtimeNameExists(runtimeName) {
+        return Object.hasOwn(runtimes, runtimeName);
+    });
 
-    if (isComposedRuntimeGraph(runtime)) {
-        for (const childRuntime of runtime.runtimes) {
-            if (!Object.hasOwn(nextRuntimes, childRuntime.name)) {
-                throw new TypeError(`Runtime scope "${childRuntime.name}" is missing.`);
-            }
-        }
-    }
+    assertRuntimeContextHandles(runtime, nextRuntimes);
 
-    for (const runtimeName of Object.keys(nextRuntimes)) {
-        if (Object.hasOwn(runtimes, runtimeName)) {
-            throw new TypeError(`Runtime scope "${runtimeName}" already exists.`);
-        }
+    if (duplicateRuntimeName !== undefined) {
+        throw new TypeError(`Runtime scope "${duplicateRuntimeName}" already exists.`);
     }
 
     return Object.freeze({
@@ -501,4 +517,8 @@ export function isDefinedRuntimeGraph(runtime: unknown): runtime is RuntimeGraph
     return isDefinedRuntime(runtime) || isDefinedRuntimeMatrix(runtime) || isComposedRuntimeGraph(runtime);
 }
 
-export { runtimeGraphLeaves };
+export function runtimeGraphLeaves(runtime: RuntimeGraph): readonly RuntimeGraphLeaf[] {
+    const leaves = runtimeGraphLeafDescriptors(runtime);
+
+    return leaves;
+}

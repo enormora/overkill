@@ -2,6 +2,7 @@ import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node
 import type { RuntimeId } from '../engine/identity.ts';
 import type {
     TestBodyResourceAttachments,
+    TestBodyLeafRuntimeSummary,
     TestBodyResourceSummary,
     TestBodyRuntimeMatrixSummary,
     TestBodyRuntimeMatrixVariantSummary,
@@ -24,9 +25,9 @@ function sortedRuntimeIds(runtimeIds: readonly RuntimeId[]): readonly RuntimeId[
     return runtimeIds.toSorted(compareRuntimeIdNames);
 }
 
-function runtimeId(runtime: TestBodyRuntimeSummary): RuntimeId {
+function runtimeId(runtime: TestBodyLeafRuntimeSummary): RuntimeId {
     return {
-        dimensions: runtime.kind === 'runtime-matrix' ? {} : runtime.dimensions,
+        dimensions: runtime.dimensions,
         name: runtime.name,
         variantId: null
     };
@@ -61,7 +62,7 @@ function runtimeVariantId(
     };
 }
 
-function leafRuntimeSelection(runtime: TestBodyRuntimeSummary): RuntimeSelection {
+function leafRuntimeSelection(runtime: TestBodyLeafRuntimeSummary): RuntimeSelection {
     return {
         runtimeGraph: runtime,
         runtimeId: runtimeId(runtime)
@@ -106,15 +107,10 @@ function runtimeSelectionCombinations(
 }
 
 function selectedRuntimeGraphs(
-    runtimes: readonly TestBodyRuntimeSummary[],
     combination: RuntimeSelectionCombination
 ): readonly TestBodyRuntimeSummary[] {
-    const selectedRuntimeGraphsByName = new Map(combination.map(function selectedEntry(selection) {
-        return [ selection.runtimeId.name, selection.runtimeGraph ];
-    }));
-
-    return runtimes.map(function selectRuntime(runtime) {
-        return selectedRuntimeGraphsByName.get(runtime.name) ?? runtime;
+    return combination.map(function selectedRuntime(selection) {
+        return selection.runtimeGraph;
     });
 }
 
@@ -126,7 +122,7 @@ function selectedResourceNames(
         ...attachments.directResources.map(function directResourceName(resource) {
             return resource.resourceName;
         }),
-        ...selectedRuntimeGraphs(attachments.runtimeGraphs, combination).flatMap(runtimeResourceNames)
+        ...selectedRuntimeGraphs(combination).flatMap(runtimeResourceNames)
     ];
 }
 
@@ -156,7 +152,7 @@ function attachmentsForVariant(
     attachments: TestBodyResourceAttachments,
     combination: RuntimeSelectionCombination
 ): TestBodyResourceAttachments {
-    const runtimeGraphs = selectedRuntimeGraphs(attachments.runtimeGraphs, combination);
+    const runtimeGraphs = selectedRuntimeGraphs(combination);
 
     return {
         directResources: attachments.directResources,

@@ -19,9 +19,7 @@ import type {
     ResourceMap,
     RuntimeGraph,
     RuntimeGraphLeaf,
-    RuntimeGraphContext,
-    RuntimeMatrixDefinition,
-    RuntimeScopeContext
+    RuntimeMatrixDefinition
 } from '../resources/resources.entry-point.ts';
 import {
     resourceContextForStep,
@@ -41,6 +39,7 @@ import {
     type ResourceWrapperScopeStep,
     type ResourceWrapperStep
 } from './resource-wrapper-data.ts';
+import { composeRuntimeScope } from './resource-wrapper-runtime-scope.ts';
 import type {
     acquireComposedResources as acquireComposedResourcesFunction,
     disposeComposedResources as disposeComposedResourcesFunction
@@ -54,13 +53,6 @@ type ResourceWrapperSessionModule = {
     readonly acquireComposedResources: typeof acquireComposedResourcesFunction;
     readonly disposeComposedResources: typeof disposeComposedResourcesFunction;
 };
-type RuntimeTestScope<
-    Graph extends RuntimeGraph,
-    Scope extends TestScope = TestScope
-> = Scope & {
-    readonly runtimes: RuntimeScopeContext<Graph>;
-};
-
 type ResourceTestScope<
     Resources extends ResourceMap,
     Scope extends TestScope = TestScope
@@ -331,25 +323,6 @@ function isScopeMapResult(value: unknown): value is Readonly<Record<string, unkn
     return isResourceScopeInput(value) && typeof Reflect.get(value, 'then') !== 'function';
 }
 
-function isRuntimeTestScope<
-    Graph extends RuntimeGraph,
-    Scope extends TestScope
->(value: unknown, runtimeGraph: Graph): value is RuntimeTestScope<Graph, Scope> {
-    if (!isResourceScopeInput(value)) {
-        return false;
-    }
-
-    const runtimes: unknown = Object.hasOwn(value, 'runtimes') ? Reflect.get(value, 'runtimes') : {};
-
-    return isResourceScopeInput(runtimes) && (
-        runtimeGraph.kind === 'composed-runtimes'
-            ? runtimeGraph.runtimes.every(function hasComposedRuntimeScope(runtime) {
-                return Reflect.get(runtimes, runtime.name) !== undefined;
-            })
-            : Reflect.get(runtimes, runtimeGraph.name) !== undefined
-    );
-}
-
 function isResourceTestScope<
     Resources extends ResourceMap,
     Scope extends TestScope
@@ -398,45 +371,6 @@ function composeResourceContext<
     }
 
     throw resourceWrapperLifecycleError('Resource scope composition failed.', handles);
-}
-
-function composeRuntimeScope<
-    Graph extends RuntimeGraph,
-    Scope extends TestScope
->(
-    scope: Scope,
-    runtimeGraph: Graph,
-    handles: RuntimeGraphContext<Graph>
-): RuntimeTestScope<Graph, Scope> {
-    const runtimes: unknown = Object.hasOwn(scope, 'runtimes') ? Reflect.get(scope, 'runtimes') : {};
-
-    if (!isResourceScopeInput(runtimes)) {
-        throw resourceWrapperLifecycleError('Runtime scope composition failed.', runtimes);
-    }
-
-    const newRuntimeScopes = runtimeGraph.kind === 'composed-runtimes'
-        ? handles
-        : { [runtimeGraph.name]: handles };
-
-    for (const runtimeName of Object.keys(newRuntimeScopes)) {
-        if (Object.hasOwn(runtimes, runtimeName)) {
-            throw resourceWrapperLifecycleError(`Runtime scope "${runtimeName}" already exists.`, handles);
-        }
-    }
-
-    const composed = Object.freeze({
-        ...scope,
-        runtimes: Object.freeze({
-            ...runtimes,
-            ...newRuntimeScopes
-        })
-    });
-
-    if (isRuntimeTestScope<Graph, Scope>(composed, runtimeGraph)) {
-        return composed;
-    }
-
-    throw resourceWrapperLifecycleError('Runtime scope composition failed.', handles);
 }
 
 function composeMappedScope(

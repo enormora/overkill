@@ -275,23 +275,26 @@ describe('@overkill-dev/resources', function () {
         expect(composedRuntime.kind).type.toBe<'composed-runtimes'>();
         expect(context.runtimes.api).type.toBe<ExpectedRuntimeContext>();
         expect(context.runtimes['secondary-api']).type.toBe<{ readonly database: Database; }>();
-        expect<typeof composeRuntimes>().type.not.toBeCallableWith(runtime, runtime);
-        expect<typeof composeRuntimeContext>().type.not.toBeCallableWith({
-            runtimes: {
+        expect<typeof composeRuntimeContext>().type.not.toBeCallableWith(
+            {
+                runtimes: {
+                    api: {
+                        database: databaseHandle,
+                        server: serverHandle
+                    }
+                }
+            },
+            composedRuntime,
+            {
                 api: {
                     database: databaseHandle,
                     server: serverHandle
+                },
+                'secondary-api': {
+                    database: databaseHandle
                 }
             }
-        }, composedRuntime, {
-            api: {
-                database: databaseHandle,
-                server: serverHandle
-            },
-            'secondary-api': {
-                database: databaseHandle
-            }
-        });
+        );
         expect<typeof composeRuntimeContext>().type.not.toBeCallableWith({ test: true }, composedRuntime, {
             api: { database: databaseHandle }
         });

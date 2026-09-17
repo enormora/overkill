@@ -73,41 +73,14 @@ export type ComposedRuntimeGraph<
     readonly [composedRuntimeGraphBrand]: true;
 };
 
-export type RuntimeGraph = RuntimeGraphLeaf | ComposedRuntimeGraph;
+export type RuntimeGraph = ComposedRuntimeGraph | RuntimeGraphLeaf;
 
-type PublicRuntimeName<Graph extends RuntimeGraph> = Graph extends ComposedRuntimeGraph<infer Runtimes>
-    ? PublicRuntimeNames<Runtimes>
-    : Graph extends { readonly name: infer Name extends string; } ? Name
-        : never;
-
-type PublicRuntimeNames<Graphs extends readonly RuntimeGraph[]> = PublicRuntimeName<Graphs[number]>;
-
-type RuntimeNamesContain<Graphs extends readonly RuntimeGraph[], Name extends string> =
-    Graphs extends readonly [infer First extends RuntimeGraph, ...infer Rest extends readonly RuntimeGraph[]]
-        ? Extract<PublicRuntimeName<First>, Name> extends never
-            ? RuntimeNamesContain<Rest, Name>
-            : true
-        : false;
-
-type HasDuplicateRuntimeNames<Graphs extends readonly RuntimeGraph[]> =
-    Graphs extends readonly [infer First extends RuntimeGraph, ...infer Rest extends readonly RuntimeGraph[]]
-        ? RuntimeNamesContain<Rest, PublicRuntimeName<First>> extends true
-            ? true
-            : HasDuplicateRuntimeNames<Rest>
-        : false;
-
-type RuntimeNameCollisionGuard<Runtimes extends readonly RuntimeGraph[]> =
-    HasDuplicateRuntimeNames<Runtimes> extends true
-        ? { readonly duplicateRuntimeNames: never; }
-        : unknown;
 type FlattenRuntimeGraph<Graph extends RuntimeGraph> = Graph extends ComposedRuntimeGraph<infer Runtimes>
-    ? Runtimes
-    : Graph extends RuntimeGraphLeaf ? readonly [Graph]
-        : readonly [];
-type FlattenRuntimeGraphs<Graphs extends readonly RuntimeGraph[]> =
-    Graphs extends readonly [infer First extends RuntimeGraph, ...infer Rest extends readonly RuntimeGraph[]]
-        ? readonly [ ...FlattenRuntimeGraph<First>, ...FlattenRuntimeGraphs<Rest> ]
-        : readonly [];
+    ? Runtimes[number]
+    : Extract<Graph, RuntimeGraphLeaf>;
+type FlattenRuntimeGraphs<Graphs extends readonly RuntimeGraph[]> = {
+    readonly [Key in keyof Graphs]: FlattenRuntimeGraph<Graphs[Key]>;
+};
 
 export type RuntimeMatrixDefinitionInput<
     Name extends string,
@@ -369,7 +342,7 @@ function flattenRuntimeGraphs(runtimes: readonly RuntimeGraph[]): readonly Runti
 export function composeRuntimes<
     const Runtimes extends readonly [RuntimeGraph, ...RuntimeGraph[]]
 >(
-    ...runtimes: Runtimes & RuntimeNameCollisionGuard<Runtimes>
+    ...runtimes: Runtimes
 ): ComposedRuntimeGraph<FlattenRuntimeGraphs<Runtimes>>;
 export function composeRuntimes(
     ...runtimes: readonly RuntimeGraph[]

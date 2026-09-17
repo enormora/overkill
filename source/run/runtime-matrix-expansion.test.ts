@@ -194,6 +194,34 @@ export const testNode = createSuite({
         }),
         createTestCase({
             definitionLocations: [ definitionLocation ],
+            title: 'expands leaf runtimes into fixed work identities',
+            annotations: {},
+            controls: {},
+            body(scope: TestScope) {
+                const expanded = expandRuntimeMatrices(testPlan(testCaseWithRuntimeGraphs([ sidecarRuntimeGraph() ])));
+                const firstCase = expanded.cases[0];
+
+                scope.assert.equal(expanded.cases.length, 1);
+                scope.require.defined(firstCase);
+                scope.assert.deepEqual(firstCase.workId.runtimes, [
+                    {
+                        dimensions: { service: 'sidecar' },
+                        name: 'sidecar',
+                        variantId: null
+                    }
+                ]);
+                scope.assert.deepEqual(
+                    firstCase.resourceAttachments.resourceGraph.map(function resourceName(resource) {
+                        return resource.name;
+                    }),
+                    [ 'scratch', 'scratch-root', 'sidecar' ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ definitionLocation ],
             title: 'expands multiple matrices as a cartesian product',
             annotations: {},
             controls: {},
