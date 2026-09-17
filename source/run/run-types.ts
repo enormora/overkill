@@ -204,7 +204,7 @@ export type WorkUnitMode = 'case' | 'file' | 'group';
 export type WorkUnitId = {
     readonly key: string;
     readonly mode: WorkUnitMode;
-    readonly runtime: RuntimeId | null;
+    readonly runtimes: readonly RuntimeId[];
     readonly workload: WorkloadId | null;
 };
 

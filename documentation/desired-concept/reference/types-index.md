@@ -47,14 +47,14 @@ type WorkloadId = {
 
 type WorkId = {
     readonly case: CaseId;
-    readonly runtime: RuntimeId | null;
+    readonly runtimes: readonly RuntimeId[];
     readonly workload: WorkloadId | null;
 };
 
 type WorkUnitId = {
     readonly mode: 'file' | 'case' | 'group';
     readonly key: string;
-    readonly runtime: RuntimeId | null;
+    readonly runtimes: readonly RuntimeId[];
     readonly workload: WorkloadId | null;
 };
 
@@ -75,7 +75,7 @@ type ArtifactScope =
 
 type ArtifactId = {
     readonly scope: ArtifactScope;
-    readonly runtime?: RuntimeId;
+    readonly runtimes?: readonly RuntimeId[];
     readonly workload?: WorkloadId;
     readonly attempt?: AttemptId;
     readonly subtype: ArtifactSubtype;
@@ -1666,9 +1666,9 @@ type RuntimeGraph =
             >
         >
     >
-    | ComposedRuntimes<ReadonlyArray<RuntimeGraph>>;
+    | ComposedRuntimes<readonly [RuntimeGraph, ...RuntimeGraph[]]>;
 
-type ComposedRuntimes<Runtimes extends ReadonlyArray<RuntimeGraph>> = {
+type ComposedRuntimes<Runtimes extends readonly [RuntimeGraph, ...RuntimeGraph[]]> = {
     readonly kind: 'composed-runtimes';
     readonly runtimes: Runtimes;
 };
@@ -1812,8 +1812,8 @@ declare function defineRuntimeMatrix<
     const Variants extends RuntimeVariantMap
 >(definition: RuntimeMatrixDefinition<Name, Variants>): RuntimeMatrix<Name, Variants>;
 
-declare function composeRuntimes<const Runtimes extends ReadonlyArray<RuntimeGraph>>(
-    runtimes: Runtimes
+declare function composeRuntimes<const Runtimes extends readonly [RuntimeGraph, ...RuntimeGraph[]]>(
+    ...runtimes: Runtimes
 ): ComposedRuntimes<Runtimes>;
 
 declare function withRuntime<Graph extends RuntimeGraph, Scope extends TestScope = TestScope>(

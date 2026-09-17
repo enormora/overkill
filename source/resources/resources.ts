@@ -7,9 +7,14 @@ import {
     type RuntimeId as RuntimeIdentity
 } from './runtime-definition.ts';
 import {
+    composeRuntimes as composeRuntimeGraphs,
     defineRuntimeMatrix as createRuntimeMatrixDefinition,
+    isComposedRuntimeGraph,
     isDefinedRuntimeMatrix as isRuntimeMatrixDefinition,
+    runtimeGraphLeaves,
+    type ComposedRuntimeGraph as ComposedRuntimeGraphDescriptor,
     type RuntimeGraph as RuntimeGraphDescriptor,
+    type RuntimeGraphLeaf as RuntimeGraphLeafDescriptor,
     type RuntimeMatrixDefinition as RuntimeMatrixDescriptor,
     type RuntimeMatrixDefinitionInput as RuntimeMatrixDescriptorInput,
     type SharedRuntimeMatrixDefinitionInput as SharedRuntimeMatrixDescriptorInput,
@@ -39,6 +44,7 @@ export type RuntimeResourceMap = RuntimeResourceMapShape;
 export const defineRuntime = createRuntimeDefinition;
 export const isDefinedRuntime = isRuntimeDefinition;
 export const isDefinedRuntimeMatrix = isRuntimeMatrixDefinition;
+export const composeRuntimes = composeRuntimeGraphs;
 
 export type RuntimeDefinition<
     Name extends string = string,
@@ -52,6 +58,10 @@ export type RuntimeDefinitionInput<
 > = RuntimeDefinitionDescriptorInput<Name, Dimensions, Resources>;
 export type RuntimeDimensions = RuntimeDimensionMap;
 export type RuntimeGraph = RuntimeGraphDescriptor;
+export type RuntimeGraphLeaf = RuntimeGraphLeafDescriptor;
+export type ComposedRuntimeGraph<
+    Runtimes extends readonly RuntimeGraphLeaf[] = readonly RuntimeGraphLeaf[]
+> = ComposedRuntimeGraphDescriptor<Runtimes>;
 export type RuntimeId<
     Name extends string = string,
     Dimensions extends RuntimeDimensions = RuntimeDimensions
@@ -259,27 +269,38 @@ type ResourceConsumerHandle<Definition> = Definition extends {
 } ? Handle
     : ResourceOwnerHandle<Definition>;
 
-type RuntimeGraphName<Graph extends RuntimeGraph> = Graph['name'];
+type UnionToIntersection<Value> =
+    (Value extends unknown ? (value: Value) => void : never) extends (value: infer Intersection) => void
+        ? Intersection
+        : never;
+type RuntimeGraphName<Graph extends RuntimeGraph> = Graph extends ComposedRuntimeGraph<infer Runtimes>
+    ? RuntimeGraphName<Runtimes[number]>
+    : Graph extends { readonly name: infer Name extends string; } ? Name
+        : never;
 type RuntimeMatrixRuntime<Matrix extends RuntimeMatrixDefinition> =
     Matrix['variants'][keyof Matrix['variants']]['runtime'];
-type RuntimeGraphRuntime<Graph extends RuntimeGraph> = {
+type RuntimeGraphRuntime<Graph extends RuntimeGraphLeaf> = {
     readonly runtime: Extract<Graph, RuntimeDefinition>;
     readonly 'runtime-matrix': RuntimeMatrixRuntime<Extract<Graph, RuntimeMatrixDefinition>>;
 }[Graph['kind']];
-type RuntimeGraphResources<Runtime extends RuntimeGraph> = RuntimeGraphRuntime<Runtime>['resources'];
+type RuntimeGraphResources<Runtime extends RuntimeGraphLeaf> = RuntimeGraphRuntime<Runtime>['resources'];
 
-export type RuntimeContext<Runtime extends RuntimeGraph> = {
+export type RuntimeContext<Runtime extends RuntimeGraphLeaf> = {
     readonly [Key in keyof RuntimeGraphResources<Runtime>]: ResourceHandle<RuntimeGraphResources<Runtime>[Key]>;
 };
 
-export type RuntimeGraphContext<Graph extends RuntimeGraph> = RuntimeContext<Graph>;
+export type RuntimeGraphContext<Graph extends RuntimeGraph> = Graph extends ComposedRuntimeGraph
+    ? RuntimeScopeContext<Graph>
+    : RuntimeContext<Extract<Graph, RuntimeGraphLeaf>>;
 
 export type RuntimeScopeContext<Runtime extends RuntimeGraph> = Readonly<
-    Record<RuntimeGraphName<Runtime>, RuntimeGraphContext<Runtime>>
+    Runtime extends ComposedRuntimeGraph<infer Runtimes>
+        ? UnionToIntersection<RuntimeScopeContext<Runtimes[number]>>
+        : Record<RuntimeGraphName<Runtime>, RuntimeContext<Extract<Runtime, RuntimeGraphLeaf>>>
 >;
 
 type EmptyRuntimeScopes = Pick<Readonly<Record<string, never>>, never>;
-type RuntimeScopeKey<Runtime extends RuntimeDefinition> = Runtime['name'];
+type RuntimeScopeKey<Runtime extends RuntimeGraph> = RuntimeGraphName<Runtime>;
 type RuntimeScopes<Context> = Context extends {
     readonly runtimes: infer Runtimes extends Readonly<Record<string, unknown>>;
 } ? Runtimes
@@ -287,16 +308,16 @@ type RuntimeScopes<Context> = Context extends {
 
 type RuntimeScopeGuard<
     Context,
-    Runtime extends RuntimeDefinition
-> = RuntimeScopeKey<Runtime> extends keyof RuntimeScopes<Context> ? never : unknown;
+    Runtime extends RuntimeGraph
+> = Extract<RuntimeScopeKey<Runtime>, keyof RuntimeScopes<Context>> extends never ? unknown : never;
 type RuntimeScopeBaseContext<Context> = {
     readonly [Key in keyof Context as Key extends 'runtimes' ? never : Key]: Context[Key];
 };
-type ComposedRuntimeScopes<BaseContext, Runtime extends RuntimeDefinition> = {
+type ComposedRuntimeScopes<BaseContext, Runtime extends RuntimeGraph> = {
     readonly runtimes: RuntimeScopeContext<Runtime> & RuntimeScopes<BaseContext>;
 };
 
-export type RuntimeContextComposition<BaseContext, Runtime extends RuntimeDefinition> = Readonly<
+export type RuntimeContextComposition<BaseContext, Runtime extends RuntimeGraph> = Readonly<
     ComposedRuntimeScopes<BaseContext, Runtime> & RuntimeScopeBaseContext<BaseContext>
 >;
 
@@ -320,6 +341,7 @@ export type ResourcesModule = {
     readonly defineResource: typeof defineResource;
     readonly defineRuntime: typeof defineRuntime;
     readonly defineRuntimeMatrix: typeof createRuntimeMatrixDefinition;
+    readonly composeRuntimes: typeof composeRuntimeGraphs;
 };
 
 export function defineResource<
@@ -412,15 +434,15 @@ function createTemporaryDirectoryResource<const Name extends string>(
 
 function composeRuntimeContext<
     BaseContext extends Readonly<Record<string, unknown>>,
-    Runtime extends RuntimeDefinition
+    Runtime extends RuntimeGraph
 >(
     context: BaseContext & RuntimeScopeGuard<BaseContext, Runtime>,
     runtime: Runtime,
-    resourceHandles: RuntimeContext<Runtime>
+    resourceHandles: RuntimeGraphContext<Runtime>
 ): RuntimeContextComposition<BaseContext, Runtime>;
 function composeRuntimeContext(
     context: Readonly<Record<string, unknown>>,
-    runtime: RuntimeDefinition,
+    runtime: RuntimeGraph,
     resourceHandles: Readonly<Record<string, unknown>>
 ): Readonly<Record<string, unknown>> {
     const runtimes: unknown = Object.hasOwn(context, 'runtimes') ? Reflect.get(context, 'runtimes') : {};
@@ -429,15 +451,29 @@ function composeRuntimeContext(
         throw new TypeError('composeRuntimeContext() requires context.runtimes to be an object when present.');
     }
 
-    if (Object.hasOwn(runtimes, runtime.name)) {
-        throw new TypeError(`Runtime scope "${runtime.name}" already exists.`);
+    const nextRuntimes = isComposedRuntimeGraph(runtime)
+        ? resourceHandles
+        : { [runtime.name]: resourceHandles };
+
+    if (isComposedRuntimeGraph(runtime)) {
+        for (const childRuntime of runtime.runtimes) {
+            if (!Object.hasOwn(nextRuntimes, childRuntime.name)) {
+                throw new TypeError(`Runtime scope "${childRuntime.name}" is missing.`);
+            }
+        }
+    }
+
+    for (const runtimeName of Object.keys(nextRuntimes)) {
+        if (Object.hasOwn(runtimes, runtimeName)) {
+            throw new TypeError(`Runtime scope "${runtimeName}" already exists.`);
+        }
     }
 
     return Object.freeze({
         ...context,
         runtimes: Object.freeze({
             ...runtimes,
-            [runtime.name]: resourceHandles
+            ...nextRuntimes
         })
     });
 }
@@ -448,6 +484,7 @@ export function createResourcesModule(dependencies: ResourcesModuleDependencies)
         createTemporaryDirectoryResource(name) {
             return createTemporaryDirectoryResource(dependencies, name);
         },
+        composeRuntimes,
         defineResource,
         defineRuntime,
         defineRuntimeMatrix: createRuntimeMatrixDefinition
@@ -461,5 +498,7 @@ export function isDefinedResource(resource: unknown): resource is AnyResourceDef
 }
 
 export function isDefinedRuntimeGraph(runtime: unknown): runtime is RuntimeGraph {
-    return isDefinedRuntime(runtime) || isDefinedRuntimeMatrix(runtime);
+    return isDefinedRuntime(runtime) || isDefinedRuntimeMatrix(runtime) || isComposedRuntimeGraph(runtime);
 }
+
+export { runtimeGraphLeaves };

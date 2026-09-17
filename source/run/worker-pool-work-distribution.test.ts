@@ -119,11 +119,11 @@ function thirdCaseId(): CaseId {
 }
 
 function caseWorkUnit(testCase: CaseId): WorkUnit {
-    const work = { case: testCase, runtime: null, workload: null };
+    const work = { case: testCase, runtimes: [], workload: null };
 
     return {
         group: null,
-        id: { key: caseIdentityKey(testCase), mode: 'case', runtime: null, workload: null },
+        id: { key: caseIdentityKey(testCase), mode: 'case', runtimes: [], workload: null },
         ...defaultUnitPolicy,
         resourceConstraints: emptyWorkUnitResourceConstraints,
         work: [ work ]
@@ -146,26 +146,26 @@ function fileWorkUnit(testCase: CaseId, group: string | null): WorkUnit {
 
     return {
         group,
-        id: { key: file, mode: 'file', runtime: null, workload: null },
+        id: { key: file, mode: 'file', runtimes: [], workload: null },
         ...defaultUnitPolicy,
         resourceConstraints: emptyWorkUnitResourceConstraints,
-        work: [ { case: testCase, runtime: null, workload: null } ]
+        work: [ { case: testCase, runtimes: [], workload: null } ]
     };
 }
 
 function groupWorkUnit(group: string, cases: readonly [CaseId, ...CaseId[]]): WorkUnit {
     const [ firstCase, ...remainingCases ] = cases;
-    const firstWork = { case: firstCase, runtime: null, workload: null };
+    const firstWork = { case: firstCase, runtimes: [], workload: null };
 
     return {
         group,
-        id: { key: group, mode: 'group', runtime: null, workload: null },
+        id: { key: group, mode: 'group', runtimes: [], workload: null },
         ...defaultUnitPolicy,
         resourceConstraints: emptyWorkUnitResourceConstraints,
         work: [
             firstWork,
             ...remainingCases.map(function toWork(testCase) {
-                return { case: testCase, runtime: null, workload: null };
+                return { case: testCase, runtimes: [], workload: null };
             })
         ]
     };

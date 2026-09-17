@@ -1,10 +1,14 @@
+import {
+    runtimeGraphLeaves,
+    type RuntimeGraph,
+    type RuntimeGraphContext
+} from '../resources/resources.ts';
 import type {
     AnyResourceDefinition,
     ResourceContext,
-    RuntimeGraph,
-    RuntimeGraphContext,
     RuntimeId,
     RuntimeDefinition,
+    RuntimeGraphLeaf,
     RuntimeResourceMap as ResourceMap
 } from '../resources/resources.ts';
 import { runtimeIdentityKey, type WorkId } from '../engine/identity.ts';
@@ -38,7 +42,7 @@ export type ResourceWrapperStep = ResourceWrapperResourcesStep | ResourceWrapper
 
 type ResolvedRuntimeGraph = {
     readonly id: RuntimeId;
-    readonly graph: RuntimeGraph;
+    readonly graph: RuntimeGraphLeaf;
     readonly runtime: RuntimeDefinition;
 };
 
@@ -57,7 +61,7 @@ function entries(record: Readonly<Record<string, AnyResourceDefinition>>): reado
     return Object.entries(record);
 }
 
-function runtimeId(graph: RuntimeGraph, runtime: RuntimeDefinition, variantId: string | null): RuntimeId {
+function runtimeId(graph: RuntimeGraphLeaf, runtime: RuntimeDefinition, variantId: string | null): RuntimeId {
     return {
         dimensions: runtime.dimensions,
         name: graph.name,
@@ -67,44 +71,48 @@ function runtimeId(graph: RuntimeGraph, runtime: RuntimeDefinition, variantId: s
 
 type RuntimeMatrixGraph = Extract<RuntimeGraph, { readonly kind: 'runtime-matrix'; }>;
 type RuntimeMatrixVariantValue = RuntimeMatrixGraph['variants'][string];
-type MatrixWorkId = WorkId & { readonly runtime: RuntimeId; };
+function selectedRuntimeId(runtime: RuntimeMatrixGraph, workId: WorkId | null): RuntimeId | null {
+    return workId?.runtimes.find(function isSelectedRuntime(candidate) {
+        return candidate.name === runtime.name;
+    }) ?? null;
+}
 
-function assertMatrixWork(runtime: RuntimeMatrixGraph, workId: WorkId | null): MatrixWorkId {
-    const selectedRuntime = workId?.runtime ?? null;
+function assertMatrixWork(runtime: RuntimeMatrixGraph, workId: WorkId | null): RuntimeId {
+    const selectedRuntime = selectedRuntimeId(runtime, workId);
 
-    if (workId === null || selectedRuntime === null) {
+    if (selectedRuntime === null) {
         throw resourceWrapperLifecycleError(
             `Runtime matrix "${runtime.name}" requires runner-managed execution.`,
             runtime
         );
     }
 
-    return { ...workId, runtime: selectedRuntime };
+    return selectedRuntime;
 }
 
 function selectedMatrixVariant(runtime: RuntimeMatrixGraph, workId: WorkId | null): RuntimeMatrixVariantValue {
-    const selectedWork = assertMatrixWork(runtime, workId);
+    const selectedRuntime = assertMatrixWork(runtime, workId);
 
-    if (selectedWork.runtime.name !== runtime.name || selectedWork.runtime.variantId === null) {
+    if (selectedRuntime.variantId === null) {
         throw resourceWrapperLifecycleError(
             `Runtime matrix "${runtime.name}" has no selected variant for this work item.`,
-            selectedWork
+            selectedRuntime
         );
     }
 
-    const variant = runtime.variants[selectedWork.runtime.variantId];
+    const variant = runtime.variants[selectedRuntime.variantId];
 
     if (variant === undefined) {
         throw resourceWrapperLifecycleError(
-            `Runtime matrix "${runtime.name}" has no variant "${selectedWork.runtime.variantId}".`,
-            selectedWork
+            `Runtime matrix "${runtime.name}" has no variant "${selectedRuntime.variantId}".`,
+            selectedRuntime
         );
     }
 
     return variant;
 }
 
-function resolveRuntimeGraph(runtime: RuntimeGraph, workId: WorkId | null): ResolvedRuntimeGraph {
+function resolveRuntimeGraph(runtime: RuntimeGraphLeaf, workId: WorkId | null): ResolvedRuntimeGraph {
     if (runtime.kind !== 'runtime-matrix') {
         return {
             graph: runtime,
@@ -127,7 +135,11 @@ function resolvedRuntimeGraphs(
     workId: WorkId | null
 ): readonly ResolvedRuntimeGraph[] {
     return steps.flatMap(function stepRuntimeGraph(step) {
-        return step.kind === 'runtime' ? [ resolveRuntimeGraph(step.runtime, workId) ] : [];
+        return step.kind === 'runtime'
+            ? runtimeGraphLeaves(step.runtime).map(function resolveRuntime(runtime) {
+                return resolveRuntimeGraph(runtime, workId);
+            })
+            : [];
     });
 }
 
@@ -143,7 +155,7 @@ export function directResourceEntries(steps: readonly ResourceWrapperStep[]): re
 
 export function stepRuntimeGraphs(steps: readonly ResourceWrapperStep[]): readonly RuntimeGraph[] {
     return steps.flatMap(function stepRuntimeGraph(step) {
-        return step.kind === 'runtime' ? [ step.runtime ] : [];
+        return step.kind === 'runtime' ? runtimeGraphLeaves(step.runtime) : [];
     });
 }
 
@@ -204,6 +216,16 @@ export function runtimeContextForStep<Graph extends RuntimeGraph>(
     runtime: Graph,
     session: ComposedResourceSession
 ): RuntimeGraphContext<Graph> {
+    if (runtime.kind === 'composed-runtimes') {
+        const context: Mutable<Record<string, unknown>> = {};
+
+        for (const childRuntime of runtime.runtimes) {
+            context[childRuntime.name] = runtimeContextForStep(childRuntime, session);
+        }
+
+        return Object.freeze(context) as RuntimeGraphContext<Graph>;
+    }
+
     const context = session.runtimeContexts.get(runtime);
 
     if (context === undefined || !isRuntimeContext(context, runtime)) {
@@ -325,8 +347,10 @@ export function composedResourceSession(
         directResources: directResourceContext(directResources, session),
         disposeOnce: session.disposeOnce,
         runtimeContexts: runtimeContexts(
-            runtimes.map(function resolveRuntime(runtime) {
-                return resolveRuntimeGraph(runtime, workId);
+            runtimes.flatMap(function resolveRuntime(runtime) {
+                return runtimeGraphLeaves(runtime).map(function resolveLeafRuntime(leafRuntime) {
+                    return resolveRuntimeGraph(leafRuntime, workId);
+                });
             }),
             session
         )

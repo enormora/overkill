@@ -1,4 +1,5 @@
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import type { RuntimeId } from '../engine/identity.ts';
 import type {
     TestBodyResourceAttachments,
     TestBodyResourceSummary,
@@ -7,33 +8,28 @@ import type {
     TestBodyRuntimeSummary
 } from '../engine/test-body-resource-attachment.ts';
 import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
-import { RunCollectionError } from './run-errors.ts';
 
 type RuntimeMatrixAttachment = Extract<TestBodyRuntimeSummary, { readonly kind: 'runtime-matrix'; }>;
+type RuntimeSelection = {
+    readonly runtimeGraph: TestBodyRuntimeSummary;
+    readonly runtimeId: RuntimeId;
+};
+type RuntimeSelectionCombination = readonly RuntimeSelection[];
 
-function runtimeMatrices(testCase: TestPlanCase): readonly RuntimeMatrixAttachment[] {
-    return testCase.resourceAttachments.runtimeGraphs.filter(function isRuntimeMatrix(
-        runtime
-    ): runtime is RuntimeMatrixAttachment {
-        return runtime.kind === 'runtime-matrix';
-    });
+function compareRuntimeIdNames(left: RuntimeId, right: RuntimeId): number {
+    return left.name.localeCompare(right.name);
 }
 
-function runtimeMatrixError(message: string): RunCollectionError {
-    return new RunCollectionError(message, { cause: null }, 'loader');
+function sortedRuntimeIds(runtimeIds: readonly RuntimeId[]): readonly RuntimeId[] {
+    return runtimeIds.toSorted(compareRuntimeIdNames);
 }
 
-function assertSingleRuntimeMatrix(testCase: TestPlanCase): RuntimeMatrixAttachment | null {
-    const matrices = runtimeMatrices(testCase);
-    const [ matrix = null ] = matrices;
-
-    if (matrices.length > 1) {
-        throw runtimeMatrixError(
-            'Multiple runtime matrices on one test case require runtime composition, which is not implemented yet.'
-        );
-    }
-
-    return matrix;
+function runtimeId(runtime: TestBodyRuntimeSummary): RuntimeId {
+    return {
+        dimensions: runtime.kind === 'runtime-matrix' ? {} : runtime.dimensions,
+        name: runtime.name,
+        variantId: null
+    };
 }
 
 function resourcesByName(resources: readonly TestBodyResourceSummary[]): ReadonlyMap<string, TestBodyResourceSummary> {
@@ -54,33 +50,83 @@ function runtimeResourceNames(runtime: TestBodyRuntimeSummary): readonly string[
         });
 }
 
-function selectedRuntimeGraphs(
-    runtimes: readonly TestBodyRuntimeSummary[],
+function runtimeVariantId(
     matrix: TestBodyRuntimeMatrixSummary,
     variant: TestBodyRuntimeMatrixVariantSummary
-): readonly TestBodyRuntimeSummary[] {
-    return runtimes.map(function selectRuntime(runtime) {
-        return runtime === matrix
-            ? {
+): RuntimeId {
+    return {
+        dimensions: variant.runtime.dimensions,
+        name: matrix.name,
+        variantId: variant.id
+    };
+}
+
+function leafRuntimeSelection(runtime: TestBodyRuntimeSummary): RuntimeSelection {
+    return {
+        runtimeGraph: runtime,
+        runtimeId: runtimeId(runtime)
+    };
+}
+
+function matrixRuntimeSelections(matrix: RuntimeMatrixAttachment): readonly RuntimeSelection[] {
+    return matrix.variants.map(function variantSelection(variant) {
+        return {
+            runtimeGraph: {
                 kind: 'runtime-matrix',
                 name: matrix.name,
                 resources: variant.runtime.resources,
                 variants: [ variant ]
-            }
-            : runtime;
+            },
+            runtimeId: runtimeVariantId(matrix, variant)
+        };
+    });
+}
+
+function runtimeSelections(runtime: TestBodyRuntimeSummary): readonly RuntimeSelection[] {
+    return runtime.kind === 'runtime-matrix' ? matrixRuntimeSelections(runtime) : [ leafRuntimeSelection(runtime) ];
+}
+
+function combineSelections(
+    left: readonly RuntimeSelectionCombination[],
+    right: readonly RuntimeSelection[]
+): readonly RuntimeSelectionCombination[] {
+    return left.flatMap(function appendRight(leftCombination) {
+        return right.map(function appendSelection(selection) {
+            return [ ...leftCombination, selection ];
+        });
+    });
+}
+
+function runtimeSelectionCombinations(
+    runtimes: readonly TestBodyRuntimeSummary[]
+): readonly RuntimeSelectionCombination[] {
+    return runtimes.reduce<readonly RuntimeSelectionCombination[]>(function addRuntime(combinations, runtime) {
+        return combineSelections(combinations, runtimeSelections(runtime));
+    }, [ [] ]);
+}
+
+function selectedRuntimeGraphs(
+    runtimes: readonly TestBodyRuntimeSummary[],
+    combination: RuntimeSelectionCombination
+): readonly TestBodyRuntimeSummary[] {
+    const selectedRuntimeGraphsByName = new Map(combination.map(function selectedEntry(selection) {
+        return [ selection.runtimeId.name, selection.runtimeGraph ];
+    }));
+
+    return runtimes.map(function selectRuntime(runtime) {
+        return selectedRuntimeGraphsByName.get(runtime.name) ?? runtime;
     });
 }
 
 function selectedResourceNames(
     attachments: TestBodyResourceAttachments,
-    matrix: TestBodyRuntimeMatrixSummary,
-    variant: TestBodyRuntimeMatrixVariantSummary
+    combination: RuntimeSelectionCombination
 ): readonly string[] {
     return [
         ...attachments.directResources.map(function directResourceName(resource) {
             return resource.resourceName;
         }),
-        ...selectedRuntimeGraphs(attachments.runtimeGraphs, matrix, variant).flatMap(runtimeResourceNames)
+        ...selectedRuntimeGraphs(attachments.runtimeGraphs, combination).flatMap(runtimeResourceNames)
     ];
 }
 
@@ -108,39 +154,36 @@ function reachableResourceGraph(
 
 function attachmentsForVariant(
     attachments: TestBodyResourceAttachments,
-    matrix: TestBodyRuntimeMatrixSummary,
-    variant: TestBodyRuntimeMatrixVariantSummary
+    combination: RuntimeSelectionCombination
 ): TestBodyResourceAttachments {
-    const runtimeGraphs = selectedRuntimeGraphs(attachments.runtimeGraphs, matrix, variant);
+    const runtimeGraphs = selectedRuntimeGraphs(attachments.runtimeGraphs, combination);
 
     return {
         directResources: attachments.directResources,
         resourceGraph: reachableResourceGraph(
             attachments.resourceGraph,
-            selectedResourceNames(attachments, matrix, variant)
+            selectedResourceNames(attachments, combination)
         ),
         runtimeGraphs
     };
 }
 
 function expandCase(testCase: TestPlanCase): readonly TestPlanCase[] {
-    const matrix = assertSingleRuntimeMatrix(testCase);
+    const combinations = runtimeSelectionCombinations(testCase.resourceAttachments.runtimeGraphs);
 
-    if (matrix === null) {
+    if (combinations.length === 1 && combinations[0]?.length === 0) {
         return [ testCase ];
     }
 
-    return matrix.variants.map(function variantCase(variant) {
+    return combinations.map(function variantCase(combination) {
         return {
             ...testCase,
-            resourceAttachments: attachmentsForVariant(testCase.resourceAttachments, matrix, variant),
+            resourceAttachments: attachmentsForVariant(testCase.resourceAttachments, combination),
             workId: {
                 case: testCase.id,
-                runtime: {
-                    dimensions: variant.runtime.dimensions,
-                    name: matrix.name,
-                    variantId: variant.id
-                },
+                runtimes: sortedRuntimeIds(combination.map(function selectedRuntime(selection) {
+                    return selection.runtimeId;
+                })),
                 workload: null
             }
         };

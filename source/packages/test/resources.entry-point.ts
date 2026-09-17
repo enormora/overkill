@@ -23,6 +23,7 @@ import {
 
 export {
     composeRuntimeContext,
+    composeRuntimes,
     createTemporaryDirectoryResource,
     defineResource,
     defineRuntime,
@@ -32,6 +33,7 @@ export {
 } from '../resources/resources.entry-point.ts';
 export type {
     AnyResourceDefinition,
+    ComposedRuntimeGraph,
     ExecutionRequirement,
     ResourceContext,
     ResourceCreationContext,
@@ -53,6 +55,7 @@ export type {
     RuntimeDimensions,
     RuntimeGraphContext,
     RuntimeGraph,
+    RuntimeGraphLeaf,
     RuntimeId,
     RuntimeMatrixDefinition,
     RuntimeMatrixDefinitionInput,

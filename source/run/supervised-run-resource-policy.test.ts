@@ -155,8 +155,8 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(crashError(multiState, 'Crashed.').cause, {
                     activeCases: [ firstCaseId, secondCaseId ],
                     activeWork: [
-                        { case: firstCaseId, runtime: null, workload: null },
-                        { case: secondCaseId, runtime: null, workload: null }
+                        { case: firstCaseId, runtimes: [], workload: null },
+                        { case: secondCaseId, runtimes: [], workload: null }
                     ],
                     reason: 'Crashed.'
                 });

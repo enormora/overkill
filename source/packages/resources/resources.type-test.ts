@@ -2,6 +2,7 @@ import { describe, expect, test } from 'tstyche';
 import {
     type assertPerCaseResourceGraph,
     composeRuntimeContext,
+    composeRuntimes,
     createTemporaryDirectoryResource,
     defineResource,
     defineRuntime,
@@ -145,6 +146,7 @@ const runtimeMatrix = defineRuntimeMatrix({
         })
     }
 });
+const composedRuntime = composeRuntimes(runtime, secondaryRuntime);
 const typeTestController = new AbortController();
 
 const databaseHandle = {
@@ -256,6 +258,42 @@ describe('@overkill-dev/resources', function () {
         expect<typeof composeRuntimeContext>().type.not.toBeCallableWith(context, runtime, {
             database: databaseHandle,
             server: serverHandle
+        });
+    });
+
+    test('composes runtime graphs into typed scopes', function () {
+        const context = composeRuntimeContext({ test: true }, composedRuntime, {
+            api: {
+                database: databaseHandle,
+                server: serverHandle
+            },
+            'secondary-api': {
+                database: databaseHandle
+            }
+        });
+
+        expect(composedRuntime.kind).type.toBe<'composed-runtimes'>();
+        expect(context.runtimes.api).type.toBe<ExpectedRuntimeContext>();
+        expect(context.runtimes['secondary-api']).type.toBe<{ readonly database: Database; }>();
+        expect<typeof composeRuntimes>().type.not.toBeCallableWith(runtime, runtime);
+        expect<typeof composeRuntimeContext>().type.not.toBeCallableWith({
+            runtimes: {
+                api: {
+                    database: databaseHandle,
+                    server: serverHandle
+                }
+            }
+        }, composedRuntime, {
+            api: {
+                database: databaseHandle,
+                server: serverHandle
+            },
+            'secondary-api': {
+                database: databaseHandle
+            }
+        });
+        expect<typeof composeRuntimeContext>().type.not.toBeCallableWith({ test: true }, composedRuntime, {
+            api: { database: databaseHandle }
         });
     });
 

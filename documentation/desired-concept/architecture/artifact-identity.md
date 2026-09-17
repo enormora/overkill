@@ -23,19 +23,19 @@ Overkill distinguishes:
   `@overkill-dev/engine`, independent of files or any specific authoring DSL
 - **authoring identity** — the richer identity derived by a DSL or package
   such as `@overkill-dev/test`
-- **case identity** — the concrete logical case after parameterization
+- **case identity** - the concrete logical case after parameterization
   and macro instantiation
-- **work identity** — the schedulable case after runtime and workload
+- **work identity** - the schedulable case after runtime and workload
   expansion
-- **work-unit identity** — the placement unit used for worker assignment
+- **work-unit identity** - the placement unit used for worker assignment
   and sharding
-- **runtime identity** — the resolved runtime target (browser variant,
+- **runtime identities** - the resolved runtime targets (browser variant,
   OS, Node version, configuration profile)
-- **workload identity** — for benchmarks, the resolved workload
+- **workload identity** - for benchmarks, the resolved workload
   parameters
-- **attempt identity** — for retries (integration profiles only), the
+- **attempt identity** - for retries (integration profiles only), the
   attempt number
-- **artifact identity** — derived from the above, with a subtype tag
+- **artifact identity** - derived from the above, with a subtype tag
   naming the artifact kind
 
 ## Engine Versus DSL Identity
@@ -86,14 +86,14 @@ type WorkloadId = {
 
 type WorkId = {
     readonly case: CaseId;
-    readonly runtime: RuntimeId | null;
+    readonly runtimes: readonly RuntimeId[];
     readonly workload: WorkloadId | null;
 };
 
 type WorkUnitId = {
     readonly mode: 'file' | 'case' | 'group';
     readonly key: string;
-    readonly runtime: RuntimeId | null;
+    readonly runtimes: readonly RuntimeId[];
     readonly workload: WorkloadId | null;
 };
 
@@ -117,7 +117,7 @@ type ArtifactSubtype =
 
 type ArtifactId = {
     readonly scope: ArtifactScope;
-    readonly runtime?: RuntimeId;
+    readonly runtimes?: readonly RuntimeId[];
     readonly workload?: WorkloadId;
     readonly attempt?: AttemptId;
     readonly subtype: ArtifactSubtype;

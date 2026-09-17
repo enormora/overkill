@@ -22,7 +22,7 @@ A reproducible run captures, at minimum:
 - the run seed
 - the resolved selection (filter expression and the resulting set of
   `WorkId`s after runtime/workload expansion)
-- the resolved runtime matrix (each `RuntimeId` actually used)
+- the resolved runtime identities (each `RuntimeId` actually used)
 - the resolved execution strategy (process model, worker count,
   worker lifecycle, work distribution, assignment policy, dispatch policy,
   serialisation rules)
@@ -170,7 +170,7 @@ executes the same plan:
 - restores the seed
 - restores the selection (no re-collection from disk; the recorded
   identity set is used directly)
-- restores the runtime matrix where local runtimes are
+- restores runtime identities where local runtimes are
   available; reports inconclusive for runtimes not available
 - restores the execution strategy
 - restores the loader configuration

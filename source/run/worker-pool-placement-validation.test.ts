@@ -92,14 +92,14 @@ function firstWorkUnit(): WorkUnit {
         id: {
             key: integrationPath,
             mode: 'file',
-            runtime: null,
+            runtimes: [],
             workload: null
         },
         ...defaultUnitPolicy,
         work: [
             {
                 case: firstCaseId(),
-                runtime: null,
+                runtimes: [],
                 workload: null
             }
         ]
@@ -135,7 +135,7 @@ function placementPlanWithMissingUnit(): PlacementPlan {
                 unit: {
                     key: 'missing',
                     mode: 'file',
-                    runtime: null,
+                    runtimes: [],
                     workload: null
                 }
             }
@@ -149,7 +149,7 @@ export function placementPlanWithGroupUnit(): PlacementPlan {
         id: {
             key: 'grouped',
             mode: 'group',
-            runtime: null,
+            runtimes: [],
             workload: null
         }
     };

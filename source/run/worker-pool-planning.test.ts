@@ -239,20 +239,20 @@ function secondCaseId(): CaseId {
 function firstWorkUnit(): WorkUnit {
     return {
         group: null,
-        id: { key: integrationPath, mode: 'file', runtime: null, workload: null },
+        id: { key: integrationPath, mode: 'file', runtimes: [], workload: null },
         ...defaultUnitPolicy,
         resourceConstraints: emptyWorkUnitResourceConstraints,
-        work: [ { case: firstCaseId(), runtime: null, workload: null } ]
+        work: [ { case: firstCaseId(), runtimes: [], workload: null } ]
     };
 }
 
 function secondWorkUnit(): WorkUnit {
     return {
         group: null,
-        id: { key: secondIntegrationPath, mode: 'file', runtime: null, workload: null },
+        id: { key: secondIntegrationPath, mode: 'file', runtimes: [], workload: null },
         ...defaultUnitPolicy,
         resourceConstraints: emptyWorkUnitResourceConstraints,
-        work: [ { case: secondCaseId(), runtime: null, workload: null } ]
+        work: [ { case: secondCaseId(), runtimes: [], workload: null } ]
     };
 }
 
@@ -295,7 +295,7 @@ function unknownWorkUnit(): WorkUnit {
         work: [
             {
                 case: { ...firstCaseId(), title: 'missing' },
-                runtime: null,
+                runtimes: [],
                 workload: null
             }
         ]

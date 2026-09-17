@@ -291,6 +291,7 @@ Runtime handles stay behind the resources subpath:
 ```ts
 import { createTestFacade } from '@overkill-dev/test';
 import {
+    composeRuntimes,
     createTemporaryDirectoryResource,
     defineResource,
     defineRuntime,
@@ -349,6 +350,8 @@ Resource wrappers attach descriptors for runner collection and acquire handles
 when the body executes. `withRuntime(...)` exposes handles at
 `scope.runtimes.<runtimeName>`, while `withResource(...)` and
 `withResources(...)` expose handles at `scope.resources.<resourceKey>`.
+`composeRuntimes(...)` combines leaf runtimes and runtime matrices into one
+graph while keeping child runtime names as the public `scope.runtimes` keys.
 Nested resource wrappers compose into one per-case acquisition graph before
 the body runs when no runner lifecycle policy is active. During normal
 runner execution, wrappers declare descriptors and the runner acquires them at

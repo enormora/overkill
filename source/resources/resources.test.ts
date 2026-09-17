@@ -72,6 +72,7 @@ const recordedTemporaryDirectoryDependencies = createRecordedTemporaryDirectoryD
 const resourcesModule = createResourcesModule(recordedTemporaryDirectoryDependencies);
 const {
     composeRuntimeContext,
+    composeRuntimes,
     createTemporaryDirectoryResource,
     defineResource,
     defineRuntime,
@@ -409,6 +410,75 @@ function assertRuntimeContextCompositionRejectsInvalidRuntimeScopes(scope: TestS
     }
 }
 
+function assertRuntimeGraphComposition(scope: TestScope): void {
+    const apiRuntime = defineRuntime({
+        name: 'api',
+        dimensions: {},
+        resources: { database: databaseResource },
+        requirements: []
+    });
+    const serverRuntime = defineRuntime({
+        name: 'server',
+        dimensions: {},
+        resources: { server: serverResource },
+        requirements: []
+    });
+    const nested = composeRuntimes(apiRuntime, serverRuntime);
+    const composed = composeRuntimes(nested);
+    const database = createDatabase();
+    const server = { results: [ 'ready' ] };
+    const context = composeRuntimeContext({ base: 'scope' }, composed, {
+        api: { database },
+        server: { server }
+    });
+    const apiContext = context.runtimes.api;
+    const serverContext = context.runtimes.server;
+
+    if (apiContext === undefined || serverContext === undefined) {
+        throw new Error('Expected composed runtime scopes.');
+    }
+
+    assertBrandedDescriptor(scope, composed);
+    scope.assert.equal(composed.kind, 'composed-runtimes');
+    scope.assert.deepEqual(composed.runtimes.map(function runtimeName(runtime) {
+        return runtime.name;
+    }), [ 'api', 'server' ]);
+    scope.assert.equal(Object.isFrozen(composed), true);
+    scope.assert.equal(Object.isFrozen(composed.runtimes), true);
+    scope.assert.equal(apiContext.database, database);
+    scope.assert.equal(serverContext.server, server);
+
+    scope.assert.throws(function composeIncompleteRuntimeContext() {
+        Reflect.apply(composeRuntimeContext, undefined, [
+            { base: 'scope' },
+            composed,
+            { api: { database } }
+        ]);
+    }, { message: 'Runtime scope "server" is missing.' });
+}
+
+function assertRuntimeGraphCompositionRejectsInvalidInput(scope: TestScope): void {
+    const apiRuntime = defineRuntime({
+        name: 'api',
+        dimensions: {},
+        resources: { database: databaseResource },
+        requirements: []
+    });
+    const duplicateRuntime = defineRuntime({
+        name: 'api',
+        dimensions: {},
+        resources: { server: serverResource },
+        requirements: []
+    });
+
+    scope.assert.throws(function rejectEmptyComposition() {
+        Reflect.apply(composeRuntimes, undefined, []);
+    }, { message: 'composeRuntimes() requires at least one runtime graph.' });
+    scope.assert.throws(function rejectDuplicateRuntimeNames() {
+        Reflect.apply(composeRuntimes, undefined, [ apiRuntime, duplicateRuntime ]);
+    }, { message: 'Runtime scope "api" is attached multiple times.' });
+}
+
 type TemporaryDirectoryResource = typeof temporaryDirectoryResource;
 
 function assertTemporaryDirectoryDescriptor(scope: TestScope, resource: TemporaryDirectoryResource): void {
@@ -490,6 +560,8 @@ export const testNode = createSuite({
                 assertRuntimeContextCompositionMergesRuntimeScopes(scope);
                 assertRuntimeContextCompositionRejectsDuplicateScopes(scope);
                 assertRuntimeContextCompositionRejectsInvalidRuntimeScopes(scope);
+                assertRuntimeGraphComposition(scope);
+                assertRuntimeGraphCompositionRejectsInvalidInput(scope);
 
                 return scope.assert.collect();
             }

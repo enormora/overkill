@@ -10,6 +10,7 @@ callback.
 ```ts
 import {
     composeRuntimeContext,
+    composeRuntimes,
     createTemporaryDirectoryResource,
     defineResource,
     defineRuntime,
@@ -92,6 +93,8 @@ scheduling work.
 
 `composeRuntimeContext(...)` exposes acquired handles under
 `scope.runtimes.<runtimeName>`, such as `scope.runtimes.api`.
+`composeRuntimes(...)` combines leaf runtimes and runtime matrices into one
+graph while exposing each child under its own public runtime name.
 
 Dependency context uses the keys from the resource's `dependencies` object.
 Omitting `dependencies` is accepted for compatibility and produces

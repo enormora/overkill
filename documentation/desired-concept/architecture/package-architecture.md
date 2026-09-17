@@ -439,12 +439,7 @@ variants when their public resource keys and dimension keys match. Variant
 factories may consume `shared` config, but `shared` is not injected into test
 scope unless a runtime or resource exposes it.
 
-The initial runner implementation expands one matrix attached to a case before
-placement and resource acquisition. Multiple matrices on one case require
-runtime composition so the runner can form one Cartesian runtime identity; that
-is owned by the `composeRuntimes(...)` milestone.
-
-`composeRuntimes([appRuntime, browserRuntime])` combines runtimes into one
+`composeRuntimes(appRuntime, browserRuntime)` combines runtimes into one
 runtime graph. It has no own name and no direct resources argument. Public
 runtime keys come from child runtime or matrix names. Duplicate runtime names
 fail. If more than one matrix appears in the graph, planning expands their

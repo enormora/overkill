@@ -14,6 +14,7 @@ const resourcesModule = createResourcesModule({
 });
 
 export const composeRuntimeContext: ResourcesModule['composeRuntimeContext'] = resourcesModule.composeRuntimeContext;
+export const composeRuntimes: ResourcesModule['composeRuntimes'] = resourcesModule.composeRuntimes;
 export const createTemporaryDirectoryResource: ResourcesModule['createTemporaryDirectoryResource'] =
     resourcesModule.createTemporaryDirectoryResource;
 export const defineResource: ResourcesModule['defineResource'] = resourcesModule.defineResource;
@@ -24,7 +25,8 @@ export {
     isDefinedResource,
     isDefinedRuntime,
     isDefinedRuntimeGraph,
-    isDefinedRuntimeMatrix
+    isDefinedRuntimeMatrix,
+    runtimeGraphLeaves
 } from '../../resources/resources.ts';
 export {
     assertPerCaseResourceGraph,
@@ -41,6 +43,7 @@ export {
 } from '../../resources/runtime-lifecycle.ts';
 export type {
     AnyResourceDefinition,
+    ComposedRuntimeGraph,
     ExecutionRequirement,
     ResourceContext,
     ResourceCreationContext,
@@ -58,6 +61,7 @@ export type {
     RuntimeDefinitionInput,
     RuntimeDimensions,
     RuntimeGraph,
+    RuntimeGraphLeaf,
     RuntimeGraphContext,
     RuntimeId,
     RuntimeMatrixDefinition,

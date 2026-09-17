@@ -18,6 +18,7 @@ import type {
     ResourceContext,
     ResourceMap,
     RuntimeGraph,
+    RuntimeGraphLeaf,
     RuntimeGraphContext,
     RuntimeMatrixDefinition,
     RuntimeScopeContext
@@ -197,7 +198,7 @@ function resourceAttachmentSummary(entry: ResourceEntry): TestBodyDirectResource
 }
 
 function runtimeVariantEntries(
-    runtimeGraph: RuntimeGraph
+    runtimeGraph: RuntimeGraphLeaf
 ): readonly { readonly id: string; readonly runtime: RuntimeMatrixDefinition['variants'][string]['runtime']; }[] {
     return runtimeGraph.kind === 'runtime-matrix'
         ? Object.values(runtimeGraph.variants)
@@ -222,6 +223,10 @@ function leafRuntimeSummary(
 }
 
 function runtimeSummary(runtimeGraph: RuntimeGraph): TestBodyRuntimeSummary {
+    if (runtimeGraph.kind === 'composed-runtimes') {
+        throw new TypeError('Composed runtime graphs must be flattened before summary creation.');
+    }
+
     if (runtimeGraph.kind === 'runtime-matrix') {
         const [ firstVariant ] = Object.values(runtimeGraph.variants);
 
@@ -256,6 +261,10 @@ function buildAttachments(
     }
 
     for (const runtimeGraph of runtimeGraphEntries) {
+        if (runtimeGraph.kind === 'composed-runtimes') {
+            throw new TypeError('Composed runtime graphs must be flattened before resource graph collection.');
+        }
+
         for (const variant of runtimeVariantEntries(runtimeGraph)) {
             for (const [ , resource ] of entries(variant.runtime.resources)) {
                 graphCollector.visit(resource, [ resource.name ]);
@@ -332,8 +341,13 @@ function isRuntimeTestScope<
 
     const runtimes: unknown = Object.hasOwn(value, 'runtimes') ? Reflect.get(value, 'runtimes') : {};
 
-    return isResourceScopeInput(runtimes) &&
-        Reflect.get(runtimes, runtimeGraph.name) !== undefined;
+    return isResourceScopeInput(runtimes) && (
+        runtimeGraph.kind === 'composed-runtimes'
+            ? runtimeGraph.runtimes.every(function hasComposedRuntimeScope(runtime) {
+                return Reflect.get(runtimes, runtime.name) !== undefined;
+            })
+            : Reflect.get(runtimes, runtimeGraph.name) !== undefined
+    );
 }
 
 function isResourceTestScope<
@@ -400,15 +414,21 @@ function composeRuntimeScope<
         throw resourceWrapperLifecycleError('Runtime scope composition failed.', runtimes);
     }
 
-    if (Object.hasOwn(runtimes, runtimeGraph.name)) {
-        throw resourceWrapperLifecycleError(`Runtime scope "${runtimeGraph.name}" already exists.`, handles);
+    const newRuntimeScopes = runtimeGraph.kind === 'composed-runtimes'
+        ? handles
+        : { [runtimeGraph.name]: handles };
+
+    for (const runtimeName of Object.keys(newRuntimeScopes)) {
+        if (Object.hasOwn(runtimes, runtimeName)) {
+            throw resourceWrapperLifecycleError(`Runtime scope "${runtimeName}" already exists.`, handles);
+        }
     }
 
     const composed = Object.freeze({
         ...scope,
         runtimes: Object.freeze({
             ...runtimes,
-            [runtimeGraph.name]: handles
+            ...newRuntimeScopes
         })
     });
 
