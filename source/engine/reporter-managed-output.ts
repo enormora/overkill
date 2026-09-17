@@ -4,6 +4,10 @@ import type {
     OutputRenderer,
     ReporterOutput
 } from './reporter-output.ts';
+import {
+    runWithReporterOutputScopeNow,
+    type ReporterConsoleMethod
+} from './reporter-output-scope.ts';
 import type { Reporter } from './reporter.ts';
 import type { RunnerError } from './run-result.ts';
 
@@ -93,19 +97,48 @@ function outputWriterForIntent(
     return outputIntentStream(intent) === 'stdout' ? dependencies.stdout : dependencies.stderr;
 }
 
+function consoleMethodsForIntent(intent: OutputLineIntent): readonly ReporterConsoleMethod[] {
+    return outputIntentStream(intent) === 'stdout'
+        ? [ 'debug', 'info', 'log' ]
+        : [ 'error', 'warn' ];
+}
+
+function managedOutputConsoleViolationMessage(intent: OutputLineIntent, method: ReporterConsoleMethod): string {
+    return `Managed ${outputIntentStream(intent)} output used console.${method}.`;
+}
+
 function assertReporterDeclaresOutputIntent(reporter: Reporter, intent: OutputLineIntent): void {
     if (!reporterDeclaresOutputIntent(reporter, intent)) {
         throw new Error(`Reporter returned undeclared managed ${outputIntentStream(intent)} output.`);
     }
 }
 
+function writeScopedManagedOutput(input: WriteReporterOutputInput): void {
+    assertReporterDeclaresOutputIntent(input.reporter, input.intent);
+    const rendered = runWithReporterOutputScopeNow(
+        consoleMethodsForIntent(input.intent),
+        function formatManagedOutputConsoleViolation(method) {
+            return managedOutputConsoleViolationMessage(input.intent, method);
+        },
+        function writeManagedOutput() {
+            const line = input.outputRenderer.render(input.intent);
+
+            validateRenderedLine(line);
+            outputWriterForIntent(input.dependencies, input.intent).writeLine(line);
+
+            return line;
+        }
+    );
+    const violation = rendered.violations[0] ?? null;
+
+    if (violation !== null) {
+        throw new Error(violation);
+    }
+}
+
 function writeReporterOutput(input: WriteReporterOutputInput): ReporterCallbackFailure | null {
     try {
-        assertReporterDeclaresOutputIntent(input.reporter, input.intent);
-        const line = input.outputRenderer.render(input.intent);
-
-        validateRenderedLine(line);
-        outputWriterForIntent(input.dependencies, input.intent).writeLine(line);
+        writeScopedManagedOutput(input);
 
         return null;
     } catch (error: unknown) {

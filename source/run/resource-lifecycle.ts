@@ -72,6 +72,7 @@ type ManagedLifecycleStores = {
     readonly rememberAcquisition: (boundaryKey: string, acquisition: ManagedResourceAcquisition) => void;
     readonly rememberRecord: (boundaryKey: string, record: ManagedResourceRecord) => void;
     readonly takeCaseErrors: (testCase: TestPlanCase) => readonly ManagedRunnerError[];
+    readonly takePendingRunErrors: () => readonly ManagedRunnerError[];
     readonly takeRunErrors: () => readonly ManagedRunnerError[];
 };
 
@@ -267,6 +268,12 @@ function createManagedStores(testCases: readonly TestPlanCase[]): ManagedLifecyc
             const errors = errorsByCase.get(key) ?? [];
 
             errorsByCase.delete(key);
+
+            return errors;
+        },
+        takePendingRunErrors() {
+            const errors = Array.from(runErrors);
+            runErrors.length = 0;
 
             return errors;
         },
@@ -521,6 +528,9 @@ function createManagedLifecycle(testCases: readonly TestPlanCase[]): ManagedLife
         takeCaseErrors(testCase: TestPlanCase) {
             return stores.takeCaseErrors(testCase);
         },
+        takePendingRunErrors() {
+            return stores.takePendingRunErrors();
+        },
         takeRunErrors() {
             return stores.takeRunErrors();
         }
@@ -541,6 +551,9 @@ export function createResourceLifecycleRuntimePolicy(testCases: readonly TestPla
         },
         takeCaseErrors(testCase) {
             return lifecycle.takeCaseErrors(testCase);
+        },
+        takePendingRunErrors() {
+            return lifecycle.takePendingRunErrors();
         },
         takeRunErrors() {
             return lifecycle.takeRunErrors();

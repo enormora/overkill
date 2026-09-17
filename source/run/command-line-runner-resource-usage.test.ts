@@ -149,7 +149,8 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
                 result: runResultFactory.build({
                     perTest: [ { outcome: { kind: 'pass' } } ],
                     summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }
-                })
+                }),
+                undeliveredRunnerErrors: []
             };
         }
     };

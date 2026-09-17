@@ -1,4 +1,5 @@
 import { workIdentityKey } from '../engine/identity.ts';
+import { appendRunnerErrors } from '../engine/execution-result.ts';
 import type {
     PerTestResult,
     RunArtifact,
@@ -82,17 +83,11 @@ function finishPoolResourceUsage(runtime: WorkerPoolRunRuntime): RunResourceUsag
 
 async function reportFinalResult(result: RunResult, runtime: WorkerPoolRunRuntime): Promise<RunResult> {
     const runEndErrors = await runtime.reporterDelivery.reportEvent({ kind: 'run-end', result });
-    const resultForFinalReporting = {
-        ...result,
-        runnerErrors: [ ...result.runnerErrors, ...runEndErrors ]
-    };
+    const resultForFinalReporting = appendRunnerErrors(result, runEndErrors);
     const finalReporterErrors = await runtime.reporterDelivery.reportResult(resultForFinalReporting);
     const disposeErrors = await runtime.reporterDelivery.disposeReporters();
 
-    return {
-        ...resultForFinalReporting,
-        runnerErrors: [ ...resultForFinalReporting.runnerErrors, ...finalReporterErrors, ...disposeErrors ]
-    };
+    return appendRunnerErrors(resultForFinalReporting, [ ...finalReporterErrors, ...disposeErrors ]);
 }
 
 export async function finishWorkerPoolRun(
@@ -150,15 +145,9 @@ export async function createEmptyWorkerPoolResult(
         collectionRunState.artifacts()
     );
     const runEndErrors = await reporterDelivery.reportEvent({ kind: 'run-end', result });
-    const resultForFinalReporting = {
-        ...result,
-        runnerErrors: [ ...result.runnerErrors, ...runEndErrors ]
-    };
+    const resultForFinalReporting = appendRunnerErrors(result, runEndErrors);
     const finalReporterErrors = await reporterDelivery.reportResult(resultForFinalReporting);
     const disposeErrors = await reporterDelivery.disposeReporters();
 
-    return {
-        ...resultForFinalReporting,
-        runnerErrors: [ ...resultForFinalReporting.runnerErrors, ...finalReporterErrors, ...disposeErrors ]
-    };
+    return appendRunnerErrors(resultForFinalReporting, [ ...finalReporterErrors, ...disposeErrors ]);
 }

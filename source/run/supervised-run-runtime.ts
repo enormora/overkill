@@ -468,6 +468,18 @@ function resultWithSupervisedArtifacts(result: RunResult, runtime: SupervisedRun
     };
 }
 
+function appendRunnerErrors(result: RunResult, runnerErrors: readonly RunResult['runnerErrors'][number][]): RunResult {
+    if (runnerErrors.length === 0) {
+        return result;
+    }
+
+    return {
+        ...result,
+        runnerErrors: [ ...result.runnerErrors, ...runnerErrors ],
+        status: 'failed'
+    };
+}
+
 function selectRunResult(runtime: SupervisedRunRuntime, startedAtMs: number): RunResult {
     const completedResult = runtime.completedResult.read();
 
@@ -485,17 +497,11 @@ function selectRunResult(runtime: SupervisedRunRuntime, startedAtMs: number): Ru
 
 async function reportFinalResult(result: RunResult, runtime: SupervisedRunRuntime): Promise<RunResult> {
     const runEndErrors = await runtime.reporterDelivery.reportEvent({ kind: 'run-end', result });
-    const resultForFinalReporting = {
-        ...result,
-        runnerErrors: [ ...result.runnerErrors, ...runEndErrors ]
-    };
+    const resultForFinalReporting = appendRunnerErrors(result, runEndErrors);
     const finalReporterErrors = await runtime.reporterDelivery.reportResult(resultForFinalReporting);
     const disposeErrors = await runtime.reporterDelivery.disposeReporters();
 
-    return {
-        ...resultForFinalReporting,
-        runnerErrors: [ ...resultForFinalReporting.runnerErrors, ...finalReporterErrors, ...disposeErrors ]
-    };
+    return appendRunnerErrors(resultForFinalReporting, [ ...finalReporterErrors, ...disposeErrors ]);
 }
 
 export async function finishSupervisedRuntime(runtime: SupervisedRunRuntime, startedAtMs: number): Promise<RunResult> {

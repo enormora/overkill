@@ -311,10 +311,10 @@ export const testNode = createOverkillSuite({
                     terminal.text(),
                     [
                         colors.green(figures.tick),
-                        '3 discovered, 3 planned, 3 executed (1 pass, 1 fail, 0 skip, 1 inconclusive) in 12 ms',
+                        `${colors.red(figures.cross)} 3 discovered, 3 planned, 3 executed ` +
+                        '(1 pass, 1 fail, 0 skip, 1 inconclusive) in 12 ms',
                         'Failed: root > fails: numbers differ',
                         'Inconclusive: root > maybe: missing signal',
-                        'Runner error: loader failed',
                         ''
                     ]
                         .join('\n')
@@ -400,7 +400,8 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(
                     terminal.text(),
                     [
-                        '2 discovered, 2 planned, 2 executed (0 pass, 2 fail, 0 skip) in 7 ms',
+                        `${colors.red(figures.cross)} 2 discovered, 2 planned, 2 executed ` +
+                        '(0 pass, 2 fail, 0 skip) in 7 ms',
                         'Failed: source/users.test.ts:10:5 root > fails: numbers differ',
                         'Failed: source/profile.test.ts root > file only: missing field',
                         ''
@@ -435,10 +436,12 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(
                     terminal.text(),
                     [
-                        '2 discovered, 2 planned, 2 executed (0 pass, 2 fail, 0 skip), 1 orphaned in 0 ms',
+                        `${colors.red(figures.cross)} 2 discovered, 2 planned, 2 executed ` +
+                        '(0 pass, 2 fail, 0 skip), 1 orphaned in 0 ms',
                         'Failed: root > throws: boom',
                         'Failed: root > empty: Expected at least one assertion.',
-                        '2 discovered, 2 planned, 2 executed (0 pass, 2 fail, 0 skip), 1 orphaned in 0 ms',
+                        `${colors.red(figures.cross)} 2 discovered, 2 planned, 2 executed ` +
+                        '(0 pass, 2 fail, 0 skip), 1 orphaned in 0 ms',
                         'Failed: root > throws: boom',
                         'Failed: root > empty: Expected at least one assertion.',
                         ''
@@ -480,7 +483,8 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(
                     terminal.text(),
                     [
-                        '0 discovered, 0 planned, 0 executed (0 pass, 0 fail, 0 skip) in 0 ms',
+                        `${colors.red(figures.cross)} 0 discovered, 0 planned, 0 executed ` +
+                        '(0 pass, 0 fail, 0 skip) in 0 ms',
                         'Runner error: final reporter failed',
                         ''
                     ]

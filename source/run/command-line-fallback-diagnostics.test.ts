@@ -90,14 +90,10 @@ function defaultLoadedConfig(reporters: LoadedRunConfig['reporters']): LoadedRun
 }
 
 function createRunResult(runnerErrors: RunResult['runnerErrors']): RunResult {
-    const result = runResultFactory.build({
+    return runResultFactory.build({
+        runnerErrors,
         summary: { defined: 1, discovered: 1, planned: 1 }
     });
-
-    return {
-        ...result,
-        runnerErrors
-    };
 }
 
 function runnerError(
@@ -115,7 +111,7 @@ function runnerError(
 function createRunnerDependencies(
     reporter: DefinedReporter,
     run: RunOrchestrator['run'],
-    deliveredRunnerErrors: readonly RunResult['runnerErrors'][number][]
+    undeliveredRunnerErrors: readonly RunResult['runnerErrors'][number][]
 ): CommandLineRunnerDependencies {
     return {
         async createDefaultReporter() {
@@ -137,8 +133,9 @@ function createRunnerDependencies(
             run,
             async runWithReporterDelivery(command) {
                 return {
-                    deliveredRunnerErrors,
-                    result: await run(command)
+                    deliveredRunnerErrors: [],
+                    result: await run(command),
+                    undeliveredRunnerErrors
                 };
             }
         }
@@ -148,9 +145,9 @@ function createRunnerDependencies(
 async function runTests(
     reporter: DefinedReporter,
     run: RunOrchestrator['run'],
-    deliveredRunnerErrors: readonly RunResult['runnerErrors'][number][]
+    undeliveredRunnerErrors: readonly RunResult['runnerErrors'][number][]
 ): Promise<CommandLineRunnerResult> {
-    const runner = createCommandLineRunner(createRunnerDependencies(reporter, run, deliveredRunnerErrors));
+    const runner = createCommandLineRunner(createRunnerDependencies(reporter, run, undeliveredRunnerErrors));
 
     return await runner.runTests({
         configPath: null,
@@ -217,7 +214,7 @@ export const testNode = createOverkillSuite({
                     const runResult = createRunResult([ deliveredError ]);
 
                     return runResult;
-                }, [ deliveredError ]);
+                }, []);
 
                 scope.assert.equal(result.exitCode, 2);
                 scope.assert.deepEqual(result.fallbackDiagnostics, []);
@@ -227,7 +224,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.runTests() omits terminal-finished runner error fallback diagnostics',
+            title: 'commandLineRunner.runTests() falls back for finish-only runner errors',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -241,14 +238,16 @@ export const testNode = createOverkillSuite({
                 );
 
                 scope.assert.equal(result.exitCode, 2);
-                scope.assert.deepEqual(result.fallbackDiagnostics, []);
+                scope.assert.deepEqual(result.fallbackDiagnostics, [
+                    'Overkill runner error: Loader failed.'
+                ]);
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.runTests() omits terminal final-result runner error fallback diagnostics',
+            title: 'commandLineRunner.runTests() falls back for final-result-only runner errors',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -262,7 +261,9 @@ export const testNode = createOverkillSuite({
                 );
 
                 scope.assert.equal(result.exitCode, 2);
-                scope.assert.deepEqual(result.fallbackDiagnostics, []);
+                scope.assert.deepEqual(result.fallbackDiagnostics, [
+                    'Overkill runner error: Loader failed.'
+                ]);
 
                 return scope.assert.collect();
             }
@@ -273,12 +274,11 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
+                const loaderError = runnerError('Loader failed.', 'loader');
+                const disposeError = runnerError('Dispose failed.', 'reporter');
                 const result = await runTests(terminalEventReporter, async function runCommand() {
-                    return createRunResult([
-                        runnerError('Loader failed.', 'loader'),
-                        runnerError('Dispose failed.', 'reporter')
-                    ]);
-                }, []);
+                    return createRunResult([ loaderError, disposeError ]);
+                }, [ loaderError, disposeError ]);
 
                 scope.assert.equal(result.exitCode, 2);
                 scope.assert.deepEqual(result.fallbackDiagnostics, [

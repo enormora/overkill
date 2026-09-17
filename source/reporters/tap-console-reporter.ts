@@ -1,5 +1,5 @@
 import { formatCaseId } from '../engine/identity.ts';
-import type { PerTestResult, RunResult } from '../engine/run-result.ts';
+import type { PerTestResult, RunResult, RunnerError } from '../engine/run-result.ts';
 import {
     defineReporter,
     type DefinedReporter,
@@ -74,6 +74,10 @@ function formatTapPoint(tapPoint: TapPoint, index: number): string {
         .join('');
 }
 
+function formatRunnerErrorAsBailOut(error: RunnerError): string {
+    return `Bail out! ${error.message}`;
+}
+
 function formatResultAsTap(testRunResult: RunResult): string {
     const version = 'TAP version 14';
     const plan = `1..${testRunResult.summary.planned}`;
@@ -84,8 +88,9 @@ function formatResultAsTap(testRunResult: RunResult): string {
             verdict: testResult.verdict
         }, index);
     });
+    const bailOut = testRunResult.runnerErrors.map(formatRunnerErrorAsBailOut);
 
-    return `${version}\n${plan}\n${testPoints.join('\n')}\n`;
+    return `${version}\n${plan}\n${[ ...testPoints, ...bailOut ].join('\n')}\n`;
 }
 
 function formatEventAsTapPoint(
@@ -139,7 +144,7 @@ export function createTapConsoleRealTimeReporter(
                     stdoutConsole.log(formatEventAsTapPoint(event, nextTestPointIndex));
                     nextTestPointIndex += 1;
                 } else if (event.kind === 'runner-error') {
-                    stdoutConsole.log(`# runner error: ${event.error.message}`);
+                    stdoutConsole.log(formatRunnerErrorAsBailOut(event.error));
                 } else if (event.kind === 'run-end') {
                     stdoutConsole.log(`1..${event.result.summary.planned}`);
                 }

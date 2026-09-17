@@ -49,7 +49,9 @@ function formatSummary(result: RunResult): string {
     ]
         .join(', ');
 
-    return `${countSummary} (${outcomes})${orphanSummary} in ${formatDuration(result.wallTimeMs)}`;
+    const statusMark = result.status === 'failed' ? failMark : passMark;
+
+    return `${statusMark} ${countSummary} (${outcomes})${orphanSummary} in ${formatDuration(result.wallTimeMs)}`;
 }
 
 type FailOutcome = Extract<TestOutcome, { readonly kind: 'fail'; }>;
@@ -116,26 +118,23 @@ function failedTestDetailLine(
 }
 
 function detailLines(result: RunResult, context: ReportingContext): readonly string[] {
-    return [
-        ...result.perTest.flatMap(function testDetail(testResult) {
-            if (testResult.outcome === null) {
-                return [ interruptedTestDetailLine(testResult) ];
-            }
+    return result.perTest.flatMap(function testDetail(testResult) {
+        if (testResult.outcome === null) {
+            return [ interruptedTestDetailLine(testResult) ];
+        }
 
-            if (testResult.outcome.kind === 'fail') {
-                return [ failedTestDetailLine(testResult.id, testResult.outcome, context) ];
-            }
+        if (testResult.outcome.kind === 'fail') {
+            return [ failedTestDetailLine(testResult.id, testResult.outcome, context) ];
+        }
 
-            const detail = outcomeDetail(testResult.outcome);
+        const detail = outcomeDetail(testResult.outcome);
 
-            if (detail === null || testResult.outcome.kind === 'skip') {
-                return [];
-            }
+        if (detail === null || testResult.outcome.kind === 'skip') {
+            return [];
+        }
 
-            return [ `Inconclusive: ${formatCaseId(testResult.id)}: ${detail}` ];
-        }),
-        ...result.runnerErrors.map(formatRunnerError)
-    ];
+        return [ `Inconclusive: ${formatCaseId(testResult.id)}: ${detail}` ];
+    });
 }
 
 export function createDotReporter(dependencies: DotReporterDependencies): DefinedReporter<RealTimeReporter> {

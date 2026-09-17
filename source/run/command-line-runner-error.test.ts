@@ -136,7 +136,8 @@ function createRunOnlyOrchestrator(run: RunOrchestrator['run']): RunOrchestrator
         async runWithReporterDelivery(command) {
             return {
                 deliveredRunnerErrors: [],
-                result: await run(command)
+                result: await run(command),
+                undeliveredRunnerErrors: []
             };
         }
     };

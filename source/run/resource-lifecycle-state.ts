@@ -17,6 +17,7 @@ export type ManagedLifecycleState = {
     ) => Promise<ComposedResourceSession>;
     readonly runCase: <Value>(testCase: TestPlanCase, run: () => Promise<Value>) => Promise<Value>;
     readonly takeCaseErrors: (testCase: TestPlanCase) => readonly ManagedRunnerError[];
+    readonly takePendingRunErrors: () => readonly ManagedRunnerError[];
     readonly takeRunErrors: () => readonly ManagedRunnerError[];
 };
 

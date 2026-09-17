@@ -4,14 +4,19 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { createInMemoryFinalResultReporter } from '../reporters/in-memory-reporter.ts';
+import {
+    createInMemoryFinalResultReporter,
+    createInMemoryRealTimeReporter,
+    type InMemoryRealTimeReporter
+} from '../reporters/in-memory-reporter.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import { executeResourceTrackedCases } from './execution-resource-tracked-cases.ts';
 import {
     createExecutionSupervision,
     recordResourceUsageSample
 } from './execution-supervision.ts';
-import type { ResourceUsageSnapshot, RunResourceUsageTracker } from './run-result.ts';
+import type { ReporterDelivery } from './reporter-dispatcher.ts';
+import type { ResourceUsageSnapshot, RunResourceUsageTracker, RunResult } from './run-result.ts';
 
 const sample = {
     activeResourceCount: 1,
@@ -34,11 +39,38 @@ type BreachingResourceUsageTracker = {
     readonly tracker: RunResourceUsageTracker;
 };
 
+type SampledResourceExhaustionFixture = {
+    readonly reporter: InMemoryRealTimeReporter;
+    readonly result: RunResult;
+};
+
 function plainDataShape(value: unknown): unknown {
     const { stringify } = JSON;
     const { parse } = JSON;
 
     return parse(stringify(value));
+}
+
+function recordedRunnerErrorMessages(reporter: InMemoryRealTimeReporter): readonly string[] {
+    return reporter.getRecordedEntries().flatMap(function toMessage(entry) {
+        return entry.event?.kind === 'runner-error'
+            ? [ entry.event.error.message ]
+            : [];
+    });
+}
+
+function createSilentReporterDelivery(): ReporterDelivery {
+    return {
+        async disposeReporters() {
+            return [];
+        },
+        async reportEvent() {
+            return [];
+        },
+        async reportResult() {
+            return [];
+        }
+    };
 }
 
 function createFinishedResourceUsageTracker(): RunResourceUsageTracker {
@@ -111,6 +143,47 @@ function createBreachingResourceUsageTracker(): BreachingResourceUsageTracker {
             }
         }
     };
+}
+
+async function executeSampledResourceExhaustion(): Promise<SampledResourceExhaustionFixture> {
+    const engine = createEngine();
+    const reporter = createInMemoryRealTimeReporter();
+    const resourceUsageTracker = createBreachingResourceUsageTracker();
+    const testPlan = engine.createTestPlan(
+        engine.createRoot({
+            children: [
+                engine.createTestCase({
+                    definitionLocations: [ { kind: 'unknown' as const } ],
+                    body(testScope) {
+                        resourceUsageTracker.emitSamples();
+                        testScope.assert.true(true);
+                        return testScope.assert.collect();
+                    },
+                    annotations: {},
+                    controls: {},
+                    title: 'waits'
+                })
+            ],
+            annotations: {},
+            controls: {},
+            title: 'root'
+        })
+    );
+    const result = await engine.execute(testPlan, {
+        execution: { mode: 'concurrent-in-process' },
+        reporters: [ reporter ],
+        resourceBudgets: {
+            activeResourceCount: null,
+            javaScriptEngineHeapBytes: null,
+            residentSetBytes: 1,
+            residentSetGrowthBytesPerSecond: null
+        },
+        resourceUsageTracker: resourceUsageTracker.tracker,
+        runFacts: {},
+        startedAt: '2026-07-15T00:00:00.000Z'
+    });
+
+    return { reporter, result };
 }
 
 export const testNode = createOverkillSuite({
@@ -191,43 +264,12 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const engine = createEngine();
-                const resourceUsageTracker = createBreachingResourceUsageTracker();
-                const testPlan = engine.createTestPlan(
-                    engine.createRoot({
-                        children: [
-                            engine.createTestCase({
-                                definitionLocations: [ { kind: 'unknown' as const } ],
-                                body(testScope) {
-                                    resourceUsageTracker.emitSamples();
-                                    testScope.assert.true(true);
-                                    return testScope.assert.collect();
-                                },
-                                annotations: {},
-                                controls: {},
-                                title: 'waits'
-                            })
-                        ],
-                        annotations: {},
-                        controls: {},
-                        title: 'root'
-                    })
-                );
-                const result = await engine.execute(testPlan, {
-                    execution: { mode: 'concurrent-in-process' },
-                    reporters: [],
-                    resourceBudgets: {
-                        activeResourceCount: null,
-                        javaScriptEngineHeapBytes: null,
-                        residentSetBytes: 1,
-                        residentSetGrowthBytesPerSecond: null
-                    },
-                    resourceUsageTracker: resourceUsageTracker.tracker,
-                    runFacts: {},
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                });
+                const { reporter, result } = await executeSampledResourceExhaustion();
 
                 scope.assert.equal(result.runnerErrors[0]?.subtype, 'resource-exhaustion');
+                scope.assert.deepEqual(recordedRunnerErrorMessages(reporter), [
+                    result.runnerErrors[0]?.message
+                ]);
                 scope.assert.deepEqual(plainDataShape(result.runnerErrors[0]?.attributedTo ?? null), {
                     file: null,
                     title: 'waits',
@@ -419,7 +461,10 @@ export const testNode = createOverkillSuite({
 
                 await scope.assert.rejects(async function executeThrowingCases() {
                     await executeResourceTrackedCases({
-                        context: { dependencies: { wallClock: createDeterministicWallClock() } },
+                        context: {
+                            dependencies: { wallClock: createDeterministicWallClock() },
+                            reporterDelivery: createSilentReporterDelivery()
+                        },
                         options: {
                             resourceBudgets: null,
                             resourceUsageTracker: {

@@ -122,9 +122,10 @@ function logSummary(terminal: TerminalLineLogger, result: RunResult): void {
         .join(', ');
     const orphanSummary = result.orphans.length === 0 ? '' : `, ${result.orphans.length} orphaned`;
     const countSummary = `${summary.discovered} discovered, ${summary.planned} planned, ${executed} executed`;
+    const symbol = result.status === 'failed' ? errorSymbol : successSymbol;
 
     terminal.line(
-        infoSymbol,
+        symbol,
         `${countSummary} (${outcomes})${orphanSummary} in ${formatDuration(result.wallTimeMs)}`
     );
 }

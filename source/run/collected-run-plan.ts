@@ -1,11 +1,12 @@
 import type { WallClock } from '@enormora/wall-clock';
 import { serializeValue } from '../compare/serialized-value.ts';
 import { createCaseId, createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
-import type {
-    PerTestResult,
-    RunResourceUsage,
-    RunResult,
-    RunnerError
+import {
+    runStatusFromSummary,
+    type PerTestResult,
+    type RunResourceUsage,
+    type RunResult,
+    type RunnerError
 } from '../engine/run-result.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import type {
@@ -227,6 +228,8 @@ export function createRunResultFromCollectedPlan(
     runnerErrors: readonly RunnerError[],
     timing: RunResultTiming
 ): RunResult {
+    const summary = countOutcomes(plan, perTest);
+
     return {
         artifacts: [],
         bySuite: countSuites(plan, perTest),
@@ -234,7 +237,8 @@ export function createRunResultFromCollectedPlan(
         perTest,
         resourceUsage: timing.resourceUsage,
         runnerErrors,
-        summary: countOutcomes(plan, perTest),
+        status: runStatusFromSummary(summary, runnerErrors),
+        summary,
         wallTimeMs: timing.wallClock.currentTimestampInMilliseconds - timing.startedAtMs
     };
 }

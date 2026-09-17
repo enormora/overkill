@@ -3,7 +3,11 @@ import {
     createReporterDisposal as createReporterDisposalFromCallback,
     type ReporterDisposal as CoreReporterDisposal
 } from './reporter-disposal.ts';
-import { recordRunnerErrorDelivery, trackRunnerErrorDelivery } from './reporter-error-delivery-tracking.ts';
+import {
+    recordRunnerErrorDelivery,
+    recordUndeliveredRunnerError,
+    trackRunnerErrorDelivery
+} from './reporter-error-delivery-tracking.ts';
 import {
     normalizeReporterOutput,
     type ReporterCallbackFailure,
@@ -15,6 +19,10 @@ import type {
     OutputLineWriter,
     OutputRenderer
 } from './reporter-output.ts';
+import {
+    runWithReporterOutputScope,
+    type ReporterConsoleMethod
+} from './reporter-output-scope.ts';
 import { validateReporterSinks, type DefinedReporter, type Reporter, type ReporterEvent } from './reporter.ts';
 import { createReportingContext, type ReportingContext } from './reporting-context.ts';
 import type { RunResult, RunnerError } from './run-result.ts';
@@ -31,6 +39,7 @@ export type ReporterDispatcher = {
     ) => Promise<{
         readonly deliveredRunnerErrors: readonly RunnerError[];
         readonly result: Result;
+        readonly undeliveredRunnerErrors: readonly RunnerError[];
     }>;
 };
 
@@ -100,32 +109,30 @@ function projectRootFromRunFacts(facts: unknown): string | null {
 
 function recordDeliveredRunnerErrorEvent(
     event: ReporterEvent,
-    successes: readonly ReporterCallbackSuccess[]
+    successes: readonly ReporterCallbackSuccess[],
+    outputFailures: readonly ReporterCallbackFailure[]
 ): void {
     if (event.kind !== 'runner-error') {
         return;
     }
 
-    for (const success of successes) {
-        if (hasTerminalReporter(success.reporter)) {
-            recordRunnerErrorDelivery(event.error);
-        }
-    }
-}
+    const failedOutputReporters = new Set(
+        outputFailures.map(function toReporter(failure) {
+            return failure.reporter;
+        })
+    );
+    const delivered = successes.some(function deliveredToTerminalReporter(success) {
+        return hasTerminalReporter(success.reporter) && !failedOutputReporters.has(success.reporter);
+    });
 
-function recordDeliveredRunnerErrorResult(
-    result: RunResult,
-    successes: readonly ReporterCallbackSuccess[]
-): void {
-    if (result.runnerErrors.length === 0) {
+    if (!delivered) {
+        recordUndeliveredRunnerError(event.error);
         return;
     }
 
     for (const success of successes) {
-        if (hasTerminalReporter(success.reporter)) {
-            for (const error of result.runnerErrors) {
-                recordRunnerErrorDelivery(error);
-            }
+        if (hasTerminalReporter(success.reporter) && !failedOutputReporters.has(success.reporter)) {
+            recordRunnerErrorDelivery(event.error);
         }
     }
 }
@@ -140,6 +147,67 @@ function formatReporterError(reporter: Reporter, cause: unknown): RunnerError {
         message: `${reporter.name}: ${reason}`,
         subtype: 'reporter'
     };
+}
+
+function rawConsoleMethods(reporter: Reporter): readonly ReporterConsoleMethod[] {
+    return reporter.sinks.flatMap(function toConsoleMethods(sink): readonly ReporterConsoleMethod[] {
+        if (sink.kind === 'stdout-raw') {
+            return [ 'debug', 'info', 'log' ];
+        }
+        if (sink.kind === 'stderr-raw') {
+            return [ 'error', 'warn' ];
+        }
+
+        return [];
+    });
+}
+
+function reporterConsoleViolationMessage(method: ReporterConsoleMethod): string {
+    return `Reporter used undeclared console.${method} output.`;
+}
+
+function firstScopeViolation(violations: readonly string[]): string | null {
+    return violations[0] ?? null;
+}
+
+async function scopedReporterCallbackOutput(
+    reporter: Reporter,
+    reporterTimeout: ReporterTimeout,
+    callback: ReporterCallback
+): Promise<unknown> {
+    const scoped = await runWithReporterOutputScope(
+        rawConsoleMethods(reporter),
+        reporterConsoleViolationMessage,
+        async function runReporterCallback() {
+            return await Promise.race([ callback(), reporterTimeout.promise ]);
+        }
+    );
+    const violation = firstScopeViolation(scoped.violations);
+
+    if (violation !== null) {
+        throw new Error(violation);
+    }
+
+    return scoped.result;
+}
+
+async function scopedReporterDisposal(
+    reporter: Reporter,
+    reporterTimeout: ReporterTimeout,
+    dispose: () => Promise<void> | void
+): Promise<void> {
+    const scoped = await runWithReporterOutputScope(
+        rawConsoleMethods(reporter),
+        reporterConsoleViolationMessage,
+        async function disposeReporter() {
+            await Promise.race([ dispose(), reporterTimeout.promise ]);
+        }
+    );
+    const violation = firstScopeViolation(scoped.violations);
+
+    if (violation !== null) {
+        throw new Error(violation);
+    }
 }
 
 function timeoutError(reporter: Reporter): Error {
@@ -170,7 +238,7 @@ async function awaitReporterCallback(
 ): Promise<ReporterCallbackResult> {
     const reporterTimeout = createReporterTimeout(dependencies, reporter);
     try {
-        const output = await Promise.race([ callback(), reporterTimeout.promise ]);
+        const output = await scopedReporterCallbackOutput(reporter, reporterTimeout, callback);
 
         return { kind: 'success', output: normalizeReporterOutput(output), reporter };
     } catch (error: unknown) {
@@ -187,7 +255,7 @@ async function awaitReporterDispose(
 ): Promise<ReporterCallbackFailure | null> {
     const reporterTimeout = createReporterTimeout(dependencies, reporter);
     try {
-        await Promise.race([ dispose(), reporterTimeout.promise ]);
+        await scopedReporterDisposal(reporter, reporterTimeout, dispose);
 
         return null;
     } catch (error: unknown) {
@@ -243,13 +311,13 @@ async function reportRunnerErrorToOtherReporters(
         return result === null ? [] : [ result ];
     });
     const successes = reporterSuccesses(results);
-    recordDeliveredRunnerErrorEvent(event, successes);
     const outputFailures = writeReporterOutputs(
         context.dependencies,
         successes,
         context.outputRenderer,
         formatReporterError
     );
+    recordDeliveredRunnerErrorEvent(event, successes, outputFailures);
 
     return [
         ...reporterFailures(results).map(function toError(failure) {
@@ -297,13 +365,13 @@ async function reportEvent(
         return result === null ? [] : [ result ];
     });
     const successes = reporterSuccesses(callbackResults);
-    recordDeliveredRunnerErrorEvent(event, successes);
     const outputErrors = writeReporterOutputs(
         context.dependencies,
         successes,
         context.outputRenderer,
         formatReporterError
     );
+    recordDeliveredRunnerErrorEvent(event, successes, outputErrors);
     const reporterErrors = [ ...reporterFailures(callbackResults), ...outputErrors ];
 
     if (event.kind === 'runner-error') {
@@ -350,7 +418,6 @@ async function reportResult(
         return callbackResult === null ? [] : [ callbackResult ];
     });
     const successes = reporterSuccesses(callbackResults);
-    recordDeliveredRunnerErrorResult(result, successes);
     const outputErrors = writeReporterOutputs(
         context.dependencies,
         successes,

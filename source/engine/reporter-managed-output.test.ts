@@ -13,6 +13,10 @@ import {
 } from './reporter-output.ts';
 import { defineReporter, type DefinedReporter, type RealTimeReporter, type ReporterEvent } from './reporter.ts';
 import { createReporterDispatcher, type ReporterDispatcher } from './reporter-dispatcher.ts';
+import {
+    recordReporterConsoleDiagnostic,
+    runWithReporterOutputScopeNow
+} from './reporter-output-scope.ts';
 import type { RunnerError } from './run-result.ts';
 
 const definitionLocation = { kind: 'unknown' as const };
@@ -144,6 +148,28 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(errors, []);
                 scope.assert.deepEqual(stdoutLines, [ 'primary line', 'supplemental line' ]);
                 scope.assert.deepEqual(stderrLines, []);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'reporter output scope records undeclared console diagnostics',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const result = runWithReporterOutputScopeNow(
+                    [],
+                    function violationMessage(method) {
+                        return `blocked ${method}`;
+                    },
+                    function recordConsoleDiagnostic() {
+                        return recordReporterConsoleDiagnostic('console.log');
+                    }
+                );
+
+                scope.assert.equal(result.result, true);
+                scope.assert.deepEqual(result.violations, [ 'blocked log' ]);
 
                 return scope.assert.collect();
             }

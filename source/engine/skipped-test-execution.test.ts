@@ -72,6 +72,9 @@ function createRuntimePolicyProbe(): RuntimePolicyProbe {
 
                 return [];
             },
+            takePendingRunErrors() {
+                return [];
+            },
             takeRunErrors() {
                 return [];
             }

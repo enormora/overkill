@@ -85,7 +85,7 @@ function executedCount(result: RunResult): number {
 
 function finishIntent(result: RunResult): OutputLineIntent {
     const { summary } = result;
-    const discoveryCounts = `done discovered=${summary.discovered} planned=${summary.planned}`;
+    const discoveryCounts = `done status=${result.status} discovered=${summary.discovered} planned=${summary.planned}`;
     const executionCounts = `executed=${executedCount(result)} passed=${summary.passed} failed=${summary.failed}`;
     const remainingCounts = `skipped=${summary.skipped} inconclusive=${summary.inconclusive} ` +
         `resourceExhausted=${summary.resourceExhausted} crashed=${summary.crashed} ms=${result.wallTimeMs}`;

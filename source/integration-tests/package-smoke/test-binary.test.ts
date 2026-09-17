@@ -16,14 +16,20 @@ import {
     authoringSmokeScript,
     customAuthoringFacadeScript,
     customAuthoringSmokeScript,
+    consolePolicySmokeScript,
     expectedRootImportOutput,
     expectedRunSubpathImportOutput,
     expectedStandardSubpathImportOutput,
+    finalOnlyReporterConfigScript,
+    lineReporterConfigScript,
     packageSmokePackageJsonScript,
     packageSmokeConfigScript,
+    reporterConsoleConfigScript,
+    reporterConsoleSmokeScript,
     rootImportScript,
     runSubpathImportScript,
-    standardSubpathImportScript
+    standardSubpathImportScript,
+    throwsOnImportSmokeScript
 } from './test-binary-scripts.test.ts';
 
 type PackageJson = {
@@ -52,10 +58,16 @@ const packageSmokeNodeModules = path.join(packageSmokeFolder, 'node_modules');
 const testPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/test');
 const runPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/run');
 const resourcesPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/resources');
-const overkillBinPath = path.join(packageSmokeNodeModules, '.bin', 'overkill');
+const overkillBinEntryPointPath = path.join(testPackageFolder, 'packages/test/overkill.entry-point.js');
 const packageSmokePackageJsonFile = 'package.json';
 const packageSmokeConfigFile = 'overkill.config.js';
+const lineReporterConfigFile = 'line-reporter-overkill.config.js';
+const finalOnlyReporterConfigFile = 'final-only-reporter-overkill.config.js';
+const reporterConsoleConfigFile = 'reporter-console-overkill.config.js';
 const authoringSmokeFile = 'authoring-smoke.test.mjs';
+const consolePolicySmokeFile = 'console-policy-smoke.test.mjs';
+const reporterConsoleSmokeFile = 'reporter-console-smoke.test.mjs';
+const throwsOnImportSmokeFile = 'throws-on-import-smoke.test.mjs';
 const customAuthoringFolder = 'testing';
 const customAuthoringFacadeFile = path.join(customAuthoringFolder, 'custom-authoring.mjs');
 const customAuthoringSmokeFile = 'custom-authoring-smoke.test.mjs';
@@ -193,6 +205,17 @@ async function writePackageSmokeProject(): Promise<void> {
     ]);
 }
 
+async function writeReporterPolicySmokeProject(): Promise<void> {
+    await Promise.all([
+        fs.writeFile(path.join(packageSmokeFolder, lineReporterConfigFile), lineReporterConfigScript),
+        fs.writeFile(path.join(packageSmokeFolder, finalOnlyReporterConfigFile), finalOnlyReporterConfigScript),
+        fs.writeFile(path.join(packageSmokeFolder, reporterConsoleConfigFile), reporterConsoleConfigScript),
+        fs.writeFile(path.join(packageSmokeFolder, consolePolicySmokeFile), consolePolicySmokeScript),
+        fs.writeFile(path.join(packageSmokeFolder, reporterConsoleSmokeFile), reporterConsoleSmokeScript),
+        fs.writeFile(path.join(packageSmokeFolder, throwsOnImportSmokeFile), throwsOnImportSmokeScript)
+    ]);
+}
+
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/integration-tests/package-smoke/test-binary.test.ts',
@@ -277,7 +300,7 @@ export const testNode = createSuite({
             controls: {},
             async body(scope: TestScope) {
                 const result = await spawnNode([
-                    path.join(testPackageFolder, 'packages/test/overkill.entry-point.js'),
+                    overkillBinEntryPointPath,
                     '--help'
                 ]);
 
@@ -290,15 +313,114 @@ export const testNode = createSuite({
         }),
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
-            title: 'packaged overkill bin path prints command help',
+            title: 'packaged overkill bin entry point prints command help',
             annotations: {},
             controls: {},
             async body(scope: TestScope) {
-                const result = await spawnCommand(overkillBinPath, [ '--help' ]);
+                const result = await spawnNode([ overkillBinEntryPointPath, '--help' ]);
 
                 scope.assert.equal(result.code, 0);
                 scope.assert.includes(result.stdout, 'overkill <subcommand>');
                 scope.assert.equal(result.stderr, '');
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'packaged overkill bin entry point default line reporter passes with capability restrictions',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                await writeReporterPolicySmokeProject();
+
+                const result = await spawnNode([
+                    overkillBinEntryPointPath,
+                    'run',
+                    '--config',
+                    lineReporterConfigFile,
+                    reporterConsoleSmokeFile
+                ]);
+
+                scope.assert.equal(result.code, 0);
+                scope.assert.includes(result.stdout, '1 discovered, 1 planned, 1 executed');
+                scope.assert.equal(result.stderr, '');
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'packaged overkill bin entry point line reporter shows test console policy violations',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                await writeReporterPolicySmokeProject();
+
+                const result = await spawnNode([
+                    overkillBinEntryPointPath,
+                    'run',
+                    '--config',
+                    lineReporterConfigFile,
+                    consolePolicySmokeFile
+                ]);
+
+                scope.assert.equal(result.code, 2);
+                scope.assert.includes(result.stdout, 'Runner error: Runtime policy violation: console.');
+                scope.assert.includes(result.stdout, '1 discovered, 1 planned, 0 executed');
+                scope.assert.equal(result.stderr, '');
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'packaged overkill bin entry point falls back for final-only runner errors',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                await writeReporterPolicySmokeProject();
+
+                const result = await spawnNode([
+                    overkillBinEntryPointPath,
+                    'run',
+                    '--config',
+                    finalOnlyReporterConfigFile,
+                    throwsOnImportSmokeFile
+                ]);
+
+                scope.assert.equal(result.code, 2);
+                scope.assert.includes(result.stdout, 'final-result-reporter');
+                scope.assert.includes(
+                    result.stderr,
+                    `Overkill runner error: Failed to load test module: ${throwsOnImportSmokeFile}`
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'packaged overkill bin entry point reports undeclared reporter console usage',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                await writeReporterPolicySmokeProject();
+
+                const result = await spawnNode([
+                    overkillBinEntryPointPath,
+                    'run',
+                    '--config',
+                    reporterConsoleConfigFile,
+                    reporterConsoleSmokeFile
+                ]);
+
+                scope.assert.equal(result.code, 2);
+                scope.assert.includes(result.stdout, 'undeclared reporter console');
+                scope.assert.includes(
+                    result.stderr,
+                    'Overkill runner error: reporter-console-violation: Reporter used undeclared console.log output.'
+                );
 
                 return scope.assert.collect();
             }
@@ -312,7 +434,7 @@ export const testNode = createSuite({
                 await writePackageSmokeProject();
 
                 const result = await spawnNode([
-                    path.join(testPackageFolder, 'packages/test/overkill.entry-point.js'),
+                    overkillBinEntryPointPath,
                     'run',
                     authoringSmokeFile
                 ]);
@@ -333,7 +455,7 @@ export const testNode = createSuite({
                 await writePackageSmokeProject();
 
                 const result = await spawnNode([
-                    path.join(testPackageFolder, 'packages/test/overkill.entry-point.js'),
+                    overkillBinEntryPointPath,
                     'list',
                     '--with-locations',
                     authoringSmokeFile
@@ -356,7 +478,7 @@ export const testNode = createSuite({
                 await writePackageSmokeProject();
 
                 const result = await spawnNode([
-                    path.join(testPackageFolder, 'packages/test/overkill.entry-point.js'),
+                    overkillBinEntryPointPath,
                     'run',
                     '--filter',
                     'tag=custom-authoring',

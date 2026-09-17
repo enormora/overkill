@@ -1,7 +1,5 @@
 import type { WallClock } from '@enormora/wall-clock';
 import {
-    caseWithAsyncLeakPolicy,
-    concurrentRunActiveResourceLeak,
     createExecutionAsyncLeakMonitor,
     type AsyncLeakDependencies,
     type AsyncLeakDiagnostics
@@ -13,30 +11,17 @@ import {
     type NormalizedExecuteOptions
 } from './execution-options.ts';
 import { appendRunnerErrors, createRunResult, throwWithCleanupErrors } from './execution-result.ts';
-import {
-    executeResourceTrackedCases,
-    type ResourceTrackedCaseResult
-} from './execution-resource-tracked-cases.ts';
-import {
-    createExecutionSupervision,
-    executeCaseBody,
-    type ConcurrentCase,
-    type ExecutionSupervision,
-    type ExecutionSupervisionDependencies
-} from './execution-supervision.ts';
+import type { ExecutionSupervisionDependencies } from './execution-supervision.ts';
+import { executeTestPlanCasesAndMeasureResourceUsage } from './execution-test-plan-resource-usage.ts';
 import {
     createReporterDisposal,
     type ReporterDelivery,
     type ReporterDispatcher,
     type ReporterDisposal
 } from './reporter-dispatcher.ts';
-import {
-    createReporterEventQueue,
-    reportSuiteTransition,
-    type ReporterEventQueue
-} from './reporter-event-queue.ts';
-import type { PerTestResult, RunResult, RunnerError } from './run-result.ts';
-import type { TestPlan, TestPlanCase } from './test-plan.ts';
+import { reportRunnerErrors } from './runner-error-reporting.ts';
+import type { RunResult } from './run-result.ts';
+import type { TestPlan } from './test-plan.ts';
 
 export type ExecuteExecution = ExecuteExecutionDefinition;
 export type ExecuteOptions = ExecuteOptionsDefinition;
@@ -46,52 +31,6 @@ export type ExecuteDependencies = {
     readonly readActiveResourceTypes: () => readonly string[];
     readonly reporterDispatcher: ReporterDispatcher;
     readonly wallClock: WallClock;
-};
-
-type ExecutedTestPlan = {
-    readonly perTest: readonly PerTestResult[];
-    readonly reporterErrors: readonly RunnerError[];
-};
-
-type ReportedCase = {
-    readonly reporterErrors: readonly RunnerError[];
-    readonly result: PerTestResult;
-};
-
-type ConcurrentCaseExecution = {
-    readonly endReporterErrors: readonly RunnerError[];
-    readonly perTest: readonly PerTestResult[];
-    readonly runnerErrors: readonly RunnerError[];
-};
-
-type ReportTestEndInput = {
-    readonly attempt: number;
-    readonly result: PerTestResult;
-    readonly testCase: TestPlanCase;
-    readonly wallTimeMs: number;
-};
-
-type ExecuteCaseInput = {
-    readonly attempt: number;
-    readonly context: ExecutionReportingContext;
-    readonly options: NormalizedExecuteOptions;
-    readonly supervision: ExecutionSupervision;
-    readonly testCase: TestPlanCase;
-};
-
-type ExecuteTestPlanCasesInput = {
-    readonly context: ExecutionReportingContext;
-    readonly options: NormalizedExecuteOptions;
-    readonly supervision: ExecutionSupervision;
-    readonly testPlan: TestPlan;
-};
-
-type ExecuteConcurrentCasesInput = {
-    readonly context: ExecutionReportingContext;
-    readonly options: NormalizedExecuteOptions;
-    readonly reportQueue: ReporterEventQueue;
-    readonly supervision: ExecutionSupervision;
-    readonly testPlan: TestPlan;
 };
 
 type ExecuteRunInput = {
@@ -114,325 +53,6 @@ type ExecutionReportingContext = {
     readonly reporterDelivery: ReporterDelivery;
 };
 
-async function reportTestStart(
-    testCase: TestPlanCase,
-    attempt: number,
-    context: ExecutionReportingContext
-): Promise<readonly RunnerError[]> {
-    return await context.reporterDelivery.reportEvent({
-        attempt,
-        case: testCase.id,
-        definitionLocations: testCase.definitionLocations,
-        kind: 'test-start',
-        suitePath: testCase.suitePath,
-        workId: testCase.workId
-    });
-}
-
-async function reportTestEnd(
-    input: ReportTestEndInput,
-    context: ExecutionReportingContext
-): Promise<readonly RunnerError[]> {
-    return await context.reporterDelivery.reportEvent({
-        attempt: input.attempt,
-        artifacts: [],
-        case: input.testCase.id,
-        definitionLocations: input.testCase.definitionLocations,
-        kind: 'test-end',
-        outcome: input.result.outcome,
-        suitePath: input.testCase.suitePath,
-        verdict: input.result.verdict,
-        wallTimeMs: input.wallTimeMs,
-        workId: input.testCase.workId
-    });
-}
-
-async function reportCaseRunnerErrors(
-    runnerErrors: readonly RunnerError[],
-    context: ExecutionReportingContext
-): Promise<readonly RunnerError[]> {
-    let reporterErrors: readonly RunnerError[] = [];
-
-    for (const error of runnerErrors) {
-        reporterErrors = [
-            ...reporterErrors,
-            ...await context.reporterDelivery.reportEvent({
-                error,
-                kind: 'runner-error'
-            })
-        ];
-    }
-
-    return reporterErrors;
-}
-
-async function executeCase(input: ExecuteCaseInput): Promise<ReportedCase> {
-    const startErrors = await reportTestStart(input.testCase, input.attempt, input.context);
-    const activeResourceTypesBefore = input.context.dependencies.readActiveResourceTypes();
-    const executedCase = await input.context.dependencies.asyncLeakMonitor.runCase(
-        input.testCase,
-        async function runCase() {
-            return await executeCaseBody(
-                input.testCase,
-                input.options.timeoutPolicy,
-                input.supervision,
-                input.context.dependencies
-            );
-        }
-    );
-    const leakCheckedCase = await caseWithAsyncLeakPolicy({
-        activeResourceTypesBefore,
-        dependencies: input.context.dependencies,
-        executedCase,
-        includeActiveResourceLeaks: input.options.execution.mode === 'serial-in-process',
-        testCase: input.testCase
-    });
-
-    for (
-        const runnerError of [
-            ...leakCheckedCase.executedCase.runnerErrors,
-            ...leakCheckedCase.runnerErrors
-        ]
-    ) {
-        input.supervision.recordRunnerError(runnerError);
-    }
-
-    const runnerErrorNotificationErrors = await reportCaseRunnerErrors(
-        leakCheckedCase.executedCase.runnerErrors,
-        input.context
-    );
-    const endErrors = await reportTestEnd(
-        {
-            attempt: input.attempt,
-            result: leakCheckedCase.executedCase.result,
-            testCase: input.testCase,
-            wallTimeMs: leakCheckedCase.executedCase.wallTimeMs
-        },
-        input.context
-    );
-
-    return {
-        reporterErrors: [ ...startErrors, ...runnerErrorNotificationErrors, ...endErrors ],
-        result: leakCheckedCase.executedCase.result
-    };
-}
-
-async function executeTestPlanCases(input: ExecuteTestPlanCasesInput): Promise<ExecutedTestPlan> {
-    let perTest: readonly PerTestResult[] = [];
-    let reporterErrors: readonly RunnerError[] = [];
-    let currentSuitePath: TestPlanCase['suitePath'] = [];
-
-    for (const testCase of input.testPlan.cases) {
-        const suiteErrors = await reportSuiteTransition(
-            input.context.reporterDelivery,
-            currentSuitePath,
-            testCase.suitePath
-        );
-        currentSuitePath = testCase.suitePath;
-
-        const testRun = await executeCase({
-            attempt: 0,
-            context: input.context,
-            options: input.options,
-            supervision: input.supervision,
-            testCase
-        });
-        reporterErrors = [ ...reporterErrors, ...suiteErrors, ...testRun.reporterErrors ];
-        perTest = [ ...perTest, testRun.result ];
-    }
-
-    return {
-        perTest,
-        reporterErrors: [
-            ...reporterErrors,
-            ...input.supervision.runnerErrors,
-            ...input.options.runtimePolicy?.takeRunErrors() ?? [],
-            ...await reportSuiteTransition(
-                input.context.reporterDelivery,
-                currentSuitePath,
-                []
-            )
-        ]
-    };
-}
-
-async function reportConcurrentCaseStarts(
-    testPlan: TestPlan,
-    reporterDelivery: ReporterDelivery,
-    dependencies: ExecutionDependencies
-): Promise<readonly RunnerError[]> {
-    const reportingContext: ExecutionReportingContext = {
-        dependencies,
-        reporterDelivery
-    };
-    let reporterErrors: readonly RunnerError[] = [];
-    let currentSuitePath: TestPlanCase['suitePath'] = [];
-
-    for (const testCase of testPlan.cases) {
-        const suiteErrors = await reportSuiteTransition(
-            reportingContext.reporterDelivery,
-            currentSuitePath,
-            testCase.suitePath
-        );
-        const startErrors = await reportTestStart(testCase, 0, reportingContext);
-        currentSuitePath = testCase.suitePath;
-        reporterErrors = [ ...reporterErrors, ...suiteErrors, ...startErrors ];
-    }
-
-    return [
-        ...reporterErrors,
-        ...await reportSuiteTransition(reportingContext.reporterDelivery, currentSuitePath, [])
-    ];
-}
-
-async function reportConcurrentCaseEnd(
-    testCase: TestPlanCase,
-    executedCase: ConcurrentCase,
-    reportQueue: ReporterEventQueue
-): Promise<readonly RunnerError[]> {
-    return await reportQueue.report({
-        attempt: 0,
-        artifacts: [],
-        case: testCase.id,
-        definitionLocations: testCase.definitionLocations,
-        kind: 'test-end',
-        outcome: executedCase.result.outcome,
-        suitePath: testCase.suitePath,
-        verdict: executedCase.result.verdict,
-        wallTimeMs: executedCase.wallTimeMs,
-        workId: testCase.workId
-    });
-}
-
-async function reportConcurrentCaseRunnerErrors(
-    runnerErrors: readonly RunnerError[],
-    reportQueue: ReporterEventQueue
-): Promise<readonly RunnerError[]> {
-    let reporterErrors: readonly RunnerError[] = [];
-
-    for (const error of runnerErrors) {
-        reporterErrors = [
-            ...reporterErrors,
-            ...await reportQueue.report({
-                error,
-                kind: 'runner-error'
-            })
-        ];
-    }
-
-    return reporterErrors;
-}
-
-async function executeConcurrentCases(input: ExecuteConcurrentCasesInput): Promise<ConcurrentCaseExecution> {
-    const endReporterErrors: RunnerError[] = [];
-    const caseExecutions = input.testPlan.cases.map(async function executeCaseConcurrently(testCase) {
-        const executedCase = await input.context.dependencies.asyncLeakMonitor.runCase(
-            testCase,
-            async function runCase() {
-                return await executeCaseBody(
-                    testCase,
-                    input.options.timeoutPolicy,
-                    input.supervision,
-                    input.context.dependencies
-                );
-            }
-        );
-        const leakCheckedCase = await caseWithAsyncLeakPolicy({
-            activeResourceTypesBefore: [],
-            dependencies: input.context.dependencies,
-            executedCase,
-            includeActiveResourceLeaks: false,
-            testCase
-        });
-
-        for (
-            const runnerError of [
-                ...leakCheckedCase.executedCase.runnerErrors,
-                ...leakCheckedCase.runnerErrors
-            ]
-        ) {
-            input.supervision.recordRunnerError(runnerError);
-        }
-
-        endReporterErrors.push(
-            ...await reportConcurrentCaseRunnerErrors(
-                leakCheckedCase.executedCase.runnerErrors,
-                input.reportQueue
-            ),
-            ...await reportConcurrentCaseEnd(testCase, leakCheckedCase.executedCase, input.reportQueue)
-        );
-
-        return leakCheckedCase.executedCase;
-    });
-    const executedCases = await Promise.all(caseExecutions);
-
-    return {
-        endReporterErrors,
-        perTest: executedCases.map(function toPerTest(executedCase) {
-            return executedCase.result;
-        }),
-        runnerErrors: input.supervision.runnerErrors
-    };
-}
-
-async function executeConcurrentTestPlanCases(input: ExecuteTestPlanCasesInput): Promise<ExecutedTestPlan> {
-    const reporterErrors = await reportConcurrentCaseStarts(
-        input.testPlan,
-        input.context.reporterDelivery,
-        input.context.dependencies
-    );
-    const activeResourceTypesBefore = input.context.dependencies.readActiveResourceTypes();
-    const concurrentCaseExecution = await executeConcurrentCases({
-        context: input.context,
-        options: input.options,
-        reportQueue: createReporterEventQueue(input.context.reporterDelivery),
-        supervision: input.supervision,
-        testPlan: input.testPlan
-    });
-    const activeLeakError = concurrentRunActiveResourceLeak(
-        input.context.dependencies,
-        activeResourceTypesBefore
-    );
-    const runnerErrors = activeLeakError === null
-        ? concurrentCaseExecution.runnerErrors
-        : [ ...concurrentCaseExecution.runnerErrors, activeLeakError ];
-
-    return {
-        perTest: concurrentCaseExecution.perTest,
-        reporterErrors: [
-            ...reporterErrors,
-            ...runnerErrors,
-            ...input.options.runtimePolicy?.takeRunErrors() ?? [],
-            ...concurrentCaseExecution.endReporterErrors
-        ]
-    };
-}
-
-async function executeTestPlanCasesWithMode(input: ExecuteTestPlanCasesInput): Promise<ExecutedTestPlan> {
-    if (input.options.execution.mode === 'concurrent-in-process') {
-        return await executeConcurrentTestPlanCases(input);
-    }
-
-    return await executeTestPlanCases(input);
-}
-
-async function executeTestPlanCasesAndMeasureResourceUsage(
-    testPlan: TestPlan,
-    options: NormalizedExecuteOptions,
-    dependencies: ExecutionDependencies,
-    reporterDelivery: ReporterDelivery
-): Promise<ResourceTrackedCaseResult<ExecutedTestPlan>> {
-    const supervision = createExecutionSupervision();
-    const input: ExecuteTestPlanCasesInput = {
-        context: { dependencies, reporterDelivery },
-        options,
-        supervision,
-        testPlan
-    };
-
-    return await executeResourceTrackedCases(input, executeTestPlanCasesWithMode);
-}
-
 async function createRunResultBeforeRunEnd(
     testPlan: TestPlan,
     options: NormalizedExecuteOptions,
@@ -446,13 +66,26 @@ async function createRunResultBeforeRunEnd(
         root: testPlan.root,
         startedAt: options.startedAt
     });
+    const loadRuntimePolicyErrors = await reportRunnerErrors(
+        reporterDelivery,
+        options.runtimePolicy?.takePendingRunErrors() ?? []
+    );
     const { executedTestPlan, resourceUsage } = await executeTestPlanCasesAndMeasureResourceUsage(
         testPlan,
         options,
         dependencies,
         reporterDelivery
     );
-    const reporterErrors = [ ...startErrors, ...executedTestPlan.reporterErrors ];
+    const finalRuntimePolicyErrors = await reportRunnerErrors(
+        reporterDelivery,
+        options.runtimePolicy?.takeRunErrors() ?? []
+    );
+    const reporterErrors = [
+        ...startErrors,
+        ...loadRuntimePolicyErrors,
+        ...executedTestPlan.reporterErrors,
+        ...finalRuntimePolicyErrors
+    ];
 
     return createRunResult(testPlan, executedTestPlan.perTest, reporterErrors, {
         resourceUsage,

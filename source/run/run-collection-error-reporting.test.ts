@@ -11,6 +11,12 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
+import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
+import {
+    createResultFromResolutionError,
+    reportCollectionErrorResult
+} from './run-collection-error-result.ts';
+import { RunCollectionError } from './run-errors.ts';
 import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
 
 type RunCommandParts = {
@@ -35,6 +41,11 @@ const supervisedCollectionConfig = defaultRunConfig({
         })
     }
 });
+const directCollectionError = new RunCollectionError(
+    'Direct collection failed.',
+    { cause: new Error('direct cause') },
+    'loader'
+);
 
 function createRunCommand(overrides: RunCommandParts): RunCommand {
     return {
@@ -82,6 +93,36 @@ function createTerminalFinishReporter(): DefinedReporter {
         },
         sinks: [ { kind: 'stderr-raw' } ]
     });
+}
+
+function createFakeCollectionResultCommand(): RunCommand {
+    return createRunCommand({
+        config: defaultRunConfig(),
+        cwd: process.cwd(),
+        engine: { kind: 'default' },
+        request: defaultRequest
+    });
+}
+
+function createFakeDependencies(
+    delivery: Awaited<ReturnType<RunOrchestratorDependencies['reporterDispatcher']['createDelivery']>>
+): RunOrchestratorDependencies {
+    const reporterDispatcher: RunOrchestratorDependencies['reporterDispatcher'] = {
+        async createDelivery() {
+            return delivery;
+        },
+        async trackRunnerErrorDelivery<Result>(work: () => Promise<Result>) {
+            return {
+                deliveredRunnerErrors: [],
+                result: await work(),
+                undeliveredRunnerErrors: []
+            };
+        }
+    };
+
+    return {
+        reporterDispatcher
+    } as unknown as RunOrchestratorDependencies;
 }
 
 export const testNode = createOverkillSuite({
@@ -176,6 +217,7 @@ export const testNode = createOverkillSuite({
                 }));
 
                 scope.assert.deepEqual(lifecycle.entries(), [
+                    'event:runner-error',
                     'event:run-end',
                     `finish:Failed to load test module: ${throwsOnImportFixturePath}`,
                     'dispose'
@@ -213,6 +255,118 @@ export const testNode = createOverkillSuite({
                     result.deliveredRunnerErrors[0]?.message,
                     `Failed to load test module: ${throwsOnImportFixturePath}`
                 );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'createResultFromResolutionError() rethrows non-collection errors',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const error = new Error('not collection');
+
+                await scope.assert.rejects(async function createResult() {
+                    createResultFromResolutionError(error, null);
+                }, { message: 'not collection' });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'reportCollectionErrorResult() appends reporter delivery errors',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const result = createResultFromResolutionError(directCollectionError, null);
+                const reported = await reportCollectionErrorResult(
+                    createFakeCollectionResultCommand(),
+                    createFakeDependencies({
+                        async disposeReporters() {
+                            return [
+                                {
+                                    attributedTo: null,
+                                    cause: null,
+                                    message: 'dispose failed',
+                                    subtype: 'reporter'
+                                }
+                            ];
+                        },
+                        async reportEvent(event) {
+                            return event.kind === 'runner-error'
+                                ? [
+                                    {
+                                        attributedTo: null,
+                                        cause: null,
+                                        message: 'runner error notification failed',
+                                        subtype: 'reporter'
+                                    }
+                                ]
+                                : [];
+                        },
+                        async reportResult() {
+                            return [
+                                {
+                                    attributedTo: null,
+                                    cause: null,
+                                    message: 'final reporter failed',
+                                    subtype: 'reporter'
+                                }
+                            ];
+                        }
+                    }),
+                    result
+                );
+
+                scope.assert.deepEqual(
+                    reported.runnerErrors.map(function toMessage(error) {
+                        return error.message;
+                    }),
+                    [
+                        'Direct collection failed.',
+                        'runner error notification failed',
+                        'final reporter failed',
+                        'dispose failed'
+                    ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'reportCollectionErrorResult() aggregates cleanup errors after delivery failure',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const result = createResultFromResolutionError(directCollectionError, null);
+
+                await scope.assert.rejects(async function reportCollectionResult() {
+                    await reportCollectionErrorResult(
+                        createFakeCollectionResultCommand(),
+                        createFakeDependencies({
+                            async disposeReporters() {
+                                return [
+                                    {
+                                        attributedTo: null,
+                                        cause: null,
+                                        message: 'cleanup failed',
+                                        subtype: 'reporter'
+                                    }
+                                ];
+                            },
+                            async reportEvent() {
+                                throw new Error('delivery failed');
+                            },
+                            async reportResult() {
+                                return [];
+                            }
+                        }),
+                        result
+                    );
+                }, { message: 'Execution failed and reporter cleanup failed.' });
 
                 return scope.assert.collect();
             }

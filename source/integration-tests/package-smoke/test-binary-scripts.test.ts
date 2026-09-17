@@ -29,6 +29,130 @@ export const packageSmokeConfigScript = [
 ]
     .join('\n');
 
+export const lineReporterConfigScript = [
+    "import { defineConfig } from '@overkill-dev/test/config';",
+    '',
+    'export const config = defineConfig({',
+    '    profiles: {',
+    '        microtest: {',
+    "            testFamily: 'microtest',",
+    '            execution: {',
+    "                processModel: 'in-process',",
+    "                scheduling: 'serial'",
+    '            }',
+    '        }',
+    '    }',
+    '});',
+    ''
+]
+    .join('\n');
+
+export const finalOnlyReporterConfigScript = [
+    "import { defineConfig } from '@overkill-dev/test/config';",
+    "import { defineReporter } from '@overkill-dev/engine';",
+    '',
+    'const finalOnlyReporter = defineReporter(function createFinalOnlyReporter() {',
+    '    return {',
+    '        dispose: null,',
+    "        kind: 'final-result',",
+    "        name: 'final-only',",
+    '        onResult() {',
+    "            console.log('final-result-reporter');",
+    '        },',
+    "        sinks: [ { kind: 'stdout-raw' } ]",
+    '    };',
+    '});',
+    '',
+    'export const config = defineConfig({',
+    '    reporters: [ finalOnlyReporter ],',
+    '    profiles: {',
+    '        microtest: {',
+    "            testFamily: 'microtest',",
+    '            execution: {',
+    "                processModel: 'in-process',",
+    "                scheduling: 'serial'",
+    '            }',
+    '        }',
+    '    }',
+    '});',
+    ''
+]
+    .join('\n');
+
+export const reporterConsoleConfigScript = [
+    "import { defineConfig } from '@overkill-dev/test/config';",
+    "import { defineReporter } from '@overkill-dev/engine';",
+    '',
+    'const reporterConsoleViolation = defineReporter(function createReporterConsoleViolation() {',
+    '    return {',
+    '        dispose: null,',
+    "        kind: 'real-time',",
+    "        name: 'reporter-console-violation',",
+    '        onEvent(event) {',
+    "            if (event.kind === 'run-start') {",
+    "                console.log('undeclared reporter console');",
+    '            }',
+    '        },',
+    '        onFinish: null,',
+    "        sinks: [ { kind: 'memory' } ]",
+    '    };',
+    '});',
+    '',
+    'export const config = defineConfig({',
+    '    reporters: [ reporterConsoleViolation ],',
+    '    profiles: {',
+    '        microtest: {',
+    "            testFamily: 'microtest',",
+    '            execution: {',
+    "                processModel: 'in-process',",
+    "                scheduling: 'serial'",
+    '            }',
+    '        }',
+    '    }',
+    '});',
+    ''
+]
+    .join('\n');
+
+export const consolePolicySmokeScript = [
+    "import { suite, test } from '@overkill-dev/test';",
+    '',
+    "export const testNode = suite('console policy', [",
+    '    test({',
+    "        title: 'uses console',",
+    '        body(scope) {',
+    "            console.log('test body console output');",
+    '            scope.assert.equal(1, 1);',
+    '            return scope.assert.collect();',
+    '        }',
+    '    })',
+    ']);',
+    ''
+]
+    .join('\n');
+
+export const reporterConsoleSmokeScript = [
+    "import { suite, test } from '@overkill-dev/test';",
+    '',
+    "export const testNode = suite('reporter console', [",
+    '    test({',
+    "        title: 'passes',",
+    '        body(scope) {',
+    '            scope.assert.equal(1, 1);',
+    '            return scope.assert.collect();',
+    '        }',
+    '    })',
+    ']);',
+    ''
+]
+    .join('\n');
+
+export const throwsOnImportSmokeScript = [
+    "throw new Error('package smoke import failed');",
+    ''
+]
+    .join('\n');
+
 export const authoringSmokeScript = [
     "import { suite, test } from '@overkill-dev/test';",
     '',

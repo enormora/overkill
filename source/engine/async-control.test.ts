@@ -5,6 +5,10 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import {
+    createInMemoryRealTimeReporter,
+    type InMemoryRealTimeReporter
+} from '../reporters/in-memory-reporter.ts';
 import { createEngine, type Engine } from './engine.ts';
 import { createExecute } from './execution.ts';
 import { createReporterDispatcher } from './reporter-dispatcher.ts';
@@ -74,6 +78,14 @@ function failureCodes(result: RunResult): readonly string[] {
 function caseVerdicts(result: RunResult): readonly string[] {
     return result.perTest.map(function toVerdict(testResult) {
         return testResult.verdict;
+    });
+}
+
+function recordedRunnerErrorMessages(reporter: InMemoryRealTimeReporter): readonly string[] {
+    return reporter.getRecordedEntries().flatMap(function toMessage(entry) {
+        return entry.event?.kind === 'runner-error'
+            ? [ entry.event.error.message ]
+            : [];
     });
 }
 
@@ -361,15 +373,19 @@ export const testNode = createOverkillSuite({
                         title: 'root'
                     })
                 );
+                const reporter = createInMemoryRealTimeReporter();
                 const result = await engine.execute(testPlan, {
                     execution: { mode: 'serial-in-process' },
-                    reporters: [],
+                    reporters: [ reporter ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
 
                 scope.assert.deepEqual(caseVerdicts(result), [ 'runtime-policy' ]);
                 scope.assert.equal(result.runnerErrors[0]?.attributedTo?.title, 'leaks');
+                scope.assert.deepEqual(recordedRunnerErrorMessages(reporter), [
+                    result.runnerErrors[0]?.message
+                ]);
 
                 return scope.assert.collect();
             }
@@ -466,9 +482,10 @@ export const testNode = createOverkillSuite({
                         title: 'root'
                     })
                 );
+                const reporter = createInMemoryRealTimeReporter();
                 const result = await engine.execute(testPlan, {
                     execution: { mode: 'concurrent-in-process' },
-                    reporters: [],
+                    reporters: [ reporter ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
@@ -476,6 +493,9 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(caseVerdicts(result), [ 'pass', 'pass' ]);
                 scope.assert.equal(result.runnerErrors[0]?.subtype, 'runtime-policy');
                 scope.assert.equal(result.runnerErrors[0]?.attributedTo, null);
+                scope.assert.deepEqual(recordedRunnerErrorMessages(reporter), [
+                    result.runnerErrors[0]?.message
+                ]);
 
                 return scope.assert.collect();
             }

@@ -186,6 +186,30 @@ export type RunSummary = {
     readonly skipped: number;
 };
 
+export type RunStatus = 'failed' | 'passed';
+
+function failingRunConditions(summary: RunSummary, runnerErrors: readonly RunnerError[]): readonly boolean[] {
+    return [
+        runnerErrors.length > 0,
+        summary.crashed > 0,
+        summary.failed > 0,
+        summary.planned === 0,
+        summary.resourceExhausted > 0,
+        summary.runtimePolicy > 0
+    ];
+}
+
+export function runStatusFromSummary(
+    summary: RunSummary,
+    runnerErrors: readonly RunnerError[]
+): RunStatus {
+    if (failingRunConditions(summary, runnerErrors).includes(true)) {
+        return 'failed';
+    }
+
+    return 'passed';
+}
+
 export type PerTestResult = {
     readonly id: CaseId;
     readonly outcome: TestOutcome | null;
@@ -267,6 +291,7 @@ export type RunResult = {
     readonly perTest: readonly PerTestResult[];
     readonly resourceUsage: RunResourceUsage | null;
     readonly runnerErrors: readonly RunnerError[];
+    readonly status: RunStatus;
     readonly summary: RunSummary;
     readonly wallTimeMs: number;
 };

@@ -14,7 +14,7 @@ import { createLineReporter, type LineReporterDependencies } from './line-report
 type LogFunction = (...values: readonly unknown[]) => void;
 type Log = TestDouble<LogFunction>;
 
-const infoSymbol = colors.cyan(figures.info);
+const errorSymbol = colors.red(figures.cross);
 
 function lineReporterWithLog(log: Log): RealTimeReporter {
     const fakeDependencies = { stdoutConsole: { log } } as unknown as LineReporterDependencies;
@@ -67,7 +67,7 @@ export const testNode = createOverkillSuite({
 
                 scope.assert(doubleUsage.callCount, log, 1);
                 scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-                    infoSymbol,
+                    errorSymbol,
                     '3 discovered, 3 planned, 3 executed (2 pass, 1 fail, 0 skip) in 10 ms'
                 ]);
 
@@ -99,7 +99,7 @@ export const testNode = createOverkillSuite({
                 await requireFinish(reporter)(runResult);
 
                 scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-                    infoSymbol,
+                    errorSymbol,
                     [
                         '4 discovered, 4 planned, 6 executed',
                         '(1 pass, 1 fail, 1 skip, 1 inconclusive, 1 resource-exhausted, 1 crash) in 15 ms'
