@@ -1,4 +1,5 @@
 import { workIdentityKey } from '../engine/identity.ts';
+import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
 import {
     createRunFacts,
     runCaseFactsFromTestPlan
@@ -36,7 +37,6 @@ import type {
     RunOrchestrator
 } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
 

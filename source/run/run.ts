@@ -105,7 +105,7 @@ async function executeEmptyShardRun(
     const result = createRunResultFromCollectedPlan(
         collectedPlan,
         [],
-        [ ...resolvedRun.collectionRunnerErrors, ...runStartErrors, ...(runtimePolicy?.takeRunErrors() ?? []) ],
+        [ ...resolvedRun.collectionRunnerErrors, ...runStartErrors, ...runtimePolicy?.takeRunErrors() ?? [] ],
         {
             planStatus: 'empty-shard',
             resourceUsage: null,

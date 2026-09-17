@@ -292,20 +292,42 @@ export const testNode = createOverkillSuite({
             controls: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
+                const invalidShardCases = [
+                    {
+                        message: 'Shard total must be a positive safe integer.',
+                        shard: { index: 1, total: 0 }
+                    },
+                    {
+                        message: 'Shard total must be a positive safe integer.',
+                        shard: { index: 1, total: 1.5 }
+                    },
+                    {
+                        message: 'Shard index must be a positive safe integer.',
+                        shard: { index: 0, total: 2 }
+                    },
+                    {
+                        message: 'Shard index must be a positive safe integer.',
+                        shard: { index: 1.5, total: 2 }
+                    },
+                    {
+                        message: 'Shard index must not exceed shard total.',
+                        shard: { index: 3, total: 2 }
+                    }
+                ] as const;
 
-                await scope.assert.rejects(async function resolveInvalidShard() {
-                    await runOrchestrator.resolve(createRunCommand({
-                        config: defaultConfig,
-                        cwd: process.cwd(),
-                        engine: { kind: 'default' },
-                        request: {
-                            ...defaultRequest,
-                            shard: { index: 3, total: 2 }
-                        }
-                    }));
-                }, {
-                    message: 'Shard index must not exceed shard total.'
-                });
+                for (const invalidShardCase of invalidShardCases) {
+                    await scope.assert.rejects(async function resolveInvalidShard() {
+                        await runOrchestrator.resolve(createRunCommand({
+                            config: defaultConfig,
+                            cwd: process.cwd(),
+                            engine: { kind: 'default' },
+                            request: {
+                                ...defaultRequest,
+                                shard: invalidShardCase.shard
+                            }
+                        }));
+                    }, { message: invalidShardCase.message });
+                }
 
                 return scope.assert.collect();
             }
@@ -516,6 +538,17 @@ export const testNode = createOverkillSuite({
                         }
                     }));
                 }, { message: 'Run seed must be a nonnegative bigint.' });
+                await scope.assert.rejects(async function runInvalidSelectionRequest() {
+                    await runOrchestrator.run(createRunCommand({
+                        config: defaultConfig,
+                        cwd: process.cwd(),
+                        engine: { kind: 'default' },
+                        request: {
+                            ...defaultRequest,
+                            selection: { kind: 'missing' } as unknown as RunRequest['selection']
+                        }
+                    }));
+                }, { message: 'Run selection kind is unknown.' });
 
                 return scope.assert.collect();
             }

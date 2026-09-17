@@ -219,12 +219,14 @@ function renderOrphans(
     ];
 }
 
+type CollectedResolvedRunPlan = Extract<ResolvedRun['plan'], { readonly collectedPlan: CollectedRunPlan; }>;
+
+function hasCollectedPlan(plan: ResolvedRun['plan']): plan is CollectedResolvedRunPlan {
+    return Object.hasOwn(plan, 'collectedPlan');
+}
+
 function resolvedCollectedPlan(resolvedRun: ResolvedRun): CollectedRunPlan {
-    if (
-        resolvedRun.plan.kind === 'empty-shard' ||
-        resolvedRun.plan.kind === 'supervised' ||
-        resolvedRun.plan.kind === 'worker-pool'
-    ) {
+    if (hasCollectedPlan(resolvedRun.plan)) {
         return resolvedRun.plan.collectedPlan;
     }
 

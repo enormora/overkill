@@ -26,6 +26,10 @@ type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
 type PlacementPlan = NonNullable<ResolvedRun['facts']['execution']['placementPlan']>;
 type ResourceSample = ReturnType<WorkerPoolRunRuntime['previousPoolSample']['read']>;
 type WorkUnit = PlacementPlan['units'][number];
+type ReportedEvent = Parameters<WorkerPoolRunRuntime['reporterDelivery']['reportEvent']>[0];
+type ReporterEventRecorder = {
+    readonly record: (event: ReportedEvent) => void;
+};
 
 const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const annotations = { ownership: [], tags: [] };
@@ -92,6 +96,44 @@ function createCollectedPlan(): CollectedRunPlan {
         ],
         orphans: [],
         root: { annotations, controls, title: 'worker pool' }
+    };
+}
+
+function createCollectedPlanWithMissingResult(): CollectedRunPlan {
+    const collectedPlan = createCollectedPlan();
+    const firstFile = collectedPlan.files[0];
+
+    if (firstFile === undefined) {
+        throw new Error('Collected plan fixture requires a file.');
+    }
+
+    return {
+        ...collectedPlan,
+        defined: 2,
+        files: [
+            {
+                ...firstFile,
+                cases: [
+                    ...firstFile.cases,
+                    {
+                        annotations,
+                        controls,
+                        definitionLocations: [ { kind: 'unknown' as const } ],
+                        params: null,
+                        resourceAttachments: {
+                            directResources: [],
+                            resourceGraph: [],
+                            runtimeGraphs: []
+                        },
+                        suitePath: [
+                            { definitionLocations: [ { kind: 'unknown' as const } ], title: 'integration' }
+                        ],
+                        testFamily: 'integration',
+                        title: 'missing result'
+                    }
+                ]
+            }
+        ]
     };
 }
 
@@ -198,6 +240,38 @@ function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
     };
 }
 
+function emptyShardResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
+    const shardedPlan = {
+        ...collectedPlan,
+        files: []
+    };
+    const resolvedRun = workerPoolResolvedRun(shardedPlan);
+
+    return {
+        ...resolvedRun,
+        facts: {
+            ...resolvedRun.facts,
+            execution: {
+                ...resolvedRun.facts.execution,
+                placementPlan: {
+                    ...placementPlan(),
+                    assignments: [],
+                    units: []
+                }
+            },
+            reproducibility: {
+                ...resolvedRun.facts.reproducibility,
+                shard: { index: 2, total: 2 }
+            }
+        },
+        request: defaultRunRequest({
+            paths: [ integrationPath ],
+            profile: 'integration',
+            shard: { index: 2, total: 2 }
+        })
+    };
+}
+
 async function emptyReporterErrors(): Promise<readonly []> {
     return [];
 }
@@ -210,6 +284,28 @@ const fakeReporterDelivery: WorkerPoolRunRuntime['reporterDelivery'] = {
 
 async function createFakeReporterDelivery(): Promise<WorkerPoolRunRuntime['reporterDelivery']> {
     return fakeReporterDelivery;
+}
+
+function createRecordingDependencies(recorder: ReporterEventRecorder): WorkerPoolRunRuntime['dependencies'] {
+    return {
+        ...fakeDependencies(),
+        reporterDispatcher: {
+            async createDelivery() {
+                return {
+                    disposeReporters: emptyReporterErrors,
+                    async reportEvent(event) {
+                        recorder.record(event);
+
+                        return [];
+                    },
+                    reportResult: emptyReporterErrors
+                };
+            },
+            async trackRunnerErrorDelivery(work) {
+                return { deliveredRunnerErrors: [], result: await work(), undeliveredRunnerErrors: [] };
+            }
+        }
+    };
 }
 
 function testOnlyDependency(): never {
@@ -347,14 +443,6 @@ function createTaskRun(state: SupervisedRunState): WorkerPoolTaskRun {
     };
 }
 
-function createArtifactTaskRun(): WorkerPoolTaskRun {
-    const state = createSupervisedRunState();
-
-    state.recordCapturedOutput('stdout', Buffer.from('active artifact'), 3);
-
-    return createTaskRun(state);
-}
-
 function emptyRunResult(perTest: readonly PerTestResult[]): RunResult {
     return {
         artifacts: [],
@@ -449,12 +537,45 @@ async function workerPoolFinalizationResults(): Promise<{
     readonly emptyResult: RunResult;
     readonly result: RunResult;
 }> {
-    const runtime = fakeWorkerRuntime(createCollectedPlan());
+    const runtime = {
+        ...fakeWorkerRuntime(createCollectedPlanWithMissingResult()),
+        poolResourceUsageTracker: {
+            finish() {
+                return {
+                    activeResourceTypes: [],
+                    end: {
+                        activeResourceCount: 0,
+                        activeResourceTypes: [],
+                        capturedAtMilliseconds: 1,
+                        javaScriptEngineHeapBytes: 2,
+                        residentSetBytes: 3
+                    },
+                    peakActiveResourceCount: 0,
+                    peakJavaScriptEngineHeapBytes: 2,
+                    peakResidentSetBytes: 3,
+                    peakResidentSetGrowthBytesPerSecond: 0,
+                    sampleCount: 1,
+                    start: {
+                        activeResourceCount: 0,
+                        activeResourceTypes: [],
+                        capturedAtMilliseconds: 0,
+                        javaScriptEngineHeapBytes: 1,
+                        residentSetBytes: 2
+                    }
+                };
+            },
+            start() {
+                return undefined;
+            }
+        }
+    };
+    const activeState = createSupervisedRunState();
     const completedState = createSupervisedRunState();
 
     runtime.runState.recordCapturedOutput('stdout', Buffer.from('run artifact'), 1);
+    activeState.recordCapturedOutput('stdout', Buffer.from('active artifact'), 3);
     completedState.recordCapturedOutput('stderr', Buffer.from('completed artifact'), 2);
-    runtime.activeTasks.add(createArtifactTaskRun());
+    runtime.activeTasks.add(createTaskRun(activeState));
     runtime.taskResults.push(emptyRunResult([ passResult() ]));
 
     const result = await finishWorkerPoolRun(runtime, [ createTaskRun(completedState) ], 10);
@@ -528,6 +649,33 @@ export const testNode = createOverkillSuite({
                     [ 'run artifact', 'completed artifact', 'active artifact' ]
                 );
                 scope.assert.equal(emptyResult.summary.planned, 1);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'worker-pool empty shard results report a successful empty shard run',
+            async body(scope: OverkillScope) {
+                const events: ReportedEvent[] = [];
+                const result = await createEmptyWorkerPoolResult(
+                    emptyShardResolvedRun(createCollectedPlan()),
+                    createRecordingDependencies({
+                        record(event) {
+                            events.push(event);
+                        }
+                    }),
+                    createSupervisedRunState()
+                );
+
+                scope.assert.equal(result.planStatus, 'empty-shard');
+                scope.assert.equal(result.summary.planned, 0);
+                scope.assert.deepEqual(
+                    events.map(function toKind(event) {
+                        return event.kind;
+                    }),
+                    [ 'run-start', 'run-end' ]
+                );
 
                 return scope.assert.collect();
             }

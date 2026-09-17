@@ -509,7 +509,13 @@ function selectRunResult(runtime: SupervisedRunRuntime, startedAtMs: number): Ru
         const collectedPlan = runtime.collectedPlan.read() ?? supervisedCollectedPlan(runtime.resolvedRun);
 
         return resultWithSupervisedArtifacts(
-            createPartialRunResult(collectedPlan, runtime.resolvedRun, runtime.state, runtime.dependencies, startedAtMs),
+            createPartialRunResult(
+                collectedPlan,
+                runtime.resolvedRun,
+                runtime.state,
+                runtime.dependencies,
+                startedAtMs
+            ),
             runtime
         );
     }

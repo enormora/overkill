@@ -153,14 +153,14 @@ configuration domain and benchmark execution uses `overkill bench`.
 
 ## Selection And Iteration
 
-| Flag                | Behavior                                               | Reference                                                                                                                   |
-| ------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| `--filter '<expr>'` | Filter by annotations, identity, and file path.        | [Test Data And Selection § Filter Expression Grammar](../architecture/test-data-and-selection.md#filter-expression-grammar) |
-| `--runtime <expr>`  | Filter by public runtime key, variant, or dimension.   | [Runtime Behavior § Runtime Selection](../architecture/runtime-behavior.md#runtime-selection)                               |
-| `--title '<text>'`  | Title substring match.                                 | [Test Data And Selection § Local Iteration Workflow](../architecture/test-data-and-selection.md#local-iteration-workflow)   |
-| `--file <path>`     | Restrict the run to a single file.                     | same                                                                                                                        |
-| `--last-failed`     | Run only tests that failed in the previous run.        | same                                                                                                                        |
-| `--watch`           | Rerun the selected suite with Node's built-in watcher. | [Runtime Behavior § Watch-Mode Targeting](../architecture/runtime-behavior.md#watch-mode-targeting)                         |
+| Flag                | Behavior                                                 | Reference                                                                                                                   |
+| ------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `--filter '<expr>'` | Filter by annotations, identity, and file path.          | [Test Data And Selection § Filter Expression Grammar](../architecture/test-data-and-selection.md#filter-expression-grammar) |
+| `--runtime <expr>`  | Filter by public runtime key, variant, or dimension.     | [Runtime Behavior § Runtime Selection](../architecture/runtime-behavior.md#runtime-selection)                               |
+| `--title '<text>'`  | Title substring match.                                   | [Test Data And Selection § Local Iteration Workflow](../architecture/test-data-and-selection.md#local-iteration-workflow)   |
+| `--file <path>`     | Restrict the run to a single file.                       | same                                                                                                                        |
+| `--last-failed`     | Run only tests that failed in the previous run.          | same                                                                                                                        |
+| `--watch`           | Rerun the selected suite with Node's built-in watcher.   | [Runtime Behavior § Watch-Mode Targeting](../architecture/runtime-behavior.md#watch-mode-targeting)                         |
 | `--shard <i>/<n>`   | Select one-based shard `i` of `n` from the filtered set. | [Runtime Behavior § Sharding](../architecture/runtime-behavior.md#sharding)                                                 |
 
 Repeated `--runtime` flags combine with AND and compose with `--filter`:

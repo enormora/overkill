@@ -37,9 +37,9 @@ import {
 type GroupWorkDistribution = Extract<RunWorkDistribution, { readonly mode: 'group'; }>;
 
 type WorkUnitShardInput = {
-    readonly shard: RunShard;
-    readonly shardHasher: RunShardHasher | null;
-} | Record<never, never>;
+    readonly shard?: RunShard;
+    readonly shardHasher?: RunShardHasher | null;
+};
 
 type WorkUnitPlanningBaseInput = {
     readonly fileSetForFile: (file: string) => string | null;
@@ -69,11 +69,11 @@ type PlannedWorkUnit = {
 const defaultRunShard: RunShard = Object.freeze({ index: 1, total: 1 });
 
 function readRunShard(input: WorkUnitPlanningInput): RunShard {
-    return 'shard' in input ? input.shard : defaultRunShard;
+    return input.shard ?? defaultRunShard;
 }
 
 function readRunShardHasher(input: WorkUnitPlanningInput): RunShardHasher | null {
-    return 'shardHasher' in input ? input.shardHasher : null;
+    return input.shardHasher ?? null;
 }
 
 function profilePolicy(input: WorkUnitPlanningInput): WorkUnitPolicy {
@@ -479,14 +479,22 @@ function groupWorkUnitsFromCollectedPlan(
     return units;
 }
 
+function workUnitsForDistribution(input: WorkUnitPlanningInput): readonly WorkUnit[] {
+    if (input.workDistribution.mode === 'case') {
+        return caseWorkUnitsFromCollectedPlan(input);
+    }
+
+    if (input.workDistribution.mode === 'group') {
+        return groupWorkUnitsFromCollectedPlan(input.workDistribution, input);
+    }
+
+    return fileWorkUnitsFromCollectedPlan(input);
+}
+
 export function workUnitsFromCollectedPlan(
     input: WorkUnitPlanningInput
 ): readonly WorkUnit[] {
-    const units = input.workDistribution.mode === 'case'
-        ? caseWorkUnitsFromCollectedPlan(input)
-        : input.workDistribution.mode === 'group'
-            ? groupWorkUnitsFromCollectedPlan(input.workDistribution, input)
-            : fileWorkUnitsFromCollectedPlan(input);
+    const units = workUnitsForDistribution(input);
     const shardedUnits = units.filter(function unitBelongsToShard(unit) {
         return workUnitBelongsToShard(unit.id, readRunShard(input), readRunShardHasher(input));
     });
