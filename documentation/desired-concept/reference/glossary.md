@@ -120,17 +120,55 @@ Source: [Runtime Behavior](../architecture/runtime-behavior.md), [Composition Or
 
 The frozen initial assignment of work units to executor lanes. It records
 the resolved process model, worker lifecycle, work distribution, assignment
-policy, and resource placement constraints before execution starts.
+policy, dispatch policy, and resource placement constraints before execution
+starts.
 
 Source: [Runtime Behavior](../architecture/runtime-behavior.md), [Reproducibility](../architecture/reproducibility.md).
+
+## Assignment Policy
+
+The plan-time policy that chooses the initial worker-pool lane assignment.
+Current policies include stable source-order round-robin placement and
+case-count balancing. Later policies may use duration history as explicit
+planning input.
+
+Source: [Runtime Behavior § Dynamic Scheduling Concepts](../architecture/runtime-behavior.md#dynamic-scheduling-concepts).
+
+## Dispatch Policy
+
+The execution-time policy for consuming the frozen placement plan. Static
+assignment follows the initial lane queues. Dynamic lease may reprioritize,
+split, batch, or hedge eligible pending work while recording those choices in
+the placement trace.
+
+Source: [Runtime Behavior § Dynamic Scheduling Concepts](../architecture/runtime-behavior.md#dynamic-scheduling-concepts).
+
+## Duration History
+
+A compact runtime-state index of recent `WorkId` duration samples. History-aware
+placement aggregates these samples into the current work-unit shape and falls
+back to case-count balancing when the samples are missing, stale, or
+inapplicable.
+
+Source: [Runtime Behavior § Duration History](../architecture/runtime-behavior.md#duration-history).
 
 ## PlacementTrace
 
 The run-record trace of realized worker assignment, crash recovery,
-reassignment, straggler hedging, and work-unit timings. It is diagnostic by
-default and becomes replay input for dynamic scheduling modes.
+reassignment, runtime reprioritization, pending-unit splitting, compatible
+batching, warm-lane affinity, straggler hedging, conflicts, and work-unit
+timings. It is diagnostic by default and becomes replay input for dynamic
+scheduling modes.
 
 Source: [Runtime Behavior](../architecture/runtime-behavior.md), [Reproducibility](../architecture/reproducibility.md).
+
+## Dynamic Work Unit
+
+A trace-only child of a frozen `WorkUnit` created by pending-unit splitting.
+It has a derived identity linked to the frozen parent `WorkUnitId`; it does not
+replace the parent in sharding or initial placement.
+
+Source: [Runtime Behavior § Pending-Unit Splitting](../architecture/runtime-behavior.md#pending-unit-splitting).
 
 ## Runner Profile
 

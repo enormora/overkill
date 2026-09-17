@@ -787,22 +787,140 @@ replacement lanes and the trace records that repair.
 Advanced policies are concepted now but not required for the first worker
 pool implementation:
 
-- `duration-history-balanced` uses persisted `RunRecord` duration facts as
-  explicit planning input, falling back to case counts when history is
-  missing or stale
-- `dynamic-lease` may reprioritize pending work, split eligible pending
-  units, or duplicate explicit idempotent isolated stragglers
-- the first completed valid hedged execution is authoritative; slower
-  duplicate artifacts are trace or debug data
-- compatible batching may pack small units with identical runtime,
-  resource, and lifecycle requirements
-- warm-lane affinity may prefer path-neighbor or same-runtime units on a
-  reused worker
+- `duration-history-balanced` is a plan-time assignment policy that uses
+  duration history as explicit placement input, falling back to case counts
+  when history is missing, stale, or inapplicable
+- `dynamic-lease` is an execution-time dispatch policy layered on top of the
+  frozen initial placement plan
 - resource-aware placement lowers resource scopes into serial keys,
   capacity weights, affinity keys, and fault domains before assignment
 - host-process placement may require that all worker-pool lanes for a run share
   one host process so Node/V8 arguments, host metadata, and host-level cleanup
   stay coherent
+
+`assignmentPolicy` and `dispatchPolicy` should stay separate concepts in the
+future public model. Assignment decides the initial lane plan before execution.
+Dispatch decides whether the coordinator follows that plan statically or leases
+pending work dynamically during execution. This keeps `dynamic-lease` from
+pretending to be just another initial placement algorithm.
+Until these policies are implemented, project config may continue to reject
+future policy values and omit `dispatchPolicy` entirely.
+
+`order` is a placement priority, not a total wall-clock start-order guarantee
+for parallel worker-pool runs. It seeds work-unit ordering, breaks placement
+ties, and decides lane-local priority. Strict runtime order exists only where
+serial scheduling, `single-worker`, exclusive resources, group indivisibility,
+or other hard constraints require it.
+
+## Dynamic Scheduling Concepts
+
+Dynamic scheduling is an advanced worker-pool execution concept. It must not
+weaken the frozen-plan model:
+
+- collection, runtime/workload expansion, filtering, sharding, work-unit
+  construction, and initial placement still finish before test bodies run
+- the frozen `PlacementPlan` remains the authority for selected work,
+  sharding, reproducibility, and initial lane eligibility
+- dynamic decisions apply only to not-started work or to explicit hedged
+  duplicate execution
+- hard constraints always win: serial keys, `single-worker`, exclusive
+  resources, fault-domain spread, worker lifecycle, runtime and workload
+  compatibility, host-process coherence, and capability requirements
+- every dynamic decision is written to `PlacementTrace`
+
+### Duration History
+
+Duration history is a compact derived index under `runtimeStateDir`, not a
+requirement to persist every hot-path run as a full `RunRecord`.
+
+The index stores recent duration samples keyed primarily by `WorkId`.
+Planning aggregates matching samples into the current `WorkUnit` shape. That
+lets history survive changes between file, case, and group distribution better
+than a `WorkUnitId`-only history would. The exact aggregation policy can evolve,
+but the run facts must record the duration-history inputs used by
+`duration-history-balanced` so a later replay can explain the chosen plan.
+
+When history is missing, stale, from an incompatible runtime/workload shape, or
+too sparse for a useful estimate, `duration-history-balanced` falls back to the
+same selected-case-count balancing used by `case-count-balanced`.
+
+### Runtime Reprioritization
+
+`dynamic-lease` may reorder only pending eligible work. It may use duration
+estimates, observed lane availability, completed work, resource pressure, and
+warm-lane data to pick the next unit. It must not preempt, cancel, or
+retroactively move active work; those are cancellation, retry, crash recovery,
+or resource-exhaustion policies.
+
+Reprioritization changes the pending queue, not the frozen plan. The trace must
+show which unit actually started on which lane so reports and replay do not have
+to infer runtime choices from the initial placement.
+
+### Pending-Unit Splitting
+
+`dynamic-lease` may split only a not-started work unit, and only along existing
+`WorkId` boundaries. A split child keeps a derived dynamic unit identity linked
+to the frozen parent `WorkUnitId`; the parent remains the sharding and initial
+plan identity.
+
+Splitting is invalid when the parent unit is indivisible because of group
+granularity, strict order, serial or single-worker constraints, resource
+sharing, worker lifecycle policy, or runtime/workload incompatibility. Running
+work is never split. If running work needs to stop, that belongs to timeout,
+crash recovery, cancellation, retry, or resource-exhaustion policy.
+
+### Hedging
+
+Hedging starts a duplicate execution of an eligible slow unit on another
+compatible lane. It requires stronger eligibility than ordinary
+reprioritization or batching: the work must be explicitly idempotent or have
+disposable isolation strong enough that duplicate execution cannot corrupt
+external state or artifacts.
+
+The first completed valid execution may become authoritative only if no other
+duplicate has produced conflicting evidence. If a duplicate completes with a
+conflicting outcome before cancellation fully takes effect, the case fails with
+a hedged-conflict artifact that records the disagreement. Slower duplicate
+artifacts that were cancelled or completed consistently are trace or debug data.
+
+### Compatible Batching
+
+Compatible batching is an execution envelope optimization. It does not create a
+new logical `WorkUnit`, `WorkId`, result, or artifact identity. Each batched
+member keeps its own identity, result, artifacts, duration facts, and replay
+visibility.
+
+Units may batch only when their execution envelope is identical: runtime,
+workload, worker lifecycle, scheduling, capability envelope, resource
+constraints, timeout policy, host-process needs, and artifact routing. A subset
+relationship is not enough for the baseline concept because it creates hidden
+precedence and validation rules.
+
+### Warm-Lane Affinity
+
+Warm-lane affinity is a soft tie-breaker for reused workers. It may prefer a
+lane that already imported the same path neighborhood, owns compatible
+shared-per-worker resources, or recently ran the same runtime/workload shape.
+
+It never pins work by itself and must run after hard constraints,
+fault-domain spread, capacity pressure, and fairness. A warm lane that would
+violate a constraint, overload a lane, or defeat required spreading is not
+eligible.
+
+### Trace And Replay
+
+Dynamic scheduling modes are replayed from trace, not recomputed from timing.
+The trace needs enough information to restore:
+
+- runtime reprioritization decisions
+- split parent and child identities
+- batch envelopes and member units
+- hedged duplicate starts, cancellations, authoritative completions, and
+  conflicts
+- lane assignment, reassignment, duration, and recovery decisions
+
+The later placement-trace milestone should settle exact event names and field
+shapes. This section only fixes the semantic requirements.
 
 ## Remote Execution
 

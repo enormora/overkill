@@ -24,12 +24,15 @@ A reproducible run captures, at minimum:
   `WorkId`s after runtime/workload expansion)
 - the resolved runtime matrix (each `RuntimeId` actually used)
 - the resolved execution strategy (process model, worker count,
-  worker lifecycle, work distribution, assignment policy, serialisation
-  rules)
+  worker lifecycle, work distribution, assignment policy, dispatch policy,
+  serialisation rules)
 - the resolved work units, shard partition, and initial placement plan
 - the resolved capability profile per worker
-- duration-history inputs used for placement, when history-aware placement
+- duration-history inputs used for placement, when history-aware assignment
   is enabled
+- dynamic scheduling trace inputs when runtime dispatch used leasing,
+  reprioritization, pending-unit splitting, compatible batching, warm-lane
+  affinity, or hedging
 - the baseline verb invoked, if any (`update`, `apply`, `bootstrap`,
   `diff`)
 - the benchmark workload identity and calibration inputs where
@@ -171,9 +174,15 @@ executes the same plan:
   available; reports inconclusive for runtimes not available
 - restores the execution strategy
 - restores the loader configuration
-- restores the recorded placement trace when replaying a run that used
-  dynamic leasing, runtime reprioritization, pending-unit splitting, or
-  straggler hedging
+- restores the recorded placement trace when replaying a run that used dynamic
+  leasing, runtime reprioritization, pending-unit splitting, compatible
+  batching, warm-lane affinity, or straggler hedging
+
+Replay of dynamic scheduling is trace-led. It does not try to reproduce the
+same wall-clock straggler timing and then hope the scheduler makes the same
+choices. The recorded trace restores the dynamic choices themselves: split
+parentage, batch envelopes, hedged duplicates, authoritative completions,
+discarded duplicates, reassignment, and conflict evidence.
 
 Limitations:
 

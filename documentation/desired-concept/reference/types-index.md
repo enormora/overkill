@@ -838,13 +838,18 @@ type WorkerPoolIntegrationExecutionConfig = {
     readonly scheduling: 'serial' | 'concurrent';
     readonly workerLifecycle: 'reuse' | 'fresh-worker-per-unit';
     readonly workDistribution: WorkDistribution;
-    readonly assignmentPolicy:
-        | 'stable'
-        | 'case-count-balanced'
-        // future placement policies
-        | 'duration-history-balanced'
-        | 'dynamic-lease';
+    readonly assignmentPolicy: WorkerPoolAssignmentPolicy;
+    readonly dispatchPolicy: WorkerPoolDispatchPolicy;
 };
+
+type WorkerPoolAssignmentPolicy =
+    | 'stable'
+    | 'case-count-balanced'
+    | 'duration-history-balanced';
+
+type WorkerPoolDispatchPolicy =
+    | 'static-assignment'
+    | 'dynamic-lease';
 
 type HostProcess = { readonly kind: 'direct'; } | {
     readonly kind: 'child';
@@ -1007,6 +1012,8 @@ type RunExecutionBaseFacts = {
 };
 
 type RunWorkerPoolExecutionFacts = RunExecutionBaseFacts & {
+    readonly assignmentPolicy: WorkerPoolAssignmentPolicy;
+    readonly dispatchPolicy: WorkerPoolDispatchPolicy;
     readonly hostProcess: HostProcessFacts;
     readonly processModel: 'worker-pool';
     readonly workerLifecycle: 'reuse' | 'fresh-worker-per-unit';
@@ -1033,6 +1040,7 @@ type RunExecutionFacts = RunSingleProcessExecutionFacts | RunWorkerPoolExecution
 
 type RunFacts = {
     readonly cases: ReadonlyArray<RunCaseFacts>;
+    readonly durationHistory: DurationHistoryInput | null;
     readonly environment: {
         readonly node: { readonly arch: string; readonly platform: string; readonly version: string; };
         readonly projectRoot: string;
@@ -1044,6 +1052,19 @@ type RunFacts = {
         readonly seed: string;
         readonly shard: { readonly index: number; readonly total: number; };
     };
+};
+
+type DurationHistoryInput = {
+    readonly generatedAt: string;
+    readonly samples: ReadonlyArray<DurationHistorySample>;
+    readonly source: 'runtime-state-index';
+};
+
+type DurationHistorySample = {
+    readonly durationMilliseconds: number;
+    readonly observedAt: string;
+    readonly sampleCount: number;
+    readonly work: WorkId;
 };
 
 type RunCaseFacts = {
@@ -1058,9 +1079,25 @@ type WorkUnit = {
     readonly work: NonEmptyReadonlyArray<WorkId>;
     readonly group: string | null;
     readonly order: 'plan' | 'lexical' | 'seeded';
+    readonly resourceConstraints: WorkUnitResourceConstraints;
     readonly scheduling: 'serial' | 'concurrent';
     readonly workerLifecycle: 'reuse' | 'fresh-worker-per-unit';
 };
+
+type WorkUnitResourceConstraints = {
+    readonly affinityKeys: ReadonlyArray<string>;
+    readonly capacityWeight: number;
+    readonly faultDomains: ReadonlyArray<string>;
+    readonly serialKeys: ReadonlyArray<string>;
+    readonly singleWorkerKeys: ReadonlyArray<string>;
+};
+
+type DynamicWorkUnitId = {
+    readonly child: string;
+    readonly parent: WorkUnitId;
+};
+
+type TraceWorkUnitId = WorkUnitId | DynamicWorkUnitId;
 
 type PlacementPlan = {
     readonly units: ReadonlyArray<WorkUnit>;
@@ -1092,25 +1129,48 @@ type PlacementTrace = {
 type PlacementTraceEntry =
     | {
         readonly kind: 'unit-started';
-        readonly unit: WorkUnitId;
+        readonly unit: TraceWorkUnitId;
         readonly lane: string;
         readonly workerId: string;
     }
     | {
         readonly kind: 'unit-completed';
-        readonly unit: WorkUnitId;
+        readonly unit: TraceWorkUnitId;
         readonly workerId: string;
         readonly durationMilliseconds: number;
     }
-    | { readonly kind: 'worker-crashed'; readonly workerId: string; readonly activeUnit: WorkUnitId | null; }
+    | { readonly kind: 'worker-crashed'; readonly workerId: string; readonly activeUnit: TraceWorkUnitId | null; }
     | {
         readonly kind: 'unit-reassigned';
-        readonly unit: WorkUnitId;
+        readonly unit: TraceWorkUnitId;
         readonly fromLane: string;
         readonly toLane: string;
     }
-    | { readonly kind: 'hedged-duplicate-started'; readonly unit: WorkUnitId; readonly workerId: string; }
-    | { readonly kind: 'hedged-duplicate-discarded'; readonly unit: WorkUnitId; readonly workerId: string; };
+    | {
+        readonly children: NonEmptyReadonlyArray<DynamicWorkUnitId>;
+        readonly kind: 'unit-split';
+        readonly parent: WorkUnitId;
+    }
+    | {
+        readonly envelopeId: string;
+        readonly kind: 'batch-started';
+        readonly units: NonEmptyReadonlyArray<TraceWorkUnitId>;
+        readonly workerId: string;
+    }
+    | {
+        readonly envelopeId: string;
+        readonly kind: 'batch-completed';
+        readonly units: NonEmptyReadonlyArray<TraceWorkUnitId>;
+        readonly workerId: string;
+    }
+    | { readonly kind: 'hedged-duplicate-started'; readonly unit: TraceWorkUnitId; readonly workerId: string; }
+    | { readonly kind: 'hedged-duplicate-discarded'; readonly unit: TraceWorkUnitId; readonly workerId: string; }
+    | {
+        readonly kind: 'hedged-duplicate-conflict';
+        readonly authoritativeWorkerId: string;
+        readonly conflictingWorkerId: string;
+        readonly unit: TraceWorkUnitId;
+    };
 
 type CollectedRunCase = {
     readonly annotations: SerializedValue;
