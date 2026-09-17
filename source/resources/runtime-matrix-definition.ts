@@ -64,7 +64,7 @@ export type RuntimeMatrixDefinition<
 
 export type RuntimeGraph = RuntimeDefinition | RuntimeMatrixDefinition;
 
-type RuntimeMatrixDefinitionInput<
+export type RuntimeMatrixDefinitionInput<
     Name extends string,
     Variants extends Readonly<Record<string, RuntimeMatrixVariantValue<never, RuntimeDimensions, RuntimeResourceMap>>>
 > = {
@@ -72,7 +72,7 @@ type RuntimeMatrixDefinitionInput<
     readonly variants: Variants;
 };
 
-type SharedRuntimeMatrixDefinitionInput<
+export type SharedRuntimeMatrixDefinitionInput<
     Name extends string,
     Shared,
     Variants extends Readonly<Record<string, RuntimeMatrixVariantValue<Shared, RuntimeDimensions, RuntimeResourceMap>>>

@@ -11,6 +11,8 @@ import {
     isDefinedRuntimeMatrix as isRuntimeMatrixDefinition,
     type RuntimeGraph as RuntimeGraphDescriptor,
     type RuntimeMatrixDefinition as RuntimeMatrixDescriptor,
+    type RuntimeMatrixDefinitionInput as RuntimeMatrixDescriptorInput,
+    type SharedRuntimeMatrixDefinitionInput as SharedRuntimeMatrixDescriptorInput,
     type RuntimeMatrixVariant as RuntimeMatrixVariantDescriptor
 } from './runtime-matrix-definition.ts';
 import type {
@@ -58,6 +60,15 @@ export type RuntimeMatrixDefinition<
     Name extends string = string,
     Variants extends RuntimeMatrixVariantMap = RuntimeMatrixVariantMap
 > = RuntimeMatrixDescriptor<Name, Variants>;
+export type RuntimeMatrixDefinitionInput<
+    Name extends string,
+    Variants extends Readonly<Record<string, RuntimeDefinition>>
+> = RuntimeMatrixDescriptorInput<Name, Variants>;
+export type SharedRuntimeMatrixDefinitionInput<
+    Name extends string,
+    Shared,
+    Variants extends Readonly<Record<string, RuntimeDefinition | ((shared: Shared) => RuntimeDefinition)>>
+> = SharedRuntimeMatrixDescriptorInput<Name, Shared, Variants>;
 export type RuntimeMatrixVariant<
     VariantId extends string = string,
     Runtime extends RuntimeDefinition = RuntimeDefinition

@@ -61,10 +61,12 @@ export type {
     RuntimeGraphContext,
     RuntimeId,
     RuntimeMatrixDefinition,
+    RuntimeMatrixDefinitionInput,
     RuntimeMatrixVariant,
     RuntimeMatrixVariantMap,
     RuntimeResourceMap,
     RuntimeScopeContext,
+    SharedRuntimeMatrixDefinitionInput,
     TemporaryDirectoryHandle
 } from '../../resources/resources.ts';
 export type {
