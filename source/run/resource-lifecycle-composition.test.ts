@@ -48,6 +48,8 @@ const runtime = defineRuntime({
     resources,
     requirements: []
 });
+const runtimeResourceKey = JSON.stringify([ 'api', null, [] ]);
+const runtimeDatabaseResourceKey = `runtime:${runtimeResourceKey}:database`;
 const steps = [
     { kind: 'resources', resources },
     { kind: 'runtime', runtime }
@@ -70,7 +72,7 @@ function trackedResourceSession(): TrackedResourceSession {
     let disposed = false;
     const sessionContext: ResourceContext<RuntimeResourceMap> = Object.freeze({
         'resource:database': 'direct handle',
-        'runtime:api:database': 'runtime handle'
+        [runtimeDatabaseResourceKey]: 'runtime handle'
     });
     const session = {
         context: sessionContext,
@@ -170,7 +172,7 @@ export const testNode = createSuite({
 
                 scope.assert.deepEqual(Object.keys(combinedResourceEntries(steps)), [
                     'resource:database',
-                    'runtime:api:database'
+                    runtimeDatabaseResourceKey
                 ]);
                 scope.assert.equal(
                     resourceContextForStep(resources, composed.directResources).database,

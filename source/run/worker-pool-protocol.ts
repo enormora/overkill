@@ -1,5 +1,6 @@
 import type { MessagePort as NodeMessagePort } from 'node:worker_threads';
 import type { ReporterEvent } from '../engine/reporter.ts';
+import type { WorkId } from '../engine/identity.ts';
 import type {
     RunnerError,
     RunResult
@@ -10,8 +11,7 @@ import type {
     RunHostProcess,
     RunResourceBudgets,
     RunScheduling,
-    RunTestFamily,
-    WorkId
+    RunTestFamily
 } from './run-types.ts';
 
 export type WorkerPoolCommand = {

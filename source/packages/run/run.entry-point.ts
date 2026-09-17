@@ -73,6 +73,7 @@ export type {
     RunIfMainRootOptions
 } from '../../run/run-if-main-options.ts';
 export type { RunResolutionErrorCode } from '../../run/run-errors.ts';
+export type { RuntimeDimensions, RuntimeId, WorkId, WorkloadId } from '../../engine/identity.ts';
 export type {
     CollectedRunCase,
     CollectedRunFile,
@@ -85,8 +86,6 @@ export type {
     PlacementTraceEntry,
     ResolvedRun,
     ResolvedRunPlan,
-    RuntimeDimensions,
-    RuntimeId,
     RunCaseFacts,
     RunCommand,
     RunConfig,
@@ -132,8 +131,6 @@ export type {
     RunWorkerPoolAssignmentPolicy,
     RunWorkerLifecycle,
     SerializedValue,
-    WorkId,
-    WorkloadId,
     WorkUnit,
     WorkUnitMode,
     WorkUnitId

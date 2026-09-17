@@ -433,11 +433,16 @@ const browserRuntime = defineRuntimeMatrix({
 ```
 
 The matrix name owns the public scope key, so every variant above exposes
-`scope.runtimes.browser`. Variant object keys are stable ids for reporting and
-runtime selection. Existing runtimes may be reused as variants when their
-exposed resource, scenario, requirement, and dimension shapes match. Variant
+`scope.runtimes.browser`. Variant object keys are stable ids for reporting,
+result attribution, and runtime selection. Existing runtimes may be reused as
+variants when their public resource keys and dimension keys match. Variant
 factories may consume `shared` config, but `shared` is not injected into test
 scope unless a runtime or resource exposes it.
+
+The initial runner implementation expands one matrix attached to a case before
+placement and resource acquisition. Multiple matrices on one case require
+runtime composition so the runner can form one Cartesian runtime identity; that
+is owned by the `composeRuntimes(...)` milestone.
 
 `composeRuntimes([appRuntime, browserRuntime])` combines runtimes into one
 runtime graph. It has no own name and no direct resources argument. Public

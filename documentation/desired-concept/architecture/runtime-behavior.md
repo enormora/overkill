@@ -90,6 +90,11 @@ Runtime matrices expand during planning before resource acquisition. Runtime
 selection then filters the planned cases by public runtime keys, variant ids,
 and dimensions.
 
+Until runtime composition lands, a planned case may contain at most one runtime
+matrix. The matrix expands into one work item per selected variant, with the
+matrix name as the public runtime key and the variant object key as the stable
+variant id.
+
 Programmatic filters should include:
 
 - `runtime(name)`: match planned cases that include a public runtime key

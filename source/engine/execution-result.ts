@@ -1,5 +1,5 @@
 import type { WallClock } from '@enormora/wall-clock';
-import { caseIdentityKey } from './identity.ts';
+import { workIdentityKey } from './identity.ts';
 import type {
     PerTestResult,
     RunResourceUsage,
@@ -132,7 +132,7 @@ function countSuites(testPlan: TestPlan, perTest: readonly PerTestResult[]): Run
     let counts: RunResult['bySuite'] = {};
     const executedIds = new Set(
         perTest.map(function toId(result) {
-            return caseIdentityKey(result.id);
+            return workIdentityKey(result.workId);
         })
     );
 
@@ -143,7 +143,7 @@ function countSuites(testPlan: TestPlan, perTest: readonly PerTestResult[]): Run
     for (const testCase of testPlan.cases) {
         counts = countSuitePath(counts, suiteTitles(testCase.suitePath), 'planned');
 
-        if (executedIds.has(caseIdentityKey(testCase.id))) {
+        if (executedIds.has(workIdentityKey(testCase.workId))) {
             counts = countSuitePath(counts, suiteTitles(testCase.suitePath), 'executed');
         }
     }

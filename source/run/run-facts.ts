@@ -154,26 +154,18 @@ function createRunExecutionFacts(
     };
 }
 
-function runCaseFacts(
-    annotations: RunCaseFacts['annotations'],
-    controls: RunCaseFacts['controls'],
-    id: RunCaseFacts['id'],
-    fileSet: string | null
-): RunCaseFacts {
-    return { annotations, controls, fileSet, id };
-}
-
 export function runCaseFactsFromTestPlan(
     testPlan: TestPlan,
     fileSetForCase: RunCaseFileSet
 ): readonly RunCaseFacts[] {
     return testPlan.cases.map(function toRunCaseFacts(testCase) {
-        return runCaseFacts(
-            serializeValue(testCase.annotations),
-            serializeValue(testCase.controls),
-            testCase.id,
-            fileSetForCase(testCase.id.file)
-        );
+        return {
+            annotations: serializeValue(testCase.annotations),
+            controls: serializeValue(testCase.controls),
+            fileSet: fileSetForCase(testCase.id.file),
+            id: testCase.id,
+            workId: testCase.workId
+        };
     });
 }
 

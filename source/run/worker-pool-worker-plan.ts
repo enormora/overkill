@@ -1,6 +1,6 @@
 import type { createWallClock } from '@enormora/wall-clock';
 import type { Engine } from '../engine/engine.ts';
-import { caseIdentityKey, type CaseId } from '../engine/identity.ts';
+import { createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import type { TestPlan } from '../packages/engine/engine.entry-point.ts';
 import {
@@ -25,9 +25,7 @@ export type CollectedWorkerPoolTestPlan = {
     readonly testPlan: TestPlan;
 };
 
-type AssignedWork = readonly {
-    readonly case: CaseId;
-}[];
+type AssignedWork = readonly WorkId[];
 
 async function selectedEngine(command: WorkerPoolCommand): Promise<Engine> {
     return command.engine.kind === 'module' ? await loadRunEngineModule(command.engine) : defaultRunEngine;
@@ -58,19 +56,19 @@ export function sendCollectedPlan(collectedPlan: CollectedWorkerPoolTestPlan): W
     };
 }
 
-export function selectedAssignedCases(testPlan: TestPlan, assignedCases: readonly CaseId[]): TestPlan {
+export function selectedAssignedWork(testPlan: TestPlan, assignedWork: AssignedWork): TestPlan {
     const casesByIdentity = new Map(testPlan.cases.map(function toCaseEntry(testCase) {
-        return [ caseIdentityKey(testCase.id), testCase ];
+        return [ workIdentityKey(testCase.workId), testCase ];
     }));
-    const cases = assignedCases.flatMap(function toAssignedCase(testCase) {
-        const matchedCase = casesByIdentity.get(caseIdentityKey(testCase));
+    const cases = assignedWork.flatMap(function toAssignedCase(work) {
+        const matchedCase = casesByIdentity.get(workIdentityKey(work));
 
         return matchedCase === undefined ? [] : [ matchedCase ];
     });
     const firstCase = cases[0];
 
-    if (firstCase === undefined || cases.length !== assignedCases.length) {
-        throw new Error('Worker-pool test plan did not match assigned case identities.');
+    if (firstCase === undefined || cases.length !== assignedWork.length) {
+        throw new Error('Worker-pool test plan did not match assigned work identities.');
     }
 
     return {
@@ -79,13 +77,8 @@ export function selectedAssignedCases(testPlan: TestPlan, assignedCases: readonl
     };
 }
 
-export function selectedAssignedWork(testPlan: TestPlan, assignedWork: AssignedWork): TestPlan {
-    return selectedAssignedCases(
-        testPlan,
-        assignedWork.map(function toCaseId(work) {
-            return work.case;
-        })
-    );
+export function selectedAssignedCases(testPlan: TestPlan, assignedCases: readonly CaseId[]): TestPlan {
+    return selectedAssignedWork(testPlan, assignedCases.map(createDefaultWorkId));
 }
 
 export function createEmptyAssignmentResult(

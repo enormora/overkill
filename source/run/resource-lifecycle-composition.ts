@@ -1,10 +1,13 @@
 import type {
     AnyResourceDefinition,
     ResourceContext,
-    RuntimeContext,
-    RuntimeDefinition as RuntimeGraph,
+    RuntimeGraph,
+    RuntimeGraphContext,
+    RuntimeId,
+    RuntimeDefinition,
     RuntimeResourceMap as ResourceMap
 } from '../resources/resources.ts';
+import { runtimeIdentityKey, type WorkId } from '../engine/identity.ts';
 import type { ResourceSession } from '../resources/resource-session.ts';
 import { resourceWrapperLifecycleError } from './resource-lifecycle-error.ts';
 
@@ -33,10 +36,16 @@ type ResourceWrapperRuntimeStep = {
 
 export type ResourceWrapperStep = ResourceWrapperResourcesStep | ResourceWrapperRuntimeStep;
 
+type ResolvedRuntimeGraph = {
+    readonly id: RuntimeId;
+    readonly graph: RuntimeGraph;
+    readonly runtime: RuntimeDefinition;
+};
+
 export type ComposedResourceSession = {
     readonly directResources: ResourceContext<ResourceMap>;
     readonly disposeOnce: (context: DisposalContext) => Promise<void>;
-    readonly runtimeContexts: ReadonlyMap<RuntimeGraph, RuntimeContext<RuntimeGraph>>;
+    readonly runtimeContexts: ReadonlyMap<RuntimeGraph, RuntimeGraphContext<RuntimeGraph>>;
 };
 
 export type ResourceEntry = {
@@ -46,6 +55,80 @@ export type ResourceEntry = {
 
 function entries(record: Readonly<Record<string, AnyResourceDefinition>>): readonly [string, AnyResourceDefinition][] {
     return Object.entries(record);
+}
+
+function runtimeId(graph: RuntimeGraph, runtime: RuntimeDefinition, variantId: string | null): RuntimeId {
+    return {
+        dimensions: runtime.dimensions,
+        name: graph.name,
+        variantId
+    };
+}
+
+type RuntimeMatrixGraph = Extract<RuntimeGraph, { readonly kind: 'runtime-matrix'; }>;
+type RuntimeMatrixVariantValue = RuntimeMatrixGraph['variants'][string];
+type MatrixWorkId = WorkId & { readonly runtime: RuntimeId; };
+
+function assertMatrixWork(runtime: RuntimeMatrixGraph, workId: WorkId | null): MatrixWorkId {
+    const selectedRuntime = workId?.runtime ?? null;
+
+    if (workId === null || selectedRuntime === null) {
+        throw resourceWrapperLifecycleError(
+            `Runtime matrix "${runtime.name}" requires runner-managed execution.`,
+            runtime
+        );
+    }
+
+    return { ...workId, runtime: selectedRuntime };
+}
+
+function selectedMatrixVariant(runtime: RuntimeMatrixGraph, workId: WorkId | null): RuntimeMatrixVariantValue {
+    const selectedWork = assertMatrixWork(runtime, workId);
+
+    if (selectedWork.runtime.name !== runtime.name || selectedWork.runtime.variantId === null) {
+        throw resourceWrapperLifecycleError(
+            `Runtime matrix "${runtime.name}" has no selected variant for this work item.`,
+            selectedWork
+        );
+    }
+
+    const variant = runtime.variants[selectedWork.runtime.variantId];
+
+    if (variant === undefined) {
+        throw resourceWrapperLifecycleError(
+            `Runtime matrix "${runtime.name}" has no variant "${selectedWork.runtime.variantId}".`,
+            selectedWork
+        );
+    }
+
+    return variant;
+}
+
+function resolveRuntimeGraph(runtime: RuntimeGraph, workId: WorkId | null): ResolvedRuntimeGraph {
+    if (runtime.kind !== 'runtime-matrix') {
+        return {
+            graph: runtime,
+            id: runtime.id,
+            runtime
+        };
+    }
+
+    const variant = selectedMatrixVariant(runtime, workId);
+
+    return {
+        graph: runtime,
+        id: runtimeId(runtime, variant.runtime, variant.id),
+        runtime: variant.runtime
+    };
+}
+
+function resolvedRuntimeGraphs(
+    steps: readonly ResourceWrapperStep[],
+    workId: WorkId | null
+): readonly ResolvedRuntimeGraph[] {
+    return steps.flatMap(function stepRuntimeGraph(step) {
+        return step.kind === 'runtime' ? [ resolveRuntimeGraph(step.runtime, workId) ] : [];
+    });
 }
 
 export function directResourceEntries(steps: readonly ResourceWrapperStep[]): readonly ResourceEntry[] {
@@ -90,8 +173,12 @@ function isResourceContext<Resources extends ResourceMap>(
 function isRuntimeContext<Graph extends RuntimeGraph>(
     context: Readonly<Record<string, unknown>>,
     runtime: Graph
-): context is RuntimeContext<Graph> {
-    return isResourceContext(context, runtime.resources);
+): context is RuntimeGraphContext<Graph> {
+    if (runtime.kind === 'runtime') {
+        return isResourceContext(context, runtime.resources);
+    }
+
+    return true;
 }
 
 export function resourceContextForStep<Resources extends ResourceMap>(
@@ -116,7 +203,7 @@ export function resourceContextForStep<Resources extends ResourceMap>(
 export function runtimeContextForStep<Graph extends RuntimeGraph>(
     runtime: Graph,
     session: ComposedResourceSession
-): RuntimeContext<Graph> {
+): RuntimeGraphContext<Graph> {
     const context = session.runtimeContexts.get(runtime);
 
     if (context === undefined || !isRuntimeContext(context, runtime)) {
@@ -130,16 +217,63 @@ function combinedResourceKey(prefix: string, parts: readonly string[]): string {
     return `${prefix}:${parts.join(':')}`;
 }
 
-export function combinedResourceEntries(steps: readonly ResourceWrapperStep[]): ResourceMap {
+const scopedRuntimeResources = new WeakMap<AnyResourceDefinition, Map<string, AnyResourceDefinition>>();
+
+function cacheScopedRuntimeResource(
+    resource: AnyResourceDefinition,
+    runtimeKey: string,
+    scoped: AnyResourceDefinition,
+    cachedResources: ReadonlyMap<string, AnyResourceDefinition>
+): void {
+    scopedRuntimeResources.set(resource, new Map([ ...cachedResources, [ runtimeKey, scoped ] ]));
+}
+
+function scopedRuntimeResource(
+    resource: AnyResourceDefinition,
+    runtimeKey: string
+): AnyResourceDefinition {
+    const cachedResources = scopedRuntimeResources.get(resource) ?? new Map<string, AnyResourceDefinition>();
+    const cached = cachedResources.get(runtimeKey);
+
+    if (cached !== undefined) {
+        return cached;
+    }
+
+    const dependencies: Mutable<Record<string, AnyResourceDefinition>> = {};
+
+    for (const [ key, dependency ] of entries(resource.dependencies)) {
+        dependencies[key] = scopedRuntimeResource(dependency, runtimeKey);
+    }
+
+    const scoped = Object.freeze({
+        ...resource,
+        dependencies: Object.freeze(dependencies),
+        name: `${resource.name}@${runtimeKey}`
+    });
+
+    cacheScopedRuntimeResource(resource, runtimeKey, scoped, cachedResources);
+
+    return scoped;
+}
+
+export function combinedResourceEntries(
+    steps: readonly ResourceWrapperStep[],
+    workId: WorkId | null = null
+): ResourceMap {
     const resources: Mutable<Record<string, AnyResourceDefinition>> = {};
 
     for (const entry of directResourceEntries(steps)) {
         resources[combinedResourceKey('resource', [ entry.key ])] = entry.resource;
     }
 
-    for (const runtime of stepRuntimeGraphs(steps)) {
-        for (const [ key, resource ] of entries(runtime.resources)) {
-            resources[combinedResourceKey('runtime', [ runtime.name, key ])] = resource;
+    for (const runtime of resolvedRuntimeGraphs(steps, workId)) {
+        const runtimeKey = runtimeIdentityKey(runtime.id);
+
+        for (const [ key, resource ] of entries(runtime.runtime.resources)) {
+            resources[combinedResourceKey('runtime', [ runtimeKey, key ])] = scopedRuntimeResource(
+                resource,
+                runtimeKey
+            );
         }
     }
 
@@ -163,32 +297,39 @@ function directResourceContext(
 }
 
 function runtimeContexts(
-    runtimes: readonly RuntimeGraph[],
+    runtimes: readonly ResolvedRuntimeGraph[],
     session: ResourceSession<ResourceMap>
-): ReadonlyMap<RuntimeGraph, RuntimeContext<RuntimeGraph>> {
+): ReadonlyMap<RuntimeGraph, RuntimeGraphContext<RuntimeGraph>> {
     return new Map(runtimes.map(function toRuntimeContext(runtime) {
         const context: Mutable<Record<string, unknown>> = {};
+        const runtimeKey = runtimeIdentityKey(runtime.id);
 
-        for (const key of Object.keys(runtime.resources)) {
+        for (const key of Object.keys(runtime.runtime.resources)) {
             context[key] = Reflect.get(
                 session.context,
-                combinedResourceKey('runtime', [ runtime.name, key ])
+                combinedResourceKey('runtime', [ runtimeKey, key ])
             );
         }
 
-        return [ runtime, Object.freeze(context) ];
+        return [ runtime.graph, Object.freeze(context) ];
     }));
 }
 
 export function composedResourceSession(
     directResources: ResourceMap,
     runtimes: readonly RuntimeGraph[],
-    session: ResourceSession<ResourceMap>
+    session: ResourceSession<ResourceMap>,
+    workId: WorkId | null = null
 ): ComposedResourceSession {
     return Object.freeze({
         directResources: directResourceContext(directResources, session),
         disposeOnce: session.disposeOnce,
-        runtimeContexts: runtimeContexts(runtimes, session)
+        runtimeContexts: runtimeContexts(
+            runtimes.map(function resolveRuntime(runtime) {
+                return resolveRuntimeGraph(runtime, workId);
+            }),
+            session
+        )
     });
 }
 

@@ -46,7 +46,8 @@ function runtimePolicyCase(testCase: TestPlanCase, executedCase: ConcurrentCase)
         result: {
             id: testCase.id,
             outcome: null,
-            verdict: 'runtime-policy'
+            verdict: 'runtime-policy',
+            workId: testCase.workId
         },
         runnerErrors: executedCase.runnerErrors,
         wallTimeMs: executedCase.wallTimeMs
@@ -76,10 +77,13 @@ export async function caseWithAsyncLeakPolicy(input: CaseAsyncLeakPolicyInput): 
         : input.dependencies.asyncLeakMonitor.casePromiseLeakError(input.testCase);
     const activeLeakError = input.includeActiveResourceLeaks
         ? activeResourceLeakError(
-            input.testCase.id,
-            input.activeResourceTypesBefore,
-            input.dependencies.readActiveResourceTypes(),
-            'body'
+            {
+                after: input.dependencies.readActiveResourceTypes(),
+                attributedTo: input.testCase.id,
+                attributedToWork: input.testCase.workId,
+                before: input.activeResourceTypesBefore,
+                phase: 'body'
+            }
         )
         : null;
     const runnerErrors = [ promiseLeakError, activeLeakError ].filter(function isRunnerError(
@@ -101,9 +105,12 @@ export function concurrentRunActiveResourceLeak(
     activeResourceTypesBefore: readonly string[]
 ): RunnerError | null {
     return activeResourceLeakError(
-        null,
-        activeResourceTypesBefore,
-        dependencies.readActiveResourceTypes(),
-        'run'
+        {
+            after: dependencies.readActiveResourceTypes(),
+            attributedTo: null,
+            attributedToWork: null,
+            before: activeResourceTypesBefore,
+            phase: 'run'
+        }
     );
 }

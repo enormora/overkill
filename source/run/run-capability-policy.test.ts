@@ -11,6 +11,7 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
+import { createDefaultWorkId } from '../engine/identity.ts';
 import {
     createRuntimeCapabilityPolicy,
     isRuntimeCapabilityPolicyEnvironment,
@@ -64,7 +65,13 @@ const policyTestCase: PolicyTestCase = {
     suitePath: [
         { definitionLocations: [ { kind: 'unknown' as const } ], title: 'runtime policy' }
     ],
-    testFamily: null
+    testFamily: null,
+    workId: createDefaultWorkId({
+        file: 'source/run/run-capability-policy.test.ts',
+        title: 'policy case',
+        params: null,
+        suite: [ 'runtime policy' ]
+    })
 };
 
 function createRunCommand(overrides: RunCommandParts): RunCommand {

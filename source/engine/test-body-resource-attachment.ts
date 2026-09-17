@@ -9,12 +9,27 @@ export type TestBodyResourceSummary = {
     readonly scope: string;
 };
 
-export type TestBodyRuntimeSummary = {
+export type TestBodyLeafRuntimeSummary = {
     readonly dimensions: Readonly<Record<string, string>>;
+    readonly kind?: 'runtime';
     readonly name: string;
     readonly requirements: readonly TestBodyExecutionRequirementSummary[];
     readonly resources: readonly TestBodyDirectResourceAttachmentSummary[];
 };
+
+export type TestBodyRuntimeMatrixVariantSummary = {
+    readonly id: string;
+    readonly runtime: TestBodyLeafRuntimeSummary;
+};
+
+export type TestBodyRuntimeMatrixSummary = {
+    readonly kind: 'runtime-matrix';
+    readonly name: string;
+    readonly resources: readonly TestBodyDirectResourceAttachmentSummary[];
+    readonly variants: readonly TestBodyRuntimeMatrixVariantSummary[];
+};
+
+export type TestBodyRuntimeSummary = TestBodyLeafRuntimeSummary | TestBodyRuntimeMatrixSummary;
 
 export type TestBodyDirectResourceAttachmentSummary = {
     readonly key: string;
@@ -91,14 +106,20 @@ function validateAttachments(attachments: TestBodyResourceAttachments): void {
     );
 
     for (const runtime of attachments.runtimeGraphs) {
-        assertUniqueKeys(
-            runtime.resources.map(function runtimeResourceKey(resource) {
-                return resource.key;
-            }),
-            function duplicateRuntimeResourceKey(key) {
-                return `Runtime scope "${runtime.name}" resource "${key}" is attached multiple times.`;
-            }
-        );
+        const runtimeVariants = runtime.kind === 'runtime-matrix'
+            ? runtime.variants
+            : [ { id: runtime.name, runtime } ];
+
+        for (const variant of runtimeVariants) {
+            assertUniqueKeys(
+                variant.runtime.resources.map(function runtimeResourceKey(resource) {
+                    return resource.key;
+                }),
+                function duplicateRuntimeResourceKey(key) {
+                    return `Runtime scope "${runtime.name}" resource "${key}" is attached multiple times.`;
+                }
+            );
+        }
     }
 }
 
@@ -106,7 +127,11 @@ export function hasAttachedResourceDescriptors(attachments: TestBodyResourceAtta
     return attachments.directResources.length > 0 ||
         attachments.resourceGraph.length > 0 ||
         attachments.runtimeGraphs.some(function runtimeHasResources(runtime) {
-            return runtime.resources.length > 0;
+            return runtime.kind === 'runtime-matrix'
+                ? runtime.variants.some(function variantHasResources(variant) {
+                    return variant.runtime.resources.length > 0;
+                })
+                : runtime.resources.length > 0;
         });
 }
 
@@ -129,19 +154,38 @@ function freezeResourceGraph(resources: readonly TestBodyResourceSummary[]): rea
     }));
 }
 
+function freezeLeafRuntime(runtime: TestBodyLeafRuntimeSummary): TestBodyLeafRuntimeSummary {
+    return Object.freeze({
+        dimensions: Object.freeze({ ...runtime.dimensions }),
+        kind: 'runtime',
+        name: runtime.name,
+        requirements: freezeRequirements(runtime.requirements),
+        resources: Object.freeze(runtime.resources.map(function freezeRuntimeResource(resource) {
+            return Object.freeze({
+                key: resource.key,
+                resourceName: resource.resourceName
+            });
+        }))
+    });
+}
+
 function freezeRuntimeGraphs(runtimes: readonly TestBodyRuntimeSummary[]): readonly TestBodyRuntimeSummary[] {
     return Object.freeze(runtimes.map(function freezeRuntime(runtime) {
-        return Object.freeze({
-            dimensions: Object.freeze({ ...runtime.dimensions }),
-            name: runtime.name,
-            requirements: freezeRequirements(runtime.requirements),
-            resources: Object.freeze(runtime.resources.map(function freezeRuntimeResource(resource) {
-                return Object.freeze({
-                    key: resource.key,
-                    resourceName: resource.resourceName
-                });
-            }))
-        });
+        if (runtime.kind === 'runtime-matrix') {
+            return Object.freeze({
+                kind: runtime.kind,
+                name: runtime.name,
+                resources: Object.freeze(Array.from(runtime.resources)),
+                variants: Object.freeze(runtime.variants.map(function freezeVariant(variant) {
+                    return Object.freeze({
+                        id: variant.id,
+                        runtime: freezeLeafRuntime(variant.runtime)
+                    });
+                }))
+            });
+        }
+
+        return freezeLeafRuntime(runtime);
     }));
 }
 

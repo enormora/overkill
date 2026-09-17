@@ -1,6 +1,6 @@
 import type { InvalidDeepAssertionOperand } from '../assertion-protocol/evaluation.ts';
 import type { FailedCheck, NonEmptyReadonlyArray, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
-import type { CaseId } from './identity.ts';
+import type { CaseId, WorkId } from './identity.ts';
 
 type RunnerErrorSubtypeByName = {
     readonly attributionDrift: 'attribution-drift';
@@ -121,6 +121,7 @@ export type TestVerdict = TestOutcome['kind'] | 'crashed' | 'resource-exhausted'
 
 export type RunnerError = {
     readonly attributedTo: CaseId | null;
+    readonly attributedToWork?: WorkId | null;
     readonly cause: unknown;
     readonly message: string;
     readonly subtype: RunnerErrorSubtype;
@@ -148,9 +149,10 @@ export class CaseRunnerError extends Error {
         });
     }
 
-    public runnerError(attributedTo: CaseId): RunnerError {
+    public runnerError(attributedTo: CaseId, attributedToWork: WorkId): RunnerError {
         return {
             attributedTo,
+            attributedToWork,
             cause: this.runnerErrorCause,
             message: this.message,
             subtype: this.runnerErrorSubtype
@@ -188,6 +190,7 @@ export type PerTestResult = {
     readonly id: CaseId;
     readonly outcome: TestOutcome | null;
     readonly verdict: TestVerdict;
+    readonly workId: WorkId;
 };
 
 export type RunArtifactScope = {

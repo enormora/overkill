@@ -120,7 +120,8 @@ async function reportTestStart(
         case: testCase.id,
         definitionLocations: testCase.definitionLocations,
         kind: 'test-start',
-        suitePath: testCase.suitePath
+        suitePath: testCase.suitePath,
+        workId: testCase.workId
     });
 }
 
@@ -137,7 +138,8 @@ async function reportTestEnd(
         outcome: input.result.outcome,
         suitePath: input.testCase.suitePath,
         verdict: input.result.verdict,
-        wallTimeMs: input.wallTimeMs
+        wallTimeMs: input.wallTimeMs,
+        workId: input.testCase.workId
     });
 }
 
@@ -341,7 +343,8 @@ async function reportConcurrentCaseEnd(
         outcome: executedCase.result.outcome,
         suitePath: testCase.suitePath,
         verdict: executedCase.result.verdict,
-        wallTimeMs: executedCase.wallTimeMs
+        wallTimeMs: executedCase.wallTimeMs,
+        workId: testCase.workId
     });
 }
 

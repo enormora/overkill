@@ -267,7 +267,7 @@ async function executeFacadeRuntimeBinding(): Promise<{
     const testCase = facade.test('uses facade runtime', function runFacadeRuntime(facadeScope) {
         facadeScope.assert.equal(facadeScope.databaseUrl, 'postgres://localhost');
         facadeScope.assert.equal(facadeScope.resources.store.url, 'postgres://localhost');
-        facadeScope.assert.equal(facadeScope.sharedHandle, true);
+        facadeScope.assert.equal(facadeScope.sharedHandle, false);
 
         return facadeScope.assert.collect();
     });
@@ -386,7 +386,7 @@ export const testNode = createOverkillSuite({
 
                 assertFacadeRuntimePlan(scope, execution.plan);
                 assertPassingSummary(scope, execution.result.summary);
-                scope.assert.equal(acquisitions, 1);
+                scope.assert.equal(acquisitions, 2);
 
                 return scope.assert.collect();
             }

@@ -1,12 +1,12 @@
 import { createWallClock, type WallClock } from '@enormora/wall-clock';
-import { caseIdentityKey, type CaseId } from '../engine/identity.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type { ResourceUsageSnapshot, RunResourceUsage, RunResourceUsageTracker } from '../engine/run-result.ts';
 import {
     createRunResultFromCollectedPlan
 } from '../run/collected-run-plan.ts';
 import { createRunOrchestrator } from '../run/run.ts';
-import type { CollectedRunPlan, RunOrchestrator } from '../run/run-types.ts';
+import type { CollectedRunPlan, RunOrchestrator, WorkId } from '../run/run-types.ts';
+import { supervisedAssignedWork } from '../run/supervised-protocol.ts';
 import {
     createFakeSupervisedChildProcess,
     type FakeSupervisedChildRunContext
@@ -79,9 +79,9 @@ function deterministicResourceUsage(): RunResourceUsage {
 }
 
 function emitTestStart(context: FakeSupervisedChildRunContext): void {
-    const [ testCase ] = context.assignment.assignedCases;
+    const [ work ] = supervisedAssignedWork(context.assignment);
 
-    if (testCase === undefined) {
+    if (work === undefined) {
         context.emitExit();
 
         return;
@@ -90,19 +90,20 @@ function emitTestStart(context: FakeSupervisedChildRunContext): void {
     context.emitMessage({
         event: {
             attempt: 1,
-            case: testCase,
+            case: work.case,
             definitionLocations: [ { kind: 'unknown' } ],
             kind: 'test-start',
-            suitePath: []
+            suitePath: [],
+            workId: work
         },
         kind: 'event'
     });
 }
 
 function emitTestEnd(context: FakeSupervisedChildRunContext, verdict: 'pass' | 'runtime-policy'): void {
-    const [ testCase ] = context.assignment.assignedCases;
+    const [ work ] = supervisedAssignedWork(context.assignment);
 
-    if (testCase === undefined) {
+    if (work === undefined) {
         return;
     }
 
@@ -110,29 +111,31 @@ function emitTestEnd(context: FakeSupervisedChildRunContext, verdict: 'pass' | '
         event: {
             attempt: 1,
             artifacts: [],
-            case: testCase,
+            case: work.case,
             definitionLocations: [ { kind: 'unknown' } ],
             kind: 'test-end',
             outcome: verdict === 'pass' ? { kind: 'pass' } : null,
             suitePath: [],
             verdict,
-            wallTimeMs: 0
+            wallTimeMs: 0,
+            workId: work
         },
         kind: 'event'
     });
 }
 
 function emitProcessEnvironmentPolicyError(context: FakeSupervisedChildRunContext): void {
-    const [ testCase ] = context.assignment.assignedCases;
+    const [ work ] = supervisedAssignedWork(context.assignment);
 
-    if (testCase === undefined) {
+    if (work === undefined) {
         return;
     }
 
     context.emitMessage({
         event: {
             error: {
-                attributedTo: testCase,
+                attributedTo: work.case,
+                attributedToWork: work,
                 cause: { capability: 'process-env' },
                 message: 'Runtime policy violation: process.env value was set: OVERKILL_CASE_POLICY_FIXTURE.',
                 subtype: 'runtime-policy'
@@ -161,21 +164,20 @@ function emitResourceUsageSamples(context: FakeSupervisedChildRunContext): void 
 }
 
 function collectedCaseIdentity(file: string, testCase: CollectedRunPlan['files'][number]['cases'][number]): string {
-    return caseIdentityKey({
-        file,
-        params: testCase.params,
-        suite: testCase.suitePath.map(function toSuiteTitle(suite) {
-            return suite.title;
-        }),
-        title: testCase.title
+    const suiteTitles = testCase.suitePath.map(function toSuiteTitle(suite) {
+        return suite.title;
     });
+
+    return JSON.stringify([ file, suiteTitles, testCase.title, testCase.params ]);
 }
 
 function collectedPlanForAssignedCases(
     collectedPlan: CollectedRunPlan,
-    assignedCases: readonly CaseId[]
+    assignedWork: readonly WorkId[]
 ): CollectedRunPlan {
-    const assignedCaseKeys = new Set(assignedCases.map(caseIdentityKey));
+    const assignedCaseKeys = new Set(assignedWork.map(function toCaseKey(work) {
+        return JSON.stringify([ work.case.file, work.case.suite, work.case.title, work.case.params ]);
+    }));
 
     return {
         ...collectedPlan,
@@ -191,17 +193,19 @@ function collectedPlanForAssignedCases(
 
 function completeDeterministicSupervisedChild(context: FakeSupervisedChildRunContext, wallClock: WallClock): void {
     const collectedPlan = deterministicCollectedRunPlan(context.testFile);
+    const assignedWork = supervisedAssignedWork(context.assignment);
 
     emitTestEnd(context, 'pass');
     context.emitMessage({
         kind: 'result',
         result: createRunResultFromCollectedPlan(
-            collectedPlanForAssignedCases(collectedPlan, context.assignment.assignedCases),
-            context.assignment.assignedCases.map(function toPassingResult(testCase) {
+            collectedPlanForAssignedCases(collectedPlan, assignedWork),
+            assignedWork.map(function toPassingResult(work) {
                 return {
-                    id: testCase,
+                    id: work.case,
                     outcome: { kind: 'pass' as const },
-                    verdict: 'pass' as const
+                    verdict: 'pass' as const,
+                    workId: work
                 };
             }),
             [],

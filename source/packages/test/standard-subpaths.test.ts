@@ -44,12 +44,7 @@ type BoundaryRow = {
 type NamedResourceDescriptor = {
     readonly name: string;
 };
-type NamedRuntimeDescriptor = {
-    readonly id: {
-        readonly name: string;
-    };
-    readonly resources: Readonly<Record<string, unknown>>;
-};
+type NamedRuntimeDescriptor = resourcesSubpath.RuntimeDefinition;
 type CycleDependencies = {
     readonly self: resourcesSubpath.ResourceDefinition<'cycle', string, CycleDependencies>;
 };
@@ -57,7 +52,7 @@ type ResourceWrapperBehavior = {
     readonly body: resourcesSubpath.RuntimeWrappedTestBody;
     readonly database: NamedResourceDescriptor;
     readonly resourceBody: resourcesSubpath.ResourceWrappedTestBody;
-    readonly runtime: resourcesSubpath.RuntimeGraph;
+    readonly runtime: resourcesSubpath.RuntimeDefinition;
     readonly tableBody: resourcesSubpath.RuntimeWrappedTestBody<
         resourcesSubpath.RuntimeGraph,
         ParameterizedTestScope<BoundaryRow>
@@ -133,6 +128,7 @@ function assertResourcesSubpathExports(scope: TestScope): void {
         'createTemporaryDirectoryResource',
         'defineResource',
         'defineRuntime',
+        'defineRuntimeMatrix',
         'ResourceLifecycleError',
         'startRuntime',
         'withResource',
@@ -267,6 +263,7 @@ function assertRuntimeAttachments(
         runtimeGraphs: [
             {
                 dimensions: {},
+                kind: 'runtime',
                 name: 'api',
                 requirements: [ { kind: 'startup-budget-milliseconds', minimumMilliseconds: 1000 } ],
                 resources: [ { key: 'database', resourceName: 'database' } ]
@@ -358,6 +355,7 @@ function assertResourceWrapperValidation(
             runtimeGraphs: [
                 {
                     dimensions: {},
+                    kind: 'runtime',
                     name: 'api',
                     requirements: [ { kind: 'startup-budget-milliseconds', minimumMilliseconds: 1000 } ],
                     resources: [ { key: 'database', resourceName: 'database' } ]

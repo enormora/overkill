@@ -1,6 +1,6 @@
 import asyncHooks, { AsyncLocalStorage } from 'node:async_hooks';
 import diagnosticsChannel from 'node:diagnostics_channel';
-import { caseIdentityKey, type CaseId } from '../engine/identity.ts';
+import { workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import type { TestRuntimePolicy } from '../engine/case-execution.ts';
 
@@ -47,6 +47,7 @@ type CapabilityPolicyOptions = {
 type ActiveCase = {
     readonly id: CaseId;
     readonly key: string;
+    readonly workId: WorkId;
 };
 
 type EnvironmentSnapshot = {
@@ -78,6 +79,7 @@ type RuntimePolicyViolation = {
     readonly message: string;
     readonly phase: RuntimePolicyPhase;
     readonly strictness: RuntimePolicyStrictness;
+    readonly workId: WorkId | null;
 };
 
 type RuntimePolicyReport = {
@@ -315,6 +317,7 @@ function createAsyncResourceHook(
 function runtimePolicyError(violation: RuntimePolicyViolation): RunnerError {
     return {
         attributedTo: violation.caseId,
+        attributedToWork: violation.workId,
         cause: violation,
         message: violation.message,
         subtype: 'runtime-policy'
@@ -479,7 +482,8 @@ function rawOutputPolicyError(capability: RuntimePolicyCapability, message: stri
         caseId: null,
         message,
         phase: 'out-of-test',
-        strictness: 'observed'
+        strictness: 'observed',
+        workId: null
     });
 }
 
@@ -493,6 +497,20 @@ function rawOutputPolicyErrors(options: CapabilityPolicyOptions): readonly Runne
     }
     return errors;
 }
+
+function completedRuntimePolicyViolation(
+    violation: RuntimePolicyReport,
+    activeCase: ActiveCase | undefined,
+    loadComplete: boolean
+): RuntimePolicyViolation {
+    return {
+        ...violation,
+        caseId: activeCase?.id ?? null,
+        workId: activeCase?.workId ?? null,
+        phase: violationPhase(activeCase, loadComplete)
+    };
+}
+
 export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions): RuntimeCapabilityPolicy {
     const activeCaseStorage = new AsyncLocalStorage<ActiveCase>();
     const caseErrors = new Map<string, RunnerError[]>();
@@ -506,11 +524,7 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
             return;
         }
 
-        const completedViolation: RuntimePolicyViolation = {
-            ...violation,
-            caseId: activeCase?.id ?? null,
-            phase: violationPhase(activeCase, loadComplete)
-        };
+        const completedViolation = completedRuntimePolicyViolation(violation, activeCase, loadComplete);
         const error = runtimePolicyError(completedViolation);
 
         if (activeCase === undefined) {
@@ -538,7 +552,8 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
             loadComplete = true;
             const activeCase = {
                 id: testCase.id,
-                key: caseIdentityKey(testCase.id)
+                key: workIdentityKey(testCase.workId),
+                workId: testCase.workId
             };
             const before = takeSnapshots(options.dependencies);
 
@@ -561,7 +576,7 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
             }
         },
         takeCaseErrors(testCase) {
-            const key = caseIdentityKey(testCase.id);
+            const key = workIdentityKey(testCase.workId);
             const errors = caseErrors.get(key) ?? [];
             caseErrors.delete(key);
 

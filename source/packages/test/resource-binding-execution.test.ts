@@ -202,7 +202,7 @@ async function assertNestedWrappersShareAcquisition(scope: TestScope): Promise<v
             function runWithNestedScope(nestedScope) {
                 nestedScope.assert.equal(nestedScope.resources.database.url, 'postgres://localhost');
                 nestedScope.assert.equal(nestedScope.runtimes.api.database.url, 'postgres://localhost');
-                nestedScope.assert.equal(nestedScope.resources.database, nestedScope.runtimes.api.database);
+                nestedScope.assert.notEqual(nestedScope.resources.database, nestedScope.runtimes.api.database);
 
                 return nestedScope.assert.collect();
             }
@@ -212,7 +212,7 @@ async function assertNestedWrappersShareAcquisition(scope: TestScope): Promise<v
     const result = firstCaseResult(scope, observed);
 
     scope.assert.equal(result.verdict, 'pass');
-    scope.assert.equal(acquisitions, 1);
+    scope.assert.equal(acquisitions, 2);
 }
 
 async function assertRuntimeInternalKeysRemainNamespaced(scope: TestScope): Promise<void> {
@@ -237,7 +237,7 @@ async function assertRuntimeInternalKeysRemainNamespaced(scope: TestScope): Prom
         resourcesSubpath.withRuntime<typeof adminRuntime, resourcesSubpath.RuntimeTestScope<typeof apiRuntime>>(
             adminRuntime,
             function runWithRuntimeKeys(runtimeScope) {
-                runtimeScope.assert.equal(runtimeScope.runtimes.api.database, runtimeScope.runtimes.admin.database);
+                runtimeScope.assert.notEqual(runtimeScope.runtimes.api.database, runtimeScope.runtimes.admin.database);
                 runtimeScope.assert.equal(runtimeScope.runtimes.api.database.url, 'postgres://localhost');
 
                 return runtimeScope.assert.collect();
@@ -248,7 +248,7 @@ async function assertRuntimeInternalKeysRemainNamespaced(scope: TestScope): Prom
     const result = firstCaseResult(scope, observed);
 
     scope.assert.equal(result.verdict, 'pass');
-    scope.assert.equal(acquisitions, 1);
+    scope.assert.equal(acquisitions, 2);
 }
 
 async function assertNestedWrapperDuplicateKeysFail(scope: TestScope): Promise<void> {

@@ -1,5 +1,52 @@
+import {
+    defineRuntime as createRuntimeDefinition,
+    isDefinedRuntime as isRuntimeDefinition,
+    type RuntimeDefinition as RuntimeDefinitionDescriptor,
+    type RuntimeDefinitionInput as RuntimeDefinitionDescriptorInput,
+    type RuntimeDimensions as RuntimeDimensionMap,
+    type RuntimeId as RuntimeIdentity
+} from './runtime-definition.ts';
+import {
+    defineRuntimeMatrix as createRuntimeMatrixDefinition,
+    isDefinedRuntimeMatrix as isRuntimeMatrixDefinition,
+    type RuntimeGraph as RuntimeGraphDescriptor,
+    type RuntimeMatrixDefinition as RuntimeMatrixDescriptor,
+    type RuntimeMatrixVariant as RuntimeMatrixVariantDescriptor,
+    type RuntimeMatrixVariantMap as RuntimeMatrixVariantRecord
+} from './runtime-matrix-definition.ts';
+
+export const defineRuntime = createRuntimeDefinition;
+export const defineRuntimeMatrix = createRuntimeMatrixDefinition;
+export const isDefinedRuntime = isRuntimeDefinition;
+export const isDefinedRuntimeMatrix = isRuntimeMatrixDefinition;
+
+export type RuntimeDefinition<
+    Name extends string = string,
+    Dimensions extends RuntimeDimensionMap = RuntimeDimensionMap,
+    Resources extends RuntimeResourceMap = RuntimeResourceMap
+> = RuntimeDefinitionDescriptor<Name, Dimensions, Resources>;
+export type RuntimeDefinitionInput<
+    Name extends string,
+    Dimensions extends RuntimeDimensionMap,
+    Resources extends RuntimeResourceMap
+> = RuntimeDefinitionDescriptorInput<Name, Dimensions, Resources>;
+export type RuntimeDimensions = RuntimeDimensionMap;
+export type RuntimeGraph = RuntimeGraphDescriptor;
+export type RuntimeId<
+    Name extends string = string,
+    Dimensions extends RuntimeDimensions = RuntimeDimensions
+> = RuntimeIdentity<Name, Dimensions>;
+export type RuntimeMatrixDefinition<
+    Name extends string = string,
+    Variants extends RuntimeMatrixVariantMap = RuntimeMatrixVariantMap
+> = RuntimeMatrixDescriptor<Name, Variants>;
+export type RuntimeMatrixVariant<
+    VariantId extends string = string,
+    Runtime extends RuntimeDefinition = RuntimeDefinition
+> = RuntimeMatrixVariantDescriptor<VariantId, Runtime>;
+export type RuntimeMatrixVariantMap = RuntimeMatrixVariantRecord;
+
 const resourceDefinitionBrand: unique symbol = Symbol('overkill.resourceDefinition');
-const runtimeDefinitionBrand: unique symbol = Symbol('overkill.runtimeDefinition');
 
 export type Awaitable<Value> = Promise<Value> | Value;
 type ValueOf<Values> = Values[keyof Values];
@@ -37,16 +84,6 @@ export type AnyResourceDefinition = {
 
 export type RuntimeResourceMap = Readonly<Record<string, AnyResourceDefinition>>;
 export type EmptyResourceDependencies = Readonly<Record<PropertyKey, never>>;
-
-export type RuntimeDimensions = Readonly<Record<string, string>>;
-
-export type RuntimeId<
-    Name extends string = string,
-    Dimensions extends RuntimeDimensions = RuntimeDimensions
-> = {
-    readonly name: Name;
-    readonly dimensions: Dimensions;
-};
 
 type PlacementRequirement = AffinityKey | CapacityWeight | ExclusiveResource | FaultDomain;
 type SchedulingRequirement = SerialExecution | SingleWorkerExecution | StartupBudget;
@@ -246,32 +283,23 @@ type ResourceConsumerHandle<Definition> = Definition extends {
 } ? Handle
     : ResourceOwnerHandle<Definition>;
 
-export type RuntimeDefinitionInput<
-    Name extends string,
-    Dimensions extends RuntimeDimensions,
-    Resources extends RuntimeResourceMap
-> = {
-    readonly dimensions: Dimensions;
-    readonly name: Name;
-    readonly requirements: readonly ExecutionRequirement[];
-    readonly resources: Resources;
+type RuntimeGraphName<Graph extends RuntimeGraph> = Graph['name'];
+type RuntimeMatrixRuntime<Matrix extends RuntimeMatrixDefinition> =
+    Matrix['variants'][keyof Matrix['variants']]['runtime'];
+type RuntimeGraphRuntime<Graph extends RuntimeGraph> = {
+    readonly runtime: Extract<Graph, RuntimeDefinition>;
+    readonly 'runtime-matrix': RuntimeMatrixRuntime<Extract<Graph, RuntimeMatrixDefinition>>;
+}[Graph['kind']];
+type RuntimeGraphResources<Runtime extends RuntimeGraph> = RuntimeGraphRuntime<Runtime>['resources'];
+
+export type RuntimeContext<Runtime extends RuntimeGraph> = {
+    readonly [Key in keyof RuntimeGraphResources<Runtime>]: ResourceHandle<RuntimeGraphResources<Runtime>[Key]>;
 };
 
-export type RuntimeDefinition<
-    Name extends string = string,
-    Dimensions extends RuntimeDimensions = RuntimeDimensions,
-    Resources extends RuntimeResourceMap = RuntimeResourceMap
-> = RuntimeDefinitionInput<Name, Dimensions, Resources> & {
-    readonly id: RuntimeId<Name, Dimensions>;
-    readonly [runtimeDefinitionBrand]: true;
-};
+export type RuntimeGraphContext<Graph extends RuntimeGraph> = RuntimeContext<Graph>;
 
-export type RuntimeContext<Runtime extends RuntimeDefinition> = {
-    readonly [Key in keyof Runtime['resources']]: ResourceHandle<Runtime['resources'][Key]>;
-};
-
-export type RuntimeScopeContext<Runtime extends RuntimeDefinition> = Readonly<
-    Record<Runtime['name'], RuntimeContext<Runtime>>
+export type RuntimeScopeContext<Runtime extends RuntimeGraph> = Readonly<
+    Record<RuntimeGraphName<Runtime>, RuntimeGraphContext<Runtime>>
 >;
 
 type EmptyRuntimeScopes = Pick<Readonly<Record<string, never>>, never>;
@@ -315,6 +343,7 @@ export type ResourcesModule = {
     readonly createTemporaryDirectoryResource: CreateTemporaryDirectoryResource;
     readonly defineResource: typeof defineResource;
     readonly defineRuntime: typeof defineRuntime;
+    readonly defineRuntimeMatrix: typeof defineRuntimeMatrix;
 };
 
 export function defineResource<
@@ -405,23 +434,6 @@ function createTemporaryDirectoryResource<const Name extends string>(
     });
 }
 
-export function defineRuntime<
-    const Name extends string,
-    const Dimensions extends RuntimeDimensions,
-    const Resources extends RuntimeResourceMap
->(
-    definition: RuntimeDefinitionInput<Name, Dimensions, Resources>
-): RuntimeDefinition<Name, Dimensions, Resources> {
-    return Object.freeze({
-        ...definition,
-        id: Object.freeze({
-            name: definition.name,
-            dimensions: definition.dimensions
-        }),
-        [runtimeDefinitionBrand]: true as const
-    });
-}
-
 function composeRuntimeContext<
     BaseContext extends Readonly<Record<string, unknown>>,
     Runtime extends RuntimeDefinition
@@ -461,7 +473,8 @@ export function createResourcesModule(dependencies: ResourcesModuleDependencies)
             return createTemporaryDirectoryResource(dependencies, name);
         },
         defineResource,
-        defineRuntime
+        defineRuntime,
+        defineRuntimeMatrix
     });
 }
 
@@ -471,8 +484,6 @@ export function isDefinedResource(resource: unknown): resource is AnyResourceDef
         Reflect.get(resource, resourceDefinitionBrand) === true;
 }
 
-export function isDefinedRuntime(runtime: unknown): runtime is RuntimeDefinition {
-    return typeof runtime === 'object' &&
-        runtime !== null &&
-        Reflect.get(runtime, runtimeDefinitionBrand) === true;
+export function isDefinedRuntimeGraph(runtime: unknown): runtime is RuntimeGraph {
+    return isDefinedRuntime(runtime) || isDefinedRuntimeMatrix(runtime);
 }

@@ -320,7 +320,7 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.deepEqual(
                     eventShape,
-                    [
+                    plainDataShape([
                         {
                             facts: { seed: 42 },
                             kind: 'run-start',
@@ -336,7 +336,12 @@ export const testNode = createOverkillSuite({
                             case: { file: null, title: 'passes', params: null, suite: [] },
                             definitionLocations: [ { kind: 'unknown' as const } ],
                             kind: 'test-start',
-                            suitePath: []
+                            suitePath: [],
+                            workId: {
+                                case: { file: null, title: 'passes', params: null, suite: [] },
+                                runtime: null,
+                                workload: null
+                            }
                         },
                         {
                             attempt: 0,
@@ -347,10 +352,15 @@ export const testNode = createOverkillSuite({
                             outcome: { kind: 'pass' },
                             suitePath: [],
                             verdict: 'pass',
-                            wallTimeMs: 0
+                            wallTimeMs: 0,
+                            workId: {
+                                case: { file: null, title: 'passes', params: null, suite: [] },
+                                runtime: null,
+                                workload: null
+                            }
                         },
                         { kind: 'run-end', result }
-                    ]
+                    ])
                 );
                 scope.assert.deepEqual(
                     finalResultReporter.getRecordedEntries(),

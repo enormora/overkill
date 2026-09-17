@@ -6,6 +6,7 @@ import {
     type TestBody,
     type TestBodyDirectResourceAttachmentSummary,
     type TestBodyExecutionRequirementSummary,
+    type TestBodyLeafRuntimeSummary,
     type TestBodyResourceAttachments,
     type TestBodyResourceSummary,
     type TestBodyRuntimeSummary,
@@ -16,8 +17,9 @@ import type {
     ExecutionRequirement,
     ResourceContext,
     ResourceMap,
-    RuntimeContext,
     RuntimeGraph,
+    RuntimeGraphContext,
+    RuntimeMatrixDefinition,
     RuntimeScopeContext
 } from '../resources/resources.entry-point.ts';
 import {
@@ -194,6 +196,55 @@ function resourceAttachmentSummary(entry: ResourceEntry): TestBodyDirectResource
     };
 }
 
+function runtimeVariantEntries(
+    runtimeGraph: RuntimeGraph
+): readonly { readonly id: string; readonly runtime: RuntimeMatrixDefinition['variants'][string]['runtime']; }[] {
+    return runtimeGraph.kind === 'runtime-matrix'
+        ? Object.values(runtimeGraph.variants)
+        : [ { id: runtimeGraph.name, runtime: runtimeGraph } ];
+}
+
+function leafRuntimeSummary(
+    runtimeGraph: RuntimeMatrixDefinition['variants'][string]['runtime']
+): TestBodyLeafRuntimeSummary {
+    return {
+        dimensions: runtimeGraph.dimensions,
+        kind: 'runtime',
+        name: runtimeGraph.name,
+        requirements: runtimeGraph.requirements.map(requirementSummary),
+        resources: entries(runtimeGraph.resources).map(function runtimeResourceSummary([ key, resource ]) {
+            return {
+                key,
+                resourceName: resource.name
+            };
+        })
+    };
+}
+
+function runtimeSummary(runtimeGraph: RuntimeGraph): TestBodyRuntimeSummary {
+    if (runtimeGraph.kind === 'runtime-matrix') {
+        const [ firstVariant ] = Object.values(runtimeGraph.variants);
+
+        if (firstVariant === undefined) {
+            throw new TypeError(`Runtime matrix "${runtimeGraph.name}" requires at least one variant.`);
+        }
+
+        return {
+            kind: 'runtime-matrix',
+            name: runtimeGraph.name,
+            resources: leafRuntimeSummary(firstVariant.runtime).resources,
+            variants: Object.values(runtimeGraph.variants).map(function variantSummary(variant) {
+                return {
+                    id: variant.id,
+                    runtime: leafRuntimeSummary(variant.runtime)
+                };
+            })
+        };
+    }
+
+    return leafRuntimeSummary(runtimeGraph);
+}
+
 function buildAttachments(
     directResources: readonly ResourceEntry[],
     runtimeGraphEntries: readonly RuntimeGraph[]
@@ -205,27 +256,17 @@ function buildAttachments(
     }
 
     for (const runtimeGraph of runtimeGraphEntries) {
-        for (const [ , resource ] of entries(runtimeGraph.resources)) {
-            graphCollector.visit(resource, [ resource.name ]);
+        for (const variant of runtimeVariantEntries(runtimeGraph)) {
+            for (const [ , resource ] of entries(variant.runtime.resources)) {
+                graphCollector.visit(resource, [ resource.name ]);
+            }
         }
     }
 
     return {
         directResources: directResources.map(resourceAttachmentSummary),
         resourceGraph: graphCollector.resourceGraph(),
-        runtimeGraphs: runtimeGraphEntries.map(function runtimeSummary(runtimeGraph): TestBodyRuntimeSummary {
-            return {
-                dimensions: runtimeGraph.dimensions,
-                name: runtimeGraph.name,
-                requirements: runtimeGraph.requirements.map(requirementSummary),
-                resources: entries(runtimeGraph.resources).map(function runtimeResourceSummary([ key, resource ]) {
-                    return {
-                        key,
-                        resourceName: resource.name
-                    };
-                })
-            };
-        })
+        runtimeGraphs: runtimeGraphEntries.map(runtimeSummary)
     };
 }
 
@@ -351,7 +392,7 @@ function composeRuntimeScope<
 >(
     scope: Scope,
     runtimeGraph: Graph,
-    handles: RuntimeContext<RuntimeGraph>
+    handles: RuntimeGraphContext<Graph>
 ): RuntimeTestScope<Graph, Scope> {
     const runtimes: unknown = Object.hasOwn(scope, 'runtimes') ? Reflect.get(scope, 'runtimes') : {};
 

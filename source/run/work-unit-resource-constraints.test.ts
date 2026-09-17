@@ -4,11 +4,11 @@ import {
     type TestBodyExecutionRequirementSummary,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import type { WorkId } from '../engine/identity.ts';
 import {
     emptyWorkUnitResourceConstraints,
     type CollectedRunCase,
-    type CollectedRunPlan,
-    type WorkId
+    type CollectedRunPlan
 } from './run-types.ts';
 import { workResourceConstraints } from './work-unit-resource-constraints.ts';
 

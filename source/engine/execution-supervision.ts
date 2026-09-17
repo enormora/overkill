@@ -5,7 +5,7 @@ import {
     timeoutFailure,
     type TestRuntimePolicy
 } from './case-execution.ts';
-import { caseIdentityKey } from './identity.ts';
+import { workIdentityKey, type WorkId } from './identity.ts';
 import {
     verdictFromOutcome,
     type PerTestResult,
@@ -63,11 +63,13 @@ type ResourceBudgetBreach = {
 
 type ResourceExhaustionCause = ResourceBudgetBreach & {
     readonly activeCases: readonly TestPlanCase['id'][];
+    readonly activeWork: readonly WorkId[];
     readonly enforcement: 'post-test-diagnostic' | 'sampled';
 };
 
 type CrashCause = {
     readonly activeCases: readonly TestPlanCase['id'][];
+    readonly activeWork: readonly WorkId[];
     readonly reason: 'hard-timeout';
 };
 
@@ -153,23 +155,28 @@ function createTerminalCase(
         result: {
             id: testCase.id,
             outcome: null,
-            verdict
+            verdict,
+            workId: testCase.workId
         },
         runnerErrors: [],
         wallTimeMs
     };
 }
 
-function failCase(id: TestPlanCase['id'], failures: readonly [TestFailure, ...TestFailure[]]): PerTestResult {
+function failCase(
+    testCase: Pick<TestPlanCase, 'id' | 'workId'>,
+    failures: readonly [TestFailure, ...TestFailure[]]
+): PerTestResult {
     const outcome = {
         failures,
         kind: 'fail'
     } as const;
 
     return {
-        id,
+        id: testCase.id,
         outcome,
-        verdict: verdictFromOutcome(outcome)
+        verdict: verdictFromOutcome(outcome),
+        workId: testCase.workId
     };
 }
 
@@ -232,7 +239,7 @@ function resultWithTimeoutFailure(
 
     return {
         ...executedCase,
-        result: failCase(executedCase.result.id, [ failure ])
+        result: failCase(executedCase.result, [ failure ])
     };
 }
 
@@ -284,11 +291,19 @@ function activeCaseIds(activeCases: ReadonlyMap<string, ActiveCase>): readonly T
     });
 }
 
+function activeWorkIds(activeCases: ReadonlyMap<string, ActiveCase>): readonly WorkId[] {
+    return Array.from(activeCases.values(), function toWorkId(activeCase) {
+        return activeCase.testCase.workId;
+    });
+}
+
 function resourceExhaustionError(cause: ResourceExhaustionCause): RunnerError {
     const [ activeCase = null ] = cause.activeCases;
+    const [ activeWork = null ] = cause.activeWork;
 
     return {
         attributedTo: cause.activeCases.length === 1 ? activeCase : null,
+        attributedToWork: cause.activeWork.length === 1 ? activeWork : null,
         cause,
         message: `Resource budget exceeded: ${cause.metric} observed ${cause.observed}, budget ${cause.budget}.`,
         subtype: 'resource-exhaustion'
@@ -297,9 +312,11 @@ function resourceExhaustionError(cause: ResourceExhaustionCause): RunnerError {
 
 function crashError(cause: CrashCause): RunnerError {
     const [ activeCase = null ] = cause.activeCases;
+    const [ activeWork = null ] = cause.activeWork;
 
     return {
         attributedTo: cause.activeCases.length === 1 ? activeCase : null,
+        attributedToWork: cause.activeWork.length === 1 ? activeWork : null,
         cause,
         message: 'Test execution exceeded hard timeout.',
         subtype: 'crash'
@@ -329,6 +346,7 @@ function completeActiveCasesWithCrash(
 ): void {
     const cause: CrashCause = {
         activeCases: activeCaseIds(supervision.activeCases),
+        activeWork: activeWorkIds(supervision.activeCases),
         reason: 'hard-timeout'
     };
 
@@ -346,6 +364,7 @@ function completeActiveCasesWithResourceExhaustion(
     const cause: ResourceExhaustionCause = {
         ...breach,
         activeCases: activeCaseIds(supervision.activeCases),
+        activeWork: activeWorkIds(supervision.activeCases),
         enforcement: 'sampled'
     };
 
@@ -391,14 +410,14 @@ async function runCaseWithSoftTimeout(
 
 function invalidTimeoutCase(testCase: TestPlanCase, failure: TestFailure): ConcurrentCase {
     return {
-        result: failCase(testCase.id, [ failure ]),
+        result: failCase(testCase, [ failure ]),
         runnerErrors: [],
         wallTimeMs: 0
     };
 }
 
 function registerActiveCase(input: ActiveCaseInput): ActiveCase {
-    const key = caseIdentityKey(input.testCase.id);
+    const key = workIdentityKey(input.testCase.workId);
     const startedAtMilliseconds = input.dependencies.wallClock.currentTimestampInMilliseconds;
     const hardTimeout = input.timeoutPolicy === null || input.timeoutPolicy === undefined
         ? null
@@ -421,7 +440,7 @@ function registerActiveCase(input: ActiveCaseInput): ActiveCase {
 }
 
 function completeFinishedActiveCase(input: CaseBodyInput, executedCase: ConcurrentCase): void {
-    const key = caseIdentityKey(input.testCase.id);
+    const key = workIdentityKey(input.testCase.workId);
 
     if (input.supervision.activeCases.get(key) === input.activeCase) {
         input.supervision.removeActiveCase(key);
@@ -440,7 +459,8 @@ function createInconclusiveCaseResult(testCase: TestPlanCase, error: unknown): P
     return {
         id: testCase.id,
         outcome,
-        verdict: verdictFromOutcome(outcome)
+        verdict: verdictFromOutcome(outcome),
+        workId: testCase.workId
     };
 }
 

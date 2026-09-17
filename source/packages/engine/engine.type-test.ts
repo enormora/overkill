@@ -40,6 +40,7 @@ import {
     type SourceLocation,
     type SourceLocationProvider,
     type TestAnnotations,
+    type WorkId,
     type TestAnnotationsInput,
     type TestControls,
     type TestControlsInput,
@@ -124,6 +125,7 @@ declare const compositeCheckBuilder: CompositeCheckBuilder<'assert'>;
 declare const functionValue: () => number;
 declare const throwingBody: ThrowingTestBody;
 declare const caseId: CaseId;
+declare const workId: WorkId;
 declare const mixedDeepValue: string | { readonly id: string; };
 declare const objectValues: readonly { readonly id: number; }[];
 declare const unknownValue: unknown;
@@ -155,7 +157,7 @@ describe('TestOutcome', function () {
             readonly subtype: RunnerError['subtype'];
         }>();
         expect(error).type.toBe<CaseRunnerError>();
-        expect(error.runnerError(caseId)).type.toBe<RunnerError>();
+        expect(error.runnerError(caseId, workId)).type.toBe<RunnerError>();
         expect<typeof isCaseRunnerError>().type.toBe<(value: unknown) => value is CaseRunnerError>();
     });
 

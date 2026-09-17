@@ -21,6 +21,7 @@ const attachments: TestBodyResourceAttachments = {
     runtimeGraphs: [
         {
             dimensions: {},
+            kind: 'runtime',
             name: 'api',
             requirements: [],
             resources: [ { key: 'database', resourceName: 'database' } ]

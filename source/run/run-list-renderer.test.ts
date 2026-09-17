@@ -123,7 +123,8 @@ function createResolvedRun(testPlan: TestPlan): ResolvedRun {
                     annotations: emptySerializedTestData,
                     controls: emptySerializedTestData,
                     fileSet: null,
-                    id: testCase.id
+                    id: testCase.id,
+                    workId: testCase.workId
                 };
             }),
             environment: {

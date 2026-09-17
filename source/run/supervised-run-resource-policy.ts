@@ -1,4 +1,4 @@
-import type { CaseId } from '../engine/identity.ts';
+import { createDefaultWorkId, type CaseId, type WorkId } from '../engine/identity.ts';
 import { observedGrowthBytesPerSecond } from '../engine/resource-usage-growth.ts';
 import type {
     ResourceUsageSnapshot,
@@ -75,15 +75,25 @@ function activeCaseIds(state: SupervisedRunState): readonly CaseId[] {
     });
 }
 
+function activeWorkIds(state: SupervisedRunState): readonly WorkId[] {
+    return Array.from(state.activeCases.values(), function toWorkId(testCase) {
+        return testCase.workId ?? createDefaultWorkId(testCase.id);
+    });
+}
+
 export function resourceExhaustionError(breach: ResourceBudgetBreach, state: SupervisedRunState): RunnerError {
     const activeCases = activeCaseIds(state);
+    const activeWork = activeWorkIds(state);
     const [ activeCase = null ] = activeCases;
+    const [ activeWorkItem = null ] = activeWork;
 
     return {
         attributedTo: activeCases.length === 1 ? activeCase : null,
+        attributedToWork: activeWork.length === 1 ? activeWorkItem : null,
         cause: {
             ...breach,
             activeCases,
+            activeWork,
             enforcement: activeCases.length === 0 ? 'post-test-diagnostic' : 'sampled'
         },
         message: `Resource budget exceeded: ${breach.metric} observed ${breach.observed}, budget ${breach.budget}.`,
@@ -93,11 +103,14 @@ export function resourceExhaustionError(breach: ResourceBudgetBreach, state: Sup
 
 export function crashError(state: SupervisedRunState, reason: string): RunnerError {
     const activeCases = activeCaseIds(state);
+    const activeWork = activeWorkIds(state);
     const [ activeCase = null ] = activeCases;
+    const [ activeWorkItem = null ] = activeWork;
 
     return {
         attributedTo: activeCases.length === 1 ? activeCase : null,
-        cause: { activeCases, reason },
+        attributedToWork: activeWork.length === 1 ? activeWorkItem : null,
+        cause: { activeCases, activeWork, reason },
         message: reason,
         subtype: 'crash'
     };

@@ -2,7 +2,7 @@ import {
     MessageChannel as NodeMessageChannel,
     type MessagePort as NodeMessagePort
 } from 'node:worker_threads';
-import { caseIdentityKey } from '../engine/identity.ts';
+import { createDefaultWorkId, workIdentityKey, type WorkId } from '../engine/identity.ts';
 import type {
     ReporterEvent,
     ResourceUsageSnapshot
@@ -37,8 +37,7 @@ import {
 import type {
     PlacementPlan,
     PlacementLane,
-    WorkUnit,
-    WorkId
+    WorkUnit
 } from './run-types.ts';
 
 type WorkerPoolTaskChannel = {
@@ -79,7 +78,7 @@ function portTransferList(port: NodeMessagePort): readonly NodeMessagePort[] {
 function casesByKey(unit: WorkUnit): ReadonlyMap<string, SupervisedCase> {
     return new Map(
         unit.work.map(function toCaseEntry(work) {
-            return [ caseIdentityKey(work.case), { capture: null, id: work.case } ];
+            return [ workIdentityKey(work), { capture: null, id: work.case, workId: work } ];
         })
     );
 }
@@ -127,7 +126,7 @@ function handleWorkerEvent(
     runtime: WorkerPoolRunRuntime
 ): void {
     if (event.kind === 'test-start') {
-        taskRun.startedCases.add(caseIdentityKey(event.case));
+        taskRun.startedCases.add(workIdentityKey(event.workId ?? createDefaultWorkId(event.case)));
         startTaskTimeout(taskRun, runtime);
     }
 
@@ -289,7 +288,7 @@ function createTaskRun(unit: WorkUnit): WorkerPoolTaskRun {
 
 function pendingWork(taskRun: WorkerPoolTaskRun): readonly WorkId[] {
     return taskRun.unit.work.filter(function caseHasNotStarted(work) {
-        return !taskRun.startedCases.has(caseIdentityKey(work.case));
+        return !taskRun.startedCases.has(workIdentityKey(work));
     });
 }
 
@@ -312,6 +311,7 @@ function crashReason(error: unknown): string {
 function recordRunCrash(runtime: WorkerPoolRunRuntime, message: string, cause: unknown): void {
     runtime.runState.recordRunnerError({
         attributedTo: null,
+        attributedToWork: null,
         cause,
         message,
         subtype: 'crash'

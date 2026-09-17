@@ -5,6 +5,7 @@ import {
     createTemporaryDirectoryResource,
     defineResource,
     defineRuntime,
+    defineRuntimeMatrix,
     type ResourceLifecycleError,
     startResources,
     startRuntime,
@@ -132,6 +133,18 @@ const secondaryRuntime = defineRuntime({
     resources: { database },
     requirements: []
 });
+const runtimeMatrix = defineRuntimeMatrix({
+    name: 'node',
+    variants: {
+        'node-26': runtime,
+        'node-27': defineRuntime({
+            name: 'api-node-27',
+            dimensions: { node: '27' },
+            resources: { database, server },
+            requirements: []
+        })
+    }
+});
 const typeTestController = new AbortController();
 
 const databaseHandle = {
@@ -254,7 +267,11 @@ describe('@overkill-dev/resources', function () {
         expect<RuntimeId<'api', { readonly node: '26'; }>>().type.toBe<{
             readonly name: 'api';
             readonly dimensions: { readonly node: '26'; };
+            readonly variantId: string | null;
         }>();
+        expect(runtimeMatrix.name).type.toBe<'node'>();
+        expect(runtimeMatrix.variants['node-26'].id).type.toBe<'node-26'>();
+        expect(runtimeMatrix.variants['node-26'].runtime).type.toBe<typeof runtime>();
         expect<ResourceDefinitionInput<'database', Database>>().type.toBeAssignableFrom<
             ExpectedLocalResourceDefinitionInput
         >();

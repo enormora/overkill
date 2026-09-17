@@ -1,5 +1,5 @@
 import asyncHooks, { AsyncLocalStorage } from 'node:async_hooks';
-import { caseIdentityKey, type CaseId } from './identity.ts';
+import { caseIdentityKey, type CaseId, type WorkId } from './identity.ts';
 import type { RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
@@ -54,6 +54,13 @@ type PromiseLeakCause = {
 };
 
 type ResourceCounts = ReadonlyMap<string, number>;
+type ActiveResourceLeakInput = {
+    readonly after: readonly string[];
+    readonly attributedTo: CaseId | null;
+    readonly attributedToWork: WorkId | null;
+    readonly before: readonly string[];
+    readonly phase: ActiveResourceLeakCause['phase'];
+};
 
 const activeCaseStorage = new AsyncLocalStorage<ActiveCase>();
 const ignoredActiveResourceTypes = new Set([ 'PipeWrap' ]);
@@ -97,13 +104,8 @@ function increasedResourceTypes(before: readonly string[], after: readonly strin
     return sortedResourceTypes(increasedTypes);
 }
 
-export function activeResourceLeakError(
-    attributedTo: CaseId | null,
-    before: readonly string[],
-    after: readonly string[],
-    phase: ActiveResourceLeakCause['phase']
-): RunnerError | null {
-    const resourceTypes = increasedResourceTypes(before, after);
+export function activeResourceLeakError(input: ActiveResourceLeakInput): RunnerError | null {
+    const resourceTypes = increasedResourceTypes(input.before, input.after);
 
     if (resourceTypes.length === 0) {
         return null;
@@ -112,13 +114,14 @@ export function activeResourceLeakError(
     const cause: ActiveResourceLeakCause = {
         capability: 'async-leak',
         leak: 'active-resource',
-        phase,
+        phase: input.phase,
         resourceTypes,
         strictness: 'observed'
     };
 
     return {
-        attributedTo,
+        attributedTo: input.attributedTo,
+        attributedToWork: input.attributedToWork,
         cause,
         message: `Runtime policy violation: active resources leaked: ${resourceTypes.join(', ')}.`,
         subtype: 'runtime-policy'
@@ -136,6 +139,7 @@ function promiseLeakError(testCase: TestPlanCase, pendingPromiseCount: number): 
 
     return {
         attributedTo: testCase.id,
+        attributedToWork: testCase.workId,
         cause,
         message: `Runtime policy violation: ${pendingPromiseCount} promise(s) still pending after test cleanup.`,
         subtype: 'runtime-policy'

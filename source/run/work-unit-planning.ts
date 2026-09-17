@@ -1,5 +1,12 @@
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
-import { createCaseId, caseIdentityKey } from '../engine/identity.ts';
+import {
+    createCaseId,
+    createDefaultWorkId,
+    runtimeIdentityKey,
+    workIdentityKey,
+    type WorkId,
+    type WorkloadId
+} from '../engine/identity.ts';
 import {
     collectedRunCaseEntries
 } from './collected-run-plan.ts';
@@ -7,7 +14,6 @@ import { invalidRequest } from './run-errors.ts';
 import { orderedRunItems } from './run-selection.ts';
 import {
     emptyWorkUnitResourceConstraints,
-    type CollectedRunCase,
     type CollectedRunFile,
     type CollectedRunPlan,
     type PlacementPlan,
@@ -18,7 +24,6 @@ import {
     type RunWorkGroup,
     type RunWorkerPoolAssignmentPolicy,
     type RunWorkerLifecycle,
-    type WorkId,
     type WorkUnit,
     type WorkUnitId
 } from './run-types.ts';
@@ -65,44 +70,60 @@ type PlannedWorkUnit = {
     readonly unit: WorkUnit;
 };
 
-function suiteTitles(suitePath: CollectedRunCase['suitePath']): readonly string[] {
+function suiteTitles(suitePath: CollectedRunFile['cases'][number]['suitePath']): readonly string[] {
     return suitePath.map(function toTitle(entry) {
         return entry.title;
     });
 }
 
-function workId(file: string, testCase: CollectedRunCase): WorkId {
-    return {
-        case: createCaseId(file, suiteTitles(testCase.suitePath), testCase.title, testCase.params),
-        runtime: null,
-        workload: null
-    };
+function collectedCaseDefaultWorkId(file: string, testCase: CollectedRunFile['cases'][number]): WorkId {
+    return createDefaultWorkId(createCaseId(file, suiteTitles(testCase.suitePath), testCase.title, testCase.params));
 }
 
-function fileWorkUnitId(file: string): WorkUnitId {
+function orderedRecordEntries(record: Readonly<Record<string, string>>): readonly [string, string][] {
+    return Object.entries(record).toSorted(function compareKeys([ left ], [ right ]) {
+        return left.localeCompare(right);
+    });
+}
+
+function workloadIdentityKey(workload: WorkloadId | null): string {
+    return workload === null
+        ? 'null'
+        : JSON.stringify([ workload.name, orderedRecordEntries(workload.params) ]);
+}
+
+function executionBucketKey(work: WorkId): string {
+    return JSON.stringify([ runtimeIdentityKey(work.runtime), workloadIdentityKey(work.workload) ]);
+}
+
+function groupedExecutionBuckets(work: readonly WorkId[]): readonly WorkId[][] {
+    return Array.from(Map.groupBy(work, executionBucketKey).values());
+}
+
+function fileWorkUnitId(file: string, work: WorkId): WorkUnitId {
     return {
         key: file,
         mode: 'file',
-        runtime: null,
-        workload: null
+        runtime: work.runtime,
+        workload: work.workload
     };
 }
 
 function caseWorkUnitId(work: WorkId): WorkUnitId {
     return {
-        key: caseIdentityKey(work.case),
+        key: workIdentityKey(work),
         mode: 'case',
         runtime: work.runtime,
         workload: work.workload
     };
 }
 
-function groupWorkUnitId(group: RunWorkGroup): WorkUnitId {
+function groupWorkUnitId(group: RunWorkGroup, work: WorkId): WorkUnitId {
     return {
         key: group.name,
         mode: 'group',
-        runtime: null,
-        workload: null
+        runtime: work.runtime,
+        workload: work.workload
     };
 }
 
@@ -148,7 +169,7 @@ function groupPolicy(group: RunWorkGroup, input: WorkUnitPlanningInput): WorkUni
 
 function workFromCases(file: CollectedRunFile): readonly WorkId[] {
     return file.cases.map(function toWork(testCase) {
-        return workId(file.file, testCase);
+        return testCase.workId ?? collectedCaseDefaultWorkId(file.file, testCase);
     });
 }
 
@@ -163,23 +184,26 @@ function orderedNonEmptyWork(
     return firstWork === undefined ? null : [ firstWork, ...orderedWork.slice(1) ];
 }
 
-function fileWorkUnit(
-    file: CollectedRunFile,
-    policy: WorkUnitPolicy,
-    group: string | null,
-    seed: RunSeed
-): WorkUnit | null {
-    const work = orderedNonEmptyWork(workFromCases(file), policy, seed);
+type FileWorkUnitInput = {
+    readonly file: string;
+    readonly group: string | null;
+    readonly policy: WorkUnitPolicy;
+    readonly seed: RunSeed;
+    readonly workItems: readonly WorkId[];
+};
+
+function fileWorkUnit(input: FileWorkUnitInput): WorkUnit | null {
+    const work = orderedNonEmptyWork(input.workItems, input.policy, input.seed);
 
     return work === null
         ? null
         : {
-            group,
-            id: fileWorkUnitId(file.file),
-            order: policy.order,
+            group: input.group,
+            id: fileWorkUnitId(input.file, work[0]),
+            order: input.policy.order,
             resourceConstraints: emptyWorkUnitResourceConstraints,
-            scheduling: policy.scheduling,
-            workerLifecycle: policy.workerLifecycle,
+            scheduling: input.policy.scheduling,
+            workerLifecycle: input.policy.workerLifecycle,
             work
         };
 }
@@ -214,9 +238,11 @@ function fileWorkUnitsFromCollectedPlan(input: WorkUnitPlanningInput): readonly 
 
     return orderedRunItems(
         input.selectedPlan.files.flatMap(function toWorkUnit(file) {
-            const unit = fileWorkUnit(file, policy, null, input.seed);
+            return groupedExecutionBuckets(workFromCases(file)).flatMap(function toBucketUnit(work) {
+                const unit = fileWorkUnit({ file: file.file, group: null, policy, seed: input.seed, workItems: work });
 
-            return unit === null ? [] : [ unit ];
+                return unit === null ? [] : [ unit ];
+            });
         }),
         input.order,
         input.seed
@@ -317,24 +343,22 @@ function groupWorkUnit(
     fileSets: ReadonlyMap<string, string>,
     policy: WorkUnitPolicy,
     input: WorkUnitPlanningInput
-): WorkUnit | null {
-    const work = orderedNonEmptyWork(
-        groupedFiles(input.selectedPlan, group, fileSets).flatMap(workFromCases),
-        policy,
-        input.seed
-    );
+): readonly WorkUnit[] {
+    const buckets = groupedExecutionBuckets(groupedFiles(input.selectedPlan, group, fileSets).flatMap(workFromCases));
 
-    return work === null
-        ? null
-        : {
+    return buckets.flatMap(function toGroupUnit(bucket) {
+        const work = orderedNonEmptyWork(bucket, policy, input.seed);
+
+        return work === null ? [] : [ {
             group: group.name,
-            id: groupWorkUnitId(group),
+            id: groupWorkUnitId(group, work[0]),
             order: policy.order,
             resourceConstraints: emptyWorkUnitResourceConstraints,
             scheduling: policy.scheduling,
             work,
             workerLifecycle: policy.workerLifecycle
-        };
+        } ];
+    });
 }
 
 function groupFileWorkUnits(
@@ -344,9 +368,17 @@ function groupFileWorkUnits(
     input: WorkUnitPlanningInput
 ): readonly WorkUnit[] {
     return groupedFiles(input.selectedPlan, group, fileSets).flatMap(function toFileWorkUnit(file) {
-        const unit = fileWorkUnit(file, policy, group.name, input.seed);
+        return groupedExecutionBuckets(workFromCases(file)).flatMap(function toBucketUnit(work) {
+            const unit = fileWorkUnit({
+                file: file.file,
+                group: group.name,
+                policy,
+                seed: input.seed,
+                workItems: work
+            });
 
-        return unit === null ? [] : [ unit ];
+            return unit === null ? [] : [ unit ];
+        });
     });
 }
 
@@ -378,9 +410,7 @@ function groupWorkUnits(
         return groupFileWorkUnits(group, fileSets, policy, input);
     }
 
-    const unit = groupWorkUnit(group, fileSets, policy, input);
-
-    return unit === null ? [] : [ unit ];
+    return groupWorkUnit(group, fileSets, policy, input);
 }
 
 function unmatchedFileUnits(
@@ -401,16 +431,18 @@ function unmatchedFileUnits(
             return [];
         }
 
-        const unit = fileWorkUnit(file, policy, null, input.seed);
+        return groupedExecutionBuckets(workFromCases(file)).flatMap(function toBucketUnit(work) {
+            const unit = fileWorkUnit({ file: file.file, group: null, policy, seed: input.seed, workItems: work });
 
-        return unit === null ? [] : [ unit ];
+            return unit === null ? [] : [ unit ];
+        });
     });
 }
 
 function caseOrder(plan: CollectedRunPlan): ReadonlyMap<string, number> {
     return new Map(
         collectedRunCaseEntries(plan).map(function toEntry(entry, index) {
-            return [ caseIdentityKey(entry.id), index ];
+            return [ workIdentityKey(entry.workId), index ];
         })
     );
 }
@@ -421,7 +453,7 @@ function unitPosition(
 ): number {
     return Math.min(
         ...unit.work.map(function toPosition(work) {
-            const position = orderedCases.get(caseIdentityKey(work.case));
+            const position = orderedCases.get(workIdentityKey(work));
 
             if (position === undefined) {
                 throw new Error('Planned work unit referenced an unknown collected case.');
@@ -553,7 +585,7 @@ function collectedEntriesByCaseKey(
 ): ReadonlyMap<string, ReturnType<typeof collectedRunCaseEntries>[number]> {
     return new Map(
         collectedRunCaseEntries(collectedPlan).map(function toEntry(entry) {
-            return [ caseIdentityKey(entry.id), entry ];
+            return [ workIdentityKey(entry.workId), entry ];
         })
     );
 }
@@ -566,7 +598,7 @@ export function collectedRunCaseEntriesFromWorkUnits(
 
     return units.flatMap(function toRunCaseEntries(unit) {
         return unit.work.map(function toRunCaseEntry(work) {
-            const entry = entries.get(caseIdentityKey(work.case));
+            const entry = entries.get(workIdentityKey(work));
 
             if (entry === undefined) {
                 throw new Error('Placement plan referenced an unknown collected case.');

@@ -214,6 +214,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(error.attributedTo, null);
                 scope.assert.deepEqual(plainData(error.cause), {
                     activeCases: [],
+                    activeWork: [],
                     budget: 1,
                     enforcement: 'post-test-diagnostic',
                     metric: 'residentSetBytes',

@@ -1,9 +1,8 @@
-import { caseIdentityKey, createCaseId } from '../engine/identity.ts';
+import { createCaseId, createDefaultWorkId, workIdentityKey, type WorkId } from '../engine/identity.ts';
 import {
     emptyWorkUnitResourceConstraints,
     type CollectedRunCase,
     type CollectedRunPlan,
-    type WorkId,
     type WorkUnitResourceConstraints
 } from './run-types.ts';
 
@@ -27,12 +26,15 @@ function suiteTitles(suitePath: CollectedRunCase['suitePath']): readonly string[
     });
 }
 
+function collectedCaseWorkId(file: string, testCase: CollectedRunCase): WorkId {
+    return testCase.workId ??
+        createDefaultWorkId(createCaseId(file, suiteTitles(testCase.suitePath), testCase.title, testCase.params));
+}
+
 function collectedCaseEntriesByKey(plan: CollectedRunPlan): ReadonlyMap<string, CollectedRunCase> {
     return new Map(plan.files.flatMap(function toEntries(file) {
         return file.cases.map(function toEntry(testCase): readonly [string, CollectedRunCase] {
-            const id = createCaseId(file.file, suiteTitles(testCase.suitePath), testCase.title, testCase.params);
-
-            return [ caseIdentityKey(id), testCase ];
+            return [ workIdentityKey(collectedCaseWorkId(file.file, testCase)), testCase ];
         });
     }));
 }
@@ -228,7 +230,7 @@ export function workResourceConstraints(
     const cases = collectedCaseEntriesByKey(plan);
 
     return work.reduce(function mergeConstraints(constraints, item) {
-        const testCase = cases.get(caseIdentityKey(item.case));
+        const testCase = cases.get(workIdentityKey(item));
 
         return testCase === undefined || item.case.file === null
             ? constraints

@@ -1,7 +1,8 @@
-import type {
-    AnyResourceDefinition,
-    ResourceMap,
-    RuntimeGraph
+import {
+    isDefinedRuntimeGraph,
+    type AnyResourceDefinition,
+    type ResourceMap,
+    type RuntimeGraph
 } from '../resources/resources.entry-point.ts';
 import type { TestScope } from '../engine/engine.entry-point.ts';
 
@@ -65,26 +66,7 @@ function isResourceDescriptor(value: unknown): value is AnyResourceDefinition {
         hasResourceLifecycle(value);
 }
 
-function hasRuntimeIdentity(value: Readonly<Record<string, unknown>>): boolean {
-    return typeof value.name === 'string' && value.name.trim().length > 0;
-}
-
-function hasRuntimeGraphData(value: Readonly<Record<string, unknown>>): boolean {
-    return isRecord(value.dimensions) &&
-        Array.isArray(value.requirements) &&
-        isRecord(value.resources);
-}
-
-function hasRuntimeResources(value: Readonly<Record<string, unknown>>): boolean {
-    return isRecord(value.resources) && Object.values(value.resources).every(isResourceDescriptor);
-}
-
-function isRuntimeGraph(value: unknown): value is RuntimeGraph {
-    return isRecord(value) &&
-        hasRuntimeIdentity(value) &&
-        hasRuntimeGraphData(value) &&
-        hasRuntimeResources(value);
-}
+const isRuntimeGraph = isDefinedRuntimeGraph;
 
 function entries(record: Readonly<Record<string, AnyResourceDefinition>>): readonly [string, AnyResourceDefinition][] {
     return Object.entries(record);

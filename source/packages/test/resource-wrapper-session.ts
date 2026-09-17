@@ -25,7 +25,7 @@ async function acquireUnmanagedComposedResources(
 ): Promise<ComposedResourceSession> {
     const directResources = resourceMapFromEntries(directResourceEntries(steps));
     const runtimes = stepRuntimeGraphs(steps);
-    const combinedResources = combinedResourceEntries(steps);
+    const combinedResources = combinedResourceEntries(steps, null);
 
     assertPerCaseResourceGraph(combinedResources);
     const session = await startResources({
@@ -33,7 +33,7 @@ async function acquireUnmanagedComposedResources(
         signal
     });
 
-    return composedResourceSession(directResources, runtimes, session);
+    return composedResourceSession(directResources, runtimes, session, null);
 }
 
 export async function acquireComposedResources(
