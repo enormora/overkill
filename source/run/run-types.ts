@@ -2,10 +2,16 @@ import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node
 import type { SerializedValue as SerializedValueShape } from '../compare/serialized-value.ts';
 import type { Execute } from '../engine/execution.ts';
 import type { Engine } from '../engine/engine.ts';
+import type {
+    WorkId as EngineWorkId,
+    RuntimeId,
+    WorkloadId
+} from '../engine/identity.ts';
 import type { OrphanedNode, RunResult } from '../engine/run-result.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 
 export type SerializedValue = SerializedValueShape;
+export type WorkId = EngineWorkId;
 type RunExecuteOptions = NonNullable<Parameters<Execute>[1]>;
 type RunCaseId = TestPlan['discoveredCases'][number]['id'];
 type RunOutputRenderer = NonNullable<RunExecuteOptions['outputRenderer']>;
@@ -192,24 +198,6 @@ type GroupRunWorkDistribution = {
 };
 
 export type RunWorkDistribution = CaseRunWorkDistribution | FileRunWorkDistribution | GroupRunWorkDistribution;
-
-export type RuntimeDimensions = Readonly<Record<string, string>>;
-
-export type RuntimeId = {
-    readonly dimensions: RuntimeDimensions;
-    readonly name: string;
-};
-
-export type WorkloadId = {
-    readonly name: string;
-    readonly params: Readonly<Record<string, string>>;
-};
-
-export type WorkId = {
-    readonly case: RunCaseId;
-    readonly runtime: RuntimeId | null;
-    readonly workload: WorkloadId | null;
-};
 
 export type WorkUnitMode = 'case' | 'file' | 'group';
 
@@ -422,6 +410,7 @@ export type RunCaseFacts = {
     readonly controls: SerializedValue;
     readonly fileSet: string | null;
     readonly id: TestPlan['cases'][number]['id'];
+    readonly workId: WorkId;
 };
 
 export type RunEnvironmentFacts = {
@@ -497,6 +486,7 @@ export type CollectedRunCase = {
     readonly suitePath: TestPlan['cases'][number]['suitePath'];
     readonly testFamily: TestPlan['cases'][number]['testFamily'];
     readonly title: string;
+    readonly workId?: WorkId;
 };
 
 export type CollectedRunFile = {

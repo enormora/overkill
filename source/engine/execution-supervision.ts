@@ -5,7 +5,7 @@ import {
     timeoutFailure,
     type TestRuntimePolicy
 } from './case-execution.ts';
-import { caseIdentityKey } from './identity.ts';
+import { workIdentityKey, type WorkId } from './identity.ts';
 import {
     verdictFromOutcome,
     type PerTestResult,
@@ -13,19 +13,16 @@ import {
     type RunnerError,
     type TestFailure
 } from './run-result.ts';
-import { observedGrowthBytesPerSecond } from './resource-usage-growth.ts';
 import type { TestPlanCase } from './test-plan.ts';
+import {
+    findResourceBudgetBreach,
+    type ExecuteResourceBudgets,
+    type ResourceBudgetBreach
+} from './execution-resource-budget-breach.ts';
 
 export type ExecuteTimeoutPolicy = {
     readonly hardTimeoutMilliseconds: number;
     readonly timeoutMilliseconds: number;
-};
-
-export type ExecuteResourceBudgets = {
-    readonly activeResourceCount: number | null;
-    readonly javaScriptEngineHeapBytes: number | null;
-    readonly residentSetBytes: number | null;
-    readonly residentSetGrowthBytesPerSecond: number | null;
 };
 
 export type ConcurrentCase = {
@@ -52,22 +49,15 @@ type ActiveCase = {
     readonly testCase: TestPlanCase;
 };
 
-type ResourceBudgetMetric = keyof ExecuteResourceBudgets;
-
-type ResourceBudgetBreach = {
-    readonly budget: number;
-    readonly metric: ResourceBudgetMetric;
-    readonly observed: number;
-    readonly sample: ResourceUsageSnapshot;
-};
-
 type ResourceExhaustionCause = ResourceBudgetBreach & {
     readonly activeCases: readonly TestPlanCase['id'][];
+    readonly activeWork: readonly WorkId[];
     readonly enforcement: 'post-test-diagnostic' | 'sampled';
 };
 
 type CrashCause = {
     readonly activeCases: readonly TestPlanCase['id'][];
+    readonly activeWork: readonly WorkId[];
     readonly reason: 'hard-timeout';
 };
 
@@ -109,13 +99,6 @@ type ResourceUsageSampleInput = {
     readonly supervision: ExecutionSupervision;
 };
 
-const resourceBudgetMetrics: readonly ResourceBudgetMetric[] = [
-    'activeResourceCount',
-    'javaScriptEngineHeapBytes',
-    'residentSetBytes',
-    'residentSetGrowthBytesPerSecond'
-];
-
 export function createExecutionSupervision(): ExecutionSupervision {
     const activeCases = new Map<string, ActiveCase>();
     const runnerErrors: RunnerError[] = [];
@@ -153,23 +136,28 @@ function createTerminalCase(
         result: {
             id: testCase.id,
             outcome: null,
-            verdict
+            verdict,
+            workId: testCase.workId
         },
         runnerErrors: [],
         wallTimeMs
     };
 }
 
-function failCase(id: TestPlanCase['id'], failures: readonly [TestFailure, ...TestFailure[]]): PerTestResult {
+function failCase(
+    testCase: Pick<TestPlanCase, 'id' | 'workId'>,
+    failures: readonly [TestFailure, ...TestFailure[]]
+): PerTestResult {
     const outcome = {
         failures,
         kind: 'fail'
     } as const;
 
     return {
-        id,
+        id: testCase.id,
         outcome,
-        verdict: verdictFromOutcome(outcome)
+        verdict: verdictFromOutcome(outcome),
+        workId: testCase.workId
     };
 }
 
@@ -232,7 +220,7 @@ function resultWithTimeoutFailure(
 
     return {
         ...executedCase,
-        result: failCase(executedCase.result.id, [ failure ])
+        result: failCase(executedCase.result, [ failure ])
     };
 }
 
@@ -284,11 +272,19 @@ function activeCaseIds(activeCases: ReadonlyMap<string, ActiveCase>): readonly T
     });
 }
 
+function activeWorkIds(activeCases: ReadonlyMap<string, ActiveCase>): readonly WorkId[] {
+    return Array.from(activeCases.values(), function toWorkId(activeCase) {
+        return activeCase.testCase.workId;
+    });
+}
+
 function resourceExhaustionError(cause: ResourceExhaustionCause): RunnerError {
     const [ activeCase = null ] = cause.activeCases;
+    const [ activeWork = null ] = cause.activeWork;
 
     return {
         attributedTo: cause.activeCases.length === 1 ? activeCase : null,
+        attributedToWork: cause.activeWork.length === 1 ? activeWork : null,
         cause,
         message: `Resource budget exceeded: ${cause.metric} observed ${cause.observed}, budget ${cause.budget}.`,
         subtype: 'resource-exhaustion'
@@ -297,9 +293,11 @@ function resourceExhaustionError(cause: ResourceExhaustionCause): RunnerError {
 
 function crashError(cause: CrashCause): RunnerError {
     const [ activeCase = null ] = cause.activeCases;
+    const [ activeWork = null ] = cause.activeWork;
 
     return {
         attributedTo: cause.activeCases.length === 1 ? activeCase : null,
+        attributedToWork: cause.activeWork.length === 1 ? activeWork : null,
         cause,
         message: 'Test execution exceeded hard timeout.',
         subtype: 'crash'
@@ -329,6 +327,7 @@ function completeActiveCasesWithCrash(
 ): void {
     const cause: CrashCause = {
         activeCases: activeCaseIds(supervision.activeCases),
+        activeWork: activeWorkIds(supervision.activeCases),
         reason: 'hard-timeout'
     };
 
@@ -346,6 +345,7 @@ function completeActiveCasesWithResourceExhaustion(
     const cause: ResourceExhaustionCause = {
         ...breach,
         activeCases: activeCaseIds(supervision.activeCases),
+        activeWork: activeWorkIds(supervision.activeCases),
         enforcement: 'sampled'
     };
 
@@ -391,14 +391,14 @@ async function runCaseWithSoftTimeout(
 
 function invalidTimeoutCase(testCase: TestPlanCase, failure: TestFailure): ConcurrentCase {
     return {
-        result: failCase(testCase.id, [ failure ]),
+        result: failCase(testCase, [ failure ]),
         runnerErrors: [],
         wallTimeMs: 0
     };
 }
 
 function registerActiveCase(input: ActiveCaseInput): ActiveCase {
-    const key = caseIdentityKey(input.testCase.id);
+    const key = workIdentityKey(input.testCase.workId);
     const startedAtMilliseconds = input.dependencies.wallClock.currentTimestampInMilliseconds;
     const hardTimeout = input.timeoutPolicy === null || input.timeoutPolicy === undefined
         ? null
@@ -421,7 +421,7 @@ function registerActiveCase(input: ActiveCaseInput): ActiveCase {
 }
 
 function completeFinishedActiveCase(input: CaseBodyInput, executedCase: ConcurrentCase): void {
-    const key = caseIdentityKey(input.testCase.id);
+    const key = workIdentityKey(input.testCase.workId);
 
     if (input.supervision.activeCases.get(key) === input.activeCase) {
         input.supervision.removeActiveCase(key);
@@ -440,7 +440,8 @@ function createInconclusiveCaseResult(testCase: TestPlanCase, error: unknown): P
     return {
         id: testCase.id,
         outcome,
-        verdict: verdictFromOutcome(outcome)
+        verdict: verdictFromOutcome(outcome),
+        workId: testCase.workId
     };
 }
 
@@ -506,42 +507,6 @@ function createActiveCaseInput(
         testCase,
         timeoutPolicy
     };
-}
-
-function observedBudgetValue(
-    metric: ResourceBudgetMetric,
-    sample: ResourceUsageSnapshot,
-    previousSample: ResourceUsageSnapshot | null
-): number {
-    const observedValues = {
-        activeResourceCount: sample.activeResourceCount,
-        javaScriptEngineHeapBytes: sample.javaScriptEngineHeapBytes,
-        residentSetBytes: sample.residentSetBytes,
-        residentSetGrowthBytesPerSecond: observedGrowthBytesPerSecond(sample, previousSample)
-    };
-
-    return observedValues[metric];
-}
-
-function findResourceBudgetBreach(
-    budgets: ExecuteResourceBudgets | null | undefined,
-    sample: ResourceUsageSnapshot,
-    previousSample: ResourceUsageSnapshot | null
-): ResourceBudgetBreach | null {
-    if (budgets === null || budgets === undefined) {
-        return null;
-    }
-
-    for (const metric of resourceBudgetMetrics) {
-        const budget = budgets[metric];
-        const observed = observedBudgetValue(metric, sample, previousSample);
-
-        if (budget !== null && observed > budget) {
-            return { budget, metric, observed, sample };
-        }
-    }
-
-    return null;
 }
 
 export function recordResourceUsageSample(input: ResourceUsageSampleInput): boolean {

@@ -1,5 +1,5 @@
 import type { WallClock } from '@enormora/wall-clock';
-import { caseIdentityKey, type CaseId } from '../engine/identity.ts';
+import { workIdentityKey, type WorkId } from '../engine/identity.ts';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import {
@@ -18,8 +18,8 @@ import {
 } from './collected-run-plan.ts';
 import {
     createRuntimeCapabilityPolicy,
-    type RuntimeCapabilityPolicy,
-    type RuntimeCapabilityPolicyDependencies
+    type CapabilityPolicyOptions,
+    type RuntimeCapabilityPolicy
 } from './capability-policy.ts';
 import {
     createRunResourceRuntimePolicy
@@ -28,14 +28,17 @@ import {
     createSupervisedChildTestPlan,
     type SupervisedChildTestPlanDependencies
 } from './supervised-child-test-plan.ts';
-import type {
-    SupervisedAssignmentCommand,
-    SupervisedChildCommand,
-    SupervisedChildMessage,
-    SupervisedRunCommand
+import {
+    supervisedAssignedWork,
+    type SupervisedAssignmentCommand,
+    type SupervisedChildCommand,
+    type SupervisedChildMessage,
+    type SupervisedRunCommand
 } from './supervised-protocol.ts';
 
 type ChildExecutionMode = 'concurrent-in-process' | 'serial-in-process';
+
+type RuntimeCapabilityPolicyDependencies = CapabilityPolicyOptions['dependencies'];
 
 type CollectedTestPlan = {
     readonly runnerErrors: readonly RunnerError[];
@@ -100,18 +103,18 @@ function createIpcReporter(host: SupervisedChildHost): DefinedReporter {
 
 function casesByIdentity(testPlan: TestPlan): ReadonlyMap<string, TestPlan['cases'][number]> {
     return new Map(testPlan.cases.map(function toEntry(testCase) {
-        return [ caseIdentityKey(testCase.id), testCase ];
+        return [ workIdentityKey(testCase.workId), testCase ];
     }));
 }
 
 function assignedTestPlanCase(
     casesByKey: ReadonlyMap<string, TestPlan['cases'][number]>,
-    testCase: CaseId
+    work: WorkId
 ): TestPlan['cases'][number] {
-    const assigned = casesByKey.get(caseIdentityKey(testCase));
+    const assigned = casesByKey.get(workIdentityKey(work));
 
     if (assigned === undefined) {
-        throw new Error('Supervised child test plan did not match assigned case identities.');
+        throw new Error('Supervised child test plan did not match assigned work identities.');
     }
 
     return assigned;
@@ -119,17 +122,17 @@ function assignedTestPlanCase(
 
 function selectAssignedCases(
     testPlan: TestPlan,
-    assignedCases: readonly CaseId[]
+    assignedWork: readonly WorkId[]
 ): TestPlan {
     const casesByKey = casesByIdentity(testPlan);
-    const cases = assignedCases.map(function toAssignedCase(testCase) {
-        return assignedTestPlanCase(casesByKey, testCase);
+    const cases = assignedWork.map(function toAssignedCase(work) {
+        return assignedTestPlanCase(casesByKey, work);
     });
 
     const first = cases[0];
 
     if (first === undefined) {
-        throw new Error('Supervised child test plan did not match assigned case identities.');
+        throw new Error('Supervised child test plan did not match assigned work identities.');
     }
 
     return {
@@ -302,7 +305,7 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
         wallClock: input.wallClock
     });
     input.host.dropBodyReadPermission(input.command);
-    const testPlan = selectAssignedCases(input.collectedPlan.testPlan, input.assignment.assignedCases);
+    const testPlan = selectAssignedCases(input.collectedPlan.testPlan, supervisedAssignedWork(input.assignment));
 
     return await execute(testPlan, {
         execution: { mode: executionMode(input.command) },
@@ -335,7 +338,7 @@ async function run(
     const collectedPlan = await collect(command, host);
     const assignment = await host.receiveAssignment();
 
-    if (assignment.assignedCases.length === 0) {
+    if (supervisedAssignedWork(assignment).length === 0) {
         sendRunResult(host, createEmptyAssignmentResult(collectedPlan.testPlan, wallClock, startedAtMs));
         return;
     }
@@ -359,6 +362,7 @@ function sendFailure(error: unknown, host: SupervisedChildHost): void {
         event: {
             error: {
                 attributedTo: null,
+                attributedToWork: null,
                 cause: error,
                 message: error instanceof Error ? error.message : String(error),
                 subtype: 'loader'

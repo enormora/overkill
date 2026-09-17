@@ -135,6 +135,7 @@ function formatReporterError(reporter: Reporter, cause: unknown): RunnerError {
 
     return {
         attributedTo: null,
+        attributedToWork: null,
         cause,
         message: `${reporter.name}: ${reason}`,
         subtype: 'reporter'

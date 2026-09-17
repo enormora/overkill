@@ -21,6 +21,7 @@ import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import { createNodeRunOrchestrator } from './run-orchestrator.ts';
 import type { SupervisedChildProcess } from './supervised-child-process.ts';
+import { supervisedAssignedWork } from './supervised-protocol.ts';
 import type { RunCommand, RunConfig, RunOrchestrator } from './run-types.ts';
 
 const integrationOutputFixturePath = 'source/integration-tests/run/fixtures/integration-output.test.ts';
@@ -66,9 +67,9 @@ function integrationOutputTestPlan(file: string): TestPlan {
 }
 
 function runFakeIntegrationOutputChild(context: FakeSupervisedChildRunContext): void {
-    const [ testCase ] = context.assignment.assignedCases;
+    const [ work ] = supervisedAssignedWork(context.assignment);
 
-    if (testCase === undefined) {
+    if (work === undefined) {
         context.emitExit();
 
         return;
@@ -77,10 +78,11 @@ function runFakeIntegrationOutputChild(context: FakeSupervisedChildRunContext): 
     context.emitMessage({
         event: {
             attempt: 1,
-            case: testCase,
+            case: work.case,
             definitionLocations: [ { kind: 'unknown' } ],
             kind: 'test-start',
-            suitePath: []
+            suitePath: [],
+            workId: work
         },
         kind: 'event'
     });
@@ -90,13 +92,14 @@ function runFakeIntegrationOutputChild(context: FakeSupervisedChildRunContext): 
         event: {
             attempt: 1,
             artifacts: [],
-            case: testCase,
+            case: work.case,
             definitionLocations: [ { kind: 'unknown' } ],
             kind: 'test-end',
             outcome: null,
             suitePath: [],
             verdict: 'pass',
-            wallTimeMs: 0
+            wallTimeMs: 0,
+            workId: work
         },
         kind: 'event'
     });

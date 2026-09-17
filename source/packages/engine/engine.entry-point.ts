@@ -107,7 +107,7 @@ export type {
     TestPlanFromTestFilesOptions
 } from '../../engine/test-plan.ts';
 export { formatCaseId } from '../../engine/identity.ts';
-export type { CaseId, TestId } from '../../engine/identity.ts';
+export type { CaseId, RuntimeDimensions, RuntimeId, TestId, WorkId, WorkloadId } from '../../engine/identity.ts';
 export type {
     DefinedReporter,
     DirectorySinkDeclaration,
@@ -322,6 +322,7 @@ export type {
     ResourceFreeTestBody,
     TestBodyDirectResourceAttachmentSummary,
     TestBodyExecutionRequirementSummary,
+    TestBodyLeafRuntimeSummary,
     TestBodyResourceAttachments,
     TestBodyResourceSummary,
     TestBodyRuntimeSummary

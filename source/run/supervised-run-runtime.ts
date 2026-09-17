@@ -1,5 +1,5 @@
 import type { ReporterDelivery } from '../engine/reporter-dispatcher.ts';
-import { caseIdentityKey } from '../engine/identity.ts';
+import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
 import type {
     ReporterEvent,
     ResourceUsageSnapshot,
@@ -117,11 +117,47 @@ function caseByKey(collectedPlan: CollectedRunPlan): ReadonlyMap<string, Supervi
                 title: testCase.title
             };
 
-            entries.push([ caseIdentityKey(id), { capture: testCase.controls.capture, id } ]);
+            const workId = testCase.workId ?? createDefaultWorkId(id);
+
+            entries.push([ workIdentityKey(workId), {
+                capture: testCase.controls.capture,
+                id,
+                workId
+            } ]);
         }
     }
 
     return new Map(entries);
+}
+
+function applyTestStartEvent(
+    event: Extract<ReporterEvent, { readonly kind: 'test-start'; }>,
+    state: SupervisedRunState,
+    cases: ReadonlyMap<string, SupervisedCase>
+): void {
+    const workId = event.workId ?? createDefaultWorkId(event.case);
+    const key = workIdentityKey(workId);
+    const testCase = cases.get(key);
+
+    if (testCase !== undefined) {
+        state.addActiveCase(key, testCase);
+    }
+}
+
+function applyTestEndEvent(
+    event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>,
+    state: SupervisedRunState
+): void {
+    const workId = event.workId ?? createDefaultWorkId(event.case);
+    const key = workIdentityKey(workId);
+
+    state.removeActiveCase(key);
+    state.recordPerTestResult(key, {
+        id: event.case,
+        outcome: event.outcome,
+        verdict: event.verdict,
+        workId
+    });
 }
 
 export function applyEvent(
@@ -130,19 +166,9 @@ export function applyEvent(
     cases: ReadonlyMap<string, SupervisedCase>
 ): void {
     if (event.kind === 'test-start') {
-        const testCase = cases.get(caseIdentityKey(event.case));
-
-        if (testCase !== undefined) {
-            state.addActiveCase(caseIdentityKey(event.case), testCase);
-        }
+        applyTestStartEvent(event, state, cases);
     } else if (event.kind === 'test-end') {
-        const key = caseIdentityKey(event.case);
-        state.removeActiveCase(key);
-        state.recordPerTestResult(key, {
-            id: event.case,
-            outcome: event.outcome,
-            verdict: event.verdict
-        });
+        applyTestEndEvent(event, state);
     } else if (event.kind === 'runner-error') {
         state.recordRunnerError(event.error);
     }
@@ -261,8 +287,8 @@ export function sendRunCommand(runtime: SupervisedRunRuntime): void {
 
 export function sendAssignment(runtime: SupervisedRunRuntime): void {
     runtime.child.send(supervisedChildEnvelope({
-        assignedCases: runtime.resolvedRun.facts.cases.map(function toCaseId(testCase) {
-            return testCase.id;
+        assignedWork: runtime.resolvedRun.facts.cases.map(function toWorkId(testCase) {
+            return testCase.workId;
         }),
         kind: 'assign'
     }));

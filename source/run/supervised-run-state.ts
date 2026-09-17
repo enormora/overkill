@@ -1,10 +1,11 @@
-import { caseIdentityKey, type CaseId } from '../engine/identity.ts';
+import { caseIdentityKey, createDefaultWorkId, type CaseId, type WorkId } from '../engine/identity.ts';
 import type { PerTestResult, RunArtifact, RunnerError } from '../engine/run-result.ts';
 import type { RunRequest } from './run-types.ts';
 
 export type SupervisedCase = {
     readonly capture: RunRequest['capture'] | null;
     readonly id: CaseId;
+    readonly workId?: WorkId;
 };
 
 export type StoredRunValue<Value> = {
@@ -45,7 +46,8 @@ function terminalResult(testCase: SupervisedCase, verdict: PerTestResult['verdic
     return {
         id: testCase.id,
         outcome: null,
-        verdict
+        verdict,
+        workId: testCase.workId ?? createDefaultWorkId(testCase.id)
     };
 }
 
@@ -105,12 +107,18 @@ function createRuntimePolicyError(
     const policyActiveCaseIds = Array.from(activeCases.values(), function toCaseId(testCase) {
         return testCase.id;
     });
+    const policyActiveWorkIds = Array.from(activeCases.values(), function toWorkId(testCase) {
+        return testCase.workId ?? createDefaultWorkId(testCase.id);
+    });
     const [ activeCase = null ] = policyActiveCaseIds;
+    const [ activeWork = null ] = policyActiveWorkIds;
 
     return {
         attributedTo: policyActiveCaseIds.length === 1 ? activeCase : null,
+        attributedToWork: policyActiveWorkIds.length === 1 ? activeWork : null,
         cause: {
             activeCases: policyActiveCaseIds,
+            activeWork: policyActiveWorkIds,
             capability,
             phase: policyActiveCaseIds.length === 0 ? 'out-of-test' : 'body',
             strictness: 'observed'

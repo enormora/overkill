@@ -6,7 +6,7 @@ import { testNode as workerPoolPlacementTasksTestNode } from './worker-pool-plac
 import { testNode as workerPoolPlacementValidationTestNode } from './worker-pool-placement-validation.test.ts';
 import { testNode as workerPoolPlanningTestNode } from './worker-pool-planning.test.ts';
 import { testNode as workerPoolRunTestNode } from './worker-pool-run.test.ts';
-import { testNode as workerPoolRuntimeTestNode } from './worker-pool-runtime.test.ts';
+import { testNode as workerPoolRuntimeTestNode } from './worker-pool-runtime-suite.test.ts';
 
 export const testNode = createOverkillSuite({
     annotations: {},

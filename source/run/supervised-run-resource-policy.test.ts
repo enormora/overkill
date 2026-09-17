@@ -139,9 +139,11 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.deepEqual(resourceExhaustionError(breach, emptyState), {
                     attributedTo: null,
+                    attributedToWork: null,
                     cause: {
                         ...breach,
                         activeCases: [],
+                        activeWork: [],
                         enforcement: 'post-test-diagnostic'
                     },
                     message: 'Resource budget exceeded: activeResourceCount observed 2, budget 1.',
@@ -152,6 +154,10 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(resourceExhaustionError(breach, multiState).attributedTo, null);
                 scope.assert.deepEqual(crashError(multiState, 'Crashed.').cause, {
                     activeCases: [ firstCaseId, secondCaseId ],
+                    activeWork: [
+                        { case: firstCaseId, runtime: null, workload: null },
+                        { case: secondCaseId, runtime: null, workload: null }
+                    ],
                     reason: 'Crashed.'
                 });
 

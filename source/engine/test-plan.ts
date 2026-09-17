@@ -1,6 +1,13 @@
 import type { NonEmptyReadonlyArray, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
-import { caseIdentityKey, createCaseId, formatCaseId, type CaseId } from './identity.ts';
+import {
+    caseIdentityKey,
+    createCaseId,
+    createDefaultWorkId,
+    formatCaseId,
+    type CaseId,
+    type WorkId
+} from './identity.ts';
 import {
     readTestBodyResourceAttachments,
     type TestBodyResourceAttachments
@@ -50,6 +57,7 @@ export type TestPlanCase = {
     readonly resourceAttachments: TestBodyResourceAttachments;
     readonly suitePath: readonly TestPlanSuitePathEntry[];
     readonly testFamily: TestFamily | null;
+    readonly workId: WorkId;
 };
 
 export type TestPlan = {
@@ -149,6 +157,7 @@ function collectTestCase(
 ): CollectedTestCases {
     const annotations = resolveTestAnnotations(context.annotations, testCase.annotations);
     const controls = resolveTestControls(context.controls, testCase.controls);
+    const id = createCaseId(context.file, suiteTitles(context.suitePath), testCase.title, null);
 
     return {
         cases: [
@@ -157,10 +166,11 @@ function collectTestCase(
                 controls,
                 definitionLocations: testCase.definitionLocations,
                 execution: testCase.execution,
-                id: createCaseId(context.file, suiteTitles(context.suitePath), testCase.title, null),
+                id,
                 resourceAttachments: resourceAttachmentsFromExecution(testCase.execution),
                 suitePath: context.suitePath,
-                testFamily: testNodeFamily(testCase)
+                testFamily: testNodeFamily(testCase),
+                workId: createDefaultWorkId(id)
             }
         ],
         reachedNodes: [ testCase ]
@@ -190,21 +200,23 @@ function collectTable(
         cases: table.cases.map(function collectTableCase(tableCase): TestPlanCase {
             const annotations = resolveTestAnnotations(tableAnnotations, tableCase.annotations);
             const controls = resolveTestControls(tableControls, tableCase.controls);
+            const id = createCaseId(
+                context.file,
+                suiteTitles(tablePath),
+                tableCase.title,
+                parameterIdentity(tableCase.parameters)
+            );
 
             return {
                 annotations,
                 controls,
                 definitionLocations: table.definitionLocations,
                 execution: { body: tableCase.body, bodyMode: 'builder', kind: 'body' },
-                id: createCaseId(
-                    context.file,
-                    suiteTitles(tablePath),
-                    tableCase.title,
-                    parameterIdentity(tableCase.parameters)
-                ),
+                id,
                 resourceAttachments: readTestBodyResourceAttachments(tableCase.body),
                 suitePath: tablePath,
-                testFamily: testNodeFamily(table)
+                testFamily: testNodeFamily(table),
+                workId: createDefaultWorkId(id)
             };
         }),
         reachedNodes: [ table ]

@@ -28,6 +28,7 @@ export class RunCollectionError extends Error {
     public runnerError(): RunnerError {
         return {
             attributedTo: null,
+            attributedToWork: null,
             cause: this.cause,
             message: this.message,
             subtype: this.errorSubtype

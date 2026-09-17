@@ -4,7 +4,7 @@ import type {
     RunResourceUsageTracker,
     ResourceUsageSnapshot
 } from '../engine/run-result.ts';
-import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy.ts';
+import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy-snapshots.ts';
 import {
     childProcessEnvelope,
     envelopeMessage

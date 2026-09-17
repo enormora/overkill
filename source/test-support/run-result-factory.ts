@@ -1,4 +1,4 @@
-import type { CaseId } from '../engine/identity.ts';
+import { createDefaultWorkId, type CaseId, type WorkId } from '../engine/identity.ts';
 import type {
     FailedCheck,
     FailedLeafCheck,
@@ -90,6 +90,7 @@ type PerTestResultOverrides = {
     readonly id?: CaseId;
     readonly outcome?: TestOutcomeOverrides | null;
     readonly verdict?: TestVerdict;
+    readonly workId?: WorkId;
 };
 
 type OrphanedNodeOverrides = Partial<OrphanedNode>;
@@ -314,11 +315,13 @@ function buildPerTestVerdict(
 
 function buildPerTestResult(overrides: PerTestResultOverrides = {}): RunResult['perTest'][number] {
     const outcome = overrides.outcome === null ? null : buildOutcome(overrides.outcome);
+    const id = overrides.id ?? defaultCaseId;
 
     return {
-        id: overrides.id ?? defaultCaseId,
+        id,
         outcome,
-        verdict: buildPerTestVerdict(overrides, outcome)
+        verdict: buildPerTestVerdict(overrides, outcome),
+        workId: overrides.workId ?? createDefaultWorkId(id)
     };
 }
 
@@ -331,9 +334,19 @@ function buildOrphanedNode(overrides: OrphanedNodeOverrides = {}): OrphanedNode 
     };
 }
 
-function buildRunnerError(overrides: RunnerErrorOverrides = {}): RunnerError {
+function buildRunnerErrorAttribution(overrides: RunnerErrorOverrides): Pick<
+    RunnerError,
+    'attributedTo' | 'attributedToWork'
+> {
     return {
         attributedTo: overrides.attributedTo ?? null,
+        attributedToWork: overrides.attributedToWork ?? null
+    };
+}
+
+function buildRunnerError(overrides: RunnerErrorOverrides = {}): RunnerError {
+    return {
+        ...buildRunnerErrorAttribution(overrides),
         cause: overrides.cause ?? null,
         message: overrides.message ?? 'Runner error',
         subtype: overrides.subtype ?? 'crash'

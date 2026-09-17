@@ -120,7 +120,7 @@ function assertionFailure(assertions: readonly AssertionNode[]): TestFailure | n
 }
 
 function caseRunnerError(testCase: TestPlanCase, error: unknown): RunnerError | null {
-    return isCaseRunnerError(error) ? error.runnerError(testCase.id) : null;
+    return isCaseRunnerError(error) ? error.runnerError(testCase.id, testCase.workId) : null;
 }
 
 function requireFailedBody(context: BodyResultContext): ExecutedBody {
@@ -522,7 +522,8 @@ export async function runTestCase(
             result: {
                 id: testCase.id,
                 outcome,
-                verdict: verdictFromOutcome(outcome)
+                verdict: verdictFromOutcome(outcome),
+                workId: testCase.workId
             },
             runnerErrors: [],
             wallTimeMs: wallClock.currentTimestampInMilliseconds - startedAt
@@ -539,7 +540,8 @@ export async function runTestCase(
         result: {
             id: testCase.id,
             outcome,
-            verdict
+            verdict,
+            workId: testCase.workId
         },
         runnerErrors: executedBody.runnerErrors,
         wallTimeMs: wallClock.currentTimestampInMilliseconds - startedAt

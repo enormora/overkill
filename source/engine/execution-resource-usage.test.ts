@@ -6,6 +6,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { createInMemoryFinalResultReporter } from '../reporters/in-memory-reporter.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
+import { executeResourceTrackedCases } from './execution-resource-tracked-cases.ts';
 import {
     createExecutionSupervision,
     recordResourceUsageSample
@@ -367,6 +368,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(error.attributedTo, null);
                 scope.assert.deepEqual(plainDataShape(error.cause), {
                     activeCases: [],
+                    activeWork: [],
                     budget: 1,
                     enforcement: 'post-test-diagnostic',
                     metric: 'residentSetBytes',
@@ -403,6 +405,40 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(nullBudgetBreach, false);
                 scope.assert.equal(undefinedBudgetBreach, false);
                 scope.assert.equal(supervision.runnerErrors.length, 0);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'executeResourceTrackedCases() stops tracking after execution throws',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                let finishCount = 0;
+
+                await scope.assert.rejects(async function executeThrowingCases() {
+                    await executeResourceTrackedCases({
+                        context: { dependencies: { wallClock: createDeterministicWallClock() } },
+                        options: {
+                            resourceBudgets: null,
+                            resourceUsageTracker: {
+                                finish() {
+                                    finishCount += 1;
+
+                                    return createFinishedResourceUsageTracker().finish();
+                                },
+                                start() {
+                                    return undefined;
+                                }
+                            }
+                        },
+                        supervision: createExecutionSupervision()
+                    }, async function throwDuringCaseExecution() {
+                        throw new Error('case execution failed');
+                    });
+                }, { message: 'case execution failed' });
+                scope.assert.equal(finishCount, 1);
 
                 return scope.assert.collect();
             }

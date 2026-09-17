@@ -1,9 +1,6 @@
 import { startResourceBudgetTracking } from './execution-resource-budget-tracking.ts';
-import type {
-    ExecuteResourceBudgets,
-    ExecutionSupervision,
-    ExecutionSupervisionDependencies
-} from './execution-supervision.ts';
+import type { ExecuteResourceBudgets } from './execution-resource-budget-breach.ts';
+import type { ExecutionSupervision, ExecutionSupervisionDependencies } from './execution-supervision.ts';
 import type {
     RunResourceUsageTracker,
     RunResult,

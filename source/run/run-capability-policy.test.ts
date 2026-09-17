@@ -11,13 +11,16 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
+import { createDefaultWorkId } from '../engine/identity.ts';
 import {
     createRuntimeCapabilityPolicy,
+    type RuntimeCapabilityPolicy
+} from './capability-policy.ts';
+import {
     isRuntimeCapabilityPolicyEnvironment,
-    type RuntimeCapabilityPolicy,
     type RuntimeCapabilityPolicyEnvironment,
     type WebStorageLike
-} from './capability-policy.ts';
+} from './capability-policy-snapshots.ts';
 import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
 import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
 
@@ -64,7 +67,13 @@ const policyTestCase: PolicyTestCase = {
     suitePath: [
         { definitionLocations: [ { kind: 'unknown' as const } ], title: 'runtime policy' }
     ],
-    testFamily: null
+    testFamily: null,
+    workId: createDefaultWorkId({
+        file: 'source/run/run-capability-policy.test.ts',
+        title: 'policy case',
+        params: null,
+        suite: [ 'runtime policy' ]
+    })
 };
 
 function createRunCommand(overrides: RunCommandParts): RunCommand {

@@ -1,4 +1,4 @@
-import type { CaseId } from './identity.ts';
+import type { CaseId, WorkId } from './identity.ts';
 import type { OptionalReporterOutput, OutputIntentRole } from './reporter-output.ts';
 import type { ReportingContext } from './reporting-context.ts';
 import type { RunArtifact, RunResult, RunnerError, TestOutcome, TestVerdict } from './run-result.ts';
@@ -136,6 +136,7 @@ type TestStartReporterEvent = {
     readonly definitionLocations: TestPlanCase['definitionLocations'];
     readonly kind: 'test-start';
     readonly suitePath: TestPlanCase['suitePath'];
+    readonly workId?: WorkId;
 };
 
 type TestProgressReporterEvent = {
@@ -145,6 +146,7 @@ type TestProgressReporterEvent = {
     readonly kind: 'test-progress';
     readonly note: string;
     readonly suitePath: TestPlanCase['suitePath'];
+    readonly workId?: WorkId;
 };
 
 type TestEndReporterEvent = {
@@ -157,6 +159,7 @@ type TestEndReporterEvent = {
     readonly suitePath: TestPlanCase['suitePath'];
     readonly verdict: TestVerdict;
     readonly wallTimeMs: number;
+    readonly workId?: WorkId;
 };
 
 type RunReporterEvent = RunEndReporterEvent | RunnerErrorReporterEvent | RunStartReporterEvent;

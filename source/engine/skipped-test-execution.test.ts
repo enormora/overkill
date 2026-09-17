@@ -105,16 +105,23 @@ function createSkippedExecutionPlan(engine: Engine): ReturnType<Engine['createTe
 }
 
 function assertSkippedExecutionResult(scope: OverkillScope, result: RunResult): void {
+    const skippedCaseId = {
+        file: null,
+        params: null,
+        suite: [ 'runtime' ],
+        title: 'conditional'
+    };
+
     scope.assert.deepEqual(result.perTest, [
         {
-            id: {
-                file: null,
-                params: null,
-                suite: [ 'runtime' ],
-                title: 'conditional'
-            },
+            id: skippedCaseId,
             outcome: { kind: 'skip', reason: 'unsupported platform' },
-            verdict: 'skip'
+            verdict: 'skip',
+            workId: {
+                case: skippedCaseId,
+                runtime: null,
+                workload: null
+            }
         }
     ]);
     scope.assert.deepEqual(result.summary, {

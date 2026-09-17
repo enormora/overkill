@@ -13,7 +13,7 @@ import {
 } from '../test-support/run-command-factory.ts';
 import { testNode as runCollectionErrorReportingTestNode } from './run-collection-error-reporting.test.ts';
 import { RunResolutionError } from './run-errors.ts';
-import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
+import type { RunCaseFacts, RunCommand, RunConfig, RunRequest } from './run-types.ts';
 
 type RunCommandParts = {
     readonly config: RunConfig;
@@ -51,6 +51,34 @@ function expectedPassingFixtureControls(): unknown {
     return {
         capture: null,
         timeoutMilliseconds: null
+    };
+}
+
+function expectedPassingFixtureCaseId(): RunCaseFacts['id'] {
+    return { file: passingFixturePath, title: 'passes', params: null, suite: [ 'fixture' ] };
+}
+
+function expectedPassingFixtureCaseFact(): unknown {
+    const id = expectedPassingFixtureCaseId();
+
+    return {
+        annotations: serializeValue(expectedPassingFixtureAnnotations()),
+        controls: serializeValue(expectedPassingFixtureControls()),
+        fileSet: null,
+        id,
+        workId: { case: expectedPassingFixtureCaseId(), runtime: null, workload: null }
+    };
+}
+
+function expectedPassingFixtureLiveCaseFact(): unknown {
+    const id = expectedPassingFixtureCaseId();
+
+    return {
+        annotations: serializeValue(expectedPassingFixtureAnnotations()),
+        controls: serializeValue(expectedPassingFixtureControls()),
+        fileSet: null,
+        id,
+        workId: { case: id, runtime: null, workload: null }
     };
 }
 
@@ -133,17 +161,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(Object.isFrozen(resolvedRun.facts.cases), true);
                 scope.assert.deepEqual(plainData(resolvedRun.facts), {
                     cases: [
-                        {
-                            fileSet: null,
-                            id: {
-                                file: passingFixturePath,
-                                title: 'passes',
-                                params: null,
-                                suite: [ 'fixture' ]
-                            },
-                            annotations: serializeValue(expectedPassingFixtureAnnotations()),
-                            controls: serializeValue(expectedPassingFixtureControls())
-                        }
+                        expectedPassingFixtureCaseFact()
                     ],
                     environment: {
                         node: {
@@ -376,17 +394,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(runStartEvent.kind, 'run-start');
                 scope.assert.deepEqual(plainData(runStartEvent.kind === 'run-start' ? runStartEvent.facts : null), {
                     cases: [
-                        {
-                            fileSet: null,
-                            id: {
-                                file: passingFixturePath,
-                                title: 'passes',
-                                params: null,
-                                suite: [ 'fixture' ]
-                            },
-                            annotations: serializeValue(expectedPassingFixtureAnnotations()),
-                            controls: serializeValue(expectedPassingFixtureControls())
-                        }
+                        expectedPassingFixtureLiveCaseFact()
                     ],
                     environment: {
                         node: {

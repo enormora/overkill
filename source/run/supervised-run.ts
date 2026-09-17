@@ -123,6 +123,7 @@ async function observeCollection(
             runtime.terminalFailure.write(true);
             runtime.state.recordRunnerError({
                 attributedTo: null,
+                attributedToWork: null,
                 cause: { reason: 'Supervised collection exceeded collection timeout.' },
                 message: 'Supervised collection exceeded collection timeout.',
                 subtype: 'crash'
@@ -141,6 +142,7 @@ async function observeCollection(
             runtime.terminalFailure.write(true);
             runtime.state.recordRunnerError({
                 attributedTo: null,
+                attributedToWork: null,
                 cause: error,
                 message: error.message,
                 subtype: 'crash'
@@ -202,6 +204,7 @@ function recordCollectionTimeout(
     terminalFailure.write(true);
     state.recordRunnerError({
         attributedTo: null,
+        attributedToWork: null,
         cause: { reason: 'Supervised collection exceeded collection timeout.' },
         message: 'Supervised collection exceeded collection timeout.',
         subtype: 'crash'
@@ -308,6 +311,7 @@ function observeLiveRun(command: SupervisedRunCommand, liveRun: SupervisedLiveRu
         liveRun.terminalFailure.write(true);
         liveRun.state.recordRunnerError({
             attributedTo: null,
+            attributedToWork: null,
             cause: error,
             message: error.message,
             subtype: 'crash'
@@ -362,8 +366,8 @@ async function createLiveRunRuntime(
 
 function sendAssignmentForPlan(runtime: SupervisedRunRuntime): void {
     runtime.child.send(childProcessEnvelope(supervisedChildCorrelationId, {
-        assignedCases: runtime.resolvedRun.facts.cases.map(function toCaseId(testCase) {
-            return testCase.id;
+        assignedWork: runtime.resolvedRun.facts.cases.map(function toWorkId(testCase) {
+            return testCase.workId;
         }),
         kind: 'assign'
     }));

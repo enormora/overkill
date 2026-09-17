@@ -8,7 +8,7 @@ import type {
 import type {
     RuntimeCapabilityPolicyDependencies,
     RuntimeCapabilityPolicyEnvironment
-} from './capability-policy.ts';
+} from './capability-policy-snapshots.ts';
 import type { RunDiscovery } from './run-discovery-types.ts';
 import type { RunEngineModuleLoader } from './run-engine-selection.ts';
 import type { RunTestModuleLoader } from './run-test-modules.ts';

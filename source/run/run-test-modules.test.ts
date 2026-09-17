@@ -137,6 +137,7 @@ export const testNode = createOverkillSuite({
 
                     scope.assert.deepEqual(error.runnerError(), {
                         attributedTo: null,
+                        attributedToWork: null,
                         cause: error.cause,
                         message: `Failed to load test module: ${throwsOnImportFixturePath}`,
                         subtype: 'loader'

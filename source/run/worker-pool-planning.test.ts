@@ -430,7 +430,7 @@ export const testNode = createOverkillSuite({
                     selectedAssignedCases(testPlan, [
                         { file: integrationPath, params: null, suite: [], title: 'missing' }
                     ]);
-                }, { message: 'Worker-pool test plan did not match assigned case identities.' });
+                }, { message: 'Worker-pool test plan did not match assigned work identities.' });
 
                 return scope.assert.collect();
             }

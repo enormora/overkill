@@ -5,7 +5,7 @@ import type {
 } from '../engine/engine.entry-point.ts';
 import {
     isDefinedResource,
-    isDefinedRuntime,
+    isDefinedRuntimeGraph,
     type AnyResourceDefinition,
     type ResourceContext,
     type ResourceMap,
@@ -26,6 +26,7 @@ export {
     createTemporaryDirectoryResource,
     defineResource,
     defineRuntime,
+    defineRuntimeMatrix,
     ResourceLifecycleError,
     startRuntime
 } from '../resources/resources.entry-point.ts';
@@ -50,10 +51,16 @@ export type {
     RuntimeDefinition,
     RuntimeDefinitionInput,
     RuntimeDimensions,
+    RuntimeGraphContext,
     RuntimeGraph,
     RuntimeId,
+    RuntimeMatrixDefinition,
+    RuntimeMatrixDefinitionInput,
+    RuntimeMatrixVariant,
+    RuntimeMatrixVariantMap,
     RuntimeResourceMap,
     RuntimeScopeContext,
+    SharedRuntimeMatrixDefinitionInput,
     RuntimeSession,
     RuntimeSessionDisposalContext,
     StartRuntimeRequest,
@@ -119,7 +126,7 @@ function ensureResource(resource: unknown, wrapperName: string): AnyResourceDefi
 }
 
 function ensureRuntimeGraph(runtimeGraph: unknown): RuntimeGraph {
-    if (!isDefinedRuntime(runtimeGraph)) {
+    if (!isDefinedRuntimeGraph(runtimeGraph)) {
         throw new TypeError('withRuntime() requires a runtime descriptor.');
     }
 

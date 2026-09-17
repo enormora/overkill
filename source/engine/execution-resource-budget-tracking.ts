@@ -6,10 +6,10 @@ import type {
 } from './run-result.ts';
 import {
     recordResourceUsageSample,
-    type ExecuteResourceBudgets,
     type ExecutionSupervision,
     type ExecutionSupervisionDependencies
 } from './execution-supervision.ts';
+import type { ExecuteResourceBudgets } from './execution-resource-budget-breach.ts';
 
 type ResourceBudgetTrackingInput = {
     readonly dependencies: ExecutionSupervisionDependencies;

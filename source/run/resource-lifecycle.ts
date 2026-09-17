@@ -1,4 +1,4 @@
-import { caseIdentityKey } from '../engine/identity.ts';
+import { workIdentityKey } from '../engine/identity.ts';
 import type { TestRuntimePolicy } from '../engine/case-execution.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
 import type {
@@ -157,7 +157,7 @@ function resourceBoundaryForCase(
 ): LifecycleBoundary {
     return scope === 'shared-per-worker'
         ? { key: `worker:${resourceName}`, scope }
-        : { key: `case:${caseIdentityKey(testCase.id)}:${resourceName}`, scope };
+        : { key: `case:${workIdentityKey(testCase.workId)}:${resourceName}`, scope };
 }
 
 function resourceBoundary(
@@ -215,7 +215,7 @@ function initialBoundaryUseCounts(testCases: readonly TestPlanCase[]): ReadonlyM
 }
 
 function caseKey(testCase: TestPlanCase): string {
-    return caseIdentityKey(testCase.id);
+    return workIdentityKey(testCase.workId);
 }
 
 function mutableDependencyContext(): Record<string, unknown> {
@@ -246,7 +246,7 @@ function createManagedStores(testCases: readonly TestPlanCase[]): ManagedLifecyc
             const key = caseKey(testCase);
             const errors = errorsByCase.get(key) ?? [];
 
-            errors.push(resourceWrapperLifecycleError(message, cause).runnerError(testCase.id));
+            errors.push(resourceWrapperLifecycleError(message, cause).runnerError(testCase.id, testCase.workId));
             errorsByCase.set(key, errors);
         },
         remainingBoundaryUses(boundaryKey) {
@@ -472,18 +472,23 @@ async function acquireComposedResourcesWithLifecycle(
     steps: readonly ResourceWrapperStep[],
     signal: AbortSignal
 ): Promise<ComposedResourceSession> {
+    const testCase = currentRunningCase();
     const directResources = resourceMapFromEntries(directResourceEntries(steps));
     const runtimes = stepRuntimeGraphs(steps);
-    const combinedResources = combinedResourceEntries(steps);
+    const combinedResources = combinedResourceEntries(steps, testCase.workId);
     const graph = createResourceGraph(combinedResources);
-    const testCase = currentRunningCase();
     const acquirer = createManagedResourceAcquirer(stores);
 
     assertResourceDependencyScopes(combinedResources);
     await acquireTopLevelResources(acquirer, graph, testCase, signal);
     const handles = await managedResourceHandles(acquirer, graph, testCase, signal);
 
-    return composedResourceSession(directResources, runtimes, managedResourceSession(combinedResources, handles));
+    return composedResourceSession(
+        directResources,
+        runtimes,
+        managedResourceSession(combinedResources, handles),
+        testCase.workId
+    );
 }
 
 async function acquireManagedComposedResources(

@@ -75,6 +75,7 @@ function startCollectionTimeout(
         context.terminalFailure.write(true);
         context.runState.recordRunnerError({
             attributedTo: null,
+            attributedToWork: null,
             cause: { reason: 'Worker-pool collection exceeded collection timeout.' },
             message: 'Worker-pool collection exceeded collection timeout.',
             subtype: 'crash'

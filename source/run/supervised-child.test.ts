@@ -338,7 +338,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(childRun.exitCode(), 1);
                 scope.assert.equal(
                     firstRunnerErrorMessage(childRun.messages()),
-                    'Supervised child test plan did not match assigned case identities.'
+                    'Supervised child test plan did not match assigned work identities.'
                 );
 
                 return scope.assert.collect();

@@ -1,5 +1,5 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
-import { testNode as collectedRunPlanTestNode } from './collected-run-plan.test.ts';
+import { testNode as runPlanConstructionTestNode } from './run-plan-construction-suite.test.ts';
 import { testNode as runDiscoveryTestNode } from './run-discovery.test.ts';
 import { testNode as runFilterGrammarTestNode } from './run-filter-grammar.test.ts';
 import { testNode as runProfileFileSetsTestNode } from './run-profile-file-sets.test.ts';
@@ -14,7 +14,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
-        collectedRunPlanTestNode,
+        runPlanConstructionTestNode,
         runDiscoveryTestNode,
         runFilterGrammarTestNode,
         runProfileFileSetsTestNode,

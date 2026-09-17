@@ -3,7 +3,7 @@ import {
     isWebStorageLike,
     type RuntimeCapabilityPolicyEnvironment,
     type WebStorageLike
-} from './capability-policy.ts';
+} from './capability-policy-snapshots.ts';
 
 type ProcessEnvironmentHost = {
     readonly env?: unknown;

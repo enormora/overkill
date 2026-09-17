@@ -18,10 +18,13 @@ export const createTemporaryDirectoryResource: ResourcesModule['createTemporaryD
     resourcesModule.createTemporaryDirectoryResource;
 export const defineResource: ResourcesModule['defineResource'] = resourcesModule.defineResource;
 export const defineRuntime: ResourcesModule['defineRuntime'] = resourcesModule.defineRuntime;
+export const defineRuntimeMatrix: ResourcesModule['defineRuntimeMatrix'] = resourcesModule.defineRuntimeMatrix;
 
 export {
     isDefinedResource,
-    isDefinedRuntime
+    isDefinedRuntime,
+    isDefinedRuntimeGraph,
+    isDefinedRuntimeMatrix
 } from '../../resources/resources.ts';
 export {
     assertPerCaseResourceGraph,
@@ -54,13 +57,20 @@ export type {
     RuntimeDefinition,
     RuntimeDefinitionInput,
     RuntimeDimensions,
+    RuntimeGraph,
+    RuntimeGraphContext,
     RuntimeId,
+    RuntimeMatrixDefinition,
+    RuntimeMatrixDefinitionInput,
+    RuntimeMatrixVariant,
+    RuntimeMatrixVariantMap,
     RuntimeResourceMap,
     RuntimeScopeContext,
+    SharedRuntimeMatrixDefinitionInput,
     TemporaryDirectoryHandle
 } from '../../resources/resources.ts';
 export type {
-    RuntimeDefinition as RuntimeGraph,
+    RuntimeDefinition as Runtime,
     RuntimeResourceMap as ResourceMap
 } from '../../resources/resources.ts';
 export type {

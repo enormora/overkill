@@ -118,7 +118,8 @@ function caseFactsFromPlan(testPlan: TestPlan): ResolvedRun['facts']['cases'] {
             annotations: { constructorName: 'Object', entries: [], kind: 'object', truncation: null },
             controls: { constructorName: 'Object', entries: [], kind: 'object', truncation: null },
             fileSet: null,
-            id: testCase.id
+            id: testCase.id,
+            workId: testCase.workId
         };
     });
 }

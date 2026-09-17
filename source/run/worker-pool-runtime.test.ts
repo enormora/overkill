@@ -16,6 +16,7 @@ import { createSupervisedRunState } from './supervised-run-state.ts';
 import {
     createWorkerPoolRuntime,
     workerPoolPlacementPlan,
+    workerPoolExecutionFacts,
     type WorkerPoolRunRuntime
 } from './worker-pool-runtime.ts';
 import { createWorkerPoolPlacementPlan } from './work-unit-planning.ts';
@@ -27,7 +28,7 @@ const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const annotations = { ownership: [], tags: [] };
 const controls = { capture: null, timeoutMilliseconds: null };
 
-function createCollectedPlan(): CollectedRunPlan {
+export function createCollectedPlan(): CollectedRunPlan {
     return {
         defined: 1,
         discoveredFiles: [],
@@ -59,7 +60,7 @@ function createCollectedPlan(): CollectedRunPlan {
     };
 }
 
-function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
+export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
     return {
         collectionRunnerErrors: [],
         config: defaultRunConfig(),
@@ -149,7 +150,7 @@ const createFakeWorkerPool: RunOrchestratorDependencies['createWorkerPool'] = fu
     return createFakePool(options.workerCount, options.workerLifecycle === 'fresh-worker-per-unit');
 };
 
-function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
+export function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
     return {
         availableParallelism: 2,
         createResourceUsageTracker: testOnlyDependency,
@@ -272,6 +273,29 @@ function workerPoolResolvedRunWithLifecycle(workerLifecycle: RunWorkerLifecycle)
     };
 }
 
+function childHostResolvedRun(): ResolvedRun {
+    const resolvedRun = workerPoolResolvedRunWithLifecycle('fresh-worker-per-unit');
+
+    if (resolvedRun.facts.execution.processModel !== 'worker-pool') {
+        throw new Error('Worker-pool child host test requires worker-pool execution facts.');
+    }
+
+    return {
+        ...resolvedRun,
+        facts: {
+            ...resolvedRun.facts,
+            execution: {
+                ...resolvedRun.facts.execution,
+                hostProcess: {
+                    kind: 'child',
+                    nodeArguments: [ '--conditions=overkill-test' ],
+                    reasons: [ 'node-arguments' ]
+                }
+            }
+        }
+    };
+}
+
 function supervisedExecutionFacts(): ResolvedRun['facts']['execution'] {
     return {
         baselineUpdateMode: 'none',
@@ -376,7 +400,7 @@ async function workerPoolRuntimeCreation(): Promise<{
         collectionRunnerErrors: [],
         createdPool: null,
         dependencies,
-        resolvedRun: workerPoolResolvedRunWithLifecycle('fresh-worker-per-unit'),
+        resolvedRun: childHostResolvedRun(),
         runState: createSupervisedRunState()
     });
 
@@ -418,7 +442,7 @@ export const testNode = createOverkillSuite({
                     { cwd: process.cwd(), hostProcess: { kind: 'direct' }, workerCount: 1, workerLifecycle: 'reuse' },
                     {
                         cwd: process.cwd(),
-                        hostProcess: { kind: 'direct' },
+                        hostProcess: { kind: 'child', nodeArguments: [ '--conditions=overkill-test' ] },
                         workerCount: 1,
                         workerLifecycle: 'fresh-worker-per-unit'
                     }
@@ -444,6 +468,9 @@ export const testNode = createOverkillSuite({
                 }, {
                     message: 'Worker-pool execution requires worker-pool execution facts.'
                 });
+                scope.assert.throws(function readMismatchedExecutionFacts() {
+                    workerPoolExecutionFacts(workerPoolPlanWithSupervisedFacts());
+                }, { message: 'Worker-pool execution requires worker-pool execution facts.' });
 
                 return scope.assert.collect();
             }

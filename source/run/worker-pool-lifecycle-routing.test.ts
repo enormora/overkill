@@ -220,7 +220,8 @@ function testOnlyDependency(): never {
 
 function fakePool(
     options: WorkerPoolCreationOptions,
-    routedLifecycles: RoutedLifecycles
+    routedLifecycles: RoutedLifecycles,
+    routedHostOutputSinks: RoutedLifecycles
 ): CreatedWorkerPool {
     return {
         async destroy() {
@@ -234,6 +235,9 @@ function fakePool(
             routedLifecycles.push(options.workerLifecycle);
 
             return options.workerLifecycle;
+        },
+        setHostOutputSink() {
+            routedHostOutputSinks.push(options.workerLifecycle);
         }
     };
 }
@@ -276,7 +280,8 @@ function resourceUsageTracker(workerLifecycle: RunWorkerLifecycle): WorkerPoolRe
 
 function trackingPool(options: WorkerPoolCreationOptions): CreatedWorkerPool {
     const routedLifecycles: RunWorkerLifecycle[] = [];
-    const pool = fakePool(options, routedLifecycles);
+    const routedHostOutputSinks: RunWorkerLifecycle[] = [];
+    const pool = fakePool(options, routedLifecycles, routedHostOutputSinks);
 
     return {
         ...pool,
@@ -288,7 +293,8 @@ function trackingPool(options: WorkerPoolCreationOptions): CreatedWorkerPool {
 
 function fakeDependencies(
     createdWorkerPools: CreatedWorkerPools,
-    routedLifecycles: RoutedLifecycles
+    routedLifecycles: RoutedLifecycles,
+    routedHostOutputSinks: RoutedLifecycles
 ): WorkerPoolRunRuntime['dependencies'] {
     return {
         availableParallelism: 2,
@@ -299,7 +305,7 @@ function fakeDependencies(
         createWorkerPool(options) {
             createdWorkerPools.push(options);
 
-            return fakePool(options, routedLifecycles);
+            return fakePool(options, routedLifecycles, routedHostOutputSinks);
         },
         defaultEngine: defaultRunEngine,
         discoverRunFilesWithProjectRoot: testOnlyDependency,
@@ -363,9 +369,10 @@ function fakeDependencies(
 
 function trackingDependencies(createdWorkerPools: CreatedWorkerPools): WorkerPoolRunRuntime['dependencies'] {
     const routedLifecycles: RunWorkerLifecycle[] = [];
+    const routedHostOutputSinks: RunWorkerLifecycle[] = [];
 
     return {
-        ...fakeDependencies(createdWorkerPools, routedLifecycles),
+        ...fakeDependencies(createdWorkerPools, routedLifecycles, routedHostOutputSinks),
         createWorkerPool(options) {
             createdWorkerPools.push(options);
 
@@ -446,7 +453,8 @@ async function assertRoutedPoolErrors(scope: OverkillScope, runtime: WorkerPoolR
 async function assertRoutedLifecycleRuns(
     scope: OverkillScope,
     runtime: WorkerPoolRunRuntime,
-    routedLifecycles: readonly RunWorkerLifecycle[]
+    routedLifecycles: readonly RunWorkerLifecycle[],
+    routedHostOutputSinks: readonly RunWorkerLifecycle[]
 ): Promise<void> {
     scope.assert.equal(runtime.pool.options.maxThreads, 2);
     scope.assert.equal(await runtime.pool.run(lifecycleTask('reuse'), runOptions()), 'reuse');
@@ -454,7 +462,14 @@ async function assertRoutedLifecycleRuns(
         await runtime.pool.run(lifecycleTask('fresh-worker-per-unit'), runOptions()),
         'fresh-worker-per-unit'
     );
+    runtime.pool.setHostOutputSink?.(null);
     scope.assert.deepEqual(routedLifecycles, [ 'reuse', 'fresh-worker-per-unit' ]);
+    scope.assert.deepEqual(routedHostOutputSinks, [
+        'reuse',
+        'fresh-worker-per-unit',
+        'reuse',
+        'fresh-worker-per-unit'
+    ]);
 }
 
 export const testNode = createOverkillSuite({
@@ -471,15 +486,16 @@ export const testNode = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const createdWorkerPools: WorkerPoolCreationOptions[] = [];
                 const routedLifecycles: RunWorkerLifecycle[] = [];
+                const routedHostOutputSinks: RunWorkerLifecycle[] = [];
                 const runtime = await createWorkerPoolRuntime({
                     collectionRunnerErrors: [],
                     createdPool: null,
-                    dependencies: fakeDependencies(createdWorkerPools, routedLifecycles),
+                    dependencies: fakeDependencies(createdWorkerPools, routedLifecycles, routedHostOutputSinks),
                     resolvedRun: mixedLifecycleResolvedRun(),
                     runState: createSupervisedRunState()
                 });
 
-                await assertRoutedLifecycleRuns(scope, runtime, routedLifecycles);
+                await assertRoutedLifecycleRuns(scope, runtime, routedLifecycles, routedHostOutputSinks);
                 scope.assert.deepEqual(createdWorkerPools, [
                     { cwd: process.cwd(), hostProcess: { kind: 'direct' }, workerCount: 1, workerLifecycle: 'reuse' },
                     {

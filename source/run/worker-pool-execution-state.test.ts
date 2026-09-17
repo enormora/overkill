@@ -355,7 +355,9 @@ function emptyRunResult(perTest: readonly PerTestResult[]): RunResult {
 }
 
 function passResult(): PerTestResult {
-    return { id: firstCaseId(), outcome: { kind: 'pass' }, verdict: 'pass' };
+    const id = firstCaseId();
+
+    return { id, outcome: { kind: 'pass' }, verdict: 'pass', workId: { case: id, runtime: null, workload: null } };
 }
 
 function invalidOutputRuntime(recordRun: () => void): WorkerPoolRunRuntime {

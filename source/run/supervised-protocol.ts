@@ -1,4 +1,4 @@
-import type { CaseId } from '../engine/identity.ts';
+import { createDefaultWorkId, type CaseId, type WorkId } from '../engine/identity.ts';
 import type { ReporterEvent } from '../engine/reporter.ts';
 import type { ResourceUsageSnapshot, RunResult } from '../engine/run-result.ts';
 import type {
@@ -44,10 +44,27 @@ export type SupervisedChildCommand = SupervisedCollectCommand | SupervisedRunCom
 
 export const supervisedChildCorrelationId = 'supervised-run';
 
-export type SupervisedAssignmentCommand = {
+type WorkAssignmentCommand = {
+    readonly assignedWork: readonly WorkId[];
+    readonly kind: 'assign';
+};
+
+type LegacyCaseAssignmentCommand = {
     readonly assignedCases: readonly CaseId[];
     readonly kind: 'assign';
 };
+
+export type SupervisedAssignmentCommand = LegacyCaseAssignmentCommand | WorkAssignmentCommand;
+
+function hasAssignedWork(assignment: SupervisedAssignmentCommand): assignment is WorkAssignmentCommand {
+    return Object.hasOwn(assignment, 'assignedWork');
+}
+
+export function supervisedAssignedWork(assignment: SupervisedAssignmentCommand): readonly WorkId[] {
+    return hasAssignedWork(assignment)
+        ? assignment.assignedWork
+        : assignment.assignedCases.map(createDefaultWorkId);
+}
 
 export type SupervisedChildMessage = {
     readonly collectedPlan: CollectedRunPlan;

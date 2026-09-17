@@ -1,4 +1,4 @@
-import { caseIdentityKey } from '../engine/identity.ts';
+import { workIdentityKey } from '../engine/identity.ts';
 import type {
     PerTestResult,
     RunArtifact,
@@ -55,11 +55,11 @@ function orderedPerTest(
     perTest: readonly PerTestResult[]
 ): readonly PerTestResult[] {
     const results = new Map(perTest.map(function toEntry(result) {
-        return [ caseIdentityKey(result.id), result ];
+        return [ workIdentityKey(result.workId), result ];
     }));
 
     return collectedRunCaseEntries(collectedPlan).flatMap(function toResult(entry) {
-        const result = results.get(caseIdentityKey(entry.id));
+        const result = results.get(workIdentityKey(entry.workId));
 
         return result === undefined ? [] : [ result ];
     });

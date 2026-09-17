@@ -1,6 +1,6 @@
 import type { WallClock } from '@enormora/wall-clock';
 import { serializeValue } from '../compare/serialized-value.ts';
-import { caseIdentityKey, createCaseId, type CaseId } from '../engine/identity.ts';
+import { createCaseId, createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
 import type {
     PerTestResult,
     RunResourceUsage,
@@ -32,10 +32,15 @@ export type CollectedRunCaseEntry = {
     readonly file: string;
     readonly id: CaseId;
     readonly testCase: CollectedRunCase;
+    readonly workId: WorkId;
 };
 
 function collectedCaseId(file: string, testCase: CollectedRunCase): CaseId {
     return createCaseId(file, suiteTitles(testCase.suitePath), testCase.title, testCase.params);
+}
+
+function collectedCaseWorkId(file: string, testCase: CollectedRunCase): WorkId {
+    return testCase.workId ?? createDefaultWorkId(collectedCaseId(file, testCase));
 }
 
 function collectedCases(files: readonly CollectedRunFile[]): readonly {
@@ -98,7 +103,7 @@ function countSuitePath(
 function countSuites(plan: CollectedRunPlan, perTest: readonly PerTestResult[]): RunResult['bySuite'] {
     let counts: RunResult['bySuite'] = {};
     const executedIds = new Set(perTest.map(function toIdentityKey(testResult) {
-        return caseIdentityKey(testResult.id);
+        return workIdentityKey(testResult.workId);
     }));
 
     for (const collectedCase of collectedCases(plan.discoveredFiles)) {
@@ -108,7 +113,7 @@ function countSuites(plan: CollectedRunPlan, perTest: readonly PerTestResult[]):
     for (const collectedCase of collectedCases(plan.files)) {
         counts = countSuitePath(counts, suiteTitles(collectedCase.testCase.suitePath), 'planned');
 
-        if (executedIds.has(caseIdentityKey(collectedCaseId(collectedCase.file, collectedCase.testCase)))) {
+        if (executedIds.has(workIdentityKey(collectedCaseWorkId(collectedCase.file, collectedCase.testCase)))) {
             counts = countSuitePath(counts, suiteTitles(collectedCase.testCase.suitePath), 'executed');
         }
     }
@@ -145,7 +150,8 @@ function collectRunPlanFile(file: string, cases: readonly TestPlan['cases'][numb
                 resourceAttachments: testCase.resourceAttachments,
                 suitePath: testCase.suitePath,
                 testFamily: testCase.testFamily,
-                title: testCase.id.title
+                title: testCase.id.title,
+                workId: testCase.workId
             };
         }),
         file
@@ -194,7 +200,8 @@ export function collectedRunCaseEntries(plan: CollectedRunPlan): readonly Collec
             ...collectedCase,
             annotations: serializeValue(collectedCase.testCase.annotations),
             controls: serializeValue(collectedCase.testCase.controls),
-            id
+            id,
+            workId: collectedCaseWorkId(collectedCase.file, collectedCase.testCase)
         };
     });
 }
@@ -208,7 +215,8 @@ export function collectedRunCaseFactsFromEntries(
             annotations: serializeValue(collectedCase.testCase.annotations),
             controls: serializeValue(collectedCase.testCase.controls),
             fileSet: fileSetForCase(collectedCase.id.file),
-            id: collectedCase.id
+            id: collectedCase.id,
+            workId: collectedCase.workId
         };
     });
 }

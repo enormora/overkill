@@ -37,6 +37,7 @@ type RuntimeDimensions = Readonly<Record<string, string>>;
 type RuntimeId = {
     readonly name: string; // 'chromium', 'node', 'deterministic-api', ...
     readonly dimensions: RuntimeDimensions;
+    readonly variantId: string | null;
 };
 
 type WorkloadId = {
@@ -1610,12 +1611,32 @@ type RuntimeVariantBody<
     readonly scenarios: Scenarios;
 };
 
+type RuntimeMatrixVariant<
+    VariantId extends string,
+    Runtime extends RuntimeDefinition<
+        string,
+        Readonly<Record<string, ResourceDefinition<unknown>>>,
+        Readonly<Record<string, readonly string[]>>
+    >
+> = {
+    readonly id: VariantId;
+    readonly runtime: Runtime;
+};
+
 type RuntimeMatrix<
     Name extends string,
     Variants extends Readonly<
         Record<
             string,
-            RuntimeVariantBody<
+            | RuntimeMatrixVariant<
+                string,
+                RuntimeDefinition<
+                    string,
+                    Readonly<Record<string, ResourceDefinition<unknown>>>,
+                    Readonly<Record<string, readonly string[]>>
+                >
+            >
+            | RuntimeVariantBody<
                 Readonly<Record<string, ResourceDefinition<unknown>>>,
                 Readonly<Record<string, readonly string[]>>
             >
@@ -1773,7 +1794,6 @@ type ResourceWrappedTestBody<
 
 type RuntimeMatrixDefinition<Name extends string, Variants extends RuntimeVariantMap> = {
     readonly name: Name;
-    readonly shared: unknown;
     readonly variants: Variants;
 };
 
