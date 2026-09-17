@@ -1,10 +1,9 @@
 import {
     isDefinedRuntime,
     type RuntimeDefinition,
-    type RuntimeDimensions,
-    type RuntimeId
+    type RuntimeDimensions
 } from './runtime-definition.ts';
-import type { RuntimeResourceMap } from './resources.ts';
+import type { RuntimeResourceMap } from './resource-definition-shape.ts';
 
 const runtimeMatrixDefinitionBrand: unique symbol = Symbol('overkill.runtimeMatrixDefinition');
 
@@ -41,7 +40,7 @@ export type RuntimeMatrixVariant<
     readonly runtime: Runtime;
 };
 
-export type RuntimeMatrixVariantMap = Readonly<Record<string, RuntimeMatrixVariant>>;
+type RuntimeMatrixVariantMap = Readonly<Record<string, RuntimeMatrixVariant>>;
 
 type ResolvedRuntimeMatrixVariants<
     Variants extends Readonly<Record<string, RuntimeMatrixVariantValue<Shared, RuntimeDimensions, RuntimeResourceMap>>>,
@@ -175,18 +174,6 @@ function nextVariantState(
     return {
         ...state,
         dimensionIdentities: new Set([ ...state.dimensionIdentities, key ])
-    };
-}
-
-export function runtimeVariantId(
-    graph: RuntimeGraph,
-    runtime: RuntimeDefinition,
-    variantId: string | null
-): RuntimeId {
-    return {
-        dimensions: runtime.dimensions,
-        name: graph.name,
-        variantId
     };
 }
 

@@ -11,12 +11,30 @@ import {
     isDefinedRuntimeMatrix as isRuntimeMatrixDefinition,
     type RuntimeGraph as RuntimeGraphDescriptor,
     type RuntimeMatrixDefinition as RuntimeMatrixDescriptor,
-    type RuntimeMatrixVariant as RuntimeMatrixVariantDescriptor,
-    type RuntimeMatrixVariantMap as RuntimeMatrixVariantRecord
+    type RuntimeMatrixVariant as RuntimeMatrixVariantDescriptor
 } from './runtime-matrix-definition.ts';
+import type {
+    AnyResourceDefinition as AnyResourceDefinitionShape,
+    Awaitable as AwaitableShape,
+    EmptyResourceDependencies as EmptyResourceDependenciesShape,
+    ExecutionRequirement as ExecutionRequirementShape,
+    ResourceDependencies as ResourceDependenciesShape,
+    ResourceProjectionPayload as ResourceProjectionPayloadShape,
+    ResourceScope as ResourceScopeShape,
+    RuntimeResourceMap as RuntimeResourceMapShape,
+    ValueOf
+} from './resource-definition-shape.ts';
+
+export type AnyResourceDefinition = AnyResourceDefinitionShape;
+export type Awaitable<Value> = AwaitableShape<Value>;
+export type EmptyResourceDependencies = EmptyResourceDependenciesShape;
+export type ExecutionRequirement = ExecutionRequirementShape;
+export type ResourceDependencies = ResourceDependenciesShape;
+export type ResourceProjectionPayload = ResourceProjectionPayloadShape;
+export type ResourceScope = ResourceScopeShape;
+export type RuntimeResourceMap = RuntimeResourceMapShape;
 
 export const defineRuntime = createRuntimeDefinition;
-export const defineRuntimeMatrix = createRuntimeMatrixDefinition;
 export const isDefinedRuntime = isRuntimeDefinition;
 export const isDefinedRuntimeMatrix = isRuntimeMatrixDefinition;
 
@@ -44,62 +62,9 @@ export type RuntimeMatrixVariant<
     VariantId extends string = string,
     Runtime extends RuntimeDefinition = RuntimeDefinition
 > = RuntimeMatrixVariantDescriptor<VariantId, Runtime>;
-export type RuntimeMatrixVariantMap = RuntimeMatrixVariantRecord;
+export type RuntimeMatrixVariantMap = Readonly<Record<string, RuntimeMatrixVariant>>;
 
 const resourceDefinitionBrand: unique symbol = Symbol('overkill.resourceDefinition');
-
-export type Awaitable<Value> = Promise<Value> | Value;
-type ValueOf<Values> = Values[keyof Values];
-type ExclusiveResource = { readonly kind: 'exclusive-resource'; readonly name: string; };
-type SerialExecution = { readonly kind: 'serial'; };
-type SingleWorkerExecution = { readonly kind: 'single-worker'; };
-type StartupBudget = {
-    readonly kind: 'startup-budget-milliseconds';
-    readonly minimumMilliseconds: number;
-};
-type CapacityWeight = {
-    readonly kind: 'capacity-weight';
-    readonly weight: number;
-};
-type AffinityKey = {
-    readonly key: string;
-    readonly kind: 'affinity-key';
-};
-type FaultDomain = {
-    readonly key: string;
-    readonly kind: 'fault-domain';
-};
-
-export type AnyResourceDefinition = {
-    readonly acquire: (context: never) => Awaitable<unknown>;
-    readonly dependencies: ResourceDependencies;
-    readonly deserializeHandle?: (payload: never, context: never) => unknown;
-    readonly dispose: ((handle: never, context: never) => Awaitable<void>) | null;
-    readonly name: string;
-    readonly requirements: readonly ExecutionRequirement[];
-    readonly scope: ResourceScope;
-    readonly serializeHandle?: (handle: never, context: never) => ResourceProjectionPayload;
-    readonly [resourceDefinitionBrand]: true;
-};
-
-export type RuntimeResourceMap = Readonly<Record<string, AnyResourceDefinition>>;
-export type EmptyResourceDependencies = Readonly<Record<PropertyKey, never>>;
-
-type PlacementRequirement = AffinityKey | CapacityWeight | ExclusiveResource | FaultDomain;
-type SchedulingRequirement = SerialExecution | SingleWorkerExecution | StartupBudget;
-
-export type ExecutionRequirement = PlacementRequirement | SchedulingRequirement;
-
-export type ResourceScope = 'per-case' | 'per-file' | 'per-run' | 'per-suite' | 'shared-per-worker';
-
-export type ResourceDependencies = Readonly<Record<string, AnyResourceDefinition>>;
-
-type ResourceProjectionObject = { readonly [key: string]: ResourceProjectionPayload; };
-
-type ResourceProjectionScalar = boolean | number | string | null;
-type ResourceProjectionCollection = ResourceProjectionObject | readonly ResourceProjectionPayload[];
-
-export type ResourceProjectionPayload = ResourceProjectionCollection | ResourceProjectionScalar;
 
 export type ResourceProjectionContext<Dependencies extends ResourceDependencies = EmptyResourceDependencies> = {
     readonly dependencies: ResourceContext<Dependencies>;
@@ -343,7 +308,7 @@ export type ResourcesModule = {
     readonly createTemporaryDirectoryResource: CreateTemporaryDirectoryResource;
     readonly defineResource: typeof defineResource;
     readonly defineRuntime: typeof defineRuntime;
-    readonly defineRuntimeMatrix: typeof defineRuntimeMatrix;
+    readonly defineRuntimeMatrix: typeof createRuntimeMatrixDefinition;
 };
 
 export function defineResource<
@@ -474,7 +439,7 @@ export function createResourcesModule(dependencies: ResourcesModuleDependencies)
         },
         defineResource,
         defineRuntime,
-        defineRuntimeMatrix
+        defineRuntimeMatrix: createRuntimeMatrixDefinition
     });
 }
 

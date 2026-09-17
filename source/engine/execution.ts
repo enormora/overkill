@@ -30,7 +30,11 @@ import {
     type ReporterDispatcher,
     type ReporterDisposal
 } from './reporter-dispatcher.ts';
-import { createReporterEventQueue, type ReporterEventQueue } from './reporter-event-queue.ts';
+import {
+    createReporterEventQueue,
+    reportSuiteTransition,
+    type ReporterEventQueue
+} from './reporter-event-queue.ts';
 import type { PerTestResult, RunResult, RunnerError } from './run-result.ts';
 import type { TestPlan, TestPlanCase } from './test-plan.ts';
 
@@ -213,54 +217,6 @@ async function executeCase(input: ExecuteCaseInput): Promise<ReportedCase> {
     };
 }
 
-function commonSuitePrefixLength(
-    firstSuitePath: TestPlanCase['suitePath'],
-    secondSuitePath: TestPlanCase['suitePath']
-): number {
-    const shortestLength = Math.min(firstSuitePath.length, secondSuitePath.length);
-    let prefixLength = 0;
-
-    while (
-        prefixLength < shortestLength &&
-        firstSuitePath[prefixLength]?.title === secondSuitePath[prefixLength]?.title
-    ) {
-        prefixLength += 1;
-    }
-
-    return prefixLength;
-}
-
-async function reportSuiteTransition(
-    context: ExecutionReportingContext,
-    currentSuitePath: TestPlanCase['suitePath'],
-    nextSuitePath: TestPlanCase['suitePath']
-): Promise<readonly RunnerError[]> {
-    let reporterErrors: readonly RunnerError[] = [];
-    const sharedPrefixLength = commonSuitePrefixLength(currentSuitePath, nextSuitePath);
-
-    for (let pathLength = currentSuitePath.length; pathLength > sharedPrefixLength; pathLength -= 1) {
-        reporterErrors = [
-            ...reporterErrors,
-            ...await context.reporterDelivery.reportEvent({
-                kind: 'suite-end',
-                suitePath: currentSuitePath.slice(0, pathLength)
-            })
-        ];
-    }
-
-    for (let pathLength = sharedPrefixLength + 1; pathLength <= nextSuitePath.length; pathLength += 1) {
-        reporterErrors = [
-            ...reporterErrors,
-            ...await context.reporterDelivery.reportEvent({
-                kind: 'suite-start',
-                suitePath: nextSuitePath.slice(0, pathLength)
-            })
-        ];
-    }
-
-    return reporterErrors;
-}
-
 async function executeTestPlanCases(input: ExecuteTestPlanCasesInput): Promise<ExecutedTestPlan> {
     let perTest: readonly PerTestResult[] = [];
     let reporterErrors: readonly RunnerError[] = [];
@@ -268,7 +224,7 @@ async function executeTestPlanCases(input: ExecuteTestPlanCasesInput): Promise<E
 
     for (const testCase of input.testPlan.cases) {
         const suiteErrors = await reportSuiteTransition(
-            input.context,
+            input.context.reporterDelivery,
             currentSuitePath,
             testCase.suitePath
         );
@@ -292,7 +248,7 @@ async function executeTestPlanCases(input: ExecuteTestPlanCasesInput): Promise<E
             ...input.supervision.runnerErrors,
             ...input.options.runtimePolicy?.takeRunErrors() ?? [],
             ...await reportSuiteTransition(
-                input.context,
+                input.context.reporterDelivery,
                 currentSuitePath,
                 []
             )
@@ -314,7 +270,7 @@ async function reportConcurrentCaseStarts(
 
     for (const testCase of testPlan.cases) {
         const suiteErrors = await reportSuiteTransition(
-            reportingContext,
+            reportingContext.reporterDelivery,
             currentSuitePath,
             testCase.suitePath
         );
@@ -325,7 +281,7 @@ async function reportConcurrentCaseStarts(
 
     return [
         ...reporterErrors,
-        ...await reportSuiteTransition(reportingContext, currentSuitePath, [])
+        ...await reportSuiteTransition(reportingContext.reporterDelivery, currentSuitePath, [])
     ];
 }
 

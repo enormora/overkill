@@ -3,6 +3,7 @@ import {
     createResourcesModule,
     isDefinedResource,
     isDefinedRuntime,
+    isDefinedRuntimeMatrix,
     type RuntimeDefinition,
     type TemporaryDirectoryHandle,
     type ResourcesModuleDependencies
@@ -125,6 +126,8 @@ function assertRuntimeMatrixDescriptor(scope: TestScope): void {
     });
 
     assertBrandedDescriptor(scope, matrix);
+    scope.assert.equal(isDefinedRuntimeMatrix(matrix), true);
+    scope.assert.equal(isDefinedRuntimeMatrix(createRuntimeVariant('28')), false);
     scope.assert.equal(matrix.name, 'node');
     scope.assert.equal(matrix.variants['node-26'].id, 'node-26');
     scope.assert.deepEqual(matrix.variants['node-27'].runtime.id, {
@@ -132,6 +135,22 @@ function assertRuntimeMatrixDescriptor(scope: TestScope): void {
         name: 'node-27',
         variantId: null
     });
+}
+
+function assertRuntimeMatrixSharedFactories(scope: TestScope): void {
+    const matrix = defineRuntimeMatrix({
+        name: 'node',
+        shared: { prefix: 'node' },
+        variants: {
+            'node-26': function node26(shared) {
+                return createRuntimeVariant(`${shared.prefix}-26`.slice(5));
+            },
+            'node-27': createRuntimeVariant('27')
+        }
+    });
+
+    scope.assert.deepEqual(matrix.variants['node-26'].runtime.dimensions, { node: '26' });
+    scope.assert.deepEqual(matrix.variants['node-27'].runtime.dimensions, { node: '27' });
 }
 
 function assertRuntimeMatrixShapeChecks(scope: TestScope): void {
@@ -159,6 +178,60 @@ function assertRuntimeMatrixShapeChecks(scope: TestScope): void {
             }
         });
     }, { message: 'Runtime matrix "node" variant "second" duplicates another dimension tuple.' });
+
+    scope.assert.throws(function rejectDifferentDimensionKeys() {
+        defineRuntimeMatrix({
+            name: 'node',
+            variants: {
+                first: createRuntimeVariant('26'),
+                second: defineRuntime({
+                    name: 'browser',
+                    dimensions: { browser: 'chromium' },
+                    resources: { database: databaseResource, server: serverResource },
+                    requirements: []
+                })
+            }
+        });
+    }, { message: 'Runtime matrix "node" variant "second" has different dimension keys.' });
+}
+
+function assertRuntimeMatrixInputChecks(scope: TestScope): void {
+    scope.assert.throws(function rejectInvalidMatrixName() {
+        defineRuntimeMatrix({
+            name: 'node version',
+            variants: {
+                first: createRuntimeVariant('26')
+            }
+        });
+    }, { message: 'Runtime matrix "node version" must match ^[A-Za-z0-9._-]+$.' });
+
+    scope.assert.throws(function rejectInvalidVariantName() {
+        defineRuntimeMatrix({
+            name: 'node',
+            variants: {
+                'node version': createRuntimeVariant('26')
+            }
+        });
+    }, { message: 'Runtime matrix variant "node version" must match ^[A-Za-z0-9._-]+$.' });
+
+    scope.assert.throws(function rejectEmptyVariants() {
+        defineRuntimeMatrix({
+            name: 'node',
+            variants: {}
+        });
+    }, { message: 'Runtime matrix "node" requires at least one variant.' });
+
+    scope.assert.throws(function rejectInvalidFactoryResult() {
+        Reflect.apply(defineRuntimeMatrix, undefined, [ {
+            name: 'node',
+            shared: {},
+            variants: {
+                first: function invalidRuntime() {
+                    return { name: 'invalid' };
+                }
+            }
+        } ]);
+    }, { message: 'Runtime matrix variant "first" must resolve to a runtime descriptor.' });
 }
 
 function assertResourceDescriptorPredicates(scope: TestScope, runtime: unknown): void {
@@ -428,7 +501,9 @@ export const testNode = createSuite({
             controls: {},
             body(scope: TestScope) {
                 assertRuntimeMatrixDescriptor(scope);
+                assertRuntimeMatrixSharedFactories(scope);
                 assertRuntimeMatrixShapeChecks(scope);
+                assertRuntimeMatrixInputChecks(scope);
 
                 return scope.assert.collect();
             }

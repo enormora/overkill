@@ -18,8 +18,8 @@ import {
 } from './collected-run-plan.ts';
 import {
     createRuntimeCapabilityPolicy,
-    type RuntimeCapabilityPolicy,
-    type RuntimeCapabilityPolicyDependencies
+    type CapabilityPolicyOptions,
+    type RuntimeCapabilityPolicy
 } from './capability-policy.ts';
 import {
     createRunResourceRuntimePolicy
@@ -37,6 +37,8 @@ import {
 } from './supervised-protocol.ts';
 
 type ChildExecutionMode = 'concurrent-in-process' | 'serial-in-process';
+
+type RuntimeCapabilityPolicyDependencies = CapabilityPolicyOptions['dependencies'];
 
 type CollectedTestPlan = {
     readonly runnerErrors: readonly RunnerError[];

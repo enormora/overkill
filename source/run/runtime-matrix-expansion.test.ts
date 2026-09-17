@@ -14,10 +14,14 @@ function testCaseWithRuntimeGraphs(runtimeGraphs: TestPlanCase['resourceAttachme
         execution: { kind: 'skip', reason: 'planning only' },
         id: caseId,
         resourceAttachments: {
-            directResources: [],
+            directResources: [ { key: 'scratch', resourceName: 'scratch' } ],
             resourceGraph: [
+                { dependencies: [ 'scratch-root' ], name: 'scratch', requirements: [], scope: 'per-case' },
+                { dependencies: [], name: 'scratch-root', requirements: [], scope: 'per-case' },
                 { dependencies: [], name: 'database-26', requirements: [], scope: 'per-case' },
-                { dependencies: [], name: 'database-27', requirements: [], scope: 'per-case' }
+                { dependencies: [], name: 'database-27', requirements: [], scope: 'per-case' },
+                { dependencies: [ 'remote-sidecar' ], name: 'sidecar', requirements: [], scope: 'per-case' },
+                { dependencies: [], name: 'unused', requirements: [], scope: 'per-case' }
             ],
             runtimeGraphs
         },
@@ -71,6 +75,16 @@ function matrixRuntimeGraph(name: string): TestPlanCase['resourceAttachments']['
     };
 }
 
+function sidecarRuntimeGraph(): TestPlanCase['resourceAttachments']['runtimeGraphs'][number] {
+    return {
+        dimensions: { service: 'sidecar' },
+        kind: 'runtime',
+        name: 'sidecar',
+        requirements: [],
+        resources: [ { key: 'server', resourceName: 'sidecar' } ]
+    };
+}
+
 export const testNode = createSuite({
     definitionLocations: [ definitionLocation ],
     title: 'source/run/runtime-matrix-expansion.test.ts',
@@ -84,7 +98,7 @@ export const testNode = createSuite({
             controls: {},
             body(scope: TestScope) {
                 const expanded = expandRuntimeMatrices(
-                    testPlan(testCaseWithRuntimeGraphs([ matrixRuntimeGraph('node') ]))
+                    testPlan(testCaseWithRuntimeGraphs([ matrixRuntimeGraph('node'), sidecarRuntimeGraph() ]))
                 );
 
                 scope.assert.equal(expanded.cases.length, 2);
@@ -100,8 +114,44 @@ export const testNode = createSuite({
                             return resource.name;
                         });
                     }),
-                    [ [ 'database-26' ], [ 'database-27' ] ]
+                    [
+                        [ 'scratch', 'scratch-root', 'database-26', 'sidecar' ],
+                        [ 'scratch', 'scratch-root', 'database-27', 'sidecar' ]
+                    ]
                 );
+                scope.assert.deepEqual(
+                    expanded.discoveredCases.map(function variantId(testCase) {
+                        return testCase.workId.runtime?.variantId;
+                    }),
+                    [ 'node-26', 'node-27' ]
+                );
+                scope.assert.deepEqual(
+                    expanded.cases.map(function runtimeResources(testCase) {
+                        return testCase.resourceAttachments.runtimeGraphs.map(
+                            function runtimeGraphResources(runtimeGraph) {
+                                return runtimeGraph.resources.map(function runtimeResource(resource) {
+                                    return resource.resourceName;
+                                });
+                            }
+                        );
+                    }),
+                    [ [ [ 'database-26' ], [ 'sidecar' ] ], [ [ 'database-27' ], [ 'sidecar' ] ] ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ definitionLocation ],
+            title: 'preserves cases without matrices',
+            annotations: {},
+            controls: {},
+            body(scope: TestScope) {
+                const testCase = testCaseWithRuntimeGraphs([]);
+                const expanded = expandRuntimeMatrices(testPlan(testCase));
+
+                scope.assert.equal(expanded.cases[0], testCase);
+                scope.assert.equal(expanded.discoveredCases[0], testCase);
 
                 return scope.assert.collect();
             }
@@ -127,3 +177,7 @@ export const testNode = createSuite({
         })
     ]
 });
+
+const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
+
+await runTestFileIfMain(import.meta, testNode);

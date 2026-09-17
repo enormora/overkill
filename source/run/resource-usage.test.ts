@@ -35,6 +35,29 @@ function createEmptyResourceUsageTracker(): RunResourceUsageTracker {
     });
 }
 
+function createChangingResourceUsageTracker(
+    wallClock: ReturnType<typeof createDeterministicWallClock>
+): RunResourceUsageTracker {
+    let activeResourceReadCount = 0;
+
+    return createResourceUsageTracker({
+        readActiveResourceTypes() {
+            activeResourceReadCount += 1;
+
+            if (activeResourceReadCount === 1) {
+                return [ 'TCPServerWrap' ];
+            }
+
+            return [ 'Timeout', 'Timeout', 'TTYWrap' ];
+        },
+        readJavaScriptEngineHeapBytes: readSequence([ 10, 20, 15, 16 ]),
+        readResidentSetBytes: readSequence([ 100, 130, 210, 205 ]),
+        wallClock
+    }, {
+        samplingIntervalMilliseconds: 100
+    });
+}
+
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/resource-usage.test.ts',
@@ -48,27 +71,15 @@ export const testNode = createOverkillSuite({
             controls: {},
             body(scope: OverkillScope) {
                 const wallClock = createDeterministicWallClock();
-                let activeResourceReadCount = 0;
-                const tracker = createResourceUsageTracker({
-                    readActiveResourceTypes() {
-                        activeResourceReadCount += 1;
+                const tracker = createChangingResourceUsageTracker(wallClock);
+                const observedActiveResourceCounts: number[] = [];
 
-                        if (activeResourceReadCount === 1) {
-                            return [ 'TCPServerWrap' ];
-                        }
-
-                        return [ 'Timeout', 'Timeout', 'TTYWrap' ];
-                    },
-                    readJavaScriptEngineHeapBytes: readSequence([ 10, 20, 15, 16 ]),
-                    readResidentSetBytes: readSequence([ 100, 130, 210, 205 ]),
-                    wallClock
-                }, {
-                    samplingIntervalMilliseconds: 100
+                tracker.start(function recordSample(resourceSample) {
+                    observedActiveResourceCounts.push(resourceSample.activeResourceCount);
                 });
-
-                tracker.start();
-                wallClock.advanceByMilliseconds(100);
-                wallClock.advanceByMilliseconds(100);
+                for (const milliseconds of [ 100, 100 ]) {
+                    wallClock.advanceByMilliseconds(milliseconds);
+                }
                 const resourceUsage = tracker.finish();
 
                 scope.assert.deepEqual(resourceUsage, {
@@ -93,6 +104,7 @@ export const testNode = createOverkillSuite({
                         residentSetBytes: 100
                     }
                 });
+                scope.assert.deepEqual(observedActiveResourceCounts, [ 1, 3, 3 ]);
 
                 return scope.assert.collect();
             }

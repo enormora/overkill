@@ -3,6 +3,14 @@ import diagnosticsChannel from 'node:diagnostics_channel';
 import { workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import type { TestRuntimePolicy } from '../engine/case-execution.ts';
+import {
+    environmentChanged,
+    localStorageChanged,
+    sessionStorageChanged,
+    takeSnapshots,
+    type RuntimeCapabilityPolicyDependencies,
+    type RuntimeSnapshots
+} from './capability-policy-snapshots.ts';
 
 export type RuntimeCapabilityPolicy = TestRuntimePolicy & {
     readonly recordViolation: (
@@ -11,7 +19,6 @@ export type RuntimeCapabilityPolicy = TestRuntimePolicy & {
         strictness: RuntimePolicyStrictness
     ) => void;
 };
-export type RuntimeCapabilityPolicyEnvironment = Readonly<Record<string, string | undefined>>;
 
 const runtimePolicyCapabilities = {
     childProcess: 'child-process',
@@ -38,7 +45,7 @@ type RuntimePolicyCapability = typeof runtimePolicyCapabilities[keyof typeof run
 type RuntimePolicyPhase = 'body' | 'load' | 'out-of-test';
 type RuntimePolicyStrictness = 'blocked' | 'observed';
 
-type CapabilityPolicyOptions = {
+export type CapabilityPolicyOptions = {
     readonly dependencies: RuntimeCapabilityPolicyDependencies;
     readonly observedStderr: boolean;
     readonly observedStdout: boolean;
@@ -48,29 +55,6 @@ type ActiveCase = {
     readonly id: CaseId;
     readonly key: string;
     readonly workId: WorkId;
-};
-
-type EnvironmentSnapshot = {
-    readonly entries: readonly (readonly [string, string])[];
-    readonly object: RuntimeCapabilityPolicyEnvironment;
-};
-
-type StorageSnapshot = {
-    readonly entries: readonly (readonly [string, string])[];
-    readonly object: WebStorageLike | null;
-};
-
-export type WebStorageLike = {
-    readonly length: number;
-    readonly getItem: (key: string) => string | null;
-    readonly key: (index: number) => string | null;
-};
-
-export type RuntimeCapabilityPolicyDependencies = {
-    readonly installIpcRestriction: (record: (message: string) => void) => () => void;
-    readonly installProcessExecutionRestriction: (record: (message: string) => void) => () => void;
-    readonly readEnvironment: () => RuntimeCapabilityPolicyEnvironment;
-    readonly readStorage: (name: 'localStorage' | 'sessionStorage') => WebStorageLike | null;
 };
 
 type RuntimePolicyViolation = {
@@ -101,12 +85,6 @@ type RuntimePolicyMonitoring = {
     readonly hook: AsyncResourceHook;
     readonly restoreRestrictions: () => void;
     readonly subscriptions: readonly Subscription[];
-};
-
-type RuntimeSnapshots = {
-    readonly environment: EnvironmentSnapshot;
-    readonly localStorage: StorageSnapshot;
-    readonly sessionStorage: StorageSnapshot;
 };
 
 const asyncFileResourceTypes = new Set([
@@ -160,100 +138,6 @@ const diagnosticsCapabilities: Readonly<Record<string, RuntimePolicyCapability>>
     'udp.socket': runtimePolicyCapabilities.network,
     worker_threads: runtimePolicyCapabilities.worker
 };
-
-function sortedEnvironmentEntries(environment: RuntimeCapabilityPolicyEnvironment): readonly [string, string][] {
-    return Object
-        .entries(environment)
-        .filter(function hasValue(entry): entry is [string, string] {
-            return entry[1] !== undefined;
-        })
-        .toSorted(function compareEnvironmentEntries(first, second) {
-            return first[0].localeCompare(second[0]);
-        });
-}
-
-function environmentSnapshot(dependencies: RuntimeCapabilityPolicyDependencies): EnvironmentSnapshot {
-    const environment = dependencies.readEnvironment();
-
-    return {
-        entries: sortedEnvironmentEntries(environment),
-        object: environment
-    };
-}
-
-export function isRuntimeCapabilityPolicyEnvironment(
-    value: unknown
-): value is RuntimeCapabilityPolicyEnvironment {
-    return typeof value === 'object' &&
-        value !== null &&
-        Object.values(value).every(function validEnvironmentValue(entry) {
-            return typeof entry === 'string' || entry === undefined;
-        });
-}
-
-export function isWebStorageLike(value: unknown): value is WebStorageLike {
-    if (typeof value !== 'object' || value === null) {
-        return false;
-    }
-
-    const length: unknown = Reflect.get(value, 'length');
-    const getItem: unknown = Reflect.get(value, 'getItem');
-    const key: unknown = Reflect.get(value, 'key');
-
-    return typeof length === 'number' &&
-        typeof getItem === 'function' &&
-        typeof key === 'function';
-}
-
-function storageSnapshot(
-    dependencies: RuntimeCapabilityPolicyDependencies,
-    name: 'localStorage' | 'sessionStorage'
-): StorageSnapshot {
-    const storage = dependencies.readStorage(name);
-
-    if (!isWebStorageLike(storage)) {
-        return {
-            entries: [],
-            object: null
-        };
-    }
-
-    const entries: readonly [string, string][] = Array
-        .from({ length: storage.length }, function toStorageEntry(
-            _unusedValue,
-            index
-        ): [string, string] | null {
-            const key = storage.key(index);
-
-            return key === null ? null : [ key, storage.getItem(key) ?? '' ];
-        })
-        .filter(function isEntry(entry): entry is [string, string] {
-            return entry !== null;
-        })
-        .toSorted(function compareStorageEntries(first, second) {
-            return first[0].localeCompare(second[0]);
-        });
-
-    return {
-        entries,
-        object: storage
-    };
-}
-
-function entriesChanged(
-    before: readonly (readonly [string, string])[],
-    after: readonly (readonly [string, string])[]
-): boolean {
-    if (before.length !== after.length) {
-        return true;
-    }
-
-    return before.some(function changed(entry, index) {
-        const afterEntry = after[index];
-
-        return afterEntry?.[0] !== entry[0] || afterEntry[1] !== entry[1];
-    });
-}
 
 function permissionCapability(message: unknown, fallback: RuntimePolicyCapability): RuntimePolicyCapability {
     if (typeof message !== 'object' || message === null) {
@@ -375,33 +259,14 @@ function createDiagnosticsSubscriptions(
     });
 }
 
-function environmentChanged(before: RuntimeSnapshots, after: EnvironmentSnapshot): boolean {
-    return before.environment.object !== after.object ||
-        entriesChanged(before.environment.entries, after.entries);
-}
-
-function storageChanged(before: StorageSnapshot, after: StorageSnapshot): boolean {
-    return before.object !== after.object || entriesChanged(before.entries, after.entries);
-}
-
-function takeSnapshots(dependencies: RuntimeCapabilityPolicyDependencies): RuntimeSnapshots {
-    return {
-        environment: environmentSnapshot(dependencies),
-        localStorage: storageSnapshot(dependencies, 'localStorage'),
-        sessionStorage: storageSnapshot(dependencies, 'sessionStorage')
-    };
-}
-
 function recordSnapshotChanges(
     before: RuntimeSnapshots,
     dependencies: RuntimeCapabilityPolicyDependencies,
     record: (violation: RuntimePolicyReport) => void
 ): void {
-    const afterEnvironment = environmentSnapshot(dependencies);
-    const afterSessionStorage = storageSnapshot(dependencies, 'sessionStorage');
-    const afterLocalStorage = storageSnapshot(dependencies, 'localStorage');
+    const after = takeSnapshots(dependencies);
 
-    if (environmentChanged(before, afterEnvironment)) {
+    if (environmentChanged(before, after)) {
         record({
             capability: runtimePolicyCapabilities.processEnvironment,
             message: 'Runtime policy violation: process.env changed.',
@@ -409,7 +274,7 @@ function recordSnapshotChanges(
         });
     }
 
-    if (storageChanged(before.sessionStorage, afterSessionStorage)) {
+    if (sessionStorageChanged(before, after)) {
         record({
             capability: runtimePolicyCapabilities.fileWrite,
             message: 'Runtime policy violation: sessionStorage changed.',
@@ -417,7 +282,7 @@ function recordSnapshotChanges(
         });
     }
 
-    if (storageChanged(before.localStorage, afterLocalStorage)) {
+    if (localStorageChanged(before, after)) {
         record({
             capability: runtimePolicyCapabilities.fileWrite,
             message: 'Runtime policy violation: localStorage changed.',

@@ -1,5 +1,5 @@
 import { dirname, join } from 'node:path';
-import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy.ts';
+import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy-snapshots.ts';
 import { childRoleArgument, supervisedChildRole } from './child-process-roles.ts';
 import type { RunRequest } from './run-types.ts';
 import type { StoredRunValue, SupervisedRunState } from './supervised-run-state.ts';

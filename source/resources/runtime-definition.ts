@@ -1,4 +1,4 @@
-import type { ExecutionRequirement, RuntimeResourceMap } from './resources.ts';
+import type { ExecutionRequirement, RuntimeResourceMap } from './resource-definition-shape.ts';
 
 const runtimeDefinitionBrand: unique symbol = Symbol('overkill.runtimeDefinition');
 

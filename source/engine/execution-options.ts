@@ -2,10 +2,10 @@ import { createPlainOutputRenderer, type DefinedOutputRenderer } from './reporte
 import type { DefinedReporter, RunFacts } from './reporter.ts';
 import type { RunResourceUsageTracker } from './run-result.ts';
 import type {
-    ExecuteResourceBudgets,
     ExecuteTimeoutPolicy,
     ExecutionSupervisionDependencies
 } from './execution-supervision.ts';
+import type { ExecuteResourceBudgets } from './execution-resource-budget-breach.ts';
 
 export type ExecuteExecution = {
     readonly mode: 'concurrent-in-process' | 'serial-in-process';

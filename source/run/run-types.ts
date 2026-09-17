@@ -3,19 +3,15 @@ import type { SerializedValue as SerializedValueShape } from '../compare/seriali
 import type { Execute } from '../engine/execution.ts';
 import type { Engine } from '../engine/engine.ts';
 import type {
-    RuntimeDimensions as EngineRuntimeDimensions,
-    RuntimeId as EngineRuntimeId,
     WorkId as EngineWorkId,
-    WorkloadId as EngineWorkloadId
+    RuntimeId,
+    WorkloadId
 } from '../engine/identity.ts';
 import type { OrphanedNode, RunResult } from '../engine/run-result.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 
 export type SerializedValue = SerializedValueShape;
-export type RuntimeDimensions = EngineRuntimeDimensions;
-export type RuntimeId = EngineRuntimeId;
 export type WorkId = EngineWorkId;
-export type WorkloadId = EngineWorkloadId;
 type RunExecuteOptions = NonNullable<Parameters<Execute>[1]>;
 type RunCaseId = TestPlan['discoveredCases'][number]['id'];
 type RunOutputRenderer = NonNullable<RunExecuteOptions['outputRenderer']>;

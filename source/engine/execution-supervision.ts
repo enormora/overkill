@@ -13,19 +13,16 @@ import {
     type RunnerError,
     type TestFailure
 } from './run-result.ts';
-import { observedGrowthBytesPerSecond } from './resource-usage-growth.ts';
 import type { TestPlanCase } from './test-plan.ts';
+import {
+    findResourceBudgetBreach,
+    type ExecuteResourceBudgets,
+    type ResourceBudgetBreach
+} from './execution-resource-budget-breach.ts';
 
 export type ExecuteTimeoutPolicy = {
     readonly hardTimeoutMilliseconds: number;
     readonly timeoutMilliseconds: number;
-};
-
-export type ExecuteResourceBudgets = {
-    readonly activeResourceCount: number | null;
-    readonly javaScriptEngineHeapBytes: number | null;
-    readonly residentSetBytes: number | null;
-    readonly residentSetGrowthBytesPerSecond: number | null;
 };
 
 export type ConcurrentCase = {
@@ -50,15 +47,6 @@ type ActiveCase = {
     readonly hardTimeout: ReturnType<WallClock['setTimeout']> | null;
     readonly startedAtMilliseconds: number;
     readonly testCase: TestPlanCase;
-};
-
-type ResourceBudgetMetric = keyof ExecuteResourceBudgets;
-
-type ResourceBudgetBreach = {
-    readonly budget: number;
-    readonly metric: ResourceBudgetMetric;
-    readonly observed: number;
-    readonly sample: ResourceUsageSnapshot;
 };
 
 type ResourceExhaustionCause = ResourceBudgetBreach & {
@@ -110,13 +98,6 @@ type ResourceUsageSampleInput = {
     readonly sample: ResourceUsageSnapshot;
     readonly supervision: ExecutionSupervision;
 };
-
-const resourceBudgetMetrics: readonly ResourceBudgetMetric[] = [
-    'activeResourceCount',
-    'javaScriptEngineHeapBytes',
-    'residentSetBytes',
-    'residentSetGrowthBytesPerSecond'
-];
 
 export function createExecutionSupervision(): ExecutionSupervision {
     const activeCases = new Map<string, ActiveCase>();
@@ -526,42 +507,6 @@ function createActiveCaseInput(
         testCase,
         timeoutPolicy
     };
-}
-
-function observedBudgetValue(
-    metric: ResourceBudgetMetric,
-    sample: ResourceUsageSnapshot,
-    previousSample: ResourceUsageSnapshot | null
-): number {
-    const observedValues = {
-        activeResourceCount: sample.activeResourceCount,
-        javaScriptEngineHeapBytes: sample.javaScriptEngineHeapBytes,
-        residentSetBytes: sample.residentSetBytes,
-        residentSetGrowthBytesPerSecond: observedGrowthBytesPerSecond(sample, previousSample)
-    };
-
-    return observedValues[metric];
-}
-
-function findResourceBudgetBreach(
-    budgets: ExecuteResourceBudgets | null | undefined,
-    sample: ResourceUsageSnapshot,
-    previousSample: ResourceUsageSnapshot | null
-): ResourceBudgetBreach | null {
-    if (budgets === null || budgets === undefined) {
-        return null;
-    }
-
-    for (const metric of resourceBudgetMetrics) {
-        const budget = budgets[metric];
-        const observed = observedBudgetValue(metric, sample, previousSample);
-
-        if (budget !== null && observed > budget) {
-            return { budget, metric, observed, sample };
-        }
-    }
-
-    return null;
 }
 
 export function recordResourceUsageSample(input: ResourceUsageSampleInput): boolean {

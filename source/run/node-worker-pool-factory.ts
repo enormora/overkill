@@ -1,4 +1,4 @@
-import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy.ts';
+import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy-snapshots.ts';
 import type {
     CreatedWorkerPool,
     WorkerPoolCreationOptions,

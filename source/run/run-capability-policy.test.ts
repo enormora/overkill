@@ -14,11 +14,13 @@ import {
 import { createDefaultWorkId } from '../engine/identity.ts';
 import {
     createRuntimeCapabilityPolicy,
+    type RuntimeCapabilityPolicy
+} from './capability-policy.ts';
+import {
     isRuntimeCapabilityPolicyEnvironment,
-    type RuntimeCapabilityPolicy,
     type RuntimeCapabilityPolicyEnvironment,
     type WebStorageLike
-} from './capability-policy.ts';
+} from './capability-policy-snapshots.ts';
 import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
 import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
 
