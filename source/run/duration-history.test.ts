@@ -3,10 +3,15 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import type { RunResult } from '../engine/run-result.ts';
+import { runResultFactory } from '../test-support/run-result-factory.ts';
 import {
     type DurationHistoryIndex,
+    type DurationHistoryPlacement,
+    type DurationHistoryStore,
     mergeDurationHistoryIndex,
     readDurationHistoryIndex,
+    resultWithUpdatedDurationHistory,
     selectDurationHistoryPlacement
 } from './duration-history.ts';
 import {
@@ -16,11 +21,37 @@ import {
     type WorkUnit
 } from './run-types.ts';
 import {
+    createCollectedPlan,
+    workerPoolResolvedRun
+} from './worker-pool-runtime.test.ts';
+import {
     workerPoolLanes,
     workerPoolPlacementAssignments
 } from './worker-pool-lanes.ts';
 
 const now = Date.parse('2026-09-17T00:00:00.000Z');
+
+type FallbackPlacements = {
+    readonly cold: DurationHistoryPlacement;
+    readonly empty: DurationHistoryPlacement;
+    readonly mixedUnit: WorkUnit;
+    readonly partial: DurationHistoryPlacement;
+    readonly stale: DurationHistoryPlacement;
+};
+
+type RecordedDurationHistoryStore = {
+    readonly store: DurationHistoryStore;
+    readonly writes: readonly string[];
+};
+
+type DurationHistoryUpdateResults = {
+    readonly failedResult: RunResult;
+    readonly finiteResult: RunResult;
+    readonly infiniteResult: RunResult;
+    readonly persistedResult: RunResult;
+    readonly unchangedResult: RunResult;
+    readonly writes: readonly string[];
+};
 
 function work(title: string): WorkId {
     return {
@@ -126,6 +157,132 @@ function balancedDurationIndex(slow: WorkUnit, fastA: WorkUnit, fastB: WorkUnit)
     ], observedAt(now));
 }
 
+async function readHistoryFailure(
+    store: DurationHistoryStore,
+    runtimeStateDir: string
+): Promise<string> {
+    try {
+        await readDurationHistoryIndex(store, process.cwd(), runtimeStateDir);
+
+        return 'not rejected';
+    } catch (error: unknown) {
+        return error instanceof Error ? error.message : 'unknown rejection';
+    }
+}
+
+function expectedReadErrorMessage(): string {
+    return `Failed to read duration history at ${process.cwd()}/.overkill/duration-history/work-durations.json.`;
+}
+
+function fallbackPlacements(): FallbackPlacements {
+    const sampledWork = work('sampled');
+    const unsampledWork = work('unsampled');
+    const mixedUnit = unit('mixed', [ sampledWork, unsampledWork ]);
+    const sampledIndex = mergeDurationHistoryIndex(null, [
+        {
+            observations: [ observation(100, now) ],
+            work: sampledWork
+        }
+    ], observedAt(now));
+    const staleIndex = mergeDurationHistoryIndex(null, [
+        {
+            observations: [ observation(100, now - 31 * 24 * 60 * 60 * 1000) ],
+            work: sampledWork
+        }
+    ], observedAt(now));
+
+    return {
+        cold: selectDurationHistoryPlacement([ mixedUnit ], null, now),
+        empty: selectDurationHistoryPlacement([], sampledIndex, now),
+        mixedUnit,
+        partial: selectDurationHistoryPlacement([ mixedUnit ], sampledIndex, now),
+        stale: selectDurationHistoryPlacement([ unit('sampled', [ sampledWork ]) ], staleIndex, now)
+    };
+}
+
+function runResultForWork(sampleWork: WorkId, wallTimeMs: number): RunResult {
+    return runResultFactory.build({
+        perTest: [
+            {
+                id: sampleWork.case,
+                wallTimeMs,
+                workId: sampleWork
+            }
+        ]
+    });
+}
+
+function recordingDurationHistoryStore(): RecordedDurationHistoryStore {
+    const writes: string[] = [];
+
+    return {
+        store: {
+            async read() {
+                return null;
+            },
+            async write(_filePath, content) {
+                writes.push(content);
+            }
+        },
+        writes
+    };
+}
+
+async function durationHistoryUpdateResults(): Promise<DurationHistoryUpdateResults> {
+    const resolvedRun = workerPoolResolvedRun(createCollectedPlan());
+    const sampleWork = work('persisted');
+    const finiteResult = runResultForWork(sampleWork, 12);
+    const infiniteResult = runResultForWork(sampleWork, Number.POSITIVE_INFINITY);
+    const recordingStore = recordingDurationHistoryStore();
+    const unchangedResult = await resultWithUpdatedDurationHistory(
+        recordingStore.store,
+        resolvedRun,
+        infiniteResult,
+        now
+    );
+    const persistedResult = await resultWithUpdatedDurationHistory(
+        recordingStore.store,
+        resolvedRun,
+        finiteResult,
+        now
+    );
+    const failedResult = await resultWithUpdatedDurationHistory(
+        {
+            async read() {
+                return null;
+            },
+            async write() {
+                throw new Error('Write failed.');
+            }
+        },
+        resolvedRun,
+        finiteResult,
+        now
+    );
+
+    return {
+        failedResult,
+        finiteResult,
+        infiniteResult,
+        persistedResult,
+        unchangedResult,
+        writes: recordingStore.writes
+    };
+}
+
+function assertDurationHistoryUpdateResults(
+    scope: OverkillScope,
+    results: DurationHistoryUpdateResults
+): void {
+    scope.assert.equal(results.unchangedResult, results.infiniteResult);
+    scope.assert.equal(results.persistedResult, results.finiteResult);
+    scope.assert.equal(results.writes.length, 1);
+    scope.assert.equal(
+        results.failedResult.runnerErrors[0]?.message,
+        'Failed to write duration history.'
+    );
+}
+
 export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
@@ -165,6 +322,46 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'duration history rejects unsupported shapes and wraps read errors',
+            async body(scope: OverkillScope) {
+                let requestedPath = '';
+                const absoluteRuntimeStateDir = `${process.cwd()}/target/duration-history-test`;
+                const invalidShapeMessage = await readHistoryFailure({
+                    async read(filePath) {
+                        requestedPath = filePath;
+
+                        return JSON.stringify({ entries: [], updatedAt: observedAt(now), version: 2 });
+                    },
+                    async write() {
+                        return undefined;
+                    }
+                }, absoluteRuntimeStateDir);
+                const readErrorMessage = await readHistoryFailure({
+                    async read() {
+                        throw new Error('Read failed.');
+                    },
+                    async write() {
+                        return undefined;
+                    }
+                }, '.overkill');
+
+                scope.assert.equal(requestedPath, `${absoluteRuntimeStateDir}/duration-history/work-durations.json`);
+                scope.assert.equal(
+                    invalidShapeMessage,
+                    `Duration history at ${requestedPath} has an unsupported shape.`
+                );
+                scope.assert.equal(
+                    readErrorMessage,
+                    expectedReadErrorMessage()
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'duration history uses median fresh observations and ignores stale samples',
             body(scope: OverkillScope) {
                 const selectedWork = work('selected');
@@ -173,6 +370,7 @@ export const testNode = createOverkillSuite({
                     {
                         observations: [
                             observation(10, now),
+                            observation(70, now),
                             observation(50, now - 1),
                             observation(500, now - 31 * 24 * 60 * 60 * 1000)
                         ],
@@ -181,8 +379,25 @@ export const testNode = createOverkillSuite({
                 ], observedAt(now));
                 const placement = selectDurationHistoryPlacement([ selectedUnit ], index, now);
 
-                scope.assert.equal(placement.facts?.samples[0]?.durationMilliseconds, 30);
-                scope.assert.equal(placement.unitDuration?.(selectedUnit), 30);
+                scope.assert.equal(placement.facts?.samples[0]?.durationMilliseconds, 50);
+                scope.assert.equal(placement.unitDuration?.(selectedUnit), 50);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'duration-history-balanced falls back for cold, stale, and partially sampled work',
+            body(scope: OverkillScope) {
+                const scenarios = fallbackPlacements();
+
+                scope.assert.equal(scenarios.partial.unitDuration?.(scenarios.mixedUnit), 200);
+                scope.assert.equal(scenarios.cold.facts, null);
+                scope.assert.equal(scenarios.cold.unitDuration, null);
+                scope.assert.equal(scenarios.empty.facts, null);
+                scope.assert.equal(scenarios.stale.facts, null);
 
                 return scope.assert.collect();
             }
@@ -217,6 +432,19 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.equal(sparsePlacement.facts, null);
                 scope.assert.equal(sparsePlacement.unitDuration, null);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'duration history persists finite result samples and reports write errors',
+            async body(scope: OverkillScope) {
+                const results = await durationHistoryUpdateResults();
+
+                assertDurationHistoryUpdateResults(scope, results);
 
                 return scope.assert.collect();
             }
