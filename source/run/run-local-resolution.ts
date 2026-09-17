@@ -53,6 +53,7 @@ function createLocalResolvedRunFromTestPlan(
         cases: runCaseFactsFromTestPlan(plannedTestPlan, fileSetForDiscoveredFiles(input.files)),
         config: input.config,
         dependencies,
+        durationHistory: null,
         engine: input.engine,
         placementPlan: null,
         projectRoot: input.projectRoot,

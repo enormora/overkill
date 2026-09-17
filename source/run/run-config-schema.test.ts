@@ -385,7 +385,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'integration execution schema rejects future assignment policies',
+            title: 'integration execution schema accepts duration-history-balanced assignment policy',
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
@@ -395,7 +395,7 @@ export const testNode = createOverkillSuite({
                     scheduling: 'serial'
                 });
 
-                scope.assert.equal(result.success, false);
+                scope.assert.equal(result.success, true);
 
                 return scope.assert.collect();
             }

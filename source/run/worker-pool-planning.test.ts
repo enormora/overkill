@@ -19,7 +19,9 @@ import {
 } from './worker-pool-runtime.ts';
 import {
     collectedRunCaseEntriesFromWorkUnits,
-    createWorkerPoolPlacementPlan,
+    createWorkerPoolPlacementPlan
+} from './worker-pool-placement-planning.ts';
+import {
     workUnitsFromCollectedPlan
 } from './work-unit-planning.ts';
 import {
@@ -163,6 +165,7 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            durationHistory: null,
             cases: [],
             environment: {
                 node: { arch: 'x64', platform: 'linux', version: '26.1.1' },

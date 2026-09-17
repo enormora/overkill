@@ -205,6 +205,7 @@ function workerPoolResolvedRun(placement: PlacementPlan): ResolvedRun {
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            durationHistory: null,
             cases: [],
             environment: {
                 node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
@@ -337,6 +338,14 @@ function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
         },
         createWorkerPool: createFakePool,
         defaultEngine: defaultRunEngine,
+        durationHistoryStore: {
+            async read() {
+                return null;
+            },
+            async write() {
+                return undefined;
+            }
+        },
         discoverRunFilesWithProjectRoot: testOnlyDependency,
         execute: defaultRunEngine.execute,
         liveOutput: {
@@ -399,6 +408,9 @@ export function fakeWorkerRuntime(placement: PlacementPlan): WorkerPoolRunRuntim
         collectionRunnerErrors: [],
         dependencies: fakeDependencies(),
         destroyPool: true,
+        async finalizeResult(result) {
+            return result;
+        },
         pool: createFakePool(),
         poolResourceUsageTracker: null,
         previousPoolSample: createStoredRunValue<ResourceSample>(null),

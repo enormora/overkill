@@ -4,6 +4,7 @@ import {
     defineReporter,
     type ExecuteExecution,
     type ExecuteOptions,
+    type ExecuteResultFinalizer,
     type DefinedOutputRenderer,
     type DefinedReporter,
     type FinalResultReporter,
@@ -26,6 +27,7 @@ import {
 
 type ExecuteOptionKeyByName = {
     readonly execution: true;
+    readonly finalizeResult: true;
     readonly outputRenderer: true;
     readonly reporters: true;
     readonly resourceBudgets: true;
@@ -75,6 +77,7 @@ describe('Reporter contract', function () {
     test('uses explicit run facts and nullable finish callbacks', function () {
         expect<keyof ExecuteOptions>().type.toBe<ExpectedExecuteOptionKey>();
         expect<ExecuteOptions['outputRenderer']>().type.toBe<DefinedOutputRenderer | undefined>();
+        expect<ExecuteOptions['finalizeResult']>().type.toBe<ExecuteResultFinalizer | undefined>();
         expect<ExecuteExecution['mode']>().type.toBe<'concurrent-in-process' | 'serial-in-process'>();
         expect<RunFacts>().type.toBe<Readonly<Record<string, unknown>>>();
         expect<RealTimeReporter['dispose']>().type.toBe<(() => Promise<void> | void) | null>();

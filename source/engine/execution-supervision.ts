@@ -24,23 +24,19 @@ export type ExecuteTimeoutPolicy = {
     readonly hardTimeoutMilliseconds: number;
     readonly timeoutMilliseconds: number;
 };
-
 export type ConcurrentCase = {
     readonly result: PerTestResult;
     readonly runnerErrors: readonly RunnerError[];
     readonly wallTimeMs: number;
 };
-
 export type ExecutionSupervisionDependencies = {
     readonly runtimePolicy?: TestRuntimePolicy | null;
     readonly wallClock: WallClock;
 };
-
 type CaseCompletion = {
     readonly complete: (executedCase: ConcurrentCase) => void;
     readonly promise: Promise<ConcurrentCase>;
 };
-
 type ActiveCase = {
     readonly abort: () => void;
     readonly completion: CaseCompletion;
@@ -48,6 +44,7 @@ type ActiveCase = {
     readonly startedAtMilliseconds: number;
     readonly testCase: TestPlanCase;
 };
+type TestFailures = readonly [TestFailure, ...TestFailure[]];
 
 type ResourceExhaustionCause = ResourceBudgetBreach & {
     readonly activeCases: readonly TestPlanCase['id'][];
@@ -137,16 +134,17 @@ function createTerminalCase(
             id: testCase.id,
             outcome: null,
             verdict,
-            workId: testCase.workId
+            workId: testCase.workId,
+            wallTimeMs
         },
         runnerErrors: [],
         wallTimeMs
     };
 }
-
 function failCase(
     testCase: Pick<TestPlanCase, 'id' | 'workId'>,
-    failures: readonly [TestFailure, ...TestFailure[]]
+    failures: TestFailures,
+    wallTimeMs: number
 ): PerTestResult {
     const outcome = {
         failures,
@@ -157,10 +155,10 @@ function failCase(
         id: testCase.id,
         outcome,
         verdict: verdictFromOutcome(outcome),
-        workId: testCase.workId
+        workId: testCase.workId,
+        wallTimeMs
     };
 }
-
 function timeoutControlValue(testCase: TestPlanCase): unknown {
     return testCase.controls.timeoutMilliseconds;
 }
@@ -220,7 +218,7 @@ function resultWithTimeoutFailure(
 
     return {
         ...executedCase,
-        result: failCase(executedCase.result, [ failure ])
+        result: failCase(executedCase.result, [ failure ], executedCase.wallTimeMs)
     };
 }
 
@@ -391,7 +389,7 @@ async function runCaseWithSoftTimeout(
 
 function invalidTimeoutCase(testCase: TestPlanCase, failure: TestFailure): ConcurrentCase {
     return {
-        result: failCase(testCase, [ failure ]),
+        result: failCase(testCase, [ failure ], 0),
         runnerErrors: [],
         wallTimeMs: 0
     };
@@ -430,7 +428,7 @@ function completeFinishedActiveCase(input: CaseBodyInput, executedCase: Concurre
     }
 }
 
-function createInconclusiveCaseResult(testCase: TestPlanCase, error: unknown): PerTestResult {
+function createInconclusiveCaseResult(testCase: TestPlanCase, error: unknown, wallTimeMs: number): PerTestResult {
     const reason = error instanceof Error ? error.message : 'Unknown test execution error.';
     const outcome = {
         kind: 'inconclusive',
@@ -441,19 +439,20 @@ function createInconclusiveCaseResult(testCase: TestPlanCase, error: unknown): P
         id: testCase.id,
         outcome,
         verdict: verdictFromOutcome(outcome),
-        workId: testCase.workId
+        workId: testCase.workId,
+        wallTimeMs
     };
 }
-
 function completeUnexpectedBodyError(input: CaseBodyInput, error: unknown): void {
+    const wallTimeMs = input.dependencies.wallClock.currentTimestampInMilliseconds -
+        input.activeCase.startedAtMilliseconds;
+
     completeFinishedActiveCase(input, {
-        result: createInconclusiveCaseResult(input.testCase, error),
+        result: createInconclusiveCaseResult(input.testCase, error, wallTimeMs),
         runnerErrors: [],
-        wallTimeMs: input.dependencies.wallClock.currentTimestampInMilliseconds -
-            input.activeCase.startedAtMilliseconds
+        wallTimeMs
     });
 }
-
 async function runCaseBodyUnderSupervision(input: CaseBodyInput): Promise<ConcurrentCase> {
     try {
         const executedCase = await Promise.race([
@@ -461,18 +460,17 @@ async function runCaseBodyUnderSupervision(input: CaseBodyInput): Promise<Concur
             input.completion.promise
         ]);
         completeFinishedActiveCase(input, executedCase);
-
         return executedCase;
     } catch (error: unknown) {
+        const wallTimeMs = input.dependencies.wallClock.currentTimestampInMilliseconds -
+            input.activeCase.startedAtMilliseconds;
         const fallbackCase = {
-            result: createInconclusiveCaseResult(input.testCase, error),
+            result: createInconclusiveCaseResult(input.testCase, error, wallTimeMs),
             runnerErrors: [],
-            wallTimeMs: input.dependencies.wallClock.currentTimestampInMilliseconds -
-                input.activeCase.startedAtMilliseconds
+            wallTimeMs
         };
 
         completeUnexpectedBodyError(input, error);
-
         return fallbackCase;
     }
 }

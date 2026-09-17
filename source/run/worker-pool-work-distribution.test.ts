@@ -14,7 +14,9 @@ import {
 } from './run-types.ts';
 import { invalidWorkDistributionConfigMessage } from './work-distribution-config.ts';
 import {
-    createWorkerPoolPlacementPlan,
+    createWorkerPoolPlacementPlan
+} from './worker-pool-placement-planning.ts';
+import {
     type WorkUnitPlanningInput,
     workUnitsFromCollectedPlan
 } from './work-unit-planning.ts';

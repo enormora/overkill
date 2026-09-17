@@ -10,6 +10,7 @@ type RunnerErrorSubtypeByName = {
     readonly permission: 'permission';
     readonly reporter: 'reporter';
     readonly resourceExhaustion: 'resource-exhaustion';
+    readonly runtimeState: 'runtime-state';
     readonly runtimePolicy: 'runtime-policy';
     readonly unhandledRejection: 'unhandled-rejection';
 };
@@ -215,6 +216,7 @@ export type PerTestResult = {
     readonly outcome: TestOutcome | null;
     readonly verdict: TestVerdict;
     readonly workId: WorkId;
+    readonly wallTimeMs: number;
 };
 
 export type RunArtifactScope = {

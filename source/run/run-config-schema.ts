@@ -102,6 +102,7 @@ const workerLifecycleSchema = z.union([
 
 const workerPoolAssignmentPolicySchema = z.union([
     z.literal('case-count-balanced'),
+    z.literal('duration-history-balanced'),
     z.literal('stable')
 ]);
 

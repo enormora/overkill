@@ -3,7 +3,8 @@ import {
     reportCollectionErrorResult
 } from './run-collection-error-result.ts';
 import {
-    createResolvedRunFromCollection
+    createResolvedRunFromCollection,
+    type CollectionDurationHistoryIndex
 } from './run-collected-resolution.ts';
 import {
     readResolvedRunInput,
@@ -13,6 +14,8 @@ import {
     assertRunnableResourceUsagePolicy,
     createRunResourceRuntimePolicy,
     createRunRuntimePolicy,
+    finalizeResultWithDurationHistory,
+    readRunDurationHistory,
     type RunRuntimePolicy
 } from './run-support.ts';
 import {
@@ -57,6 +60,7 @@ type ExecutionResolutionInput = {
     readonly collection: CollectedExecution;
     readonly command: RunCommand;
     readonly dependencies: RunOrchestratorDependencies;
+    readonly durationHistoryIndex: CollectionDurationHistoryIndex;
     readonly input: ResolvedRunInput;
     readonly planKind: 'supervised' | 'worker-pool';
 };
@@ -78,6 +82,7 @@ function createResolvedExecutionRun(resolution: ExecutionResolutionInput): Resol
         command: resolution.command,
         config: resolution.input.config,
         dependencies: resolution.dependencies,
+        durationHistoryIndex: resolution.durationHistoryIndex,
         engine: resolution.input.engine,
         files: resolution.input.files,
         planKind: resolution.planKind,
@@ -85,6 +90,24 @@ function createResolvedExecutionRun(resolution: ExecutionResolutionInput): Resol
         projectRoot: resolution.input.projectRoot,
         request: resolution.input.request
     });
+}
+
+async function readWorkerPoolDurationHistory(
+    input: ResolvedRunInput,
+    dependencies: RunOrchestratorDependencies
+): Promise<CollectionDurationHistoryIndex> {
+    const durationHistoryEnabled = input.profile.execution.processModel === 'worker-pool' &&
+        input.profile.execution.assignmentPolicy === 'duration-history-balanced';
+
+    if (!durationHistoryEnabled) {
+        return null;
+    }
+
+    return await readRunDurationHistory(
+        dependencies,
+        input.projectRoot,
+        input.config.runtimeStateDir
+    );
 }
 
 async function createWorkerPoolResolvedRun(
@@ -96,11 +119,14 @@ async function createWorkerPoolResolvedRun(
         createWorkerPoolCommand(command, input.profile, input.files),
         dependencies
     );
+    const durationHistoryIndex = await readWorkerPoolDurationHistory(input, dependencies);
+
     return createResolvedExecutionRun({
         allowEmptySelection: false,
         collection,
         command,
         dependencies,
+        durationHistoryIndex,
         input,
         planKind: 'worker-pool'
     });
@@ -121,6 +147,7 @@ async function createSupervisedResolvedRun(
         collection,
         command,
         dependencies,
+        durationHistoryIndex: null,
         input,
         planKind: 'supervised'
     });
@@ -229,9 +256,15 @@ async function runSupervisedAndAttachPolicyErrors(
                 collection,
                 command,
                 dependencies,
+                durationHistoryIndex: null,
                 input,
                 planKind: 'supervised'
             });
+        },
+        {
+            async finalizeResult(resolvedRun, finalResult) {
+                return await finalizeResultWithDurationHistory(dependencies, resolvedRun, finalResult);
+            }
         }
     );
 
@@ -270,6 +303,8 @@ async function createWorkerPoolRunResult(
     }
 
     try {
+        const durationHistoryIndex = await readWorkerPoolDurationHistory(input, dependencies);
+
         return await runWorkerPoolCommand(
             createWorkerPoolCommand(command, input.profile, input.files),
             dependencies,
@@ -279,9 +314,15 @@ async function createWorkerPoolRunResult(
                     collection,
                     command,
                     dependencies,
+                    durationHistoryIndex,
                     input,
                     planKind: 'worker-pool'
                 });
+            },
+            {
+                async finalizeResult(resolvedRun, result) {
+                    return await finalizeResultWithDurationHistory(dependencies, resolvedRun, result);
+                }
             }
         );
     } catch (error: unknown) {
@@ -320,13 +361,21 @@ async function executeResolvedRun(
     assertRunnableResourceUsagePolicy(resourceUsagePolicy);
 
     if (resolvedRun.facts.execution.processModel === 'supervised-process') {
-        const result = await executeSupervisedRun(resolvedRun, dependencies);
+        const result = await executeSupervisedRun(resolvedRun, dependencies, {
+            async finalizeResult(supervisedRun, finalResult) {
+                return await finalizeResultWithDurationHistory(dependencies, supervisedRun, finalResult);
+            }
+        });
 
         return addRunnerErrors(result, runtimePolicy?.takeRunErrors() ?? []);
     }
 
     if (resolvedRun.facts.execution.processModel === 'worker-pool') {
-        return await executeWorkerPoolRun(resolvedRun, dependencies);
+        return await executeWorkerPoolRun(resolvedRun, dependencies, {
+            async finalizeResult(workerPoolRun, result) {
+                return await finalizeResultWithDurationHistory(dependencies, workerPoolRun, result);
+            }
+        });
     }
 
     if (resolvedRun.plan.kind !== 'local') {
@@ -336,6 +385,9 @@ async function executeResolvedRun(
     return await dependencies.execute(resolvedRun.plan.testPlan, {
         execution: { mode: resolveEngineExecutionMode(resolvedRun.facts.execution.scheduling) },
         outputRenderer: resolvedRun.config.outputRenderer,
+        async finalizeResult(result) {
+            return await finalizeResultWithDurationHistory(dependencies, resolvedRun, result);
+        },
         reporters: resolvedRun.reporters,
         resourceBudgets: resourceUsagePolicy.budgets,
         resourceUsageTracker: createExecutionResourceUsageTracker(resourceUsagePolicy, dependencies),

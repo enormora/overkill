@@ -118,6 +118,7 @@ function createResolvedRun(testPlan: TestPlan): ResolvedRun {
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            durationHistory: null,
             cases: testPlan.cases.map(function toCaseFacts(testCase) {
                 return {
                     annotations: emptySerializedTestData,

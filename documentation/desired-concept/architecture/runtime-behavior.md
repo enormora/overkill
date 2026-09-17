@@ -808,8 +808,8 @@ future public model. Assignment decides the initial lane plan before execution.
 Dispatch decides whether the coordinator follows that plan statically or leases
 pending work dynamically during execution. This keeps `dynamic-lease` from
 pretending to be just another initial placement algorithm.
-Until these policies are implemented, project config may continue to reject
-future policy values and omit `dispatchPolicy` entirely.
+Project config may continue to reject future policy values other than
+`duration-history-balanced` and omit `dispatchPolicy` entirely.
 
 `order` is a placement priority, not a total wall-clock start-order guarantee
 for parallel worker-pool runs. It seeds work-unit ordering, breaks placement
@@ -835,19 +835,29 @@ weaken the frozen-plan model:
 
 ### Duration History
 
-Duration history is a compact derived index under `runtimeStateDir`, not a
-requirement to persist every hot-path run as a full `RunRecord`.
+Duration history is a compact derived index under
+`runtimeStateDir/duration-history/work-durations.json`, not a requirement to
+persist every hot-path run as a full `RunRecord`.
 
-The index stores recent duration samples keyed primarily by `WorkId`.
-Planning aggregates matching samples into the current `WorkUnit` shape. That
-lets history survive changes between file, case, and group distribution better
-than a `WorkUnitId`-only history would. The exact aggregation policy can evolve,
-but the run facts must record the duration-history inputs used by
-`duration-history-balanced` so a later replay can explain the chosen plan.
+The index stores recent duration observations keyed only by `WorkId`. Each
+observation also carries diagnostic metadata: profile, process model,
+scheduling, test family, and worker lifecycle when present. Metadata explains
+where the sample came from; it does not decide identity or eligibility. This
+allows supervised and in-process runs to warm history that a later worker-pool
+profile can use.
 
-When history is missing, stale, from an incompatible runtime/workload shape, or
-too sparse for a useful estimate, `duration-history-balanced` falls back to the
-same selected-case-count balancing used by `case-count-balanced`.
+Planning aggregates matching samples into the current `WorkUnit` shape. It uses
+the median of the last 8 observations newer than 30 days for each `WorkId`.
+When at least 50 percent of current work has fresh history, missing work uses
+the median known current duration and units are balanced by estimated duration.
+When coverage is lower, history is missing, history is stale, or no current
+`WorkId` matches, `duration-history-balanced` falls back to the same
+selected-case-count balancing used by `case-count-balanced`.
+
+Actual IO, parse, schema, or unsupported-version errors for the duration
+history file are hard runtime-state errors. A missing file is a normal cold
+start. Run facts record only the duration-history inputs used by
+`duration-history-balanced`, not samples learned after the run.
 
 ### Runtime Reprioritization
 

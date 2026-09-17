@@ -27,6 +27,17 @@ import {
     type WorkerPoolCollectionResult
 } from './worker-pool-runtime.ts';
 
+type RunResultFinalizer = (resolvedRun: ResolvedRun, result: RunResult) => Promise<RunResult>;
+
+type WorkerPoolExecutionOptions = {
+    readonly finalizeResult: RunResultFinalizer;
+};
+
+type WorkerPoolExecutionState = WorkerPoolExecutionOptions & {
+    readonly collectionRunState: SupervisedRunState;
+    readonly createdPool: CreatedWorkerPool | null;
+};
+
 export async function collectWorkerPoolRun(
     command: WorkerPoolCommand,
     dependencies: RunOrchestratorDependencies
@@ -62,19 +73,21 @@ async function finishExecution(
 async function executeWorkerPoolRunWithState(
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies,
-    collectionRunState: SupervisedRunState,
-    createdPool: CreatedWorkerPool | null = null
+    state: WorkerPoolExecutionState
 ): Promise<RunResult> {
     if (workerPoolPlacementPlan(resolvedRun).units.length === 0) {
-        return await createEmptyWorkerPoolResult(resolvedRun, dependencies, collectionRunState);
+        return await createEmptyWorkerPoolResult(resolvedRun, dependencies, state.collectionRunState);
     }
 
     const runtime = await createWorkerPoolRuntime({
         collectionRunnerErrors: resolvedRun.collectionRunnerErrors,
-        createdPool,
+        createdPool: state.createdPool,
         dependencies,
+        async finalizeResult(result: RunResult): Promise<RunResult> {
+            return await state.finalizeResult(resolvedRun, result);
+        },
         resolvedRun,
-        runState: collectionRunState
+        runState: state.collectionRunState
     });
     const startedAtMilliseconds = dependencies.wallClock.currentTimestampInMilliseconds;
 
@@ -87,15 +100,21 @@ async function executeWorkerPoolRunWithState(
 
 export async function executeWorkerPoolRun(
     resolvedRun: ResolvedRun,
-    dependencies: RunOrchestratorDependencies
+    dependencies: RunOrchestratorDependencies,
+    options: WorkerPoolExecutionOptions
 ): Promise<RunResult> {
-    return await executeWorkerPoolRunWithState(resolvedRun, dependencies, createSupervisedRunState());
+    return await executeWorkerPoolRunWithState(resolvedRun, dependencies, {
+        ...options,
+        collectionRunState: createSupervisedRunState(),
+        createdPool: null
+    });
 }
 
 export async function runWorkerPoolCommand(
     command: WorkerPoolCommand,
     dependencies: RunOrchestratorDependencies,
-    createResolvedRun: (collection: WorkerPoolCollectionResult) => ResolvedRun
+    createResolvedRun: (collection: WorkerPoolCollectionResult) => ResolvedRun,
+    options: WorkerPoolExecutionOptions
 ): Promise<RunResult> {
     const collectionRunState = createSupervisedRunState();
     const pool = command.hostProcess.kind === 'child'
@@ -113,8 +132,11 @@ export async function runWorkerPoolCommand(
         return await executeWorkerPoolRunWithState(
             createResolvedRun(collection),
             dependencies,
-            collectionRunState,
-            pool
+            {
+                ...options,
+                collectionRunState,
+                createdPool: pool
+            }
         );
     } finally {
         await pool?.destroy();

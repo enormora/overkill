@@ -77,6 +77,7 @@ export type WorkerPoolRunRuntime = {
     readonly collectionRunnerErrors: readonly RunnerError[];
     readonly dependencies: RunOrchestratorDependencies;
     readonly destroyPool: boolean;
+    readonly finalizeResult: (result: RunResult) => Promise<RunResult>;
     readonly pool: CreatedWorkerPool;
     readonly poolResourceUsageTracker: WorkerPoolResourceUsageTracker | null;
     readonly previousPoolSample: StoredRunValue<ResourceUsageSnapshot | null>;
@@ -92,6 +93,7 @@ type WorkerPoolRuntimeInput = {
     readonly collectionRunnerErrors: readonly RunnerError[];
     readonly createdPool: CreatedWorkerPool | null;
     readonly dependencies: RunOrchestratorDependencies;
+    readonly finalizeResult: (result: RunResult) => Promise<RunResult>;
     readonly resolvedRun: ResolvedRun;
     readonly runState: SupervisedRunState;
 };
@@ -542,7 +544,7 @@ export function workerPoolPlacementPlan(resolvedRun: ResolvedRun): PlacementPlan
 export async function createWorkerPoolRuntime(
     input: WorkerPoolRuntimeInput
 ): Promise<WorkerPoolRunRuntime> {
-    const { collectionRunnerErrors, dependencies, resolvedRun, runState } = input;
+    const { collectionRunnerErrors, dependencies, finalizeResult, resolvedRun, runState } = input;
     const placementPlan = workerPoolPlacementPlan(resolvedRun);
     const execution = workerPoolExecutionFacts(resolvedRun);
     const taskResults: RunResult[] = [];
@@ -565,6 +567,7 @@ export async function createWorkerPoolRuntime(
         collectionRunnerErrors,
         dependencies,
         destroyPool,
+        finalizeResult,
         pool,
         poolResourceUsageTracker: createPoolResourceUsageTracker(pool, resolvedRun, dependencies),
         previousPoolSample: createStoredRunValue<ResourceUsageSnapshot | null>(null),

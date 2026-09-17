@@ -146,7 +146,7 @@ export type RunScheduling = 'concurrent' | 'serial';
 
 export type RunWorkerLifecycle = 'fresh-worker-per-unit' | 'reuse';
 
-export type RunWorkerPoolAssignmentPolicy = 'case-count-balanced' | 'stable';
+export type RunWorkerPoolAssignmentPolicy = 'case-count-balanced' | 'duration-history-balanced' | 'stable';
 
 export type RunWorkGroupGranularity = 'case' | 'file' | 'group';
 
@@ -369,7 +369,29 @@ export type RunConfig = {
     readonly reporters: RunReporters;
     readonly runtimeStateDir: string;
 };
-
+export type DurationHistoryObservation = {
+    readonly durationMilliseconds: number;
+    readonly metadata: {
+        readonly processModel: RunProcessModel;
+        readonly profile: string;
+        readonly scheduling: RunScheduling;
+        readonly testFamily: RunTestFamily;
+        readonly workerLifecycle: RunWorkerLifecycle | null;
+    };
+    readonly observedAt: string;
+};
+export type DurationHistorySample = {
+    readonly durationMilliseconds: number;
+    readonly observedAt: string;
+    readonly observations: readonly DurationHistoryObservation[];
+    readonly sampleCount: number;
+    readonly work: WorkId;
+};
+export type DurationHistoryInput = {
+    readonly generatedAt: string;
+    readonly samples: readonly DurationHistorySample[];
+    readonly source: 'runtime-state-index';
+};
 export type RunOrder = 'lexical' | 'plan' | 'seeded';
 
 export type RunRequest = {
@@ -399,6 +421,7 @@ export type RunCommand = {
 
 export type RunFacts = {
     readonly cases: readonly RunCaseFacts[];
+    readonly durationHistory: DurationHistoryInput | null;
     readonly environment: RunEnvironmentFacts;
     readonly execution: RunExecutionFacts;
     readonly loader: RunLoaderConfig;

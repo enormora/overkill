@@ -37,7 +37,7 @@ export function lifecycleCount(units: readonly WorkUnit[], workerLifecycle: RunW
         .length;
 }
 
-export function selectedCaseCount(unit: WorkUnit): number {
+function selectedCaseCount(unit: WorkUnit): number {
     return unit.work.length;
 }
 
@@ -138,15 +138,16 @@ function stableLifecycleLaneCounts(
     return mixedLifecycleLaneCounts(units, totalLaneCount);
 }
 
-function caseCountBalancedLifecycleLaneAllocation(
+function balancedLifecycleLaneAllocation(
     units: readonly WorkUnit[],
     freshUnits: number,
-    reuseUnits: number
+    reuseUnits: number,
+    unitLoad: UnitLoad
 ): LifecycleLaneAllocation {
     return {
-        freshLoad: lifecycleLoad(units, freshWorkerLifecycle, caseCountPlacementLoad),
+        freshLoad: lifecycleLoad(units, freshWorkerLifecycle, unitLoad),
         freshUnitCount: freshUnits,
-        reuseLoad: lifecycleLoad(units, reuseWorkerLifecycle, caseCountPlacementLoad),
+        reuseLoad: lifecycleLoad(units, reuseWorkerLifecycle, unitLoad),
         reuseUnitCount: reuseUnits,
         tiedLifecycle: firstUnitWorkerLifecycle(units)
     };
@@ -251,9 +252,10 @@ function allocateCaseCountBalancedLifecycleLanes(
     return lanes;
 }
 
-function caseCountBalancedLifecycleLaneCounts(
+function balancedLifecycleLaneCounts(
     units: readonly WorkUnit[],
-    totalLaneCount: number
+    totalLaneCount: number,
+    unitLoad: UnitLoad
 ): ReadonlyMap<RunWorkerLifecycle, number> {
     const freshUnits = lifecycleCount(units, freshWorkerLifecycle);
     const reuseUnits = lifecycleCount(units, reuseWorkerLifecycle);
@@ -266,7 +268,7 @@ function caseCountBalancedLifecycleLaneCounts(
         return new Map([ [ freshWorkerLifecycle, totalLaneCount ] ]);
     }
 
-    const allocation = caseCountBalancedLifecycleLaneAllocation(units, freshUnits, reuseUnits);
+    const allocation = balancedLifecycleLaneAllocation(units, freshUnits, reuseUnits, unitLoad);
     const lanes = allocateCaseCountBalancedLifecycleLanes(allocation, totalLaneCount);
 
     return new Map([
@@ -278,9 +280,10 @@ function caseCountBalancedLifecycleLaneCounts(
 export function lifecycleLaneCounts(
     units: readonly WorkUnit[],
     totalLaneCount: number,
-    assignmentPolicy: RunWorkerPoolAssignmentPolicy
+    assignmentPolicy: RunWorkerPoolAssignmentPolicy,
+    unitLoad: UnitLoad | null
 ): ReadonlyMap<RunWorkerLifecycle, number> {
-    return assignmentPolicy === 'case-count-balanced'
-        ? caseCountBalancedLifecycleLaneCounts(units, totalLaneCount)
+    return assignmentPolicy === 'case-count-balanced' || unitLoad !== null
+        ? balancedLifecycleLaneCounts(units, totalLaneCount, unitLoad ?? caseCountPlacementLoad)
         : stableLifecycleLaneCounts(units, totalLaneCount);
 }

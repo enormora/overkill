@@ -92,6 +92,7 @@ type PerTestResultOverrides = {
     readonly outcome?: TestOutcomeOverrides | null;
     readonly verdict?: TestVerdict;
     readonly workId?: WorkId;
+    readonly wallTimeMs?: number;
 };
 
 type OrphanedNodeOverrides = Partial<OrphanedNode>;
@@ -323,7 +324,8 @@ function buildPerTestResult(overrides: PerTestResultOverrides = {}): RunResult['
         id,
         outcome,
         verdict: buildPerTestVerdict(overrides, outcome),
-        workId: overrides.workId ?? createDefaultWorkId(id)
+        workId: overrides.workId ?? createDefaultWorkId(id),
+        wallTimeMs: overrides.wallTimeMs ?? 0
     };
 }
 

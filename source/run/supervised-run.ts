@@ -57,6 +57,12 @@ type CreateResolvedRunFromCollection = (
     collection: SupervisedCollectionResult
 ) => ResolvedRun;
 
+type RunResultFinalizer = (resolvedRun: ResolvedRun, result: RunResult) => Promise<RunResult>;
+
+type SupervisedExecutionOptions = {
+    readonly finalizeResult: RunResultFinalizer;
+};
+
 type Signal = {
     readonly promise: Promise<void>;
     readonly resolve: () => void;
@@ -69,6 +75,7 @@ type SupervisedLiveRun = {
     readonly collectionTimeout: ReturnType<RunOrchestratorDependencies['wallClock']['setTimeout']>;
     readonly dependencies: RunOrchestratorDependencies;
     readonly finishedSignal: Signal;
+    readonly finalizeResult: RunResultFinalizer;
     readonly previousSample: StoredRunValue<ResourceUsageSnapshot | null>;
     readonly runtime: StoredRunValue<SupervisedRunRuntime | null>;
     readonly state: SupervisedRunState;
@@ -86,6 +93,10 @@ function createSignal(): Signal {
     return { promise, resolve: resolveSignal };
 }
 
+const keepRunResult: RunResultFinalizer = async function keepRunResult(_resolvedRun, result) {
+    return result;
+};
+
 function handleCollectionMessage(
     message: SupervisedChildMessage,
     runtime: SupervisedCollectionRuntime<SupervisedCollectionResult | null>
@@ -96,7 +107,12 @@ function handleCollectionMessage(
             runnerErrors: message.runnerErrors
         });
     } else if (message.kind === 'event') {
-        applyEvent(message.event, runtime.state, new Map());
+        applyEvent(
+            message.event,
+            runtime.state,
+            new Map(),
+            runtime.dependencies.wallClock.currentTimestampInMilliseconds
+        );
     } else if (message.kind === 'sample') {
         handleCollectionSample(message.sample, runtime);
     }
@@ -215,7 +231,8 @@ function recordCollectionTimeout(
 
 async function createLiveRun(
     command: SupervisedRunCommand,
-    dependencies: RunOrchestratorDependencies
+    dependencies: RunOrchestratorDependencies,
+    options: SupervisedExecutionOptions
 ): Promise<SupervisedLiveRun> {
     const child = await dependencies.startSupervisedChild({
         capabilityRestrictions: command.capabilityRestrictions,
@@ -236,6 +253,7 @@ async function createLiveRun(
         collectionTimeout,
         dependencies,
         finishedSignal: createSignal(),
+        finalizeResult: options.finalizeResult,
         previousSample: createStoredRunValue<ResourceUsageSnapshot | null>(null),
         runtime: createStoredRunValue<SupervisedRunRuntime | null>(null),
         state,
@@ -273,7 +291,12 @@ function handleLiveCollectionMessage(
     } else if (message.kind === 'sample') {
         handleCollectionSample(message.sample, collectionRuntime(command, liveRun));
     } else if (message.kind === 'event') {
-        applyEvent(message.event, liveRun.state, new Map());
+        applyEvent(
+            message.event,
+            liveRun.state,
+            new Map(),
+            liveRun.dependencies.wallClock.currentTimestampInMilliseconds
+        );
     }
 }
 
@@ -350,6 +373,9 @@ async function createLiveRunRuntime(
         collectedPlan: createStoredRunValue<CollectedRunPlan | null>(supervisedCollectedPlan(resolvedRun)),
         completedResult: createStoredRunValue<RunResult | null>(null),
         dependencies: liveRun.dependencies,
+        async finalizeResult(result: RunResult): Promise<RunResult> {
+            return await liveRun.finalizeResult(resolvedRun, result);
+        },
         previousSample: liveRun.previousSample,
         reporterDelivery: await createReporterDelivery(resolvedRun, liveRun.dependencies),
         reporterEvents: createReporterEventQueue(),
@@ -418,9 +444,10 @@ export async function collectSupervisedRun(
 export async function runSupervisedCommand(
     command: SupervisedRunCommand,
     dependencies: RunOrchestratorDependencies,
-    createResolvedRun: CreateResolvedRunFromCollection
+    createResolvedRun: CreateResolvedRunFromCollection,
+    options: SupervisedExecutionOptions
 ): Promise<RunResult> {
-    const liveRun = await createLiveRun(command, dependencies);
+    const liveRun = await createLiveRun(command, dependencies, options);
     observeLiveRun(command, liveRun);
     liveRun.child.send(childProcessEnvelope(supervisedChildCorrelationId, command));
     const collection = await readLiveCollection(liveRun);
@@ -430,7 +457,8 @@ export async function runSupervisedCommand(
 
 async function createRuntime(
     resolvedRun: ResolvedRun,
-    dependencies: RunOrchestratorDependencies
+    dependencies: RunOrchestratorDependencies,
+    options: SupervisedExecutionOptions
 ): Promise<SupervisedRunRuntime> {
     const collectedPlan = supervisedCollectedPlan(resolvedRun);
     const runtimeWithoutTimeout = {
@@ -442,6 +470,9 @@ async function createRuntime(
         collectedPlan: createStoredRunValue<CollectedRunPlan | null>(collectedPlan),
         completedResult: createStoredRunValue<RunResult | null>(null),
         dependencies,
+        async finalizeResult(result: RunResult): Promise<RunResult> {
+            return await options.finalizeResult(resolvedRun, result);
+        },
         previousSample: createStoredRunValue<ResourceUsageSnapshot | null>(null),
         reporterDelivery: await createReporterDelivery(resolvedRun, dependencies),
         reporterEvents: createReporterEventQueue(),
@@ -458,9 +489,10 @@ async function createRuntime(
 
 export async function executeSupervisedRun(
     resolvedRun: ResolvedRun,
-    dependencies: RunOrchestratorDependencies
+    dependencies: RunOrchestratorDependencies,
+    options: SupervisedExecutionOptions = { finalizeResult: keepRunResult }
 ): Promise<RunResult> {
-    const runtime = await createRuntime(resolvedRun, dependencies);
+    const runtime = await createRuntime(resolvedRun, dependencies, options);
     const startedAtMs = dependencies.wallClock.currentTimestampInMilliseconds;
     const collectedPlan = supervisedCollectedPlan(resolvedRun);
     runtime.state.recordRunnerErrors(resolvedRun.collectionRunnerErrors);

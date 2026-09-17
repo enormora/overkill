@@ -20,6 +20,7 @@ type ExpectedRunnerErrorSubtypeByName = {
     readonly reporter: 'reporter';
     readonly resourceExhaustion: 'resource-exhaustion';
     readonly runtimePolicy: 'runtime-policy';
+    readonly runtimeState: 'runtime-state';
     readonly unhandledRejection: 'unhandled-rejection';
 };
 type ExpectedRunnerErrorSubtype = ExpectedRunnerErrorSubtypeByName[keyof ExpectedRunnerErrorSubtypeByName];

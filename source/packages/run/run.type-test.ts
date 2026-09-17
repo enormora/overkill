@@ -197,7 +197,9 @@ describe('@overkill-dev/run', function () {
     });
 
     test('exposes serializable run facts with case annotations and controls', function () {
-        expect<keyof RunFacts>().type.toBe<'cases' | 'environment' | 'execution' | 'loader' | 'reproducibility'>();
+        expect<keyof RunFacts>()
+            .type
+            .toBe<'cases' | 'durationHistory' | 'environment' | 'execution' | 'loader' | 'reproducibility'>();
         expect<RunFacts['cases'][number]['annotations']>().type.toBe<SerializedValue>();
         expect<RunFacts['cases'][number]['controls']>().type.toBe<SerializedValue>();
         expect<RunFacts['reproducibility']['selection']>().type.toBe<RunSelection>();
@@ -294,7 +296,9 @@ describe('@overkill-dev/run worker-pool placement', function () {
         >()
             .type
             .toBe<RunWorkerPoolAssignmentPolicy>();
-        expect<RunWorkerPoolAssignmentPolicy>().type.toBe<'case-count-balanced' | 'stable'>();
+        expect<RunWorkerPoolAssignmentPolicy>()
+            .type
+            .toBe<'case-count-balanced' | 'duration-history-balanced' | 'stable'>();
     });
 });
 
