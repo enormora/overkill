@@ -6,6 +6,57 @@ This package ships the public `overkill` binary and the staged root authoring
 facade. The binary parses the minimal command surface and delegates
 execution to `@overkill-dev/run/command-line`.
 
+## Quick start
+
+Install the standard distribution:
+
+```sh
+npm install -D @overkill-dev/test
+```
+
+Create `overkill.config.ts`:
+
+```ts
+import { defineConfig } from '@overkill-dev/test/config';
+
+export const config = defineConfig({
+    profiles: {
+        microtest: {
+            testFamily: 'microtest',
+            files: {
+                include: [ 'source/**/*.test.ts' ]
+            }
+        }
+    }
+});
+```
+
+Create `source/calculator.test.ts`:
+
+```ts
+import { suite, test } from '@overkill-dev/test';
+
+function add(left: number, right: number): number {
+    return left + right;
+}
+
+export const testNode = suite('calculator', [
+    test('adds numbers', (scope) => {
+        scope.assert.equal(add(2, 3), 5);
+
+        return scope.assert.collect();
+    })
+]);
+```
+
+Run the configured test files:
+
+```sh
+npx overkill run
+```
+
+## Package surface
+
 Current root runtime exports:
 
 - `test`
