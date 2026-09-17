@@ -346,6 +346,14 @@ function createTaskRun(state: SupervisedRunState): WorkerPoolTaskRun {
     };
 }
 
+function createArtifactTaskRun(): WorkerPoolTaskRun {
+    const state = createSupervisedRunState();
+
+    state.recordCapturedOutput('stdout', Buffer.from('active artifact'), 3);
+
+    return createTaskRun(state);
+}
+
 function emptyRunResult(perTest: readonly PerTestResult[]): RunResult {
     return {
         artifacts: [],
@@ -444,6 +452,7 @@ async function workerPoolFinalizationResults(): Promise<{
 
     runtime.runState.recordCapturedOutput('stdout', Buffer.from('run artifact'), 1);
     completedState.recordCapturedOutput('stderr', Buffer.from('completed artifact'), 2);
+    runtime.activeTasks.add(createArtifactTaskRun());
     runtime.taskResults.push(emptyRunResult([ passResult() ]));
 
     const result = await finishWorkerPoolRun(runtime, [ createTaskRun(completedState) ], 10);
@@ -514,7 +523,7 @@ export const testNode = createOverkillSuite({
                     result.artifacts.map(function toText(artifact) {
                         return artifact.payload.text;
                     }),
-                    [ 'run artifact', 'completed artifact' ]
+                    [ 'run artifact', 'completed artifact', 'active artifact' ]
                 );
                 scope.assert.equal(emptyResult.summary.planned, 1);
 

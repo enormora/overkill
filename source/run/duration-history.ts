@@ -83,7 +83,7 @@ const workloadIdSchema = z
 const workIdSchema = z
     .strictObject({
         case: caseIdSchema,
-        runtime: runtimeIdSchema.nullable(),
+        runtimes: z.array(runtimeIdSchema).readonly(),
         workload: workloadIdSchema.nullable()
     })
     .readonly();

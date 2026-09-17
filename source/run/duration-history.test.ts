@@ -34,6 +34,8 @@ const now = Date.parse('2026-09-17T00:00:00.000Z');
 type FallbackPlacements = {
     readonly cold: DurationHistoryPlacement;
     readonly empty: DurationHistoryPlacement;
+    readonly future: DurationHistoryPlacement;
+    readonly invalidDuration: DurationHistoryPlacement;
     readonly mixedUnit: WorkUnit;
     readonly partial: DurationHistoryPlacement;
     readonly stale: DurationHistoryPlacement;
@@ -61,7 +63,7 @@ function work(title: string): WorkId {
             suite: [],
             title
         },
-        runtime: null,
+        runtimes: [],
         workload: null
     };
 }
@@ -69,7 +71,7 @@ function work(title: string): WorkId {
 function unit(key: string, unitWork: readonly [WorkId, ...WorkId[]]): WorkUnit {
     return {
         group: null,
-        id: { key, mode: 'case', runtime: null, workload: null },
+        id: { key, mode: 'case', runtimes: [], workload: null },
         order: 'plan',
         resourceConstraints: emptyWorkUnitResourceConstraints,
         scheduling: 'concurrent',
@@ -190,10 +192,28 @@ function fallbackPlacements(): FallbackPlacements {
             work: sampledWork
         }
     ], observedAt(now));
+    const futureIndex = mergeDurationHistoryIndex(null, [
+        {
+            observations: [ observation(100, now + 1) ],
+            work: sampledWork
+        }
+    ], observedAt(now));
+    const invalidDurationIndex = mergeDurationHistoryIndex(null, [
+        {
+            observations: [ observation(Number.NaN, now) ],
+            work: sampledWork
+        }
+    ], observedAt(now));
 
     return {
         cold: selectDurationHistoryPlacement([ mixedUnit ], null, now),
         empty: selectDurationHistoryPlacement([], sampledIndex, now),
+        future: selectDurationHistoryPlacement([ unit('future', [ sampledWork ]) ], futureIndex, now),
+        invalidDuration: selectDurationHistoryPlacement(
+            [ unit('invalid-duration', [ sampledWork ]) ],
+            invalidDurationIndex,
+            now
+        ),
         mixedUnit,
         partial: selectDurationHistoryPlacement([ mixedUnit ], sampledIndex, now),
         stale: selectDurationHistoryPlacement([ unit('sampled', [ sampledWork ]) ], staleIndex, now)
@@ -397,6 +417,8 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(scenarios.cold.facts, null);
                 scope.assert.equal(scenarios.cold.unitDuration, null);
                 scope.assert.equal(scenarios.empty.facts, null);
+                scope.assert.equal(scenarios.future.facts, null);
+                scope.assert.equal(scenarios.invalidDuration.facts, null);
                 scope.assert.equal(scenarios.stale.facts, null);
 
                 return scope.assert.collect();

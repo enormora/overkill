@@ -19,7 +19,8 @@ import {
 } from './worker-pool-runtime.ts';
 import {
     collectedRunCaseEntriesFromWorkUnits,
-    createWorkerPoolPlacementPlan
+    createWorkerPoolPlacementPlan,
+    createWorkerPoolPlacementResolution
 } from './worker-pool-placement-planning.ts';
 import {
     workUnitsFromCollectedPlan
@@ -491,6 +492,25 @@ export const testNode = createOverkillSuite({
                         workerLifecycle: 'reuse'
                     }),
                     expectedPlacementPlan()
+                );
+                scope.assert.deepEqual(
+                    createWorkerPoolPlacementResolution({
+                        assignmentPolicy: 'duration-history-balanced',
+                        availableParallelism: 3,
+                        durationHistoryIndex: null,
+                        fileSetForFile,
+                        nowMilliseconds: 0,
+                        order: 'plan',
+                        seed: { value: 1n },
+                        selectedPlan: collectedPlan,
+                        scheduling: 'concurrent',
+                        workDistribution: { mode: 'file' },
+                        workerLifecycle: 'reuse'
+                    }),
+                    {
+                        durationHistory: null,
+                        placementPlan: expectedPlacementPlan()
+                    }
                 );
                 scope.assert.throws(function readLocalPlan() {
                     workerPoolCollectedPlan(localRun);
