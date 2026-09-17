@@ -3,8 +3,8 @@ import type {
     AnyResourceDefinition,
     ResourceContext,
     ResourceSession,
-    RuntimeContext,
     RuntimeGraph,
+    RuntimeGraphContext,
     RuntimeResourceMap
 } from '../resources/resources.entry-point.ts';
 import {
@@ -58,7 +58,7 @@ describe('@overkill-dev/run/resource-lifecycle', function () {
 
     test('exposes scoped context projection', function () {
         expect(resourceContextForStep(resources, resourceHandles)).type.toBe<ResourceContext<RuntimeResourceMap>>();
-        expect(runtimeContextForStep(runtime, session)).type.toBe<RuntimeContext<RuntimeGraph>>();
+        expect(runtimeContextForStep(runtime, session)).type.toBe<RuntimeGraphContext<RuntimeGraph>>();
     });
 
     test('exposes lifecycle error wrapping', function () {

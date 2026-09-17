@@ -8,6 +8,10 @@ import {
 
 type ResourceRequirementSummary = Readonly<Record<string, unknown>>;
 type ResourceSummary = CollectedRunCase['resourceAttachments']['resourceGraph'][number];
+type RuntimeSummary = CollectedRunCase['resourceAttachments']['runtimeGraphs'][number];
+type RequirementSource = {
+    readonly name: string;
+};
 type ConstraintSets = {
     readonly affinityKeys: ReadonlySet<string>;
     readonly faultDomains: ReadonlySet<string>;
@@ -16,7 +20,7 @@ type ConstraintSets = {
 };
 type RequirementApplicator = (
     sets: ConstraintSets,
-    resource: ResourceSummary,
+    source: RequirementSource,
     requirement: ResourceRequirementSummary
 ) => ConstraintSets;
 
@@ -94,25 +98,25 @@ function emptyConstraintSets(): ConstraintSets {
     };
 }
 
-function applySerialRequirement(sets: ConstraintSets, resource: ResourceSummary): ConstraintSets {
-    return { ...sets, serialKeys: new Set([ ...sets.serialKeys, `serial:${resource.name}` ]) };
+function applySerialRequirement(sets: ConstraintSets, source: RequirementSource): ConstraintSets {
+    return { ...sets, serialKeys: new Set([ ...sets.serialKeys, `serial:${source.name}` ]) };
 }
 
 function applyExclusiveResourceRequirement(
     sets: ConstraintSets,
-    _resource: ResourceSummary,
+    _source: RequirementSource,
     requirement: ResourceRequirementSummary
 ): ConstraintSets {
     return { ...sets, serialKeys: withOptionalValue(sets.serialKeys, stringRequirementValue(requirement, 'name')) };
 }
 
-function applySingleWorkerRequirement(sets: ConstraintSets, resource: ResourceSummary): ConstraintSets {
-    return { ...sets, singleWorkerKeys: new Set([ ...sets.singleWorkerKeys, `single-worker:${resource.name}` ]) };
+function applySingleWorkerRequirement(sets: ConstraintSets, source: RequirementSource): ConstraintSets {
+    return { ...sets, singleWorkerKeys: new Set([ ...sets.singleWorkerKeys, `single-worker:${source.name}` ]) };
 }
 
 function applyAffinityRequirement(
     sets: ConstraintSets,
-    _resource: ResourceSummary,
+    _source: RequirementSource,
     requirement: ResourceRequirementSummary
 ): ConstraintSets {
     return {
@@ -123,7 +127,7 @@ function applyAffinityRequirement(
 
 function applyFaultDomainRequirement(
     sets: ConstraintSets,
-    _resource: ResourceSummary,
+    _source: RequirementSource,
     requirement: ResourceRequirementSummary
 ): ConstraintSets {
     return {
@@ -142,13 +146,13 @@ const requirementApplicators: Readonly<Record<string, RequirementApplicator>> = 
 
 function applyRequirement(
     sets: ConstraintSets,
-    resource: ResourceSummary,
+    source: RequirementSource,
     requirement: ResourceRequirementSummary
 ): ConstraintSets {
     const kind = stringRequirementValue(requirement, 'kind');
     const apply = kind === null ? undefined : requirementApplicators[kind];
 
-    return apply === undefined ? sets : apply(sets, resource, requirement);
+    return apply === undefined ? sets : apply(sets, source, requirement);
 }
 
 function requirementCapacityWeight(requirement: ResourceRequirementSummary): number {
@@ -174,17 +178,50 @@ function resourceConstraintSets(
     });
 }
 
+function runtimeRequirementSource(runtime: RuntimeSummary): RequirementSource {
+    return { name: `runtime:${runtime.name}` };
+}
+
+function runtimeRequirements(runtime: RuntimeSummary): readonly ResourceRequirementSummary[] {
+    return runtime.kind === 'runtime-matrix'
+        ? runtime.variants.flatMap(function variantRequirements(variant) {
+            return variant.runtime.requirements;
+        })
+        : runtime.requirements;
+}
+
+function runtimeConstraintSets(runtime: RuntimeSummary, sets: ConstraintSets): ConstraintSets {
+    return runtimeRequirements(runtime).reduce<ConstraintSets>(function applyRuntimeRequirement(nextSets, requirement) {
+        return applyRequirement(nextSets, runtimeRequirementSource(runtime), requirement);
+    }, sets);
+}
+
+function runtimeCapacityWeight(runtime: RuntimeSummary): number {
+    return runtimeRequirements(runtime).reduce(function addRuntimeRequirementWeight(total, requirement) {
+        return total + requirementCapacityWeight(requirement);
+    }, 0);
+}
+
 function caseResourceConstraints(testCase: CollectedRunCase, file: string): WorkUnitResourceConstraints {
-    const sets = testCase.resourceAttachments.resourceGraph.reduce(function applyResource(nextSets, resource) {
+    const resourceSets = testCase.resourceAttachments.resourceGraph.reduce(function applyResource(nextSets, resource) {
         return resourceConstraintSets(resource, testCase, file, nextSets);
     }, emptyConstraintSets());
-    const capacityWeight = testCase.resourceAttachments.resourceGraph.reduce(
+    const sets = testCase.resourceAttachments.runtimeGraphs.reduce(function applyRuntime(nextSets, runtime) {
+        return runtimeConstraintSets(runtime, nextSets);
+    }, resourceSets);
+    const resourceCapacityWeight = testCase.resourceAttachments.resourceGraph.reduce(
         function addCapacityWeight(total, resource) {
             return total + resource.requirements.reduce(function addRequirementWeight(resourceTotal, requirement) {
                 return resourceTotal + requirementCapacityWeight(requirement);
             }, 0);
         },
         emptyWorkUnitResourceConstraints.capacityWeight
+    );
+    const capacityWeight = testCase.resourceAttachments.runtimeGraphs.reduce(
+        function addRuntimeWeight(total, runtime) {
+            return total + runtimeCapacityWeight(runtime);
+        },
+        resourceCapacityWeight
     );
 
     return {

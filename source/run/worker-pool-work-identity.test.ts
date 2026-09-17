@@ -61,7 +61,7 @@ function collectedCaseWithWorkload(): CollectedRunPlan['files'][number]['cases']
         ...collectedCase(firstCaseId()),
         workId: {
             case: firstCaseId(),
-            runtime: null,
+            runtimes: [],
             workload: {
                 name: 'browser',
                 params: { channel: 'stable' }
@@ -115,7 +115,7 @@ export const testNode = createOverkillSuite({
                     name: 'browser',
                     params: { channel: 'stable' }
                 };
-                const work = { case: firstCaseId(), runtime: null, workload };
+                const work = { case: firstCaseId(), runtimes: [], workload };
 
                 scope.assert.deepEqual(
                     workUnitsFromCollectedPlan(planningInput(
@@ -129,17 +129,17 @@ export const testNode = createOverkillSuite({
                     [
                         {
                             group: null,
-                            id: { key: firstPath, mode: 'file', runtime: null, workload: null },
+                            id: { key: firstPath, mode: 'file', runtimes: [], workload: null },
                             ...defaultUnitPolicy,
                             resourceConstraints: emptyWorkUnitResourceConstraints,
-                            work: [ { case: firstCaseId(), runtime: null, workload: null } ]
+                            work: [ { case: firstCaseId(), runtimes: [], workload: null } ]
                         },
                         {
                             group: null,
-                            id: { key: secondPath, mode: 'file', runtime: null, workload: null },
+                            id: { key: secondPath, mode: 'file', runtimes: [], workload: null },
                             ...defaultUnitPolicy,
                             resourceConstraints: emptyWorkUnitResourceConstraints,
-                            work: [ { case: secondCaseId(), runtime: null, workload: null } ]
+                            work: [ { case: secondCaseId(), runtimes: [], workload: null } ]
                         }
                     ]
                 );
@@ -152,7 +152,7 @@ export const testNode = createOverkillSuite({
                     )),
                     [ {
                         group: null,
-                        id: { key: firstPath, mode: 'file', runtime: null, workload },
+                        id: { key: firstPath, mode: 'file', runtimes: [], workload },
                         ...defaultUnitPolicy,
                         resourceConstraints: emptyWorkUnitResourceConstraints,
                         work: [ work ]

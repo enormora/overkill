@@ -6,6 +6,7 @@ import {
 import type { RuntimeResourceMap } from './resource-definition-shape.ts';
 
 const runtimeMatrixDefinitionBrand: unique symbol = Symbol('overkill.runtimeMatrixDefinition');
+const composedRuntimeGraphBrand: unique symbol = Symbol('overkill.composedRuntimeGraph');
 
 type RuntimeMatrixVariantValue<
     Shared,
@@ -62,7 +63,24 @@ export type RuntimeMatrixDefinition<
     readonly [runtimeMatrixDefinitionBrand]: true;
 };
 
-export type RuntimeGraph = RuntimeDefinition | RuntimeMatrixDefinition;
+export type RuntimeGraphLeaf = RuntimeDefinition | RuntimeMatrixDefinition;
+
+export type ComposedRuntimeGraph<
+    Runtimes extends readonly RuntimeGraphLeaf[] = readonly RuntimeGraphLeaf[]
+> = {
+    readonly kind: 'composed-runtimes';
+    readonly runtimes: Runtimes;
+    readonly [composedRuntimeGraphBrand]: true;
+};
+
+export type RuntimeGraph = ComposedRuntimeGraph | RuntimeGraphLeaf;
+
+type FlattenRuntimeGraph<Graph extends RuntimeGraph> = Graph extends ComposedRuntimeGraph<infer Runtimes>
+    ? Runtimes[number]
+    : Extract<Graph, RuntimeGraphLeaf>;
+type FlattenRuntimeGraphs<Graphs extends readonly RuntimeGraph[]> = {
+    readonly [Key in keyof Graphs]: FlattenRuntimeGraph<Graphs[Key]>;
+};
 
 export type RuntimeMatrixDefinitionInput<
     Name extends string,
@@ -295,4 +313,57 @@ export function isDefinedRuntimeMatrix(runtime: unknown): runtime is RuntimeMatr
     return typeof runtime === 'object' &&
         runtime !== null &&
         Reflect.get(runtime, runtimeMatrixDefinitionBrand) === true;
+}
+
+export function runtimeGraphLeaves(runtime: RuntimeGraph): readonly RuntimeGraphLeaf[] {
+    return runtime.kind === 'composed-runtimes' ? runtime.runtimes : [ runtime ];
+}
+
+function duplicateRuntimeName(name: string): TypeError {
+    return new TypeError(`Runtime scope "${name}" is attached multiple times.`);
+}
+
+function assertUniqueRuntimeNames(runtimes: readonly RuntimeGraphLeaf[]): void {
+    const names = new Set<string>();
+
+    for (const runtime of runtimes) {
+        if (names.has(runtime.name)) {
+            throw duplicateRuntimeName(runtime.name);
+        }
+
+        names.add(runtime.name);
+    }
+}
+
+function flattenRuntimeGraphs(runtimes: readonly RuntimeGraph[]): readonly RuntimeGraphLeaf[] {
+    return runtimes.flatMap(runtimeGraphLeaves);
+}
+
+export function composeRuntimes<
+    const Runtimes extends readonly [RuntimeGraph, ...RuntimeGraph[]]
+>(
+    ...runtimes: Runtimes
+): ComposedRuntimeGraph<FlattenRuntimeGraphs<Runtimes>>;
+export function composeRuntimes(
+    ...runtimes: readonly RuntimeGraph[]
+): ComposedRuntimeGraph {
+    if (runtimes.length === 0) {
+        throw new TypeError('composeRuntimes() requires at least one runtime graph.');
+    }
+
+    const flattened = flattenRuntimeGraphs(runtimes);
+
+    assertUniqueRuntimeNames(flattened);
+
+    return Object.freeze({
+        kind: 'composed-runtimes',
+        runtimes: Object.freeze(Array.from(flattened)),
+        [composedRuntimeGraphBrand]: true as const
+    });
+}
+
+export function isComposedRuntimeGraph(runtime: unknown): runtime is ComposedRuntimeGraph {
+    return typeof runtime === 'object' &&
+        runtime !== null &&
+        Reflect.get(runtime, composedRuntimeGraphBrand) === true;
 }

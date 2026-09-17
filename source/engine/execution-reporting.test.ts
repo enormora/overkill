@@ -339,7 +339,7 @@ export const testNode = createOverkillSuite({
                             suitePath: [],
                             workId: {
                                 case: { file: null, title: 'passes', params: null, suite: [] },
-                                runtime: null,
+                                runtimes: [],
                                 workload: null
                             }
                         },
@@ -355,7 +355,7 @@ export const testNode = createOverkillSuite({
                             wallTimeMs: 0,
                             workId: {
                                 case: { file: null, title: 'passes', params: null, suite: [] },
-                                runtime: null,
+                                runtimes: [],
                                 workload: null
                             }
                         },

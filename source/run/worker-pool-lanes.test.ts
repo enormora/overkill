@@ -24,20 +24,20 @@ function workUnitWithConstraints(
 ): WorkUnit {
     return {
         group: null,
-        id: { key, mode: 'file', runtime: null, workload: null },
+        id: { key, mode: 'file', runtimes: [], workload: null },
         order: 'plan',
         resourceConstraints,
         scheduling: 'concurrent',
         work: [
             {
                 case: { file: key, params: null, suite: [], title: key },
-                runtime: null,
+                runtimes: [],
                 workload: null
             },
             ...Array.from({ length: caseCount - 1 }, function toWork(_value, index) {
                 return {
                     case: { file: key, params: null, suite: [], title: `${key}-${index + 2}` },
-                    runtime: null,
+                    runtimes: [],
                     workload: null
                 };
             })

@@ -5,6 +5,7 @@ import { testNode as resourceLifecycleTestNode } from '../../resources/resource-
 import {
     testNode as resourceLifecycleCompositionTestNode
 } from '../../run/resource-lifecycle-composition.test.ts';
+import { testNode as runtimeCompositionTestNode } from '../../resources/runtime-composition.test.ts';
 import { testNode as resourcesTestNode } from '../../resources/resources.test.ts';
 
 export const testNode = createSuite({
@@ -17,6 +18,7 @@ export const testNode = createSuite({
         resourceLifecycleDisposalTestNode,
         resourceLifecycleTestNode,
         resourceLifecycleCompositionTestNode,
+        runtimeCompositionTestNode,
         resourcesTestNode
     ]
 });

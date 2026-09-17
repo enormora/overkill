@@ -67,7 +67,7 @@ function workId(title: string): WorkId {
             suite: [ 'api' ],
             title
         },
-        runtime: null,
+        runtimes: [],
         workload: null
     };
 }
@@ -154,7 +154,7 @@ export const testNode = createOverkillSuite({
                                 suite: [ 'api' ],
                                 title: 'first'
                             },
-                            runtime: null,
+                            runtimes: [],
                             workload: null
                         }
                     ], collectedPlan([ collectedCase('first', []) ])),

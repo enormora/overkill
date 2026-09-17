@@ -23,7 +23,7 @@ export type WorkloadId = {
 
 export type WorkId = {
     readonly case: CaseId;
-    readonly runtime: RuntimeId | null;
+    readonly runtimes: readonly RuntimeId[];
     readonly workload: WorkloadId | null;
 };
 
@@ -51,16 +51,16 @@ function orderedRecordEntries(record: Readonly<Record<string, string>>): readonl
     });
 }
 
-function runtimeIdentityShape(runtime: RuntimeId | null): unknown {
-    if (runtime === null) {
-        return null;
-    }
-
+function runtimeIdentityShape(runtime: RuntimeId): unknown {
     return [
         runtime.name,
         runtime.variantId,
         orderedRecordEntries(runtime.dimensions)
     ];
+}
+
+function runtimeIdentitiesShape(runtimes: readonly RuntimeId[]): unknown {
+    return runtimes.map(runtimeIdentityShape);
 }
 
 function workloadIdentityShape(workload: WorkloadId | null): unknown {
@@ -74,18 +74,22 @@ function workloadIdentityShape(workload: WorkloadId | null): unknown {
     ];
 }
 
-export function runtimeIdentityKey(runtime: RuntimeId | null): string {
+export function runtimeIdentityKey(runtime: RuntimeId): string {
     return JSON.stringify(runtimeIdentityShape(runtime));
 }
 
+export function runtimeIdentitiesKey(runtimes: readonly RuntimeId[]): string {
+    return JSON.stringify(runtimeIdentitiesShape(runtimes));
+}
+
 export function workIdentityKey(work: WorkId): string {
-    if (work.runtime === null && work.workload === null) {
+    if (work.runtimes.length === 0 && work.workload === null) {
         return caseIdentityKey(work.case);
     }
 
     return JSON.stringify([
         caseIdentityKey(work.case),
-        runtimeIdentityShape(work.runtime),
+        runtimeIdentitiesShape(work.runtimes),
         workloadIdentityShape(work.workload)
     ]);
 }
@@ -93,7 +97,7 @@ export function workIdentityKey(work: WorkId): string {
 export function createDefaultWorkId(testCase: CaseId): WorkId {
     return {
         case: testCase,
-        runtime: null,
+        runtimes: [],
         workload: null
     };
 }

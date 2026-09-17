@@ -18,9 +18,8 @@ import type {
     ResourceContext,
     ResourceMap,
     RuntimeGraph,
-    RuntimeGraphContext,
-    RuntimeMatrixDefinition,
-    RuntimeScopeContext
+    RuntimeGraphLeaf,
+    RuntimeMatrixDefinition
 } from '../resources/resources.entry-point.ts';
 import {
     resourceContextForStep,
@@ -40,6 +39,7 @@ import {
     type ResourceWrapperScopeStep,
     type ResourceWrapperStep
 } from './resource-wrapper-data.ts';
+import { composeRuntimeScope } from './resource-wrapper-runtime-scope.ts';
 import type {
     acquireComposedResources as acquireComposedResourcesFunction,
     disposeComposedResources as disposeComposedResourcesFunction
@@ -53,13 +53,6 @@ type ResourceWrapperSessionModule = {
     readonly acquireComposedResources: typeof acquireComposedResourcesFunction;
     readonly disposeComposedResources: typeof disposeComposedResourcesFunction;
 };
-type RuntimeTestScope<
-    Graph extends RuntimeGraph,
-    Scope extends TestScope = TestScope
-> = Scope & {
-    readonly runtimes: RuntimeScopeContext<Graph>;
-};
-
 type ResourceTestScope<
     Resources extends ResourceMap,
     Scope extends TestScope = TestScope
@@ -197,7 +190,7 @@ function resourceAttachmentSummary(entry: ResourceEntry): TestBodyDirectResource
 }
 
 function runtimeVariantEntries(
-    runtimeGraph: RuntimeGraph
+    runtimeGraph: RuntimeGraphLeaf
 ): readonly { readonly id: string; readonly runtime: RuntimeMatrixDefinition['variants'][string]['runtime']; }[] {
     return runtimeGraph.kind === 'runtime-matrix'
         ? Object.values(runtimeGraph.variants)
@@ -222,6 +215,10 @@ function leafRuntimeSummary(
 }
 
 function runtimeSummary(runtimeGraph: RuntimeGraph): TestBodyRuntimeSummary {
+    if (runtimeGraph.kind === 'composed-runtimes') {
+        throw new TypeError('Composed runtime graphs must be flattened before summary creation.');
+    }
+
     if (runtimeGraph.kind === 'runtime-matrix') {
         const [ firstVariant ] = Object.values(runtimeGraph.variants);
 
@@ -256,6 +253,10 @@ function buildAttachments(
     }
 
     for (const runtimeGraph of runtimeGraphEntries) {
+        if (runtimeGraph.kind === 'composed-runtimes') {
+            throw new TypeError('Composed runtime graphs must be flattened before resource graph collection.');
+        }
+
         for (const variant of runtimeVariantEntries(runtimeGraph)) {
             for (const [ , resource ] of entries(variant.runtime.resources)) {
                 graphCollector.visit(resource, [ resource.name ]);
@@ -322,20 +323,6 @@ function isScopeMapResult(value: unknown): value is Readonly<Record<string, unkn
     return isResourceScopeInput(value) && typeof Reflect.get(value, 'then') !== 'function';
 }
 
-function isRuntimeTestScope<
-    Graph extends RuntimeGraph,
-    Scope extends TestScope
->(value: unknown, runtimeGraph: Graph): value is RuntimeTestScope<Graph, Scope> {
-    if (!isResourceScopeInput(value)) {
-        return false;
-    }
-
-    const runtimes: unknown = Object.hasOwn(value, 'runtimes') ? Reflect.get(value, 'runtimes') : {};
-
-    return isResourceScopeInput(runtimes) &&
-        Reflect.get(runtimes, runtimeGraph.name) !== undefined;
-}
-
 function isResourceTestScope<
     Resources extends ResourceMap,
     Scope extends TestScope
@@ -384,39 +371,6 @@ function composeResourceContext<
     }
 
     throw resourceWrapperLifecycleError('Resource scope composition failed.', handles);
-}
-
-function composeRuntimeScope<
-    Graph extends RuntimeGraph,
-    Scope extends TestScope
->(
-    scope: Scope,
-    runtimeGraph: Graph,
-    handles: RuntimeGraphContext<Graph>
-): RuntimeTestScope<Graph, Scope> {
-    const runtimes: unknown = Object.hasOwn(scope, 'runtimes') ? Reflect.get(scope, 'runtimes') : {};
-
-    if (!isResourceScopeInput(runtimes)) {
-        throw resourceWrapperLifecycleError('Runtime scope composition failed.', runtimes);
-    }
-
-    if (Object.hasOwn(runtimes, runtimeGraph.name)) {
-        throw resourceWrapperLifecycleError(`Runtime scope "${runtimeGraph.name}" already exists.`, handles);
-    }
-
-    const composed = Object.freeze({
-        ...scope,
-        runtimes: Object.freeze({
-            ...runtimes,
-            [runtimeGraph.name]: handles
-        })
-    });
-
-    if (isRuntimeTestScope<Graph, Scope>(composed, runtimeGraph)) {
-        return composed;
-    }
-
-    throw resourceWrapperLifecycleError('Runtime scope composition failed.', handles);
 }
 
 function composeMappedScope(

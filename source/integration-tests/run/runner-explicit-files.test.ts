@@ -335,12 +335,7 @@ export const testNode = createSuite({
             async body(scope: TestScope) {
                 const events = await runSchedulingScenario('in-process', 'concurrent');
 
-                scope.assert.deepEqual(events, [
-                    'start:delayed',
-                    'start:immediate',
-                    'end:immediate',
-                    'end:delayed'
-                ]);
+                assertConcurrentSchedulingEvents(scope, events);
 
                 return scope.assert.collect();
             }

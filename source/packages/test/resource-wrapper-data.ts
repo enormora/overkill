@@ -1,5 +1,6 @@
 import {
     isDefinedRuntimeGraph,
+    runtimeGraphLeaves,
     type AnyResourceDefinition,
     type ResourceMap,
     type RuntimeGraph
@@ -126,7 +127,7 @@ export function resourceWrapperSteps(actions: readonly ResourceWrapperAction[]):
 
 export function stepRuntimeGraphs(actions: readonly ResourceWrapperAction[]): readonly RuntimeGraph[] {
     return actions.flatMap(function actionRuntimeGraph(action) {
-        return action.kind === 'runtime' ? [ action.runtime ] : [];
+        return action.kind === 'runtime' ? runtimeGraphLeaves(action.runtime) : [];
     });
 }
 

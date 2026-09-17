@@ -267,7 +267,7 @@ describe('@overkill-dev/run', function () {
     });
 
     test('exposes work-unit planning types', function () {
-        expect<WorkId['runtime']>().type.toBe<RuntimeId | null>();
+        expect<WorkId['runtimes']>().type.toBe<readonly RuntimeId[]>();
         expect<WorkId['workload']>().type.toBe<WorkloadId | null>();
         expect<WorkUnit['work']>().type.toBe<readonly [WorkId, ...readonly WorkId[]]>();
         expect<WorkUnit['id']['mode']>().type.toBe<WorkUnitMode>();

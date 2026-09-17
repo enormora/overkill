@@ -20,6 +20,8 @@ function testCaseWithRuntimeGraphs(runtimeGraphs: TestPlanCase['resourceAttachme
                 { dependencies: [], name: 'scratch-root', requirements: [], scope: 'per-case' },
                 { dependencies: [], name: 'database-26', requirements: [], scope: 'per-case' },
                 { dependencies: [], name: 'database-27', requirements: [], scope: 'per-case' },
+                { dependencies: [], name: 'browser-chromium', requirements: [], scope: 'per-case' },
+                { dependencies: [], name: 'browser-firefox', requirements: [], scope: 'per-case' },
                 { dependencies: [ 'remote-sidecar' ], name: 'sidecar', requirements: [], scope: 'per-case' },
                 { dependencies: [], name: 'unused', requirements: [], scope: 'per-case' }
             ],
@@ -75,6 +77,36 @@ function matrixRuntimeGraph(name: string): TestPlanCase['resourceAttachments']['
     };
 }
 
+function browserRuntimeGraph(): TestPlanCase['resourceAttachments']['runtimeGraphs'][number] {
+    return {
+        kind: 'runtime-matrix',
+        name: 'browser',
+        resources: [ { key: 'page', resourceName: 'browser-chromium' } ],
+        variants: [
+            {
+                id: 'chromium',
+                runtime: {
+                    dimensions: { engine: 'chromium' },
+                    kind: 'runtime',
+                    name: 'chromium',
+                    requirements: [],
+                    resources: [ { key: 'page', resourceName: 'browser-chromium' } ]
+                }
+            },
+            {
+                id: 'firefox',
+                runtime: {
+                    dimensions: { engine: 'firefox' },
+                    kind: 'runtime',
+                    name: 'firefox',
+                    requirements: [],
+                    resources: [ { key: 'page', resourceName: 'browser-firefox' } ]
+                }
+            }
+        ]
+    };
+}
+
 function sidecarRuntimeGraph(): TestPlanCase['resourceAttachments']['runtimeGraphs'][number] {
     return {
         dimensions: { service: 'sidecar' },
@@ -104,9 +136,11 @@ export const testNode = createSuite({
                 scope.assert.equal(expanded.cases.length, 2);
                 scope.assert.deepEqual(
                     expanded.cases.map(function variantId(testCase) {
-                        return testCase.workId.runtime?.variantId;
+                        return testCase.workId.runtimes.map(function runtime(runtimeId) {
+                            return runtimeId.variantId;
+                        });
                     }),
-                    [ 'node-26', 'node-27' ]
+                    [ [ 'node-26', null ], [ 'node-27', null ] ]
                 );
                 scope.assert.deepEqual(
                     expanded.cases.map(function resourceNames(testCase) {
@@ -121,9 +155,11 @@ export const testNode = createSuite({
                 );
                 scope.assert.deepEqual(
                     expanded.discoveredCases.map(function variantId(testCase) {
-                        return testCase.workId.runtime?.variantId;
+                        return testCase.workId.runtimes.map(function runtime(runtimeId) {
+                            return runtimeId.variantId;
+                        });
                     }),
-                    [ 'node-26', 'node-27' ]
+                    [ [ 'node-26', null ], [ 'node-27', null ] ]
                 );
                 scope.assert.deepEqual(
                     expanded.cases.map(function runtimeResources(testCase) {
@@ -158,19 +194,86 @@ export const testNode = createSuite({
         }),
         createTestCase({
             definitionLocations: [ definitionLocation ],
-            title: 'rejects multiple matrices until runtime composition owns cartesian expansion',
+            title: 'expands leaf runtimes into fixed work identities',
             annotations: {},
             controls: {},
             body(scope: TestScope) {
-                scope.assert.throws(function expandMultipleMatrices() {
-                    expandRuntimeMatrices(testPlan(testCaseWithRuntimeGraphs([
-                        matrixRuntimeGraph('node'),
-                        matrixRuntimeGraph('browser')
-                    ])));
-                }, {
-                    message:
-                        'Multiple runtime matrices on one test case require runtime composition, which is not implemented yet.'
-                });
+                const expanded = expandRuntimeMatrices(testPlan(testCaseWithRuntimeGraphs([ sidecarRuntimeGraph() ])));
+                const firstCase = expanded.cases[0];
+
+                scope.assert.equal(expanded.cases.length, 1);
+                scope.require.defined(firstCase);
+                scope.assert.deepEqual(firstCase.workId.runtimes, [
+                    {
+                        dimensions: { service: 'sidecar' },
+                        name: 'sidecar',
+                        variantId: null
+                    }
+                ]);
+                scope.assert.deepEqual(
+                    firstCase.resourceAttachments.resourceGraph.map(function resourceName(resource) {
+                        return resource.name;
+                    }),
+                    [ 'scratch', 'scratch-root', 'sidecar' ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ definitionLocation ],
+            title: 'expands multiple matrices as a cartesian product',
+            annotations: {},
+            controls: {},
+            body(scope: TestScope) {
+                const expanded = expandRuntimeMatrices(testPlan(testCaseWithRuntimeGraphs([
+                    browserRuntimeGraph(),
+                    matrixRuntimeGraph('node')
+                ])));
+
+                scope.assert.equal(expanded.cases.length, 4);
+                scope.assert.deepEqual(
+                    expanded.cases.map(function runtimeVariants(testCase) {
+                        return testCase.workId.runtimes.map(function runtime(runtimeId) {
+                            return [ runtimeId.name, runtimeId.variantId ];
+                        });
+                    }),
+                    [
+                        [ [ 'browser', 'chromium' ], [ 'node', 'node-26' ] ],
+                        [ [ 'browser', 'chromium' ], [ 'node', 'node-27' ] ],
+                        [ [ 'browser', 'firefox' ], [ 'node', 'node-26' ] ],
+                        [ [ 'browser', 'firefox' ], [ 'node', 'node-27' ] ]
+                    ]
+                );
+                scope.assert.deepEqual(
+                    expanded.cases.map(function resourceNames(testCase) {
+                        return testCase.resourceAttachments.resourceGraph.map(function resourceName(resource) {
+                            return resource.name;
+                        });
+                    }),
+                    [
+                        [ 'scratch', 'scratch-root', 'database-26', 'browser-chromium' ],
+                        [ 'scratch', 'scratch-root', 'database-27', 'browser-chromium' ],
+                        [ 'scratch', 'scratch-root', 'database-26', 'browser-firefox' ],
+                        [ 'scratch', 'scratch-root', 'database-27', 'browser-firefox' ]
+                    ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ definitionLocation ],
+            title: 'expands separate matrix wrappers as a cartesian product',
+            annotations: {},
+            controls: {},
+            body(scope: TestScope) {
+                const expanded = expandRuntimeMatrices(testPlan(testCaseWithRuntimeGraphs([
+                    matrixRuntimeGraph('node'),
+                    browserRuntimeGraph()
+                ])));
+
+                scope.assert.equal(expanded.cases.length, 4);
 
                 return scope.assert.collect();
             }

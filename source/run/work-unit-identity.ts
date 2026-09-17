@@ -1,7 +1,7 @@
 import {
     createCaseId,
     createDefaultWorkId,
-    runtimeIdentityKey,
+    runtimeIdentitiesKey,
     workIdentityKey,
     type WorkId,
     type WorkloadId
@@ -32,7 +32,11 @@ function workloadIdentityKey(workload: WorkloadId | null): string {
 }
 
 function executionBucketKey(work: WorkId): string {
-    return JSON.stringify([ runtimeIdentityKey(work.runtime), workloadIdentityKey(work.workload) ]);
+    return JSON.stringify([ runtimeIdentitiesKey(work.runtimes), workloadIdentityKey(work.workload) ]);
+}
+
+function workUnitRuntimes(work: WorkId): readonly WorkId['runtimes'][number][] {
+    return Array.from(work.runtimes);
 }
 
 export function groupedExecutionBuckets(work: readonly WorkId[]): readonly NonEmptyReadonlyArray<WorkId>[] {
@@ -51,7 +55,7 @@ export function fileWorkUnitId(file: string, work: WorkId): WorkUnitId {
     return {
         key: file,
         mode: 'file',
-        runtime: work.runtime,
+        runtimes: workUnitRuntimes(work),
         workload: work.workload
     };
 }
@@ -60,7 +64,7 @@ export function caseWorkUnitId(work: WorkId): WorkUnitId {
     return {
         key: workIdentityKey(work),
         mode: 'case',
-        runtime: work.runtime,
+        runtimes: workUnitRuntimes(work),
         workload: work.workload
     };
 }
@@ -69,7 +73,7 @@ export function groupWorkUnitId(group: RunWorkGroup, work: WorkId): WorkUnitId {
     return {
         key: group.name,
         mode: 'group',
-        runtime: work.runtime,
+        runtimes: workUnitRuntimes(work),
         workload: work.workload
     };
 }

@@ -102,10 +102,10 @@ Source: [Runtime Behavior](../architecture/runtime-behavior.md).
 
 ## WorkId
 
-The executable identity produced by combining a logical `CaseId` with a
-runtime and workload. A normal non-matrixed microtest has one `WorkId` for
-one `CaseId`; browser, runtime, scenario, and benchmark matrices can produce
-several `WorkId`s for the same `CaseId`.
+The executable identity produced by combining a logical `CaseId` with zero or
+more runtime identities and a workload. A normal non-matrixed microtest has one
+`WorkId` for one `CaseId`; browser, runtime, scenario, and benchmark matrices
+can produce several `WorkId`s for the same `CaseId`.
 
 Source: [Artifact Identity](../architecture/artifact-identity.md), [Runtime Behavior](../architecture/runtime-behavior.md).
 

@@ -122,7 +122,7 @@ function assertSkippedExecutionResult(scope: OverkillScope, result: RunResult): 
             verdict: 'skip',
             workId: {
                 case: skippedCaseId,
-                runtime: null,
+                runtimes: [],
                 workload: null
             }
         }

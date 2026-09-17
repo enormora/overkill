@@ -66,7 +66,7 @@ function expectedPassingFixtureCaseFact(): unknown {
         controls: serializeValue(expectedPassingFixtureControls()),
         fileSet: null,
         id,
-        workId: { case: expectedPassingFixtureCaseId(), runtime: null, workload: null }
+        workId: { case: expectedPassingFixtureCaseId(), runtimes: [], workload: null }
     };
 }
 
@@ -78,7 +78,7 @@ function expectedPassingFixtureLiveCaseFact(): unknown {
         controls: serializeValue(expectedPassingFixtureControls()),
         fileSet: null,
         id,
-        workId: { case: id, runtime: null, workload: null }
+        workId: { case: id, runtimes: [], workload: null }
     };
 }
 

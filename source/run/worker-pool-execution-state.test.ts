@@ -101,14 +101,14 @@ function firstWorkUnit(): WorkUnit {
         id: {
             key: integrationPath,
             mode: 'file',
-            runtime: null,
+            runtimes: [],
             workload: null
         },
         ...defaultUnitPolicy,
         work: [
             {
                 case: firstCaseId(),
-                runtime: null,
+                runtimes: [],
                 workload: null
             }
         ]
@@ -362,7 +362,7 @@ function emptyRunResult(perTest: readonly PerTestResult[]): RunResult {
 function passResult(): PerTestResult {
     const id = firstCaseId();
 
-    return { id, outcome: { kind: 'pass' }, verdict: 'pass', workId: { case: id, runtime: null, workload: null } };
+    return { id, outcome: { kind: 'pass' }, verdict: 'pass', workId: { case: id, runtimes: [], workload: null } };
 }
 
 function invalidOutputRuntime(recordRun: () => void): WorkerPoolRunRuntime {

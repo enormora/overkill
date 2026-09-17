@@ -478,7 +478,7 @@ const browserRuntime = defineRuntimeMatrix({
     }
 });
 
-const appBrowserRuntime = composeRuntimes([ appRuntime, browserRuntime ]);
+const appBrowserRuntime = composeRuntimes(appRuntime, browserRuntime);
 
 export const testNode = test(
     'renders the settings page',

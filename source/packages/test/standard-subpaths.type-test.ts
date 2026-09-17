@@ -43,6 +43,7 @@ import type {
 } from './reporters.entry-point.ts';
 import {
     composeRuntimeContext,
+    composeRuntimes,
     createTemporaryDirectoryResource,
     defineResource,
     defineRuntime,
@@ -124,6 +125,13 @@ const runtime = defineRuntime({
     resources: { database },
     requirements: []
 });
+const secondaryRuntime = defineRuntime({
+    name: 'secondary',
+    dimensions: {},
+    resources: { database },
+    requirements: []
+});
+const composedRuntime = composeRuntimes(runtime, secondaryRuntime);
 const temporaryDirectory = createTemporaryDirectoryResource('scratch');
 const projectedDatabase = defineResource({
     name: 'projected-database',
@@ -249,6 +257,16 @@ describe('@overkill-dev/test standard subpaths', function () {
             }))
                 .type
                 .toBe<ExpectedComposedRuntimeScope>();
+            expect(
+                composeRuntimeContext(testScope, composedRuntime, {
+                    api: { database: { url: 'postgres://localhost' } },
+                    secondary: { database: { url: 'postgres://localhost' } }
+                })
+                    .runtimes
+                    .secondary
+            )
+                .type
+                .toBe<DatabaseContext>();
         });
     });
 
