@@ -9,7 +9,7 @@ import type {
 import type { DiffPathSegment } from '../diff/diff-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import {
-    runStatusFromSummary,
+    runStatusFromPlan,
     type OrphanedNode,
     type RunResourceUsage,
     type RunnerError,
@@ -392,7 +392,11 @@ function buildRunStatus(
     summary: RunSummary,
     runnerErrors: readonly RunnerError[]
 ): RunResult['status'] {
-    return overrides.status ?? runStatusFromSummary(summary, runnerErrors);
+    return overrides.status ?? runStatusFromPlan(
+        summary,
+        runnerErrors,
+        overrides.planStatus ?? defaultRunResultValues.planStatus
+    );
 }
 
 function buildRunResult(overrides: RunResultOverrides = {}): RunResult {

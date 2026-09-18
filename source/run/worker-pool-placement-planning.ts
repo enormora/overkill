@@ -21,9 +21,7 @@ import {
 import {
     workUnitsFromCollectedPlan
 } from './work-unit-planning.ts';
-import {
-    type RunShardHasher
-} from './run-sharding.ts';
+import type { RunShardHasher } from './run-sharding.ts';
 import {
     workerPoolLanes,
     workerPoolPlacementAssignments
@@ -32,9 +30,9 @@ import {
 const coldStartMilliseconds = 0;
 
 type WorkerPoolPlacementShardInput = {
-    readonly shard: RunShard;
-    readonly shardHasher: RunShardHasher | null;
-} | Record<never, never>;
+    readonly shard?: RunShard;
+    readonly shardHasher?: RunShardHasher | null;
+};
 
 type WorkerPoolPlacementBaseInput = {
     readonly assignmentPolicy: RunWorkerPoolAssignmentPolicy;

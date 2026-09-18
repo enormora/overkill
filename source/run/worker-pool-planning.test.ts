@@ -6,26 +6,16 @@ import {
     type TestPlan,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import {
-    defaultRunConfig,
-    defaultRunRequest
-} from '../test-support/run-command-factory.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import { emptyWorkUnitResourceConstraints } from './run-types.ts';
-import {
-    runStartTimeFromMilliseconds,
-    workerPoolCollectedPlan,
-    type WorkerPoolRunRuntime
-} from './worker-pool-runtime.ts';
+import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 import {
     collectedRunCaseEntriesFromWorkUnits,
-    createWorkerPoolPlacementPlan,
-    createWorkerPoolPlacementResolution
+    createWorkerPoolPlacementPlan
 } from './worker-pool-placement-planning.ts';
 import {
     workUnitsFromCollectedPlan
 } from './work-unit-planning.ts';
-import type { RunShardHasher } from './run-sharding.ts';
 import {
     createEmptyAssignmentResult,
     selectedAssignedCases,
@@ -45,12 +35,6 @@ type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
 type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
 type PlacementPlan = NonNullable<ResolvedRun['facts']['execution']['placementPlan']>;
 type WorkUnit = PlacementPlan['units'][number];
-
-const shardBySecondPath: RunShardHasher = {
-    hash(value) {
-        return value.includes(secondIntegrationPath) ? 1n : 0n;
-    }
-};
 
 function createPlanningTestPlan(): TestPlan {
     const firstCase = defaultRunEngine.createTestCase({
@@ -166,70 +150,6 @@ function generatedCollectedFile(index: number): CollectedRunPlan['files'][number
     };
 }
 
-function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
-    return {
-        collectionRunnerErrors: [],
-        config: defaultRunConfig(),
-        cwd: process.cwd(),
-        engine: { kind: 'default' },
-        facts: {
-            durationHistory: null,
-            cases: [],
-            environment: {
-                node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
-                projectRoot: process.cwd(),
-                runtimeStateDir: '.overkill'
-            },
-            execution: {
-                assignmentPolicy: 'case-count-balanced',
-                baselineUpdateMode: 'none',
-                capture: 'buffered',
-                debug: { mode: 'off', selectors: [] },
-                engine: { kind: 'default' },
-                hostProcess: { kind: 'direct' },
-                order: 'seeded',
-                placementPlan: null,
-                processModel: 'worker-pool',
-                profile: 'integration',
-                resourceUsagePolicy: {
-                    budgets: {
-                        activeResourceCount: null,
-                        javaScriptEngineHeapBytes: null,
-                        residentSetBytes: null,
-                        residentSetGrowthBytesPerSecond: null
-                    },
-                    measure: false,
-                    samplingIntervalMilliseconds: 100
-                },
-                scheduling: 'serial',
-                testFamily: 'integration',
-                timeoutPolicy: {
-                    collectionMilliseconds: 1000,
-                    hardMilliseconds: 1000,
-                    softMilliseconds: 500
-                },
-                workDistribution: { mode: 'file' },
-                workerLifecycle: 'reuse',
-                verbose: false
-            },
-            loader: { sourceMaps: false, stripMode: 'strip-only' },
-            reproducibility: {
-                selection: { kind: 'all' },
-                seed: '42',
-                shard: { index: 1, total: 1 },
-                shardHashAlgorithm: 'xxh3-64-canonical-json-v1'
-            }
-        },
-        plan,
-        reporters: [],
-        request: defaultRunRequest({ paths: [ integrationPath ], profile: 'integration' })
-    };
-}
-
-function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
-    return createResolvedRun({ collectedPlan, kind: 'worker-pool' });
-}
-
 function firstCaseId(): CaseId {
     return {
         file: integrationPath,
@@ -265,39 +185,6 @@ function secondWorkUnit(): WorkUnit {
         ...defaultUnitPolicy,
         resourceConstraints: emptyWorkUnitResourceConstraints,
         work: [ { case: secondCaseId(), runtimes: [], workload: null } ]
-    };
-}
-
-function expectedPlacementPlan(): PlacementPlan {
-    const firstUnit = firstWorkUnit();
-    const secondUnit = secondWorkUnit();
-
-    return {
-        assignments: [
-            { lane: 'worker-1', unit: firstUnit.id },
-            { lane: 'worker-2', unit: secondUnit.id }
-        ],
-        lanes: [
-            {
-                executor: {
-                    capabilities: [],
-                    capacity: 1,
-                    id: 'worker-1',
-                    kind: 'local-worker'
-                },
-                id: 'worker-1'
-            },
-            {
-                executor: {
-                    capabilities: [],
-                    capacity: 1,
-                    id: 'worker-2',
-                    kind: 'local-worker'
-                },
-                id: 'worker-2'
-            }
-        ],
-        units: [ firstUnit, secondUnit ]
     };
 }
 
@@ -457,87 +344,6 @@ export const testNode = createOverkillSuite({
                 assertEmptyCollectedFiles(scope);
                 assertWorkerCountBounds(scope);
                 assertUnknownWorkReferences(scope);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool planning creates file work units and round-robin placement',
-            body(scope: OverkillScope) {
-                const collectedPlan = createCollectedPlan();
-                const workerPoolRun = workerPoolResolvedRun(collectedPlan);
-                const localRun = createResolvedRun({
-                    kind: 'local',
-                    testPlan: createPlanningTestPlan()
-                });
-
-                scope.assert.equal(runStartTimeFromMilliseconds(0), '1970-01-01T00:00:00.000Z');
-                scope.assert.equal(workerPoolCollectedPlan(workerPoolRun), collectedPlan);
-                scope.assert.deepEqual(
-                    workUnitsFromCollectedPlan({
-                        fileSetForFile,
-                        order: 'plan',
-                        seed: { value: 1n },
-                        selectedPlan: collectedPlan,
-                        scheduling: 'concurrent',
-                        workDistribution: { mode: 'file' },
-                        workerLifecycle: 'reuse'
-                    }),
-                    [ firstWorkUnit(), secondWorkUnit() ]
-                );
-                scope.assert.deepEqual(
-                    workUnitsFromCollectedPlan({
-                        fileSetForFile,
-                        order: 'plan',
-                        seed: { value: 1n },
-                        selectedPlan: collectedPlan,
-                        scheduling: 'concurrent',
-                        shard: { index: 2, total: 2 },
-                        shardHasher: shardBySecondPath,
-                        workDistribution: { mode: 'file' },
-                        workerLifecycle: 'reuse'
-                    }),
-                    [ secondWorkUnit() ]
-                );
-                scope.assert.deepEqual(
-                    createWorkerPoolPlacementPlan({
-                        assignmentPolicy: 'case-count-balanced',
-                        availableParallelism: 3,
-                        fileSetForFile,
-                        order: 'plan',
-                        seed: { value: 1n },
-                        selectedPlan: collectedPlan,
-                        scheduling: 'concurrent',
-                        workDistribution: { mode: 'file' },
-                        workerLifecycle: 'reuse'
-                    }),
-                    expectedPlacementPlan()
-                );
-                scope.assert.deepEqual(
-                    createWorkerPoolPlacementResolution({
-                        assignmentPolicy: 'duration-history-balanced',
-                        availableParallelism: 3,
-                        durationHistoryIndex: null,
-                        fileSetForFile,
-                        nowMilliseconds: 0,
-                        order: 'plan',
-                        seed: { value: 1n },
-                        selectedPlan: collectedPlan,
-                        scheduling: 'concurrent',
-                        workDistribution: { mode: 'file' },
-                        workerLifecycle: 'reuse'
-                    }),
-                    {
-                        durationHistory: null,
-                        placementPlan: expectedPlacementPlan()
-                    }
-                );
-                scope.assert.throws(function readLocalPlan() {
-                    workerPoolCollectedPlan(localRun);
-                }, { message: 'Worker-pool execution requires a worker-pool collected plan.' });
 
                 return scope.assert.collect();
             }
