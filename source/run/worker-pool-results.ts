@@ -121,7 +121,7 @@ export async function finishWorkerPoolRun(
         [ ...runtime.runState.artifacts(), ...allTaskArtifacts(completedTaskRuns), ...taskArtifacts(runtime) ]
     );
 
-    return await reportFinalResult(result, runtime);
+    return await reportFinalResult(await runtime.finalizeResult(result), runtime);
 }
 
 export async function createEmptyWorkerPoolResult(

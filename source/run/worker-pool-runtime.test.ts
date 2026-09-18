@@ -19,7 +19,7 @@ import {
     workerPoolExecutionFacts,
     type WorkerPoolRunRuntime
 } from './worker-pool-runtime.ts';
-import { createWorkerPoolPlacementPlan } from './work-unit-planning.ts';
+import { createWorkerPoolPlacementPlan } from './worker-pool-placement-planning.ts';
 
 type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
 type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
@@ -67,6 +67,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): Resolved
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            durationHistory: null,
             cases: [],
             environment: {
                 node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
@@ -159,6 +160,14 @@ export function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
         },
         createWorkerPool: createFakeWorkerPool,
         defaultEngine: defaultRunEngine,
+        durationHistoryStore: {
+            async read() {
+                return null;
+            },
+            async write() {
+                return undefined;
+            }
+        },
         discoverRunFilesWithProjectRoot: testOnlyDependency,
         execute: defaultRunEngine.execute,
         liveOutput: {
@@ -390,6 +399,9 @@ async function workerPoolRuntimeCreation(): Promise<{
         collectionRunnerErrors: [],
         createdPool: null,
         dependencies,
+        async finalizeResult(result) {
+            return result;
+        },
         resolvedRun: workerPoolResolvedRun({ ...createCollectedPlan(), files: [] }),
         runState: createSupervisedRunState()
     });
@@ -397,6 +409,9 @@ async function workerPoolRuntimeCreation(): Promise<{
         collectionRunnerErrors: [],
         createdPool: null,
         dependencies,
+        async finalizeResult(result) {
+            return result;
+        },
         resolvedRun: resourceMeasurementResolvedRun(),
         runState: createSupervisedRunState()
     });
@@ -404,6 +419,9 @@ async function workerPoolRuntimeCreation(): Promise<{
         collectionRunnerErrors: [],
         createdPool: null,
         dependencies,
+        async finalizeResult(result) {
+            return result;
+        },
         resolvedRun: childHostResolvedRun(),
         runState: createSupervisedRunState()
     });
@@ -466,6 +484,9 @@ export const testNode = createOverkillSuite({
                         collectionRunnerErrors: [],
                         createdPool: null,
                         dependencies: fakeDependencies(),
+                        async finalizeResult(result) {
+                            return result;
+                        },
                         resolvedRun: workerPoolPlanWithSupervisedFacts(),
                         runState: createSupervisedRunState()
                     });

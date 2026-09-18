@@ -101,11 +101,12 @@ async function executeRun(input: ExecuteRunInput): Promise<RunResult> {
         input.context.dependencies,
         input.context.reporterDelivery
     );
+    const finalizedResult = await input.options.finalizeResult(result);
     const runEndErrors = await input.context.reporterDelivery.reportEvent({
         kind: 'run-end',
-        result
+        result: finalizedResult
     });
-    const resultForFinalReporting = appendRunnerErrors(result, runEndErrors);
+    const resultForFinalReporting = appendRunnerErrors(finalizedResult, runEndErrors);
     const finalReporterErrors = await input.context.reporterDelivery.reportResult(resultForFinalReporting);
     const disposeErrors = await input.reporterDisposal.disposeOnce();
 

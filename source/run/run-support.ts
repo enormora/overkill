@@ -1,4 +1,5 @@
 import type { TestRuntimePolicy } from '../engine/case-execution.ts';
+import type { RunResult } from '../engine/run-result.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
 import {
     createResourceLifecycleRuntimePolicy
@@ -20,6 +21,7 @@ import type {
     RunRequest,
     RunResourceBudgets,
     RunResourceUsagePolicy,
+    ResolvedRun,
     RunShard,
     RunTimeoutPolicy,
     RunWorkDistribution,
@@ -28,8 +30,34 @@ import type {
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import { copyRunSelection } from './run-selection-filters.ts';
 import { validateRunResourceUsagePolicy } from './run-validation.ts';
+import {
+    readDurationHistoryIndex,
+    resultWithUpdatedDurationHistory,
+    type DurationHistoryIndex
+} from './duration-history.ts';
 
 export type RunRuntimePolicy = TestRuntimePolicy;
+
+export async function readRunDurationHistory(
+    dependencies: RunOrchestratorDependencies,
+    projectRoot: string,
+    runtimeStateDir: string
+): Promise<DurationHistoryIndex | null> {
+    return await readDurationHistoryIndex(dependencies.durationHistoryStore, projectRoot, runtimeStateDir);
+}
+
+export async function finalizeResultWithDurationHistory(
+    dependencies: RunOrchestratorDependencies,
+    resolvedRun: ResolvedRun,
+    result: RunResult
+): Promise<RunResult> {
+    return await resultWithUpdatedDurationHistory(
+        dependencies.durationHistoryStore,
+        resolvedRun,
+        result,
+        dependencies.wallClock.currentTimestampInMilliseconds
+    );
+}
 
 function composeRunRuntimePolicies(
     firstPolicy: TestRuntimePolicy | null,

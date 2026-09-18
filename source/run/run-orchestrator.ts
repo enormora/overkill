@@ -3,7 +3,10 @@ import { createWallClock } from '@enormora/wall-clock';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { createNodeResourceUsageTracker } from './resource-usage.ts';
-import { createWorkerPoolWithHostProcess } from './node-worker-pool-factory.ts';
+import {
+    createNodeDurationHistoryStore,
+    createWorkerPoolWithHostProcess
+} from './node-worker-pool-factory.ts';
 import { createRunOrchestrator } from './run.ts';
 import { createRandomRunSeed } from './run-seed.ts';
 import type {
@@ -55,6 +58,7 @@ export function createNodeRunOrchestrator(input: NodeRunOrchestratorInput): RunO
             return createNodeResourceUsageTracker(wallClock, options);
         },
         defaultEngine: input.defaultEngine,
+        durationHistoryStore: createNodeDurationHistoryStore(),
         createWorkerPool(options) {
             return createWorkerPoolWithHostProcess(options, input.readEnvironment(), input.startWorkerPoolHost);
         },

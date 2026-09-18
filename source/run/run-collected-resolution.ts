@@ -19,8 +19,10 @@ import {
 } from './run-selection.ts';
 import {
     collectedRunCaseEntriesFromWorkUnits,
-    createWorkerPoolPlacementPlan
-} from './work-unit-planning.ts';
+    createWorkerPoolPlacementResolution,
+    type WorkerPoolPlacementResolution,
+    type WorkerPoolPlacementResolutionInput
+} from './worker-pool-placement-planning.ts';
 import {
     freezeValue,
     resolveRunReporters
@@ -37,6 +39,8 @@ import type {
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 
 type CollectedPlanKind = 'supervised' | 'worker-pool';
+export type CollectionDurationHistoryIndex = WorkerPoolPlacementResolutionInput['durationHistoryIndex'];
+
 type RunCollection = {
     readonly collectedPlan: CollectedRunPlan;
     readonly runnerErrors: readonly RunnerError[];
@@ -49,6 +53,7 @@ type CollectedResolvedRunInput = {
     readonly command: RunCommand;
     readonly config: RunConfig;
     readonly dependencies: RunOrchestratorDependencies;
+    readonly durationHistoryIndex: CollectionDurationHistoryIndex;
     readonly engine: RunCommand['engine'];
     readonly files: ResolvedRunInput['files'];
     readonly planKind: CollectedPlanKind;
@@ -63,6 +68,7 @@ export type CollectionResolvedRunInput = {
     readonly command: RunCommand;
     readonly config: RunConfig;
     readonly dependencies: RunOrchestratorDependencies;
+    readonly durationHistoryIndex: CollectionDurationHistoryIndex;
     readonly engine: RunCommand['engine'];
     readonly files: ResolvedRunInput['files'];
     readonly planKind: CollectedPlanKind;
@@ -87,6 +93,51 @@ function workerPoolAssignmentPolicy(profile: RunProfileConfig): RunWorkerPoolAss
         : 'case-count-balanced';
 }
 
+function workDistribution(profile: RunProfileConfig): WorkerPoolPlacementResolutionInput['workDistribution'] {
+    return profile.execution.processModel === 'worker-pool'
+        ? profile.execution.workDistribution
+        : { mode: 'file' };
+}
+
+function workerLifecycle(profile: RunProfileConfig): WorkerPoolPlacementResolutionInput['workerLifecycle'] {
+    return profile.execution.processModel === 'worker-pool'
+        ? profile.execution.workerLifecycle
+        : 'reuse';
+}
+
+function createPlacementResolution(input: CollectedResolvedRunInput): WorkerPoolPlacementResolution | null {
+    if (input.planKind !== 'worker-pool') {
+        return null;
+    }
+
+    return createWorkerPoolPlacementResolution({
+        assignmentPolicy: workerPoolAssignmentPolicy(input.profile),
+        availableParallelism: input.dependencies.availableParallelism,
+        durationHistoryIndex: input.durationHistoryIndex,
+        fileSetForFile: fileSetForDiscoveredFiles(input.files),
+        nowMilliseconds: input.dependencies.wallClock.currentTimestampInMilliseconds,
+        order: input.request.order,
+        seed: input.request.seed,
+        selectedPlan: input.collectedPlan,
+        scheduling: input.profile.execution.scheduling,
+        workDistribution: workDistribution(input.profile),
+        workerLifecycle: workerLifecycle(input.profile)
+    });
+}
+
+function orderedCollectedCases(
+    input: CollectedResolvedRunInput,
+    placementPlan: WorkerPoolPlacementResolution['placementPlan'] | null
+): ReturnType<typeof collectedRunCaseEntries> {
+    return placementPlan === null
+        ? orderedRunItems(
+            collectedRunCaseEntries(input.collectedPlan),
+            input.request.order,
+            input.request.seed
+        )
+        : collectedRunCaseEntriesFromWorkUnits(input.collectedPlan, placementPlan.units);
+}
+
 function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): ResolvedRun {
     assertCollectedRunPlanMatchesTestFamily(input.collectedPlan, input.profile.testFamily);
     assertCollectedRunPlanCasesMatchProfilePolicy(input.collectedPlan, input.profile);
@@ -95,34 +146,14 @@ function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): R
         assertCollectedRunPlanHasCases(input.collectedPlan);
     }
 
-    const placementPlan = input.planKind === 'worker-pool'
-        ? createWorkerPoolPlacementPlan({
-            assignmentPolicy: workerPoolAssignmentPolicy(input.profile),
-            availableParallelism: input.dependencies.availableParallelism,
-            fileSetForFile: fileSetForDiscoveredFiles(input.files),
-            order: input.request.order,
-            seed: input.request.seed,
-            selectedPlan: input.collectedPlan,
-            scheduling: input.profile.execution.scheduling,
-            workDistribution: input.profile.execution.processModel === 'worker-pool'
-                ? input.profile.execution.workDistribution
-                : { mode: 'file' },
-            workerLifecycle: input.profile.execution.processModel === 'worker-pool'
-                ? input.profile.execution.workerLifecycle
-                : 'reuse'
-        })
-        : null;
-    const orderedCases = placementPlan === null
-        ? orderedRunItems(
-            collectedRunCaseEntries(input.collectedPlan),
-            input.request.order,
-            input.request.seed
-        )
-        : collectedRunCaseEntriesFromWorkUnits(input.collectedPlan, placementPlan.units);
+    const placementResolution = createPlacementResolution(input);
+    const placementPlan = placementResolution?.placementPlan ?? null;
+    const orderedCases = orderedCollectedCases(input, placementPlan);
     const facts = freezeValue(createRunFacts({
         cases: collectedRunCaseFactsFromEntries(orderedCases, fileSetForDiscoveredFiles(input.files)),
         config: input.config,
         dependencies: input.dependencies,
+        durationHistory: placementResolution?.durationHistory ?? null,
         engine: input.engine,
         placementPlan,
         projectRoot: input.projectRoot,

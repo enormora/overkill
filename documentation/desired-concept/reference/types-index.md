@@ -1063,9 +1063,24 @@ type DurationHistoryInput = {
 
 type DurationHistorySample = {
     readonly durationMilliseconds: number;
+    readonly observations: ReadonlyArray<DurationHistoryObservation>;
     readonly observedAt: string;
     readonly sampleCount: number;
     readonly work: WorkId;
+};
+
+type DurationHistoryObservation = {
+    readonly durationMilliseconds: number;
+    readonly metadata: DurationHistoryObservationMetadata;
+    readonly observedAt: string;
+};
+
+type DurationHistoryObservationMetadata = {
+    readonly processModel: RunProcessModel;
+    readonly profile: string;
+    readonly scheduling: RunScheduling;
+    readonly testFamily: RunTestFamily;
+    readonly workerLifecycle: RunWorkerLifecycle | null;
 };
 
 type RunCaseFacts = {

@@ -3,9 +3,11 @@ import {
     createTestCase as createOverkillTestCase,
     defineOutputRenderer,
     defineReporter,
+    type TestCase,
+    type TestCaseOptions,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import type { DefinedReporter } from '../engine/reporter.ts';
+import type { DefinedReporter, SinkDeclaration } from '../engine/reporter.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import {
@@ -19,7 +21,6 @@ import {
     type CommandLineRunnerResult
 } from './command-line-runner.ts';
 import type { LoadedRunConfig } from './run-config.ts';
-import { RunCollectionError } from './run-errors.ts';
 import type { ResolvedRun, RunCommand, RunProfileConfig, RunOrchestrator, RunSelection } from './run-types.ts';
 
 const plainOutputRenderer = defineOutputRenderer(function createPlainRuntimeOutputRenderer() {
@@ -30,31 +31,36 @@ const plainOutputRenderer = defineOutputRenderer(function createPlainRuntimeOutp
     };
 });
 
-const memoryReporter = defineReporter(function createMemoryReporter() {
-    return {
-        dispose: null,
-        kind: 'real-time',
-        name: 'memory',
-        onEvent() {
-            return undefined;
-        },
-        onFinish: null,
-        sinks: [ { kind: 'memory' } ]
-    };
-});
+function passiveReporter(name: string, sinks: readonly SinkDeclaration[]): DefinedReporter {
+    return defineReporter(function createPassiveReporter() {
+        return {
+            dispose: null,
+            kind: 'real-time',
+            name,
+            onEvent() {
+                return undefined;
+            },
+            onFinish: null,
+            sinks
+        };
+    });
+}
 
-const terminalReporter = defineReporter(function createTerminalReporter() {
-    return {
-        dispose: null,
-        kind: 'real-time',
-        name: 'terminal',
-        onEvent() {
-            return undefined;
-        },
-        onFinish: null,
-        sinks: [ { kind: 'stdout-raw' } ]
-    };
-});
+const memoryReporter = passiveReporter('memory', [ { kind: 'memory' } ]);
+const terminalReporter = passiveReporter('terminal', [ { kind: 'stdout-raw' } ]);
+
+function listRunnerCase(
+    title: string,
+    body: TestCaseOptions['body']
+): TestCase {
+    return createOverkillTestCase({
+        annotations: {},
+        body,
+        controls: {},
+        definitionLocations: [ { kind: 'unknown' as const } ],
+        title
+    });
+}
 
 async function loadDefaultConfig(): Promise<LoadedRunConfig> {
     return {
@@ -124,7 +130,7 @@ function caseFactsFromPlan(testPlan: TestPlan): ResolvedRun['facts']['cases'] {
     });
 }
 
-function createResolvedRun(
+export function createResolvedRun(
     command: RunCommand,
     collectionRunnerErrors: ResolvedRun['collectionRunnerErrors']
 ): ResolvedRun {
@@ -137,6 +143,7 @@ function createResolvedRun(
         cwd: command.cwd,
         engine: command.engine,
         facts: {
+            durationHistory: null,
             cases: caseFactsFromPlan(testPlan),
             environment: {
                 node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
@@ -206,6 +213,18 @@ function createListOnlyOrchestrator(resolve: RunOrchestrator['resolve']): RunOrc
     };
 }
 
+async function resolvePassingCommand(command: RunCommand): Promise<ResolvedRun> {
+    return createResolvedRun(command, []);
+}
+
+export async function createMemoryReporter(): Promise<DefinedReporter> {
+    return memoryReporter;
+}
+
+async function createTerminalReporter(): Promise<DefinedReporter> {
+    return terminalReporter;
+}
+
 function createDependencies(
     orchestrator: RunOrchestrator,
     createDefaultReporter: () => Promise<DefinedReporter>
@@ -223,7 +242,14 @@ function createDependencies(
     };
 }
 
-async function listTests(
+export function createListDependencies(
+    resolve: RunOrchestrator['resolve'],
+    createDefaultReporter: () => Promise<DefinedReporter>
+): CommandLineRunnerDependencies {
+    return createDependencies(createListOnlyOrchestrator(resolve), createDefaultReporter);
+}
+
+export async function listTests(
     dependencies: CommandLineRunnerDependencies,
     withLocations: boolean,
     withOrphans: boolean
@@ -251,12 +277,9 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.listTests() renders the resolved plan tree without loading reporters',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
+        listRunnerCase(
+            'commandLineRunner.listTests() renders the resolved plan tree without loading reporters',
+            async function body(scope: OverkillScope) {
                 let defaultReporterLoadCount = 0;
                 const receivedCommands: RunCommand[] = [];
                 const dependencies = createDependencies(
@@ -265,7 +288,7 @@ export const testNode = createOverkillSuite({
 
                         return createResolvedRun(command, []);
                     }),
-                    async function createDefaultReporter() {
+                    async function createCountingReporter() {
                         defaultReporterLoadCount += 1;
 
                         return terminalReporter;
@@ -286,28 +309,23 @@ export const testNode = createOverkillSuite({
 
                 return scope.assert.collect();
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.listTests() preserves list selection',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
+        ),
+        listRunnerCase(
+            'commandLineRunner.listTests() preserves list selection',
+            async function body(scope: OverkillScope) {
                 const receivedCommands: RunCommand[] = [];
                 const integrationProfile = defaultIntegrationProfile({});
                 const selection: RunSelection = {
                     filter: { field: 'tag', kind: 'equals', value: 'fast' },
                     kind: 'filter'
                 };
-                const dependencies = createDependencies(
-                    createListOnlyOrchestrator(async function resolveCommand(command) {
+                const dependencies = createListDependencies(
+                    async function resolveCommand(command) {
                         receivedCommands.push(command);
 
                         return createResolvedRun(command, []);
-                    }),
-                    async function createDefaultReporter() {
-                        return terminalReporter;
-                    }
+                    },
+                    createTerminalReporter
                 );
                 const runner = createCommandLineRunner({
                     ...dependencies,
@@ -343,22 +361,12 @@ export const testNode = createOverkillSuite({
 
                 return scope.assert.collect();
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.listTests() renders definition locations when requested',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
+        ),
+        listRunnerCase(
+            'commandLineRunner.listTests() renders definition locations when requested',
+            async function body(scope: OverkillScope) {
                 const result = await listTests(
-                    createDependencies(
-                        createListOnlyOrchestrator(async function resolveCommand(command) {
-                            return createResolvedRun(command, []);
-                        }),
-                        async function createDefaultReporter() {
-                            return memoryReporter;
-                        }
-                    ),
+                    createListDependencies(resolvePassingCommand, createMemoryReporter),
                     true,
                     false
                 );
@@ -372,22 +380,12 @@ export const testNode = createOverkillSuite({
 
                 return scope.assert.collect();
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.listTests() renders explicit orphan diagnostics',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
+        ),
+        listRunnerCase(
+            'commandLineRunner.listTests() renders explicit orphan diagnostics',
+            async function body(scope: OverkillScope) {
                 const result = await listTests(
-                    createDependencies(
-                        createListOnlyOrchestrator(async function resolveCommand(command) {
-                            return createResolvedRun(command, []);
-                        }),
-                        async function createDefaultReporter() {
-                            return memoryReporter;
-                        }
-                    ),
+                    createListDependencies(resolvePassingCommand, createMemoryReporter),
                     false,
                     true
                 );
@@ -403,20 +401,12 @@ export const testNode = createOverkillSuite({
 
                 return scope.assert.collect();
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.listTests() renders orphan definition locations when requested',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
+        ),
+        listRunnerCase(
+            'commandLineRunner.listTests() renders orphan definition locations when requested',
+            async function body(scope: OverkillScope) {
                 const result = await listTests(
-                    createDependencies(
-                        createListOnlyOrchestrator(createResolvedRunWithOrphanLocation),
-                        async function createDefaultReporter() {
-                            return memoryReporter;
-                        }
-                    ),
+                    createListDependencies(createResolvedRunWithOrphanLocation, createMemoryReporter),
                     true,
                     true
                 );
@@ -429,112 +419,7 @@ export const testNode = createOverkillSuite({
 
                 return scope.assert.collect();
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.listTests() maps collection runner errors without printing the plan',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await listTests(
-                    createDependencies(
-                        createListOnlyOrchestrator(async function resolveCommand(command) {
-                            return createResolvedRun(command, [
-                                {
-                                    attributedTo: null,
-                                    cause: null,
-                                    message: 'Collection failed.',
-                                    subtype: 'loader'
-                                }
-                            ]);
-                        }),
-                        async function createDefaultReporter() {
-                            return memoryReporter;
-                        }
-                    ),
-                    false,
-                    false
-                );
-
-                scope.assert.equal(result.exitCode, 2);
-                scope.assert.deepEqual(result.stdoutLines, []);
-                scope.assert.deepEqual(result.fallbackDiagnostics, [
-                    'Overkill runner error: Collection failed.'
-                ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.listTests() maps config load errors',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const runner = createCommandLineRunner({
-                    ...createDependencies(
-                        createListOnlyOrchestrator(async function resolveCommand(command) {
-                            return createResolvedRun(command, []);
-                        }),
-                        async function createDefaultReporter() {
-                            return memoryReporter;
-                        }
-                    ),
-                    async loadRunConfig() {
-                        throw new Error('Config failed.');
-                    }
-                });
-                const result = await runner.listTests({
-                    configPath: null,
-                    cwd: process.cwd(),
-                    listRequest: {
-                        order: 'seeded',
-                        paths: [ 'source/a.test.ts' ],
-                        profile: 'microtest',
-                        seed: { value: 42n },
-                        selection: { kind: 'all' },
-                        withLocations: false,
-                        withOrphans: false
-                    }
-                });
-
-                scope.assert.equal(result.exitCode, 70);
-                scope.assert.deepEqual(result.fallbackDiagnostics, [
-                    'Overkill internal error: Config failed.'
-                ]);
-                scope.assert.deepEqual(result.stdoutLines, []);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.listTests() maps thrown collection errors',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await listTests(
-                    createDependencies(
-                        createListOnlyOrchestrator(async function resolveCommand() {
-                            throw new RunCollectionError('Collection failed.', { cause: null }, 'loader');
-                        }),
-                        async function createDefaultReporter() {
-                            return memoryReporter;
-                        }
-                    ),
-                    false,
-                    false
-                );
-
-                scope.assert.equal(result.exitCode, 2);
-                scope.assert.deepEqual(result.fallbackDiagnostics, [
-                    'Overkill runner error: Collection failed.'
-                ]);
-                scope.assert.deepEqual(result.stdoutLines, []);
-
-                return scope.assert.collect();
-            }
-        })
+        )
     ]
 });
 

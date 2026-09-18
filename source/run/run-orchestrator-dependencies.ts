@@ -9,6 +9,7 @@ import type {
     RuntimeCapabilityPolicyDependencies,
     RuntimeCapabilityPolicyEnvironment
 } from './capability-policy-snapshots.ts';
+import type { DurationHistoryStore } from './duration-history.ts';
 import type { RunDiscovery } from './run-discovery-types.ts';
 import type { RunEngineModuleLoader } from './run-engine-selection.ts';
 import type { RunTestModuleLoader } from './run-test-modules.ts';
@@ -72,6 +73,7 @@ export type RunOrchestratorDependencies = {
     readonly createWorkerPool: (options: WorkerPoolCreationOptions) => CreatedWorkerPool;
     readonly defaultEngine: Engine;
     readonly discoverRunFilesWithProjectRoot: RunDiscovery['discoverRunFilesWithProjectRoot'];
+    readonly durationHistoryStore: DurationHistoryStore;
     readonly execute: Execute;
     readonly loadRunEngineModule: RunEngineModuleLoader;
     readonly loadRunTestModules: RunTestModuleLoader;

@@ -145,6 +145,7 @@ function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            durationHistory: null,
             cases: [],
             environment: {
                 node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
@@ -239,6 +240,14 @@ function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
         },
         createWorkerPool: createFakeWorkerPool,
         defaultEngine: defaultRunEngine,
+        durationHistoryStore: {
+            async read() {
+                return null;
+            },
+            async write() {
+                return undefined;
+            }
+        },
         discoverRunFilesWithProjectRoot: testOnlyDependency,
         execute: defaultRunEngine.execute,
         liveOutput: {
@@ -299,6 +308,9 @@ function fakeWorkerRuntime(collectedPlan: CollectedRunPlan): WorkerPoolRunRuntim
         collectionRunnerErrors: [],
         dependencies: fakeDependencies(),
         destroyPool: true,
+        async finalizeResult(result) {
+            return result;
+        },
         pool: createFakePool(1, false),
         poolResourceUsageTracker: null,
         previousPoolSample: createStoredRunValue<ResourceSample>(null),
@@ -334,6 +346,14 @@ function createTaskRun(state: SupervisedRunState): WorkerPoolTaskRun {
     };
 }
 
+function createArtifactTaskRun(): WorkerPoolTaskRun {
+    const state = createSupervisedRunState();
+
+    state.recordCapturedOutput('stdout', Buffer.from('active artifact'), 3);
+
+    return createTaskRun(state);
+}
+
 function emptyRunResult(perTest: readonly PerTestResult[]): RunResult {
     return {
         artifacts: [],
@@ -362,7 +382,13 @@ function emptyRunResult(perTest: readonly PerTestResult[]): RunResult {
 function passResult(): PerTestResult {
     const id = firstCaseId();
 
-    return { id, outcome: { kind: 'pass' }, verdict: 'pass', workId: { case: id, runtimes: [], workload: null } };
+    return {
+        id,
+        outcome: { kind: 'pass' },
+        verdict: 'pass',
+        workId: { case: id, runtimes: [], workload: null },
+        wallTimeMs: 0
+    };
 }
 
 function invalidOutputRuntime(recordRun: () => void): WorkerPoolRunRuntime {
@@ -426,6 +452,7 @@ async function workerPoolFinalizationResults(): Promise<{
 
     runtime.runState.recordCapturedOutput('stdout', Buffer.from('run artifact'), 1);
     completedState.recordCapturedOutput('stderr', Buffer.from('completed artifact'), 2);
+    runtime.activeTasks.add(createArtifactTaskRun());
     runtime.taskResults.push(emptyRunResult([ passResult() ]));
 
     const result = await finishWorkerPoolRun(runtime, [ createTaskRun(completedState) ], 10);
@@ -474,7 +501,7 @@ export const testNode = createOverkillSuite({
                 const activeTask = createTaskRun(createSupervisedRunState());
                 const runtime = budgetedRuntime(activeTask);
 
-                activeTask.state.addActiveCase(firstCaseIdentityKey(), { capture: null, id: firstCaseId() });
+                activeTask.state.addActiveCase(firstCaseIdentityKey(), { capture: null, id: firstCaseId() }, 0);
                 await reportRunStart({ ...runtime, collectedPlan: { ...runtime.collectedPlan, files: [] } }, 0);
                 await startPoolResourceTracking(runtime);
 
@@ -496,7 +523,7 @@ export const testNode = createOverkillSuite({
                     result.artifacts.map(function toText(artifact) {
                         return artifact.payload.text;
                     }),
-                    [ 'run artifact', 'completed artifact' ]
+                    [ 'run artifact', 'completed artifact', 'active artifact' ]
                 );
                 scope.assert.equal(emptyResult.summary.planned, 1);
 

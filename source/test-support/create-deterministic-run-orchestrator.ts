@@ -205,7 +205,8 @@ function completeDeterministicSupervisedChild(context: FakeSupervisedChildRunCon
                     id: work.case,
                     outcome: { kind: 'pass' as const },
                     verdict: 'pass' as const,
-                    workId: work
+                    workId: work,
+                    wallTimeMs: 0
                 };
             }),
             [],
@@ -293,6 +294,14 @@ export function createDeterministicRunOrchestratorWithSeed(createSeed: () => big
         createSeed,
         createWorkerPool: createMissingWorkerPool,
         defaultEngine: deterministicRunEngine(),
+        durationHistoryStore: {
+            async read() {
+                return null;
+            },
+            async write() {
+                return undefined;
+            }
+        },
         async discoverRunFilesWithProjectRoot(request) {
             if (request.paths.length === 0 && request.profileFiles === null) {
                 throw new Error('No run paths were provided and the selected profile has no file discovery policy.');

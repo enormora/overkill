@@ -20,6 +20,9 @@ import {
 import {
     collectedRunCaseEntriesFromWorkUnits,
     createWorkerPoolPlacementPlan,
+    createWorkerPoolPlacementResolution
+} from './worker-pool-placement-planning.ts';
+import {
     workUnitsFromCollectedPlan
 } from './work-unit-planning.ts';
 import {
@@ -163,6 +166,7 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            durationHistory: null,
             cases: [],
             environment: {
                 node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
@@ -488,6 +492,25 @@ export const testNode = createOverkillSuite({
                         workerLifecycle: 'reuse'
                     }),
                     expectedPlacementPlan()
+                );
+                scope.assert.deepEqual(
+                    createWorkerPoolPlacementResolution({
+                        assignmentPolicy: 'duration-history-balanced',
+                        availableParallelism: 3,
+                        durationHistoryIndex: null,
+                        fileSetForFile,
+                        nowMilliseconds: 0,
+                        order: 'plan',
+                        seed: { value: 1n },
+                        selectedPlan: collectedPlan,
+                        scheduling: 'concurrent',
+                        workDistribution: { mode: 'file' },
+                        workerLifecycle: 'reuse'
+                    }),
+                    {
+                        durationHistory: null,
+                        placementPlan: expectedPlacementPlan()
+                    }
                 );
                 scope.assert.throws(function readLocalPlan() {
                     workerPoolCollectedPlan(localRun);

@@ -50,6 +50,7 @@ export type SupervisedRunRuntimeSeed = {
     readonly collectedPlan: StoredRunValue<CollectedRunPlan | null>;
     readonly completedResult: StoredRunValue<RunResult | null>;
     readonly dependencies: RunOrchestratorDependencies;
+    readonly finalizeResult: (result: RunResult) => Promise<RunResult>;
     readonly previousSample: StoredRunValue<ResourceUsageSnapshot | null>;
     readonly reporterDelivery: ReporterDelivery;
     readonly reporterEvents: ReporterEventQueue;
@@ -133,14 +134,15 @@ function caseByKey(collectedPlan: CollectedRunPlan): ReadonlyMap<string, Supervi
 function applyTestStartEvent(
     event: Extract<ReporterEvent, { readonly kind: 'test-start'; }>,
     state: SupervisedRunState,
-    cases: ReadonlyMap<string, SupervisedCase>
+    cases: ReadonlyMap<string, SupervisedCase>,
+    observedAtMilliseconds: number
 ): void {
     const workId = event.workId ?? createDefaultWorkId(event.case);
     const key = workIdentityKey(workId);
     const testCase = cases.get(key);
 
     if (testCase !== undefined) {
-        state.addActiveCase(key, testCase);
+        state.addActiveCase(key, testCase, observedAtMilliseconds);
     }
 }
 
@@ -156,17 +158,19 @@ function applyTestEndEvent(
         id: event.case,
         outcome: event.outcome,
         verdict: event.verdict,
-        workId
+        workId,
+        wallTimeMs: event.wallTimeMs
     });
 }
 
 export function applyEvent(
     event: ReporterEvent,
     state: SupervisedRunState,
-    cases: ReadonlyMap<string, SupervisedCase>
+    cases: ReadonlyMap<string, SupervisedCase>,
+    observedAtMilliseconds: number
 ): void {
     if (event.kind === 'test-start') {
-        applyTestStartEvent(event, state, cases);
+        applyTestStartEvent(event, state, cases, observedAtMilliseconds);
     } else if (event.kind === 'test-end') {
         applyTestEndEvent(event, state);
     } else if (event.kind === 'runner-error') {
@@ -234,7 +238,10 @@ export function createHardTimeout(runtime: SupervisedRunRuntimeSeed): Supervised
             hardTimeout = runtime.dependencies.wallClock.setTimeout(function killHardTimedOutChild() {
                 runtime.terminalFailure.write(true);
                 runtime.state.recordRunnerError(crashError(runtime.state, 'Supervised child exceeded hard timeout.'));
-                runtime.state.recordTerminalActiveCases('crashed');
+                runtime.state.recordTerminalActiveCases(
+                    'crashed',
+                    runtime.dependencies.wallClock.currentTimestampInMilliseconds
+                );
                 kill(runtime.child);
             }, runtime.resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds);
         }
@@ -307,7 +314,12 @@ function handleChildEvent(event: ReporterEvent, runtime: SupervisedRunRuntime): 
         : event;
 
     if (collectedPlan !== null) {
-        applyEvent(reportedEvent, runtime.state, caseByKey(collectedPlan));
+        applyEvent(
+            reportedEvent,
+            runtime.state,
+            caseByKey(collectedPlan),
+            runtime.dependencies.wallClock.currentTimestampInMilliseconds
+        );
     }
 
     if (reportedEvent.kind === 'test-start') {
@@ -335,7 +347,10 @@ function handleResourceBudgetBreach(
         runtime.state,
         runtime.reporterDelivery
     ));
-    runtime.state.recordTerminalActiveCases('resource-exhausted');
+    runtime.state.recordTerminalActiveCases(
+        'resource-exhausted',
+        runtime.dependencies.wallClock.currentTimestampInMilliseconds
+    );
     runtime.timeout.clear();
     kill(runtime.child);
 }
@@ -426,7 +441,10 @@ export async function observeChild(runtime: SupervisedRunRuntime): Promise<void>
             if (!runtime.terminalFailure.read()) {
                 runtime.terminalFailure.write(true);
                 runtime.state.recordRunnerError(crashError(runtime.state, error.message));
-                runtime.state.recordTerminalActiveCases('crashed');
+                runtime.state.recordTerminalActiveCases(
+                    'crashed',
+                    runtime.dependencies.wallClock.currentTimestampInMilliseconds
+                );
             }
         });
         runtime.child.on('exit', function resolveExit() {
@@ -508,5 +526,7 @@ export async function finishSupervisedRuntime(runtime: SupervisedRunRuntime, sta
     runtime.timeout.clear();
     await runtime.reporterEvents.wait();
 
-    return await reportFinalResult(selectRunResult(runtime, startedAtMs), runtime);
+    const result = await runtime.finalizeResult(selectRunResult(runtime, startedAtMs));
+
+    return await reportFinalResult(result, runtime);
 }

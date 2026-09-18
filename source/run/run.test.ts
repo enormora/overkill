@@ -163,6 +163,7 @@ export const testNode = createOverkillSuite({
                     cases: [
                         expectedPassingFixtureCaseFact()
                     ],
+                    durationHistory: null,
                     environment: {
                         node: {
                             arch: 'x64',
@@ -396,6 +397,7 @@ export const testNode = createOverkillSuite({
                     cases: [
                         expectedPassingFixtureLiveCaseFact()
                     ],
+                    durationHistory: null,
                     environment: {
                         node: {
                             arch: 'x64',

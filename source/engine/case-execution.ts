@@ -509,6 +509,26 @@ export function invalidTimeoutControlFailure(actual: unknown, expected: string):
     };
 }
 
+function skippedCase(
+    testCase: TestPlanCase,
+    reason: Extract<TestOutcome, { readonly kind: 'skip'; }>['reason'],
+    wallTimeMs: number
+): ExecutedCase {
+    const outcome: TestOutcome = { kind: 'skip', reason };
+
+    return {
+        result: {
+            id: testCase.id,
+            outcome,
+            verdict: verdictFromOutcome(outcome),
+            workId: testCase.workId,
+            wallTimeMs
+        },
+        runnerErrors: [],
+        wallTimeMs
+    };
+}
+
 export async function runTestCase(
     testCase: TestPlanCase,
     wallClock: WallClock,
@@ -517,18 +537,7 @@ export async function runTestCase(
     const startedAt = wallClock.currentTimestampInMilliseconds;
 
     if (testCase.execution.kind === 'skip') {
-        const outcome: TestOutcome = { kind: 'skip', reason: testCase.execution.reason };
-
-        return {
-            result: {
-                id: testCase.id,
-                outcome,
-                verdict: verdictFromOutcome(outcome),
-                workId: testCase.workId
-            },
-            runnerErrors: [],
-            wallTimeMs: wallClock.currentTimestampInMilliseconds - startedAt
-        };
+        return skippedCase(testCase, testCase.execution.reason, wallClock.currentTimestampInMilliseconds - startedAt);
     }
 
     const recorder = createAssertionRecorder();
@@ -536,15 +545,17 @@ export async function runTestCase(
     const executedBody = await runCaseBody(testCase, recorder, options);
     const outcome = createOutcome(recorder, executedBody);
     const verdict = verdictFromOutcome(outcome);
+    const wallTimeMs = wallClock.currentTimestampInMilliseconds - startedAt;
 
     return {
         result: {
             id: testCase.id,
             outcome,
             verdict,
-            workId: testCase.workId
+            workId: testCase.workId,
+            wallTimeMs
         },
         runnerErrors: executedBody.runnerErrors,
-        wallTimeMs: wallClock.currentTimestampInMilliseconds - startedAt
+        wallTimeMs
     };
 }

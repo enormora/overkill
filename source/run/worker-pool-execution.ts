@@ -115,7 +115,10 @@ function startTaskTimeout(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRunt
         taskRun.endedByParent.write(true);
         taskRun.requeuePendingCases.write(true);
         taskRun.state.recordRunnerError(crashError(taskRun.state, 'Worker-pool work unit exceeded hard timeout.'));
-        taskRun.state.recordTerminalActiveCases('crashed');
+        taskRun.state.recordTerminalActiveCases(
+            'crashed',
+            runtime.dependencies.wallClock.currentTimestampInMilliseconds
+        );
         taskRun.controller.abort();
     }, runtime.resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds));
 }
@@ -140,7 +143,12 @@ function handleWorkerEvent(
         }
         : event;
 
-    applyEvent(reportedEvent, taskRun.state, casesByKey(taskRun.unit));
+    applyEvent(
+        reportedEvent,
+        taskRun.state,
+        casesByKey(taskRun.unit),
+        runtime.dependencies.wallClock.currentTimestampInMilliseconds
+    );
 
     if (reportedEvent.kind === 'test-end' && taskRun.state.activeCases.size === 0) {
         clearTaskTimeout(taskRun, runtime.dependencies);
@@ -323,7 +331,10 @@ function markActiveTasksCrashed(runtime: WorkerPoolRunRuntime): void {
         activeTask.endedByParent.write(true);
         activeTask.requeuePendingCases.write(false);
         activeTask.state.recordRunnerError(crashError(activeTask.state, 'Worker-pool execution stopped.'));
-        activeTask.state.recordTerminalActiveCases('crashed');
+        activeTask.state.recordTerminalActiveCases(
+            'crashed',
+            runtime.dependencies.wallClock.currentTimestampInMilliseconds
+        );
         clearTaskTimeout(activeTask, runtime.dependencies);
         activeTask.controller.abort();
     }
@@ -373,7 +384,10 @@ function handleTaskFailure(
     }
 
     taskRun.state.recordRunnerError(crashError(taskRun.state, crashReason(error)));
-    taskRun.state.recordTerminalActiveCases('crashed');
+    taskRun.state.recordTerminalActiveCases(
+        'crashed',
+        context.runtime.dependencies.wallClock.currentTimestampInMilliseconds
+    );
 
     return recordWorkerCrash(context.runtime, context.crashCount, context.queue) ? null : pendingWorkUnit(taskRun);
 }
@@ -497,7 +511,7 @@ function createActiveCaseState(runtime: WorkerPoolRunRuntime): SupervisedRunStat
 
     for (const taskRun of runtime.activeTasks) {
         for (const [ key, activeCase ] of taskRun.state.activeCases) {
-            activeState.addActiveCase(key, activeCase);
+            activeState.addActiveCase(key, activeCase, activeCase.startedAtMilliseconds);
         }
     }
 
@@ -507,7 +521,10 @@ function createActiveCaseState(runtime: WorkerPoolRunRuntime): SupervisedRunStat
 function stopTaskForResourceExhaustion(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): void {
     taskRun.endedByParent.write(true);
     taskRun.requeuePendingCases.write(false);
-    taskRun.state.recordTerminalActiveCases('resource-exhausted');
+    taskRun.state.recordTerminalActiveCases(
+        'resource-exhausted',
+        runtime.dependencies.wallClock.currentTimestampInMilliseconds
+    );
     clearTaskTimeout(taskRun, runtime.dependencies);
     taskRun.controller.abort();
 }

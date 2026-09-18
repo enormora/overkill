@@ -90,6 +90,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
         cases: runCaseFactsFromTestPlan(input.testPlan, function directRunFileSet() {
             return input.fileSet;
         }),
+        durationHistory: null,
         environment: {
             node: {
                 arch: process.arch,

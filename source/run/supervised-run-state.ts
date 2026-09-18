@@ -8,14 +8,18 @@ export type SupervisedCase = {
     readonly workId?: WorkId;
 };
 
+type ActiveSupervisedCase = SupervisedCase & {
+    readonly startedAtMilliseconds: number;
+};
+
 export type StoredRunValue<Value> = {
     readonly read: () => Value;
     readonly write: (value: Value) => void;
 };
 
 export type SupervisedRunState = {
-    readonly activeCases: ReadonlyMap<string, SupervisedCase>;
-    readonly addActiveCase: (key: string, testCase: SupervisedCase) => void;
+    readonly activeCases: ReadonlyMap<string, ActiveSupervisedCase>;
+    readonly addActiveCase: (key: string, testCase: SupervisedCase, startedAtMilliseconds: number) => void;
     readonly artifacts: () => readonly RunArtifact[];
     readonly caseArtifacts: (testCase: CaseId) => readonly RunArtifact[];
     readonly perTestResults: () => readonly PerTestResult[];
@@ -28,7 +32,7 @@ export type SupervisedRunState = {
     readonly recordRunnerError: (error: RunnerError) => void;
     readonly recordRunnerErrors: (errors: readonly RunnerError[]) => void;
     readonly recordRuntimePolicyViolation: (capability: string, message: string) => void;
-    readonly recordTerminalActiveCases: (verdict: PerTestResult['verdict']) => void;
+    readonly recordTerminalActiveCases: (verdict: PerTestResult['verdict'], completedAtMilliseconds: number) => void;
     readonly removeActiveCase: (key: string) => void;
     readonly runnerErrors: () => readonly RunnerError[];
 };
@@ -42,12 +46,17 @@ type CapturedOutputByteSpan = {
 export const capturedOutputLimitBytes = Number('1048576');
 const runArtifactScopeKey = 'run';
 
-function terminalResult(testCase: SupervisedCase, verdict: PerTestResult['verdict']): PerTestResult {
+function terminalResult(
+    testCase: ActiveSupervisedCase,
+    verdict: PerTestResult['verdict'],
+    completedAtMilliseconds: number
+): PerTestResult {
     return {
         id: testCase.id,
         outcome: null,
         verdict,
-        workId: testCase.workId ?? createDefaultWorkId(testCase.id)
+        workId: testCase.workId ?? createDefaultWorkId(testCase.id),
+        wallTimeMs: Math.max(0, completedAtMilliseconds - testCase.startedAtMilliseconds)
     };
 }
 
@@ -188,15 +197,18 @@ export function createStoredRunValue<Value>(initialValue: Value): StoredRunValue
 }
 
 export function createSupervisedRunState(): SupervisedRunState {
-    const activeCases = new Map<string, SupervisedCase>();
+    const activeCases = new Map<string, ActiveSupervisedCase>();
     const artifacts: RunArtifact[] = [];
     const capturedOutputByteCounts = new Map<string, number>();
     const perTest = new Map<string, PerTestResult>();
     const runnerErrors: RunnerError[] = [];
     let artifactSequence = 0;
-    const recordTerminalActiveCases = function recordTerminalActiveCases(verdict: PerTestResult['verdict']): void {
+    const recordTerminalActiveCases = function recordTerminalActiveCases(
+        verdict: PerTestResult['verdict'],
+        completedAtMilliseconds: number
+    ): void {
         for (const [ key, testCase ] of activeCases) {
-            perTest.set(key, terminalResult(testCase, verdict));
+            perTest.set(key, terminalResult(testCase, verdict, completedAtMilliseconds));
         }
 
         activeCases.clear();
@@ -204,8 +216,8 @@ export function createSupervisedRunState(): SupervisedRunState {
 
     return {
         activeCases,
-        addActiveCase(key, testCase) {
-            activeCases.set(key, testCase);
+        addActiveCase(key, testCase, startedAtMilliseconds) {
+            activeCases.set(key, { ...testCase, startedAtMilliseconds });
         },
         artifacts() {
             return artifacts;
@@ -257,7 +269,7 @@ export function createSupervisedRunState(): SupervisedRunState {
         },
         recordRuntimePolicyViolation(capability, message) {
             runnerErrors.push(createRuntimePolicyError(activeCases, capability, message));
-            recordTerminalActiveCases('runtime-policy');
+            recordTerminalActiveCases('runtime-policy', 0);
         },
         recordTerminalActiveCases,
         removeActiveCase(key) {

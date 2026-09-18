@@ -129,8 +129,9 @@ Source: [Runtime Behavior](../architecture/runtime-behavior.md), [Reproducibilit
 
 The plan-time policy that chooses the initial worker-pool lane assignment.
 Current policies include stable source-order round-robin placement and
-case-count balancing. Later policies may use duration history as explicit
-planning input.
+case-count balancing. `duration-history-balanced` uses duration history as
+explicit planning input and falls back to case-count balancing when usable
+history is unavailable.
 
 Source: [Runtime Behavior § Dynamic Scheduling Concepts](../architecture/runtime-behavior.md#dynamic-scheduling-concepts).
 
@@ -145,10 +146,10 @@ Source: [Runtime Behavior § Dynamic Scheduling Concepts](../architecture/runtim
 
 ## Duration History
 
-A compact runtime-state index of recent `WorkId` duration samples. History-aware
-placement aggregates these samples into the current work-unit shape and falls
-back to case-count balancing when the samples are missing, stale, or
-inapplicable.
+A compact runtime-state index of recent `WorkId` duration observations. All
+process models can write observations. Worker-pool placement aggregates fresh
+observations into the current work-unit shape and falls back to case-count
+balancing when usable history is missing, stale, sparse, or inapplicable.
 
 Source: [Runtime Behavior § Duration History](../architecture/runtime-behavior.md#duration-history).
 

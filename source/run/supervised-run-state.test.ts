@@ -20,7 +20,7 @@ function caseId(title: string): CaseId {
 }
 
 function addActiveCase(state: SupervisedRunState, testCase: CaseId): void {
-    state.addActiveCase(caseIdentityKey(testCase), { capture: null, id: testCase });
+    state.addActiveCase(caseIdentityKey(testCase), { capture: null, id: testCase }, 0);
 }
 
 function assertConcurrentArtifactScope(

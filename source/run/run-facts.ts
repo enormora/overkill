@@ -8,6 +8,7 @@ import type {
     RunCaseFacts,
     RunCommand,
     RunConfig,
+    DurationHistoryInput,
     RunFacts,
     RunExecutionFacts,
     PlacementPlan,
@@ -21,6 +22,7 @@ export type RunFactsInput = {
     readonly cases: readonly RunCaseFacts[];
     readonly config: RunConfig;
     readonly dependencies: RunOrchestratorDependencies;
+    readonly durationHistory: DurationHistoryInput | null;
     readonly engine: RunCommand['engine'];
     readonly placementPlan: PlacementPlan | null;
     readonly projectRoot: string;
@@ -174,6 +176,7 @@ export function createRunFacts(input: RunFactsInput): RunFacts {
 
     return {
         cases: input.cases,
+        durationHistory: input.durationHistory,
         environment: {
             node: {
                 arch: input.dependencies.node.arch,

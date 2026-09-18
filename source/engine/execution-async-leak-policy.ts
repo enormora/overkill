@@ -47,7 +47,8 @@ function runtimePolicyCase(testCase: TestPlanCase, executedCase: ConcurrentCase)
             id: testCase.id,
             outcome: null,
             verdict: 'runtime-policy',
-            workId: testCase.workId
+            workId: testCase.workId,
+            wallTimeMs: executedCase.wallTimeMs
         },
         runnerErrors: executedCase.runnerErrors,
         wallTimeMs: executedCase.wallTimeMs

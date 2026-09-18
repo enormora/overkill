@@ -4,7 +4,6 @@ import {
     freshWorkerLifecycle,
     lifecycleCount,
     lifecycleLaneCounts,
-    selectedCaseCount,
     reuseWorkerLifecycle,
     workerLifecycles
 } from './worker-pool-lifecycle-lanes.ts';
@@ -95,9 +94,10 @@ export function workerPoolLanes(input: WorkerPoolLaneInput): readonly PlacementL
 function lanesByLifecycle(
     lanes: readonly PlacementLane[],
     units: readonly WorkUnit[],
-    assignmentPolicy: RunWorkerPoolAssignmentPolicy
+    assignmentPolicy: RunWorkerPoolAssignmentPolicy,
+    durationUnitLoad: UnitLoad | null
 ): ReadonlyMap<RunWorkerLifecycle, readonly PlacementLane[]> {
-    const counts = lifecycleLaneCounts(units, lanes.length, assignmentPolicy);
+    const counts = lifecycleLaneCounts(units, lanes.length, assignmentPolicy, durationUnitLoad);
     let nextLaneIndex = 0;
 
     return new Map(
@@ -266,14 +266,15 @@ function selectedLaneForUnit(input: LaneSelectionInput): PlacementLane {
         return fixedLane;
     }
 
-    return input.assignmentPolicy === 'case-count-balanced' || requiresResourceAwareLane(input.unit)
+    return input.assignmentPolicy !== 'stable' || requiresResourceAwareLane(input.unit)
         ? input.placementState.chooseLane(input.unit, input.lanes)
         : assignedLane(input.lanes, input.nextIndex);
 }
 
 function orderedUnitsForAssignment(
     units: readonly WorkUnit[],
-    assignmentPolicy: RunWorkerPoolAssignmentPolicy
+    assignmentPolicy: RunWorkerPoolAssignmentPolicy,
+    unitLoad: UnitLoad
 ): readonly WorkUnit[] {
     if (assignmentPolicy === 'stable') {
         return units;
@@ -284,7 +285,7 @@ function orderedUnitsForAssignment(
             return { index, unit };
         })
         .toSorted(function compareSelectedCaseCount(left, right) {
-            const caseCountDifference = selectedCaseCount(right.unit) - selectedCaseCount(left.unit);
+            const caseCountDifference = unitLoad(right.unit) - unitLoad(left.unit);
 
             return caseCountDifference === 0 ? left.index - right.index : caseCountDifference;
         })
@@ -293,23 +294,34 @@ function orderedUnitsForAssignment(
         });
 }
 
-function assignmentUnitLoad(assignmentPolicy: RunWorkerPoolAssignmentPolicy): UnitLoad {
-    return assignmentPolicy === 'case-count-balanced'
-        ? caseCountPlacementLoad
-        : function stablePlacementLoad(unit) {
-            return unit.resourceConstraints.capacityWeight;
-        };
+function assignmentUnitLoad(
+    assignmentPolicy: RunWorkerPoolAssignmentPolicy,
+    durationUnitLoad: UnitLoad | null
+): UnitLoad {
+    if (assignmentPolicy === 'duration-history-balanced' && durationUnitLoad !== null) {
+        return durationUnitLoad;
+    }
+
+    if (assignmentPolicy === 'case-count-balanced' || assignmentPolicy === 'duration-history-balanced') {
+        return caseCountPlacementLoad;
+    }
+
+    return function stablePlacementLoad(unit) {
+        return unit.resourceConstraints.capacityWeight;
+    };
 }
 
 export function workerPoolPlacementAssignments(
     units: readonly WorkUnit[],
     lanes: readonly PlacementLane[],
-    assignmentPolicy: RunWorkerPoolAssignmentPolicy
+    assignmentPolicy: RunWorkerPoolAssignmentPolicy,
+    durationUnitLoad: UnitLoad | null = null
 ): readonly PlacementAssignment[] {
-    const lifecycleLanes = lanesByLifecycle(lanes, units, assignmentPolicy);
+    const lifecycleLanes = lanesByLifecycle(lanes, units, assignmentPolicy, durationUnitLoad);
     const lifecycleIndexes = new Map<RunWorkerLifecycle, number>();
-    const placementState = createLanePlacementState(assignmentUnitLoad(assignmentPolicy));
-    const assignmentUnits = orderedUnitsForAssignment(units, assignmentPolicy);
+    const unitLoad = assignmentUnitLoad(assignmentPolicy, durationUnitLoad);
+    const placementState = createLanePlacementState(unitLoad);
+    const assignmentUnits = orderedUnitsForAssignment(units, assignmentPolicy, unitLoad);
 
     return assignmentUnits.map(function toAssignment(unit) {
         const lanesForUnit = lifecycleLanes.get(unit.workerLifecycle) ?? [];

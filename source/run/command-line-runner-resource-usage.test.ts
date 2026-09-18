@@ -109,6 +109,7 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
                 config: command.config,
                 cwd: command.cwd,
                 facts: {
+                    durationHistory: null,
                     cases: [],
                     environment: {
                         node: { arch: 'x64', platform: 'linux', version: '26.1.1' },

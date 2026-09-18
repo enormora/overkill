@@ -188,7 +188,7 @@ function startTimeoutForActiveCase(runtime: SupervisedRunRuntimeSeed): Supervise
     const timeout = createHardTimeout(runtime);
 
     timeout.start();
-    runtime.state.addActiveCase('case', { capture: null, id: caseId });
+    runtime.state.addActiveCase('case', { capture: null, id: caseId }, 0);
     timeout.start();
     timeout.start();
 

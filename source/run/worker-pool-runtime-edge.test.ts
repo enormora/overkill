@@ -44,6 +44,9 @@ async function createRuntime(resolvedRun: ResolvedRun): Promise<void> {
         collectionRunnerErrors: [],
         createdPool: null,
         dependencies: fakeDependencies(),
+        async finalizeResult(result) {
+            return result;
+        },
         resolvedRun,
         runState: createSupervisedRunState()
     });
