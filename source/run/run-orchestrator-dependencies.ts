@@ -13,7 +13,7 @@ import type { DurationHistoryStore } from './duration-history.ts';
 import type { RunDiscovery } from './run-discovery-types.ts';
 import type { RunEngineModuleLoader } from './run-engine-selection.ts';
 import type { RunTestModuleLoader } from './run-test-modules.ts';
-import type { RunHostProcess } from './run-types.ts';
+import type { RunHostProcess, RunTestFamily } from './run-types.ts';
 import type {
     SupervisedChildProcess,
     SupervisedChildProcessStarter
@@ -35,6 +35,7 @@ export type WorkerPoolHostOutputSink = (
 export type WorkerPoolCreationOptions = {
     readonly cwd: string;
     readonly hostProcess: RunHostProcess;
+    readonly testFamily: RunTestFamily;
     readonly workerCount: number;
     readonly workerLifecycle: 'fresh-worker-per-unit' | 'reuse';
 };
@@ -43,6 +44,7 @@ export type WorkerPoolHostProcessStartOptions = {
     readonly cwd: string;
     readonly environmentVariables: RuntimeCapabilityPolicyEnvironment;
     readonly nodeArguments: readonly string[];
+    readonly testFamily: RunTestFamily;
 };
 
 export type WorkerPoolHostProcessStarter = (

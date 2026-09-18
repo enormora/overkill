@@ -128,6 +128,7 @@ function createCollectionRuntime(
     const pool = createdPool ?? dependencies.createWorkerPool({
         cwd: command.cwd,
         hostProcess: command.hostProcess,
+        testFamily: command.testFamily,
         workerCount: 1,
         workerLifecycle: 'fresh-worker-per-unit'
     });

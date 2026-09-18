@@ -179,7 +179,8 @@ async function createCollectionRuntime(
         child: await dependencies.startSupervisedChild({
             capabilityRestrictions: command.capabilityRestrictions,
             cwd: command.cwd,
-            environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment()
+            environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment(),
+            testFamily: command.testFamily
         }),
         command,
         collected: createStoredRunValue<SupervisedCollectionResult | null>(null),
@@ -237,7 +238,8 @@ async function createLiveRun(
     const child = await dependencies.startSupervisedChild({
         capabilityRestrictions: command.capabilityRestrictions,
         cwd: command.cwd,
-        environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment()
+        environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment(),
+        testFamily: command.testFamily
     });
     const collectedSignal = createSignal();
     const state = createSupervisedRunState();
@@ -465,7 +467,8 @@ async function createRuntime(
         child: await dependencies.startSupervisedChild({
             capabilityRestrictions: effectiveSupervisedCapabilityRestrictions(resolvedRun),
             cwd: resolvedRun.cwd,
-            environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment()
+            environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment(),
+            testFamily: resolvedRun.facts.execution.testFamily
         }),
         collectedPlan: createStoredRunValue<CollectedRunPlan | null>(collectedPlan),
         completedResult: createStoredRunValue<RunResult | null>(null),

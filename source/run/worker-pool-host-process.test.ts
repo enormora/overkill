@@ -173,6 +173,7 @@ function workerPoolOptions(overrides: Partial<WorkerPoolCreationOptions> = {}): 
     return {
         cwd: '/project',
         hostProcess: { kind: 'child', nodeArguments: [ '--expose-gc' ] },
+        testFamily: 'integration',
         workerCount: 2,
         workerLifecycle: 'reuse',
         ...overrides
@@ -320,6 +321,7 @@ function createForwardingFixture(scope: OverkillScope): ForwardingFixture {
         options: workerPoolOptions(),
         startWorkerPoolHost(options) {
             scope.assert.deepEqual(options.nodeArguments, [ '--expose-gc' ]);
+            scope.assert.equal(options.testFamily, 'integration');
 
             return child;
         }

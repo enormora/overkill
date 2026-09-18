@@ -123,6 +123,7 @@ export async function runWorkerPoolCommand(
         ? dependencies.createWorkerPool({
             cwd: command.cwd,
             hostProcess: command.hostProcess,
+            testFamily: command.testFamily,
             workerCount: dependencies.availableParallelism,
             workerLifecycle: command.workerLifecycle
         })

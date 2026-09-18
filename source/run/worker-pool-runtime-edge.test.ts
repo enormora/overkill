@@ -3,11 +3,11 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import { fakeWorkerPoolRuntimeDependencies as fakeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import { createWorkerPoolRuntime, type WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 import {
     createCollectedPlan,
-    fakeDependencies,
     workerPoolResolvedRun
 } from './worker-pool-runtime.test.ts';
 

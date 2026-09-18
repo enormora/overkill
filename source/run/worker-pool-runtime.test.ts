@@ -1,14 +1,11 @@
-import { createDeterministicWallClock } from '@enormora/wall-clock';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
-import { defaultRunEngine } from './default-run-engine.ts';
+import { fakeWorkerPoolRuntimeDependencies as fakeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import type {
-    CreatedWorkerPool,
-    RunOrchestratorDependencies,
     WorkerPoolCreationOptions
 } from './run-orchestrator-dependencies.ts';
 import type { RunWorkerLifecycle } from './run-types.ts';
@@ -23,6 +20,11 @@ import { createWorkerPoolPlacementPlan } from './worker-pool-placement-planning.
 
 type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
 type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
+type RecordedPoolDependencies = {
+    readonly createdWorkerPools: readonly WorkerPoolCreationOptions[];
+    readonly dependencies: WorkerPoolRunRuntime['dependencies'];
+    readonly measuredSamplingInterval: () => number;
+};
 
 const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const annotations = { ownership: [], tags: [] };
@@ -130,106 +132,6 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): Resolved
         plan: { collectedPlan, kind: 'worker-pool' },
         reporters: [],
         request: defaultRunRequest({ paths: [ integrationPath ], profile: 'integration' })
-    };
-}
-
-function testOnlyDependency(): never {
-    throw new Error('Test fixture dependency is not configured.');
-}
-
-function createFakePool(maxThreads: number, isolateWorkers: boolean): CreatedWorkerPool {
-    return {
-        async destroy() {
-            return undefined;
-        },
-        options: { isolateWorkers, maxThreads },
-        async run() {
-            throw new Error('Fake worker pool did not receive a task implementation.');
-        }
-    };
-}
-
-const createFakeWorkerPool: RunOrchestratorDependencies['createWorkerPool'] = function createFakeWorkerPool(options) {
-    return createFakePool(options.workerCount, options.workerLifecycle === 'fresh-worker-per-unit');
-};
-
-export function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
-    return {
-        availableParallelism: 2,
-        createResourceUsageTracker: testOnlyDependency,
-        createSeed() {
-            return 42n;
-        },
-        createWorkerPool: createFakeWorkerPool,
-        defaultEngine: defaultRunEngine,
-        durationHistoryStore: {
-            async read() {
-                return null;
-            },
-            async write() {
-                return undefined;
-            }
-        },
-        discoverRunFilesWithProjectRoot: testOnlyDependency,
-        execute: defaultRunEngine.execute,
-        liveOutput: {
-            stderr: {
-                write() {
-                    return undefined;
-                }
-            },
-            stdout: {
-                write() {
-                    return undefined;
-                }
-            }
-        },
-        loadRunEngineModule: testOnlyDependency,
-        loadRunTestModules: testOnlyDependency,
-        node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
-        reporterDispatcher: {
-            async createDelivery() {
-                return {
-                    async disposeReporters() {
-                        return [];
-                    },
-                    async reportEvent() {
-                        return [];
-                    },
-                    async reportResult() {
-                        return [];
-                    }
-                };
-            },
-            async trackRunnerErrorDelivery(work) {
-                return {
-                    deliveredRunnerErrors: [],
-                    result: await work(),
-                    undeliveredRunnerErrors: []
-                };
-            }
-        },
-        runtimeCapabilityPolicy: {
-            installIpcRestriction() {
-                return function restoreIpcRestriction() {
-                    return undefined;
-                };
-            },
-            installProcessExecutionRestriction() {
-                return function restoreProcessExecutionRestriction() {
-                    return undefined;
-                };
-            },
-            readEnvironment() {
-                return {};
-            },
-            readStorage() {
-                return null;
-            }
-        },
-        startSupervisedChild: testOnlyDependency,
-        startWorkerPoolHost: testOnlyDependency,
-        wallClock: createDeterministicWallClock()
     };
 }
 
@@ -369,6 +271,57 @@ function workerPoolRunWithoutPlacementPlan(): ResolvedRun {
     };
 }
 
+async function createRuntime(
+    dependencies: WorkerPoolRunRuntime['dependencies'],
+    resolvedRun: ResolvedRun
+): Promise<WorkerPoolRunRuntime> {
+    return await createWorkerPoolRuntime({
+        collectionRunnerErrors: [],
+        createdPool: null,
+        dependencies,
+        async finalizeResult(result) {
+            return result;
+        },
+        resolvedRun,
+        runState: createSupervisedRunState()
+    });
+}
+
+function failResourceUsageFinish(): never {
+    throw new Error('Resource usage tracker should not finish in this test.');
+}
+
+function createRecordedPoolDependencies(): RecordedPoolDependencies {
+    const createdWorkerPools: WorkerPoolCreationOptions[] = [];
+    let measuredSamplingInterval = 0;
+    const baseDependencies = fakeDependencies();
+
+    return {
+        createdWorkerPools,
+        dependencies: {
+            ...baseDependencies,
+            createResourceUsageTracker(options) {
+                measuredSamplingInterval = options.samplingIntervalMilliseconds;
+
+                return {
+                    finish: failResourceUsageFinish,
+                    start() {
+                        return undefined;
+                    }
+                };
+            },
+            createWorkerPool(options) {
+                createdWorkerPools.push(options);
+
+                return baseDependencies.createWorkerPool(options);
+            }
+        },
+        measuredSamplingInterval() {
+            return measuredSamplingInterval;
+        }
+    };
+}
+
 async function workerPoolRuntimeCreation(): Promise<{
     readonly createdWorkerPools: readonly WorkerPoolCreationOptions[];
     readonly measuredSamplingInterval: number;
@@ -377,64 +330,21 @@ async function workerPoolRuntimeCreation(): Promise<{
     readonly unmeasuredThreads: number;
     readonly unmeasuredTracker: WorkerPoolRunRuntime['poolResourceUsageTracker'];
 }> {
-    const createdWorkerPools: WorkerPoolCreationOptions[] = [];
-    let measuredSamplingInterval = 0;
-    const dependencies: WorkerPoolRunRuntime['dependencies'] = {
-        ...fakeDependencies(),
-        createResourceUsageTracker(options) {
-            measuredSamplingInterval = options.samplingIntervalMilliseconds;
-
-            return {
-                finish: testOnlyDependency,
-                start() {
-                    return undefined;
-                }
-            };
-        },
-        createWorkerPool(options) {
-            createdWorkerPools.push(options);
-
-            return createFakeWorkerPool(options);
-        }
-    };
-    const unmeasuredRuntime = await createWorkerPoolRuntime({
-        collectionRunnerErrors: [],
-        createdPool: null,
-        dependencies,
-        async finalizeResult(result) {
-            return result;
-        },
-        resolvedRun: workerPoolResolvedRun({ ...createCollectedPlan(), files: [] }),
-        runState: createSupervisedRunState()
-    });
-    const measuredRuntime = await createWorkerPoolRuntime({
-        collectionRunnerErrors: [],
-        createdPool: null,
-        dependencies,
-        async finalizeResult(result) {
-            return result;
-        },
-        resolvedRun: resourceMeasurementResolvedRun(),
-        runState: createSupervisedRunState()
-    });
-    const freshRuntime = await createWorkerPoolRuntime({
-        collectionRunnerErrors: [],
-        createdPool: null,
-        dependencies,
-        async finalizeResult(result) {
-            return result;
-        },
-        resolvedRun: childHostResolvedRun(),
-        runState: createSupervisedRunState()
-    });
+    const fixture = createRecordedPoolDependencies();
+    const unmeasuredRuntime = await createRuntime(
+        fixture.dependencies,
+        workerPoolResolvedRun({ ...createCollectedPlan(), files: [] })
+    );
+    const measuredRuntime = await createRuntime(fixture.dependencies, resourceMeasurementResolvedRun());
+    const freshRuntime = await createRuntime(fixture.dependencies, childHostResolvedRun());
 
     await unmeasuredRuntime.pool.destroy();
     await measuredRuntime.pool.destroy();
     await freshRuntime.pool.destroy();
 
     return {
-        createdWorkerPools,
-        measuredSamplingInterval,
+        createdWorkerPools: fixture.createdWorkerPools,
+        measuredSamplingInterval: fixture.measuredSamplingInterval(),
         measuredThreads: measuredRuntime.pool.options.maxThreads,
         measuredTracker: measuredRuntime.poolResourceUsageTracker,
         unmeasuredThreads: unmeasuredRuntime.pool.options.maxThreads,
@@ -462,11 +372,24 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(result.measuredSamplingInterval, 17);
                 scope.assert.notEqual(result.measuredTracker, null);
                 scope.assert.deepEqual(result.createdWorkerPools, [
-                    { cwd: process.cwd(), hostProcess: { kind: 'direct' }, workerCount: 0, workerLifecycle: 'reuse' },
-                    { cwd: process.cwd(), hostProcess: { kind: 'direct' }, workerCount: 1, workerLifecycle: 'reuse' },
+                    {
+                        cwd: process.cwd(),
+                        hostProcess: { kind: 'direct' },
+                        testFamily: 'integration',
+                        workerCount: 0,
+                        workerLifecycle: 'reuse'
+                    },
+                    {
+                        cwd: process.cwd(),
+                        hostProcess: { kind: 'direct' },
+                        testFamily: 'integration',
+                        workerCount: 1,
+                        workerLifecycle: 'reuse'
+                    },
                     {
                         cwd: process.cwd(),
                         hostProcess: { kind: 'child', nodeArguments: [ '--conditions=overkill-test' ] },
+                        testFamily: 'integration',
                         workerCount: 1,
                         workerLifecycle: 'fresh-worker-per-unit'
                     }
