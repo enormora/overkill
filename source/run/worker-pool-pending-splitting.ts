@@ -1,5 +1,5 @@
 import { workIdentityKey } from '../engine/identity.ts';
-import type { DynamicWorkUnitId, PlacementTraceEntry, TraceWorkUnitId } from './placement-trace-types.ts';
+import type { DynamicWorkUnitId, PlacementTraceEntry, TraceWorkUnitId } from './placement-trace.ts';
 import type { WorkUnit } from './run-types.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 import { workResourceConstraints } from './work-unit-resource-constraints.ts';
@@ -30,10 +30,6 @@ type SplitQueuedWorkUnitResult = {
 };
 
 const requeuedParentOrder = Number.MAX_SAFE_INTEGER;
-
-export function traceUnitKey(unit: TraceWorkUnitId): string {
-    return JSON.stringify(unit);
-}
 
 function queuePriority(parentOrder: number, childOrder: number): QueuePriority {
     return { childOrder, parentOrder };

@@ -79,7 +79,7 @@ export type {
     PlacementTrace,
     PlacementTraceEntry,
     TraceWorkUnitId
-} from '../../run/placement-trace-types.ts';
+} from '../../run/placement-trace.ts';
 export type {
     CollectedRunCase,
     CollectedRunFile,

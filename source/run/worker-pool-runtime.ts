@@ -13,7 +13,7 @@ import type {
     RunWorkerLifecycle,
     WorkUnit
 } from './run-types.ts';
-import type { PlacementTraceEntry, TraceWorkUnitId } from './placement-trace-types.ts';
+import type { PlacementTraceEntry, TraceWorkUnitId } from './placement-trace.ts';
 import type {
     CreatedWorkerPool,
     RunOrchestratorDependencies,

@@ -44,3 +44,7 @@ export type PlacementTraceEntry = {
     readonly unit: TraceWorkUnitId;
     readonly workerId: string;
 };
+
+export function traceUnitKey(unit: TraceWorkUnitId): string {
+    return JSON.stringify(unit);
+}

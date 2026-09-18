@@ -4,7 +4,7 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { workIdentityKey } from '../engine/identity.ts';
-import type { DynamicWorkUnitId, PlacementTraceEntry } from './placement-trace-types.ts';
+import type { DynamicWorkUnitId, PlacementTraceEntry } from './placement-trace.ts';
 import type { PlacementPlan } from './run-types.ts';
 import {
     fakeWorkerRuntime,
@@ -16,6 +16,11 @@ import {
     type WorkerPoolUnitLease,
     type WorkerPoolWorkDispatcher
 } from './worker-pool-work-dispatcher.ts';
+import {
+    originalQueueItem,
+    splitQueuedWorkUnit
+} from './worker-pool-pending-splitting.ts';
+import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 
 type WorkUnit = PlacementPlan['units'][number];
 type PlacementLane = PlacementPlan['lanes'][number];
@@ -159,6 +164,67 @@ function oneLanePlan(unit: WorkUnit): PlacementPlan {
         assignments: [ { lane: first.id, unit: unit.id } ],
         lanes: [ first ],
         units: [ unit ]
+    };
+}
+
+function weightedUnit(key: string, capacityWeight: number): WorkUnit {
+    const unit = firstUnit(placementPlan());
+
+    return {
+        ...unit,
+        id: {
+            ...unit.id,
+            key
+        },
+        resourceConstraints: {
+            ...unit.resourceConstraints,
+            capacityWeight
+        }
+    };
+}
+
+function weightedPlan(): PlacementPlan {
+    const heavy = weightedUnit('heavy', 2);
+    const light = weightedUnit('light', 1);
+    const first = workerLane('worker-1');
+    const second = workerLane('worker-2');
+
+    return {
+        assignments: [
+            { lane: first.id, unit: light.id },
+            { lane: second.id, unit: heavy.id }
+        ],
+        lanes: [ first, second ],
+        units: [ light, heavy ]
+    };
+}
+
+function runtimeWithEmptyDurationHistory(plan: PlacementPlan): WorkerPoolRunRuntime {
+    const runtime = fakeWorkerRuntime(plan);
+    const { execution } = runtime.resolvedRun.facts;
+
+    if (execution.processModel !== 'worker-pool') {
+        throw new Error('Worker-pool dispatcher fixture requires worker-pool execution facts.');
+    }
+
+    return {
+        ...runtime,
+        resolvedRun: {
+            ...runtime.resolvedRun,
+            facts: {
+                ...runtime.resolvedRun.facts,
+                durationHistory: {
+                    generatedAt: '2026-01-01T00:00:00.000Z',
+                    samples: [],
+                    source: 'runtime-state-index'
+                },
+                execution: {
+                    ...execution,
+                    assignmentPolicy: 'duration-history-balanced',
+                    placementPlan: plan
+                }
+            }
+        }
     };
 }
 
@@ -352,6 +418,37 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.equal(lease.unit.work.length, 2);
                 scope.assert.deepEqual(lease.traceUnit, unit.id);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'worker-pool dynamic dispatcher falls back when duration history is empty',
+            body(scope: OverkillScope) {
+                const plan = weightedPlan();
+                const runtime = runtimeWithEmptyDurationHistory(plan);
+                const lease = pullRequiredLease(createWorkDispatcher(runtime, plan), firstLane(plan));
+
+                scope.assert.equal(lease.unit.id.key, 'heavy');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'worker-pool pending split rejects malformed empty child sets',
+            body(scope: OverkillScope) {
+                const unit = {
+                    ...multiWorkUnit(),
+                    work: []
+                } as unknown as WorkUnit;
+
+                scope.assert.throws(function splitMalformedUnit() {
+                    splitQueuedWorkUnit(fakeWorkerRuntime(twoLanePlan(unit)), originalQueueItem(unit, 0));
+                }, {
+                    message: 'Splittable work unit unexpectedly had no children.'
+                });
 
                 return scope.assert.collect();
             }

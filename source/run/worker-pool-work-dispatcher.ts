@@ -4,7 +4,7 @@ import type {
     PlacementPlan,
     WorkUnit
 } from './run-types.ts';
-import type { TraceWorkUnitId } from './placement-trace-types.ts';
+import { traceUnitKey, type TraceWorkUnitId } from './placement-trace.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 import {
     createChangeWaiters,
@@ -21,7 +21,6 @@ import {
     queuedWorkCanSplit,
     requeuedPriority,
     splitQueuedWorkUnit,
-    traceUnitKey,
     type QueuedWorkUnit,
     type SplitEligibility
 } from './worker-pool-pending-splitting.ts';
