@@ -246,39 +246,6 @@ export type PlacementPlan = {
     readonly units: readonly WorkUnit[];
 };
 
-export type PlacementTrace = {
-    readonly entries: readonly PlacementTraceEntry[];
-};
-
-export type PlacementTraceEntry = {
-    readonly activeUnit: WorkUnitId | null;
-    readonly kind: 'worker-crashed';
-    readonly workerId: string;
-} | {
-    readonly durationMilliseconds: number;
-    readonly kind: 'unit-completed';
-    readonly unit: WorkUnitId;
-    readonly workerId: string;
-} | {
-    readonly fromLane: PlacementLane['id'];
-    readonly kind: 'unit-reassigned';
-    readonly toLane: PlacementLane['id'];
-    readonly unit: WorkUnitId;
-} | {
-    readonly kind: 'hedged-duplicate-discarded';
-    readonly unit: WorkUnitId;
-    readonly workerId: string;
-} | {
-    readonly kind: 'hedged-duplicate-started';
-    readonly unit: WorkUnitId;
-    readonly workerId: string;
-} | {
-    readonly kind: 'unit-started';
-    readonly lane: PlacementLane['id'];
-    readonly unit: WorkUnitId;
-    readonly workerId: string;
-};
-
 export type RunMicrotestExecution = {
     readonly processModel: RunMicrotestProcessModel;
     readonly scheduling: RunScheduling;

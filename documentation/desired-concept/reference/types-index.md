@@ -1110,7 +1110,7 @@ type WorkUnitResourceConstraints = {
 };
 
 type DynamicWorkUnitId = {
-    readonly child: string;
+    readonly child: string; // stable key derived from the child WorkId
     readonly parent: WorkUnitId;
 };
 

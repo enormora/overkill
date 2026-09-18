@@ -4,11 +4,37 @@ import type {
     PlacementPlan,
     WorkUnit
 } from './run-types.ts';
+import type { TraceWorkUnitId } from './placement-trace-types.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
+import {
+    createChangeWaiters,
+    createLeaseCounter,
+    createWorkUnitQueue,
+    type ChangeWaiters,
+    type LeaseCounter,
+    type WorkUnitQueue
+} from './worker-pool-dispatch-state.ts';
+import {
+    compareQueuePriority,
+    fixedQueueItem,
+    originalQueueItem,
+    queuedWorkCanSplit,
+    requeuedPriority,
+    splitQueuedWorkUnit,
+    traceUnitKey,
+    type QueuedWorkUnit,
+    type SplitEligibility
+} from './worker-pool-pending-splitting.ts';
 
 export type WorkerPoolUnitLease = {
     readonly lane: PlacementLane;
     readonly reservation: LeaseReservation;
+    readonly traceUnit: TraceWorkUnitId;
+    readonly unit: WorkUnit;
+};
+
+type WorkerPoolRequeuedUnit = {
+    readonly traceUnit: TraceWorkUnitId;
     readonly unit: WorkUnit;
 };
 
@@ -17,7 +43,7 @@ export type WorkerPoolWorkDispatcher = {
     readonly clear: () => void;
     readonly finish: (lease: WorkerPoolUnitLease, keepReservation: boolean) => void;
     readonly pull: (lane: PlacementLane) => WorkerPoolUnitLease | null;
-    readonly requeue: (unit: WorkUnit) => void;
+    readonly requeue: (unit: WorkerPoolRequeuedUnit) => void;
     readonly waitForChange: () => Promise<void>;
 };
 
@@ -28,25 +54,6 @@ type LeaseReservation = {
 
 type UnitLoad = (unit: WorkUnit) => number;
 
-type WorkUnitQueue = {
-    readonly all: () => readonly WorkUnit[];
-    readonly clear: () => void;
-    readonly push: (unit: WorkUnit) => void;
-    readonly remove: (unit: WorkUnit) => void;
-    readonly takeFirst: () => WorkUnit | null;
-};
-
-type LeaseCounter = {
-    readonly active: () => number;
-    readonly decrement: () => void;
-    readonly increment: () => void;
-};
-
-type ChangeWaiters = {
-    readonly notify: () => void;
-    readonly wait: () => Promise<void>;
-};
-
 type DynamicReservations = {
     readonly bindHardLane: (key: string, lane: PlacementLane) => void;
     readonly boundHardLane: (key: string) => string | undefined;
@@ -55,8 +62,8 @@ type DynamicReservations = {
     readonly incrementFault: (faultDomain: string, lane: PlacementLane) => void;
     readonly releaseHardLane: (key: string, lane: PlacementLane) => void;
     readonly reservedFaultCount: (faultDomain: string, lane: PlacementLane) => number;
-    readonly retainedLane: (unit: WorkUnit) => string | undefined;
-    readonly retainUnit: (unit: WorkUnit, lane: PlacementLane) => void;
+    readonly retainedLane: (traceUnit: TraceWorkUnitId) => string | undefined;
+    readonly retainUnit: (traceUnit: TraceWorkUnitId, lane: PlacementLane) => void;
 };
 
 type FaultQuotaLedger = {
@@ -66,19 +73,23 @@ type FaultQuotaLedger = {
 
 type DynamicDispatchState = {
     readonly activeLeases: LeaseCounter;
+    readonly lanes: readonly PlacementLane[];
     readonly lifecycleByLane: ReadonlyMap<string, WorkUnit['workerLifecycle']>;
-    readonly orderByUnit: ReadonlyMap<string, number>;
-    readonly pendingUnits: WorkUnitQueue;
+    readonly pendingUnits: WorkUnitQueue<QueuedWorkUnit>;
     readonly quotas: ReadonlyMap<string, number>;
     readonly reservations: DynamicReservations;
+    readonly runtime: WorkerPoolRunRuntime;
     readonly unitLoad: UnitLoad;
     readonly waiters: ChangeWaiters;
 };
 
 const medianDivisor = 2;
+function workUnitIdKey(unit: WorkUnit['id']): string {
+    return JSON.stringify(unit);
+}
 
 function unitKey(unit: WorkUnit): string {
-    return JSON.stringify(unit.id);
+    return workUnitIdKey(unit.id);
 }
 
 function unitByKey(units: readonly WorkUnit[]): ReadonlyMap<string, WorkUnit> {
@@ -126,75 +137,10 @@ function unitsAssignedToLane(plan: PlacementPlan, lane: PlacementLane): readonly
     });
 }
 
-function createWorkUnitQueue(initialUnits: readonly WorkUnit[]): WorkUnitQueue {
-    let units = Array.from(initialUnits);
-
-    return {
-        all() {
-            return units;
-        },
-        clear() {
-            units = [];
-        },
-        push(unit) {
-            units = [ ...units, unit ];
-        },
-        remove(unit) {
-            units = units.filter(function keep(candidate) {
-                return candidate !== unit;
-            });
-        },
-        takeFirst() {
-            const [ unit, ...remaining ] = units;
-
-            units = remaining;
-
-            return unit ?? null;
-        }
-    };
-}
-
-function createLeaseCounter(): LeaseCounter {
-    let count = 0;
-
-    return {
-        active() {
-            return count;
-        },
-        decrement() {
-            count -= 1;
-        },
-        increment() {
-            count += 1;
-        }
-    };
-}
-
-function createChangeWaiters(): ChangeWaiters {
-    let waiters: readonly (() => void)[] = [];
-
-    return {
-        notify() {
-            const currentWaiters = waiters;
-
-            waiters = [];
-
-            for (const resolve of currentWaiters) {
-                resolve();
-            }
-        },
-        async wait() {
-            await new Promise<void>(function waitForChange(resolve) {
-                waiters = [ ...waiters, resolve ];
-            });
-        }
-    };
-}
-
 function createDynamicReservations(): DynamicReservations {
     const hardLaneByKey = new Map<string, string>();
     const reservedFaultCounts = new Map<string, number>();
-    const retainedLaneByUnit = new Map<string, string>();
+    const retainedLaneByTraceUnit = new Map<string, string>();
 
     return {
         bindHardLane(key, lane) {
@@ -231,11 +177,11 @@ function createDynamicReservations(): DynamicReservations {
         reservedFaultCount(faultDomain, lane) {
             return reservedFaultCounts.get(faultReservationKey(faultDomain, lane)) ?? 0;
         },
-        retainedLane(unit) {
-            return retainedLaneByUnit.get(unitKey(unit));
+        retainedLane(traceUnit) {
+            return retainedLaneByTraceUnit.get(traceUnitKey(traceUnit));
         },
-        retainUnit(unit, lane) {
-            retainedLaneByUnit.set(unitKey(unit), lane.id);
+        retainUnit(traceUnit, lane) {
+            retainedLaneByTraceUnit.set(traceUnitKey(traceUnit), lane.id);
         }
     };
 }
@@ -263,16 +209,18 @@ function createStaticDispatcher(plan: PlacementPlan): WorkerPoolWorkDispatcher {
         pull(lane) {
             const unit = queues.get(lane.id)?.takeFirst() ?? null;
 
-            return unit === null ? null : { lane, reservation: { faultDomains: [], hardKeys: [] }, unit };
+            return unit === null
+                ? null
+                : { lane, reservation: { faultDomains: [], hardKeys: [] }, traceUnit: unit.id, unit };
         },
-        requeue(unit) {
-            const lane = assignedLaneByUnit.get(unitKey(unit));
+        requeue(requeuedUnit) {
+            const lane = assignedLaneByUnit.get(unitKey(requeuedUnit.unit));
 
             if (lane === undefined) {
                 throw new Error('Static worker-pool dispatch cannot requeue an unassigned work unit.');
             }
 
-            queues.get(lane)?.push(unit);
+            queues.get(lane)?.push(requeuedUnit.unit);
         },
         async waitForChange() {
             return undefined;
@@ -392,69 +340,72 @@ function faultQuotas(plan: PlacementPlan): ReadonlyMap<string, number> {
 
 function createDynamicDispatchState(runtime: WorkerPoolRunRuntime, plan: PlacementPlan): DynamicDispatchState {
     const units = unitByKey(plan.units);
-    const pendingUnits = plan.assignments.map(function toUnit(assignment) {
-        return knownUnit(units, assignment.unit);
+    const pendingUnits = plan.assignments.map(function toUnit(assignment, index) {
+        return originalQueueItem(knownUnit(units, assignment.unit), index);
     });
 
     return {
         activeLeases: createLeaseCounter(),
+        lanes: plan.lanes,
         lifecycleByLane: laneLifecycles(plan),
-        orderByUnit: new Map(pendingUnits.map(function toOrderEntry(unit, index) {
-            return [ unitKey(unit), index ];
-        })),
         pendingUnits: createWorkUnitQueue(pendingUnits),
         quotas: faultQuotas(plan),
         reservations: createDynamicReservations(),
+        runtime,
         unitLoad: runtimeUnitLoad(runtime),
         waiters: createChangeWaiters()
     };
 }
 
-function laneMatchesLifecycle(state: DynamicDispatchState, unit: WorkUnit, lane: PlacementLane): boolean {
-    return state.lifecycleByLane.get(lane.id) === unit.workerLifecycle;
+function laneMatchesLifecycle(state: DynamicDispatchState, item: QueuedWorkUnit, lane: PlacementLane): boolean {
+    return state.lifecycleByLane.get(lane.id) === item.unit.workerLifecycle;
 }
 
-function laneMatchesRetainedReservation(state: DynamicDispatchState, unit: WorkUnit, lane: PlacementLane): boolean {
-    const retainedLane = state.reservations.retainedLane(unit);
+function laneMatchesRetainedReservation(
+    state: DynamicDispatchState,
+    item: QueuedWorkUnit,
+    lane: PlacementLane
+): boolean {
+    const retainedLane = state.reservations.retainedLane(item.traceUnit);
 
     return retainedLane === undefined || retainedLane === lane.id;
 }
 
-function laneMatchesHardKeys(state: DynamicDispatchState, unit: WorkUnit, lane: PlacementLane): boolean {
-    return hardConstraintKeys(unit).every(function keyMatchesLane(key) {
+function laneMatchesHardKeys(state: DynamicDispatchState, item: QueuedWorkUnit, lane: PlacementLane): boolean {
+    return hardConstraintKeys(item.unit).every(function keyMatchesLane(key) {
         const boundLane = state.reservations.boundHardLane(key);
 
         return boundLane === undefined || boundLane === lane.id;
     });
 }
 
-function laneHasFaultCapacity(state: DynamicDispatchState, unit: WorkUnit, lane: PlacementLane): boolean {
-    if (state.reservations.retainedLane(unit) === lane.id) {
+function laneHasFaultCapacity(state: DynamicDispatchState, item: QueuedWorkUnit, lane: PlacementLane): boolean {
+    if (state.reservations.retainedLane(item.traceUnit) === lane.id) {
         return true;
     }
 
-    return uniqueText(unit.resourceConstraints.faultDomains).every(function domainHasCapacity(faultDomain) {
+    return uniqueText(item.unit.resourceConstraints.faultDomains).every(function domainHasCapacity(faultDomain) {
         const key = faultReservationKey(faultDomain, lane);
 
         return state.reservations.reservedFaultCount(faultDomain, lane) < (state.quotas.get(key) ?? 0);
     });
 }
 
-function laneCanLease(state: DynamicDispatchState, unit: WorkUnit, lane: PlacementLane): boolean {
-    return laneMatchesRetainedReservation(state, unit, lane) &&
-        laneMatchesLifecycle(state, unit, lane) &&
-        laneMatchesHardKeys(state, unit, lane) &&
-        laneHasFaultCapacity(state, unit, lane);
+function laneCanLease(state: DynamicDispatchState, item: QueuedWorkUnit, lane: PlacementLane): boolean {
+    return laneMatchesRetainedReservation(state, item, lane) &&
+        laneMatchesLifecycle(state, item, lane) &&
+        laneMatchesHardKeys(state, item, lane) &&
+        laneHasFaultCapacity(state, item, lane);
 }
 
-function comparePriority(state: DynamicDispatchState, left: WorkUnit, right: WorkUnit): number {
-    const loadDifference = state.unitLoad(right) - state.unitLoad(left);
+function comparePriority(state: DynamicDispatchState, left: QueuedWorkUnit, right: QueuedWorkUnit): number {
+    const loadDifference = state.unitLoad(right.unit) - state.unitLoad(left.unit);
 
     if (loadDifference !== 0) {
         return loadDifference;
     }
 
-    return (state.orderByUnit.get(unitKey(left)) ?? 0) - (state.orderByUnit.get(unitKey(right)) ?? 0);
+    return compareQueuePriority(left.priority, right.priority);
 }
 
 function freshReservation(state: DynamicDispatchState, unit: WorkUnit, lane: PlacementLane): LeaseReservation {
@@ -476,12 +427,12 @@ function freshReservation(state: DynamicDispatchState, unit: WorkUnit, lane: Pla
     return { faultDomains, hardKeys };
 }
 
-function reserve(state: DynamicDispatchState, unit: WorkUnit, lane: PlacementLane): LeaseReservation {
-    if (state.reservations.retainedLane(unit) === lane.id) {
+function reserve(state: DynamicDispatchState, item: QueuedWorkUnit, lane: PlacementLane): LeaseReservation {
+    if (state.reservations.retainedLane(item.traceUnit) === lane.id) {
         return { faultDomains: [], hardKeys: [] };
     }
 
-    return freshReservation(state, unit, lane);
+    return freshReservation(state, item.unit, lane);
 }
 
 function release(state: DynamicDispatchState, lease: WorkerPoolUnitLease): void {
@@ -495,13 +446,37 @@ function release(state: DynamicDispatchState, lease: WorkerPoolUnitLease): void 
 }
 
 function blocked(state: DynamicDispatchState, lane: PlacementLane): boolean {
-    return state.activeLeases.active() > 0 && state.pendingUnits.all().some(function hasBlockedUnit(unit) {
-        return laneMatchesRetainedReservation(state, unit, lane) && laneMatchesLifecycle(state, unit, lane);
+    return state.activeLeases.active() > 0 && state.pendingUnits.all().some(function hasBlockedUnit(item) {
+        return laneMatchesRetainedReservation(state, item, lane) && laneMatchesLifecycle(state, item, lane);
     });
 }
 
-function pull(state: DynamicDispatchState, lane: PlacementLane): WorkerPoolUnitLease | null {
-    const unit = state
+function compatibleLaneCount(state: DynamicDispatchState, item: QueuedWorkUnit): number {
+    return state
+        .lanes
+        .filter(function canLeaseParent(lane) {
+            return laneCanLease(state, item, lane);
+        })
+        .length;
+}
+
+function splitEligibility(state: DynamicDispatchState, item: QueuedWorkUnit): SplitEligibility {
+    return {
+        compatibleLaneCount: compatibleLaneCount(state, item),
+        hardConstraintCount: hardConstraintKeys(item.unit).length
+    };
+}
+
+function splitPendingUnit(state: DynamicDispatchState, item: QueuedWorkUnit): void {
+    const split = splitQueuedWorkUnit(state.runtime, item);
+
+    state.pendingUnits.remove(item);
+    state.pendingUnits.pushMany(split.children);
+    state.runtime.recordPlacementTraceEntry(split.traceEntry);
+}
+
+function selectPendingUnit(state: DynamicDispatchState, lane: PlacementLane): QueuedWorkUnit | undefined {
+    return state
         .pendingUnits
         .all()
         .filter(function isEligible(candidate) {
@@ -510,15 +485,29 @@ function pull(state: DynamicDispatchState, lane: PlacementLane): WorkerPoolUnitL
         .toSorted(function compareUnits(left, right) {
             return comparePriority(state, left, right);
         })[0];
+}
 
-    if (unit === undefined) {
-        return null;
-    }
-
-    state.pendingUnits.remove(unit);
+function leasePendingUnit(state: DynamicDispatchState, lane: PlacementLane, item: QueuedWorkUnit): WorkerPoolUnitLease {
+    state.pendingUnits.remove(item);
     state.activeLeases.increment();
 
-    return { lane, reservation: reserve(state, unit, lane), unit };
+    return {
+        lane,
+        reservation: reserve(state, item, lane),
+        traceUnit: item.traceUnit,
+        unit: item.unit
+    };
+}
+
+function pull(state: DynamicDispatchState, lane: PlacementLane): WorkerPoolUnitLease | null {
+    let item = selectPendingUnit(state, lane);
+
+    while (item !== undefined && queuedWorkCanSplit(item, splitEligibility(state, item))) {
+        splitPendingUnit(state, item);
+        item = selectPendingUnit(state, lane);
+    }
+
+    return item === undefined ? null : leasePendingUnit(state, lane, item);
 }
 
 function createDynamicDispatcher(runtime: WorkerPoolRunRuntime, plan: PlacementPlan): WorkerPoolWorkDispatcher {
@@ -536,7 +525,7 @@ function createDynamicDispatcher(runtime: WorkerPoolRunRuntime, plan: PlacementP
             state.activeLeases.decrement();
 
             if (keepReservation) {
-                state.reservations.retainUnit(lease.unit, lease.lane);
+                state.reservations.retainUnit(lease.traceUnit, lease.lane);
             } else {
                 release(state, lease);
             }
@@ -546,8 +535,8 @@ function createDynamicDispatcher(runtime: WorkerPoolRunRuntime, plan: PlacementP
         pull(lane) {
             return pull(state, lane);
         },
-        requeue(unit) {
-            state.pendingUnits.push(unit);
+        requeue(requeuedUnit) {
+            state.pendingUnits.push(fixedQueueItem(requeuedUnit.unit, requeuedUnit.traceUnit, requeuedPriority()));
             state.waiters.notify();
         },
         async waitForChange() {

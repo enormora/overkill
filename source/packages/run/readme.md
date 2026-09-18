@@ -163,6 +163,14 @@ placement defaults to `assignmentPolicy: 'case-count-balanced'`, which places
 larger selected work units first and balances lane load by selected case count.
 Use `assignmentPolicy: 'stable'` to preserve source-order round-robin
 placement.
+`dispatchPolicy: 'dynamic-lease'` is the default worker-pool dispatch policy.
+It leases pending work to compatible idle lanes and may split eligible
+not-started units along `WorkId` boundaries. Split children keep derived trace
+identities linked to the frozen parent `WorkUnitId`; the parent remains the
+identity used for sharding and initial placement. Serial scheduling, group
+granularity, fresh-worker units, serial keys, and single-worker keys make a unit
+indivisible. `dispatchPolicy: 'static-assignment'` follows the frozen lane
+assignment without splitting.
 `workerLifecycle: 'reuse'` reuses worker threads between units.
 `workerLifecycle: 'fresh-worker-per-unit'` creates disposable isolation per
 unit. `supervised-process` remains available when a single process-isolated

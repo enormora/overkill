@@ -419,6 +419,7 @@ function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
 
 export function fakeWorkerRuntime(placement: PlacementPlan): WorkerPoolRunRuntime {
     const taskResults: RunResult[] = [];
+    const placementTraceEntries: WorkerPoolRunRuntime['placementTraceEntries'][number][] = [];
 
     return {
         activeTasks: new Set(),
@@ -431,7 +432,11 @@ export function fakeWorkerRuntime(placement: PlacementPlan): WorkerPoolRunRuntim
         },
         pool: createFakePool(),
         poolResourceUsageTracker: null,
+        placementTraceEntries,
         previousPoolSample: createStoredRunValue<ResourceSample>(null),
+        recordPlacementTraceEntry(entry) {
+            placementTraceEntries.push(entry);
+        },
         reporterDelivery: fakeReporterDelivery,
         reporterEvents: {
             add() {

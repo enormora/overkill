@@ -75,6 +75,12 @@ export type {
 export type { RunResolutionErrorCode } from '../../run/run-errors.ts';
 export type { RuntimeDimensions, RuntimeId, WorkId, WorkloadId } from '../../engine/identity.ts';
 export type {
+    DynamicWorkUnitId,
+    PlacementTrace,
+    PlacementTraceEntry,
+    TraceWorkUnitId
+} from '../../run/placement-trace-types.ts';
+export type {
     CollectedRunCase,
     CollectedRunFile,
     CollectedRunPlan,
@@ -82,8 +88,6 @@ export type {
     PlacementAssignment,
     PlacementLane,
     PlacementPlan,
-    PlacementTrace,
-    PlacementTraceEntry,
     ResolvedRun,
     ResolvedRunPlan,
     RunCaseFacts,
@@ -132,7 +136,7 @@ export type {
     RunWorkerPoolDispatchPolicy,
     RunWorkerLifecycle,
     SerializedValue,
+    WorkUnitId,
     WorkUnit,
-    WorkUnitMode,
-    WorkUnitId
+    WorkUnitMode
 } from '../../run/run-types.ts';

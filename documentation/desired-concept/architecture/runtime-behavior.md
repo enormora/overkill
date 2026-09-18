@@ -882,6 +882,20 @@ to infer runtime choices from the initial placement.
 to the frozen parent `WorkUnitId`; the parent remains the sharding and initial
 plan identity.
 
+Splitting is automatic under `dynamic-lease` when the pending parent is
+eligible. Eligibility requires more than one `WorkId`, a non-`group` unit,
+concurrent in-unit scheduling, reusable workers, no serial or single-worker
+placement keys, and more than one currently compatible lane. File units that
+belong to named groups may split when the group resolved to file granularity
+and the same eligibility checks pass. Group-granularity units remain
+indivisible.
+
+Each split child contains exactly one `WorkId`, recomputes resource constraints
+for that `WorkId`, and uses the existing dynamic priority rules. Duration or
+capacity priority still wins; parent work order is only the stable tie-breaker.
+Crash-requeued partial units are recovery work, not not-started parents, so
+they are not split by this policy.
+
 Splitting is invalid when the parent unit is indivisible because of group
 granularity, strict order, serial or single-worker constraints, resource
 sharing, worker lifecycle policy, or runtime/workload incompatibility. Running
