@@ -68,8 +68,8 @@ Core package families:
   `@overkill-dev/output-renderer-github-actions` for adapting managed
   reporter output to CI log protocols
 - `@overkill-dev/run`: orchestration for discovery, filtering, seeds, shard
-  selection, debug/coverage/watch intent, terminal workflows, and the
-  command implementation behind the `overkill` binary
+  selection, sharded result merging, debug/coverage/watch intent, terminal
+  workflows, and the command implementation behind the `overkill` binary
 - `@overkill-dev/baselines`: shared baseline model for snapshots and performance expectations
 - `@overkill-dev/bench`: benchmark-specific package family included in the
   standard distribution but not loaded by ordinary test-file imports

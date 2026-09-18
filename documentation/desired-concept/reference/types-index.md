@@ -966,8 +966,19 @@ type RunCommand = {
     readonly request: RunRequest;
 };
 
+type MergeResultsInput =
+    | { readonly kind: 'file'; readonly path: string; }
+    | { readonly kind: 'directory'; readonly path: string; };
+
+type MergeResultsCommand = {
+    readonly config: RunConfig;
+    readonly cwd: string;
+    readonly inputs: NonEmptyReadonlyArray<MergeResultsInput>;
+};
+
 declare function resolveRun(command: RunCommand): Promise<ResolvedRun>;
 declare function run(command: RunCommand): Promise<RunResult>;
+declare function mergeResults(command: MergeResultsCommand): Promise<MergedRunRecord>;
 
 type TestPlanSuitePathEntry = {
     readonly title: string;
@@ -1235,8 +1246,14 @@ type ResolvedRuntime = {
     readonly adapters: ReadonlyArray<{ name: string; version: string; }>;
 };
 
-type RunRecord = {
+type RunRecordLineage = {
+    readonly id: string;
+    readonly path: string;
+};
+
+type SingleRunRecord = {
     readonly id: string; // ULID
+    readonly kind: 'single';
     readonly seed: bigint;
     readonly facts: RunFacts;
     readonly identities: ReadonlyArray<WorkId>;
@@ -1244,8 +1261,22 @@ type RunRecord = {
     readonly runtime: ResolvedRuntime;
     readonly versions: { engine: string; node: string; packages: ReadonlyMap<string, string>; };
     readonly startedAt: string; // ISO 8601
-    readonly result?: RunResult;
+    readonly result: RunResult | null;
 };
+
+type MergedRunRecord = {
+    readonly id: string; // ULID
+    readonly kind: 'merged';
+    readonly facts: RunFacts;
+    readonly identities: ReadonlyArray<WorkId>;
+    readonly lineage: NonEmptyReadonlyArray<RunRecordLineage>;
+    readonly runtime: NonEmptyReadonlyArray<ResolvedRuntime>;
+    readonly versions: { engine: string; packages: ReadonlyMap<string, string>; };
+    readonly startedAt: string; // ISO 8601
+    readonly result: RunResult;
+};
+
+type RunRecord = SingleRunRecord | MergedRunRecord;
 
 type RunResult = {
     readonly planStatus: 'planned' | 'empty-selection' | 'empty-shard';
@@ -1276,6 +1307,7 @@ type RunnerError = {
         | 'permission'
         | 'runtime-policy'
         | 'loader'
+        | 'merge'
         | 'reporter'
         | 'attribution-drift'
         | 'resource-exhaustion';

@@ -710,22 +710,25 @@ Result collection then happens in two layers:
   - each shard is one independent Overkill run
   - each shard produces its own exit code and local reports/artifacts
   - any failing shard fails its CI job, so the overall workflow fails
-- **optional merged-results mode**
-  - each shard emits a machine-readable result artifact
-  - a later merge step combines those artifacts into one final report
-    and one overall run result
+- **optional merge-results mode**
+  - each shard persists a completed `RunRecord` with populated `result`
+  - a later `overkill merge-results ...` step validates those records,
+    writes a non-replayable merged `RunRecord`, and delivers that merged
+    result to final-result reporters
 
-The merged overall result should be:
-
-- `pass` only if all shards pass
-- `fail` if any shard reports test failures
-- `error` / `inconclusive` if any shard crashes, is missing, or fails to
-  report a usable result
+The merged overall result is complete only when every expected shard record is
+present, readable, compatible, and contains disjoint executed work identities.
+Merge errors outrank ordinary test failures for the aggregate status because
+the full suite was not observed. The merged record still preserves ordinary
+test failures, runner errors, and shard lineage so reports can show both the
+incomplete merge and the test outcomes that were available.
 
 CI integration: GitHub Actions, GitLab, CircleCI, and similar matrix systems
 map directly to `--shard`. Richer workflows may additionally run an explicit
 merge step such as `overkill merge-results ...` to produce one combined
-JSON/HTML report.
+JSON/HTML report. The CI system still owns artifact upload/download; Overkill
+does not copy shard artifacts into the merged record. Coverage merging remains
+part of the coverage model, not this result merge workflow.
 
 ## Multi-Process Execution
 

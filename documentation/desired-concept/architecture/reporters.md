@@ -22,6 +22,10 @@ settled concept:
   - real-time, managed stdout primary
   - sparse progress, final counts, and compact failure diagnostics for
     token-conscious agent and CI logs
+- `@overkill-dev/reporter-brief` final-result factory
+  - final-result, managed stdout primary
+  - compact summary output for merged results and other final-only
+    workflows
 - `@overkill-dev/reporter-line`
   - real-time, raw stdout
   - default human reporter for ordinary test runs
@@ -92,6 +96,11 @@ suitable for HTML reports, JSON dumps, archive writers.
 A reporter cannot be both: pick the lifecycle that matches your data
 shape. If you need both behaviours, ship two reporters that share an
 implementation.
+
+For example, `@overkill-dev/reporter-brief` may expose one factory for
+real-time progress and one factory for final-result summaries. That keeps the
+reporter lifecycle contract explicit while letting both factories share
+formatting code.
 
 Project config, direct execution options, and package exports register
 `DefinedReporter` factories, not reporter instances. The runner creates a
@@ -215,6 +224,13 @@ without newline characters. This lets a CI renderer such as
 `@overkill-dev/output-renderer-github-actions` turn located failure diagnostics
 into workflow annotations while ordinary lines remain readable in the same
 stdout log.
+
+Merged-result delivery is final-result only. `overkill merge-results` reads
+completed shard run records and produces a merged `RunResult`; it does not
+replay or synthesize the original event stream. Configured real-time reporters
+are ignored for the merge command. If no final-result reporter is configured
+for the merged profile, the command uses the first-party brief final-result
+fallback.
 
 ## Registration
 
