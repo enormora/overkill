@@ -211,6 +211,10 @@ export const config = {
                     js: 'packages/run/run.entry-point.js',
                     declarationFile: 'packages/run/run.entry-point.d.ts'
                 },
+                nodeCommandLineRunner: {
+                    js: 'run/node-command-line-runner.js',
+                    declarationFile: 'run/node-command-line-runner.d.ts'
+                },
                 resourceLifecycle: {
                     js: 'packages/run/resource-lifecycle.entry-point.js',
                     declarationFile: 'packages/run/resource-lifecycle.entry-point.d.ts'
@@ -238,7 +242,8 @@ export const config = {
                         export: './resource-lifecycle',
                         root: 'resourceLifecycle'
                     }
-                ]
+                ],
+                privateRoots: [ 'nodeCommandLineRunner' ]
             },
             additionalFiles: [
                 {

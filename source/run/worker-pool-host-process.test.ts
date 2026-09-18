@@ -183,6 +183,7 @@ function workerPoolCommand(): WorkerPoolCommand {
     return {
         collectionTimeoutMilliseconds: 100,
         cwd: '/project',
+        definitionLocationCapture: 'enabled',
         engine: { kind: 'default' },
         hardTimeoutMilliseconds: 200,
         hostProcess: { kind: 'child', nodeArguments: [ '--expose-gc' ] },

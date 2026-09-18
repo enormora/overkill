@@ -95,7 +95,7 @@ async function createWorkerPoolResolvedRun(
     input: ResolvedRunInput
 ): Promise<ResolvedRun> {
     const collection = await collectWorkerPoolRun(
-        createWorkerPoolCommand(command, input.profile, input.files),
+        createWorkerPoolCommand(command, 'enabled', input.profile, input.files),
         dependencies
     );
     const durationHistoryIndex = await readWorkerPoolDurationHistory(input, dependencies);
@@ -214,7 +214,7 @@ async function createWorkerPoolRunResult(
         const durationHistoryIndex = await readWorkerPoolDurationHistory(input, dependencies);
 
         return await runWorkerPoolCommand(
-            createWorkerPoolCommand(command, input.profile, input.files),
+            createWorkerPoolCommand(command, 'disabled', input.profile, input.files),
             dependencies,
             async function createResolvedRunAfterCollection(collection): Promise<ResolvedRun> {
                 return await createResolvedExecutionRun({

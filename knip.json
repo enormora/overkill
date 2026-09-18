@@ -6,6 +6,7 @@
         "source/integration-tests/run/fixtures/custom-engine.ts",
         "source/**/*.type-test.ts",
         "source/packages/**/*.ts",
+        "source/run/node-command-line-runner.ts",
         "source/reporters/null-reporter.ts",
         "dependency-cruiser.config.js",
         "packtory.config.js",

@@ -4,26 +4,47 @@ import {
     forwardAssertionSourceLocations,
     hasTestBodyResourceAttachments,
     readTestBodyResourceAttachments,
+    unknownSourceLocation,
     type NonEmptyReadonlyArray,
     type ResolvableSourceLocation,
-    type SourceLocation,
     type TestBody,
     type TestScope,
     type ThrowingTestBody
 } from '../engine/engine.entry-point.ts';
+
+type DefinitionLocationCapture = 'disabled' | 'enabled';
 
 type ParameterizedTestBody<Data> = (
     scope: TestScope,
     data: Data
 ) => ReturnType<TestBody>;
 
-const activeMacroDefinitionLocations: NonEmptyReadonlyArray<SourceLocation>[] = [];
+const activeMacroDefinitionLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>[] = [];
+const definitionLocationCaptureStackKey = Symbol.for('@overkill-dev/definition-location-capture-stack');
 
-function captureAuthoringLocation(): SourceLocation {
-    return captureSourceLocation()();
+function isDefinitionLocationCapture(value: unknown): value is DefinitionLocationCapture {
+    return value === 'disabled' || value === 'enabled';
 }
 
-export function activeMacroSourceLocations(): readonly SourceLocation[] {
+function isDefinitionLocationCaptureStack(value: unknown): value is DefinitionLocationCapture[] {
+    return Array.isArray(value) && value.every(isDefinitionLocationCapture);
+}
+
+function activeDefinitionLocationCapture(): DefinitionLocationCapture {
+    const captures: unknown = Reflect.get(globalThis, definitionLocationCaptureStackKey);
+
+    if (!isDefinitionLocationCaptureStack(captures)) {
+        return 'enabled';
+    }
+
+    return captures.at(-1) ?? 'enabled';
+}
+
+function captureDefinitionLocation(): ResolvableSourceLocation {
+    return activeDefinitionLocationCapture() === 'enabled' ? captureSourceLocation() : unknownSourceLocation;
+}
+
+export function activeMacroSourceLocations(): readonly ResolvableSourceLocation[] {
     return activeMacroDefinitionLocations.at(-1) ?? [];
 }
 
@@ -49,10 +70,10 @@ export function runWithForwardedSourceLocations<Result>(
         : forwardAssertionSourceLocations([ firstLocation, ...sourceLocations.slice(1) ], body);
 }
 
-export function definitionLocationsForAuthoringCall(): NonEmptyReadonlyArray<SourceLocation> {
+export function definitionLocationsForAuthoringCall(): NonEmptyReadonlyArray<ResolvableSourceLocation> {
     return sourceLocationsWithTrailingLocation(
         activeMacroSourceLocations(),
-        captureAuthoringLocation()
+        captureDefinitionLocation()
     );
 }
 
@@ -108,7 +129,7 @@ export function defineParameterizedTestBodyFactory<Data>(
     body: ParameterizedTestBody<Data>
 ): (data: Data) => TestBody {
     return function createParameterizedTestBody(data) {
-        const sourceLocations: NonEmptyReadonlyArray<ResolvableSourceLocation> = [ captureAuthoringLocation() ];
+        const sourceLocations: NonEmptyReadonlyArray<ResolvableSourceLocation> = [ captureSourceLocation() ];
 
         return async function runParameterizedTestBody(scope) {
             return forwardAssertionSourceLocations(sourceLocations, async function runBody() {

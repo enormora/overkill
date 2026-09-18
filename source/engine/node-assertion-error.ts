@@ -3,8 +3,12 @@ import type {
     CompositeAssertionNode,
     ForeignAssertionNode
 } from '../assertion-protocol/assertion-node.ts';
-import type { SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
+import type {
+    ResolvableSourceLocation,
+    SourceLocation
+} from '../assertion-protocol/assertion-node-shape.ts';
 import {
+    resolveSourceLocation,
     sourceLocationFromStack
 } from '../assertion-protocol/source-location.ts';
 import { createThrownErrorRecord } from '../assertion-protocol/thrown-error-record.ts';
@@ -33,9 +37,9 @@ export function isNodeAssertionError(error: unknown): boolean {
 
 export function nodeAssertionErrorFailure(
     error: unknown,
-    fallbackLocation: SourceLocation
+    fallbackLocation: ResolvableSourceLocation
 ): CompositeAssertionNode<'assert'> {
-    const sourceLocation = assertionErrorSourceLocation(error, fallbackLocation);
+    const sourceLocation = assertionErrorSourceLocation(error, resolveSourceLocation(fallbackLocation));
     const errorRecord = createThrownErrorRecord(error);
     const child: ForeignAssertionNode<'assert'> = {
         check: 'foreign',

@@ -1,5 +1,9 @@
 import type { InvalidDeepAssertionOperand } from '../assertion-protocol/evaluation.ts';
-import type { FailedCheck, NonEmptyReadonlyArray, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
+import type {
+    FailedCheck,
+    NonEmptyReadonlyArray,
+    ResolvableSourceLocation
+} from '../assertion-protocol/assertion-node-shape.ts';
 import type { CaseId, WorkId } from './identity.ts';
 
 type RunnerErrorSubtypeByName = {
@@ -293,7 +297,7 @@ export type RunResourceUsageTracker = {
 };
 
 export type OrphanedNode = {
-    readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
+    readonly definitionLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
     readonly file: string | null;
     readonly kind: 'suite' | 'table' | 'test';
     readonly title: string;

@@ -35,6 +35,7 @@ async function selectedEngine(command: WorkerPoolCommand): Promise<Engine> {
 async function createWorkerPoolTestPlan(command: WorkerPoolCommand): Promise<TestPlan> {
     return await createRunTestPlan({
         cwd: command.cwd,
+        definitionLocationCapture: command.definitionLocationCapture,
         discoverRunFiles: runDiscovery.discoverRunFiles,
         engine: await selectedEngine(command),
         loadRunTestModules,

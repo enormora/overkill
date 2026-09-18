@@ -8,7 +8,10 @@ import {
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { AssertionTestFailure, FailOutcome, RunResult } from './run-result.ts';
 import type { ThrowingTestBody, ThrowingTestScope } from './test-node.ts';
-import { isNodeAssertionError } from './node-assertion-error.ts';
+import {
+    isNodeAssertionError,
+    nodeAssertionErrorFailure
+} from './node-assertion-error.ts';
 
 async function executeSingleThrowingBody(body: ThrowingTestBody): Promise<RunResult> {
     const engine = createEngine();
@@ -275,6 +278,41 @@ export const testNode = createOverkillSuite({
                 const failure = firstAssertionFailure(outcome);
                 scope.require.notNull(failure);
                 assertUnknownNodeAssertionLocation(scope, failure);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'nodeAssertionErrorFailure() uses fallback locations when stacks do not parse',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const error = new AssertionError({
+                    actual: 1,
+                    expected: 2,
+                    message: 'plain assertion',
+                    operator: 'strictEqual'
+                });
+
+                error.stack = 'AssertionError: plain assertion';
+                const failure = nodeAssertionErrorFailure(error, {
+                    column: 4,
+                    file: 'fallback.test.ts',
+                    kind: 'known',
+                    line: 3
+                });
+                const child = failure.children[0];
+
+                scope.require.defined(child);
+                scope.assert.deepEqual(child.sourceLocations, [
+                    {
+                        column: 4,
+                        file: 'fallback.test.ts',
+                        kind: 'known',
+                        line: 3
+                    }
+                ]);
 
                 return scope.assert.collect();
             }

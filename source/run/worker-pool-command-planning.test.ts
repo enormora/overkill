@@ -9,6 +9,7 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
+import { defaultRunEngine } from './default-run-engine.ts';
 import type { RunCommand } from './run-types.ts';
 import {
     createSupervisedCollectCommand,
@@ -83,10 +84,55 @@ export const testNode = createOverkillSuite({
                     createSupervisedCollectCommand(command, profile, discoveredFiles()).capabilityRestrictions,
                     { mode: 'disabled' }
                 );
-                scope.assert.deepEqual(createWorkerPoolCommand(command, profile, discoveredFiles()).paths, [
+                scope.assert.deepEqual(createWorkerPoolCommand(command, 'enabled', profile, discoveredFiles()).paths, [
                     integrationPath,
                     secondIntegrationPath
                 ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'worker pool command builders preserve non-worker-pool integration execution',
+            body(scope: OverkillScope) {
+                const profile = defaultIntegrationProfile({
+                    execution: { processModel: 'supervised-process', scheduling: 'serial' },
+                    files: { exclude: [], include: [ integrationPath ] },
+                    timeouts: { collectionMilliseconds: 17, hardMilliseconds: 23, softMilliseconds: 19 }
+                });
+                const command = createRunCommand(profile);
+                const workerCommand = createWorkerPoolCommand(command, 'disabled', profile, discoveredFiles());
+
+                scope.assert.deepEqual(workerCommand.hostProcess, { kind: 'direct' });
+                scope.assert.equal(workerCommand.workerLifecycle, 'reuse');
+                scope.assert.equal(workerCommand.definitionLocationCapture, 'disabled');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'isolated command builders reject in-process engine instances',
+            body(scope: OverkillScope) {
+                const profile = defaultIntegrationProfile({
+                    execution: { processModel: 'worker-pool', scheduling: 'serial' },
+                    files: { exclude: [], include: [ integrationPath ] }
+                });
+                const command: RunCommand = {
+                    ...createRunCommand(profile),
+                    engine: { engine: defaultRunEngine, kind: 'instance' }
+                };
+
+                scope.assert.throws(function createCommandForInstanceEngine() {
+                    createWorkerPoolCommand(command, 'enabled', profile, discoveredFiles());
+                }, {
+                    message: 'Instance engines cannot run in supervised children.'
+                });
 
                 return scope.assert.collect();
             }

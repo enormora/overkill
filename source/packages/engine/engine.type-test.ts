@@ -483,7 +483,7 @@ describe('CaseId', function () {
         expect<TestStartReporterEvent['case']>().type.toBe<CaseId>();
         expect<SuiteStartReporterEvent['suitePath']>().type.toBe<
             readonly {
-                readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
+                readonly definitionLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
                 readonly title: string;
             }[]
         >();

@@ -199,6 +199,7 @@ export type {
 } from '../../compare/serialized-value.ts';
 export {
     captureSourceLocation,
+    resolveSourceLocation,
     unknownSourceLocation
 } from '../../assertion-protocol/source-location.ts';
 export { forwardAssertionSourceLocations } from '../../assertion-protocol/source-location-forwarding.ts';

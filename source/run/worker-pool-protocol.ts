@@ -5,6 +5,7 @@ import type {
     RunnerError,
     RunResult
 } from '../engine/run-result.ts';
+import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import type {
     CollectedRunPlan,
     RunEngineSelection,
@@ -17,6 +18,7 @@ import type {
 export type WorkerPoolCommand = {
     readonly collectionTimeoutMilliseconds: number;
     readonly cwd: string;
+    readonly definitionLocationCapture: DefinitionLocationCapture;
     readonly engine: Exclude<RunEngineSelection, { readonly kind: 'instance'; }>;
     readonly hardTimeoutMilliseconds: number;
     readonly hostProcess: RunHostProcess;

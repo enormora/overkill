@@ -1,4 +1,5 @@
-import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import type { Except } from 'type-fest';
+import type { NonEmptyReadonlyArray, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import type { SerializedValue as SerializedValueShape } from '../compare/serialized-value.ts';
 import type { Execute } from '../engine/execution.ts';
 import type { Engine } from '../engine/engine.ts';
@@ -459,33 +460,35 @@ export type RunEngineFacts = {
     readonly kind: 'instance';
 };
 
+type CollectedSuitePathEntry = {
+    readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
+    readonly title: string;
+};
+
 export type CollectedRunCase = {
     readonly annotations: TestPlan['cases'][number]['annotations'];
     readonly controls: TestPlan['cases'][number]['controls'];
-    readonly definitionLocations: TestPlan['cases'][number]['definitionLocations'];
+    readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
     readonly params: string | null;
     readonly resourceAttachments: TestPlan['cases'][number]['resourceAttachments'];
-    readonly suitePath: TestPlan['cases'][number]['suitePath'];
+    readonly suitePath: readonly CollectedSuitePathEntry[];
     readonly testFamily: TestPlan['cases'][number]['testFamily'];
     readonly title: string;
     readonly workId?: WorkId;
 };
 
-export type CollectedRunFile = {
-    readonly cases: readonly CollectedRunCase[];
-    readonly file: string;
+export type CollectedRunFile = { readonly cases: readonly CollectedRunCase[]; readonly file: string; };
+
+export type CollectedOrphanedNode = Except<OrphanedNode, 'definitionLocations'> & {
+    readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
 };
 
 export type CollectedRunPlan = {
     readonly defined: number;
     readonly discoveredFiles: readonly CollectedRunFile[];
     readonly files: readonly CollectedRunFile[];
-    readonly orphans: readonly OrphanedNode[];
-    readonly root: {
-        readonly annotations: TestPlan['root']['annotations'];
-        readonly controls: TestPlan['root']['controls'];
-        readonly title: string;
-    };
+    readonly orphans: readonly CollectedOrphanedNode[];
+    readonly root: Pick<TestPlan['root'], 'annotations' | 'controls' | 'title'>;
 };
 
 export type ResolvedRunPlan = {

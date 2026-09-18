@@ -68,6 +68,7 @@ function command(kind: SupervisedChildCommand['kind'], path: string): Supervised
         capture: 'buffered',
         collectionTimeoutMilliseconds: 1000,
         cwd,
+        definitionLocationCapture: 'enabled',
         engine: { kind: 'default' },
         hardTimeoutMilliseconds: 2000,
         kind,

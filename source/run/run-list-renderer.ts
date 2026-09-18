@@ -1,4 +1,4 @@
-import type { SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
+import type { ResolvableSourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import {
     createReportingContext,
     formatDefinitionLocations,
@@ -22,7 +22,7 @@ type RenderOptions = {
 type NodeLineInput = {
     readonly context: ReportingContext;
     readonly depth: number;
-    readonly locations: readonly SourceLocation[];
+    readonly locations: readonly ResolvableSourceLocation[];
     readonly name: string;
     readonly options: RenderOptions;
 };
@@ -53,14 +53,14 @@ function formatCaseName(testCase: CollectedRunCase): string {
     return testCase.params === null ? testCase.title : `${testCase.title} [${testCase.params}]`;
 }
 
-function locationSuffix(location: SourceLocation, options: RenderOptions, context: ReportingContext): string {
+function locationSuffix(location: ResolvableSourceLocation, options: RenderOptions, context: ReportingContext): string {
     const renderedLocation = options.withLocations ? formatSourceLocation(location, context) : null;
 
     return renderedLocation === null ? '' : ` (${renderedLocation})`;
 }
 
 function formatDefinitionLocationDetails(
-    locations: readonly SourceLocation[],
+    locations: readonly ResolvableSourceLocation[],
     options: RenderOptions,
     context: ReportingContext,
     depth: number

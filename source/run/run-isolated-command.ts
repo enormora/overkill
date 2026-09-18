@@ -1,3 +1,4 @@
+import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import { resolveResourceUsagePolicy } from './run-facts.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import type {
@@ -18,6 +19,7 @@ type SupervisedCommandBase = {
     readonly capture: SupervisedRunCommand['capture'];
     readonly collectionTimeoutMilliseconds: number;
     readonly cwd: string;
+    readonly definitionLocationCapture: SupervisedRunCommand['definitionLocationCapture'];
     readonly engine: IsolatedCommandEngine;
     readonly hardTimeoutMilliseconds: number;
     readonly paths: readonly string[];
@@ -26,6 +28,14 @@ type SupervisedCommandBase = {
     readonly scheduling: SupervisedRunCommand['scheduling'];
     readonly testFamily: SupervisedRunCommand['testFamily'];
     readonly timeoutMilliseconds: number;
+};
+
+type SupervisedCommandBaseInput = {
+    readonly capture: RunRequest['capture'];
+    readonly command: RunCommand;
+    readonly definitionLocationCapture: DefinitionLocationCapture;
+    readonly files: ResolvedRunInput['files'];
+    readonly profile: RunProfileConfig;
 };
 
 function isolatedEngine(command: RunCommand): IsolatedCommandEngine {
@@ -53,27 +63,23 @@ function resolvedPaths(files: ResolvedRunInput['files']): readonly string[] {
     });
 }
 
-function createSupervisedCommandBase(
-    command: RunCommand,
-    profile: RunProfileConfig,
-    files: ResolvedRunInput['files'],
-    capture: RunRequest['capture']
-): SupervisedCommandBase {
-    const resourceUsagePolicy = resolveResourceUsagePolicy(command.request, profile);
+function createSupervisedCommandBase(input: SupervisedCommandBaseInput): SupervisedCommandBase {
+    const resourceUsagePolicy = resolveResourceUsagePolicy(input.command.request, input.profile);
 
     return {
-        capabilityRestrictions: supervisedCapabilityRestrictions(profile, command),
-        capture,
-        collectionTimeoutMilliseconds: profile.timeouts.collectionMilliseconds,
-        cwd: command.cwd,
-        engine: isolatedEngine(command),
-        hardTimeoutMilliseconds: profile.timeouts.hardMilliseconds,
-        paths: resolvedPaths(files),
+        capabilityRestrictions: supervisedCapabilityRestrictions(input.profile, input.command),
+        capture: input.capture,
+        collectionTimeoutMilliseconds: input.profile.timeouts.collectionMilliseconds,
+        cwd: input.command.cwd,
+        definitionLocationCapture: input.definitionLocationCapture,
+        engine: isolatedEngine(input.command),
+        hardTimeoutMilliseconds: input.profile.timeouts.hardMilliseconds,
+        paths: resolvedPaths(input.files),
         resourceBudgets: resourceUsagePolicy.budgets,
         resourceUsageSamplingIntervalMilliseconds: resourceUsagePolicy.samplingIntervalMilliseconds,
-        scheduling: profile.execution.scheduling,
-        testFamily: profile.testFamily,
-        timeoutMilliseconds: profile.timeouts.softMilliseconds
+        scheduling: input.profile.execution.scheduling,
+        testFamily: input.profile.testFamily,
+        timeoutMilliseconds: input.profile.timeouts.softMilliseconds
     };
 }
 
@@ -83,7 +89,13 @@ export function createSupervisedCollectCommand(
     files: ResolvedRunInput['files']
 ): SupervisedCollectCommand {
     return {
-        ...createSupervisedCommandBase(command, profile, files, 'buffered'),
+        ...createSupervisedCommandBase({
+            capture: 'buffered',
+            command,
+            definitionLocationCapture: 'enabled',
+            files,
+            profile
+        }),
         kind: 'collect'
     };
 }
@@ -94,13 +106,20 @@ export function createSupervisedRunCommand(
     files: ResolvedRunInput['files']
 ): SupervisedRunCommand {
     return {
-        ...createSupervisedCommandBase(command, profile, files, command.request.capture),
+        ...createSupervisedCommandBase({
+            capture: command.request.capture,
+            command,
+            definitionLocationCapture: 'disabled',
+            files,
+            profile
+        }),
         kind: 'run'
     };
 }
 
 export function createWorkerPoolCommand(
     command: RunCommand,
+    definitionLocationCapture: DefinitionLocationCapture,
     profile: RunProfileConfig,
     files: ResolvedRunInput['files']
 ): WorkerPoolCommand {
@@ -109,6 +128,7 @@ export function createWorkerPoolCommand(
     return {
         collectionTimeoutMilliseconds: profile.timeouts.collectionMilliseconds,
         cwd: command.cwd,
+        definitionLocationCapture,
         engine: isolatedEngine(command),
         hardTimeoutMilliseconds: profile.timeouts.hardMilliseconds,
         hostProcess: profile.execution.processModel === 'worker-pool'

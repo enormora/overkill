@@ -1,4 +1,7 @@
-import type { NonEmptyReadonlyArray, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
+import type {
+    NonEmptyReadonlyArray,
+    ResolvableSourceLocation
+} from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import {
     caseIdentityKey,
@@ -44,14 +47,14 @@ export type TestPlanCaseBody = TestBody;
 export type TestPlanCaseExecution = TestCaseExecution;
 
 export type TestPlanSuitePathEntry = {
-    readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
+    readonly definitionLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
     readonly title: string;
 };
 
 export type TestPlanCase = {
     readonly annotations: TestAnnotations;
     readonly controls: TestControls;
-    readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
+    readonly definitionLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
     readonly execution: TestPlanCaseExecution;
     readonly id: CaseId;
     readonly resourceAttachments: TestBodyResourceAttachments;

@@ -1,6 +1,6 @@
 import {
     createTable,
-    type SourceLocation,
+    type ResolvableSourceLocation,
     type Table,
     type TableOptions,
     type TestAnnotationsInput,
@@ -94,7 +94,7 @@ function tableCaseTitle<Row>(
 function tableCaseBody<Row>(
     definition: RuntimeTableDefinition<Row>,
     parameters: Row,
-    sourceLocations: readonly SourceLocation[],
+    sourceLocations: readonly ResolvableSourceLocation[],
     facadeActions: readonly ResourceWrapperAction[]
 ): TestBody {
     const caseBody = attachComposedResourceActions(
