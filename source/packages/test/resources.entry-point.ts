@@ -24,7 +24,9 @@ import {
 export {
     composeRuntimeContext,
     composeRuntimes,
+    createSimulatedHttpServerResource,
     createTemporaryDirectoryResource,
+    defineLocalServiceResource,
     defineResource,
     defineRuntime,
     defineRuntimeMatrix,
@@ -35,6 +37,9 @@ export type {
     AnyResourceDefinition,
     ComposedRuntimeGraph,
     ExecutionRequirement,
+    LocalServiceAddress,
+    LocalServiceCreationContext,
+    LocalServiceResourceDefinitionInput,
     ResourceContext,
     ResourceCreationContext,
     ResourceDependencies,
@@ -67,6 +72,8 @@ export type {
     RuntimeSession,
     RuntimeSessionDisposalContext,
     StartRuntimeRequest,
+    SimulatedHttpServerResource,
+    SimulatedHttpServerResourceOptions,
     TemporaryDirectoryHandle
 } from '../resources/resources.entry-point.ts';
 export type {

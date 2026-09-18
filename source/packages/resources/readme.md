@@ -104,6 +104,18 @@ Omitting `dependencies` is accepted for compatibility and produces
 whose handle is `{ readonly path: string }`. Each acquisition creates a unique
 directory with an Overkill prefix. Disposal removes that directory recursively.
 
+`defineLocalServiceResource(...)` wraps `defineResource(...)` for owned local
+services. Callers declare scope, requirements, startup, and disposal. Startup
+receives an address request with default `host: '127.0.0.1'` and `port: 0`.
+Credentials, connection strings, and protocol-specific data stay in the typed
+service handle. Projected scopes use the same serialize and deserialize rules
+as ordinary resources.
+
+`createSimulatedHttpServerResource({ simulation })` starts a simulated HTTP
+server from `@overkill-dev/simulation` as a per-case resource. The acquired
+handle exposes `baseUrl` for the `default` scenario and `scenarioUrl(...)` for
+URL-selected scenarios.
+
 `startRuntime(...)` acquires dependencies before dependents, shares one handle
 per descriptor inside the session, and disposes acquired resources once in
 reverse dependency order. Independent ready resources may acquire concurrently.

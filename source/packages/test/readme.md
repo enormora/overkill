@@ -95,8 +95,13 @@ Standard subpaths:
   throwable-style test authoring.
 - `@overkill-dev/test/resources` re-exports typed resource and runtime
   descriptors from `@overkill-dev/resources`, including
-  `createTemporaryDirectoryResource(...)`, and adds `withRuntime(...)`,
-  `withResource(...)`, and `withResources(...)` for runner-aware binding.
+  `createTemporaryDirectoryResource(...)`, `defineLocalServiceResource(...)`,
+  and `createSimulatedHttpServerResource(...)`. It also adds
+  `withRuntime(...)`, `withResource(...)`, and `withResources(...)` for
+  runner-aware binding.
+- `@overkill-dev/test/simulation` re-exports simulation descriptors from
+  `@overkill-dev/simulation`. Import `@overkill-dev/simulation/http` directly
+  for the standalone HTTP launcher.
 - `@overkill-dev/test/bench` and `@overkill-dev/test/baselines` are reserved.
   They currently export only `unavailable()`.
 

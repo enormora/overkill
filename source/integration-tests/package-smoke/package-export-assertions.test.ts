@@ -10,6 +10,20 @@ export function assertResourcesPackageRootExport(
     });
 }
 
+export function assertSimulationPackageExports(
+    scope: TestScope,
+    packageExports: Readonly<Record<string, unknown>>
+): void {
+    scope.assert.deepEqual(packageExports['.'], {
+        import: './packages/simulation/simulation.entry-point.js',
+        types: './packages/simulation/simulation.entry-point.d.ts'
+    });
+    scope.assert.deepEqual(packageExports['./http'], {
+        import: './packages/simulation/http.entry-point.js',
+        types: './packages/simulation/http.entry-point.d.ts'
+    });
+}
+
 export function assertRunConfigSubpathExport(
     scope: TestScope,
     packageExports: Readonly<Record<string, unknown>>
@@ -57,6 +71,10 @@ export function assertTestStandardSubpathExports(
     scope.assert.deepEqual(packageExports['./resources'], {
         import: './packages/test/resources.entry-point.js',
         types: './packages/test/resources.entry-point.d.ts'
+    });
+    scope.assert.deepEqual(packageExports['./simulation'], {
+        import: './packages/test/simulation.entry-point.js',
+        types: './packages/test/simulation.entry-point.d.ts'
     });
     scope.assert.deepEqual(packageExports['./baselines'], {
         import: './packages/test/baselines.entry-point.js',

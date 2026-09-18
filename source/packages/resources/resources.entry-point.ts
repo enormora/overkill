@@ -17,10 +17,15 @@ export const composeRuntimeContext: ResourcesModule['composeRuntimeContext'] = r
 export const composeRuntimes: ResourcesModule['composeRuntimes'] = resourcesModule.composeRuntimes;
 export const createTemporaryDirectoryResource: ResourcesModule['createTemporaryDirectoryResource'] =
     resourcesModule.createTemporaryDirectoryResource;
+export const defineLocalServiceResource: ResourcesModule['defineLocalServiceResource'] =
+    resourcesModule.defineLocalServiceResource;
 export const defineResource: ResourcesModule['defineResource'] = resourcesModule.defineResource;
 export const defineRuntime: ResourcesModule['defineRuntime'] = resourcesModule.defineRuntime;
 export const defineRuntimeMatrix: ResourcesModule['defineRuntimeMatrix'] = resourcesModule.defineRuntimeMatrix;
 
+export {
+    createSimulatedHttpServerResource
+} from '../../resources/simulated-http-server-resource.ts';
 export {
     isDefinedResource,
     isDefinedRuntime,
@@ -45,6 +50,9 @@ export type {
     AnyResourceDefinition,
     ComposedRuntimeGraph,
     ExecutionRequirement,
+    LocalServiceAddress,
+    LocalServiceCreationContext,
+    LocalServiceResourceDefinitionInput,
     ResourceContext,
     ResourceCreationContext,
     ResourceDependencies,
@@ -73,6 +81,10 @@ export type {
     SharedRuntimeMatrixDefinitionInput,
     TemporaryDirectoryHandle
 } from '../../resources/resources.ts';
+export type {
+    SimulatedHttpServerResource,
+    SimulatedHttpServerResourceOptions
+} from '../../resources/simulated-http-server-resource.ts';
 export type {
     RuntimeDefinition as Runtime,
     RuntimeResourceMap as ResourceMap

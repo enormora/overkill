@@ -7,6 +7,7 @@ import { testNode as engineSupportTestNode } from './test-support/unit-suite-gro
 import { testNode as outputRenderersTestNode } from './test-support/unit-suite-groups/output-renderers.ts';
 import { testNode as reportersTestNode } from './test-support/unit-suite-groups/reporters.ts';
 import { testNode as resourcesTestNode } from './test-support/unit-suite-groups/resources.ts';
+import { testNode as simulationTestNode } from './test-support/unit-suite-groups/simulation.ts';
 
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
@@ -21,7 +22,8 @@ export const testNode = createSuite({
         engineSupportTestNode,
         outputRenderersTestNode,
         reportersTestNode,
-        resourcesTestNode
+        resourcesTestNode,
+        simulationTestNode
     ]
 });
 

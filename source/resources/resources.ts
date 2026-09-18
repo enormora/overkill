@@ -110,6 +110,16 @@ export type ResourceDisposalContext<Dependencies extends ResourceDependencies = 
     readonly signal: AbortSignal;
 };
 
+export type LocalServiceAddress = {
+    readonly host: string;
+    readonly port: number;
+};
+
+export type LocalServiceCreationContext<Dependencies extends ResourceDependencies = EmptyResourceDependencies> =
+    ResourceCreationContext<Dependencies> & {
+        readonly address: LocalServiceAddress;
+    };
+
 type ResourceDefinitionBaseInput<
     Name extends string,
     Handle,
@@ -236,6 +246,73 @@ type ProjectedRunResourceInput<
     Dependencies extends ResourceDependencies
 > = ProjectedResourceDefinitionInput<Name, Handle, Projection, ConsumerHandle, 'per-run', Dependencies>;
 
+type LocalServiceResourceDefinitionBaseInput<
+    Name extends string,
+    Handle,
+    Scope extends ResourceScope,
+    Dependencies extends ResourceDependencies = EmptyResourceDependencies
+> = {
+    readonly dependencies?: Dependencies;
+    readonly dispose: (handle: Handle, context: ResourceDisposalContext<Dependencies>) => Awaitable<void>;
+    readonly host?: string;
+    readonly name: Name;
+    readonly port?: number;
+    readonly requirements: readonly ExecutionRequirement[];
+    readonly scope: Scope;
+    readonly start: (context: LocalServiceCreationContext<Dependencies>) => Awaitable<Handle>;
+};
+
+type LocalOnlyLocalServiceResourceDefinitionInput<
+    Name extends string,
+    Handle,
+    Scope extends ResourceScope,
+    Dependencies extends ResourceDependencies = EmptyResourceDependencies
+> = LocalServiceResourceDefinitionBaseInput<Name, Handle, Scope, Dependencies> & {
+    readonly deserializeHandle?: never;
+    readonly serializeHandle?: never;
+};
+
+type ProjectedLocalServiceResourceDefinitionInput<
+    Name extends string,
+    OwnerHandle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Scope extends 'per-file' | 'per-run' | 'per-suite',
+    Dependencies extends ResourceDependencies = EmptyResourceDependencies
+> = LocalServiceResourceDefinitionBaseInput<Name, OwnerHandle, Scope, Dependencies> & {
+    readonly deserializeHandle: (
+        payload: Projection,
+        context: ResourceProjectionContext<Dependencies>
+    ) => ConsumerHandle;
+    readonly serializeHandle: (
+        handle: OwnerHandle,
+        context: ResourceProjectionContext<Dependencies>
+    ) => Projection;
+};
+
+export type LocalServiceResourceDefinitionInput<
+    Name extends string,
+    Handle,
+    Dependencies extends ResourceDependencies = EmptyResourceDependencies,
+    Projection extends ResourceProjectionPayload = ResourceProjectionPayload,
+    ConsumerHandle = Handle
+> = ValueOf<{
+    readonly local: LocalOnlyLocalServiceResourceDefinitionInput<
+        Name,
+        Handle,
+        Exclude<ResourceScope, 'per-run'>,
+        Dependencies
+    >;
+    readonly projected: ProjectedLocalServiceResourceDefinitionInput<
+        Name,
+        Handle,
+        Projection,
+        ConsumerHandle,
+        'per-file' | 'per-run' | 'per-suite',
+        Dependencies
+    >;
+}>;
+
 export type ResourceDefinition<
     Name extends string = string,
     OwnerHandle = unknown,
@@ -268,6 +345,10 @@ type ResourceConsumerHandle<Definition> = Definition extends {
     readonly deserializeHandle: (payload: never, context: never) => infer Handle;
 } ? Handle
     : ResourceOwnerHandle<Definition>;
+type LocalServiceConsumerHandle<Definition, OwnerHandle> = Definition extends {
+    readonly deserializeHandle: (payload: never, context: never) => infer Handle;
+} ? Handle
+    : OwnerHandle;
 
 type UnionToIntersection<Value> = (
     Value extends unknown ? (value: Value) => void : never
@@ -361,6 +442,7 @@ type CreateTemporaryDirectoryResource = <const Name extends string>(
 export type ResourcesModule = {
     readonly composeRuntimeContext: typeof composeRuntimeContext;
     readonly createTemporaryDirectoryResource: CreateTemporaryDirectoryResource;
+    readonly defineLocalServiceResource: typeof defineLocalServiceResource;
     readonly defineResource: typeof defineResource;
     readonly defineRuntime: typeof defineRuntime;
     readonly defineRuntimeMatrix: typeof createRuntimeMatrixDefinition;
@@ -434,6 +516,120 @@ export function defineResource<
     });
 }
 
+function localServiceAddress(host: string | undefined, port: number | undefined): LocalServiceAddress {
+    return Object.freeze({
+        host: host ?? '127.0.0.1',
+        port: port ?? 0
+    });
+}
+
+function localServiceBaseDefinition<
+    Name extends string,
+    Handle,
+    Scope extends ResourceScope,
+    Dependencies extends ResourceDependencies
+>(
+    definition: LocalServiceResourceDefinitionBaseInput<Name, Handle, Scope, Dependencies>,
+    acquire: (context: ResourceCreationContext<Dependencies>) => Awaitable<Handle>
+): ResourceDefinitionBaseInput<Name, Handle, Scope, Dependencies> {
+    const baseDefinition = {
+        name: definition.name,
+        scope: definition.scope,
+        requirements: definition.requirements,
+        acquire,
+        dispose: definition.dispose
+    };
+
+    return definition.dependencies === undefined
+        ? baseDefinition
+        : {
+            ...baseDefinition,
+            dependencies: definition.dependencies
+        };
+}
+
+export function defineLocalServiceResource<
+    const Name extends string,
+    Handle,
+    Scope extends Exclude<ResourceScope, 'per-run'>
+>(
+    definition: LocalOnlyLocalServiceResourceDefinitionInput<Name, Handle, Scope>
+): ResourceDefinition<Name, Handle, EmptyResourceDependencies>;
+export function defineLocalServiceResource<
+    const Name extends string,
+    OwnerHandle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Scope extends 'per-file' | 'per-run' | 'per-suite'
+>(
+    definition: ProjectedLocalServiceResourceDefinitionInput<Name, OwnerHandle, Projection, ConsumerHandle, Scope>
+): ResourceDefinition<Name, OwnerHandle, EmptyResourceDependencies, ConsumerHandle>;
+export function defineLocalServiceResource<
+    const Name extends string,
+    Handle,
+    Scope extends Exclude<ResourceScope, 'per-run'>,
+    const Dependencies extends ResourceDependencies
+>(
+    definition: LocalOnlyLocalServiceResourceDefinitionInput<Name, Handle, Scope, Dependencies> & {
+        readonly dependencies: Dependencies;
+    }
+): ResourceDefinition<Name, Handle, Dependencies>;
+export function defineLocalServiceResource<
+    const Name extends string,
+    OwnerHandle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Scope extends 'per-file' | 'per-run' | 'per-suite',
+    const Dependencies extends ResourceDependencies
+>(
+    definition: ProjectedLocalServiceResourceDefinitionInput<Name, OwnerHandle, Projection, ConsumerHandle, Scope, Dependencies> & {
+        readonly dependencies: Dependencies;
+    }
+): ResourceDefinition<Name, OwnerHandle, Dependencies, ConsumerHandle>;
+export function defineLocalServiceResource<
+    const Name extends string,
+    OwnerHandle,
+    const Dependencies extends ResourceDependencies
+>(
+    definition: LocalServiceResourceDefinitionInput<Name, OwnerHandle, Dependencies>
+): ResourceDefinition<
+    Name,
+    OwnerHandle,
+    Dependencies | EmptyResourceDependencies,
+    LocalServiceConsumerHandle<typeof definition, OwnerHandle>
+> {
+    const address = localServiceAddress(definition.host, definition.port);
+    const acquire = function startLocalService(context: ResourceCreationContext<Dependencies>): Awaitable<OwnerHandle> {
+        return definition.start(Object.freeze({
+            ...context,
+            address
+        }));
+    };
+    const baseDefinition = localServiceBaseDefinition(definition, acquire);
+
+    if ('serializeHandle' in definition && 'deserializeHandle' in definition) {
+        const projectedDefinition = {
+            ...baseDefinition,
+            deserializeHandle: definition.deserializeHandle,
+            serializeHandle: definition.serializeHandle
+        };
+
+        return (defineResource as (resource: unknown) => ResourceDefinition)(projectedDefinition) as ResourceDefinition<
+            Name,
+            OwnerHandle,
+            Dependencies | EmptyResourceDependencies,
+            LocalServiceConsumerHandle<typeof definition, OwnerHandle>
+        >;
+    }
+
+    return (defineResource as (resource: unknown) => ResourceDefinition)(baseDefinition) as ResourceDefinition<
+        Name,
+        OwnerHandle,
+        Dependencies | EmptyResourceDependencies,
+        LocalServiceConsumerHandle<typeof definition, OwnerHandle>
+    >;
+}
+
 function createTemporaryDirectoryResource<const Name extends string>(
     dependencies: ResourcesModuleDependencies,
     name: Name
@@ -501,6 +697,7 @@ export function createResourcesModule(dependencies: ResourcesModuleDependencies)
             return createTemporaryDirectoryResource(dependencies, name);
         },
         composeRuntimes,
+        defineLocalServiceResource,
         defineResource,
         defineRuntime,
         defineRuntimeMatrix: createRuntimeMatrixDefinition

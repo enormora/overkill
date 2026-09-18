@@ -3,7 +3,9 @@ import {
     type assertPerCaseResourceGraph,
     composeRuntimeContext,
     composeRuntimes,
+    createSimulatedHttpServerResource,
     createTemporaryDirectoryResource,
+    defineLocalServiceResource,
     defineResource,
     defineRuntime,
     defineRuntimeMatrix,
@@ -27,6 +29,8 @@ import {
     type RuntimeSession,
     type TemporaryDirectoryHandle
 } from './resources.entry-point.ts';
+import { defineSimulatedHttpServer } from '../simulation/simulation.entry-point.ts';
+import type { SimulatedHttpServerHandle } from '../simulation/http.entry-point.ts';
 
 type ExpectedLocalResourceDefinitionInput = {
     readonly acquire: (context: ResourceCreationContext) => Database | Promise<Database>;
@@ -148,6 +152,28 @@ const runtimeMatrix = defineRuntimeMatrix({
 });
 const composedRuntime = composeRuntimes(runtime, secondaryRuntime);
 const typeTestController = new AbortController();
+const simulatedApi = defineSimulatedHttpServer({
+    name: 'simulated-api',
+    scenarios: {
+        default: { status: 200, title: 'standard responses' },
+        outage: { status: 503, title: 'upstream outage' }
+    },
+    handle(_request, scenario) {
+        return Response.json({ status: scenario.descriptor.status });
+    }
+});
+const simulatedApiResource = createSimulatedHttpServerResource({ simulation: simulatedApi });
+const localService = defineLocalServiceResource({
+    name: 'local-service',
+    scope: 'per-case',
+    requirements: [],
+    start(context) {
+        return { url: `http://${context.address.host}:${context.address.port}` };
+    },
+    dispose() {
+        return undefined;
+    }
+});
 
 const databaseHandle = {
     async query(sql: string) {
@@ -233,6 +259,15 @@ describe('@overkill-dev/resources', function () {
         expect<ResourceHandle<typeof temporaryDirectory>>().type.toBe<TemporaryDirectoryHandle>();
         expect(temporaryDirectory.name).type.toBe<'scratch'>();
         expect<TemporaryDirectoryHandle>().type.toBe<{ readonly path: string; }>();
+    });
+
+    test('infers local-service and simulated HTTP resource handles', function () {
+        expect<ResourceHandle<typeof localService>>().type.toBe<{ url: string; }>();
+        expect<ResourceHandle<typeof simulatedApiResource>>().type.toBe<SimulatedHttpServerHandle<typeof simulatedApi>>();
+        expect<ResourceHandle<typeof simulatedApiResource>['scenarioUrl']>().type.toBe<
+            (scenario: 'default' | 'outage', path: string) => string
+        >();
+        expect(simulatedApiResource.name).type.toBe<'simulated-api'>();
     });
 
     test('composes runtime handles into a typed context', function () {

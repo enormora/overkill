@@ -15,6 +15,7 @@ import * as benchSubpath from './bench.entry-point.ts';
 import * as configSubpath from './config.entry-point.ts';
 import * as reportersSubpath from './reporters.entry-point.ts';
 import * as resourcesSubpath from './resources.entry-point.ts';
+import * as simulationSubpath from './simulation.entry-point.ts';
 import {
     createTestFacade,
     defineMacro,
@@ -126,7 +127,9 @@ function assertResourcesSubpathExports(scope: TestScope): void {
     scope.assert.deepEqual(sortedKeys(resourcesSubpath), [
         'composeRuntimeContext',
         'composeRuntimes',
+        'createSimulatedHttpServerResource',
         'createTemporaryDirectoryResource',
+        'defineLocalServiceResource',
         'defineResource',
         'defineRuntime',
         'defineRuntimeMatrix',
@@ -137,6 +140,16 @@ function assertResourcesSubpathExports(scope: TestScope): void {
         'withRuntime'
     ]);
     scope.assert.equal(typeof resourcesSubpath.startRuntime, 'function');
+}
+
+function assertSimulationSubpathExports(scope: TestScope): void {
+    scope.assert.deepEqual(sortedKeys(simulationSubpath), [
+        'defineSimulatedHttpServer',
+        'defineSimulation',
+        'isDefinedSimulatedHttpServer',
+        'isDefinedSimulation'
+    ]);
+    scope.assert.equal(typeof simulationSubpath.defineSimulation, 'function');
 }
 
 function testPlanForChildren(children: RootOptions['children']): TestPlan {
@@ -502,6 +515,17 @@ export const testNode = createSuite({
             controls: {},
             async body(scope: TestScope) {
                 await assertResourcesSubpath(scope);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: '@overkill-dev/test/simulation re-exports simulation descriptors',
+            annotations: {},
+            controls: {},
+            body(scope: TestScope) {
+                assertSimulationSubpathExports(scope);
 
                 return scope.assert.collect();
             }
