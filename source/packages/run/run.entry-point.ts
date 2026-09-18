@@ -129,6 +129,7 @@ export type {
     RunWorkGroupScheduling,
     RunWorkGroupWorkerLifecycle,
     RunWorkerPoolAssignmentPolicy,
+    RunWorkerPoolDispatchPolicy,
     RunWorkerLifecycle,
     SerializedValue,
     WorkUnit,

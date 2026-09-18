@@ -13,7 +13,8 @@ import type {
     RunOrchestratorDependencies
 } from './run-orchestrator-dependencies.ts';
 import { createStoredRunValue, createSupervisedRunState, type SupervisedRunState } from './supervised-run-state.ts';
-import { executeWorkerPoolUnits, reportRunStart, startPoolResourceTracking } from './worker-pool-execution.ts';
+import { executeWorkerPoolUnits } from './worker-pool-execution.ts';
+import { reportRunStart, startPoolResourceTracking } from './worker-pool-resource-tracking.ts';
 import type {
     WorkerPoolRunRuntime,
     WorkerPoolTaskRun
@@ -194,6 +195,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): Resolved
                 capture: 'buffered',
                 debug: { mode: 'off', selectors: [] },
                 engine: { kind: 'default' },
+                dispatchPolicy: 'dynamic-lease',
                 hostProcess: { kind: 'direct' },
                 order: 'seeded',
                 placementPlan: placementPlan(),
@@ -435,6 +437,12 @@ function budgetedRuntime(taskRun: WorkerPoolTaskRun): WorkerPoolRunRuntime {
     };
 }
 
+function startTrackedTaskTimeout(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): void {
+    taskRun.timeout.write(runtime.dependencies.wallClock.setTimeout(function expireTask() {
+        return undefined;
+    }, 100));
+}
+
 export const testNode = createOverkillSuite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-execution-state.test.ts',
@@ -472,6 +480,7 @@ export const testNode = createOverkillSuite({
                 const runtime = budgetedRuntime(activeTask);
 
                 activeTask.state.addActiveCase(firstCaseIdentityKey(), { capture: null, id: firstCaseId() }, 0);
+                startTrackedTaskTimeout(activeTask, runtime);
                 await reportRunStart({ ...runtime, collectedPlan: { ...runtime.collectedPlan, files: [] } }, 0);
                 await startPoolResourceTracking(runtime);
 

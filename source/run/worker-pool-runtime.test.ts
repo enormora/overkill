@@ -80,6 +80,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): Resolved
                 capture: 'buffered',
                 debug: { mode: 'off', selectors: [] },
                 engine: { kind: 'default' },
+                dispatchPolicy: 'dynamic-lease',
                 hostProcess: { kind: 'direct' },
                 order: 'seeded',
                 placementPlan: createWorkerPoolPlacementPlan({

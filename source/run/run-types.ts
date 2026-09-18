@@ -139,23 +139,15 @@ const runProfileNamePattern = /^[A-Za-z0-9._-]+$/u;
 const reservedBenchmarkProfileName = 'benchmark';
 
 export type RunTestFamily = 'integration' | 'microtest';
-
 export type RunProcessModel = 'in-process' | 'supervised-process' | 'worker-pool';
-
 export type RunMicrotestProcessModel = Exclude<RunProcessModel, 'worker-pool'>;
-
 export type RunScheduling = 'concurrent' | 'serial';
-
 export type RunWorkerLifecycle = 'fresh-worker-per-unit' | 'reuse';
-
 export type RunWorkerPoolAssignmentPolicy = 'case-count-balanced' | 'duration-history-balanced' | 'stable';
-
+export type RunWorkerPoolDispatchPolicy = 'dynamic-lease' | 'static-assignment';
 export type RunWorkGroupGranularity = 'case' | 'file' | 'group';
-
 export type RunWorkGroupOrder = RunOrder | 'profile-default';
-
 export type RunWorkGroupScheduling = RunScheduling | 'profile-default';
-
 export type RunWorkGroupWorkerLifecycle = RunWorkerLifecycle | 'profile-default';
 
 type RunHostProcessReasonKey = {
@@ -176,13 +168,8 @@ export type RunHostProcess = {
     readonly kind: 'direct';
 };
 
-type FileRunWorkDistribution = {
-    readonly mode: 'file';
-};
-
-type CaseRunWorkDistribution = {
-    readonly mode: 'case';
-};
+type FileRunWorkDistribution = { readonly mode: 'file'; };
+type CaseRunWorkDistribution = { readonly mode: 'case'; };
 
 export type RunWorkGroup = {
     readonly fileSets: NonEmptyReadonlyArray<string>;
@@ -304,6 +291,7 @@ type RunSupervisedIntegrationExecution = {
 
 type RunWorkerPoolExecution = {
     readonly assignmentPolicy: RunWorkerPoolAssignmentPolicy;
+    readonly dispatchPolicy: RunWorkerPoolDispatchPolicy;
     readonly hostProcess: RunHostProcess;
     readonly processModel: 'worker-pool';
     readonly scheduling: RunScheduling;
@@ -465,6 +453,7 @@ type RunExecutionBaseFacts = {
 
 type RunWorkerPoolExecutionFacts = RunExecutionBaseFacts & {
     readonly assignmentPolicy: RunWorkerPoolAssignmentPolicy;
+    readonly dispatchPolicy: RunWorkerPoolDispatchPolicy;
     readonly hostProcess: RunHostProcessFacts;
     readonly processModel: 'worker-pool';
     readonly workDistribution: RunWorkDistribution;

@@ -44,6 +44,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(profile, {
                     execution: {
                         assignmentPolicy: 'case-count-balanced',
+                        dispatchPolicy: 'dynamic-lease',
                         hostProcess: { kind: 'direct' },
                         processModel: 'worker-pool',
                         scheduling: 'concurrent',
@@ -93,6 +94,7 @@ export const testNode = createOverkillSuite({
                             },
                             execution: {
                                 assignmentPolicy: 'stable',
+                                dispatchPolicy: 'static-assignment',
                                 processModel: 'worker-pool',
                                 scheduling: 'serial',
                                 workDistribution: {
@@ -113,6 +115,7 @@ export const testNode = createOverkillSuite({
                 scope.require.defined(profile);
                 scope.assert.deepEqual(defaultedProfile.execution, {
                     assignmentPolicy: 'case-count-balanced',
+                    dispatchPolicy: 'dynamic-lease',
                     hostProcess: { kind: 'direct' },
                     processModel: 'worker-pool',
                     scheduling: 'serial',
@@ -121,6 +124,7 @@ export const testNode = createOverkillSuite({
                 });
                 scope.assert.deepEqual(profile.execution, {
                     assignmentPolicy: 'stable',
+                    dispatchPolicy: 'static-assignment',
                     hostProcess: { kind: 'direct' },
                     processModel: 'worker-pool',
                     scheduling: 'serial',

@@ -241,6 +241,7 @@ function taskWithoutPort(task: WorkerPoolTask): WorkerPoolTaskWithoutPort {
         assignedWork: task.assignedWork,
         command: task.command,
         kind: 'run',
+        lane: task.lane,
         startedAtMilliseconds: task.startedAtMilliseconds
     };
 }

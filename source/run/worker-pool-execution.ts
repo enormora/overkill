@@ -3,10 +3,6 @@ import {
     type MessagePort as NodeMessagePort
 } from 'node:worker_threads';
 import { createDefaultWorkId, workIdentityKey, type WorkId } from '../engine/identity.ts';
-import type {
-    ReporterEvent,
-    ResourceUsageSnapshot
-} from '../packages/engine/engine.entry-point.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
     applyEvent
@@ -15,13 +11,10 @@ import {
     createStoredRunValue,
     createSupervisedRunState,
     type StoredRunValue,
-    type SupervisedCase,
-    type SupervisedRunState
+    type SupervisedCase
 } from './supervised-run-state.ts';
 import {
-    crashError,
-    findResourceBudgetBreach,
-    resourceExhaustionError
+    crashError
 } from './supervised-run-resource-policy.ts';
 import type {
     WorkerPoolCommand,
@@ -29,7 +22,6 @@ import type {
     WorkerPoolRunOutput
 } from './worker-pool-protocol.ts';
 import {
-    runStartTimeFromMilliseconds,
     workerPoolExecutionFacts,
     type WorkerPoolRunRuntime,
     type WorkerPoolTaskRun
@@ -39,16 +31,15 @@ import type {
     PlacementLane,
     WorkUnit
 } from './run-types.ts';
+import {
+    createWorkDispatcher,
+    type WorkerPoolUnitLease,
+    type WorkerPoolWorkDispatcher
+} from './worker-pool-work-dispatcher.ts';
 
 type WorkerPoolTaskChannel = {
     readonly close: () => void;
     readonly port: NodeMessagePort;
-};
-
-type WorkerPoolUnitQueue = {
-    readonly clear: () => void;
-    readonly pull: () => WorkUnit | null;
-    readonly requeue: (unit: WorkUnit) => void;
 };
 
 type CompletedTaskRuns = {
@@ -57,7 +48,7 @@ type CompletedTaskRuns = {
 
 type TaskFailureContext = {
     readonly crashCount: StoredRunValue<number>;
-    readonly queue: WorkerPoolUnitQueue;
+    readonly dispatcher: WorkerPoolWorkDispatcher;
     readonly runtime: WorkerPoolRunRuntime;
 };
 
@@ -67,7 +58,18 @@ type TaskExecutionContext = TaskFailureContext & {
 
 type WorkerLoopContext = TaskExecutionContext & {
     readonly completedTaskRuns: CompletedTaskRuns;
+    readonly lane: PlacementLane;
 };
+
+type WorkerTaskRunRequest = {
+    readonly channel: WorkerPoolTaskChannel;
+    readonly lane: PlacementLane;
+    readonly runtime: WorkerPoolRunRuntime;
+    readonly startedAtMilliseconds: number;
+    readonly taskRun: WorkerPoolTaskRun;
+};
+
+type RuntimeReporterEvent = Parameters<WorkerPoolRunRuntime['reporterDelivery']['reportEvent']>[0];
 
 const maximumCrashCount = 3;
 
@@ -84,7 +86,7 @@ function casesByKey(unit: WorkUnit): ReadonlyMap<string, SupervisedCase> {
 }
 
 async function recordReporterEventErrors(
-    event: ReporterEvent,
+    event: RuntimeReporterEvent,
     runtime: WorkerPoolRunRuntime
 ): Promise<void> {
     const errors = await runtime.reporterDelivery.reportEvent(event);
@@ -124,7 +126,7 @@ function startTaskTimeout(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRunt
 }
 
 function handleWorkerEvent(
-    event: ReporterEvent,
+    event: RuntimeReporterEvent,
     taskRun: WorkerPoolTaskRun,
     runtime: WorkerPoolRunRuntime
 ): void {
@@ -133,7 +135,7 @@ function handleWorkerEvent(
         startTaskTimeout(taskRun, runtime);
     }
 
-    const reportedEvent: ReporterEvent = event.kind === 'test-end'
+    const reportedEvent: RuntimeReporterEvent = event.kind === 'test-end'
         ? {
             ...event,
             artifacts: [
@@ -243,22 +245,18 @@ function isWorkerPoolRunOutput(value: unknown): value is WorkerPoolRunOutput {
         Object.hasOwn(value, 'result');
 }
 
-async function runWorkerTask(
-    taskRun: WorkerPoolTaskRun,
-    runtime: WorkerPoolRunRuntime,
-    channel: WorkerPoolTaskChannel,
-    startedAtMilliseconds: number
-): Promise<WorkerPoolRunOutput> {
-    const output: unknown = await runtime.pool.run({
-        assignedWork: taskRun.unit.work,
-        command: createRunCommand(runtime, taskRun.unit),
+async function runWorkerTask(request: WorkerTaskRunRequest): Promise<WorkerPoolRunOutput> {
+    const output: unknown = await request.runtime.pool.run({
+        assignedWork: request.taskRun.unit.work,
+        command: createRunCommand(request.runtime, request.taskRun.unit),
         kind: 'run',
-        port: channel.port,
-        startedAtMilliseconds
+        lane: request.lane.id,
+        port: request.channel.port,
+        startedAtMilliseconds: request.startedAtMilliseconds
     }, {
         name: 'runTask',
-        signal: taskRun.controller.signal,
-        transferList: portTransferList(channel.port)
+        signal: request.taskRun.controller.signal,
+        transferList: portTransferList(request.channel.port)
     });
 
     if (!isWorkerPoolRunOutput(output)) {
@@ -271,12 +269,13 @@ async function runWorkerTask(
 async function runFileUnit(
     taskRun: WorkerPoolTaskRun,
     runtime: WorkerPoolRunRuntime,
+    lane: PlacementLane,
     startedAtMilliseconds: number
 ): Promise<WorkerPoolRunOutput> {
     const channel = observeTaskMessages(taskRun, runtime);
 
     try {
-        return await runWorkerTask(taskRun, runtime, channel, startedAtMilliseconds);
+        return await runWorkerTask({ channel, lane, runtime, startedAtMilliseconds, taskRun });
     } finally {
         channel.close();
     }
@@ -340,23 +339,27 @@ function markActiveTasksCrashed(runtime: WorkerPoolRunRuntime): void {
     }
 }
 
-function stopAfterCrashLimit(runtime: WorkerPoolRunRuntime, queue: WorkerPoolUnitQueue, crashCount: number): void {
+function stopAfterCrashLimit(
+    runtime: WorkerPoolRunRuntime,
+    dispatcher: WorkerPoolWorkDispatcher,
+    crashCount: number
+): void {
     runtime.terminalFailure.write(true);
     recordRunCrash(runtime, 'Worker-pool stopped after 3 worker crashes.', { crashCount });
-    queue.clear();
+    dispatcher.clear();
     markActiveTasksCrashed(runtime);
 }
 
 function recordWorkerCrash(
     runtime: WorkerPoolRunRuntime,
     crashCount: StoredRunValue<number>,
-    queue: WorkerPoolUnitQueue
+    dispatcher: WorkerPoolWorkDispatcher
 ): boolean {
     const nextCrashCount = crashCount.read() + 1;
     crashCount.write(nextCrashCount);
 
     if (nextCrashCount >= maximumCrashCount) {
-        stopAfterCrashLimit(runtime, queue, nextCrashCount);
+        stopAfterCrashLimit(runtime, dispatcher, nextCrashCount);
         return true;
     }
 
@@ -371,7 +374,7 @@ function handleParentEndedFailure(
         return null;
     }
 
-    return recordWorkerCrash(context.runtime, context.crashCount, context.queue) ? null : pendingWorkUnit(taskRun);
+    return recordWorkerCrash(context.runtime, context.crashCount, context.dispatcher) ? null : pendingWorkUnit(taskRun);
 }
 
 function handleTaskFailure(
@@ -389,45 +392,45 @@ function handleTaskFailure(
         context.runtime.dependencies.wallClock.currentTimestampInMilliseconds
     );
 
-    return recordWorkerCrash(context.runtime, context.crashCount, context.queue) ? null : pendingWorkUnit(taskRun);
+    return recordWorkerCrash(context.runtime, context.crashCount, context.dispatcher) ? null : pendingWorkUnit(taskRun);
 }
 
-function createUnitQueue(units: readonly WorkUnit[]): WorkerPoolUnitQueue {
-    const pendingUnits = Array.from(units);
-    let nextIndex = 0;
+async function recordCompletedTaskRun(
+    taskRun: WorkerPoolTaskRun,
+    lease: WorkerPoolUnitLease,
+    context: TaskExecutionContext
+): Promise<void> {
+    const output = await runFileUnit(taskRun, context.runtime, lease.lane, context.startedAtMilliseconds);
+    context.dispatcher.finish(lease, true);
+    context.runtime.taskResults.push(output.result);
+}
 
-    return {
-        clear() {
-            pendingUnits.length = 0;
-            nextIndex = 0;
-        },
-        pull() {
-            const unit = pendingUnits[nextIndex] ?? null;
-            nextIndex += unit === null ? 0 : 1;
+function recordFailedTaskRun(
+    error: unknown,
+    taskRun: WorkerPoolTaskRun,
+    lease: WorkerPoolUnitLease,
+    context: TaskExecutionContext
+): void {
+    const unit = handleTaskFailure(error, taskRun, context);
 
-            return unit;
-        },
-        requeue(unit) {
-            pendingUnits.push(unit);
-        }
-    };
+    context.dispatcher.finish(lease, taskRun.startedCases.size > 0);
+
+    if (unit !== null) {
+        context.dispatcher.requeue(unit);
+    }
 }
 
 async function executeTaskRun(
     taskRun: WorkerPoolTaskRun,
+    lease: WorkerPoolUnitLease,
     context: TaskExecutionContext
 ): Promise<void> {
     context.runtime.activeTasks.add(taskRun);
 
     try {
-        const output = await runFileUnit(taskRun, context.runtime, context.startedAtMilliseconds);
-        context.runtime.taskResults.push(output.result);
+        await recordCompletedTaskRun(taskRun, lease, context);
     } catch (error: unknown) {
-        const unit = handleTaskFailure(error, taskRun, context);
-
-        if (unit !== null) {
-            context.queue.requeue(unit);
-        }
+        recordFailedTaskRun(error, taskRun, lease, context);
     } finally {
         clearTaskTimeout(taskRun, context.runtime.dependencies);
         context.runtime.activeTasks.delete(taskRun);
@@ -436,40 +439,20 @@ async function executeTaskRun(
 
 async function runWorkerLoop(context: WorkerLoopContext): Promise<void> {
     while (!context.runtime.terminalFailure.read()) {
-        const unit = context.queue.pull();
+        const lease = context.dispatcher.pull(context.lane);
 
-        if (unit === null) {
+        if (lease === null && !context.dispatcher.blocked(context.lane)) {
             return;
         }
 
-        const taskRun = createTaskRun(unit);
-        await executeTaskRun(taskRun, context);
-        context.completedTaskRuns.push(taskRun);
+        if (lease === null) {
+            await context.dispatcher.waitForChange();
+        } else {
+            const taskRun = createTaskRun(lease.unit);
+            await executeTaskRun(taskRun, lease, context);
+            context.completedTaskRuns.push(taskRun);
+        }
     }
-}
-
-function unitByKey(units: readonly WorkUnit[]): ReadonlyMap<string, WorkUnit> {
-    return new Map(units.map(function toEntry(unit) {
-        return [ JSON.stringify(unit.id), unit ];
-    }));
-}
-
-function unitsAssignedToLane(plan: PlacementPlan, lane: PlacementLane): readonly WorkUnit[] {
-    const units = unitByKey(plan.units);
-
-    return plan.assignments.flatMap(function toUnit(assignment) {
-        const unit = units.get(JSON.stringify(assignment.unit));
-
-        if (assignment.lane !== lane.id) {
-            return [];
-        }
-
-        if (unit === undefined) {
-            throw new Error('Placement assignment referenced an unknown work unit.');
-        }
-
-        return [ unit ];
-    });
 }
 
 export async function executeWorkerPoolUnits(
@@ -479,13 +462,15 @@ export async function executeWorkerPoolUnits(
 ): Promise<readonly WorkerPoolTaskRun[]> {
     const completedTaskRuns: WorkerPoolTaskRun[] = [];
     const crashCount = createStoredRunValue(0);
+    const dispatcher = createWorkDispatcher(runtime, placementPlan);
 
     await Promise.all(
         placementPlan.lanes.map(async function runLoop(lane) {
             await runWorkerLoop({
                 completedTaskRuns,
                 crashCount,
-                queue: createUnitQueue(unitsAssignedToLane(placementPlan, lane)),
+                dispatcher,
+                lane,
                 runtime,
                 startedAtMilliseconds
             });
@@ -493,90 +478,4 @@ export async function executeWorkerPoolUnits(
     );
 
     return completedTaskRuns;
-}
-
-function poolResourceBudgets(runtime: WorkerPoolRunRuntime): WorkerPoolCommand['resourceBudgets'] {
-    const { budgets } = runtime.resolvedRun.facts.execution.resourceUsagePolicy;
-
-    return {
-        activeResourceCount: null,
-        javaScriptEngineHeapBytes: null,
-        residentSetBytes: budgets.residentSetBytes,
-        residentSetGrowthBytesPerSecond: budgets.residentSetGrowthBytesPerSecond
-    };
-}
-
-function createActiveCaseState(runtime: WorkerPoolRunRuntime): SupervisedRunState {
-    const activeState = createSupervisedRunState();
-
-    for (const taskRun of runtime.activeTasks) {
-        for (const [ key, activeCase ] of taskRun.state.activeCases) {
-            activeState.addActiveCase(key, activeCase, activeCase.startedAtMilliseconds);
-        }
-    }
-
-    return activeState;
-}
-
-function stopTaskForResourceExhaustion(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): void {
-    taskRun.endedByParent.write(true);
-    taskRun.requeuePendingCases.write(false);
-    taskRun.state.recordTerminalActiveCases(
-        'resource-exhausted',
-        runtime.dependencies.wallClock.currentTimestampInMilliseconds
-    );
-    clearTaskTimeout(taskRun, runtime.dependencies);
-    taskRun.controller.abort();
-}
-
-function stopActiveTasksForResourceExhaustion(runtime: WorkerPoolRunRuntime): void {
-    for (const taskRun of runtime.activeTasks) {
-        stopTaskForResourceExhaustion(taskRun, runtime);
-    }
-}
-
-function recordPoolResourceBreach(runtime: WorkerPoolRunRuntime, sample: ResourceUsageSnapshot): void {
-    const breach = findResourceBudgetBreach(
-        poolResourceBudgets(runtime),
-        sample,
-        runtime.previousPoolSample.read()
-    );
-    runtime.previousPoolSample.write(sample);
-
-    if (breach !== null) {
-        runtime.terminalFailure.write(true);
-        const activeState = createActiveCaseState(runtime);
-        const error = resourceExhaustionError(breach, activeState);
-        runtime.runState.recordRunnerError(error);
-        runtime.reporterEvents.add(recordReporterEventErrors({ error, kind: 'runner-error' }, runtime));
-        stopActiveTasksForResourceExhaustion(runtime);
-    }
-}
-
-export async function startPoolResourceTracking(runtime: WorkerPoolRunRuntime): Promise<void> {
-    runtime.poolResourceUsageTracker?.start(function recordPoolSample(sample) {
-        if (!runtime.terminalFailure.read()) {
-            recordPoolResourceBreach(runtime, sample);
-        }
-    });
-    await runtime.poolResourceUsageTracker?.waitForStart?.();
-}
-
-export async function reportRunStart(
-    runtime: WorkerPoolRunRuntime,
-    startedAtMilliseconds: number
-): Promise<void> {
-    if (runtime.resolvedRun.facts.execution.placementPlan?.units.length === 0) {
-        return;
-    }
-
-    await recordReporterEventErrors({
-        facts: runtime.resolvedRun.facts,
-        kind: 'run-start',
-        root: {
-            annotations: runtime.collectedPlan.root.annotations,
-            title: runtime.collectedPlan.root.title
-        },
-        startedAt: runStartTimeFromMilliseconds(startedAtMilliseconds)
-    }, runtime);
 }

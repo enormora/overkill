@@ -54,6 +54,7 @@ import {
     type RunWorkGroupScheduling,
     type RunWorkGroupWorkerLifecycle,
     type RunWorkerPoolAssignmentPolicy,
+    type RunWorkerPoolDispatchPolicy,
     type RunWorkerLifecycle,
     type RuntimeId,
     type SerializedValue,
@@ -266,6 +267,11 @@ describe('@overkill-dev/run', function () {
         >()
             .type
             .toBe<PlacementPlan | null>();
+        expect<
+            Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['dispatchPolicy']
+        >()
+            .type
+            .toBe<RunWorkerPoolDispatchPolicy>();
     });
 
     test('exposes work-unit planning types', function () {
@@ -299,6 +305,9 @@ describe('@overkill-dev/run worker-pool placement', function () {
         expect<RunWorkerPoolAssignmentPolicy>()
             .type
             .toBe<'case-count-balanced' | 'duration-history-balanced' | 'stable'>();
+        expect<RunWorkerPoolDispatchPolicy>()
+            .type
+            .toBe<'dynamic-lease' | 'static-assignment'>();
     });
 });
 
@@ -367,6 +376,7 @@ describe('@overkill-dev/run config', function () {
                 readonly processModel: 'worker-pool';
                 readonly scheduling: 'concurrent';
                 readonly assignmentPolicy: 'case-count-balanced';
+                readonly dispatchPolicy: 'dynamic-lease';
                 readonly workDistribution: { readonly mode: 'file'; };
                 readonly workerLifecycle: 'reuse';
             };

@@ -812,8 +812,8 @@ future public model. Assignment decides the initial lane plan before execution.
 Dispatch decides whether the coordinator follows that plan statically or leases
 pending work dynamically during execution. This keeps `dynamic-lease` from
 pretending to be just another initial placement algorithm.
-Project config may continue to reject future policy values other than
-`duration-history-balanced` and omit `dispatchPolicy` entirely.
+Project config accepts `static-assignment` and `dynamic-lease`, normalizing
+omitted worker-pool dispatch to `dynamic-lease`.
 
 `order` is a placement priority, not a total wall-clock start-order guarantee
 for parallel worker-pool runs. It seeds work-unit ordering, breaks placement

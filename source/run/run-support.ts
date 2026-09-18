@@ -230,6 +230,7 @@ function copyIntegrationExecution(execution: RunIntegrationExecution): RunIntegr
     if (execution.processModel === 'worker-pool') {
         return {
             assignmentPolicy: execution.assignmentPolicy,
+            dispatchPolicy: execution.dispatchPolicy,
             hostProcess: copyHostProcess(execution.hostProcess),
             processModel: execution.processModel,
             scheduling: execution.scheduling,
