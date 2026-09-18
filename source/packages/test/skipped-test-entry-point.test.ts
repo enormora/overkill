@@ -5,6 +5,7 @@ import {
     createTestPlan,
     execute,
     ownsTestNode,
+    resolveSourceLocation,
     type SourceLocation,
     type Suite,
     type TestCase,
@@ -37,14 +38,15 @@ function assertSourceLocationInThisFile(scope: OverkillScope, location: SourceLo
 
 function assertDefinitionLocationInThisFile(
     scope: OverkillScope,
-    sourceLocations: readonly SourceLocation[]
+    sourceLocations: TestCase['definitionLocations']
 ): void {
     const sourceLocation = sourceLocations[0];
     scope.require.defined(sourceLocation);
 
-    assertSourceLocationInThisFile(scope, sourceLocation);
-    scope.assert.equal(typeof sourceLocation.line, 'number');
-    scope.assert.equal(typeof sourceLocation.column, 'number');
+    const resolvedLocation = resolveSourceLocation(sourceLocation);
+    assertSourceLocationInThisFile(scope, resolvedLocation);
+    scope.assert.equal(typeof resolvedLocation.line, 'number');
+    scope.assert.equal(typeof resolvedLocation.column, 'number');
 }
 
 async function executeRootSkippedNode(): Promise<SkippedAuthoringExecution> {

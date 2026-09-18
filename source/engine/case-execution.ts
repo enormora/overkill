@@ -187,8 +187,6 @@ function nodeAssertionFailedBody(
     recorder: AssertionRecorder,
     error: unknown
 ): ExecutedBody {
-    const fallbackLocation = testCase.definitionLocations[0];
-
     return {
         bodyError: null,
         cleanupErrors: [],
@@ -197,7 +195,7 @@ function nodeAssertionFailedBody(
         runnerErrors: [],
         returnedAssertions: [
             ...recorder.activeRecordedAssertions(),
-            nodeAssertionErrorFailure(error, fallbackLocation)
+            nodeAssertionErrorFailure(error, testCase.definitionLocations[0])
         ]
     };
 }

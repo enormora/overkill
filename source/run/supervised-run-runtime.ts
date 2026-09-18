@@ -278,6 +278,7 @@ function createRunCommand(resolvedRun: ResolvedRun): SupervisedRunCommand {
         capture: resolvedRun.facts.execution.capture,
         collectionTimeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.collectionMilliseconds,
         cwd: resolvedRun.cwd,
+        definitionLocationCapture: 'disabled',
         engine: supervisedEngine(resolvedRun),
         hardTimeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds,
         kind: 'run',

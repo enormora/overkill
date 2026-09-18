@@ -28,6 +28,7 @@ export async function createSupervisedChildTestPlan(
     const engine = await selectedEngine(command, dependencies);
     const testPlan = await createRunTestPlan({
         cwd: command.cwd,
+        definitionLocationCapture: command.definitionLocationCapture,
         discoverRunFiles: dependencies.discoverRunFiles,
         engine,
         loadRunTestModules: dependencies.loadRunTestModules,

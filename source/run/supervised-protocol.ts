@@ -1,6 +1,7 @@
 import { createDefaultWorkId, type CaseId, type WorkId } from '../engine/identity.ts';
 import type { ReporterEvent } from '../engine/reporter.ts';
 import type { ResourceUsageSnapshot, RunResult } from '../engine/run-result.ts';
+import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import type {
     CollectedRunPlan,
     RunRequest,
@@ -22,6 +23,7 @@ type SupervisedCommandBase = {
     readonly capture: RunRequest['capture'];
     readonly collectionTimeoutMilliseconds: number;
     readonly cwd: string;
+    readonly definitionLocationCapture: DefinitionLocationCapture;
     readonly engine: Exclude<RunEngineSelection, { readonly kind: 'instance'; }>;
     readonly paths: readonly string[];
     readonly hardTimeoutMilliseconds: number;

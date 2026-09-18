@@ -5,6 +5,7 @@ import {
     createTestPlan,
     execute,
     ownsTestNode,
+    resolveSourceLocation,
     type SourceLocation,
     type Suite,
     type TestBody,
@@ -164,7 +165,7 @@ function assertMacroLocationForwarding(
 
     scope.assert.equal(testCase.definitionLocations.length, 2);
     scope.assert.equal(failedSourceLocations.length, 2);
-    assertSourceLocationInThisFile(scope, macroDefinitionLocation);
+    assertSourceLocationInThisFile(scope, resolveSourceLocation(macroDefinitionLocation));
     assertFirstSourceLocationInThisFile(scope, failedSourceLocations);
 }
 

@@ -8,6 +8,7 @@ import {
 import {
     createResourceLifecycleRuntimePolicy
 } from './resource-lifecycle.ts';
+import { resolvedTestPlanDefinitionLocations } from './collected-run-plan.ts';
 import { createNodeResourceUsageTracker } from './resource-usage.ts';
 import {
     captureOutput,
@@ -93,7 +94,9 @@ async function runAssignment(
     });
 
     try {
-        const testPlan = selectedAssignedWork(collectedPlan.testPlan, task.assignedWork);
+        const testPlan = resolvedTestPlanDefinitionLocations(
+            selectedAssignedWork(collectedPlan.testPlan, task.assignedWork)
+        );
         const result = await execute(testPlan, {
             execution: { mode: executionMode(task.command) },
             outputRenderer: createPlainOutputRenderer(),

@@ -1,4 +1,10 @@
 import type { WallClock } from '@enormora/wall-clock';
+import type {
+    NonEmptyReadonlyArray,
+    ResolvableSourceLocation,
+    SourceLocation
+} from '../assertion-protocol/assertion-node-shape.ts';
+import { resolveSourceLocation } from '../assertion-protocol/source-location.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import { createCaseId, createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
 import {
@@ -13,6 +19,7 @@ import type { TestPlan } from '../engine/test-plan.ts';
 import type {
     CollectedRunCase,
     CollectedRunFile,
+    CollectedOrphanedNode,
     CollectedRunPlan,
     RunCaseFacts
 } from './run-types.ts';
@@ -21,6 +28,26 @@ import type { RunCaseFileSet } from './run-facts.ts';
 function suiteTitles(suitePath: TestPlan['cases'][number]['suitePath']): readonly string[] {
     return suitePath.map(function toTitle(entry) {
         return entry.title;
+    });
+}
+
+function resolvedDefinitionLocations(
+    locations: NonEmptyReadonlyArray<ResolvableSourceLocation>
+): NonEmptyReadonlyArray<SourceLocation> {
+    const [ firstLocation, ...remainingLocations ] = locations;
+
+    return [
+        resolveSourceLocation(firstLocation),
+        ...remainingLocations.map(resolveSourceLocation)
+    ];
+}
+
+function resolvedSuitePath(suitePath: TestPlan['cases'][number]['suitePath']): CollectedRunCase['suitePath'] {
+    return suitePath.map(function resolveSuiteEntry(entry) {
+        return {
+            definitionLocations: resolvedDefinitionLocations(entry.definitionLocations),
+            title: entry.title
+        };
     });
 }
 
@@ -148,10 +175,10 @@ function collectRunPlanFile(file: string, cases: readonly TestPlan['cases'][numb
             return {
                 annotations: testCase.annotations,
                 controls: testCase.controls,
-                definitionLocations: testCase.definitionLocations,
+                definitionLocations: resolvedDefinitionLocations(testCase.definitionLocations),
                 params: testCase.id.params,
                 resourceAttachments: testCase.resourceAttachments,
-                suitePath: testCase.suitePath,
+                suitePath: resolvedSuitePath(testCase.suitePath),
                 testFamily: testCase.testFamily,
                 title: testCase.id.title,
                 workId: testCase.workId
@@ -174,6 +201,51 @@ function collectedRunFilesFromCases(cases: readonly TestPlan['cases'][number][])
     });
 }
 
+function collectedOrphanedNodes(testPlan: TestPlan): readonly CollectedOrphanedNode[] {
+    return testPlan.orphans.map(function collectOrphan(orphan) {
+        return {
+            ...orphan,
+            definitionLocations: resolvedDefinitionLocations(orphan.definitionLocations)
+        };
+    });
+}
+
+function resolvedTestPlanCaseDefinitionLocations(testCase: TestPlan['cases'][number]): TestPlan['cases'][number] {
+    return {
+        ...testCase,
+        definitionLocations: resolvedDefinitionLocations(testCase.definitionLocations),
+        suitePath: resolvedSuitePath(testCase.suitePath)
+    };
+}
+
+function resolvedTestPlanOrphanDefinitionLocations(orphan: TestPlan['orphans'][number]): TestPlan['orphans'][number] {
+    return {
+        ...orphan,
+        definitionLocations: resolvedDefinitionLocations(orphan.definitionLocations)
+    };
+}
+
+function mapNonEmpty<Item, Result>(
+    items: NonEmptyReadonlyArray<Item>,
+    mapItem: (item: Item) => Result
+): NonEmptyReadonlyArray<Result> {
+    const [ firstItem, ...remainingItems ] = items;
+
+    return [
+        mapItem(firstItem),
+        ...remainingItems.map(mapItem)
+    ];
+}
+
+export function resolvedTestPlanDefinitionLocations(testPlan: TestPlan): TestPlan {
+    return {
+        ...testPlan,
+        cases: mapNonEmpty(testPlan.cases, resolvedTestPlanCaseDefinitionLocations),
+        discoveredCases: mapNonEmpty(testPlan.discoveredCases, resolvedTestPlanCaseDefinitionLocations),
+        orphans: testPlan.orphans.map(resolvedTestPlanOrphanDefinitionLocations)
+    };
+}
+
 export function collectedRunPlanFromTestPlanCases(
     testPlan: TestPlan,
     cases: readonly TestPlan['cases'][number][]
@@ -182,7 +254,7 @@ export function collectedRunPlanFromTestPlanCases(
         defined: testPlan.defined,
         discoveredFiles: collectedRunFilesFromCases(testPlan.discoveredCases),
         files: collectedRunFilesFromCases(cases),
-        orphans: testPlan.orphans,
+        orphans: collectedOrphanedNodes(testPlan),
         root: {
             annotations: testPlan.root.annotations,
             controls: testPlan.root.controls,

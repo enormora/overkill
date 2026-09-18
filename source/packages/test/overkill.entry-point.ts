@@ -1,6 +1,5 @@
 #!/usr/bin/env -S node --permission-audit
 import type { CommandLineRunner } from '../run/command-line.entry-point.ts';
-import * as defaultEngine from '../engine/engine.entry-point.ts';
 import { runOverkillCommandLine } from './command-line-runner.ts';
 
 const commandArgumentStartIndex = 2;
@@ -12,7 +11,10 @@ await runOverkillCommandLine({
     },
     cwd: process.cwd(),
     async loadRunner(): Promise<CommandLineRunner> {
-        const runnerModule = await import('../run/command-line.entry-point.ts');
+        const [ defaultEngine, runnerModule ] = await Promise.all([
+            import('../engine/engine.entry-point.ts'),
+            import('../run/command-line.entry-point.ts')
+        ]);
 
         return runnerModule.createNodeCommandLineRunner({ defaultEngine });
     },

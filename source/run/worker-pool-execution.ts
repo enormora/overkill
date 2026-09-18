@@ -216,6 +216,7 @@ function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit): Worker
     return {
         collectionTimeoutMilliseconds: runtime.resolvedRun.facts.execution.timeoutPolicy.collectionMilliseconds,
         cwd: runtime.resolvedRun.cwd,
+        definitionLocationCapture: 'disabled',
         engine: workerPoolEngine(runtime),
         hardTimeoutMilliseconds: runtime.resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds,
         hostProcess: execution.hostProcess.kind === 'direct'

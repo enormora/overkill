@@ -1,6 +1,13 @@
 import path from 'node:path';
-import type { KnownSourceLocation, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
-import { ensureKnownSourceLocation, ensureValidSourceLocation } from '../assertion-protocol/source-location.ts';
+import type {
+    KnownSourceLocation,
+    ResolvableSourceLocation
+} from '../assertion-protocol/assertion-node-shape.ts';
+import {
+    ensureKnownSourceLocation,
+    ensureValidSourceLocation,
+    resolveSourceLocation
+} from '../assertion-protocol/source-location.ts';
 
 export type ReportingContext = {
     readonly relativizeLocationPath: (location: KnownSourceLocation) => string;
@@ -73,8 +80,8 @@ export function createReportingContext(state: ReportingContextState): ReportingC
     };
 }
 
-export function formatSourceLocation(location: SourceLocation, context: ReportingContext): string | null {
-    const knownLocation = ensureKnownSourceLocation(location);
+export function formatSourceLocation(location: ResolvableSourceLocation, context: ReportingContext): string | null {
+    const knownLocation = ensureKnownSourceLocation(resolveSourceLocation(location));
 
     if (knownLocation === null) {
         return null;
@@ -94,7 +101,7 @@ export function formatSourceLocation(location: SourceLocation, context: Reportin
 }
 
 function formatLocationChain(
-    locations: readonly SourceLocation[],
+    locations: readonly ResolvableSourceLocation[],
     context: ReportingContext,
     labels: LocationDetailLabels
 ): RenderedSourceLocations {
@@ -116,14 +123,14 @@ function formatLocationChain(
 }
 
 export function formatDefinitionLocations(
-    locations: readonly SourceLocation[],
+    locations: readonly ResolvableSourceLocation[],
     context: ReportingContext
 ): RenderedSourceLocations {
     return formatLocationChain(locations, context, { final: 'constructed at', intermediate: 'expanded at' });
 }
 
 export function formatAssertionSourceLocations(
-    locations: readonly SourceLocation[],
+    locations: readonly ResolvableSourceLocation[],
     context: ReportingContext
 ): RenderedSourceLocations {
     return formatLocationChain(locations, context, { final: 'asserted at', intermediate: 'forwarded through' });

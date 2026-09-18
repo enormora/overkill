@@ -1,5 +1,5 @@
 import type { DefinedReporter } from '../engine/reporter.ts';
-import type { RunCommand, RunConfig, RunOrchestrator } from './run-types.ts';
+import type { RunCommand, RunConfig, RunOrchestrator, RunProfileConfig } from './run-types.ts';
 import type {
     LoadedRunConfig,
     RunConfigLoadRequest
@@ -76,11 +76,35 @@ async function createCommandLineConfig(
     };
 }
 
+function listProfile(profile: RunProfileConfig): RunProfileConfig {
+    if (profile.testFamily !== 'microtest') {
+        return profile;
+    }
+
+    return {
+        ...profile,
+        execution: {
+            processModel: 'in-process',
+            scheduling: profile.execution.scheduling
+        }
+    };
+}
+
+function listProfiles(profiles: RunConfig['profiles']): RunConfig['profiles'] {
+    return Object.fromEntries(
+        Object.entries(profiles).map(function toListProfile(entry) {
+            const [ name, profile ] = entry;
+
+            return [ name, listProfile(profile) ];
+        })
+    );
+}
+
 function createCommandLineListConfig(loadedConfig: LoadedRunConfig): RunConfig {
     return {
         loader: loadedConfig.loader,
         outputRenderer: loadedConfig.outputRenderer,
-        profiles: loadedConfig.profiles,
+        profiles: listProfiles(loadedConfig.profiles),
         reporters: [],
         runtimeStateDir: loadedConfig.runtimeStateDir
     };

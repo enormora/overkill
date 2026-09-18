@@ -2,7 +2,10 @@ import type {
     AssertAssertionNode,
     AssertionResult
 } from '../assertion-protocol/assertion-node.ts';
-import type { NonEmptyReadonlyArray, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
+import type {
+    NonEmptyReadonlyArray,
+    ResolvableSourceLocation
+} from '../assertion-protocol/assertion-node-shape.ts';
 import { ensureValidSourceLocation } from '../assertion-protocol/source-location.ts';
 import type { InFlightTask } from './async-control.ts';
 import type { AssertAssertionFacade } from './assertion-facade.ts';
@@ -48,7 +51,7 @@ export type ThrowingTestScope = {
 
 export type ThrowingTestBody = (scope: ThrowingTestScope) => Promise<void> | void;
 
-export type DefinitionLocations = NonEmptyReadonlyArray<SourceLocation>;
+export type DefinitionLocations = NonEmptyReadonlyArray<ResolvableSourceLocation>;
 
 export type BuilderTestCaseExecution = {
     readonly body: TestBody;
@@ -259,13 +262,15 @@ function readSkipReason(reason: unknown): string {
     return trimmedReason;
 }
 
-function ensureDefinitionLocations(definitionLocations: readonly SourceLocation[]): void {
+function ensureDefinitionLocations(definitionLocations: readonly ResolvableSourceLocation[]): void {
     if (definitionLocations.length === 0) {
         throw new TypeError('Test node definition locations must contain at least one location.');
     }
 
     for (const location of definitionLocations) {
-        ensureValidSourceLocation(location);
+        if (typeof location !== 'function') {
+            ensureValidSourceLocation(location);
+        }
     }
 }
 

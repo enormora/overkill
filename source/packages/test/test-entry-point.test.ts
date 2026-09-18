@@ -5,6 +5,7 @@ import {
     createTestPlan,
     execute,
     ownsTestNode,
+    resolveSourceLocation,
     serializeValue,
     type SourceLocation,
     type Suite,
@@ -300,7 +301,7 @@ function assertMacroLocationForwarding(
 
     scope.assert.equal(testCase.definitionLocations.length, 2);
     scope.assert.equal(failedSourceLocations.length, 2);
-    assertSourceLocationInThisFile(scope, macroDefinitionLocation);
+    assertSourceLocationInThisFile(scope, resolveSourceLocation(macroDefinitionLocation));
     assertFirstSourceLocationInThisFile(scope, failedSourceLocations);
 }
 
@@ -328,14 +329,15 @@ function checkParameterizedName(testScope: TestScope, data: NameData): ReturnTyp
 
 function assertDefinitionLocationInThisFile(
     scope: OverkillScope,
-    sourceLocations: readonly SourceLocation[]
+    sourceLocations: TestCase['definitionLocations']
 ): void {
     const sourceLocation = sourceLocations[0];
     scope.require.defined(sourceLocation);
 
-    assertSourceLocationInThisFile(scope, sourceLocation);
-    scope.assert.equal(typeof sourceLocation.line, 'number');
-    scope.assert.equal(typeof sourceLocation.column, 'number');
+    const resolvedLocation = resolveSourceLocation(sourceLocation);
+    assertSourceLocationInThisFile(scope, resolvedLocation);
+    scope.assert.equal(typeof resolvedLocation.line, 'number');
+    scope.assert.equal(typeof resolvedLocation.column, 'number');
 }
 
 function createSequencedValue(): RootSequencedValue {

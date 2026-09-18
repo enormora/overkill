@@ -157,7 +157,13 @@ export async function createLocalResolvedRun(
     dependencies: RunOrchestratorDependencies,
     input: ResolvedRunInput
 ): Promise<ResolvedRun> {
-    const testPlan = await createLocalTestPlan(command, input.profile, input.files, dependencies);
+    const testPlan = await createLocalTestPlan({
+        command,
+        definitionLocationCapture: 'enabled',
+        dependencies,
+        files: input.files,
+        profile: input.profile
+    });
     const selectedPlan = selectedTestPlan(testPlan, input.request.selection);
 
     return await createShardedLocalResolvedRunFromTestPlan(
@@ -178,7 +184,13 @@ export async function createLocalRunOrEmptySelectionResult(
         throw new Error('Expected in-process profile.');
     }
 
-    const testPlan = await createLocalTestPlan(command, input.profile, input.files, dependencies);
+    const testPlan = await createLocalTestPlan({
+        command,
+        definitionLocationCapture: 'disabled',
+        dependencies,
+        files: input.files,
+        profile: input.profile
+    });
     const plannedCases = selectedNonEmptyTestPlanCases(testPlan, input.request.selection);
 
     if (plannedCases === null) {
