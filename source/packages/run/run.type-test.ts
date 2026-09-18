@@ -10,6 +10,7 @@ import {
     RunConfigError,
     RunResolutionError,
     type defineConfig,
+    type DynamicWorkUnitId,
     type loadRunConfig,
     type LoadedRunConfig,
     type orchestrator,
@@ -58,9 +59,11 @@ import {
     type RunWorkerLifecycle,
     type RuntimeId,
     type SerializedValue,
+    type TraceWorkUnitId,
     type WorkloadId,
     type WorkId,
     type WorkUnit,
+    type WorkUnitId,
     type WorkUnitMode
 } from './run.entry-point.ts';
 
@@ -117,6 +120,7 @@ type ExpectedPlacementTraceKinds = {
     readonly 'hedged-duplicate-started': true;
     readonly 'unit-completed': true;
     readonly 'unit-reassigned': true;
+    readonly 'unit-split': true;
     readonly 'unit-started': true;
     readonly 'worker-crashed': true;
 };
@@ -292,6 +296,11 @@ describe('@overkill-dev/run', function () {
         expect<Readonly<Record<PlacementTrace['entries'][number]['kind'], true>>>().type.toBe<
             ExpectedPlacementTraceKinds
         >();
+        expect<DynamicWorkUnitId>().type.toBe<{
+            readonly child: string;
+            readonly parent: WorkUnitId;
+        }>();
+        expect<TraceWorkUnitId>().type.toBe<DynamicWorkUnitId | WorkUnitId>();
     });
 });
 

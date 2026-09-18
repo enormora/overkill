@@ -281,7 +281,7 @@ async function runFileUnit(
     }
 }
 
-function createTaskRun(unit: WorkUnit): WorkerPoolTaskRun {
+function createTaskRun(lease: WorkerPoolUnitLease): WorkerPoolTaskRun {
     return {
         controller: new AbortController(),
         endedByParent: createStoredRunValue(false),
@@ -289,7 +289,8 @@ function createTaskRun(unit: WorkUnit): WorkerPoolTaskRun {
         state: createSupervisedRunState(),
         startedCases: new Set(),
         timeout: createStoredRunValue<ReturnType<RunOrchestratorDependencies['wallClock']['setTimeout']> | null>(null),
-        unit
+        traceUnit: lease.traceUnit,
+        unit: lease.unit
     };
 }
 
@@ -416,7 +417,7 @@ function recordFailedTaskRun(
     context.dispatcher.finish(lease, taskRun.startedCases.size > 0);
 
     if (unit !== null) {
-        context.dispatcher.requeue(unit);
+        context.dispatcher.requeue({ traceUnit: taskRun.traceUnit, unit });
     }
 }
 
@@ -448,7 +449,7 @@ async function runWorkerLoop(context: WorkerLoopContext): Promise<void> {
         if (lease === null) {
             await context.dispatcher.waitForChange();
         } else {
-            const taskRun = createTaskRun(lease.unit);
+            const taskRun = createTaskRun(lease);
             await executeTaskRun(taskRun, lease, context);
             context.completedTaskRuns.push(taskRun);
         }

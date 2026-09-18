@@ -13,6 +13,7 @@ import type {
     RunWorkerLifecycle,
     WorkUnit
 } from './run-types.ts';
+import type { PlacementTraceEntry, TraceWorkUnitId } from './placement-trace.ts';
 import type {
     CreatedWorkerPool,
     RunOrchestratorDependencies,
@@ -69,6 +70,7 @@ export type WorkerPoolTaskRun = {
     readonly state: SupervisedRunState;
     readonly startedCases: WorkerPoolStartedCaseSet;
     readonly timeout: StoredRunValue<ReturnType<RunOrchestratorDependencies['wallClock']['setTimeout']> | null>;
+    readonly traceUnit: TraceWorkUnitId;
     readonly unit: WorkUnit;
 };
 
@@ -81,7 +83,9 @@ export type WorkerPoolRunRuntime = {
     readonly finalizeResult: (result: RunResult) => Promise<RunResult>;
     readonly pool: CreatedWorkerPool;
     readonly poolResourceUsageTracker: WorkerPoolResourceUsageTracker | null;
+    readonly placementTraceEntries: readonly PlacementTraceEntry[];
     readonly previousPoolSample: StoredRunValue<ResourceUsageSnapshot | null>;
+    readonly recordPlacementTraceEntry: (entry: PlacementTraceEntry) => void;
     readonly reporterDelivery: Awaited<ReturnType<typeof createReporterDelivery>>;
     readonly reporterEvents: ReporterEventQueue;
     readonly resolvedRun: ResolvedRun;
@@ -534,6 +538,7 @@ export async function createWorkerPoolRuntime(
     const taskResults: RunResult[] = [];
     const executionPool = createExecutionPool(input, placementPlan);
     const { destroyPool, pool } = executionPool;
+    const placementTraceEntries: PlacementTraceEntry[] = [];
 
     pool.setHostOutputSink?.(function recordHostOutput(stream, chunk) {
         if (execution.capture === 'live') {
@@ -554,7 +559,11 @@ export async function createWorkerPoolRuntime(
         finalizeResult,
         pool,
         poolResourceUsageTracker: createPoolResourceUsageTracker(pool, resolvedRun, dependencies),
+        placementTraceEntries,
         previousPoolSample: createStoredRunValue<ResourceUsageSnapshot | null>(null),
+        recordPlacementTraceEntry(entry) {
+            placementTraceEntries.push(entry);
+        },
         reporterDelivery: await createReporterDelivery(resolvedRun, dependencies),
         reporterEvents: createReporterEventQueue(),
         resolvedRun,
