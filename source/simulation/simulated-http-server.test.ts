@@ -1,5 +1,5 @@
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
-import { defineSimulatedHttpServer } from './simulation.ts';
+import { defineSimulatedHttpServer, defineSimulation } from './simulation.ts';
 import { startSimulatedHttpServer } from './simulated-http-server.ts';
 
 function testSignal(): AbortSignal {
@@ -16,6 +16,25 @@ async function rejectedValue(promise: Promise<unknown>): Promise<unknown> {
     }
 
     throw new Error('Expected promise rejection.');
+}
+
+async function startInvalidSimulation(value: unknown): Promise<void> {
+    await Reflect.apply(startSimulatedHttpServer, undefined, [ {
+        simulation: value
+    } ]);
+}
+
+async function assertScenarioResponses(
+    scope: TestScope,
+    defaultResponse: Response,
+    failureResponse: Response,
+    unknownResponse: Response
+): Promise<void> {
+    scope.assert.equal(defaultResponse.status, 200);
+    scope.assert.deepEqual(await defaultResponse.json(), { key: 'default', status: 200 });
+    scope.assert.equal(failureResponse.status, 500);
+    scope.assert.deepEqual(await failureResponse.json(), { key: 'payments-500', status: 500 });
+    scope.assert.equal(unknownResponse.status, 400);
 }
 
 async function assertScenarioRouting(scope: TestScope): Promise<void> {
@@ -42,15 +61,34 @@ async function assertScenarioRouting(scope: TestScope): Promise<void> {
     const failureResponse = await fetch(server.scenarioUrl('payments-500', '/checkout?cart=full'));
     const unknownResponse = await fetch(`${server.baseUrl}/checkout?__overkill_scenario=missing`);
 
-    scope.assert.equal(defaultResponse.status, 200);
-    scope.assert.deepEqual(await defaultResponse.json(), { key: 'default', status: 200 });
-    scope.assert.equal(failureResponse.status, 500);
-    scope.assert.deepEqual(await failureResponse.json(), { key: 'payments-500', status: 500 });
-    scope.assert.equal(unknownResponse.status, 400);
+    await assertScenarioResponses(scope, defaultResponse, failureResponse, unknownResponse);
     scope.assert.deepEqual(requests, [
         'default:/checkout?cart=full',
         'payments-500:/checkout?cart=full'
     ]);
+}
+
+async function assertPostRequestBody(scope: TestScope): Promise<void> {
+    const simulation = defineSimulatedHttpServer({
+        name: 'api',
+        scenarios: { default: { title: 'standard responses' } },
+        async handle(request) {
+            return Response.json({
+                body: await request.text(),
+                method: request.method
+            });
+        }
+    });
+    await using server = await startSimulatedHttpServer({ simulation });
+    const response = await fetch(server.baseUrl, {
+        body: 'checkout=true',
+        method: 'POST'
+    });
+
+    scope.assert.deepEqual(await response.json(), {
+        body: 'checkout=true',
+        method: 'POST'
+    });
 }
 
 async function assertDisposalClosesServer(scope: TestScope): Promise<void> {
@@ -62,9 +100,11 @@ async function assertDisposalClosesServer(scope: TestScope): Promise<void> {
         }
     });
     const server = await startSimulatedHttpServer({ simulation });
-    const baseUrl = server.baseUrl;
+    const { baseUrl } = server;
 
-    scope.assert.equal((await fetch(baseUrl)).status, 200);
+    const response = await fetch(baseUrl);
+
+    scope.assert.equal(response.status, 200);
     await server.dispose();
     scope.assert.equal(await rejectedValue(fetch(baseUrl, { signal: testSignal() })) instanceof Error, true);
 }
@@ -84,6 +124,45 @@ async function assertHandlerErrorsFailDisposal(scope: TestScope): Promise<void> 
 
     scope.assert.equal(response.status, 500);
     scope.assert.equal(disposalError, handlerError);
+}
+
+async function assertNonErrorHandlerFailuresFailDisposal(scope: TestScope): Promise<void> {
+    const simulation = defineSimulatedHttpServer({
+        name: 'api',
+        scenarios: { default: { title: 'standard responses' } },
+        handle() {
+            return new Response(
+                new ReadableStream({
+                    start(controller) {
+                        controller.error('handler exploded');
+                    }
+                })
+            );
+        }
+    });
+    const server = await startSimulatedHttpServer({ simulation });
+
+    await fetch(server.baseUrl);
+
+    const disposalError = await rejectedValue(server.dispose());
+
+    scope.require.instanceOf(disposalError, Error);
+    scope.assert.equal(disposalError.message, 'Simulation handler failed with a non-error value.');
+}
+
+async function assertInvalidSimulationRejected(scope: TestScope): Promise<void> {
+    const invalidSimulation = defineSimulation({
+        name: 'api',
+        scenarios: { default: { title: 'standard responses' } }
+    });
+
+    const startupError = await rejectedValue(startInvalidSimulation(invalidSimulation));
+
+    scope.require.instanceOf(startupError, TypeError);
+    scope.assert.equal(
+        startupError.message,
+        'startSimulatedHttpServer() requires a simulated HTTP server definition.'
+    );
 }
 
 export const testNode = createSuite({
@@ -116,11 +195,44 @@ export const testNode = createSuite({
         }),
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
+            title: 'simulated HTTP server forwards request bodies',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                await assertPostRequestBody(scope);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'simulated HTTP server surfaces handler errors on disposal',
             annotations: {},
             controls: {},
             async body(scope: TestScope) {
                 await assertHandlerErrorsFailDisposal(scope);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'simulated HTTP server wraps non-error handler failures on disposal',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                await assertNonErrorHandlerFailuresFailDisposal(scope);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'simulated HTTP server rejects unbranded descriptors',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                await assertInvalidSimulationRejected(scope);
 
                 return scope.assert.collect();
             }

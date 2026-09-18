@@ -43,10 +43,13 @@ function assertSimulatedHttpDescriptor(scope: TestScope): void {
     scope.assert.equal(simulation.kind, 'simulated-http-server');
     scope.assert.equal(isDefinedSimulation(simulation), true);
     scope.assert.equal(isDefinedSimulatedHttpServer(simulation), true);
-    scope.assert.equal(simulation.handle(new Request('http://example.test'), {
-        descriptor: simulation.scenarios.outage,
-        key: 'outage'
-    }) instanceof Response, true);
+    scope.assert.equal(
+        simulation.handle(new Request('https://example.test'), {
+            descriptor: simulation.scenarios.outage,
+            key: 'outage'
+        }) instanceof Response,
+        true
+    );
 }
 
 function assertSimulationValidation(scope: TestScope): void {
@@ -57,19 +60,22 @@ function assertSimulationValidation(scope: TestScope): void {
         });
     }, { message: 'Simulation "bad name" must match ^[A-Za-z0-9._-]+$.' });
     scope.assert.throws(function rejectEmptyCatalog() {
-        defineSimulation({
+        Reflect.apply(defineSimulation, undefined, [ {
             name: 'api',
-            scenarios: {} as { readonly default: { readonly title: string; }; }
-        });
+            scenarios: {}
+        } ]);
     }, { message: 'Simulation scenarios must not be empty.' });
-    scope.assert.throws(function rejectMissingDefault() {
-        defineSimulation({
+    scope.assert.throws(function rejectNonObjectCatalog() {
+        Reflect.apply(defineSimulation, undefined, [ {
             name: 'api',
-            scenarios: { outage: { title: 'upstream outage' } } as unknown as {
-                readonly default: { readonly title: string; };
-                readonly outage: { readonly title: string; };
-            }
-        });
+            scenarios: null
+        } ]);
+    }, { message: 'Simulation scenarios must be an object.' });
+    scope.assert.throws(function rejectMissingDefault() {
+        Reflect.apply(defineSimulation, undefined, [ {
+            name: 'api',
+            scenarios: { outage: { title: 'upstream outage' } }
+        } ]);
     }, { message: 'Simulation scenarios must include a "default" scenario.' });
     scope.assert.throws(function rejectInvalidScenarioKey() {
         defineSimulation({
@@ -80,6 +86,12 @@ function assertSimulationValidation(scope: TestScope): void {
             }
         });
     }, { message: 'Simulation scenario "bad key" must match ^[A-Za-z0-9._-]+$.' });
+    scope.assert.throws(function rejectInvalidScenarioDescriptor() {
+        Reflect.apply(defineSimulation, undefined, [ {
+            name: 'api',
+            scenarios: { default: null }
+        } ]);
+    }, { message: 'Simulation scenario "default" must be an object.' });
     scope.assert.throws(function rejectEmptyTitle() {
         defineSimulation({
             name: 'api',

@@ -26,8 +26,9 @@ export type SimulationDefinition<
     readonly [simulationDefinitionBrand]: true;
 };
 
-export type SimulationScenarioKey<Simulation> = Simulation extends { readonly scenarios: infer Scenarios extends SimulationScenarioCatalog; }
-    ? keyof Scenarios & string
+export type SimulationScenarioKey<Simulation> = Simulation extends {
+    readonly scenarios: infer Scenarios extends SimulationScenarioCatalog;
+} ? string & keyof Scenarios
     : never;
 
 export type ScenarioKeyOf<Simulation> = SimulationScenarioKey<Simulation>;
@@ -35,8 +36,9 @@ export type ScenarioKeyOf<Simulation> = SimulationScenarioKey<Simulation>;
 export type SimulationScenarioFor<
     Simulation,
     Scenario extends SimulationScenarioKey<Simulation>
-> = Simulation extends { readonly scenarios: infer Scenarios extends SimulationScenarioCatalog; }
-    ? Scenarios[Scenario]
+> = Simulation extends {
+    readonly scenarios: infer Scenarios extends SimulationScenarioCatalog;
+} ? Scenarios[Scenario]
     : never;
 
 export type SimulatedHttpRequestScenario<
@@ -48,7 +50,7 @@ export type SimulatedHttpRequestScenario<
 };
 
 export type SimulatedHttpHandler<Scenarios extends SimulationScenarioCatalog> = <
-    Scenario extends keyof Scenarios & string
+    Scenario extends string & keyof Scenarios
 >(
     request: Request,
     scenario: SimulatedHttpRequestScenario<Scenario, Scenarios[Scenario]>
@@ -90,7 +92,9 @@ function assertScenarioDescriptor(scenarioKey: string, descriptor: unknown): voi
     }
 }
 
-function freezeScenarioCatalog<Scenarios extends SimulationScenarioCatalog>(scenarios: Scenarios): Scenarios {
+function scenarioCatalogEntries(
+    scenarios: unknown
+): readonly (readonly [string, unknown])[] {
     if (!isRecord(scenarios)) {
         throw new TypeError('Simulation scenarios must be an object.');
     }
@@ -105,14 +109,19 @@ function freezeScenarioCatalog<Scenarios extends SimulationScenarioCatalog>(scen
         throw new TypeError('Simulation scenarios must include a "default" scenario.');
     }
 
-    const frozenEntries = scenarioEntries.map(function freezeScenario([ scenarioKey, descriptor ]) {
+    return scenarioEntries;
+}
+
+function freezeScenarioCatalog<Scenarios extends SimulationScenarioCatalog>(scenarios: Scenarios): Scenarios {
+    const scenarioEntries = scenarioCatalogEntries(scenarios);
+
+    for (const [ scenarioKey, descriptor ] of scenarioEntries) {
         assertDescriptorName('Simulation scenario', scenarioKey);
         assertScenarioDescriptor(scenarioKey, descriptor);
+        Object.freeze(descriptor);
+    }
 
-        return [ scenarioKey, Object.freeze({ ...descriptor }) ] as const;
-    });
-
-    return Object.freeze(Object.fromEntries(frozenEntries)) as Scenarios;
+    return Object.freeze(scenarios);
 }
 
 export function defineSimulation<

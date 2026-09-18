@@ -2,7 +2,10 @@ import { createSuite, createTestCase, type TestScope } from '../packages/engine/
 import { defineSimulatedHttpServer } from '../simulation/simulation.ts';
 import { ResourceLifecycleError } from './resource-lifecycle-error.ts';
 import { startResources } from './resource-session.ts';
-import { createSimulatedHttpServerResource } from './simulated-http-server-resource.ts';
+import {
+    createSimulatedHttpServerResource,
+    type SimulatedHttpServerResource
+} from './simulated-http-server-resource.ts';
 
 function testSignal(): AbortSignal {
     const controller = new AbortController();
@@ -18,6 +21,38 @@ async function rejectedValue(promise: Promise<unknown>): Promise<unknown> {
     }
 
     throw new Error('Expected promise rejection.');
+}
+
+type SimulatedApiScenario = {
+    readonly status: number;
+    readonly title: string;
+};
+type SimulatedApiResource = SimulatedHttpServerResource<{
+    readonly name: 'api';
+    readonly scenarios: {
+        readonly default: SimulatedApiScenario;
+        readonly outage: SimulatedApiScenario;
+    };
+}>;
+
+function assertSimulatedHttpResourceDescriptor(
+    scope: TestScope,
+    resource: SimulatedApiResource
+): void {
+    scope.assert.equal(resource.name, 'api');
+    scope.assert.equal(resource.scope, 'per-case');
+    scope.assert.deepEqual(resource.requirements, []);
+}
+
+async function assertSimulatedHttpResourceResponses(
+    scope: TestScope,
+    defaultResponse: Response,
+    outageResponse: Response
+): Promise<void> {
+    scope.assert.equal(defaultResponse.status, 200);
+    scope.assert.deepEqual(await defaultResponse.json(), { key: 'default' });
+    scope.assert.equal(outageResponse.status, 503);
+    scope.assert.deepEqual(await outageResponse.json(), { key: 'outage' });
 }
 
 async function assertSimulatedHttpResource(scope: TestScope): Promise<void> {
@@ -36,13 +71,8 @@ async function assertSimulatedHttpResource(scope: TestScope): Promise<void> {
     const defaultResponse = await fetch(session.context.api.baseUrl);
     const outageResponse = await fetch(session.context.api.scenarioUrl('outage', '/orders'));
 
-    scope.assert.equal(resource.name, 'api');
-    scope.assert.equal(resource.scope, 'per-case');
-    scope.assert.deepEqual(resource.requirements, []);
-    scope.assert.equal(defaultResponse.status, 200);
-    scope.assert.deepEqual(await defaultResponse.json(), { key: 'default' });
-    scope.assert.equal(outageResponse.status, 503);
-    scope.assert.deepEqual(await outageResponse.json(), { key: 'outage' });
+    assertSimulatedHttpResourceDescriptor(scope, resource);
+    await assertSimulatedHttpResourceResponses(scope, defaultResponse, outageResponse);
 
     await session.disposeOnce({ signal: testSignal() });
 }
@@ -72,6 +102,26 @@ async function assertHandlerErrorsFailResourceDisposal(scope: TestScope): Promis
     ]);
 }
 
+async function assertExplicitResourceAddress(scope: TestScope): Promise<void> {
+    const simulation = defineSimulatedHttpServer({
+        name: 'api',
+        scenarios: { default: { title: 'standard responses' } },
+        handle() {
+            return Response.json({ status: 'ok' });
+        }
+    });
+    const resource = createSimulatedHttpServerResource({
+        simulation,
+        host: '127.0.0.1',
+        port: 0
+    });
+    const session = await startResources({ resources: { api: resource }, signal: testSignal() });
+
+    scope.assert.equal(session.context.api.baseUrl.startsWith('http://127.0.0.1:'), true);
+
+    await session.disposeOnce({ signal: testSignal() });
+}
+
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/resources/simulated-http-server-resource.test.ts',
@@ -96,6 +146,17 @@ export const testNode = createSuite({
             controls: {},
             async body(scope: TestScope) {
                 await assertHandlerErrorsFailResourceDisposal(scope);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'simulated HTTP server resources pass explicit addresses',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                await assertExplicitResourceAddress(scope);
 
                 return scope.assert.collect();
             }

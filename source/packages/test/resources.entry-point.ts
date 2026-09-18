@@ -37,9 +37,6 @@ export type {
     AnyResourceDefinition,
     ComposedRuntimeGraph,
     ExecutionRequirement,
-    LocalServiceAddress,
-    LocalServiceCreationContext,
-    LocalServiceResourceDefinitionInput,
     ResourceContext,
     ResourceCreationContext,
     ResourceDependencies,
@@ -75,6 +72,11 @@ export type {
     SimulatedHttpServerResource,
     SimulatedHttpServerResourceOptions,
     TemporaryDirectoryHandle
+} from '../resources/resources.entry-point.ts';
+export type {
+    LocalServiceAddress,
+    LocalServiceCreationContext,
+    LocalServiceResourceDefinitionInput
 } from '../resources/resources.entry-point.ts';
 export type {
     TestBodyDirectResourceAttachmentSummary,

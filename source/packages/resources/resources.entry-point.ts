@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createResourcesModule, type ResourcesModule } from '../../resources/resources.ts';
 
+export { defineLocalServiceResource } from '../../resources/local-service-resource.ts';
+
 const resourcesModule = createResourcesModule({
     temporaryDirectoryPathPrefix: join(tmpdir(), 'overkill-temporary-directory-'),
     async createTemporaryDirectory(pathPrefix) {
@@ -17,8 +19,6 @@ export const composeRuntimeContext: ResourcesModule['composeRuntimeContext'] = r
 export const composeRuntimes: ResourcesModule['composeRuntimes'] = resourcesModule.composeRuntimes;
 export const createTemporaryDirectoryResource: ResourcesModule['createTemporaryDirectoryResource'] =
     resourcesModule.createTemporaryDirectoryResource;
-export const defineLocalServiceResource: ResourcesModule['defineLocalServiceResource'] =
-    resourcesModule.defineLocalServiceResource;
 export const defineResource: ResourcesModule['defineResource'] = resourcesModule.defineResource;
 export const defineRuntime: ResourcesModule['defineRuntime'] = resourcesModule.defineRuntime;
 export const defineRuntimeMatrix: ResourcesModule['defineRuntimeMatrix'] = resourcesModule.defineRuntimeMatrix;
@@ -50,9 +50,6 @@ export type {
     AnyResourceDefinition,
     ComposedRuntimeGraph,
     ExecutionRequirement,
-    LocalServiceAddress,
-    LocalServiceCreationContext,
-    LocalServiceResourceDefinitionInput,
     ResourceContext,
     ResourceCreationContext,
     ResourceDependencies,
@@ -81,6 +78,11 @@ export type {
     SharedRuntimeMatrixDefinitionInput,
     TemporaryDirectoryHandle
 } from '../../resources/resources.ts';
+export type {
+    LocalServiceAddress,
+    LocalServiceCreationContext,
+    LocalServiceResourceDefinitionInput
+} from '../../resources/local-service-resource.ts';
 export type {
     SimulatedHttpServerResource,
     SimulatedHttpServerResourceOptions

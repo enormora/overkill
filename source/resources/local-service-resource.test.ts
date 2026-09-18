@@ -1,14 +1,15 @@
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
-    defineLocalServiceResource,
     defineResource
 } from './resources.ts';
+import { defineLocalServiceResource } from './local-service-resource.ts';
 
 type Database = {
     readonly query: (sql: string) => string;
 };
 
-const testSignal = new AbortController().signal;
+const testController = new AbortController();
+const testSignal = testController.signal;
 
 function assertLocalServiceDescriptor(scope: TestScope): void {
     const database = defineResource({
@@ -79,12 +80,27 @@ async function assertLocalServiceCallbacks(scope: TestScope): Promise<void> {
 }
 
 async function assertProjectedLocalService(scope: TestScope): Promise<void> {
+    const database = defineResource({
+        name: 'database',
+        scope: 'per-case',
+        requirements: [],
+        acquire(): Database {
+            return {
+                query(sql) {
+                    return `result:${sql}`;
+                }
+            };
+        },
+        dispose: null
+    });
     const service = defineLocalServiceResource({
         name: 'mongo',
         scope: 'per-run',
         requirements: [ { kind: 'single-worker' } ],
+        dependencies: { database },
         start(context) {
             return {
+                dependencyPassword: context.dependencies.database.query('password'),
                 connectionString: `mongodb://${context.address.host}:${context.address.port}`,
                 password: 'secret'
             };
@@ -96,15 +112,44 @@ async function assertProjectedLocalService(scope: TestScope): Promise<void> {
             return handle.connectionString;
         },
         deserializeHandle(payload) {
-            return { connectionString: String(payload) };
+            return { connectionString: payload };
         }
     });
-    const ownerHandle = await service.acquire({ dependencies: {}, signal: testSignal });
+    const ownerHandle = await service.acquire({
+        dependencies: {
+            database: {
+                query(sql) {
+                    return `runtime:${sql}`;
+                }
+            }
+        },
+        signal: testSignal
+    });
 
     scope.require.defined(service.serializeHandle);
     scope.require.defined(service.deserializeHandle);
+    scope.assert.equal(ownerHandle.dependencyPassword, 'runtime:password');
     scope.assert.deepEqual(
-        service.deserializeHandle(service.serializeHandle(ownerHandle, { dependencies: {} }), { dependencies: {} }),
+        service.deserializeHandle(
+            service.serializeHandle(ownerHandle, {
+                dependencies: {
+                    database: {
+                        query(sql) {
+                            return `runtime:${sql}`;
+                        }
+                    }
+                }
+            }),
+            {
+                dependencies: {
+                    database: {
+                        query(sql) {
+                            return `runtime:${sql}`;
+                        }
+                    }
+                }
+            }
+        ),
         { connectionString: 'mongodb://127.0.0.1:0' }
     );
 }

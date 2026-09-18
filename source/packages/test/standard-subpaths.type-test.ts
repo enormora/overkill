@@ -66,11 +66,6 @@ import {
     type TemporaryDirectoryHandle
 } from './resources.entry-point.ts';
 import {
-    defineSimulatedHttpServer,
-    defineSimulation,
-    type ScenarioKeyOf
-} from './simulation.entry-point.ts';
-import {
     createTestFacade,
     table as rootTable,
     test as rootTest,
@@ -138,23 +133,6 @@ const secondaryRuntime = defineRuntime({
 });
 const composedRuntime = composeRuntimes(runtime, secondaryRuntime);
 const temporaryDirectory = createTemporaryDirectoryResource('scratch');
-const apiSimulation = defineSimulation({
-    name: 'api',
-    scenarios: {
-        default: { title: 'standard responses' },
-        outage: { title: 'upstream outage' }
-    }
-});
-const httpSimulation = defineSimulatedHttpServer({
-    name: 'http-api',
-    scenarios: {
-        default: { status: 200, title: 'standard responses' },
-        outage: { status: 503, title: 'upstream outage' }
-    },
-    handle(_request, scenario) {
-        return Response.json({ status: scenario.descriptor.status });
-    }
-});
 const projectedDatabase = defineResource({
     name: 'projected-database',
     scope: 'per-file',
@@ -250,15 +228,6 @@ describe('@overkill-dev/test standard subpaths', function () {
             }>();
             expect(temporaryDirectory.name).type.toBe<'scratch'>();
             expect<TemporaryDirectoryHandle>().type.toBe<{ readonly path: string; }>();
-        });
-
-        test('exposes simulation definitions through the standard distribution', function () {
-            expect<ScenarioKeyOf<typeof apiSimulation>>().type.toBe<'default' | 'outage'>();
-            expect<ScenarioKeyOf<typeof httpSimulation>>().type.toBe<'default' | 'outage'>();
-            expect(httpSimulation.handle).type.toBeCallableWith(new Request('http://example.test'), {
-                descriptor: httpSimulation.scenarios.outage,
-                key: 'outage'
-            });
         });
 
         test('exposes runtime descriptor types through the standard distribution', function () {

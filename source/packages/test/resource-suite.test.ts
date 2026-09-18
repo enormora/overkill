@@ -1,6 +1,7 @@
 import { createSuite } from '../engine/engine.entry-point.ts';
 import { testNode as resourceBindingExecutionTestNode } from './resource-binding-execution.test.ts';
 import { testNode as resourceLifecycleScopesTestNode } from './resource-lifecycle-scopes.test.ts';
+import { testNode as simulationSubpathTestNode } from './simulation-subpath.test.ts';
 import { testNode as standardSubpathsTestNode } from './standard-subpaths.test.ts';
 
 export const testNode = createSuite({
@@ -11,6 +12,7 @@ export const testNode = createSuite({
     children: [
         resourceBindingExecutionTestNode,
         resourceLifecycleScopesTestNode,
+        simulationSubpathTestNode,
         standardSubpathsTestNode
     ]
 });

@@ -7,8 +7,11 @@ import {
     testNode as resourceLifecycleCompositionTestNode
 } from '../../run/resource-lifecycle-composition.test.ts';
 import { testNode as runtimeCompositionTestNode } from '../../resources/runtime-composition.test.ts';
-import { testNode as simulatedHttpServerResourceTestNode } from '../../resources/simulated-http-server-resource.test.ts';
+import {
+    testNode as simulatedHttpServerResourceTestNode
+} from '../../resources/simulated-http-server-resource.test.ts';
 import { testNode as resourcesTestNode } from '../../resources/resources.test.ts';
+import { testNode as simulationTestNode } from './simulation.ts';
 
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
@@ -23,6 +26,7 @@ export const testNode = createSuite({
         resourceLifecycleCompositionTestNode,
         runtimeCompositionTestNode,
         simulatedHttpServerResourceTestNode,
-        resourcesTestNode
+        resourcesTestNode,
+        simulationTestNode
     ]
 });

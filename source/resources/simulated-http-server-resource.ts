@@ -6,11 +6,11 @@ import type {
     SimulatedHttpServerDefinition,
     SimulationScenarioCatalog
 } from '../simulation/simulation.ts';
-import {
-    defineLocalServiceResource,
-    type EmptyResourceDependencies,
-    type ResourceDefinition
+import type {
+    EmptyResourceDependencies,
+    ResourceDefinition
 } from './resources.ts';
+import { defineLocalServiceResource } from './local-service-resource.ts';
 
 export type SimulatedHttpServerResourceOptions<
     Name extends string,
@@ -39,8 +39,8 @@ export function createSimulatedHttpServerResource<
     options: SimulatedHttpServerResourceOptions<Name, Scenarios>
 ): SimulatedHttpServerResource<SimulatedHttpServerDefinition<Name, Scenarios>> {
     const addressOptions = {
-        ...(options.host === undefined ? {} : { host: options.host }),
-        ...(options.port === undefined ? {} : { port: options.port })
+        ...options.host === undefined ? {} : { host: options.host },
+        ...options.port === undefined ? {} : { port: options.port }
     };
 
     return defineLocalServiceResource({
