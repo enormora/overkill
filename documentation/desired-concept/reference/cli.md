@@ -47,13 +47,13 @@ current concept.
 
 ### Run And Replay
 
-| Command                          | Purpose                                                     | Reference                                                                                                              |
-| -------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `overkill run [paths...]`        | Default ordinary test mode: discover, plan, and execute.    | [Runtime Behavior](../architecture/runtime-behavior.md)                                                                |
-| `overkill list [paths...]`       | Print the resolved test plan without running it.            | [Tests As Values](../authoring/tests-as-values.md)                                                                     |
-| `overkill replay <run-id>`       | Replay a recorded run from `.overkill/runs/<id>.json`.      | [Reproducibility § Replay](../architecture/reproducibility.md#replay)                                                  |
+| Command                             | Purpose                                                      | Reference                                                                                                              |
+| ----------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `overkill run [paths...]`           | Default ordinary test mode: discover, plan, and execute.     | [Runtime Behavior](../architecture/runtime-behavior.md)                                                                |
+| `overkill list [paths...]`          | Print the resolved test plan without running it.             | [Tests As Values](../authoring/tests-as-values.md)                                                                     |
+| `overkill replay <run-id>`          | Replay a recorded run from `.overkill/runs/<id>.json`.       | [Reproducibility § Replay](../architecture/reproducibility.md#replay)                                                  |
 | `overkill merge-results <paths...>` | Merge completed shard run records into one aggregate result. | [Runtime Behavior § Sharding](../architecture/runtime-behavior.md#sharding)                                            |
-| `overkill replay-witness <path>` | Replay a single property/simulation failure from a witness. | [Failure Artifacts § Witnesses And Replay Artifacts](../authoring/failure-artifacts.md#witnesses-and-replay-artifacts) |
+| `overkill replay-witness <path>`    | Replay a single property/simulation failure from a witness.  | [Failure Artifacts § Witnesses And Replay Artifacts](../authoring/failure-artifacts.md#witnesses-and-replay-artifacts) |
 
 `overkill list` prints a plain plan tree: file, suite path, and case title,
 with parameterized cases rendered as `case title [params]`. By default it lists
