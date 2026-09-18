@@ -106,6 +106,11 @@ const workerPoolAssignmentPolicySchema = z.union([
     z.literal('stable')
 ]);
 
+const workerPoolDispatchPolicySchema = z.union([
+    z.literal('dynamic-lease'),
+    z.literal('static-assignment')
+]);
+
 const workGroupGranularitySchema = z.union([
     z.literal('case'),
     z.literal('file'),
@@ -172,6 +177,7 @@ export const integrationExecutionSchema = z.discriminatedUnion('processModel', [
     z
         .strictObject({
             assignmentPolicy: z.optional(workerPoolAssignmentPolicySchema),
+            dispatchPolicy: z.optional(workerPoolDispatchPolicySchema),
             processModel: z.literal('worker-pool'),
             scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ])),
             workDistribution: z.optional(workDistributionSchema),

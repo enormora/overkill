@@ -17,6 +17,7 @@ import type {
     RunTimeoutPolicy,
     RunWorkDistribution,
     RunWorkerPoolAssignmentPolicy,
+    RunWorkerPoolDispatchPolicy,
     RunWorkerLifecycle
 } from '../run/run-types.ts';
 import { hostProcessFacts } from '../run/run-host-process.ts';
@@ -115,6 +116,7 @@ export function testRunExecutionFacts(command: RunCommand, profile: RunProfileCo
         return {
             ...facts,
             assignmentPolicy: profile.execution.assignmentPolicy,
+            dispatchPolicy: profile.execution.dispatchPolicy,
             hostProcess: hostProcessFacts(profile.execution.hostProcess),
             processModel: profile.execution.processModel,
             workDistribution: profile.execution.workDistribution,
@@ -152,6 +154,18 @@ function defaultAssignmentPolicy(overrides: Partial<RunIntegrationExecution>): R
         : 'case-count-balanced';
 }
 
+function hasDispatchPolicyOverride(
+    overrides: Partial<RunIntegrationExecution>
+): overrides is WorkerPoolExecutionOverrides {
+    return Object.hasOwn(overrides, 'dispatchPolicy');
+}
+
+function defaultDispatchPolicy(overrides: Partial<RunIntegrationExecution>): RunWorkerPoolDispatchPolicy {
+    return hasDispatchPolicyOverride(overrides)
+        ? overrides.dispatchPolicy ?? 'dynamic-lease'
+        : 'dynamic-lease';
+}
+
 function hasWorkDistributionOverride(
     overrides: Partial<RunIntegrationExecution>
 ): overrides is WorkerPoolExecutionOverrides {
@@ -187,6 +201,7 @@ function defaultIntegrationExecution(overrides: Partial<RunIntegrationExecution>
     if (processModel === 'worker-pool') {
         return {
             assignmentPolicy: defaultAssignmentPolicy(overrides),
+            dispatchPolicy: defaultDispatchPolicy(overrides),
             processModel,
             scheduling,
             workDistribution: defaultWorkDistribution(overrides),

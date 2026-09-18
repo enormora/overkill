@@ -188,6 +188,9 @@ export const testNode = createOverkillSuite({
                         files: {
                             exclude: [],
                             include: [ hostProcessNodeArgumentsFixturePath ]
+                        },
+                        timeouts: {
+                            collectionMilliseconds: 15_000
                         }
                     }),
                     hostProcessNodeArgumentsFixturePath

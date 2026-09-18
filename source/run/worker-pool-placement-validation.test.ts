@@ -4,16 +4,15 @@ import {
     createTestCase as createOverkillTestCase,
     type CaseId,
     type RunResult,
-    type TestScope as OverkillScope
+    type TestScope as OverkillScope,
+    type WorkId
 } from '../packages/engine/engine.entry-point.ts';
 import { defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { createRunResultFromCollectedPlan } from './collected-run-plan.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
-import type {
-    CreatedWorkerPool
-} from './run-orchestrator-dependencies.ts';
+import type { CreatedWorkerPool } from './run-orchestrator-dependencies.ts';
 import { createStoredRunValue, createSupervisedRunState } from './supervised-run-state.ts';
-import { executeWorkerPoolUnits, reportRunStart } from './worker-pool-execution.ts';
+import { executeWorkerPoolUnits } from './worker-pool-execution.ts';
 import type {
     WorkerPoolRunRuntime
 } from './worker-pool-runtime.ts';
@@ -23,6 +22,9 @@ type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
 type PlacementPlan = NonNullable<ResolvedRun['facts']['execution']['placementPlan']>;
 type ResourceSample = ReturnType<WorkerPoolRunRuntime['previousPoolSample']['read']>;
 type WorkUnit = PlacementPlan['units'][number];
+type WorkerPoolOutput = {
+    readonly result: RunResult;
+};
 
 export const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const annotations = { ownership: [], tags: [] };
@@ -143,6 +145,37 @@ function placementPlanWithMissingUnit(): PlacementPlan {
     };
 }
 
+function placementPlanWithMissingLane(): PlacementPlan {
+    const unit = firstWorkUnit();
+
+    return {
+        ...placementPlan(),
+        assignments: [ { lane: 'missing-worker', unit: unit.id } ],
+        units: [ unit ]
+    };
+}
+
+function placementPlanWithMixedLaneLifecycles(): PlacementPlan {
+    const reuse = firstWorkUnit();
+    const fresh = {
+        ...firstWorkUnit(),
+        id: {
+            ...firstWorkUnit().id,
+            key: 'fresh'
+        },
+        workerLifecycle: 'fresh-worker-per-unit' as const
+    };
+
+    return {
+        ...placementPlan(),
+        assignments: [
+            { lane: 'worker-1', unit: reuse.id },
+            { lane: 'worker-1', unit: fresh.id }
+        ],
+        units: [ reuse, fresh ]
+    };
+}
+
 export function placementPlanWithGroupUnit(): PlacementPlan {
     const unit: WorkUnit = {
         ...firstWorkUnit(),
@@ -175,29 +208,6 @@ export function placementPlanWithUnitPolicy(): PlacementPlan {
     };
 }
 
-function placementPlanAssignedToSecondLane(): PlacementPlan {
-    const base = placementPlan();
-    const unit = firstWorkUnit();
-
-    return {
-        ...base,
-        assignments: [ { lane: 'worker-2', unit: unit.id } ],
-        lanes: [
-            ...base.lanes,
-            {
-                executor: {
-                    capabilities: [],
-                    capacity: 1,
-                    id: 'worker-2',
-                    kind: 'local-worker'
-                },
-                id: 'worker-2'
-            }
-        ],
-        units: [ unit ]
-    };
-}
-
 function workerPoolResolvedRun(placement: PlacementPlan): ResolvedRun {
     return {
         collectionRunnerErrors: [],
@@ -218,6 +228,7 @@ function workerPoolResolvedRun(placement: PlacementPlan): ResolvedRun {
                 capture: 'buffered',
                 debug: { mode: 'off', selectors: [] },
                 engine: { kind: 'default' },
+                dispatchPolicy: 'dynamic-lease',
                 hostProcess: { kind: 'direct' },
                 order: 'seeded',
                 placementPlan: placement,
@@ -274,19 +285,36 @@ function createFakePool(): CreatedWorkerPool {
     };
 }
 
-type CapturedWorkerTask = {
-    readonly assignedWork: readonly unknown[];
+export type CapturedWorkerTask = {
+    readonly assignedWork: readonly WorkId[];
     readonly command: {
         readonly paths: readonly string[];
         readonly scheduling: 'concurrent' | 'serial';
         readonly workerLifecycle: 'fresh-worker-per-unit' | 'reuse';
     };
+    readonly lane: string;
 };
 
 export type AcceptingPool = {
     readonly capturedTasks: readonly CapturedWorkerTask[];
     readonly pool: CreatedWorkerPool;
 };
+
+export function completedWorkerPoolOutput(): WorkerPoolOutput {
+    return {
+        result: createRunResultFromCollectedPlan(
+            createCollectedPlan(),
+            [],
+            [],
+            {
+                planStatus: 'planned',
+                resourceUsage: null,
+                startedAtMs: 0,
+                wallClock: createDeterministicWallClock()
+            }
+        )
+    };
+}
 
 export function createAcceptingPool(): AcceptingPool {
     const capturedTasks: CapturedWorkerTask[] = [];
@@ -303,19 +331,7 @@ export function createAcceptingPool(): AcceptingPool {
 
                 capturedTasks.push(workerTask);
 
-                return {
-                    result: createRunResultFromCollectedPlan(
-                        createCollectedPlan(),
-                        [],
-                        [],
-                        {
-                            planStatus: 'planned',
-                            resourceUsage: null,
-                            startedAtMs: 0,
-                            wallClock: createDeterministicWallClock()
-                        }
-                    )
-                };
+                return completedWorkerPoolOutput();
             }
         }
     };
@@ -460,38 +476,25 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             ...testCaseMetadata,
-            title: 'worker-pool execution skips run start for empty placement plans',
+            title: 'worker-pool execution rejects placement assignments for missing lanes',
             async body(scope: OverkillScope) {
-                let reportedEvents = 0;
-                const runtime = {
-                    ...fakeWorkerRuntime({ assignments: [], lanes: [], units: [] }),
-                    reporterDelivery: {
-                        ...fakeReporterDelivery,
-                        async reportEvent() {
-                            reportedEvents += 1;
-
-                            return [];
-                        }
-                    }
-                };
-                await reportRunStart(runtime, 0);
-                scope.assert.equal(reportedEvents, 0);
+                await scope.assert.rejects(async function executeMissingLane() {
+                    await executeWorkerPoolUnits(fakeWorkerRuntime(placementPlan()), placementPlanWithMissingLane(), 0);
+                }, { message: 'Placement assignment referenced an unknown lane.' });
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
             ...testCaseMetadata,
-            title: 'worker-pool execution runs only units assigned to each lane',
+            title: 'worker-pool execution rejects mixed lifecycle placement lanes',
             async body(scope: OverkillScope) {
-                const acceptingPool = createAcceptingPool();
-                const placement = placementPlanAssignedToSecondLane();
-                const runtime = {
-                    ...fakeWorkerRuntime(placement),
-                    pool: acceptingPool.pool
-                };
-                const completed = await executeWorkerPoolUnits(runtime, placement, 0);
-                scope.assert.equal(completed.length, 1);
-                scope.assert.equal(acceptingPool.capturedTasks.length, 1);
+                await scope.assert.rejects(async function executeMixedLifecycleLane() {
+                    await executeWorkerPoolUnits(
+                        fakeWorkerRuntime(placementPlan()),
+                        placementPlanWithMixedLaneLifecycles(),
+                        0
+                    );
+                }, { message: 'Placement lane cannot mix worker lifecycle policies.' });
                 return scope.assert.collect();
             }
         }),

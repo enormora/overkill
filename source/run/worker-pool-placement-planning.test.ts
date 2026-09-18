@@ -134,6 +134,7 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
                 capture: 'buffered',
                 debug: { mode: 'off', selectors: [] },
                 engine: { kind: 'default' },
+                dispatchPolicy: 'dynamic-lease',
                 hostProcess: { kind: 'direct' },
                 order: 'seeded',
                 placementPlan: null,

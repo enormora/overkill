@@ -269,7 +269,8 @@ export const config = defineConfig({
                 scheduling: 'concurrent',
                 workerLifecycle: 'fresh-worker-per-unit',
                 workDistribution: { mode: 'file' },
-                assignmentPolicy: 'case-count-balanced'
+                assignmentPolicy: 'case-count-balanced',
+                dispatchPolicy: 'dynamic-lease'
             }
         }
     },

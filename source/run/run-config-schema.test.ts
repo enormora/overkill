@@ -284,6 +284,7 @@ export const testNode = createOverkillSuite({
             body(scope: OverkillScope) {
                 assertValidationSuccess(scope, integrationExecutionSchema, {
                     assignmentPolicy: 'case-count-balanced',
+                    dispatchPolicy: 'dynamic-lease',
                     processModel: 'worker-pool',
                     scheduling: 'serial',
                     workDistribution: { mode: 'file' },
@@ -291,6 +292,7 @@ export const testNode = createOverkillSuite({
                 });
                 assertValidationSuccess(scope, integrationExecutionSchema, {
                     assignmentPolicy: 'stable',
+                    dispatchPolicy: 'static-assignment',
                     processModel: 'worker-pool',
                     scheduling: 'serial',
                     workDistribution: { mode: 'case' },
@@ -402,11 +404,29 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'integration execution schema rejects invalid worker-pool dispatch policy',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const result = safeParse(integrationExecutionSchema, {
+                    dispatchPolicy: 'least-busy',
+                    processModel: 'worker-pool',
+                    scheduling: 'serial'
+                });
+
+                scope.assert.equal(result.success, false);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'integration execution schema rejects worker-pool fields on supervised profiles',
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
                 const result = safeParse(integrationExecutionSchema, {
+                    dispatchPolicy: 'dynamic-lease',
                     processModel: 'supervised-process',
                     scheduling: 'serial',
                     workDistribution: { mode: 'file' },

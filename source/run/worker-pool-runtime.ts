@@ -59,6 +59,7 @@ type WorkerPoolTaskResultList = {
 type WorkerPoolStartedCaseSet = {
     readonly add: (caseKey: string) => WorkerPoolStartedCaseSet;
     readonly has: (caseKey: string) => boolean;
+    readonly size: number;
 };
 
 export type WorkerPoolTaskRun = {
@@ -104,6 +105,7 @@ type WorkerPoolExecutionPool = {
 };
 
 type WorkerPoolRoute = {
+    readonly lane: string | null;
     readonly pool: CreatedWorkerPool;
     readonly workerLifecycle: RunWorkerLifecycle;
 };
@@ -219,39 +221,6 @@ function placementLaneLifecycles(plan: PlacementPlan): ReadonlyMap<string, RunWo
     return laneLifecycles;
 }
 
-function laneLifecycleCount(
-    laneLifecycles: ReadonlyMap<string, RunWorkerLifecycle>,
-    workerLifecycle: RunWorkerLifecycle
-): number {
-    return Array
-        .from(laneLifecycles.values())
-        .filter(function hasWorkerLifecycle(laneWorkerLifecycle) {
-            return laneWorkerLifecycle === workerLifecycle;
-        })
-        .length;
-}
-
-function laneCountsByLifecycle(plan: PlacementPlan): ReadonlyMap<RunWorkerLifecycle, number> {
-    const laneLifecycles = placementLaneLifecycles(plan);
-    const lifecycles: readonly RunWorkerLifecycle[] = [ 'reuse', 'fresh-worker-per-unit' ];
-
-    return new Map(
-        lifecycles.map(function toLifecycleCount(workerLifecycle) {
-            return [ workerLifecycle, laneLifecycleCount(laneLifecycles, workerLifecycle) ];
-        })
-    );
-}
-
-function workerLifecycles(plan: PlacementPlan): readonly RunWorkerLifecycle[] {
-    return Array.from(
-        new Set(
-            assignedUnits(plan).map(function toWorkerLifecycle(unit) {
-                return unit.workerLifecycle;
-            })
-        )
-    );
-}
-
 function workerPoolOptions(
     resolvedRun: ResolvedRun,
     execution: WorkerPoolExecutionFacts,
@@ -266,10 +235,6 @@ function workerPoolOptions(
     };
 }
 
-function poolMatchesLifecycle(pool: CreatedWorkerPool, workerLifecycle: RunWorkerLifecycle): boolean {
-    return pool.options.isolateWorkers === (workerLifecycle === 'fresh-worker-per-unit');
-}
-
 function routeForLifecycle(
     routes: readonly WorkerPoolRoute[],
     workerLifecycle: RunWorkerLifecycle
@@ -280,6 +245,21 @@ function routeForLifecycle(
 
     if (route === undefined) {
         throw new Error(`Worker-pool task has no "${workerLifecycle}" route.`);
+    }
+
+    return route;
+}
+
+function routeForLane(
+    routes: readonly WorkerPoolRoute[],
+    lane: string
+): WorkerPoolRoute {
+    const route = routes.find(function hasLane(candidate) {
+        return candidate.lane === lane;
+    });
+
+    if (route === undefined) {
+        throw new Error(`Worker-pool task has no "${lane}" route.`);
     }
 
     return route;
@@ -298,6 +278,20 @@ function taskWorkerLifecycle(task: unknown): RunWorkerLifecycle {
     }
 
     return task.command.workerLifecycle;
+}
+
+function taskLane(task: unknown): string | null {
+    if (!isWorkerPoolTask(task)) {
+        throw new Error('Worker-pool received an invalid task.');
+    }
+
+    return task.kind === 'run' ? task.lane : null;
+}
+
+function routeForTask(routes: readonly WorkerPoolRoute[], task: unknown): WorkerPoolRoute {
+    const lane = taskLane(task);
+
+    return lane === null ? routeForLifecycle(routes, taskWorkerLifecycle(task)) : routeForLane(routes, lane);
 }
 
 function uniqueSorted(values: readonly string[]): readonly string[] {
@@ -399,7 +393,7 @@ function createRoutedPool(routes: readonly WorkerPoolRoute[]): CreatedWorkerPool
             }, 0)
         },
         async run(task, options) {
-            return await routeForLifecycle(routes, taskWorkerLifecycle(task)).pool.run(task, options);
+            return await routeForTask(routes, task).pool.run(task, options);
         },
         setHostOutputSink(sink) {
             for (const route of routes) {
@@ -444,42 +438,36 @@ function createEmptyExecutionPool(
     };
 }
 
-function createSingleLifecycleExecutionPool(
+function createLaneExecutionPool(
     input: WorkerPoolRuntimeInput,
     execution: WorkerPoolExecutionFacts,
-    placementPlan: PlacementPlan,
-    workerLifecycle: RunWorkerLifecycle
+    placementPlan: PlacementPlan
 ): WorkerPoolExecutionPool {
-    if (input.createdPool !== null && poolMatchesLifecycle(input.createdPool, workerLifecycle)) {
+    const laneLifecycles = placementLaneLifecycles(placementPlan);
+    const singleLane = placementPlan.lanes[0];
+
+    if (input.createdPool !== null && placementPlan.lanes.length === 1 && singleLane !== undefined) {
         return {
             destroyPool: false,
             pool: input.createdPool
         };
     }
 
-    return {
-        destroyPool: true,
-        pool: input.dependencies.createWorkerPool(
-            workerPoolOptions(input.resolvedRun, execution, placementPlan.lanes.length, workerLifecycle)
-        )
-    };
-}
+    const routes = placementPlan.lanes.map(function toRoute(lane) {
+        const workerLifecycle = laneLifecycles.get(lane.id);
 
-function createMixedLifecycleExecutionPool(
-    input: WorkerPoolRuntimeInput,
-    execution: WorkerPoolExecutionFacts,
-    placementPlan: PlacementPlan,
-    lifecycles: readonly RunWorkerLifecycle[]
-): WorkerPoolExecutionPool {
-    const laneCounts = laneCountsByLifecycle(placementPlan);
-    const routes = lifecycles.map(function toRoute(workerLifecycle) {
+        if (workerLifecycle === undefined) {
+            throw new Error('Placement lane has no assigned worker lifecycle.');
+        }
+
         return {
             pool: input.dependencies.createWorkerPool(workerPoolOptions(
                 input.resolvedRun,
                 execution,
-                laneCounts.get(workerLifecycle) ?? 0,
+                1,
                 workerLifecycle
             )),
+            lane: lane.id,
             workerLifecycle
         };
     });
@@ -492,16 +480,12 @@ function createMixedLifecycleExecutionPool(
 
 function createExecutionPool(input: WorkerPoolRuntimeInput, placementPlan: PlacementPlan): WorkerPoolExecutionPool {
     const execution = workerPoolExecutionFacts(input.resolvedRun);
-    const lifecycles = workerLifecycles(placementPlan);
-    const firstLifecycle = lifecycles[0];
 
-    if (firstLifecycle === undefined) {
+    if (placementPlan.lanes.length === 0) {
         return createEmptyExecutionPool(input, execution);
     }
 
-    return lifecycles.length === 1
-        ? createSingleLifecycleExecutionPool(input, execution, placementPlan, firstLifecycle)
-        : createMixedLifecycleExecutionPool(input, execution, placementPlan, lifecycles);
+    return createLaneExecutionPool(input, execution, placementPlan);
 }
 
 export function workerPoolCollectedPlan(resolvedRun: ResolvedRun): CollectedRunPlan {

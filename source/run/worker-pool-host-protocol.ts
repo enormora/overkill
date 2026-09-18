@@ -17,6 +17,7 @@ type WorkerPoolRunTaskWithoutPort = {
     readonly assignedWork: WorkerPoolRunTask['assignedWork'];
     readonly command: WorkerPoolRunTask['command'];
     readonly kind: 'run';
+    readonly lane: WorkerPoolRunTask['lane'];
     readonly startedAtMilliseconds: WorkerPoolRunTask['startedAtMilliseconds'];
 };
 export type WorkerPoolTaskWithoutPort = WorkerPoolCollectTaskWithoutPort | WorkerPoolRunTaskWithoutPort;

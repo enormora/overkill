@@ -39,6 +39,7 @@ export type WorkerPoolRunTask = {
     readonly assignedWork: readonly WorkId[];
     readonly command: WorkerPoolCommand;
     readonly kind: 'run';
+    readonly lane: string;
     readonly port: NodeMessagePort;
     readonly startedAtMilliseconds: number;
 };

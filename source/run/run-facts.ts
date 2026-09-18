@@ -144,6 +144,7 @@ function createRunExecutionFacts(
         return {
             ...facts,
             assignmentPolicy: profile.execution.assignmentPolicy,
+            dispatchPolicy: profile.execution.dispatchPolicy,
             hostProcess: hostProcessFacts(profile.execution.hostProcess),
             processModel: profile.execution.processModel,
             workDistribution: profile.execution.workDistribution,

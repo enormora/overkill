@@ -493,6 +493,7 @@ export const testNode = createOverkillSuite({
                     invalidWorkDistributionConfigMessage(
                         {
                             assignmentPolicy: 'case-count-balanced',
+                            dispatchPolicy: 'dynamic-lease',
                             hostProcess: { kind: 'direct' },
                             processModel: 'worker-pool',
                             scheduling: 'concurrent',

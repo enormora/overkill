@@ -12,10 +12,12 @@ import type {
 } from './run-types.ts';
 import { collectInWorkerPool } from './worker-pool-collection.ts';
 import {
-    executeWorkerPoolUnits,
+    executeWorkerPoolUnits
+} from './worker-pool-execution.ts';
+import {
     reportRunStart,
     startPoolResourceTracking
-} from './worker-pool-execution.ts';
+} from './worker-pool-resource-tracking.ts';
 import type { WorkerPoolCommand } from './worker-pool-protocol.ts';
 import {
     createEmptyWorkerPoolResult,

@@ -33,6 +33,7 @@ import {
     type RunResourceUsagePolicy,
     type RunTimeoutPolicy,
     type RunWorkerPoolAssignmentPolicy,
+    type RunWorkerPoolDispatchPolicy,
     type RunWorkerLifecycle
 } from './run-types.ts';
 import {
@@ -145,6 +146,7 @@ const defaultMicrotestExecution: RunMicrotestExecution = {
 const defaultIntegrationProcessModel = 'worker-pool';
 const defaultIntegrationScheduling = 'concurrent';
 const defaultWorkerPoolAssignmentPolicy = 'case-count-balanced';
+const defaultWorkerPoolDispatchPolicy: RunWorkerPoolDispatchPolicy = 'dynamic-lease';
 const defaultWorkerLifecycle = 'reuse';
 const defaultWorkDistribution = { mode: 'file' } as const;
 
@@ -461,6 +463,9 @@ function normalizeWorkerPoolExecution(
 ): RunIntegrationExecution {
     return {
         assignmentPolicy: normalizeWorkerPoolAssignmentPolicy(execution),
+        dispatchPolicy: execution?.processModel === 'worker-pool'
+            ? execution.dispatchPolicy ?? defaultWorkerPoolDispatchPolicy
+            : defaultWorkerPoolDispatchPolicy,
         hostProcess: { kind: 'direct' },
         processModel: 'worker-pool',
         scheduling,
