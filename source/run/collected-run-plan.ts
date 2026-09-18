@@ -2,8 +2,9 @@ import type { WallClock } from '@enormora/wall-clock';
 import { serializeValue } from '../compare/serialized-value.ts';
 import { createCaseId, createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
 import {
-    runStatusFromSummary,
+    runStatusFromPlan,
     type PerTestResult,
+    type RunPlanStatus,
     type RunResourceUsage,
     type RunResult,
     type RunnerError
@@ -24,6 +25,7 @@ function suiteTitles(suitePath: TestPlan['cases'][number]['suitePath']): readonl
 }
 
 type RunResultTiming = {
+    readonly planStatus: RunPlanStatus;
     readonly resourceUsage: RunResourceUsage | null;
     readonly startedAtMs: number;
     readonly wallClock: WallClock;
@@ -207,6 +209,37 @@ export function collectedRunCaseEntries(plan: CollectedRunPlan): readonly Collec
     });
 }
 
+function fileEntryKey(entry: CollectedRunCaseEntry): string {
+    return entry.file;
+}
+
+function collectedRunFileFromEntries(
+    file: string,
+    entries: readonly CollectedRunCaseEntry[]
+): CollectedRunFile {
+    return {
+        cases: entries.map(function toCollectedCase(entry) {
+            return entry.testCase;
+        }),
+        file
+    };
+}
+
+export function collectedRunPlanFromEntries(
+    plan: CollectedRunPlan,
+    entries: readonly CollectedRunCaseEntry[]
+): CollectedRunPlan {
+    return {
+        ...plan,
+        files: Array.from(
+            Map.groupBy(entries, fileEntryKey),
+            function toCollectedFile([ file, fileEntries ]) {
+                return collectedRunFileFromEntries(file, fileEntries);
+            }
+        )
+    };
+}
+
 export function collectedRunCaseFactsFromEntries(
     cases: readonly CollectedRunCaseEntry[],
     fileSetForCase: RunCaseFileSet
@@ -235,9 +268,10 @@ export function createRunResultFromCollectedPlan(
         bySuite: countSuites(plan, perTest),
         orphans: plan.orphans,
         perTest,
+        planStatus: timing.planStatus,
         resourceUsage: timing.resourceUsage,
         runnerErrors,
-        status: runStatusFromSummary(summary, runnerErrors),
+        status: runStatusFromPlan(summary, runnerErrors, timing.planStatus),
         summary,
         wallTimeMs: timing.wallClock.currentTimestampInMilliseconds - timing.startedAtMs
     };

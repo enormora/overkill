@@ -205,7 +205,8 @@ export const testNode = createOverkillSuite({
                     reproducibility: {
                         selection: { kind: 'all' },
                         seed: '42',
-                        shard: { index: 0, total: 1 }
+                        shard: { index: 1, total: 1 },
+                        shardHashAlgorithm: 'xxh3-64-canonical-json-v1'
                     }
                 });
 
@@ -279,31 +280,6 @@ export const testNode = createOverkillSuite({
                     }));
                 }, {
                     message: 'Run seed must be a nonnegative bigint.'
-                });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.resolve() rejects unsupported sharding',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
-
-                await scope.assert.rejects(async function resolveUnsupportedShard() {
-                    await runOrchestrator.resolve(createRunCommand({
-                        config: defaultConfig,
-                        cwd: process.cwd(),
-                        engine: { kind: 'default' },
-                        request: {
-                            ...defaultRequest,
-                            shard: { index: 1, total: 2 }
-                        }
-                    }));
-                }, {
-                    message: 'Sharding is not implemented yet.'
                 });
 
                 return scope.assert.collect();
@@ -439,7 +415,8 @@ export const testNode = createOverkillSuite({
                     reproducibility: {
                         selection: { kind: 'all' },
                         seed: '42',
-                        shard: { index: 0, total: 1 }
+                        shard: { index: 1, total: 1 },
+                        shardHashAlgorithm: 'xxh3-64-canonical-json-v1'
                     }
                 });
                 scope.assert.deepEqual(result.summary, {
@@ -491,29 +468,6 @@ export const testNode = createOverkillSuite({
                     runtimePolicy: 0,
                     skipped: 0
                 });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() rejects invalid requests before collection',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
-
-                await scope.assert.rejects(async function runInvalidRequest() {
-                    await runOrchestrator.run(createRunCommand({
-                        config: defaultConfig,
-                        cwd: process.cwd(),
-                        engine: { kind: 'default' },
-                        request: {
-                            ...defaultRequest,
-                            seed: { value: -1n }
-                        }
-                    }));
-                }, { message: 'Run seed must be a nonnegative bigint.' });
 
                 return scope.assert.collect();
             }

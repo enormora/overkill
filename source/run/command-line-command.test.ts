@@ -3,7 +3,11 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { createCommandLineErrorResultFromUnknown } from './command-line-command.ts';
+import { runResultFactory } from '../test-support/run-result-factory.ts';
+import {
+    createCommandLineErrorResultFromUnknown,
+    readExitCodeFromRunResult
+} from './command-line-command.ts';
 import { RunCollectionError, RunResolutionError } from './run-errors.ts';
 
 export const testNode = createOverkillSuite({
@@ -45,6 +49,30 @@ export const testNode = createOverkillSuite({
                     'Overkill runner error: Collection failed.'
                 ]);
                 scope.assert.deepEqual(result.stdoutLines, []);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'readExitCodeFromRunResult() allows empty shards',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                scope.assert.equal(
+                    readExitCodeFromRunResult(runResultFactory.build({
+                        planStatus: 'empty-shard',
+                        summary: { planned: 0 }
+                    })),
+                    0
+                );
+                scope.assert.equal(
+                    readExitCodeFromRunResult(runResultFactory.build({
+                        planStatus: 'empty-selection',
+                        summary: { planned: 0 }
+                    })),
+                    4
+                );
 
                 return scope.assert.collect();
             }

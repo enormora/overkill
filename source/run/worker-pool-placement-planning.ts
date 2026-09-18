@@ -7,6 +7,7 @@ import type {
     PlacementPlan,
     RunOrder,
     RunSeed,
+    RunShard,
     RunScheduling,
     RunWorkDistribution,
     RunWorkerPoolAssignmentPolicy,
@@ -20,6 +21,7 @@ import {
 import {
     workUnitsFromCollectedPlan
 } from './work-unit-planning.ts';
+import type { RunShardHasher } from './run-sharding.ts';
 import {
     workerPoolLanes,
     workerPoolPlacementAssignments
@@ -27,7 +29,12 @@ import {
 
 const coldStartMilliseconds = 0;
 
-export type WorkerPoolPlacementPlanInput = {
+type WorkerPoolPlacementShardInput = {
+    readonly shard?: RunShard;
+    readonly shardHasher?: RunShardHasher | null;
+};
+
+type WorkerPoolPlacementBaseInput = {
     readonly assignmentPolicy: RunWorkerPoolAssignmentPolicy;
     readonly availableParallelism: number;
     readonly fileSetForFile: (file: string) => string | null;
@@ -38,6 +45,8 @@ export type WorkerPoolPlacementPlanInput = {
     readonly workDistribution: RunWorkDistribution;
     readonly workerLifecycle: RunWorkerLifecycle;
 };
+
+export type WorkerPoolPlacementPlanInput = WorkerPoolPlacementBaseInput & WorkerPoolPlacementShardInput;
 
 export type WorkerPoolPlacementResolutionInput = WorkerPoolPlacementPlanInput & {
     readonly durationHistoryIndex: DurationHistoryIndex | null;

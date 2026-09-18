@@ -34,6 +34,7 @@ export type CommandLineListTestsRequest = RunConfigLoadRequest & {
         readonly profile: string;
         readonly seed: RunRequest['seed'];
         readonly selection: RunRequest['selection'];
+        readonly shard: RunRequest['shard'];
         readonly withLocations: boolean;
         readonly withOrphans: boolean;
     };
@@ -160,7 +161,7 @@ const exitCodeRules: readonly ExitCodeRule[] = [
     {
         exitCode: commandLineExitCodes.noTestsCollected,
         matches(result) {
-            return result.summary.planned === 0;
+            return result.planStatus === 'empty-selection';
         }
     },
     {

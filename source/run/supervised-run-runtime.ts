@@ -63,6 +63,14 @@ export type SupervisedRunRuntime = SupervisedRunRuntimeSeed & {
     readonly timeout: SupervisedHardTimeout;
 };
 
+type PartialRunResultInput = {
+    readonly collectedPlan: CollectedRunPlan;
+    readonly dependencies: RunOrchestratorDependencies;
+    readonly resolvedRun: ResolvedRun;
+    readonly startedAtMs: number;
+    readonly state: SupervisedRunState;
+};
+
 export type SupervisedCollectionRuntime<CollectionValue> = {
     readonly child: SupervisedChildProcess;
     readonly command: SupervisedCollectCommand | SupervisedRunCommand;
@@ -178,20 +186,18 @@ export function applyEvent(
     }
 }
 
-function createPartialRunResult(
-    collectedPlan: CollectedRunPlan,
-    state: SupervisedRunState,
-    dependencies: RunOrchestratorDependencies,
-    startedAtMs: number
-): RunResult {
+function createPartialRunResult(input: PartialRunResultInput): RunResult {
     return createRunResultFromCollectedPlan(
-        collectedPlan,
-        state.perTestResults(),
-        state.runnerErrors(),
+        input.collectedPlan,
+        input.state.perTestResults(),
+        input.state.runnerErrors(),
         {
+            planStatus: input.resolvedRun.facts.cases.length === 0 && input.resolvedRun.request.shard.total > 1
+                ? 'empty-shard'
+                : 'planned',
             resourceUsage: null,
-            startedAtMs,
-            wallClock: dependencies.wallClock
+            startedAtMs: input.startedAtMs,
+            wallClock: input.dependencies.wallClock
         }
     );
 }
@@ -505,7 +511,13 @@ function selectRunResult(runtime: SupervisedRunRuntime, startedAtMs: number): Ru
         const collectedPlan = runtime.collectedPlan.read() ?? supervisedCollectedPlan(runtime.resolvedRun);
 
         return resultWithSupervisedArtifacts(
-            createPartialRunResult(collectedPlan, runtime.state, runtime.dependencies, startedAtMs),
+            createPartialRunResult({
+                collectedPlan,
+                dependencies: runtime.dependencies,
+                resolvedRun: runtime.resolvedRun,
+                startedAtMs,
+                state: runtime.state
+            }),
             runtime
         );
     }

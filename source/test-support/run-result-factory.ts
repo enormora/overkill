@@ -9,7 +9,7 @@ import type {
 import type { DiffPathSegment } from '../diff/diff-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import {
-    runStatusFromSummary,
+    runStatusFromPlan,
     type OrphanedNode,
     type RunResourceUsage,
     type RunnerError,
@@ -104,12 +104,15 @@ type RunResultOverrides = {
     readonly bySuite?: Readonly<Record<string, SuiteRunCounts>>;
     readonly orphans?: readonly OrphanedNodeOverrides[];
     readonly perTest?: readonly PerTestResultOverrides[];
+    readonly planStatus?: RunResult['planStatus'];
     readonly resourceUsage?: RunResourceUsage | null;
     readonly runnerErrors?: readonly RunnerErrorOverrides[];
     readonly status?: RunResult['status'];
     readonly summary?: Partial<RunSummary>;
     readonly wallTimeMs?: number;
 };
+
+type RunResultDefaultValues = Pick<RunResult, 'artifacts' | 'bySuite' | 'planStatus' | 'resourceUsage' | 'wallTimeMs'>;
 
 const defaultLocation: KnownSourceLocation = {
     column: null,
@@ -129,6 +132,14 @@ const defaultSummary: RunSummary = {
     resourceExhausted: 0,
     runtimePolicy: 0,
     skipped: 0
+};
+
+const defaultRunResultValues: RunResultDefaultValues = {
+    artifacts: [],
+    bySuite: {},
+    planStatus: 'planned',
+    resourceUsage: null,
+    wallTimeMs: 0
 };
 
 const defaultCaseId: CaseId = {
@@ -381,23 +392,32 @@ function buildRunStatus(
     summary: RunSummary,
     runnerErrors: readonly RunnerError[]
 ): RunResult['status'] {
-    return overrides.status ?? runStatusFromSummary(summary, runnerErrors);
+    return overrides.status ?? runStatusFromPlan(
+        summary,
+        runnerErrors,
+        overrides.planStatus ?? defaultRunResultValues.planStatus
+    );
 }
 
 function buildRunResult(overrides: RunResultOverrides = {}): RunResult {
     const runnerErrors = buildRunnerErrors(overrides.runnerErrors);
     const summary = buildSummary(overrides.summary);
+    const values = {
+        ...defaultRunResultValues,
+        ...overrides
+    };
 
     return {
-        artifacts: overrides.artifacts ?? [],
-        bySuite: overrides.bySuite ?? {},
+        artifacts: values.artifacts,
+        bySuite: values.bySuite,
         orphans: buildOrphanedNodes(overrides.orphans),
         perTest: buildPerTestResults(overrides.perTest),
-        resourceUsage: overrides.resourceUsage ?? null,
+        planStatus: values.planStatus,
+        resourceUsage: values.resourceUsage,
         runnerErrors,
         status: buildRunStatus(overrides, summary, runnerErrors),
         summary,
-        wallTimeMs: overrides.wallTimeMs ?? 0
+        wallTimeMs: values.wallTimeMs
     };
 }
 

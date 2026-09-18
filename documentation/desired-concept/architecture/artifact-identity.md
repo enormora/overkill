@@ -234,9 +234,11 @@ Artifact identity preserves the attempt so that "first failure" and
 ## Identity And Sharding
 
 Sharding partitions the executable work set by hashing `WorkUnitId`. The
-hash function is stable and documented (xxh3 of the canonical JSON
-encoding). Two shards never share a work unit; the union covers everything.
-Reproducibility across CI machines depends on this stability.
+implemented hash contract is `xxh3-64-canonical-json-v1`: canonical JSON of
+the structured `WorkUnitId`, string values normalized to NFC, object keys
+sorted, then xxh3-64 with seed `0`. Two shards never share a work unit; the
+union covers everything. Reproducibility across CI machines depends on this
+stability.
 Case-scoped artifact identity therefore remains work-unit-stable.
 Run-scoped artifacts belong to the run record and are not assigned by case
 hashing.

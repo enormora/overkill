@@ -1,8 +1,5 @@
 import { assertSupportedProcessEngine as assertSupportedProcessEngineSelection } from './run-process-engine.ts';
-import {
-    invalidRequest,
-    unsupportedRequest
-} from './run-errors.ts';
+import { invalidRequest } from './run-errors.ts';
 import { validateRunEngineSelection } from './run-engine-selection.ts';
 import { validateHostProcess } from './run-host-process.ts';
 import { invalidRunSelectionMessage } from './run-selection-filters.ts';
@@ -21,8 +18,16 @@ import {
 const minimumSeedValue = 0n;
 
 function validateRunShard(request: RunRequest): void {
-    if (request.shard.index !== 0 || request.shard.total !== 1) {
-        unsupportedRequest('Sharding is not implemented yet.');
+    if (!Number.isSafeInteger(request.shard.total) || request.shard.total <= 0) {
+        invalidRequest('Shard total must be a positive safe integer.');
+    }
+
+    if (!Number.isSafeInteger(request.shard.index) || request.shard.index <= 0) {
+        invalidRequest('Shard index must be a positive safe integer.');
+    }
+
+    if (request.shard.index > request.shard.total) {
+        invalidRequest('Shard index must not exceed shard total.');
     }
 }
 

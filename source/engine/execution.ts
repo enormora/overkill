@@ -88,6 +88,7 @@ async function createRunResultBeforeRunEnd(
     ];
 
     return createRunResult(testPlan, executedTestPlan.perTest, reporterErrors, {
+        planStatus: 'planned',
         resourceUsage,
         startedAtMs,
         wallClock: dependencies.wallClock

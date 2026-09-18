@@ -1,15 +1,18 @@
+import type { TestPlan } from '../engine/test-plan.ts';
 import {
     createRunFacts,
     runCaseFactsFromTestPlan
 } from './run-facts.ts';
 import {
-    createEmptySelectionResult
-} from './run-collected-resolution.ts';
+    createRunResultFromCollectedPlan,
+    collectedRunPlanFromTestPlanCases
+} from './collected-run-plan.ts';
 import {
     readResolvedRunInput,
     type ResolvedRunInput
 } from './run-input-resolution.ts';
 import { createLocalTestPlan } from './run-local-test-plan.ts';
+import { shardedLocalCases } from './run-local-sharding.ts';
 import {
     orderedTestPlan,
     assertTestPlanMatchesTestFamily,
@@ -75,6 +78,80 @@ function createLocalResolvedRunFromTestPlan(
     });
 }
 
+function createEmptySelectionResult(
+    testPlan: TestPlan,
+    dependencies: RunOrchestratorDependencies
+): RunResult {
+    const startedAtMs = dependencies.wallClock.currentTimestampInMilliseconds;
+
+    return freezeValue(createRunResultFromCollectedPlan(
+        collectedRunPlanFromTestPlanCases(testPlan, []),
+        [],
+        [],
+        {
+            planStatus: 'empty-selection',
+            resourceUsage: null,
+            startedAtMs,
+            wallClock: dependencies.wallClock
+        }
+    ));
+}
+
+function createEmptyShardResolvedRunFromTestPlan(
+    command: RunCommand,
+    dependencies: RunOrchestratorDependencies,
+    input: ResolvedRunInput,
+    selectedPlan: TestPlan
+): ResolvedRun {
+    const collectedPlan = collectedRunPlanFromTestPlanCases(selectedPlan, []);
+    const facts = freezeValue(createRunFacts({
+        cases: [],
+        config: input.config,
+        dependencies,
+        durationHistory: null,
+        engine: input.engine,
+        placementPlan: null,
+        projectRoot: input.projectRoot,
+        request: input.request
+    }));
+
+    return freezeValue({
+        collectionRunnerErrors: [],
+        config: input.config,
+        cwd: command.cwd,
+        engine: input.engine,
+        facts,
+        plan: {
+            collectedPlan,
+            kind: 'empty-shard'
+        },
+        reporters: resolveRunReporters(input.profile, input.config.reporters),
+        request: input.request
+    });
+}
+
+async function createShardedLocalResolvedRunFromTestPlan(
+    command: RunCommand,
+    dependencies: RunOrchestratorDependencies,
+    input: ResolvedRunInput,
+    selectedPlan: TestPlan
+): Promise<ResolvedRun> {
+    const plannedCases = await shardedLocalCases(selectedPlan, input);
+    const firstCase = plannedCases[0];
+
+    if (firstCase === undefined) {
+        return createEmptyShardResolvedRunFromTestPlan(command, dependencies, input, selectedPlan);
+    }
+
+    const orderedPlan = orderedTestPlan(
+        { ...selectedPlan, cases: [ firstCase, ...plannedCases.slice(1) ] },
+        input.request.order,
+        input.request.seed
+    );
+
+    return createLocalResolvedRunFromTestPlan(command, dependencies, input, orderedPlan);
+}
+
 export async function createLocalResolvedRun(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
@@ -83,11 +160,11 @@ export async function createLocalResolvedRun(
     const testPlan = await createLocalTestPlan(command, input.profile, input.files, dependencies);
     const selectedPlan = selectedTestPlan(testPlan, input.request.selection);
 
-    return createLocalResolvedRunFromTestPlan(
+    return await createShardedLocalResolvedRunFromTestPlan(
         command,
         dependencies,
         input,
-        orderedTestPlan(selectedPlan, input.request.order, input.request.seed)
+        selectedPlan
     );
 }
 
@@ -108,10 +185,8 @@ export async function createLocalRunOrEmptySelectionResult(
         return createEmptySelectionResult(testPlan, dependencies);
     }
 
-    const { cases } = orderedTestPlan({ ...testPlan, cases: plannedCases }, input.request.order, input.request.seed);
-
-    return createLocalResolvedRunFromTestPlan(command, dependencies, input, {
+    return await createShardedLocalResolvedRunFromTestPlan(command, dependencies, input, {
         ...testPlan,
-        cases
+        cases: plannedCases
     });
 }

@@ -100,7 +100,7 @@ function createRunRequest(paths: readonly string[]): RunRequest {
         resourceUsageSamplingIntervalMilliseconds: null,
         seed: { value: 42n },
         selection: { kind: 'all' },
-        shard: { index: 0, total: 1 },
+        shard: { index: 1, total: 1 },
         verbose: false
     };
 }
@@ -204,6 +204,7 @@ async function listCommandLine(
             profile: 'microtest',
             seed: { value: 42n },
             selection: { kind: 'all' },
+            shard: { index: 1, total: 1 },
             withLocations: false,
             withOrphans
         }
@@ -222,6 +223,7 @@ async function listDiscoveryCommandLine(processModel: RunMicrotestProcessModel):
             profile: 'microtest',
             seed: { value: 42n },
             selection: { kind: 'all' },
+            shard: { index: 1, total: 1 },
             withLocations: false,
             withOrphans: false
         }

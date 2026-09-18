@@ -188,6 +188,7 @@ export type RunSummary = {
 };
 
 export type RunStatus = 'failed' | 'passed';
+export type RunPlanStatus = 'empty-selection' | 'empty-shard' | 'planned';
 
 function failingRunConditions(summary: RunSummary, runnerErrors: readonly RunnerError[]): readonly boolean[] {
     return [
@@ -209,6 +210,18 @@ export function runStatusFromSummary(
     }
 
     return 'passed';
+}
+
+export function runStatusFromPlan(
+    summary: RunSummary,
+    runnerErrors: readonly RunnerError[],
+    planStatus: RunPlanStatus
+): RunStatus {
+    if (runnerErrors.length === 0 && planStatus === 'empty-shard') {
+        return 'passed';
+    }
+
+    return runStatusFromSummary(summary, runnerErrors);
 }
 
 export type PerTestResult = {
@@ -291,6 +304,7 @@ export type RunResult = {
     readonly bySuite: Readonly<Record<string, SuiteRunCounts>>;
     readonly orphans: readonly OrphanedNode[];
     readonly perTest: readonly PerTestResult[];
+    readonly planStatus: RunPlanStatus;
     readonly resourceUsage: RunResourceUsage | null;
     readonly runnerErrors: readonly RunnerError[];
     readonly status: RunStatus;

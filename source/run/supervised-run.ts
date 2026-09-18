@@ -55,7 +55,7 @@ type SupervisedCollectionResult = {
 
 type CreateResolvedRunFromCollection = (
     collection: SupervisedCollectionResult
-) => ResolvedRun;
+) => Promise<ResolvedRun>;
 
 type RunResultFinalizer = (resolvedRun: ResolvedRun, result: RunResult) => Promise<RunResult>;
 
@@ -416,7 +416,7 @@ async function continueLiveRun(
     collection: SupervisedCollectionResult,
     createResolvedRun: CreateResolvedRunFromCollection
 ): Promise<RunResult> {
-    const resolvedRun = createResolvedRun(collection);
+    const resolvedRun = await createResolvedRun(collection);
     const startedAtMs = liveRun.dependencies.wallClock.currentTimestampInMilliseconds;
     const runtime = await createLiveRunRuntime(liveRun, resolvedRun);
     const collectedPlan = supervisedCollectedPlan(resolvedRun);

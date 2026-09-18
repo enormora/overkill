@@ -248,7 +248,8 @@ function workerPoolResolvedRun(placement: PlacementPlan): ResolvedRun {
             reproducibility: {
                 selection: { kind: 'all' },
                 seed: '42',
-                shard: { index: 0, total: 1 }
+                shard: { index: 1, total: 1 },
+                shardHashAlgorithm: 'xxh3-64-canonical-json-v1'
             }
         },
         plan: { collectedPlan: createCollectedPlan(), kind: 'worker-pool' },
@@ -308,6 +309,7 @@ export function createAcceptingPool(): AcceptingPool {
                         [],
                         [],
                         {
+                            planStatus: 'planned',
                             resourceUsage: null,
                             startedAtMs: 0,
                             wallClock: createDeterministicWallClock()

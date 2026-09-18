@@ -25,6 +25,8 @@ import {
     type RunFilter,
     type RunSelection
 } from '../run/filters.entry-point.ts';
+import { parseRunSeed } from './run-seed-parser.ts';
+import { parseRunShard } from './run-shard-parser.ts';
 
 type WritableOutput = {
     readonly write: (chunk: string) => unknown;
@@ -44,6 +46,7 @@ type ResourceBudgetOverrides = NonNullable<CommandLineRunTestsRequest['runReques
 type ResourceBudgetName = keyof ResourceBudgetOverrides;
 type RunOrder = Extract<CommandLineRunTestsRequest['runRequest']['order'], 'lexical' | 'seeded'>;
 type RunSeed = CommandLineRunTestsRequest['runRequest']['seed'];
+type RunShard = CommandLineRunTestsRequest['runRequest']['shard'];
 
 type ResourceBudgetOverride = {
     readonly name: ResourceBudgetName;
@@ -61,6 +64,7 @@ type RunCommandArguments = {
     readonly profile: string;
     readonly resourceBudgetOverrides: ResourceBudgetOverrides | null;
     readonly seed: RunSeed;
+    readonly shard: RunShard;
     readonly title: string | null;
 };
 
@@ -72,6 +76,7 @@ type ListCommandArguments = {
     readonly paths: readonly string[];
     readonly profile: string;
     readonly seed: RunSeed;
+    readonly shard: RunShard;
     readonly title: string | null;
     readonly withLocations: boolean;
     readonly withOrphans: boolean;
@@ -111,7 +116,6 @@ const resourceBudgetNames: ReadonlySet<string> = new Set([
     'residentSetGrowthBytesPerSecond'
 ]);
 const runOrderType = oneOf([ 'seeded', 'lexical' ] as const);
-const unsignedDecimalPattern = /^(?:0|[1-9]\d*)$/u;
 
 const wrapperExitCodes: {
     readonly argumentOrConfig: CommandLineExitCode;
@@ -178,14 +182,6 @@ function parseResourceBudgetValue(value: string): number {
     }
 
     return parsedValue;
-}
-
-function parseRunSeed(value: string): RunSeed {
-    if (!unsignedDecimalPattern.test(value)) {
-        throw new TypeError(`Run seed must be a nonnegative base-10 integer: ${value}`);
-    }
-
-    return { value: BigInt(value) };
 }
 
 function parseResourceBudgetOverride(rawValue: string): ResourceBudgetOverride {
@@ -263,6 +259,15 @@ const runSeedType: Type<string, RunSeed> = {
         await Promise.resolve();
 
         return parseRunSeed(value);
+    }
+};
+
+const runShardType: Type<string, RunShard> = {
+    displayName: 'i/n',
+    async from(value) {
+        await Promise.resolve();
+
+        return parseRunShard(value);
     }
 };
 
@@ -352,7 +357,7 @@ function createRunTestsRequest(args: RunCommandArguments, cwd: string): CommandL
             resourceUsageSamplingIntervalMilliseconds: null,
             seed: args.seed,
             selection: createSelection(args),
-            shard: { index: 0, total: 1 },
+            shard: args.shard,
             verbose: false
         }
     };
@@ -367,6 +372,7 @@ function createListTestsRequest(args: ListCommandArguments, cwd: string): Comman
             paths: args.paths,
             profile: args.profile,
             seed: args.seed,
+            shard: args.shard,
             selection: createSelection(args),
             withLocations: args.withLocations,
             withOrphans: args.withOrphans
@@ -408,6 +414,13 @@ const sharedCommandArguments = {
         type: runSeedType,
         defaultValue() {
             return { value: null };
+        }
+    }),
+    shard: option({
+        long: 'shard',
+        type: runShardType,
+        defaultValue() {
+            return { index: 1, total: 1 };
         }
     }),
     title: option({

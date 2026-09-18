@@ -46,7 +46,7 @@ function passiveReporter(name: string, sinks: readonly SinkDeclaration[]): Defin
     });
 }
 
-const memoryReporter = passiveReporter('memory', [ { kind: 'memory' } ]);
+export const memoryReporter = passiveReporter('memory', [ { kind: 'memory' } ]);
 const terminalReporter = passiveReporter('terminal', [ { kind: 'stdout-raw' } ]);
 
 function listRunnerCase(
@@ -155,7 +155,8 @@ export function createResolvedRun(
             reproducibility: {
                 selection: command.request.selection,
                 seed: '42',
-                shard: command.request.shard
+                shard: command.request.shard,
+                shardHashAlgorithm: 'xxh3-64-canonical-json-v1'
             }
         },
         plan: {
@@ -201,7 +202,7 @@ async function createResolvedRunWithOrphanLocation(command: RunCommand): Promise
     };
 }
 
-function createListOnlyOrchestrator(resolve: RunOrchestrator['resolve']): RunOrchestrator {
+export function createListOnlyOrchestrator(resolve: RunOrchestrator['resolve']): RunOrchestrator {
     return {
         resolve,
         async run() {
@@ -225,7 +226,7 @@ async function createTerminalReporter(): Promise<DefinedReporter> {
     return terminalReporter;
 }
 
-function createDependencies(
+export function createDependencies(
     orchestrator: RunOrchestrator,
     createDefaultReporter: () => Promise<DefinedReporter>
 ): CommandLineRunnerDependencies {
@@ -265,6 +266,7 @@ export async function listTests(
             profile: 'microtest',
             seed: { value: 42n },
             selection: { kind: 'all' },
+            shard: { index: 1, total: 1 },
             withLocations,
             withOrphans
         }
@@ -351,6 +353,7 @@ export const testNode = createOverkillSuite({
                         profile: 'integration',
                         seed: { value: 42n },
                         selection,
+                        shard: { index: 1, total: 1 },
                         withLocations: false,
                         withOrphans: false
                     }

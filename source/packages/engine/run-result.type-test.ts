@@ -6,6 +6,7 @@ import type {
     RunResourceUsage,
     RunResourceUsageTracker,
     RunResult,
+    RunPlanStatus,
     RunSummary,
     RunnerError
 } from './engine.entry-point.ts';
@@ -29,6 +30,7 @@ type RunResultKeys = readonly [
     'bySuite',
     'orphans',
     'perTest',
+    'planStatus',
     'resourceUsage',
     'runnerErrors',
     'status',
@@ -72,6 +74,7 @@ describe('RunResult', function () {
     test('includes resource usage as nullable measured data', function () {
         expect<keyof RunResult>().type.toBe<ExpectedRunResultKey>();
         expect<RunResult['status']>().type.toBe<'failed' | 'passed'>();
+        expect<RunResult['planStatus']>().type.toBe<RunPlanStatus>();
         expect<RunResult['resourceUsage']>().type.toBe<RunResourceUsage | null>();
         expect<RunResourceUsage['start']>().type.toBe<ResourceUsageSnapshot>();
         expect<RunResourceUsageTracker['finish']>().type.toBe<() => RunResourceUsage>();

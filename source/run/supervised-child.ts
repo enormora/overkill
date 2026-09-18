@@ -176,6 +176,7 @@ function createEmptyAssignmentResult(
         [],
         [],
         {
+            planStatus: 'empty-selection',
             resourceUsage: null,
             startedAtMs,
             wallClock

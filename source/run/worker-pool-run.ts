@@ -113,7 +113,7 @@ export async function executeWorkerPoolRun(
 export async function runWorkerPoolCommand(
     command: WorkerPoolCommand,
     dependencies: RunOrchestratorDependencies,
-    createResolvedRun: (collection: WorkerPoolCollectionResult) => ResolvedRun,
+    createResolvedRun: (collection: WorkerPoolCollectionResult) => Promise<ResolvedRun>,
     options: WorkerPoolExecutionOptions
 ): Promise<RunResult> {
     const collectionRunState = createSupervisedRunState();
@@ -130,7 +130,7 @@ export async function runWorkerPoolCommand(
         const collection = await collectInWorkerPool(command, dependencies, collectionRunState, pool);
 
         return await executeWorkerPoolRunWithState(
-            createResolvedRun(collection),
+            await createResolvedRun(collection),
             dependencies,
             {
                 ...options,

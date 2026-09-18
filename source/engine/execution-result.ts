@@ -1,8 +1,10 @@
 import type { WallClock } from '@enormora/wall-clock';
 import { workIdentityKey } from './identity.ts';
 import {
+    runStatusFromPlan,
     runStatusFromSummary,
     type PerTestResult,
+    type RunPlanStatus,
     type RunResourceUsage,
     type RunResult,
     type RunnerError
@@ -10,6 +12,7 @@ import {
 import type { TestPlan } from './test-plan.ts';
 
 type RunResultTiming = {
+    readonly planStatus: RunPlanStatus;
     readonly resourceUsage: RunResourceUsage | null;
     readonly startedAtMs: number;
     readonly wallClock: WallClock;
@@ -168,9 +171,10 @@ export function createRunResult(
         bySuite: countSuites(testPlan, perTest),
         orphans: testPlan.orphans,
         perTest,
+        planStatus: timing.planStatus,
         resourceUsage: timing.resourceUsage,
         runnerErrors: reporterErrors,
-        status: runStatusFromSummary(summary, reporterErrors),
+        status: runStatusFromPlan(summary, reporterErrors, timing.planStatus),
         summary,
         wallTimeMs: timing.wallClock.currentTimestampInMilliseconds - timing.startedAtMs
     };

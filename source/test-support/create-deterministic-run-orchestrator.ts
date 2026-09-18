@@ -211,6 +211,7 @@ function completeDeterministicSupervisedChild(context: FakeSupervisedChildRunCon
             }),
             [],
             {
+                planStatus: 'planned',
                 resourceUsage: deterministicResourceUsage(),
                 startedAtMs: 0,
                 wallClock

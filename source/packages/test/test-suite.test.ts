@@ -1,7 +1,5 @@
 import { createSuite } from '../engine/engine.entry-point.ts';
-import { testNode as commandLineRunnerCaptureTestNode } from './command-line-runner-capture.test.ts';
-import { testNode as commandLineRunnerOrderingTestNode } from './command-line-runner-ordering.test.ts';
-import { testNode as commandLineRunnerTestNode } from './command-line-runner.test.ts';
+import { testNode as commandLineRunnerSuiteTestNode } from './command-line-runner-suite.test.ts';
 import { testNode as compatibilityTestNode } from './compatibility-suite.test.ts';
 import { testNode as harnessAuthoringTestNode } from './harness-authoring.test.ts';
 import { testNode as interactionTranscriptTestNode } from './interaction-transcript.test.ts';
@@ -15,9 +13,7 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     children: [
-        commandLineRunnerCaptureTestNode,
-        commandLineRunnerOrderingTestNode,
-        commandLineRunnerTestNode,
+        commandLineRunnerSuiteTestNode,
         compatibilityTestNode,
         harnessAuthoringTestNode,
         interactionTranscriptTestNode,

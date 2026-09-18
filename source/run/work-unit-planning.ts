@@ -7,6 +7,10 @@ import {
     collectedRunCaseEntries
 } from './collected-run-plan.ts';
 import { invalidRequest } from './run-errors.ts';
+import {
+    type RunShardHasher,
+    workUnitBelongsToShard
+} from './run-sharding.ts';
 import { orderedRunItems } from './run-selection.ts';
 import {
     emptyWorkUnitResourceConstraints,
@@ -14,6 +18,7 @@ import {
     type CollectedRunPlan,
     type RunOrder,
     type RunSeed,
+    type RunShard,
     type RunScheduling,
     type RunWorkDistribution,
     type RunWorkGroup,
@@ -31,7 +36,12 @@ import {
 
 type GroupWorkDistribution = Extract<RunWorkDistribution, { readonly mode: 'group'; }>;
 
-export type WorkUnitPlanningInput = {
+type WorkUnitShardInput = {
+    readonly shard?: RunShard;
+    readonly shardHasher?: RunShardHasher | null;
+};
+
+type WorkUnitPlanningBaseInput = {
     readonly fileSetForFile: (file: string) => string | null;
     readonly order: RunOrder;
     readonly seed: RunSeed;
@@ -40,6 +50,8 @@ export type WorkUnitPlanningInput = {
     readonly workDistribution: RunWorkDistribution;
     readonly workerLifecycle: RunWorkerLifecycle;
 };
+
+export type WorkUnitPlanningInput = WorkUnitPlanningBaseInput & WorkUnitShardInput;
 
 type WorkUnitPolicy = {
     readonly order: RunOrder;
@@ -53,6 +65,16 @@ type PlannedWorkUnit = {
     readonly position: number;
     readonly unit: WorkUnit;
 };
+
+const defaultRunShard: RunShard = Object.freeze({ index: 1, total: 1 });
+
+function readRunShard(input: WorkUnitPlanningInput): RunShard {
+    return input.shard ?? defaultRunShard;
+}
+
+function readRunShardHasher(input: WorkUnitPlanningInput): RunShardHasher | null {
+    return input.shardHasher ?? null;
+}
 
 function profilePolicy(input: WorkUnitPlanningInput): WorkUnitPolicy {
     return {
@@ -159,29 +181,21 @@ function workUnitsWithResourceConstraints(units: readonly WorkUnit[], plan: Coll
 function fileWorkUnitsFromCollectedPlan(input: WorkUnitPlanningInput): readonly WorkUnit[] {
     const policy = profilePolicy(input);
 
-    return orderedRunItems(
-        input.selectedPlan.files.flatMap(function toWorkUnit(file) {
-            return groupedExecutionBuckets(workFromCases(file)).map(function toBucketUnit(work) {
-                return fileWorkUnit({ file: file.file, group: null, policy, seed: input.seed, workItems: work });
-            });
-        }),
-        input.order,
-        input.seed
-    );
+    return input.selectedPlan.files.flatMap(function toWorkUnit(file) {
+        return groupedExecutionBuckets(workFromCases(file)).map(function toBucketUnit(work) {
+            return fileWorkUnit({ file: file.file, group: null, policy, seed: input.seed, workItems: work });
+        });
+    });
 }
 
 function caseWorkUnitsFromCollectedPlan(input: WorkUnitPlanningInput): readonly WorkUnit[] {
     const policy = profilePolicy(input);
 
-    return orderedRunItems(
-        input.selectedPlan.files.flatMap(function toWorkUnits(file) {
-            return workFromCases(file).map(function toCaseWorkUnit(work) {
-                return caseWorkUnit(work, policy, null);
-            });
-        }),
-        input.order,
-        input.seed
-    );
+    return input.selectedPlan.files.flatMap(function toWorkUnits(file) {
+        return workFromCases(file).map(function toCaseWorkUnit(work) {
+            return caseWorkUnit(work, policy, null);
+        });
+    });
 }
 
 function filesWithCases(plan: CollectedRunPlan): readonly CollectedRunFile[] {
@@ -462,22 +476,31 @@ function groupWorkUnitsFromCollectedPlan(
         ...unmatchedFileUnits(distribution, fileSets, input)
     ];
 
-    return unitsWithLocalOrder(units, input.selectedPlan, input.order, input.seed);
+    return units;
+}
+
+function workUnitsForDistribution(input: WorkUnitPlanningInput): readonly WorkUnit[] {
+    if (input.workDistribution.mode === 'case') {
+        return caseWorkUnitsFromCollectedPlan(input);
+    }
+
+    if (input.workDistribution.mode === 'group') {
+        return groupWorkUnitsFromCollectedPlan(input.workDistribution, input);
+    }
+
+    return fileWorkUnitsFromCollectedPlan(input);
 }
 
 export function workUnitsFromCollectedPlan(
     input: WorkUnitPlanningInput
 ): readonly WorkUnit[] {
-    if (input.workDistribution.mode === 'case') {
-        return workUnitsWithResourceConstraints(caseWorkUnitsFromCollectedPlan(input), input.selectedPlan);
-    }
+    const units = workUnitsForDistribution(input);
+    const shardedUnits = units.filter(function unitBelongsToShard(unit) {
+        return workUnitBelongsToShard(unit.id, readRunShard(input), readRunShardHasher(input));
+    });
 
-    if (input.workDistribution.mode === 'group') {
-        return workUnitsWithResourceConstraints(
-            groupWorkUnitsFromCollectedPlan(input.workDistribution, input),
-            input.selectedPlan
-        );
-    }
-
-    return workUnitsWithResourceConstraints(fileWorkUnitsFromCollectedPlan(input), input.selectedPlan);
+    return workUnitsWithResourceConstraints(
+        unitsWithLocalOrder(shardedUnits, input.selectedPlan, input.order, input.seed),
+        input.selectedPlan
+    );
 }
