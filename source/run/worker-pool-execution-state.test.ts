@@ -3,7 +3,6 @@ import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type CaseId,
-    type PerTestResult,
     type RunResult,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
@@ -15,7 +14,6 @@ import type {
 } from './run-orchestrator-dependencies.ts';
 import { createStoredRunValue, createSupervisedRunState, type SupervisedRunState } from './supervised-run-state.ts';
 import { executeWorkerPoolUnits, reportRunStart, startPoolResourceTracking } from './worker-pool-execution.ts';
-import { createEmptyWorkerPoolResult, finishWorkerPoolRun } from './worker-pool-results.ts';
 import type {
     WorkerPoolRunRuntime,
     WorkerPoolTaskRun
@@ -26,10 +24,6 @@ type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
 type PlacementPlan = NonNullable<ResolvedRun['facts']['execution']['placementPlan']>;
 type ResourceSample = ReturnType<WorkerPoolRunRuntime['previousPoolSample']['read']>;
 type WorkUnit = PlacementPlan['units'][number];
-type ReportedEvent = Parameters<WorkerPoolRunRuntime['reporterDelivery']['reportEvent']>[0];
-type ReporterEventRecorder = {
-    readonly record: (event: ReportedEvent) => void;
-};
 
 const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const annotations = { ownership: [], tags: [] };
@@ -67,7 +61,7 @@ function firstCaseIdentityKey(): string {
     return JSON.stringify([ file, suite, title, params ]);
 }
 
-function createCollectedPlan(): CollectedRunPlan {
+export function createCollectedPlan(): CollectedRunPlan {
     return {
         defined: 1,
         discoveredFiles: [],
@@ -99,7 +93,7 @@ function createCollectedPlan(): CollectedRunPlan {
     };
 }
 
-function createCollectedPlanWithMissingResult(): CollectedRunPlan {
+export function createCollectedPlanWithMissingResult(): CollectedRunPlan {
     const collectedPlan = createCollectedPlan();
     const firstFile = collectedPlan.files[0];
 
@@ -180,7 +174,7 @@ function placementPlan(): PlacementPlan {
     };
 }
 
-function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
+export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
     return {
         collectionRunnerErrors: [],
         config: defaultRunConfig(),
@@ -240,43 +234,11 @@ function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
     };
 }
 
-function emptyShardResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
-    const shardedPlan = {
-        ...collectedPlan,
-        files: []
-    };
-    const resolvedRun = workerPoolResolvedRun(shardedPlan);
-
-    return {
-        ...resolvedRun,
-        facts: {
-            ...resolvedRun.facts,
-            execution: {
-                ...resolvedRun.facts.execution,
-                placementPlan: {
-                    ...placementPlan(),
-                    assignments: [],
-                    units: []
-                }
-            },
-            reproducibility: {
-                ...resolvedRun.facts.reproducibility,
-                shard: { index: 2, total: 2 }
-            }
-        },
-        request: defaultRunRequest({
-            paths: [ integrationPath ],
-            profile: 'integration',
-            shard: { index: 2, total: 2 }
-        })
-    };
-}
-
 async function emptyReporterErrors(): Promise<readonly []> {
     return [];
 }
 
-const fakeReporterDelivery: WorkerPoolRunRuntime['reporterDelivery'] = {
+export const fakeReporterDelivery: WorkerPoolRunRuntime['reporterDelivery'] = {
     disposeReporters: emptyReporterErrors,
     reportEvent: emptyReporterErrors,
     reportResult: emptyReporterErrors
@@ -284,28 +246,6 @@ const fakeReporterDelivery: WorkerPoolRunRuntime['reporterDelivery'] = {
 
 async function createFakeReporterDelivery(): Promise<WorkerPoolRunRuntime['reporterDelivery']> {
     return fakeReporterDelivery;
-}
-
-function createRecordingDependencies(recorder: ReporterEventRecorder): WorkerPoolRunRuntime['dependencies'] {
-    return {
-        ...fakeDependencies(),
-        reporterDispatcher: {
-            async createDelivery() {
-                return {
-                    disposeReporters: emptyReporterErrors,
-                    async reportEvent(event) {
-                        recorder.record(event);
-
-                        return [];
-                    },
-                    reportResult: emptyReporterErrors
-                };
-            },
-            async trackRunnerErrorDelivery(work) {
-                return { deliveredRunnerErrors: [], result: await work(), undeliveredRunnerErrors: [] };
-            }
-        }
-    };
 }
 
 function testOnlyDependency(): never {
@@ -328,7 +268,7 @@ const createFakeWorkerPool: RunOrchestratorDependencies['createWorkerPool'] = fu
     return createFakePool(options.workerCount, options.workerLifecycle === 'fresh-worker-per-unit');
 };
 
-function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
+export function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
     return {
         availableParallelism: 2,
         createResourceUsageTracker: testOnlyDependency,
@@ -396,7 +336,7 @@ function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
     };
 }
 
-function fakeWorkerRuntime(collectedPlan: CollectedRunPlan): WorkerPoolRunRuntime {
+export function fakeWorkerRuntime(collectedPlan: CollectedRunPlan): WorkerPoolRunRuntime {
     const taskResults: RunResult[] = [];
 
     return {
@@ -427,7 +367,7 @@ function fakeWorkerRuntime(collectedPlan: CollectedRunPlan): WorkerPoolRunRuntim
     };
 }
 
-function createTaskRun(state: SupervisedRunState): WorkerPoolTaskRun {
+export function createTaskRun(state: SupervisedRunState): WorkerPoolTaskRun {
     const timeout = createStoredRunValue<ReturnType<RunOrchestratorDependencies['wallClock']['setTimeout']> | null>(
         null
     );
@@ -440,44 +380,6 @@ function createTaskRun(state: SupervisedRunState): WorkerPoolTaskRun {
         startedCases: new Set(),
         timeout,
         unit: firstWorkUnit()
-    };
-}
-
-function emptyRunResult(perTest: readonly PerTestResult[]): RunResult {
-    return {
-        artifacts: [],
-        bySuite: {},
-        orphans: [],
-        perTest,
-        planStatus: 'planned',
-        resourceUsage: null,
-        runnerErrors: [],
-        status: 'passed',
-        summary: {
-            crashed: 0,
-            defined: 0,
-            discovered: 0,
-            failed: 0,
-            inconclusive: 0,
-            passed: perTest.length,
-            planned: perTest.length,
-            resourceExhausted: 0,
-            runtimePolicy: 0,
-            skipped: 0
-        },
-        wallTimeMs: 0
-    };
-}
-
-function passResult(): PerTestResult {
-    const id = firstCaseId();
-
-    return {
-        id,
-        outcome: { kind: 'pass' },
-        verdict: 'pass',
-        workId: { case: id, runtimes: [], workload: null },
-        wallTimeMs: 0
     };
 }
 
@@ -533,61 +435,6 @@ function budgetedRuntime(taskRun: WorkerPoolTaskRun): WorkerPoolRunRuntime {
     };
 }
 
-async function workerPoolFinalizationResults(): Promise<{
-    readonly emptyResult: RunResult;
-    readonly result: RunResult;
-}> {
-    const runtime = {
-        ...fakeWorkerRuntime(createCollectedPlanWithMissingResult()),
-        poolResourceUsageTracker: {
-            finish() {
-                return {
-                    activeResourceTypes: [],
-                    end: {
-                        activeResourceCount: 0,
-                        activeResourceTypes: [],
-                        capturedAtMilliseconds: 1,
-                        javaScriptEngineHeapBytes: 2,
-                        residentSetBytes: 3
-                    },
-                    peakActiveResourceCount: 0,
-                    peakJavaScriptEngineHeapBytes: 2,
-                    peakResidentSetBytes: 3,
-                    peakResidentSetGrowthBytesPerSecond: 0,
-                    sampleCount: 1,
-                    start: {
-                        activeResourceCount: 0,
-                        activeResourceTypes: [],
-                        capturedAtMilliseconds: 0,
-                        javaScriptEngineHeapBytes: 1,
-                        residentSetBytes: 2
-                    }
-                };
-            },
-            start() {
-                return undefined;
-            }
-        }
-    };
-    const activeState = createSupervisedRunState();
-    const completedState = createSupervisedRunState();
-
-    runtime.runState.recordCapturedOutput('stdout', Buffer.from('run artifact'), 1);
-    activeState.recordCapturedOutput('stdout', Buffer.from('active artifact'), 3);
-    completedState.recordCapturedOutput('stderr', Buffer.from('completed artifact'), 2);
-    runtime.activeTasks.add(createTaskRun(activeState));
-    runtime.taskResults.push(emptyRunResult([ passResult() ]));
-
-    const result = await finishWorkerPoolRun(runtime, [ createTaskRun(completedState) ], 10);
-    const emptyResult = await createEmptyWorkerPoolResult(
-        workerPoolResolvedRun(createCollectedPlan()),
-        runtime.dependencies,
-        createSupervisedRunState()
-    );
-
-    return { emptyResult, result };
-}
-
 export const testNode = createOverkillSuite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-execution-state.test.ts',
@@ -631,51 +478,6 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(runtime.terminalFailure.read(), true);
                 scope.assert.equal(activeTask.controller.signal.aborted, true);
                 scope.assert.equal(activeTask.state.perTestResults()[0]?.verdict, 'resource-exhausted');
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...testCaseMetadata,
-            title: 'worker-pool finalization and empty results aggregate run state',
-            async body(scope: OverkillScope) {
-                const { emptyResult, result } = await workerPoolFinalizationResults();
-
-                scope.assert.equal(result.perTest[0]?.id.title, 'first');
-                scope.assert.deepEqual(
-                    result.artifacts.map(function toText(artifact) {
-                        return artifact.payload.text;
-                    }),
-                    [ 'run artifact', 'completed artifact', 'active artifact' ]
-                );
-                scope.assert.equal(emptyResult.summary.planned, 1);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...testCaseMetadata,
-            title: 'worker-pool empty shard results report a successful empty shard run',
-            async body(scope: OverkillScope) {
-                const events: ReportedEvent[] = [];
-                const result = await createEmptyWorkerPoolResult(
-                    emptyShardResolvedRun(createCollectedPlan()),
-                    createRecordingDependencies({
-                        record(event) {
-                            events.push(event);
-                        }
-                    }),
-                    createSupervisedRunState()
-                );
-
-                scope.assert.equal(result.planStatus, 'empty-shard');
-                scope.assert.equal(result.summary.planned, 0);
-                scope.assert.deepEqual(
-                    events.map(function toKind(event) {
-                        return event.kind;
-                    }),
-                    [ 'run-start', 'run-end' ]
-                );
 
                 return scope.assert.collect();
             }

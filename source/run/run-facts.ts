@@ -2,7 +2,7 @@ import { serializeValue } from '../compare/serialized-value.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { invalidRequest } from './run-errors.ts';
 import { hostProcessFacts } from './run-host-process.ts';
-import { runShardHashAlgorithm } from './run-sharding.ts';
+import { runShardHashAlgorithm } from './run-shard-hash-algorithm.ts';
 import { copyResourceBudgets, runEngineFacts } from './run-support.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type {

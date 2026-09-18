@@ -112,6 +112,8 @@ type RunResultOverrides = {
     readonly wallTimeMs?: number;
 };
 
+type RunResultDefaultValues = Pick<RunResult, 'artifacts' | 'bySuite' | 'planStatus' | 'resourceUsage' | 'wallTimeMs'>;
+
 const defaultLocation: KnownSourceLocation = {
     column: null,
     file: 'source/example.test.ts',
@@ -130,6 +132,14 @@ const defaultSummary: RunSummary = {
     resourceExhausted: 0,
     runtimePolicy: 0,
     skipped: 0
+};
+
+const defaultRunResultValues: RunResultDefaultValues = {
+    artifacts: [],
+    bySuite: {},
+    planStatus: 'planned',
+    resourceUsage: null,
+    wallTimeMs: 0
 };
 
 const defaultCaseId: CaseId = {
@@ -388,18 +398,22 @@ function buildRunStatus(
 function buildRunResult(overrides: RunResultOverrides = {}): RunResult {
     const runnerErrors = buildRunnerErrors(overrides.runnerErrors);
     const summary = buildSummary(overrides.summary);
+    const values = {
+        ...defaultRunResultValues,
+        ...overrides
+    };
 
     return {
-        artifacts: overrides.artifacts ?? [],
-        bySuite: overrides.bySuite ?? {},
+        artifacts: values.artifacts,
+        bySuite: values.bySuite,
         orphans: buildOrphanedNodes(overrides.orphans),
         perTest: buildPerTestResults(overrides.perTest),
-        planStatus: overrides.planStatus ?? 'planned',
-        resourceUsage: overrides.resourceUsage ?? null,
+        planStatus: values.planStatus,
+        resourceUsage: values.resourceUsage,
         runnerErrors,
         status: buildRunStatus(overrides, summary, runnerErrors),
         summary,
-        wallTimeMs: overrides.wallTimeMs ?? 0
+        wallTimeMs: values.wallTimeMs
     };
 }
 

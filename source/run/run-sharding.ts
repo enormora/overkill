@@ -5,22 +5,19 @@ import {
 import type {
     CollectedRunPlan,
     RunShard,
-    RunShardHashAlgorithm,
     WorkUnitId
 } from './run-types.ts';
 import { caseWorkUnitId } from './work-unit-identity.ts';
 
-type CanonicalJsonValue = boolean | null | number | string | readonly CanonicalJsonValue[] | {
+type CanonicalJsonValue = boolean | number | string | readonly CanonicalJsonValue[] | {
     readonly [key: string]: CanonicalJsonValue;
-};
+} | null;
 
 export type RunShardHasher = {
     readonly hash: (value: string) => bigint;
 };
 
-export const runShardHashAlgorithm: RunShardHashAlgorithm = 'xxh3-64-canonical-json-v1';
-
-function sortedObjectKeys(value: object): readonly string[] {
+function sortedObjectKeys(value: Readonly<Record<string, unknown>>): readonly string[] {
     return Object.keys(value).toSorted(function compareKeys(left, right) {
         return left.localeCompare(right);
     });
@@ -34,31 +31,64 @@ function canonicalNumber(value: number): number {
     throw new TypeError('Cannot serialize number value for shard partitioning.');
 }
 
-function canonicalObject(value: object): CanonicalJsonValue {
-    if (Array.isArray(value)) {
-        return value.map(canonicalJsonValue);
+function canonicalScalar(value: unknown): boolean | number | string | undefined {
+    if (typeof value === 'boolean') {
+        return value;
     }
 
+    if (typeof value === 'number') {
+        return canonicalNumber(value);
+    }
+
+    if (typeof value === 'string') {
+        return value.normalize('NFC');
+    }
+
+    return undefined;
+}
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function canonicalArray(
+    value: readonly unknown[],
+    canonicalize: (item: unknown) => CanonicalJsonValue
+): readonly CanonicalJsonValue[] {
+    return value.map(canonicalize);
+}
+
+function canonicalRecord(
+    value: Readonly<Record<string, unknown>>,
+    canonicalize: (item: unknown) => CanonicalJsonValue
+): CanonicalJsonValue {
     return Object.fromEntries(
         sortedObjectKeys(value).map(function toCanonicalEntry(key) {
-            return [ key.normalize('NFC'), canonicalJsonValue(Reflect.get(value, key)) ];
+            return [ key.normalize('NFC'), canonicalize(value[key]) ];
         })
     );
 }
 
 function canonicalJsonValue(value: unknown): CanonicalJsonValue {
-    switch (typeof value) {
-        case 'boolean':
-            return value;
-        case 'number':
-            return canonicalNumber(value);
-        case 'object':
-            return value === null ? null : canonicalObject(value);
-        case 'string':
-            return value.normalize('NFC');
-        default:
-            throw new TypeError(`Cannot serialize ${typeof value} value for shard partitioning.`);
+    const scalar = canonicalScalar(value);
+
+    if (scalar !== undefined) {
+        return scalar;
     }
+
+    if (value === null) {
+        return null;
+    }
+
+    if (Array.isArray(value)) {
+        return canonicalArray(value, canonicalJsonValue);
+    }
+
+    if (isRecord(value)) {
+        return canonicalRecord(value, canonicalJsonValue);
+    }
+
+    throw new TypeError(`Cannot serialize ${typeof value} value for shard partitioning.`);
 }
 
 function canonicalJson(value: WorkUnitId): string {

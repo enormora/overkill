@@ -29,10 +29,12 @@ const resourceAttachments = {
     runtimeGraphs: []
 };
 
-function createRecordingHasher(result: bigint): {
+type RecordingHasher = {
     readonly hasher: RunShardHasher;
     readonly values: () => readonly string[];
-} {
+};
+
+function createRecordingHasher(result: bigint): RecordingHasher {
     const values: string[] = [];
 
     return {

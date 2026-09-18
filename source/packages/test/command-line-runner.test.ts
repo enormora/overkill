@@ -38,7 +38,7 @@ const testExitCodes: {
     runnerError: 2
 };
 
-function passingResult(): CommandLineRunnerResult {
+export function passingResult(): CommandLineRunnerResult {
     return {
         exitCode: testExitCodes.pass,
         fallbackDiagnostics: [],
@@ -109,7 +109,7 @@ function createRunner(
     };
 }
 
-async function runCommandLine(
+export async function runCommandLine(
     args: readonly string[],
     runnerResult: CommandLineRunnerResult
 ): Promise<{
@@ -239,19 +239,6 @@ export const testNode = createSuite({
                         }
                     }
                 ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'overkill wrapper parses run shards',
-            ...emptyTestData,
-            async body(scope: TestScope) {
-                const result = await runCommandLine([ 'run', '--shard=2/3', 'source/a.test.ts' ], passingResult());
-
-                scope.require.defined(result.runRequests[0]);
-                scope.assert.deepEqual(result.runRequests[0].runRequest.shard, { index: 2, total: 3 });
 
                 return scope.assert.collect();
             }
@@ -539,21 +526,6 @@ export const testNode = createSuite({
                 scope.assert.deepEqual(result.exitCodes, [ 3 ]);
                 scope.assert.equal(result.runRequests.length, 0);
                 scope.assert.true(result.stderr.includes('Unknown resource budget name: heap'));
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'overkill wrapper prints help without running tests',
-            ...emptyTestData,
-            async body(scope: TestScope) {
-                const result = await runCommandLine([ '--help' ], passingResult());
-
-                scope.assert.deepEqual(result.exitCodes, [ 0 ]);
-                scope.assert.equal(result.runRequests.length, 0);
-                scope.assert.equal(result.stderr, '');
-                scope.assert.true(result.stdout.includes('overkill <subcommand>'));
 
                 return scope.assert.collect();
             }

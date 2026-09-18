@@ -36,10 +36,6 @@ export class RunCollectionError extends Error {
     }
 }
 
-export function unsupportedRequest(message: string): never {
-    throw new RunResolutionError(message, undefined, 'unsupported-request');
-}
-
 export function invalidRequest(message: string): never {
     throw new RunResolutionError(message, undefined, 'invalid-request');
 }

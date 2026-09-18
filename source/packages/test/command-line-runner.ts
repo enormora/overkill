@@ -25,6 +25,8 @@ import {
     type RunFilter,
     type RunSelection
 } from '../run/filters.entry-point.ts';
+import { parseRunSeed } from './run-seed-parser.ts';
+import { parseRunShard } from './run-shard-parser.ts';
 
 type WritableOutput = {
     readonly write: (chunk: string) => unknown;
@@ -114,8 +116,6 @@ const resourceBudgetNames: ReadonlySet<string> = new Set([
     'residentSetGrowthBytesPerSecond'
 ]);
 const runOrderType = oneOf([ 'seeded', 'lexical' ] as const);
-const unsignedDecimalPattern = /^(?:0|[1-9]\d*)$/u;
-const shardPattern = /^([1-9]\d*)\/([1-9]\d*)$/u;
 
 const wrapperExitCodes: {
     readonly argumentOrConfig: CommandLineExitCode;
@@ -182,48 +182,6 @@ function parseResourceBudgetValue(value: string): number {
     }
 
     return parsedValue;
-}
-
-function parseRunSeed(value: string): RunSeed {
-    if (!unsignedDecimalPattern.test(value)) {
-        throw new TypeError(`Run seed must be a nonnegative base-10 integer: ${value}`);
-    }
-
-    return { value: BigInt(value) };
-}
-
-function parsePositiveSafeInteger(label: string, value: string): number {
-    const parsedValue = Number(value);
-
-    if (!Number.isSafeInteger(parsedValue) || parsedValue <= 0) {
-        throw new TypeError(`${label} must be a positive safe integer: ${value}`);
-    }
-
-    return parsedValue;
-}
-
-function parseRunShard(value: string): RunShard {
-    const match = shardPattern.exec(value);
-
-    if (match === null) {
-        throw new TypeError(`Run shard must use i/n syntax with positive integers: ${value}`);
-    }
-
-    const indexText = match[1];
-    const totalText = match[2];
-
-    if (indexText === undefined || totalText === undefined) {
-        throw new TypeError(`Run shard must use i/n syntax with positive integers: ${value}`);
-    }
-
-    const index = parsePositiveSafeInteger('Shard index', indexText);
-    const total = parsePositiveSafeInteger('Shard total', totalText);
-
-    if (index > total) {
-        throw new TypeError(`Shard index must not exceed shard total: ${value}`);
-    }
-
-    return { index, total };
 }
 
 function parseResourceBudgetOverride(rawValue: string): ResourceBudgetOverride {

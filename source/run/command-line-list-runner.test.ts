@@ -46,7 +46,7 @@ function passiveReporter(name: string, sinks: readonly SinkDeclaration[]): Defin
     });
 }
 
-const memoryReporter = passiveReporter('memory', [ { kind: 'memory' } ]);
+export const memoryReporter = passiveReporter('memory', [ { kind: 'memory' } ]);
 const terminalReporter = passiveReporter('terminal', [ { kind: 'stdout-raw' } ]);
 
 function listRunnerCase(
@@ -202,7 +202,7 @@ async function createResolvedRunWithOrphanLocation(command: RunCommand): Promise
     };
 }
 
-function createListOnlyOrchestrator(resolve: RunOrchestrator['resolve']): RunOrchestrator {
+export function createListOnlyOrchestrator(resolve: RunOrchestrator['resolve']): RunOrchestrator {
     return {
         resolve,
         async run() {
@@ -226,7 +226,7 @@ async function createTerminalReporter(): Promise<DefinedReporter> {
     return terminalReporter;
 }
 
-function createDependencies(
+export function createDependencies(
     orchestrator: RunOrchestrator,
     createDefaultReporter: () => Promise<DefinedReporter>
 ): CommandLineRunnerDependencies {

@@ -1,25 +1,18 @@
-import { workIdentityKey } from '../engine/identity.ts';
-import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
+import type { TestPlan } from '../engine/test-plan.ts';
 import {
     createRunFacts,
     runCaseFactsFromTestPlan
 } from './run-facts.ts';
 import {
-    collectedRunPlanFromTestPlanCases,
-    collectedRunCaseEntries
+    createRunResultFromCollectedPlan,
+    collectedRunPlanFromTestPlanCases
 } from './collected-run-plan.ts';
-import {
-    createRunShardHasher,
-    shardCollectedRunCaseEntries
-} from './run-sharding.ts';
-import {
-    createEmptySelectionResult
-} from './run-collected-resolution.ts';
 import {
     readResolvedRunInput,
     type ResolvedRunInput
 } from './run-input-resolution.ts';
 import { createLocalTestPlan } from './run-local-test-plan.ts';
+import { shardedLocalCases } from './run-local-sharding.ts';
 import {
     orderedTestPlan,
     assertTestPlanMatchesTestFamily,
@@ -85,6 +78,25 @@ function createLocalResolvedRunFromTestPlan(
     });
 }
 
+function createEmptySelectionResult(
+    testPlan: TestPlan,
+    dependencies: RunOrchestratorDependencies
+): RunResult {
+    const startedAtMs = dependencies.wallClock.currentTimestampInMilliseconds;
+
+    return freezeValue(createRunResultFromCollectedPlan(
+        collectedRunPlanFromTestPlanCases(testPlan, []),
+        [],
+        [],
+        {
+            planStatus: 'empty-selection',
+            resourceUsage: null,
+            startedAtMs,
+            wallClock: dependencies.wallClock
+        }
+    ));
+}
+
 function createEmptyShardResolvedRunFromTestPlan(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
@@ -115,27 +127,6 @@ function createEmptyShardResolvedRunFromTestPlan(
         },
         reporters: resolveRunReporters(input.profile, input.config.reporters),
         request: input.request
-    });
-}
-
-async function shardedLocalCases(
-    testPlan: TestPlan,
-    input: ResolvedRunInput
-): Promise<readonly TestPlanCase[]> {
-    const shardHasher = await createRunShardHasher(input.request.shard);
-    const entries = shardCollectedRunCaseEntries(
-        collectedRunCaseEntries(collectedRunPlanFromTestPlanCases(testPlan, testPlan.cases)),
-        input.request.shard,
-        shardHasher
-    );
-    const casesByKey = new Map(testPlan.cases.map(function toCaseEntry(testCase) {
-        return [ workIdentityKey(testCase.workId), testCase ];
-    }));
-
-    return entries.flatMap(function toTestCase(entry) {
-        const testCase = casesByKey.get(workIdentityKey(entry.workId));
-
-        return testCase === undefined ? [] : [ testCase ];
     });
 }
 

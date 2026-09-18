@@ -287,53 +287,6 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.resolve() rejects invalid sharding',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
-                const invalidShardCases = [
-                    {
-                        message: 'Shard total must be a positive safe integer.',
-                        shard: { index: 1, total: 0 }
-                    },
-                    {
-                        message: 'Shard total must be a positive safe integer.',
-                        shard: { index: 1, total: 1.5 }
-                    },
-                    {
-                        message: 'Shard index must be a positive safe integer.',
-                        shard: { index: 0, total: 2 }
-                    },
-                    {
-                        message: 'Shard index must be a positive safe integer.',
-                        shard: { index: 1.5, total: 2 }
-                    },
-                    {
-                        message: 'Shard index must not exceed shard total.',
-                        shard: { index: 3, total: 2 }
-                    }
-                ] as const;
-
-                for (const invalidShardCase of invalidShardCases) {
-                    await scope.assert.rejects(async function resolveInvalidShard() {
-                        await runOrchestrator.resolve(createRunCommand({
-                            config: defaultConfig,
-                            cwd: process.cwd(),
-                            engine: { kind: 'default' },
-                            request: {
-                                ...defaultRequest,
-                                shard: invalidShardCase.shard
-                            }
-                        }));
-                    }, { message: invalidShardCase.message });
-                }
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() rejects unknown profiles',
             annotations: {},
             controls: {},
@@ -515,40 +468,6 @@ export const testNode = createOverkillSuite({
                     runtimePolicy: 0,
                     skipped: 0
                 });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() rejects invalid requests before collection',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
-
-                await scope.assert.rejects(async function runInvalidRequest() {
-                    await runOrchestrator.run(createRunCommand({
-                        config: defaultConfig,
-                        cwd: process.cwd(),
-                        engine: { kind: 'default' },
-                        request: {
-                            ...defaultRequest,
-                            seed: { value: -1n }
-                        }
-                    }));
-                }, { message: 'Run seed must be a nonnegative bigint.' });
-                await scope.assert.rejects(async function runInvalidSelectionRequest() {
-                    await runOrchestrator.run(createRunCommand({
-                        config: defaultConfig,
-                        cwd: process.cwd(),
-                        engine: { kind: 'default' },
-                        request: {
-                            ...defaultRequest,
-                            selection: { kind: 'missing' } as unknown as RunRequest['selection']
-                        }
-                    }));
-                }, { message: 'Run selection kind is unknown.' });
 
                 return scope.assert.collect();
             }

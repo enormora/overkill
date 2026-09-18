@@ -3,6 +3,7 @@ import { testNode as runOrderingTestNode } from './run-ordering.test.ts';
 import { testNode as runProfilePolicyTestNode } from './run-profile-policy.test.ts';
 import { testNode as runSelectionTestNode } from './run-selection.test.ts';
 import { testNode as runTestNode } from './run.test.ts';
+import { testNode as runValidationTestNode } from './run-validation.test.ts';
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
@@ -13,7 +14,8 @@ export const testNode = createOverkillSuite({
         runOrderingTestNode,
         runProfilePolicyTestNode,
         runSelectionTestNode,
-        runTestNode
+        runTestNode,
+        runValidationTestNode
     ]
 });
 
