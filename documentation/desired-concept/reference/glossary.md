@@ -438,11 +438,21 @@ Source: [Package Architecture](../architecture/package-architecture.md), [Types 
 
 ## RunRecord
 
-The persisted artifact describing one completed run: the `RunFacts` plus
-per-test outcomes/verdicts, artifacts, summary, runner errors, and runtime
-metadata.
+The persisted artifact describing one completed run or one derived aggregate.
+`kind: 'single'` records contain `RunFacts` plus outcomes, artifacts, summary,
+runner errors, and runtime metadata for one execution. `kind: 'merged'`
+records contain an aggregate result plus lineage back to shard records and are
+not replayable.
 
 Source: [Reproducibility § Run Record Shape](../architecture/reproducibility.md#run-record-shape), [Types Index](./types-index.md).
+
+## Merge Results
+
+The command and API workflow that validates completed shard `RunRecord`s for
+one planned run, combines their `RunResult`s, writes a non-replayable merged
+record, and delivers the merged result to final-result reporters.
+
+Source: [Runtime Behavior § Sharding](../architecture/runtime-behavior.md#sharding), [CLI Reference](./cli.md).
 
 ## Runner Error
 

@@ -56,8 +56,9 @@ it is an optimization, not the required cross-CI baseline.
 ## Run Record Shape
 
 ```ts
-type RunRecord = {
+type SingleRunRecord = {
     readonly id: string; // ULID
+    readonly kind: 'single';
     readonly seed: string;
     readonly facts: RunFacts;
     readonly identities: ReadonlyArray<WorkId>;
@@ -65,14 +66,30 @@ type RunRecord = {
     readonly runtime: ResolvedRuntime; // see types-index.md
     readonly versions: { engine: string; node: string; packages: Readonly<Record<string, string>>; };
     readonly startedAt: string; // ISO 8601
-    readonly result?: RunResult; // populated when the run completes
+    readonly result: RunResult | null;
 };
+
+type MergedRunRecord = {
+    readonly id: string; // ULID
+    readonly kind: 'merged';
+    readonly facts: RunFacts;
+    readonly identities: ReadonlyArray<WorkId>;
+    readonly lineage: NonEmptyReadonlyArray<{ readonly id: string; readonly path: string; }>;
+    readonly runtime: NonEmptyReadonlyArray<ResolvedRuntime>;
+    readonly versions: { engine: string; packages: Readonly<Record<string, string>>; };
+    readonly startedAt: string; // ISO 8601
+    readonly result: RunResult;
+};
+
+type RunRecord = SingleRunRecord | MergedRunRecord;
 ```
 
-`RunRecord.id` identifies one concrete persisted run instance. It is not a
-plan hash and it is not reused across repeated identical runs. If the
-concept later needs an explicit same-plan fingerprint, that should be a
-separate field rather than overloading the run-record ID.
+`RunRecord.id` identifies one persisted record. For `kind: 'single'`, it
+identifies one concrete run instance. For `kind: 'merged'`, it identifies a
+derived aggregate created from completed shard records. It is not a plan hash
+and it is not reused across repeated identical runs. If the concept later
+needs an explicit same-plan fingerprint, that should be a separate field
+rather than overloading the run-record ID.
 
 The record is a conceptual output of the run, but persistence is not free and
 should not be mandatory on the hottest microtest path.
@@ -83,16 +100,27 @@ So the settled direction should be:
 - persisted `RunRecord`s are written only when an active workflow needs
   them
 - examples include explicit replay/recording workflows, debug-mode
-  retention, coverage/artifact-producing runs, and other runs where the
-  user or active feature asked for durable runtime state
+  retention, sharded result merging, coverage/artifact-producing runs, and
+  other runs where the user or active feature asked for durable runtime state
 
-When persisted, the record is written under `.overkill/runs/<id>.json` and
-replay uses it as input.
+When persisted, the record is written under `.overkill/runs/<id>.json`.
+Replay accepts only `kind: 'single'` records. A merged record is reportable
+lineage, not a single execution that can be replayed.
 
-For optional merged-results workflows, shard-local run records or result
-artifacts may later be merged into one combined final report. The shard
-records remain the primary execution facts; the merged record is a derived
-summary over them.
+For optional `merge-results` workflows, every shard writes a completed
+`kind: 'single'` record with populated `result`. The merge command validates
+that the records describe the same planned run, combines their results, and
+writes a `kind: 'merged'` record under the same runtime-state directory. The
+shard records remain the primary execution facts; the merged record preserves
+their ids and input paths as lineage.
+
+Merge validation is strict about the run semantics: selected profile, seed,
+shard total, selected identities, loader configuration, and Overkill package
+versions must agree. Host metadata such as platform or Node runtime details
+may differ and is preserved as metadata. Missing shards, duplicate executed
+work identities, unreadable records, or incompatible facts produce a merge
+runner error. The merge still writes an incomplete failure record when it has
+enough valid input to explain what happened.
 
 ## Ordering
 

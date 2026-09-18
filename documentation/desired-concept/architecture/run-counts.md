@@ -224,15 +224,19 @@ the record's scope. In a `--shard 1/4` run, each shard writes
 `discovered: 10000, executed: ~2500`. When shard records are merged
 per
 [Reproducibility § Run Record Shape](./reproducibility.md#run-record-shape),
-the merger takes any shard's `discovered` (they should agree) and
-sums `executed` across shards. Per-suite breakdowns merge the same
-way: `discovered` is identical on every shard for a given suite;
-`executed` sums across shards.
+the merger first validates that the shard records describe the same planned
+run. It then takes any shard's `discovered` and sums executed outcomes across
+the disjoint shard results. Per-suite breakdowns merge the same way:
+`discovered` is identical on every shard for a given suite; `executed` sums
+across shards.
 
 `defined` and `orphans` are global like `discovered`: collection runs
 once in the orchestrator before sharding, so every shard's record
 carries the same `defined` and the same `orphans`, and the merger
-takes any shard's copy.
+takes any shard's copy. Missing shards or duplicate executed `WorkId`s produce
+a merge runner error. The merged record still contains the counts available
+from readable compatible shards, but the aggregate is incomplete and exits
+with the runner-error status.
 
 ### Replay
 

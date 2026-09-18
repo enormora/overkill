@@ -555,8 +555,9 @@ verbs too:
 - `watch(request)` - mirror of `overkill run --watch`
 - `replay(runId, options?)` - mirror of `overkill replay`
 - `replayWitness(path, options?)` - mirror of `overkill replay-witness`
-- `mergeResults(inputs, options?)` - mirror of the richer merged-results
-  workflow
+- `mergeResults(inputs, options?)` - validate completed shard `RunRecord`s,
+  write a non-replayable merged `RunRecord`, and deliver final-result
+  reporters
 - `baseline.update(request)`, `baseline.apply(request)`,
   `baseline.bootstrap(request)`, `baseline.diff(request)`,
   `baseline.list(request)` - mirrors of the baseline subcommands
@@ -625,6 +626,8 @@ The current first-party reporter set should be treated as settled:
 
 - `dot` for minimal real-time progress output
 - `brief` for sparse managed stdout output suitable for AI-agent and CI logs
+- `brief` final-result output for merged results and other final-only
+  summaries
 - `line` as the default human terminal reporter
 - `tap` for TAP-oriented integrations
 - `json` as the canonical machine-readable result dump
