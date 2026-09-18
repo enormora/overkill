@@ -138,7 +138,43 @@ export const config = {
             }
         },
         {
+            name: '@overkill-dev/simulation',
+            roots: {
+                http: {
+                    js: 'packages/simulation/http.entry-point.js',
+                    declarationFile: 'packages/simulation/http.entry-point.d.ts'
+                },
+                main: {
+                    js: 'packages/simulation/simulation.entry-point.js',
+                    declarationFile: 'packages/simulation/simulation.entry-point.d.ts'
+                }
+            },
+            packageInterface: {
+                modules: [
+                    {
+                        export: '.',
+                        root: 'main'
+                    },
+                    {
+                        export: './http',
+                        root: 'http'
+                    }
+                ]
+            },
+            additionalFiles: [
+                {
+                    sourceFilePath: path.join(projectFolder, 'source/packages/simulation/readme.md'),
+                    targetFilePath: 'readme.md'
+                }
+            ],
+            additionalPackageJsonAttributes: {
+                ...packageMetadata,
+                description: 'Finite simulation descriptors and simulated server launchers for Overkill.'
+            }
+        },
+        {
             name: '@overkill-dev/resources',
+            bundlePeerDependencies: [ '@overkill-dev/simulation' ],
             roots: {
                 main: {
                     js: 'packages/resources/resources.entry-point.js',
@@ -226,7 +262,8 @@ export const config = {
                 '@overkill-dev/reporter-dot',
                 '@overkill-dev/reporter-line',
                 '@overkill-dev/resources',
-                '@overkill-dev/run'
+                '@overkill-dev/run',
+                '@overkill-dev/simulation'
             ],
             roots: {
                 assert: {
@@ -263,6 +300,10 @@ export const config = {
                 resources: {
                     js: 'packages/test/resources.entry-point.js',
                     declarationFile: 'packages/test/resources.entry-point.d.ts'
+                },
+                simulation: {
+                    js: 'packages/test/simulation.entry-point.js',
+                    declarationFile: 'packages/test/simulation.entry-point.d.ts'
                 }
             },
             packageInterface: {
@@ -298,6 +339,10 @@ export const config = {
                     {
                         export: './resources',
                         root: 'resources'
+                    },
+                    {
+                        export: './simulation',
+                        root: 'simulation'
                     }
                 ],
                 bins: [

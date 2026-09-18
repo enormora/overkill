@@ -9,6 +9,7 @@ import {
     assertResourcesPackageRootExport,
     assertRunConfigSubpathExport,
     assertRunResourceLifecycleSubpathExport,
+    assertSimulationPackageExports,
     assertTestStandardSubpathExports
 } from './package-export-assertions.test.ts';
 import { runIfMain } from './direct-launcher.test.ts';
@@ -58,6 +59,7 @@ const packageSmokeNodeModules = path.join(packageSmokeFolder, 'node_modules');
 const testPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/test');
 const runPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/run');
 const resourcesPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/resources');
+const simulationPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/simulation');
 const overkillBinEntryPointPath = path.join(testPackageFolder, 'packages/test/overkill.entry-point.js');
 const packageSmokePackageJsonFile = 'package.json';
 const packageSmokeConfigFile = 'overkill.config.js';
@@ -171,6 +173,7 @@ async function assertPackagedStandardSubpathImports(
     packageExports: Readonly<Record<string, unknown>>
 ): Promise<void> {
     const resourcesPackageExports = await readPackageExports(resourcesPackageFolder, '@overkill-dev/resources');
+    const simulationPackageExports = await readPackageExports(simulationPackageFolder, '@overkill-dev/simulation');
     const result = await spawnNode([
         '--input-type=module',
         '--eval',
@@ -179,6 +182,7 @@ async function assertPackagedStandardSubpathImports(
 
     assertTestStandardSubpathExports(scope, packageExports);
     assertResourcesPackageRootExport(scope, resourcesPackageExports);
+    assertSimulationPackageExports(scope, simulationPackageExports);
     scope.assert.equal(result.code, 0);
     scope.assert.equal(result.stderr, '');
     scope.assert.equal(result.stdout, expectedStandardSubpathImportOutput);

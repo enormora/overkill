@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createResourcesModule, type ResourcesModule } from '../../resources/resources.ts';
 
+export { defineLocalServiceResource } from '../../resources/local-service-resource.ts';
+
 const resourcesModule = createResourcesModule({
     temporaryDirectoryPathPrefix: join(tmpdir(), 'overkill-temporary-directory-'),
     async createTemporaryDirectory(pathPrefix) {
@@ -21,6 +23,9 @@ export const defineResource: ResourcesModule['defineResource'] = resourcesModule
 export const defineRuntime: ResourcesModule['defineRuntime'] = resourcesModule.defineRuntime;
 export const defineRuntimeMatrix: ResourcesModule['defineRuntimeMatrix'] = resourcesModule.defineRuntimeMatrix;
 
+export {
+    createSimulatedHttpServerResource
+} from '../../resources/simulated-http-server-resource.ts';
 export {
     isDefinedResource,
     isDefinedRuntime,
@@ -73,6 +78,15 @@ export type {
     SharedRuntimeMatrixDefinitionInput,
     TemporaryDirectoryHandle
 } from '../../resources/resources.ts';
+export type {
+    LocalServiceAddress,
+    LocalServiceCreationContext,
+    LocalServiceResourceDefinitionInput
+} from '../../resources/local-service-resource.ts';
+export type {
+    SimulatedHttpServerResource,
+    SimulatedHttpServerResourceOptions
+} from '../../resources/simulated-http-server-resource.ts';
 export type {
     RuntimeDefinition as Runtime,
     RuntimeResourceMap as ResourceMap

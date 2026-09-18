@@ -1510,7 +1510,9 @@ type SimulationScenario = {
 
 type SimulationDefinition<Scenario extends string> = {
     readonly name: string;
-    readonly scenarios: Readonly<Record<Scenario, SimulationScenario>>;
+    readonly scenarios: Readonly<Record<Scenario, SimulationScenario>> & {
+        readonly default: SimulationScenario;
+    };
 };
 
 type ScenarioKeyOf<Simulation> = Simulation extends SimulationDefinition<infer Scenario> ? Scenario
@@ -1521,13 +1523,18 @@ type SimulatedHttpServerDefinition<Scenario extends string> = {
     readonly scenarios: Readonly<Record<Scenario, SimulationScenario>>;
     readonly handle: (
         request: Request,
-        scenario: { readonly key: Scenario; }
+        scenario: {
+            readonly descriptor: SimulationScenario;
+            readonly key: Scenario;
+        }
     ) => Response | Promise<Response>;
 };
 
 type SimulatedHttpServerHandle<Scenario extends string> = {
     readonly baseUrl: string;
+    readonly dispose: () => Promise<void>;
     readonly scenarioUrl: (scenario: Scenario, path: string) => string;
+    readonly [Symbol.asyncDispose]: () => Promise<void>;
 };
 
 type ExecutionRequirement =
@@ -1853,10 +1860,10 @@ declare function withResources<Resources extends ResourceMap, Scope extends Test
 
 declare function defineSimulatedHttpServer<const Scenario extends string>(
     definition: SimulatedHttpServerDefinition<Scenario>
-): SimulationDefinition<Scenario>;
+): SimulatedHttpServerDefinition<Scenario>;
 
 declare function createSimulatedHttpServerResource<const Scenario extends string>(
-    simulation: SimulationDefinition<Scenario>
+    options: { readonly simulation: SimulatedHttpServerDefinition<Scenario>; }
 ): ResourceDefinition<SimulatedHttpServerHandle<Scenario>>;
 ```
 

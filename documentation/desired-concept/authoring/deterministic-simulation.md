@@ -87,15 +87,23 @@ A simulation definition declares:
 
 - its name
 - its finite scenario catalog
-- any seed and replay metadata it can provide
+- a mandatory `default` scenario
+- typed scenario descriptors that include a title and may include
+  simulator-owned data
 - any manual or exploratory launch surface when relevant
 
 Illustrative shape:
 
 ```ts
+type SimulationScenario = {
+    readonly title: string;
+};
+
 type SimulationDefinition<Scenarios extends string> = {
     readonly name: string;
-    readonly scenarios: Readonly<Record<Scenarios, SimulationScenario>>;
+    readonly scenarios: Readonly<Record<Scenarios, SimulationScenario>> & {
+        readonly default: SimulationScenario;
+    };
 };
 
 type ScenarioKeyOf<Simulation> = Simulation extends SimulationDefinition<infer Scenario> ? Scenario
@@ -177,22 +185,31 @@ HTTP is the first server shape Overkill should make easy, but the generic
 simulation package must not become HTTP-only.
 
 `@overkill-dev/simulation` should expose `defineSimulatedHttpServer(...)`.
-Its core handler shape is fetch-style:
+Its core handler shape is fetch-style and receives the selected scenario
+descriptor:
 
 ```ts
 type SimulatedHttpHandler<Scenario extends string> = (
     request: Request,
-    scenario: { readonly key: Scenario; }
+    scenario: {
+        readonly descriptor: SimulationScenario;
+        readonly key: Scenario;
+    }
 ) => Response | Promise<Response>;
 ```
+
+`@overkill-dev/simulation/http` exposes a standalone launcher for manual and
+exploratory runs. It returns the same URL-building handle used by the resource
+adapter plus `dispose()` and `Symbol.asyncDispose`.
 
 `@overkill-dev/resources` should expose
 `createSimulatedHttpServerResource(...)`. That adapter turns the simulated
 HTTP server definition into a resource descriptor. It owns `listen`, teardown,
 host, port, and the exposed `baseUrl`. By default it binds to `127.0.0.1` with
-`port: 0`, so the operating system assigns an unused port atomically. The
-adapter can still expose URL builders for path-prefix, query, header, or
-cookie scenario routing when the scenario is request-routed.
+`port: 0`, so the operating system assigns an unused port atomically. The first
+HTTP adapter uses URL-based request-routed scenarios only. `baseUrl` routes to
+`default`; `scenarioUrl(...)` adds an internal query parameter and the adapter
+removes that parameter before invoking the handler.
 
 ## Scenario Timing
 
@@ -248,7 +265,7 @@ const apiSimulation = defineSimulatedHttpServer({
     }
 });
 
-const apiServer = createSimulatedHttpServerResource(apiSimulation);
+const apiServer = createSimulatedHttpServerResource({ simulation: apiSimulation });
 
 const apiRuntime = defineRuntime({
     name: 'api',
