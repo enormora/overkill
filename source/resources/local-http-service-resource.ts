@@ -1,4 +1,3 @@
-import type { Server } from 'node:http';
 import type {
     Awaitable,
     ExecutionRequirement,
@@ -25,9 +24,24 @@ export type LocalHttpServiceHandle = {
     readonly endpoint: LocalServiceAddress;
 };
 
-type LocalHttpServer = Readonly<
-    Pick<Server, 'address' | 'close' | 'listen' | 'listening' | 'off' | 'once'>
->;
+type LocalHttpServerAddress = {
+    readonly port: number;
+};
+
+export type LocalHttpServer = {
+    readonly address: () => LocalHttpServerAddress | string | null;
+    readonly close: (callback: (error?: Error) => void) => unknown;
+    readonly listen: (port: number, host: string) => unknown;
+    readonly listening: boolean;
+    readonly off: {
+        (event: 'error', listener: (error: Error) => void): unknown;
+        (event: 'listening', listener: () => void): unknown;
+    };
+    readonly once: {
+        (event: 'error', listener: (error: Error) => void): unknown;
+        (event: 'listening', listener: () => void): unknown;
+    };
+};
 
 type LocalHttpDefinition<
     Name extends string,
@@ -38,17 +52,17 @@ type LocalHttpDefinition<
     readonly address: LocalServiceAddressRequest;
     readonly dependencies: Dependencies;
     readonly dispose: (
-        server: Server,
+        server: LocalHttpServer,
         context: LocalServiceDisposalContext<Dependencies>
     ) => Awaitable<void>;
     readonly name: Name;
     readonly ready: (
-        server: Server,
+        server: LocalHttpServer,
         context: LocalServiceCreationContext<Dependencies>
     ) => Awaitable<ConsumerHandle>;
     readonly requirements: readonly ExecutionRequirement[];
     readonly scope: Scope;
-    readonly start: (context: LocalServiceCreationContext<Dependencies>) => Awaitable<Server>;
+    readonly start: (context: LocalServiceCreationContext<Dependencies>) => Awaitable<LocalHttpServer>;
 };
 
 export type LocalHttpServiceResourceInput<
@@ -60,15 +74,15 @@ export type LocalHttpServiceResourceInput<
     readonly address: LocalServiceAddressRequest;
     readonly createServer: (
         context: LocalServiceCreationContext<Dependencies>
-    ) => Server;
+    ) => LocalHttpServer;
     readonly dependencies: Dependencies;
     readonly dispose: (
-        server: Server,
+        server: LocalHttpServer,
         context: LocalServiceDisposalContext<Dependencies>
     ) => Awaitable<void>;
     readonly handle: (
         service: LocalHttpServiceHandle,
-        server: Server,
+        server: LocalHttpServer,
         context: LocalServiceCreationContext<Dependencies>
     ) => ConsumerHandle;
     readonly name: Name;
@@ -154,7 +168,7 @@ type MaybeProjectedHttpServiceInput<
     >['serializeHandle'];
 };
 
-function serverEndpoint(server: Pick<Server, 'address'>, host: string): LocalServiceAddress {
+function serverEndpoint(server: Pick<LocalHttpServer, 'address'>, host: string): LocalServiceAddress {
     const address = server.address();
 
     if (typeof address !== 'object' || address === null) {
@@ -223,10 +237,10 @@ function localHttpDefinition<
         requirements: input.requirements,
         dependencies: input.dependencies,
         address: input.address,
-        start(context: LocalServiceCreationContext<Dependencies>): Server {
+        start(context: LocalServiceCreationContext<Dependencies>): LocalHttpServer {
             return input.createServer(context);
         },
-        async ready(server: Server, context: LocalServiceCreationContext<Dependencies>) {
+        async ready(server: LocalHttpServer, context: LocalServiceCreationContext<Dependencies>) {
             await listen(server, context.address);
 
             return input.handle(
@@ -235,7 +249,7 @@ function localHttpDefinition<
                 context
             );
         },
-        async dispose(server: Server, context: LocalServiceDisposalContext<Dependencies>) {
+        async dispose(server: LocalHttpServer, context: LocalServiceDisposalContext<Dependencies>) {
             await closeServer(server);
             await input.dispose(server, context);
         }
@@ -258,7 +272,7 @@ function projectedHttpDefinition<
     >
 ): ProjectedLocalServiceResourceDefinitionInput<
     Name,
-    Server,
+    LocalHttpServer,
     ConsumerHandle,
     Projection,
     ProjectedConsumerHandle,

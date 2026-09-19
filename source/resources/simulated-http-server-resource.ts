@@ -1,4 +1,3 @@
-import type { Server } from 'node:http';
 import {
     assertNoSimulatedHttpHandlerErrors,
     createSimulatedHttpListeningServer
@@ -13,6 +12,7 @@ import type {
 } from './resources.ts';
 import {
     createLocalHttpServiceResource,
+    type LocalHttpServer,
     type LocalHttpServiceHandle
 } from './local-http-service-resource.ts';
 import type {
@@ -80,7 +80,7 @@ export function createSimulatedHttpServerResource<
 >(
     options: SimulatedHttpServerResourceOptions<Name, Scenarios>
 ): SimulatedHttpServerResource<SimulatedHttpServerDefinition<Name, Scenarios>> {
-    const handlerErrors = new WeakMap<Server, readonly unknown[]>();
+    const handlerErrors = new WeakMap<LocalHttpServer, readonly unknown[]>();
 
     return createLocalHttpServiceResource({
         name: options.simulation.name,

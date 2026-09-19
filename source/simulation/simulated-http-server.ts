@@ -32,8 +32,26 @@ type ListenAddress = {
     readonly host: string;
     readonly port: number;
 };
-type ServerAddressReader = Readonly<Pick<http.Server, 'address'>>;
-type ServerLifecycle = Readonly<Pick<http.Server, 'address' | 'close' | 'listen' | 'off' | 'once'>>;
+type ServerAddress = {
+    readonly port: number;
+};
+type ServerAddressReader = {
+    readonly address: () => ServerAddress | string | null;
+};
+type ServerLifecycle = {
+    readonly address: () => ServerAddress | string | null;
+    readonly close: (callback: (error?: Error) => void) => unknown;
+    readonly listen: (port: number, host: string) => unknown;
+    readonly listening: boolean;
+    readonly off: {
+        (event: 'error', listener: (error: Error) => void): unknown;
+        (event: 'listening', listener: () => void): unknown;
+    };
+    readonly once: {
+        (event: 'error', listener: (error: Error) => void): unknown;
+        (event: 'listening', listener: () => void): unknown;
+    };
+};
 type ResponseWriter = Readonly<Pick<ServerResponse, 'end' | 'writeHead'>>;
 type SimulatedHttpServerHandleCandidate<Simulation extends SimulationWithScenarios> = {
     readonly baseUrl: string;
@@ -53,7 +71,7 @@ type HandlerErrors = {
 };
 export type SimulatedHttpListeningServer = {
     readonly errors: readonly unknown[];
-    readonly server: http.Server;
+    readonly server: ServerLifecycle;
 };
 
 function asyncDisposeSymbol(): symbol {

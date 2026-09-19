@@ -45,8 +45,18 @@ export type LocalProcessShutdown = {
     readonly gracefulSignal: LocalProcessSignal;
 };
 
+type LocalProcessChild = {
+    readonly exitCode: number | null;
+    readonly kill: (signal: LocalProcessSignal) => boolean;
+    readonly once: (
+        event: 'error' | 'exit',
+        listener: ((code: number | null, signal: string | null) => void) | ((error: Error) => void)
+    ) => unknown;
+    readonly signalCode: string | null;
+};
+
 export type LocalProcessOwner = {
-    readonly child: ChildProcess;
+    readonly child: LocalProcessChild;
     readonly output: LocalProcessOutput;
 };
 
@@ -269,7 +279,7 @@ async function readyLocalProcess<
     ]);
 }
 
-async function waitForProcessExit(child: ChildProcess): Promise<void> {
+async function waitForProcessExit(child: LocalProcessChild): Promise<void> {
     if (child.exitCode !== null || child.signalCode !== null) {
         return;
     }
