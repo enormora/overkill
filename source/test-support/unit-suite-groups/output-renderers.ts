@@ -2,6 +2,7 @@ import { createSuite } from '../../packages/engine/engine.entry-point.ts';
 import {
     testNode as githubActionsOutputRendererTestNode
 } from '../../output-renderers/github-actions-output-renderer.test.ts';
+import { testNode as workerPoolRuntimeFixturesTestNode } from '../worker-pool-runtime-fixtures.test.ts';
 
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
@@ -9,6 +10,7 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     children: [
-        githubActionsOutputRendererTestNode
+        githubActionsOutputRendererTestNode,
+        workerPoolRuntimeFixturesTestNode
     ]
 });

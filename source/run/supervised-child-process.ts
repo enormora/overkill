@@ -306,12 +306,10 @@ function traceEnvMutation(line: string): TraceEnvMutation | null {
         };
     }
 
-    return line.startsWith('[--trace-env] delete ')
-        ? {
-            capability: 'process-env',
-            message: `Runtime policy violation: process.env value was deleted: ${variable}.`
-        }
-        : null;
+    return {
+        capability: 'process-env',
+        message: `Runtime policy violation: process.env value was deleted: ${variable}.`
+    };
 }
 
 function traceEnvStackLine(line: string): boolean {
@@ -379,7 +377,7 @@ function observeChildStderr(runtime: SupervisedChildOutputRuntime): void {
 
         pending += Buffer.from(chunk).toString('utf8');
         const lines = pending.split('\n');
-        pending = lines.pop() ?? '';
+        pending = lines.splice(-1).join('');
 
         for (const line of lines) {
             readingTraceEnvStack = recordStderrLine(line, readingTraceEnvStack, runtime);

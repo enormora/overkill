@@ -155,8 +155,11 @@ function emitRestrictedOutput(stdout: OutputRecord, stderr: OutputRecord): void 
         [
             '[--trace-env] set "API_KEY"',
             '----- JavaScript stack trace -----',
+            '',
             '1: frame',
             '[--trace-env] delete "TOKEN"',
+            '[--trace-env] set "NODE_V8_COVERAGE"',
+            '[--trace-env] get "API_KEY"',
             'raw stderr',
             ''
         ]
