@@ -97,6 +97,10 @@ the body. Outermost first:
    [Test Debug Mode](../authoring/debug-mode.md).
 6. **Test body.** The actual code under test runs.
 
+[Run Timings](./run-timings.md) wraps both resolve-time resolution and
+execution-time wrapping. It records orchestration overhead separately from the
+test execution window and never affects verdicts.
+
 Unwinding happens in reverse, innermost first:
 
 1. Body returns, throws, or rejects.
@@ -247,6 +251,7 @@ dependency:
 - [Test Data And Selection](./test-data-and-selection.md) - annotation, control, and filter rules
 - [Microtests And Capabilities](../authoring/microtests-and-capabilities.md) - capability intersection
 - [Runtime Behavior](./runtime-behavior.md) - sharding, parallelism, timeouts, debug
+- [Run Timings](./run-timings.md) - summary timings and precise phase spans
 - [Failure Artifacts](../authoring/failure-artifacts.md) - retry interaction
 - [Reproducibility](./reproducibility.md) - `RunFacts` freeze
 - [Package Architecture](./package-architecture.md) - orchestration responsibilities

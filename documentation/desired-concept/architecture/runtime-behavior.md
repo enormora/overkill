@@ -242,6 +242,10 @@ runtime policy, not benchmark policy: a benchmark asks "how much did this
 workload use?", while a resource budget asks "did this test exceed the ceiling
 for this profile?"
 
+Resource usage is distinct from runner timing. Resource usage answers "how
+much memory or runtime state was used?", while [Run Timings](./run-timings.md)
+answers "where did wall time go during orchestration and execution?"
+
 Overkill uses Node runtime APIs first. The default implementation should not
 shell out to `ps`, read `/proc`, install native addons, or require cgroup
 management. Useful built-ins include:
@@ -703,6 +707,9 @@ re-import is execution-time plumbing, not a second discovery authority.
 The frozen `PlacementPlan` is the initial assignment. A runtime
 `PlacementTrace` records what actually happened: worker ids, started units,
 retries, crash recovery, hedged duplicates, cancellations, and timings.
+Detailed spawn, ready, import, teardown, resource lifecycle, and runner phase
+durations are owned by [Run Timings](./run-timings.md); placement trace only
+records assignment and recovery facts.
 If a reused worker crashes, only its active unit follows retry/recovery
 policy. Units planned for that lane but not started can move to eligible
 replacement lanes and the trace records that repair.
@@ -839,6 +846,8 @@ This document is the runtime counterpart to several others. Cross-links:
   distinction
 - [Test Data And Selection](./test-data-and-selection.md) - selection rules sharding composes with
 - [Fast Feedback Loops](./fast-feedback-loops.md) - watch mode and cache behavior
+- [Run Timings](./run-timings.md) - runner overhead and execution-boundary
+  timing diagnostics
 - [Platform-First Implementation Notes](./platform-first-implementation-notes.md) - `AbortSignal`, source maps,
   `AsyncLocalStorage`
 - [Package Architecture](./package-architecture.md) - execution strategy decisions live in

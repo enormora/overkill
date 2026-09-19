@@ -62,6 +62,7 @@ How the system is shaped.
 - [Platform-First Implementation Notes](./architecture/platform-first-implementation-notes.md)
 - [Fast Feedback Loops](./architecture/fast-feedback-loops.md)
 - [Runtime Behavior](./architecture/runtime-behavior.md)
+- [Run Timings](./architecture/run-timings.md)
 - [Reporters](./architecture/reporters.md)
 - [Test Data And Selection](./architecture/test-data-and-selection.md)
 - [Coverage](./architecture/coverage.md)

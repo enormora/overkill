@@ -200,6 +200,7 @@ inside a matrix. Exact `CaseId` selection is programmatic API-only.
 | `--order <mode>`           | Choose `seeded` or `lexical`; default is `seeded`.                   | [Runtime Behavior](../architecture/runtime-behavior.md) |
 | `--debug`                  | Emit a structured debug artifact for every test in the resolved set. | [Test Debug Mode](../authoring/debug-mode.md)           |
 | `--debug-scope <selector>` | Emit a debug artifact for tests matching a selector.                 | same                                                    |
+| `--timings`                | Collect precise runner timing diagnostics for this run.              | [Run Timings](../architecture/run-timings.md)           |
 | `--verbose`                | Include per-file peak resource usage and other expanded diagnostics. | [Runtime Behavior](../architecture/runtime-behavior.md) |
 
 This list intentionally omits flags that are still under design (e.g.

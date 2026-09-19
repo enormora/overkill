@@ -763,6 +763,14 @@ type RunConfig = {
     readonly runtimeStateDir: string;
 };
 
+type TimingCollectionMode = 'summary' | 'precise';
+
+type TimingCollectionOverride = 'profile-default' | 'precise';
+
+type TimingProfilePolicy = {
+    readonly collection: TimingCollectionMode;
+};
+
 type RunProfileConfig =
     | MicrotestProfileConfig
     | IntegrationProfileConfig
@@ -776,6 +784,7 @@ type MicrotestProfileConfig = {
     readonly execution?: MicrotestExecutionConfig;
     readonly resourceUsage?: ResourceUsagePolicy;
     readonly timeouts?: TimeoutPolicy;
+    readonly timings: TimingProfilePolicy | null;
     readonly coverage?: MicrotestCoveragePolicy;
 };
 
@@ -786,6 +795,7 @@ type IntegrationProfileConfig = {
     readonly execution?: IntegrationExecutionConfig;
     readonly resourceUsage?: ResourceUsagePolicy;
     readonly timeouts?: TimeoutPolicy;
+    readonly timings: TimingProfilePolicy | null;
 };
 
 type PropertyProfileConfig = {
@@ -795,6 +805,7 @@ type PropertyProfileConfig = {
     readonly execution?: MicrotestExecutionConfig;
     readonly resourceUsage?: ResourceUsagePolicy;
     readonly timeouts?: TimeoutPolicy;
+    readonly timings: TimingProfilePolicy | null;
     readonly coverage?: never;
 };
 
@@ -802,6 +813,7 @@ type TypeTestProfileConfig = {
     readonly testFamily: 'type-test';
     readonly files: ProfileFiles;
     readonly reporters?: ReadonlyArray<Reporter>;
+    readonly timings: TimingProfilePolicy | null;
 };
 
 type BenchmarkProfileConfig = {
@@ -923,6 +935,7 @@ type RunRequest = {
     readonly measureResourceUsage: boolean | null;
     readonly resourceBudgetOverrides: ResourceBudgetOverrides | null;
     readonly resourceUsageSamplingIntervalMilliseconds: number | null;
+    readonly timingCollection: TimingCollectionOverride;
     readonly seed: { readonly value: bigint | null; };
     readonly order: 'plan' | 'seeded' | 'lexical';
     readonly verbose: boolean;
@@ -990,6 +1003,7 @@ type RunExecutionBaseFacts = {
     readonly resourceUsagePolicy: ResourceUsagePolicy;
     readonly scheduling: 'serial' | 'concurrent';
     readonly testFamily: TestFamily;
+    readonly timingCollection: TimingCollectionMode;
     readonly timeoutPolicy: TimeoutPolicy;
     readonly verbose: boolean;
 };
@@ -1157,8 +1171,94 @@ type RunResult = {
     readonly runnerErrors: ReadonlyArray<RunnerError>;
     readonly artifacts: ReadonlyArray<ArtifactId | CapturedOutputArtifact>;
     readonly resourceUsage: RunResourceUsage | null;
+    readonly timings: RunTimings;
     readonly wallTimeMs: number;
 };
+
+type RunTimings = {
+    readonly summary: RunTimingSummary;
+    readonly precise: RunPreciseTimingReport | null;
+};
+
+type RunTimingSummary = {
+    readonly totalWallTimeMicroseconds: number;
+    readonly testExecutionWallTimeMicroseconds: number;
+    readonly runnerOverheadWallTimeMicroseconds: number;
+};
+
+type RunPreciseTimingReport = {
+    readonly spans: ReadonlyArray<RunTimingSpan>;
+    readonly aggregates: ReadonlyArray<RunTimingAggregate>;
+    readonly overhead: TimingCollectionOverhead;
+    readonly ambientNoise: AmbientNoiseEstimate;
+    readonly truncated: boolean;
+    readonly spanLimit: number;
+};
+
+type RunTimingSpan = {
+    readonly kind: RunTimingSpanKind;
+    readonly label: string | null;
+    readonly startOffsetMicroseconds: number | null;
+    readonly durationMicroseconds: number;
+    readonly processId: string | null;
+    readonly workerId: string | null;
+    readonly resource: { readonly name: string; readonly scope: ResourceScope; } | null;
+    readonly status: TimingSpanStatus;
+};
+
+type RunTimingAggregate = {
+    readonly kind: RunTimingSpanKind;
+    readonly count: number;
+    readonly durationMicroseconds: number;
+};
+
+type TimingCollectionOverhead = {
+    readonly recordingMicroseconds: number;
+    readonly aggregationMicroseconds: number;
+    readonly serializationMicroseconds: number;
+    readonly renderingMicroseconds: number;
+};
+
+type AmbientNoiseEstimate = 'low' | 'medium' | 'high' | 'unknown';
+
+type TimingSpanStatus = 'success' | 'failure' | 'cancelled' | 'timeout';
+
+type RunTimingSpanKind =
+    | 'command.parse'
+    | 'config.load'
+    | 'config.validate'
+    | 'profile.resolve'
+    | 'reporter.resolve'
+    | 'file.discovery'
+    | 'collection.import'
+    | 'collection.resolve'
+    | 'test-data.propagate'
+    | 'runtime.expand'
+    | 'filter.apply'
+    | 'work-unit.construct'
+    | 'shard.apply'
+    | 'order.apply'
+    | 'resource.lower'
+    | 'placement.plan'
+    | 'resolution.freeze'
+    | 'host.entry-startup'
+    | 'supervised-process.spawn'
+    | 'supervised-process.ready'
+    | 'supervised-process.teardown'
+    | 'supervised-process.exit'
+    | 'worker-pool.start'
+    | 'worker-pool.ready'
+    | 'worker-pool.shutdown'
+    | 'worker.create'
+    | 'worker.ready'
+    | 'worker.import-startup'
+    | 'worker.assign-work'
+    | 'worker.teardown'
+    | 'resource.acquire'
+    | 'resource.dispose'
+    | 'reporter.deliver'
+    | 'reporter.finish'
+    | 'cleanup';
 
 type RunnerError = {
     readonly subtype:
@@ -1241,6 +1341,7 @@ type RunResourceUsage = {
 
 Canonical: [Reproducibility](../architecture/reproducibility.md) for `RunFacts` and `RunRecord`,
 [Package Architecture](../architecture/package-architecture.md) for `RunRequest`, `ResolvedRun`, and `TestPlan`,
+[Run Timings](../architecture/run-timings.md) for `RunTimings`,
 [Failure Artifacts](../authoring/failure-artifacts.md) for `RunnerError`.
 
 `RunConfig.reporters` is the global fallback list. A selected profile's
