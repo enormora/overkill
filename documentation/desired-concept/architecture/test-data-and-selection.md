@@ -196,7 +196,7 @@ The replacement for `.only`:
 - `--title 'login'` runs tests whose title contains the text
 - `--file source/auth/login.test.ts` runs only that file
 - `--filter 'tag=fast'` runs matching annotations
-- `--last-failed` selects cases from the previous persisted run record
+- `--last-failed` selects cases from compact history and persists this run
 - `--watch` reruns the selected suite on file change
 
 None of these modify test source.
@@ -208,7 +208,7 @@ or capability conditions that are known during authoring or collection. It is
 different from `.skip`: it records a planned, reasoned skipped case instead of
 silently removing executable work from the plan.
 
-Historical flakiness should be derived from persisted run records. Baseline
+Historical flakiness should be derived from compact history. Baseline
 usage should come from runtime observations or baseline APIs. Capability and
 runtime needs should move into requirements once that concept is implemented.
 

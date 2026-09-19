@@ -59,6 +59,7 @@ it is an optimization, not the required cross-CI baseline.
 type SingleRunRecord = {
     readonly id: string; // ULID
     readonly kind: 'single';
+    readonly status: 'started' | 'completed' | 'interrupted';
     readonly seed: string;
     readonly facts: RunFacts;
     readonly identities: ReadonlyArray<WorkId>;
@@ -91,8 +92,8 @@ and it is not reused across repeated identical runs. If the concept later
 needs an explicit same-plan fingerprint, that should be a separate field
 rather than overloading the run-record ID.
 
-The record is a conceptual output of the run, but persistence is not free and
-should not be mandatory on the hottest microtest path.
+The record is a conceptual output of the run, but persistence is not free.
+It must not be mandatory on the hottest microtest path.
 
 So the settled direction should be:
 
@@ -102,10 +103,27 @@ So the settled direction should be:
 - examples include explicit replay/recording workflows, debug-mode
   retention, sharded result merging, coverage/artifact-producing runs, and
   other runs where the user or active feature asked for durable runtime state
+- ordinary microtest profiles default to `runRecords.persist: 'on-demand'`
+- `overkill run --record` persists a detailed record for one invocation
+- profiles may set `runRecords.persist: 'always'` when replay and history are
+  part of the normal workflow
 
-When persisted, the record is written under `.overkill/runs/<id>.json`.
+When persisted, a `kind: 'single'` record is written under
+`.overkill/runs/<id>.json`. A persisted run writes a started record before
+execution so crash diagnostics and artifact paths have a stable run id. It
+then finalizes that record atomically when the run completes. Incomplete
+records are listed as `interrupted`; they are ignored by compact case/work
+history, but may still be replayed when their `RunFacts` are complete.
+
 Replay accepts only `kind: 'single'` records. A merged record is reportable
-lineage, not a single execution that can be replayed.
+lineage, not a single execution that can be replayed. Detailed record
+persistence and compact history are part of the same persistence contract. If
+a workflow requests or requires persistence, failure to write the detailed
+record or update compact history is a runner error and the command fails. The
+retained record should include that persistence error in
+`RunRecord.result.runnerErrors` when enough of the record could be written.
+This is a repairable state, not a transactional promise: `overkill history
+compact` can rebuild the compact index from retained records.
 
 For optional `merge-results` workflows, every shard writes a completed
 `kind: 'single'` record with populated `result`. The merge command validates
@@ -121,6 +139,82 @@ may differ and is preserved as metadata. Missing shards, duplicate executed
 work identities, unreadable records, or incompatible facts produce a merge
 runner error. The merge still writes an incomplete failure record when it has
 enough valid input to explain what happened.
+
+## Compact History
+
+Compact history is the long-lived derived state under `runtimeStateDir`. It is
+not a replay source. It keeps useful data after detailed records are pruned:
+
+- run summaries for persisted runs
+- case-level outcome history keyed by `CaseId`
+- work-level duration history keyed by `WorkId`
+
+`overkill history list` reads run summaries. A run summary records the run id,
+start time, selected profile, test family, aggregate status, duration, and
+whether a detailed replayable record is still available. Aggregate status uses
+this precedence:
+
+1. `interrupted`
+2. `runner-error`
+3. `failed`
+4. `inconclusive`
+5. `passed`
+
+Case and work histories keep the last 20 observations per identity plus
+aggregate counters. Entries that no longer receive updates are pruned after
+90 days by default. Run summaries are kept for the last 500 persisted runs or
+90 days, whichever keeps fewer.
+
+`--last-failed` reads compact case history rather than the previous detailed
+record. A run selected with `--last-failed` automatically persists its own
+result so the workflow stays fresh. `duration-history-balanced` placement reads
+compact work history rather than scanning retained detailed records. If a
+command needs compact history and the index is missing or corrupt, it fails
+with a repair hint to run `overkill history compact`.
+
+History state is schema-versioned. Older schemas may be rebuilt automatically
+from retained records with a 2 second budget. If that budget is exceeded, or
+if retained records are insufficient, the command fails with the same repair
+hint. `overkill history compact` keeps existing pruned run summaries when the
+index is readable; a rebuild from corrupted state may lose summaries whose
+detailed records were already pruned.
+
+## Retention And Maintenance
+
+Run-record retention is global project policy under top-level `history`
+configuration. Profile policy decides whether a run writes a record; global
+history policy decides how long records and summaries remain.
+
+Defaults:
+
+- detailed records: last 20 persisted runs
+- successful per-run artifacts: last 5 successful persisted runs
+- failing per-run artifacts: 7 days
+- run summaries: last 500 persisted runs or 90 days
+- stale case/work history entries: 90 days
+- compact history observations: last 20 per identity plus counters
+
+Required record and compact-history commits happen before final reporter
+output so persistence errors appear in the normal run summary. Automatic
+pruning is optional maintenance and happens after final reporter output.
+
+Automatic maintenance:
+
+- runs only after persisted runs
+- is lock-protected
+- is best-effort
+- has a default 100 ms budget
+- may leave retention temporarily exceeded
+- reports pruning failures as diagnostics without changing the test verdict
+
+Explicit maintenance commands use the same lock. `overkill history prune`
+fails when it cannot apply retention. `overkill history compact` fails when it
+cannot rebuild the compact index. `overkill history clear` deletes all
+history state under `runtimeStateDir`, excluding baselines, witnesses, and
+corpus.
+
+History lock acquisition waits up to 5 seconds by default. A lock older than
+2 minutes may be treated as stale, broken, and reported as a diagnostic.
 
 ## Ordering
 

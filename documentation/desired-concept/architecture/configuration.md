@@ -62,6 +62,8 @@ Configuration should mainly cover orchestration and package wiring:
   profile)
 - timing collection policy (`summary` by default, `precise` for detailed
   runner diagnostics)
+- run-record persistence defaults per profile
+- compact-history retention and maintenance policy
 - optional global assertion budget policy
 - mutation integration
 - type-test integration
@@ -174,8 +176,23 @@ const config = defineConfig({
             timeouts: {
                 softMilliseconds: 500,
                 hardMilliseconds: 1000
+            },
+            runRecords: {
+                persist: 'on-demand'
             }
         }
+    },
+    history: {
+        detailedRunLimit: 20,
+        successfulArtifactRunLimit: 5,
+        failingArtifactRetentionDays: 7,
+        runSummaryLimit: 500,
+        runSummaryRetentionDays: 90,
+        staleIdentityRetentionDays: 90,
+        observationsPerIdentity: 20,
+        automaticMaintenanceBudgetMilliseconds: 100,
+        lockTimeoutMilliseconds: 5000,
+        staleLockMilliseconds: 120000
     }
 });
 
@@ -208,6 +225,8 @@ So, for example:
 - `--resource-budget <name=value>` chooses per-run resource-budget overrides
   and enables resource usage measurement
 - `--timings` requests precise runner timing collection for this run
+- `--record` requests a detailed run record and compact-history update for
+  this run
 - `run({ profile: 'unit-covered' })` should express coverage intent through
   profile selection
 - an optional global assertion budget policy lives in configuration because
@@ -222,6 +241,19 @@ Timing policy follows the same split. `profiles.<name>.timings.collection`
 sets the project default for that profile. `--timings` and programmatic
 `RunRequest` values may upgrade one run to precise timing collection without
 changing project policy.
+
+Run-record policy follows the same split. `profiles.<name>.runRecords.persist`
+sets whether that profile persists records by default. The default is
+`'on-demand'`, so ordinary microtest runs stay on the hot path. `--record` and
+programmatic `RunRequest` values may persist one run without changing project
+policy. Active workflows such as debug retention, coverage artifacts, and
+history-backed selection may require persistence regardless of the profile
+default.
+
+Top-level `history` policy owns retention, compact-history sizing, lock
+timeouts, stale-lock handling, and automatic maintenance budgets. It is global
+because pruning and compact history operate on the shared runtime-state
+directory rather than on one selected profile.
 
 ## Configuration Layering
 

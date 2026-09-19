@@ -538,6 +538,7 @@ await run({
         order: 'seeded',
         paths: [ 'source/**/*.test.ts' ],
         profile: 'microtest',
+        record: false,
         resourceBudgetOverrides: null,
         resourceUsageSamplingIntervalMilliseconds: null,
         seed: { value: 42n },
@@ -555,6 +556,9 @@ verbs too:
 - `watch(request)` - mirror of `overkill run --watch`
 - `replay(runId, options?)` - mirror of `overkill replay`
 - `replayWitness(path, options?)` - mirror of `overkill replay-witness`
+- `history.list(options?)`, `history.prune(options?)`,
+  `history.compact(options?)`, and `history.clear(options?)` - mirrors of the
+  history subcommands
 - `mergeResults(inputs, options?)` - validate completed shard `RunRecord`s,
   write a non-replayable merged `RunRecord`, and deliver final-result
   reporters
