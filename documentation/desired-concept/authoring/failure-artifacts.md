@@ -183,11 +183,14 @@ directories:
 - `.overkill/witnesses/` - replay witnesses (gitignored by default; can
   be promoted into the repository when valuable)
 - `.overkill/corpus/` - fuzzing/property regression corpus
-- `.overkill/runs/` - run records (kept for the last N runs, default 20)
+- `.overkill/runs/` - detailed run records and per-run artifacts
 
-Per-run artifacts are garbage-collected: the runner keeps the most recent
-N successful runs (default 5) and all failing runs from the last
-configurable retention window (default 7 days).
+Per-run artifacts are retained and pruned with the run history policy defined
+in [Reproducibility § Retention And Maintenance](../architecture/reproducibility.md#retention-and-maintenance).
+The default policy keeps artifacts for the most recent 5 successful persisted
+runs and for failing persisted runs from the last 7 days. Run-record retention,
+compact history, and history maintenance are owned by Reproducibility, not by
+artifact subtypes.
 
 Size caps:
 

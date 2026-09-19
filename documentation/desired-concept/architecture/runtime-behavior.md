@@ -807,8 +807,9 @@ Advanced policies are concepted now but not required for the first worker
 pool implementation:
 
 - `duration-history-balanced` is a plan-time assignment policy that uses
-  duration history as explicit placement input, falling back to case counts
-  when history is missing, stale, or inapplicable
+  compact `WorkId` duration history as explicit placement input, falling back
+  to case counts when history is stale or inapplicable and failing with a
+  repair hint when required history is missing or corrupt
 - `dynamic-lease` is an execution-time dispatch policy layered on top of the
   frozen initial placement plan
 - resource-aware placement lowers resource scopes into serial keys,

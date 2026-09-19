@@ -121,7 +121,7 @@ Debug artifacts live alongside the run record:
 ```
 
 They are garbage-collected with the rest of the run record per
-[Failure Artifacts § Storage Policy](./failure-artifacts.md#storage-policy).
+[Reproducibility § Retention And Maintenance](../architecture/reproducibility.md#retention-and-maintenance).
 
 This is deliberately **not** the default microtest path. A normal
 microtest run does not write one artifact file per test case, and it

@@ -55,6 +55,11 @@ current concept.
 | `overkill merge-results <paths...>` | Merge completed shard run records into one aggregate result. | [Runtime Behavior § Sharding](../architecture/runtime-behavior.md#sharding)                                            |
 | `overkill replay-witness <path>`    | Replay a single property/simulation failure from a witness.  | [Failure Artifacts § Witnesses And Replay Artifacts](../authoring/failure-artifacts.md#witnesses-and-replay-artifacts) |
 
+`overkill replay` without a run id is interactive only. In a TTY it opens a
+picker over replayable retained records, including interrupted records whose
+`RunFacts` are complete. Outside a TTY it is an argument error and points the
+user to `overkill history list`.
+
 `overkill list` prints a plain plan tree: file, suite path, and case title,
 with parameterized cases rendered as `case title [params]`. By default it lists
 only executable planned cases. `--with-orphans` appends orphaned constructed
@@ -80,6 +85,29 @@ and falls back to a first-party brief final-result reporter when no configured
 final-result reporter remains. There is no `--reporter` lookup flag; reporters
 are selected through imported configuration values, not package-name discovery
 or a CLI registry.
+
+### History
+
+The `history` namespace operates on runtime-owned run history under
+`runtimeStateDir`. It does not run tests and it does not inspect checked-in
+baseline artifacts, witnesses, or corpus entries.
+
+| Command                            | Behavior                                                                            | Reference                                                                                                   |
+| ---------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `overkill history list`            | Show persisted run summaries, including pruned non-replayable summaries.            | [Reproducibility § Compact History](../architecture/reproducibility.md#compact-history)                     |
+| `overkill history prune`           | Apply retention to detailed run records, per-run artifacts, and compact history.    | [Reproducibility § Retention And Maintenance](../architecture/reproducibility.md#retention-and-maintenance) |
+| `overkill history prune --dry-run` | Print what `prune` would remove without deleting anything.                          | same                                                                                                        |
+| `overkill history compact`         | Rebuild or repair the compact history index from retained detailed records.         | same                                                                                                        |
+| `overkill history clear`           | Delete run history state under `runtimeStateDir`; requires confirmation or `--yes`. | same                                                                                                        |
+
+`history list` shows run id, start time, selected profile, test family,
+aggregate status, duration, and replay availability. Aggregate status is one
+of `passed`, `failed`, `runner-error`, `interrupted`, or `inconclusive`.
+
+`history clear` deletes detailed run records, per-run artifacts, compact run
+summaries, and compact case/work history. It does not delete baselines,
+witnesses, or fuzzing/property corpus directories. In a TTY it asks for
+confirmation. Outside a TTY it requires `--yes`.
 
 ### Baseline
 
@@ -132,6 +160,7 @@ the invocation is different from the default verdict:
 - `replay-witness` re-produces a single failure
 - `merge-results` produces a derived aggregate record and final-result
   reporter output from completed shard records
+- `history <verb>` inspects or maintains runtime-owned run history
 - `baseline <verb>` produces or inspects baseline files (`update`,
   `apply`, and `bootstrap` write; `list` and `diff` do not write
   fresh content but operate inside the baseline namespace because
@@ -142,7 +171,7 @@ the invocation is different from the default verdict:
 A flag refines or augments a `run`. It does not change what the user
 asks for: they still want a verdict; the flag just shapes how the run
 gets there or what extra artifacts are emitted alongside (`--debug`,
-`--watch`, `--filter`).
+`--watch`, `--filter`, `--record`).
 
 The destructive variant (`apply`, which removes stale entries) is its
 own verb rather than a flag on `update` so that the dangerous behaviour
@@ -166,15 +195,15 @@ configuration domain and benchmark execution uses `overkill bench`.
 
 ## Selection And Iteration
 
-| Flag                | Behavior                                                 | Reference                                                                                                                   |
-| ------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `--filter '<expr>'` | Filter by annotations, identity, and file path.          | [Test Data And Selection § Filter Expression Grammar](../architecture/test-data-and-selection.md#filter-expression-grammar) |
-| `--runtime <expr>`  | Filter by public runtime key, variant, or dimension.     | [Runtime Behavior § Runtime Selection](../architecture/runtime-behavior.md#runtime-selection)                               |
-| `--title '<text>'`  | Title substring match.                                   | [Test Data And Selection § Local Iteration Workflow](../architecture/test-data-and-selection.md#local-iteration-workflow)   |
-| `--file <path>`     | Restrict the run to a single file.                       | same                                                                                                                        |
-| `--last-failed`     | Run only tests that failed in the previous run.          | same                                                                                                                        |
-| `--watch`           | Rerun the selected suite with Node's built-in watcher.   | [Runtime Behavior § Watch-Mode Targeting](../architecture/runtime-behavior.md#watch-mode-targeting)                         |
-| `--shard <i>/<n>`   | Select one-based shard `i` of `n` from the filtered set. | [Runtime Behavior § Sharding](../architecture/runtime-behavior.md#sharding)                                                 |
+| Flag                | Behavior                                                       | Reference                                                                                                                   |
+| ------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `--filter '<expr>'` | Filter by annotations, identity, and file path.                | [Test Data And Selection § Filter Expression Grammar](../architecture/test-data-and-selection.md#filter-expression-grammar) |
+| `--runtime <expr>`  | Filter by public runtime key, variant, or dimension.           | [Runtime Behavior § Runtime Selection](../architecture/runtime-behavior.md#runtime-selection)                               |
+| `--title '<text>'`  | Title substring match.                                         | [Test Data And Selection § Local Iteration Workflow](../architecture/test-data-and-selection.md#local-iteration-workflow)   |
+| `--file <path>`     | Restrict the run to a single file.                             | same                                                                                                                        |
+| `--last-failed`     | Run tests that failed in compact history and persist this run. | same                                                                                                                        |
+| `--watch`           | Rerun the selected suite with Node's built-in watcher.         | [Runtime Behavior § Watch-Mode Targeting](../architecture/runtime-behavior.md#watch-mode-targeting)                         |
+| `--shard <i>/<n>`   | Select one-based shard `i` of `n` from the filtered set.       | [Runtime Behavior § Sharding](../architecture/runtime-behavior.md#sharding)                                                 |
 
 Repeated `--runtime` flags combine with AND and compose with `--filter`:
 
@@ -211,6 +240,7 @@ inside a matrix. Exact `CaseId` selection is programmatic API-only.
 | -------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------- |
 | `--seed <n>`               | Override the run seed with a nonnegative base-10 integer.            | [Reproducibility](../architecture/reproducibility.md)   |
 | `--order <mode>`           | Choose `seeded` or `lexical`; default is `seeded`.                   | [Runtime Behavior](../architecture/runtime-behavior.md) |
+| `--record`                 | Persist a detailed run record and update compact history.            | [Reproducibility](../architecture/reproducibility.md)   |
 | `--debug`                  | Emit a structured debug artifact for every test in the resolved set. | [Test Debug Mode](../authoring/debug-mode.md)           |
 | `--debug-scope <selector>` | Emit a debug artifact for tests matching a selector.                 | same                                                    |
 | `--timings`                | Collect precise runner timing diagnostics for this run.              | [Run Timings](../architecture/run-timings.md)           |

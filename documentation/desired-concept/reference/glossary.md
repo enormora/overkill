@@ -440,9 +440,9 @@ Source: [Package Architecture](../architecture/package-architecture.md), [Types 
 
 The persisted artifact describing one completed run or one derived aggregate.
 `kind: 'single'` records contain `RunFacts` plus outcomes, artifacts, summary,
-runner errors, and runtime metadata for one execution. `kind: 'merged'`
-records contain an aggregate result plus lineage back to shard records and are
-not replayable.
+runner errors, runtime metadata, and record status for one execution.
+`kind: 'merged'` records contain an aggregate result plus lineage back to shard
+records and are not replayable.
 
 Source: [Reproducibility § Run Record Shape](../architecture/reproducibility.md#run-record-shape), [Types Index](./types-index.md).
 
@@ -453,6 +453,15 @@ one planned run, combines their `RunResult`s, writes a non-replayable merged
 record, and delivers the merged result to final-result reporters.
 
 Source: [Runtime Behavior § Sharding](../architecture/runtime-behavior.md#sharding), [CLI Reference](./cli.md).
+
+## Compact History
+
+The long-lived derived run history under `runtimeStateDir`. It stores run
+summaries, case-level outcome history, and work-level duration history after
+detailed records are pruned. It is used by `--last-failed` and
+history-aware placement, but it is not a replay source.
+
+Source: [Reproducibility § Compact History](../architecture/reproducibility.md#compact-history), [Types Index](./types-index.md).
 
 ## Runner Error
 

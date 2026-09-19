@@ -756,7 +756,21 @@ type RunConfig = {
     readonly benchmark?: {
         readonly profiles: Readonly<Record<ProfileName, BenchmarkProfileConfig>>;
     };
+    readonly history: HistoryConfig;
     readonly runtimeStateDir: string;
+};
+
+type HistoryConfig = {
+    readonly detailedRunLimit: number;
+    readonly successfulArtifactRunLimit: number;
+    readonly failingArtifactRetentionDays: number;
+    readonly runSummaryLimit: number;
+    readonly runSummaryRetentionDays: number;
+    readonly staleIdentityRetentionDays: number;
+    readonly observationsPerIdentity: number;
+    readonly automaticMaintenanceBudgetMilliseconds: number;
+    readonly lockTimeoutMilliseconds: number;
+    readonly staleLockMilliseconds: number;
 };
 
 type TimingCollectionMode = 'summary' | 'precise';
@@ -765,6 +779,12 @@ type TimingCollectionOverride = 'profile-default' | 'precise';
 
 type TimingProfilePolicy = {
     readonly collection: TimingCollectionMode;
+};
+
+type RunRecordPersistenceMode = 'on-demand' | 'always';
+
+type RunRecordProfilePolicy = {
+    readonly persist: RunRecordPersistenceMode;
 };
 
 type RunProfileConfig =
@@ -781,6 +801,7 @@ type MicrotestProfileConfig = {
     readonly resourceUsage?: ResourceUsagePolicy;
     readonly timeouts?: TimeoutPolicy;
     readonly timings: TimingProfilePolicy | null;
+    readonly runRecords: RunRecordProfilePolicy;
     readonly coverage?: MicrotestCoveragePolicy;
 };
 
@@ -792,6 +813,7 @@ type IntegrationProfileConfig = {
     readonly resourceUsage?: ResourceUsagePolicy;
     readonly timeouts?: TimeoutPolicy;
     readonly timings: TimingProfilePolicy | null;
+    readonly runRecords: RunRecordProfilePolicy;
 };
 
 type PropertyProfileConfig = {
@@ -802,6 +824,7 @@ type PropertyProfileConfig = {
     readonly resourceUsage?: ResourceUsagePolicy;
     readonly timeouts?: TimeoutPolicy;
     readonly timings: TimingProfilePolicy | null;
+    readonly runRecords: RunRecordProfilePolicy;
     readonly coverage?: never;
 };
 
@@ -810,6 +833,7 @@ type TypeTestProfileConfig = {
     readonly files: ProfileFiles;
     readonly reporters?: ReadonlyArray<Reporter>;
     readonly timings: TimingProfilePolicy | null;
+    readonly runRecords: RunRecordProfilePolicy;
 };
 
 type BenchmarkProfileConfig = {
@@ -953,6 +977,7 @@ type RunRequest = {
     readonly resourceBudgetOverrides: ResourceBudgetOverrides | null;
     readonly resourceUsageSamplingIntervalMilliseconds: number | null;
     readonly timingCollection: TimingCollectionOverride;
+    readonly record: boolean;
     readonly seed: { readonly value: bigint | null; };
     readonly order: 'plan' | 'seeded' | 'lexical';
     readonly verbose: boolean;
@@ -1030,11 +1055,25 @@ type RunExecutionBaseFacts = {
     readonly placementPlan: PlacementPlan | null;
     readonly profile: ProfileName;
     readonly resourceUsagePolicy: ResourceUsagePolicy;
+    readonly runRecords: RunRecordPersistenceFacts;
     readonly scheduling: 'serial' | 'concurrent';
     readonly testFamily: TestFamily;
     readonly timingCollection: TimingCollectionMode;
     readonly timeoutPolicy: TimeoutPolicy;
     readonly verbose: boolean;
+};
+
+type RunRecordPersistenceReason =
+    | 'profile'
+    | 'request'
+    | 'debug'
+    | 'coverage'
+    | 'last-failed'
+    | 'artifact';
+
+type RunRecordPersistenceFacts = {
+    readonly persist: boolean;
+    readonly reasons: ReadonlyArray<RunRecordPersistenceReason>;
 };
 
 type RunWorkerPoolExecutionFacts = RunExecutionBaseFacts & {
@@ -1265,9 +1304,12 @@ type RunRecordLineage = {
     readonly path: string;
 };
 
+type RunRecordStatus = 'started' | 'completed' | 'interrupted';
+
 type SingleRunRecord = {
     readonly id: string; // ULID
     readonly kind: 'single';
+    readonly status: RunRecordStatus;
     readonly seed: bigint;
     readonly facts: RunFacts;
     readonly identities: ReadonlyArray<WorkId>;
@@ -1291,6 +1333,59 @@ type MergedRunRecord = {
 };
 
 type RunRecord = SingleRunRecord | MergedRunRecord;
+
+type HistoryRunStatus =
+    | 'passed'
+    | 'failed'
+    | 'runner-error'
+    | 'interrupted'
+    | 'inconclusive';
+
+type HistoryReplayAvailability =
+    | 'available'
+    | 'available-interrupted'
+    | 'pruned'
+    | 'unavailable';
+
+type HistoryRunSummary = {
+    readonly id: string;
+    readonly startedAt: string;
+    readonly profile: ProfileName;
+    readonly testFamily: TestFamily;
+    readonly status: HistoryRunStatus;
+    readonly durationMilliseconds: number | null;
+    readonly replay: HistoryReplayAvailability;
+};
+
+type CompactCaseHistory = {
+    readonly id: CaseId;
+    readonly lastRunId: string;
+    readonly lastOutcome: TestVerdict;
+    readonly lastFailedRunId: string | null;
+    readonly observations: ReadonlyArray<CompactOutcomeObservation>;
+    readonly counters: CompactOutcomeCounters;
+};
+
+type CompactWorkHistory = {
+    readonly id: WorkId;
+    readonly lastRunId: string;
+    readonly durationMilliseconds: ReadonlyArray<number>;
+    readonly counters: CompactOutcomeCounters;
+};
+
+type CompactOutcomeObservation = {
+    readonly runId: string;
+    readonly verdict: TestVerdict;
+    readonly observedAt: string;
+};
+
+type CompactOutcomeCounters = {
+    readonly passed: number;
+    readonly failed: number;
+    readonly skipped: number;
+    readonly inconclusive: number;
+    readonly resourceExhausted: number;
+};
 
 type RunResult = {
     readonly planStatus: 'planned' | 'empty-selection' | 'empty-shard';

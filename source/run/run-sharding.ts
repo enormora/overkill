@@ -17,6 +17,16 @@ export type RunShardHasher = {
     readonly hash: (value: string) => bigint;
 };
 
+type ShardHashState = {
+    readonly digest: (outputType: 'hex') => string;
+    readonly init: () => ShardHashState;
+    readonly update: (value: string) => ShardHashState;
+};
+
+type ShardHashModule = {
+    readonly createXXHash3: (seedLow?: number, seedHigh?: number) => Promise<ShardHashState>;
+};
+
 function sortedObjectKeys(value: Readonly<Record<string, unknown>>): readonly string[] {
     return Object.keys(value).toSorted(function compareKeys(left, right) {
         return left.localeCompare(right);
@@ -49,6 +59,10 @@ function canonicalScalar(value: unknown): boolean | number | string | undefined 
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isShardHashModule(value: unknown): value is ShardHashModule {
+    return isRecord(value) && typeof value.createXXHash3 === 'function';
 }
 
 function canonicalArray(
@@ -108,8 +122,13 @@ export async function createRunShardHasher(shard: RunShard): Promise<RunShardHas
         return null;
     }
 
-    const { createXXHash3 } = await import('hash-wasm');
-    const hasher = await createXXHash3(0, 0);
+    const hashModule: unknown = await import('hash-wasm');
+
+    if (!isShardHashModule(hashModule)) {
+        throw new TypeError('hash-wasm did not provide createXXHash3().');
+    }
+
+    const hasher = await hashModule.createXXHash3(0, 0);
 
     return {
         hash(value) {
