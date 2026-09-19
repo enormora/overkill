@@ -50,6 +50,7 @@ function expectedPassingFixtureAnnotations(): unknown {
 function expectedPassingFixtureControls(): unknown {
     return {
         capture: null,
+        duplicateExecution: null,
         timeoutMilliseconds: null
     };
 }

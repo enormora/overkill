@@ -67,6 +67,10 @@ function integrationCommand(profile: RunConfig['profiles'][string], path: string
 }
 
 function capturedOutputText(artifact: RunArtifact): string {
+    if (artifact.payload.kind !== 'captured-output') {
+        throw new Error('Expected captured output artifact.');
+    }
+
     return artifact.payload.text;
 }
 

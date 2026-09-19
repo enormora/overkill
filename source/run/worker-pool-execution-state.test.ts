@@ -25,10 +25,31 @@ type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
 type PlacementPlan = NonNullable<ResolvedRun['facts']['execution']['placementPlan']>;
 type ResourceSample = ReturnType<WorkerPoolRunRuntime['previousPoolSample']['read']>;
 type WorkUnit = PlacementPlan['units'][number];
+type BufferedReporterEvent = ReturnType<
+    WorkerPoolTaskRun['bufferedReporterEvents'][typeof Symbol.iterator]
+> extends IterableIterator<infer Event> ? Event : never;
 
 const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const annotations = { ownership: [], tags: [] };
-const controls = { capture: null, timeoutMilliseconds: null };
+
+function createReporterEventBuffer(): WorkerPoolTaskRun['bufferedReporterEvents'] {
+    const events: BufferedReporterEvent[] = [];
+
+    return {
+        [Symbol.iterator]() {
+            return events[Symbol.iterator]();
+        },
+        clear() {
+            events.length = 0;
+        },
+        push(...nextEvents) {
+            events.push(...nextEvents);
+
+            return events.length;
+        }
+    };
+}
+const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 const testCaseMetadata = {
     annotations: {},
     controls: {},
@@ -39,6 +60,7 @@ const defaultUnitPolicy = {
     resourceConstraints: {
         affinityKeys: [],
         capacityWeight: 1,
+        duplicateExecution: [],
         faultDomains: [],
         serialKeys: [],
         singleWorkerKeys: []
@@ -196,6 +218,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): Resolved
                 debug: { mode: 'off', selectors: [] },
                 engine: { kind: 'default' },
                 dispatchPolicy: 'dynamic-lease',
+                hedging: { mode: 'off' },
                 hostProcess: { kind: 'direct' },
                 order: 'seeded',
                 placementPlan: placementPlan(),
@@ -380,8 +403,13 @@ export function createTaskRun(state: SupervisedRunState): WorkerPoolTaskRun {
     );
 
     return {
+        bufferedReporterEvents: createReporterEventBuffer(),
         controller: new AbortController(),
         endedByParent: createStoredRunValue(false),
+        includeArtifacts: createStoredRunValue(true),
+        lane: 'worker-1',
+        leaseKind: 'primary',
+        reporterEventsBuffered: false,
         requeuePendingCases: createStoredRunValue(false),
         state,
         startedCases: new Set(),

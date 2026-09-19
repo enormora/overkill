@@ -171,6 +171,12 @@ identity used for sharding and initial placement. Serial scheduling, group
 granularity, fresh-worker units, serial keys, and single-worker keys make a unit
 indivisible. `dispatchPolicy: 'static-assignment'` follows the frozen lane
 assignment without splitting.
+Worker-pool `execution.hedging` defaults to `{ mode: 'off' }`. `{ mode: 'on',
+minimumDelayMilliseconds, durationMultiplier }` duplicates only explicitly
+safe single-case stragglers under `dynamic-lease`; `static-assignment` rejects
+hedging. Slower duplicates are cancelled, matching duplicate outcomes are
+discarded, and conflicting outcomes fail the case with a `hedged-conflict`
+artifact.
 `workerLifecycle: 'reuse'` reuses worker threads between units.
 `workerLifecycle: 'fresh-worker-per-unit'` creates disposable isolation per
 unit. `supervised-process` remains available when a single process-isolated

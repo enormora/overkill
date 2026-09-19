@@ -145,6 +145,7 @@ function createRunExecutionFacts(
             ...facts,
             assignmentPolicy: profile.execution.assignmentPolicy,
             dispatchPolicy: profile.execution.dispatchPolicy,
+            hedging: profile.execution.hedging,
             hostProcess: hostProcessFacts(profile.execution.hostProcess),
             processModel: profile.execution.processModel,
             workDistribution: profile.execution.workDistribution,

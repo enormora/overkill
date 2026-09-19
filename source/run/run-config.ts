@@ -33,7 +33,7 @@ import {
     type RunResourceUsagePolicy,
     type RunTimeoutPolicy,
     type RunWorkerPoolAssignmentPolicy,
-    type RunWorkerPoolDispatchPolicy,
+    type RunWorkerPoolHedgingPolicy,
     type RunWorkerLifecycle
 } from './run-types.ts';
 import {
@@ -43,15 +43,22 @@ import {
     invalidWorkDistributionConfigMessage,
     normalizeWorkDistribution
 } from './work-distribution-config.ts';
-
-const defaultConfigFileNames = [ 'overkill.config.ts', 'overkill.config.js' ];
-const defaultResourceUsageSamplingIntervalMilliseconds = 100;
-const defaultMicrotestCollectionTimeoutMilliseconds = 1000;
-const defaultMicrotestHardTimeoutMilliseconds = 1000;
-const defaultMicrotestTimeoutMilliseconds = 500;
-const defaultIntegrationCollectionTimeoutMilliseconds = 5000;
-const defaultIntegrationHardTimeoutMilliseconds = 7000;
-const defaultIntegrationTimeoutMilliseconds = 5000;
+import {
+    defaultConfigFileNames,
+    defaultIntegrationProcessModel,
+    defaultIntegrationScheduling,
+    defaultIntegrationTimeoutPolicy,
+    defaultLoader,
+    defaultMicrotestExecution,
+    defaultResourceUsagePolicy,
+    defaultResourceUsageSamplingIntervalMilliseconds,
+    defaultTimeoutPolicy,
+    defaultWorkerLifecycle,
+    defaultWorkerPoolAssignmentPolicy,
+    defaultWorkerPoolDispatchPolicy,
+    defaultWorkerPoolHedgingPolicy,
+    defaultWorkDistribution
+} from './run-config-defaults.ts';
 
 type ProjectHostProcessGuard = Readonly<Partial<Record<'hostProcess', never>>>;
 
@@ -109,46 +116,6 @@ export class RunConfigError extends Error {
         this.name = 'RunConfigError';
     }
 }
-
-const defaultLoader: RunLoaderConfig = {
-    sourceMaps: false,
-    stripMode: 'strip-only'
-};
-
-const defaultResourceUsagePolicy: RunResourceUsagePolicy = {
-    budgets: {
-        activeResourceCount: null,
-        javaScriptEngineHeapBytes: null,
-        residentSetBytes: null,
-        residentSetGrowthBytesPerSecond: null
-    },
-    measure: false,
-    samplingIntervalMilliseconds: defaultResourceUsageSamplingIntervalMilliseconds
-};
-
-const defaultTimeoutPolicy: RunTimeoutPolicy = {
-    collectionMilliseconds: defaultMicrotestCollectionTimeoutMilliseconds,
-    hardMilliseconds: defaultMicrotestHardTimeoutMilliseconds,
-    softMilliseconds: defaultMicrotestTimeoutMilliseconds
-};
-
-const defaultIntegrationTimeoutPolicy: RunTimeoutPolicy = {
-    collectionMilliseconds: defaultIntegrationCollectionTimeoutMilliseconds,
-    hardMilliseconds: defaultIntegrationHardTimeoutMilliseconds,
-    softMilliseconds: defaultIntegrationTimeoutMilliseconds
-};
-
-const defaultMicrotestExecution: RunMicrotestExecution = {
-    processModel: 'supervised-process',
-    scheduling: 'concurrent'
-};
-
-const defaultIntegrationProcessModel = 'worker-pool';
-const defaultIntegrationScheduling = 'concurrent';
-const defaultWorkerPoolAssignmentPolicy = 'case-count-balanced';
-const defaultWorkerPoolDispatchPolicy: RunWorkerPoolDispatchPolicy = 'dynamic-lease';
-const defaultWorkerLifecycle = 'reuse';
-const defaultWorkDistribution = { mode: 'file' } as const;
 
 type ProjectProfileFilePatterns = {
     readonly exclude?: readonly string[] | undefined;
@@ -446,6 +413,26 @@ function normalizeWorkerPoolAssignmentPolicy(
     return execution.assignmentPolicy ?? defaultWorkerPoolAssignmentPolicy;
 }
 
+function normalizeWorkerPoolHedgingPolicy(
+    execution: RunProjectIntegrationExecution | undefined
+): RunWorkerPoolHedgingPolicy {
+    if (execution?.processModel !== 'worker-pool') {
+        return defaultWorkerPoolHedgingPolicy;
+    }
+
+    return execution.hedging ?? defaultWorkerPoolHedgingPolicy;
+}
+
+function assertValidWorkerPoolHedging(execution: RunIntegrationExecution): void {
+    if (
+        execution.processModel === 'worker-pool' &&
+        execution.hedging.mode === 'on' &&
+        execution.dispatchPolicy === 'static-assignment'
+    ) {
+        throw new RunConfigError('Invalid worker-pool hedging: hedging requires dynamic-lease dispatch.');
+    }
+}
+
 function assertValidWorkDistribution(
     execution: RunIntegrationExecution,
     files: RunProfileFiles
@@ -466,6 +453,7 @@ function normalizeWorkerPoolExecution(
         dispatchPolicy: execution?.processModel === 'worker-pool'
             ? execution.dispatchPolicy ?? defaultWorkerPoolDispatchPolicy
             : defaultWorkerPoolDispatchPolicy,
+        hedging: normalizeWorkerPoolHedgingPolicy(execution),
         hostProcess: { kind: 'direct' },
         processModel: 'worker-pool',
         scheduling,
@@ -512,6 +500,7 @@ function normalizeIntegrationProfile(profile: RunProjectIntegrationProfileConfig
 
     assertValidTimeouts(timeouts);
     assertValidWorkDistribution(execution, files);
+    assertValidWorkerPoolHedging(execution);
 
     return {
         execution,

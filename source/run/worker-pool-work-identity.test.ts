@@ -14,7 +14,7 @@ import { type WorkUnitPlanningInput, workUnitsFromCollectedPlan } from './work-u
 const firstPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const secondPath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
 const annotations = { ownership: [], tags: [] };
-const controls = { capture: null, timeoutMilliseconds: null };
+const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 const defaultUnitPolicy = {
     order: 'plan',
     scheduling: 'concurrent',

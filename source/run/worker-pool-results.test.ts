@@ -223,6 +223,10 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(result.perTest[0]?.id.title, 'first');
                 scope.assert.deepEqual(
                     result.artifacts.map(function toText(artifact) {
+                        if (artifact.payload.kind !== 'captured-output') {
+                            throw new Error('Expected captured output artifact.');
+                        }
+
                         return artifact.payload.text;
                     }),
                     [ 'run artifact', 'completed artifact', 'active artifact' ]

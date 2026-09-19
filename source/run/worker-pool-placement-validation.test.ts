@@ -28,7 +28,7 @@ type WorkerPoolOutput = {
 
 export const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const annotations = { ownership: [], tags: [] };
-const controls = { capture: null, timeoutMilliseconds: null };
+const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 export const testCaseMetadata = {
     annotations: {},
     controls: {},
@@ -39,6 +39,7 @@ const defaultUnitPolicy = {
     resourceConstraints: {
         affinityKeys: [],
         capacityWeight: 1,
+        duplicateExecution: [],
         faultDomains: [],
         serialKeys: [],
         singleWorkerKeys: []
@@ -229,6 +230,7 @@ function workerPoolResolvedRun(placement: PlacementPlan): ResolvedRun {
                 debug: { mode: 'off', selectors: [] },
                 engine: { kind: 'default' },
                 dispatchPolicy: 'dynamic-lease',
+                hedging: { mode: 'off' },
                 hostProcess: { kind: 'direct' },
                 order: 'seeded',
                 placementPlan: placement,

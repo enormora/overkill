@@ -250,8 +250,13 @@ export type {
     AssertionTestFailure,
     BodyErrorTestFailure,
     CaseRunnerErrorOptions,
+    CapturedOutputArtifact,
     CapturedOutputArtifactPayload,
     FailOutcome,
+    HedgedConflictArtifact,
+    HedgedConflictArtifactPayload,
+    HedgedConflictEvidence,
+    HedgedDuplicateConflictFailure,
     InconclusiveOutcome,
     OrphanedNode,
     PassOutcome,
@@ -332,6 +337,7 @@ export type {
 } from '../../engine/test-body-resource-attachment.ts';
 export type {
     CaptureMode,
+    DuplicateExecutionControl,
     TestAnnotations,
     TestAnnotationsInput,
     TestControls,

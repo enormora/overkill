@@ -83,10 +83,17 @@ type CleanupErrorTestFailure = {
     readonly kind: 'cleanup-error';
 };
 
+export type HedgedDuplicateConflictFailure = {
+    readonly artifact: RunArtifactId;
+    readonly kind: 'hedged-duplicate-conflict';
+    readonly summary: string;
+};
+
 type TestFailureTypes = readonly [
     AssertionTestFailure,
     BodyErrorTestFailure,
     CleanupErrorTestFailure,
+    HedgedDuplicateConflictFailure,
     TestContractFailure,
     TimeoutTestFailure
 ];
@@ -248,7 +255,7 @@ export type RunArtifactScope = {
 export type RunArtifactId = {
     readonly scope: RunArtifactScope;
     readonly sequence: number;
-    readonly subtype: 'log-capture';
+    readonly subtype: 'hedged-conflict' | 'log-capture';
 };
 
 export type CapturedOutputArtifactPayload = {
@@ -260,11 +267,31 @@ export type CapturedOutputArtifactPayload = {
     readonly truncated: boolean;
 };
 
-export type RunArtifact = {
+export type HedgedConflictEvidence = {
+    readonly outcome: TestOutcome | null;
+    readonly verdict: TestVerdict;
+};
+
+export type HedgedConflictArtifactPayload = {
+    readonly authoritative: HedgedConflictEvidence;
+    readonly conflicting: HedgedConflictEvidence;
+    readonly kind: 'hedged-conflict';
+    readonly work: WorkId;
+};
+
+export type CapturedOutputArtifact = {
     readonly id: RunArtifactId;
     readonly payload: CapturedOutputArtifactPayload;
-    readonly source: 'boundary-captured';
+    readonly source: 'boundary-captured' | 'native';
 };
+
+export type HedgedConflictArtifact = {
+    readonly id: RunArtifactId;
+    readonly payload: HedgedConflictArtifactPayload;
+    readonly source: 'native';
+};
+
+export type RunArtifact = CapturedOutputArtifact | HedgedConflictArtifact;
 
 export type SuiteRunCounts = {
     readonly discovered: number;

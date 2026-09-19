@@ -120,7 +120,9 @@ case suite paths or `RunResult.bySuite`.
 Annotations and controls are closed structured input. Unknown fields fail
 during test construction or collection. `TestPlanCase.annotations` and
 `TestPlanCase.controls` contain the resolved data after root, suite, table,
-and case propagation.
+and case propagation. `controls.duplicateExecution` is `null` by default;
+`idempotent` opts a case into safe duplicate execution, while `forbidden`
+clears inherited duplicate safety for that case.
 
 Test scope lifecycle:
 
